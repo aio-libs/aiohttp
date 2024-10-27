@@ -68,8 +68,12 @@ class WebSocketReader:
         self.queue.feed_eof()
 
     # data can be bytearray on Windows because proactor event loop uses bytearray
-    def feed_data(self, data: Union[bytes, bytearray]) -> Tuple[bool, bytes]:
-        if type(data) is bytearray:
+    # and asyncio types this to Union[bytes, bytearray, memoryview] so we need
+    # verify that data is bytes
+    def feed_data(
+        self, data: Union[bytes, bytearray, memoryview]
+    ) -> Tuple[bool, bytes]:
+        if type(data) is not bytes:
             data = bytes(data)
 
         if self._exc is not None:

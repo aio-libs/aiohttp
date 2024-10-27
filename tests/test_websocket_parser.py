@@ -3,6 +3,7 @@ import pickle
 import random
 import struct
 import zlib
+from typing import Union
 from unittest import mock
 
 import pytest
@@ -186,26 +187,22 @@ def test_parse_frame_header_payload_size(
         parser.parse_frame(struct.pack("!BB", 0b10001000, 0b01111110))
 
 
-def test_ping_frame_bytearray(
-    out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader
+# Protractor event loop will call feed_data with bytearray. Since
+# asyncio technically supports memoryview as well, we should test that.
+@pytest.mark.parametrize(
+    argnames="data",
+    argvalues=[b"", bytearray(b""), memoryview(b"")],
+    ids=["bytes", "bytearray", "memoryview"],
+)
+def test_ping_frame(
+    out: aiohttp.DataQueue[WSMessage],
+    parser: WebSocketReader,
+    data: Union[bytes, bytearray, memoryview],
 ) -> None:
-    """Verify feed_data with bytearray.
-
-    Protractor event loop will call feed_data with bytearray.
-    """
     with mock.patch.object(parser, "parse_frame", autospec=True) as m:
         m.return_value = [(1, WSMsgType.PING, b"data", False)]
 
-        parser.feed_data(bytearray(b""))
-        res = out._buffer[0]
-        assert res == WSMessagePing(data=b"data", extra="")
-
-
-def test_ping_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) -> None:
-    with mock.patch.object(parser, "parse_frame", autospec=True) as m:
-        m.return_value = [(1, WSMsgType.PING, b"data", False)]
-
-        parser.feed_data(b"")
+        parser.feed_data(data)
         res = out._buffer[0]
         assert res == WSMessagePing(data=b"data", extra="")
 
