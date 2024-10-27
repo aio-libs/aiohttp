@@ -56,7 +56,7 @@ cdef class WebSocketReader:
     cdef object _decompressobj
     cdef bint _compress
 
-    cpdef feed_data(self, bytes data)
+    cpdef feed_data(self, object data)
 
     @cython.locals(
         is_continuation=bint,

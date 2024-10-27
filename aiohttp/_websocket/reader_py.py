@@ -1,6 +1,6 @@
 """Reader for WebSocket protocol versions 13 and 8."""
 
-from typing import Final, List, Optional, Set, Tuple
+from typing import Final, List, Optional, Set, Tuple, Union
 
 from ..compression_utils import ZLibDecompressor
 from ..helpers import set_exception
@@ -66,7 +66,11 @@ class WebSocketReader:
     def feed_eof(self) -> None:
         self.queue.feed_eof()
 
-    def feed_data(self, data: bytes) -> Tuple[bool, bytes]:
+    # data can be bytearray on Windows because proactor event loop uses bytearray
+    def feed_data(self, data: Union[bytes, bytearray]) -> Tuple[bool, bytes]:
+        if type(data) is bytearray:
+            data = bytes(data)
+
         if self._exc is not None:
             return True, data
 
