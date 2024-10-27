@@ -456,10 +456,7 @@ class Runner:
             pass
         finally:
             _cancel_tasks({main_task}, self._loop)
-            _cancel_tasks(asyncio.all_tasks(self._loop), self._loop)
-            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
             self.close()
-            asyncio.set_event_loop(None)
 
     def _lazy_init(self) -> None:
         if self._state is _State.CLOSED:
