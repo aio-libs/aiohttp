@@ -150,7 +150,7 @@ async def test_concurrent_messages(
       and in the executor
     """
     with mock.patch(
-        "aiohttp._websocket_writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", max_sync_chunk_size
+        "aiohttp._websocket.writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", max_sync_chunk_size
     ):
         writer = WebSocketWriter(protocol, transport, compress=15)
         queue: DataQueue[WSMessage] = DataQueue(asyncio.get_running_loop())
