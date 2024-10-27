@@ -590,7 +590,7 @@ def run_app(
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> None:
     """Run an app locally"""
-    if sys.version_info < (3, 11):
+    if sys.version_info >= (3, 11):
         loop_factory = None if loop is None else lambda: loop
         with WebRunner(debug=debug, loop_factory=loop_factory) as runner:
             runner.run_app(
