@@ -16,8 +16,12 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
+import pprint
+
 
 async def test_send_recv_text(aiohttp_client: AiohttpClient) -> None:
+    pprint.pprint(["test_send_recv_text"])
+
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
@@ -27,15 +31,21 @@ async def test_send_recv_text(aiohttp_client: AiohttpClient) -> None:
         await ws.close()
         return ws
 
+    pprint.pprint(["test_send_recv_text", 2])
     app = web.Application()
     app.router.add_route("GET", "/", handler)
+    pprint.pprint(["test_send_recv_text", 3])
     client = await aiohttp_client(app)
+    pprint.pprint(["test_send_recv_text", 4])
     resp = await client.ws_connect("/")
+    pprint.pprint(["test_send_recv_text", 5])
     await resp.send_str("ask")
+    pprint.pprint(["test_send_recv_text", 6])
 
     assert resp.get_extra_info("socket") is not None
 
     data = await resp.receive_str()
+    pprint.pprint(["test_send_recv_text", 7])
     assert data == "ask/answer"
     await resp.close()
 
