@@ -65,7 +65,7 @@ cdef class WebSocketReader:
         payload_merged=bytes,
         opcode="unsigned int",
     )
-    cpdef _feed_data(self, bytes data)
+    cpdef void _feed_data(self, bytes data)
 
     @cython.locals(
         start_pos="unsigned int",
