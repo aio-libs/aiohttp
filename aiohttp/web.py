@@ -418,8 +418,6 @@ class Runner:
         """Run an app locally"""
         self._lazy_init()
 
-        self._loop.set_debug(self._debug)
-
         if (
             self._loop.get_debug()
             and access_log
