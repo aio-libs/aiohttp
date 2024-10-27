@@ -50,9 +50,9 @@ class WebSocketReader:
         self._partial = bytearray()
         self._state = READ_HEADER
 
-        self._opcode: Optional[int] = None
+        self._opcode = -1
         self._frame_fin = False
-        self._frame_opcode: Optional[int] = None
+        self._frame_opcode = -1
         self._frame_payload = bytearray()
 
         self._tail: bytes = b""
@@ -113,7 +113,7 @@ class WebSocketReader:
                             "Continuation frame for non started message",
                         )
                     opcode = self._opcode
-                    self._opcode = None
+                    self._opcode = -1
                 # previous frame was non finished
                 # we should get continuation opcode
                 elif has_partial:

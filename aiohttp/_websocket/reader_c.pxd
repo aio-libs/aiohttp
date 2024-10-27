@@ -42,9 +42,9 @@ cdef class WebSocketReader:
     cdef bytearray _partial
     cdef unsigned int _state
 
-    cdef object _opcode
+    cdef unsigned int _opcode
     cdef bint _frame_fin
-    cdef object _frame_opcode
+    cdef unsigned int _frame_opcode
     cdef bytearray _frame_payload
 
     cdef bytes _tail
