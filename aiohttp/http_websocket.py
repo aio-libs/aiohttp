@@ -1,7 +1,7 @@
 """WebSocket protocol versions 13 and 8."""
 
-from ._websocket_helpers import WS_KEY, ws_ext_gen, ws_ext_parse
-from ._websocket_models import (
+from ._websocket.helpers import WS_KEY, ws_ext_gen, ws_ext_parse
+from ._websocket.models import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
     WebSocketError,
@@ -19,8 +19,8 @@ from ._websocket_models import (
     WSMessageText,
     WSMsgType,
 )
-from ._websocket_reader import WebSocketReader
-from ._websocket_writer import WebSocketWriter
+from ._websocket.reader import WebSocketReader
+from ._websocket.writer import WebSocketWriter
 
 __all__ = (
     "WS_CLOSED_MESSAGE",

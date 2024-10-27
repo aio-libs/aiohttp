@@ -3,13 +3,11 @@
 from enum import IntEnum
 from typing import Final, List, Optional, Set, Tuple
 
-from ._websocket_helpers import (
-    UNPACK_CLOSE_CODE,
-    UNPACK_LEN2,
-    UNPACK_LEN3,
-    websocket_mask,
-)
-from ._websocket_models import (
+from ..compression_utils import ZLibDecompressor
+from ..helpers import set_exception
+from ..streams import DataQueue
+from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN2, UNPACK_LEN3, websocket_mask
+from .models import (
     WS_DEFLATE_TRAILING,
     WebSocketError,
     WSCloseCode,
@@ -21,9 +19,6 @@ from ._websocket_models import (
     WSMessageText,
     WSMsgType,
 )
-from .compression_utils import ZLibDecompressor
-from .helpers import set_exception
-from .streams import DataQueue
 
 MESSAGE_TYPES_WITH_CONTENT: Final = frozenset(
     {
