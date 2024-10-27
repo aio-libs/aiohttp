@@ -8,15 +8,15 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp import _websocket_helpers
-from aiohttp._websocket_helpers import (
+from aiohttp._websocket import helpers as _websocket_helpers
+from aiohttp._websocket.helpers import (
     PACK_CLOSE_CODE,
     PACK_LEN1,
     PACK_LEN2,
     PACK_LEN3,
     websocket_mask,
 )
-from aiohttp._websocket_models import WS_DEFLATE_TRAILING
+from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
 from aiohttp.http_websocket import (
     WebSocketReader,
