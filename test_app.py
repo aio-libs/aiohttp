@@ -1,4 +1,5 @@
 import asyncio
+import pprint
 
 import aiohttp
 from aiohttp import test_utils, web
@@ -6,6 +7,7 @@ from aiohttp import test_utils, web
 
 async def websocket_handler(request):
     ws = web.WebSocketResponse(heartbeat=5, compress=False)
+    pprint.pprint("websocket_handler enter")
     await ws.prepare(request)
     await ws.send_str("hi")
     try:
@@ -40,13 +42,18 @@ async def run():
 async def run_test(
     websession: aiohttp.ClientSession, server: test_utils.TestServer
 ) -> None:
+    pprint.pprint("run_test enter")
     url = f"{server.scheme}://{server.host}:{server.port}"
     conn = await websession.ws_connect(f"{url}/land/websocket-tunnel")
 
+    pprint.pprint("run_test send_str hello")
     await conn.send_str("hello")
+    pprint.pprint("run_test receive")
     msg = await conn.receive()
     assert msg.type == aiohttp.WSMsgType.TEXT
+    pprint.pprint("run_test send_str close")
     await conn.send_str("close")
+    pprint.pprint("run_test close")
     await conn.close()
 
 
