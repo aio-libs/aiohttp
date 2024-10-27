@@ -212,7 +212,7 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml -vvvs tests/test_client_ws_functional.py::test_send_recv_text
+        python test_app.py
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
@@ -220,7 +220,7 @@ jobs:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: >-  # `exit 1` makes sure that the job remains red with flaky runs
-        pytest --no-cov -vvvvv --lf  tests/test_client_ws_functional.py::test_send_recv_text && exit 1
+        python test_app.py && exit 1
       shell: bash
     - name: Run dev_mode tests
       env:
