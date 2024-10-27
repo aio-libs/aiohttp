@@ -8,7 +8,7 @@ cdef extern from "Python.h":
 from libc.stdint cimport uint32_t, uint64_t, uintmax_t
 
 
-def _websocket_mask_cython(object mask, object data):
+cpdef void _websocket_mask_cython(bytes mask, bytearray data):
     """Note, this function mutates its `data` argument
     """
     cdef:
@@ -20,14 +20,6 @@ def _websocket_mask_cython(object mask, object data):
         uint64_t uint64_msk
 
     assert len(mask) == 4
-
-    if not isinstance(mask, bytes):
-        mask = bytes(mask)
-
-    if isinstance(data, bytearray):
-        data = <bytearray>data
-    else:
-        data = bytearray(data)
 
     data_len = len(data)
     in_buf = <unsigned char*>PyByteArray_AsString(data)
