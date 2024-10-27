@@ -451,8 +451,6 @@ class Runner:
         )
 
         try:
-            if self._set_event_loop:
-                asyncio.set_event_loop(self._loop)
             self._loop.run_until_complete(main_task)
         except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
             pass
