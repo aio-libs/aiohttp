@@ -216,11 +216,9 @@ class WebSocketReader:
                     WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
                 )
 
-    def parse_frame(
-        self, buf: bytes
-    ) -> List[Tuple[bool, int, bytearray, Optional[bool]]]:
+    def parse_frame(self, buf: bytes) -> List[Tuple[bool, int, bytearray, int]]:
         """Return the next frame from the socket."""
-        frames: List[Tuple[bool, int, bytearray, Optional[bool]]] = []
+        frames: List[Tuple[bool, int, bytearray, int]] = []
         if self._tail:
             buf, self._tail = self._tail + buf, b""
 
@@ -280,7 +278,7 @@ class WebSocketReader:
                 # OR set compress status if this is first fragment
                 # Raise error if not first fragment with rsv1 = 0x1
                 if self._frame_fin or self._compressed == -1:
-                    self._compressed = True if rsv1 else False
+                    self._compressed = 1 if rsv1 else 0
                 elif rsv1:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
