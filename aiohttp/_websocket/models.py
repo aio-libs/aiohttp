@@ -37,6 +37,15 @@ class WSMsgType(IntEnum):
     CLOSED = 0x101
     ERROR = 0x102
 
+    text = TEXT
+    binary = BINARY
+    ping = PING
+    pong = PONG
+    close = CLOSE
+    closing = CLOSING
+    closed = CLOSED
+    error = ERROR
+
 
 class WSMessage(NamedTuple):
     type: WSMsgType
