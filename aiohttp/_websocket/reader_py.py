@@ -21,6 +21,8 @@ from .models import (
 
 ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
 
+# States for the reader, used to parse the WebSocket frame
+# integer values are used so they can be cythonized
 READ_HEADER = 1
 READ_PAYLOAD_LENGTH = 2
 READ_PAYLOAD_MASK = 3
