@@ -10,7 +10,7 @@ if TYPE_CHECKING or NO_EXTENSIONS:  # pragma: no cover
     WebSocketReader = WebSocketReaderPython
 else:
     try:
-        from ._reader_c import (  # type: ignore[import-not-found]
+        from .reader_c import (  # type: ignore[import-not-found]
             WebSocketReader as WebSocketReaderCython,
         )
 
