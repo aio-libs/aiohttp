@@ -60,7 +60,7 @@ class WebSocketReader:
         self._frame_mask: Optional[bytes] = None
         self._payload_length = 0
         self._payload_length_flag = 0
-        self._compressed: int = -1
+        self._compressed: Optional[bool] = None
         self._decompressobj: Optional[ZLibDecompressor] = None
         self._compress = compress
 
@@ -218,9 +218,9 @@ class WebSocketReader:
 
     def parse_frame(
         self, buf: bytes
-    ) -> List[Tuple[bool, int, bytearray, Optional[bool]]]:
+    ) -> List[Tuple[bool, Optional[int], bytearray, Optional[bool]]]:
         """Return the next frame from the socket."""
-        frames: List[Tuple[bool, int, bytearray, Optional[bool]]] = []
+        frames: List[Tuple[bool, Optional[int], bytearray, Optional[bool]]] = []
         if self._tail:
             buf, self._tail = self._tail + buf, b""
 
@@ -279,7 +279,7 @@ class WebSocketReader:
                 # Set compress status if last package is FIN
                 # OR set compress status if this is first fragment
                 # Raise error if not first fragment with rsv1 = 0x1
-                if self._frame_fin or self._compressed == -1:
+                if self._frame_fin or self._compressed is None:
                     self._compressed = True if rsv1 else False
                 elif rsv1:
                     raise WebSocketError(
