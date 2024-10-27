@@ -107,7 +107,7 @@ class WebSocketReader:
 
                 has_partial = bool(self._partial)
                 if is_continuation:
-                    if self._opcode == -1:
+                    if self._opcode is None:
                         raise WebSocketError(
                             WSCloseCode.PROTOCOL_ERROR,
                             "Continuation frame for non started message",
