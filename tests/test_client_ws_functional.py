@@ -27,19 +27,20 @@ async def test_send_recv_text(aiohttp_client: AiohttpClient) -> None:
         await ws.close()
         return ws
 
-    app = web.Application()
-    app.router.add_route("GET", "/", handler)
-    client = await aiohttp_client(app)
-    resp = await client.ws_connect("/")
-    await resp.send_str("ask")
+    async with asyncio.timeout(10):
+        app = web.Application()
+        app.router.add_route("GET", "/", handler)
+        client = await aiohttp_client(app)
+        resp = await client.ws_connect("/")
+        await resp.send_str("ask")
 
-    assert resp.get_extra_info("socket") is not None
+        assert resp.get_extra_info("socket") is not None
 
-    data = await resp.receive_str()
-    assert data == "ask/answer"
-    await resp.close()
+        data = await resp.receive_str()
+        assert data == "ask/answer"
+        await resp.close()
 
-    assert resp.get_extra_info("socket") is None
+        assert resp.get_extra_info("socket") is None
 
 
 async def test_send_recv_bytes_bad_type(aiohttp_client: AiohttpClient) -> None:
