@@ -74,6 +74,8 @@ cdef class WebSocketReader:
         data=bytes,
         payload=bytearray,
         first_byte=char,
-        second_byte=char
+        second_byte=char,
+        has_mask=bint,
+        fin=bint,
     )
     cpdef parse_frame(self, bytes buf)
