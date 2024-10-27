@@ -8,12 +8,12 @@ cdef unsigned int READ_PAYLOAD_LENGTH
 cdef unsigned int READ_PAYLOAD_MASK
 cdef unsigned int READ_PAYLOAD
 
-cdef unsigned int OP_CODE_CONTINUATION
-cdef unsigned int OP_CODE_TEXT
-cdef unsigned int OP_CODE_BINARY
-cdef unsigned int OP_CODE_CLOSE
-cdef unsigned int OP_CODE_PING
-cdef unsigned int OP_CODE_PONG
+cdef int OP_CODE_CONTINUATION
+cdef int OP_CODE_TEXT
+cdef int OP_CODE_BINARY
+cdef int OP_CODE_CLOSE
+cdef int OP_CODE_PING
+cdef int OP_CODE_PONG
 
 cdef object UNPACK_LEN2
 cdef object UNPACK_LEN3
@@ -42,9 +42,9 @@ cdef class WebSocketReader:
     cdef bytearray _partial
     cdef unsigned int _state
 
-    cdef unsigned int _opcode
+    cdef int _opcode
     cdef bint _frame_fin
-    cdef unsigned int _frame_opcode
+    cdef int _frame_opcode
     cdef bytearray _frame_payload
 
     cdef bytes _tail
@@ -52,7 +52,7 @@ cdef class WebSocketReader:
     cdef bytes _frame_mask
     cdef unsigned int _payload_length
     cdef unsigned int _payload_length_flag
-    cdef object _compressed
+    cdef int _compressed
     cdef object _decompressobj
     cdef bint _compress
 
@@ -63,7 +63,7 @@ cdef class WebSocketReader:
         fin=bint,
         has_partial=bint,
         payload_merged=bytes,
-        opcode="unsigned int",
+        opcode=int,
     )
     cpdef _feed_data(self, bytes data)
 
