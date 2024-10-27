@@ -43,6 +43,7 @@ class WebSocketReader:
         self, queue: DataQueue[WSMessage], max_msg_size: int, compress: bool = True
     ) -> None:
         self.queue = queue
+        self._queue_feed_data = queue.feed_data
         self._max_msg_size = max_msg_size
 
         self._exc: Optional[Exception] = None
@@ -174,13 +175,12 @@ class WebSocketReader:
                     # This is not type safe, but many tests should fail in
                     # test_client_ws_functional.py if this is wrong.
                     msg = tuple.__new__(WSMessageText, (text, "", WSMsgType.TEXT))
-                    self.queue.feed_data(msg)
-                    continue
+                else:
+                    msg = tuple.__new__(
+                        WSMessageBinary, (payload_merged, "", WSMsgType.BINARY)
+                    )
 
-                msg = tuple.__new__(
-                    WSMessageBinary, (payload_merged, "", WSMsgType.BINARY)
-                )
-                self.queue.feed_data(msg)
+                self._queue_feed_data(msg)
             elif opcode == OP_CODE_CLOSE:
                 if len(payload) >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
@@ -204,15 +204,15 @@ class WebSocketReader:
                 else:
                     msg = WSMessageClose(data=0, extra="")
 
-                self.queue.feed_data(msg)
+                self._queue_feed_data(msg)
 
             elif opcode == OP_CODE_PING:
                 msg = WSMessagePing(data=payload, extra="")
-                self.queue.feed_data(msg)
+                self._queue_feed_data(msg)
 
             elif opcode == OP_CODE_PONG:
                 msg = WSMessagePong(data=payload, extra="")
-                self.queue.feed_data(msg)
+                self._queue_feed_data(msg)
 
             else:
                 raise WebSocketError(

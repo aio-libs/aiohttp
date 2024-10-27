@@ -36,6 +36,7 @@ cdef tuple EMPTY_FRAME_ERROR
 cdef class WebSocketReader:
 
     cdef object queue
+    cdef object _queue_feed_data
     cdef unsigned int _max_msg_size
 
     cdef Exception _exc
