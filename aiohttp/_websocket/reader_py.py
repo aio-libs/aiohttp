@@ -26,6 +26,9 @@ READ_PAYLOAD_LENGTH = 2
 READ_PAYLOAD_MASK = 3
 READ_PAYLOAD = 4
 
+WS_MSG_TYPE_BINARY = WSMsgType.BINARY
+WS_MSG_TYPE_TEXT = WSMsgType.TEXT
+
 # WSMsgType values unpacked so they can by cythonized to ints
 OP_CODE_CONTINUATION = WSMsgType.CONTINUATION.value
 OP_CODE_TEXT = WSMsgType.TEXT.value
@@ -36,6 +39,8 @@ OP_CODE_PONG = WSMsgType.PONG.value
 
 EMPTY_FRAME_ERROR = (True, b"")
 EMPTY_FRAME = (False, b"")
+
+TUPLE_NEW = tuple.__new__
 
 
 class WebSocketReader:
@@ -178,11 +183,11 @@ class WebSocketReader:
                     # bottleneck, so we use tuple.__new__ to improve performance.
                     # This is not type safe, but many tests should fail in
                     # test_client_ws_functional.py if this is wrong.
-                    msg = tuple.__new__(WSMessageText, (text, "", WSMsgType.TEXT))
+                    tup = (text, "", WS_MSG_TYPE_TEXT)
+                    msg = TUPLE_NEW(WSMessageText, tup)
                 else:
-                    msg = tuple.__new__(
-                        WSMessageBinary, (payload_merged, "", WSMsgType.BINARY)
-                    )
+                    tup = (payload_merged, "", WS_MSG_TYPE_BINARY)
+                    msg = TUPLE_NEW(WSMessageBinary, tup)
 
                 self._queue_feed_data(msg)
             elif opcode == OP_CODE_CLOSE:

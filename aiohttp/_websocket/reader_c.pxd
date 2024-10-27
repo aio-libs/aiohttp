@@ -18,6 +18,7 @@ cdef unsigned int OP_CODE_PONG
 cdef object UNPACK_LEN2
 cdef object UNPACK_LEN3
 cdef object UNPACK_CLOSE_CODE
+cdef object TUPLE_NEW
 
 cdef object WSMsgType
 
@@ -27,11 +28,15 @@ cdef object WSMessagePing
 cdef object WSMessagePong
 cdef object WSMessageClose
 
+cdef object WS_MSG_TYPE_TEXT
+cdef object WS_MSG_TYPE_BINARY
+
 cdef set ALLOWED_CLOSE_CODES
 cdef set MESSAGE_TYPES_WITH_CONTENT
 
 cdef tuple EMPTY_FRAME
 cdef tuple EMPTY_FRAME_ERROR
+
 
 cdef class WebSocketReader:
 
