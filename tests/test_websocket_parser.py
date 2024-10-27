@@ -175,6 +175,21 @@ def test_parse_frame_header_payload_size(
         parser.parse_frame(struct.pack("!BB", 0b10001000, 0b01111110))
 
 
+def test_ping_frame_bytearray(
+    out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader
+) -> None:
+    """Verify feed_data with bytearray.
+
+    Protractor event loop will call feed_data with bytearray.
+    """
+    with mock.patch.object(parser, "parse_frame", autospec=True) as m:
+        m.return_value = [(1, WSMsgType.PING, b"data", False)]
+
+        parser.feed_data(bytearray(b""))
+        res = out._buffer[0]
+        assert res == WSMessagePing(data=b"data", extra="")
+
+
 def test_ping_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) -> None:
     with mock.patch.object(parser, "parse_frame", autospec=True) as m:
         m.return_value = [(1, WSMsgType.PING, b"data", False)]
