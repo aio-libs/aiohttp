@@ -416,7 +416,7 @@ class ClientSession:
             return url
         else:
             assert not url.absolute
-            return self._base_url.join(URL(url.path_qs.lstrip("/")))
+            return self._base_url.join(url)
 
     async def _request(
         self,
