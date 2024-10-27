@@ -183,11 +183,11 @@ class WebSocketReader:
                     # bottleneck, so we use tuple.__new__ to improve performance.
                     # This is not type safe, but many tests should fail in
                     # test_client_ws_functional.py if this is wrong.
-                    tup = (text, "", WS_MSG_TYPE_TEXT)
-                    msg = TUPLE_NEW(WSMessageText, tup)
+                    msg = TUPLE_NEW(WSMessageText, (text, "", WS_MSG_TYPE_TEXT))
                 else:
-                    tup = (payload_merged, "", WS_MSG_TYPE_BINARY)
-                    msg = TUPLE_NEW(WSMessageBinary, tup)
+                    msg = TUPLE_NEW(
+                        WSMessageBinary, (payload_merged, "", WS_MSG_TYPE_BINARY)
+                    )
 
                 self._queue_feed_data(msg)
             elif opcode == OP_CODE_CLOSE:
