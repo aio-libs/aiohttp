@@ -26,8 +26,7 @@ READ_PAYLOAD_LENGTH = 2
 READ_PAYLOAD_MASK = 3
 READ_PAYLOAD = 4
 
-# WSMsgType values unpacked so they can by
-# cythonized to unsigned int
+# WSMsgType values unpacked so they can by cythonized to ints
 OP_CODE_CONTINUATION = WSMsgType.CONTINUATION.value
 OP_CODE_TEXT = WSMsgType.TEXT.value
 OP_CODE_BINARY = WSMsgType.BINARY.value
