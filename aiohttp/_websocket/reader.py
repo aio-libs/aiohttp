@@ -75,7 +75,6 @@ class WebSocketReader:
         return False, b""
 
     def _feed_data(self, data: bytes) -> None:
-        msg: WSMessage
         for fin, opcode, payload, compressed in self.parse_frame(data):
             if opcode in MESSAGE_TYPES_WITH_CONTENT:
                 # load text/binary
@@ -155,14 +154,12 @@ class WebSocketReader:
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                         ) from exc
 
-                    # XXX: The Text and Binary messages here can be a performance
-                    # bottleneck, so we use tuple.__new__ to improve performance.
-                    # This is not type safe, but many tests should fail in
-                    # test_client_ws_functional.py if this is wrong.
+                    # tuple.__new__ is used to avoid the overhead of the lambda
                     msg = tuple.__new__(WSMessage, (WSMsgType.TEXT, text, ""))
                     self.queue.feed_data(msg, len(text))
                     continue
 
+                # tuple.__new__ is used to avoid the overhead of the lambda
                 msg = tuple.__new__(WSMessage, (WSMsgType.BINARY, payload_merged, ""))
                 self.queue.feed_data(msg, len(payload_merged))
             elif opcode == WSMsgType.CLOSE:
