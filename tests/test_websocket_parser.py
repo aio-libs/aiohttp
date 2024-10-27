@@ -3,6 +3,7 @@ import pickle
 import random
 import struct
 import zlib
+from typing import Union
 from unittest import mock
 
 import pytest
@@ -26,6 +27,10 @@ from aiohttp.http_websocket import (
     WSMessagePong,
     WSMessageText,
 )
+
+
+class PatchableWebSocketReader(WebSocketReader):
+    """WebSocketReader subclass that allows for patching parse_frame."""
 
 
 def build_frame(
@@ -97,8 +102,19 @@ def out(loop: asyncio.AbstractEventLoop) -> aiohttp.DataQueue[WSMessage]:
 
 
 @pytest.fixture()
-def parser(out: aiohttp.DataQueue[WSMessage]) -> WebSocketReader:
-    return WebSocketReader(out, 4 * 1024 * 1024)
+def parser(out: aiohttp.DataQueue[WSMessage]) -> PatchableWebSocketReader:
+    return PatchableWebSocketReader(out, 4 * 1024 * 1024)
+
+
+def test_feed_data_remembers_exception(parser: WebSocketReader) -> None:
+    """Verify that feed_data remembers an exception was already raised internally."""
+    error, data = parser.feed_data(struct.pack("!BB", 0b01100000, 0b00000000))
+    assert error is True
+    assert data == b""
+
+    error, data = parser.feed_data(b"")
+    assert error is True
+    assert data == b""
 
 
 def test_parse_frame(parser: WebSocketReader) -> None:
@@ -171,11 +187,22 @@ def test_parse_frame_header_payload_size(
         parser.parse_frame(struct.pack("!BB", 0b10001000, 0b01111110))
 
 
-def test_ping_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) -> None:
+# Protractor event loop will call feed_data with bytearray. Since
+# asyncio technically supports memoryview as well, we should test that.
+@pytest.mark.parametrize(
+    argnames="data",
+    argvalues=[b"", bytearray(b""), memoryview(b"")],
+    ids=["bytes", "bytearray", "memoryview"],
+)
+def test_ping_frame(
+    out: aiohttp.DataQueue[WSMessage],
+    parser: WebSocketReader,
+    data: Union[bytes, bytearray, memoryview],
+) -> None:
     with mock.patch.object(parser, "parse_frame", autospec=True) as m:
         m.return_value = [(1, WSMsgType.PING, b"data", False)]
 
-        parser.feed_data(b"")
+        parser.feed_data(data)
         res = out._buffer[0]
         assert res == WSMessagePing(data=b"data", extra="")
 

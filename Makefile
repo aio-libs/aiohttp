@@ -56,6 +56,11 @@ endif
 aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 	./tools/gen.py
 
+# Special case for reader since we want to be able to disable
+# the extension with AIOHTTP_NO_EXTENSIONS
+aiohttp/_websocket/reader_c.c: aiohttp/_websocket/reader_c.py
+	cython -3 -o $@ $< -I aiohttp -Werror
+
 # _find_headers generator creates _headers.pyi as well
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
 	cython -3 -o $@ $< -I aiohttp -Werror
@@ -74,7 +79,7 @@ vendor/llhttp/node_modules: vendor/llhttp/package.json
 generate-llhttp: .llhttp-gen
 
 .PHONY: cythonize
-cythonize: .install-cython $(PYXS:.pyx=.c)
+cythonize: .install-cython $(PYXS:.pyx=.c) aiohttp/_websocket/reader_c.c
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) $(call to-hash,$(CYS) $(REQS))
 	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
@@ -157,6 +162,7 @@ clean:
 	@rm -f aiohttp/_http_parser.c
 	@rm -f aiohttp/_http_writer.c
 	@rm -f aiohttp/_websocket.c
+	@rm -f aiohttp/_websocket/reader_c.c
 	@rm -rf .tox
 	@rm -f .develop
 	@rm -f .flake
