@@ -105,6 +105,17 @@ def parser(out: aiohttp.DataQueue[WSMessage]) -> PatchableWebSocketReader:
     return PatchableWebSocketReader(out, 4 * 1024 * 1024)
 
 
+def test_feed_data_remembers_exception(parser: WebSocketReader) -> None:
+    """Verify that feed_data remembers an exception was already raised internally."""
+    error, data = parser.feed_data(struct.pack("!BB", 0b01100000, 0b00000000))
+    assert error is True
+    assert data == b""
+
+    error, data = parser.feed_data(b"")
+    assert error is True
+    assert data == b""
+
+
 def test_parse_frame(parser: WebSocketReader) -> None:
     parser.parse_frame(struct.pack("!BB", 0b00000001, 0b00000001))
     res = parser.parse_frame(b"1")
