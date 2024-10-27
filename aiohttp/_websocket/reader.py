@@ -7,15 +7,15 @@ from ..helpers import NO_EXTENSIONS
 if TYPE_CHECKING or NO_EXTENSIONS:  # pragma: no cover
     from .reader_py import WebSocketReader as WebSocketReaderPython
 
-    WebsocketReader = WebSocketReaderPython
+    WebSocketReader = WebSocketReaderPython
 else:
     try:
         from ._reader_c import (  # type: ignore[import-not-found]
             WebSocketReader as WebSocketReaderCython,
         )
 
-        WebsocketReader = WebSocketReaderCython
+        WebSocketReader = WebSocketReaderCython
     except ImportError:  # pragma: no cover
         from .reader_py import WebSocketReader as WebSocketReaderPython
 
-        WebsocketReader = WebSocketReaderPython
+        WebSocketReader = WebSocketReaderPython
