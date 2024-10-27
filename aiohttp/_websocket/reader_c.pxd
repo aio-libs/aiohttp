@@ -64,6 +64,7 @@ cdef class WebSocketReader:
         has_partial=bint,
         payload_merged=bytes,
         opcode="unsigned int",
+        frame=tuple,
     )
     cpdef void _feed_data(self, bytes data)
 
