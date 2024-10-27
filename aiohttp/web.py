@@ -1,19 +1,16 @@
 import asyncio
 import contextvars
 import enum
-import functools
 import logging
 import os
-import signal
 import socket
 import sys
-import threading
 import warnings
 from argparse import ArgumentParser
-from asyncio import Task, constants, coroutines, events, exceptions, tasks
+from asyncio import constants, events, tasks
 from collections.abc import Iterable
+from contextlib import suppress
 from importlib import import_module
-from types import FrameType, TracebackType
 from typing import (
     Any,
     Awaitable,
@@ -25,7 +22,6 @@ from typing import (
     Type,
     Union,
     cast,
-    final,
 )
 
 from .abc import AbstractAccessLogger
@@ -271,7 +267,7 @@ __all__ = (
     "WSMsgType",
     # web
     "run_app",
-    "Runner",
+    "WebRunner",
 )
 
 try:
@@ -284,214 +280,129 @@ warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
 
 HostSequence = TypingIterable[str]
 
+if sys.version_info >= (3, 11):
 
-class _State(enum.Enum):
-    CREATED = "created"
-    INITIALIZED = "initialized"
-    CLOSED = "closed"
+    class _State(enum.Enum):
+        CREATED = "created"
+        INITIALIZED = "initialized"
+        CLOSED = "closed"
 
+    class WebRunner(asyncio.Runner):  # type: ignore
+        """A context manager that controls event loop life cycle"""
 
-@final
-class Runner:
-    """A context manager that controls event loop life cycle"""
-
-    def __init__(
-        self,
-        *,
-        debug: Optional[bool] = None,
-        loop_factory: Optional[Callable[[], asyncio.AbstractEventLoop]] = None,
-    ):
-        self._state = _State.CREATED
-        self._debug = debug
-        self._loop_factory = loop_factory
-        self._loop = None
-        self._context = None
-        self._interrupt_count = 0
-        self._set_event_loop = False
-
-    def __enter__(self) -> "Runner":
-        self._lazy_init()
-        return self
-
-    def __exit__(
-        self,
-        exc_type: Optional[type],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> None:
-        self.close()
-
-    def close(self) -> None:
-        """Shutdown and close event loop."""
-        if self._state is not _State.INITIALIZED:
-            return
-        loop = self._loop
-        try:
-            _cancel_tasks(tasks.all_tasks(loop), loop)
-            loop.run_until_complete(loop.shutdown_asyncgens())
-            loop.run_until_complete(
-                loop.shutdown_default_executor(constants.THREAD_JOIN_TIMEOUT)
-            )
-        finally:
-            if self._set_event_loop:
-                events.set_event_loop(None)
-            loop.close()
-            self._loop = None
-            self._state = _State.CLOSED
-
-    def get_loop(self) -> asyncio.AbstractEventLoop:
-        """Return embedded event loop."""
-        self._lazy_init()
-        return self._loop
-
-    def run(
-        self, coro: Awaitable, *, context: Optional[contextvars.Context] = None
-    ) -> Any:
-        """Run a coroutine inside the embedded event loop."""
-        if not coroutines.iscoroutine(coro):
-            raise ValueError(f"a coroutine was expected, got {coro!r}")
-
-        if events._get_running_loop() is not None:
-            # fail fast with short traceback
-            raise RuntimeError(
-                "Runner.run() cannot be called from a running event loop"
-            )
-
-        self._lazy_init()
-
-        if context is None:
-            context = self._context
-        task = self._loop.create_task(coro, context=context)
-
-        if (
-            threading.current_thread() is threading.main_thread()
-            and signal.getsignal(signal.SIGINT) is signal.default_int_handler
+        def __init__(
+            self,
+            *,
+            debug: Optional[bool] = None,
+            loop_factory: Optional[Callable[[], asyncio.AbstractEventLoop]] = None,
         ):
-            sigint_handler = functools.partial(self._on_sigint, main_task=task)
-            try:
-                signal.signal(signal.SIGINT, sigint_handler)
-            except ValueError:
-                # `signal.signal` may throw if `threading.main_thread` does
-                # not support signals (e.g. embedded interpreter with signals
-                # not registered - see gh-91880)
-                sigint_handler = None
-        else:
-            sigint_handler = None
+            super().__init__(debug=debug, loop_factory=loop_factory)
 
-        self._interrupt_count = 0
-        try:
-            return self._loop.run_until_complete(task)
-        except exceptions.CancelledError:
-            if self._interrupt_count > 0:
-                uncancel = getattr(task, "uncancel", None)
-                if uncancel is not None and uncancel() == 0:
-                    raise KeyboardInterrupt()
-            raise  # CancelledError
-        finally:
+        def close(self) -> None:
+            """Shutdown and close event loop."""
+            if self._state is not _State.INITIALIZED:
+                return
+            loop = self._loop
+            try:
+                _cancel_tasks(tasks.all_tasks(loop), loop)
+                loop.run_until_complete(loop.shutdown_asyncgens())
+                loop.run_until_complete(
+                    loop.shutdown_default_executor(constants.THREAD_JOIN_TIMEOUT)
+                )
+            finally:
+                if self._set_event_loop:
+                    events.set_event_loop(None)
+                loop.close()
+                self._loop = None
+                self._state = _State.CLOSED
+
+        def run_app(
+            self,
+            app: Union[Application, Awaitable[Application]],
+            *,
+            host: Optional[Union[str, HostSequence]] = None,
+            port: Optional[int] = None,
+            path: Union[PathLike, TypingIterable[PathLike], None] = None,
+            sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
+            shutdown_timeout: float = 60.0,
+            keepalive_timeout: float = 75.0,
+            ssl_context: Optional[SSLContext] = None,
+            print: Optional[Callable[..., None]] = print,
+            backlog: int = 128,
+            access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+            access_log_format: str = AccessLogger.LOG_FORMAT,
+            access_log: Optional[logging.Logger] = access_logger,
+            handle_signals: bool = True,
+            reuse_address: Optional[bool] = None,
+            reuse_port: Optional[bool] = None,
+            handler_cancellation: bool = False,
+        ) -> None:
+            """Run an app locally"""
+            self._lazy_init()
+
             if (
-                sigint_handler is not None
-                and signal.getsignal(signal.SIGINT) is sigint_handler
+                self._loop.get_debug()
+                and access_log
+                and access_log.name == "aiohttp.access"
             ):
-                signal.signal(signal.SIGINT, signal.default_int_handler)
+                if access_log.level == logging.NOTSET:
+                    access_log.setLevel(logging.DEBUG)
+                if not access_log.hasHandlers():
+                    access_log.addHandler(logging.StreamHandler())
 
-    def run_app(
-        self,
-        app: Union[Application, Awaitable[Application]],
-        *,
-        host: Optional[Union[str, HostSequence]] = None,
-        port: Optional[int] = None,
-        path: Union[PathLike, TypingIterable[PathLike], None] = None,
-        sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
-        shutdown_timeout: float = 60.0,
-        keepalive_timeout: float = 75.0,
-        ssl_context: Optional[SSLContext] = None,
-        print: Optional[Callable[..., None]] = print,
-        backlog: int = 128,
-        access_log_class: Type[AbstractAccessLogger] = AccessLogger,
-        access_log_format: str = AccessLogger.LOG_FORMAT,
-        access_log: Optional[logging.Logger] = access_logger,
-        handle_signals: bool = True,
-        reuse_address: Optional[bool] = None,
-        reuse_port: Optional[bool] = None,
-        handler_cancellation: bool = False,
-    ) -> None:
-        """Run an app locally"""
-        self._lazy_init()
-
-        if (
-            self._loop.get_debug()
-            and access_log
-            and access_log.name == "aiohttp.access"
-        ):
-            if access_log.level == logging.NOTSET:
-                access_log.setLevel(logging.DEBUG)
-            if not access_log.hasHandlers():
-                access_log.addHandler(logging.StreamHandler())
-
-        main_task = self._loop.create_task(
-            _run_app(
-                app,
-                host=host,
-                port=port,
-                path=path,
-                sock=sock,
-                shutdown_timeout=shutdown_timeout,
-                keepalive_timeout=keepalive_timeout,
-                ssl_context=ssl_context,
-                print=print,
-                backlog=backlog,
-                access_log_class=access_log_class,
-                access_log_format=access_log_format,
-                access_log=access_log,
-                handle_signals=handle_signals,
-                reuse_address=reuse_address,
-                reuse_port=reuse_port,
-                handler_cancellation=handler_cancellation,
+            main_task = self._loop.create_task(
+                _run_app(
+                    app,
+                    host=host,
+                    port=port,
+                    path=path,
+                    sock=sock,
+                    shutdown_timeout=shutdown_timeout,
+                    keepalive_timeout=keepalive_timeout,
+                    ssl_context=ssl_context,
+                    print=print,
+                    backlog=backlog,
+                    access_log_class=access_log_class,
+                    access_log_format=access_log_format,
+                    access_log=access_log,
+                    handle_signals=handle_signals,
+                    reuse_address=reuse_address,
+                    reuse_port=reuse_port,
+                    handler_cancellation=handler_cancellation,
+                )
             )
-        )
 
-        try:
-            self._loop.run_until_complete(main_task)
-        except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
-            pass
-        finally:
-            _cancel_tasks({main_task}, self._loop)
-            self.close()
-
-    def _lazy_init(self) -> None:
-        if self._state is _State.CLOSED:
-            raise RuntimeError("Runner is closed")
-        if self._state is _State.INITIALIZED:
-            return
-        if self._loop_factory is None:
-            self._loop = events.new_event_loop()
-            if not self._set_event_loop:
-                # Call set_event_loop only once to avoid calling
-                # attach_loop multiple times on child watchers
-                events.set_event_loop(self._loop)
-                self._set_event_loop = True
-        else:
             try:
-                self._loop = self._loop_factory()
-            except RuntimeError:
-                self._loop = events.new_event_loop()
-                events.set_event_loop(self._loop)
-                self._set_event_loop = True
-        if self._debug is not None:
-            self._loop.set_debug(self._debug)
-        self._context = contextvars.copy_context()
-        self._state = _State.INITIALIZED
+                self._loop.run_until_complete(main_task)
+            except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
+                pass
+            finally:
+                _cancel_tasks({main_task}, self._loop)
+                self.close()
 
-    def _on_sigint(
-        self, signum: int, frame: Optional[FrameType], main_task: Task
-    ) -> None:
-        self._interrupt_count += 1
-        if self._interrupt_count == 1 and not main_task.done():
-            main_task.cancel()
-            # wakeup loop if it is blocked by select() with long timeout
-            self._loop.call_soon_threadsafe(lambda: None)
-            return
-        raise KeyboardInterrupt()
+        def _lazy_init(self) -> None:
+            if self._state is _State.CLOSED:
+                raise RuntimeError("Runner is closed")
+            if self._state is _State.INITIALIZED:
+                return
+            if self._loop_factory is None:
+                self._loop = events.new_event_loop()
+                if not self._set_event_loop:
+                    # Call set_event_loop only once to avoid calling
+                    # attach_loop multiple times on child watchers
+                    events.set_event_loop(self._loop)
+                    self._set_event_loop = True
+            else:
+                try:
+                    self._loop = self._loop_factory()
+                except RuntimeError:
+                    self._loop = events.new_event_loop()
+                    events.set_event_loop(self._loop)
+                    self._set_event_loop = True
+            if self._debug is not None:
+                self._loop.set_debug(self._debug)
+            self._context = contextvars.copy_context()
+            self._state = _State.INITIALIZED
 
 
 async def _run_app(
@@ -679,33 +590,77 @@ def run_app(
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> None:
     """Run an app locally"""
-    if loop is not None:
-
-        def loop_factory():
-            return loop
-
+    if sys.version_info < (3, 11):
+        loop_factory = None if loop is None else lambda: loop
+        with WebRunner(debug=debug, loop_factory=loop_factory) as runner:
+            runner.run_app(
+                app,
+                host=host,
+                port=port,
+                path=path,
+                sock=sock,
+                shutdown_timeout=shutdown_timeout,
+                keepalive_timeout=keepalive_timeout,
+                ssl_context=ssl_context,
+                print=print,
+                backlog=backlog,
+                access_log_class=access_log_class,
+                access_log_format=access_log_format,
+                access_log=access_log,
+                handle_signals=handle_signals,
+                reuse_address=reuse_address,
+                reuse_port=reuse_port,
+                handler_cancellation=handler_cancellation,
+            )
     else:
-        loop_factory = events.get_running_loop
-    with Runner(debug=debug, loop_factory=loop_factory) as runner:
-        runner.run_app(
-            app,
-            host=host,
-            port=port,
-            path=path,
-            sock=sock,
-            shutdown_timeout=shutdown_timeout,
-            keepalive_timeout=keepalive_timeout,
-            ssl_context=ssl_context,
-            print=print,
-            backlog=backlog,
-            access_log_class=access_log_class,
-            access_log_format=access_log_format,
-            access_log=access_log,
-            handle_signals=handle_signals,
-            reuse_address=reuse_address,
-            reuse_port=reuse_port,
-            handler_cancellation=handler_cancellation,
+        if loop is None:
+            loop = asyncio.new_event_loop()
+        loop.set_debug(debug)
+
+        # Configure if and only if in debugging mode and using the default logger
+        if loop.get_debug() and access_log and access_log.name == "aiohttp.access":
+            if access_log.level == logging.NOTSET:
+                access_log.setLevel(logging.DEBUG)
+            if not access_log.hasHandlers():
+                access_log.addHandler(logging.StreamHandler())
+
+        main_task = loop.create_task(
+            _run_app(
+                app,
+                host=host,
+                port=port,
+                path=path,
+                sock=sock,
+                shutdown_timeout=shutdown_timeout,
+                keepalive_timeout=keepalive_timeout,
+                ssl_context=ssl_context,
+                print=print,
+                backlog=backlog,
+                access_log_class=access_log_class,
+                access_log_format=access_log_format,
+                access_log=access_log,
+                handle_signals=handle_signals,
+                reuse_address=reuse_address,
+                reuse_port=reuse_port,
+                handler_cancellation=handler_cancellation,
+            )
         )
+
+        try:
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(main_task)
+        except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
+            pass
+        finally:
+            try:
+                main_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    loop.run_until_complete(main_task)
+            finally:
+                _cancel_tasks(asyncio.all_tasks(loop), loop)
+                loop.run_until_complete(loop.shutdown_asyncgens())
+                loop.close()
+                asyncio.set_event_loop(None)
 
 
 def main(argv: List[str]) -> None:
