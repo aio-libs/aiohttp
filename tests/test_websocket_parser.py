@@ -1,7 +1,9 @@
+import asyncio
 import pickle
 import random
 import struct
 import zlib
+from typing import Union
 from unittest import mock
 
 import pytest
@@ -18,6 +20,10 @@ from aiohttp._websocket.helpers import (
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
 from aiohttp.http_websocket import WebSocketReader
+
+
+class PatchableWebSocketReader(WebSocketReader):
+    """WebSocketReader subclass that allows for patching parse_frame."""
 
 
 def build_frame(
@@ -82,8 +88,19 @@ def out(loop):
 
 
 @pytest.fixture()
-def parser(out):
-    return WebSocketReader(out, 4 * 1024 * 1024)
+def parser(out: aiohttp.DataQueue[WSMessage]) -> PatchableWebSocketReader:
+    return PatchableWebSocketReader(out, 4 * 1024 * 1024)
+
+
+def test_feed_data_remembers_exception(parser: WebSocketReader) -> None:
+    """Verify that feed_data remembers an exception was already raised internally."""
+    error, data = parser.feed_data(struct.pack("!BB", 0b01100000, 0b00000000))
+    assert error is True
+    assert data == b""
+
+    error, data = parser.feed_data(b"")
+    assert error is True
+    assert data == b""
 
 
 def test_parse_frame(parser) -> None:
@@ -151,13 +168,24 @@ def test_parse_frame_header_payload_size(out, parser) -> None:
         raise out.exception()
 
 
-def test_ping_frame(out, parser) -> None:
-    parser.parse_frame = mock.Mock()
-    parser.parse_frame.return_value = [(1, WSMsgType.PING, b"data", False)]
+# Protractor event loop will call feed_data with bytearray. Since
+# asyncio technically supports memoryview as well, we should test that.
+@pytest.mark.parametrize(
+    argnames="data",
+    argvalues=[b"", bytearray(b""), memoryview(b"")],
+    ids=["bytes", "bytearray", "memoryview"],
+)
+def test_ping_frame(
+    out: aiohttp.DataQueue[WSMessage],
+    parser: WebSocketReader,
+    data: Union[bytes, bytearray, memoryview],
+) -> None:
+    with mock.patch.object(parser, "parse_frame", autospec=True) as m:
+        m.return_value = [(1, WSMsgType.PING, b"data", False)]
 
-    parser.feed_data(b"")
-    res = out._buffer[0]
-    assert res == ((WSMsgType.PING, b"data", ""), 4)
+        parser.feed_data(data)
+        res = out._buffer[0]
+        assert res == ((WSMsgType.PING, b"data", ""), 4)
 
 
 def test_pong_frame(out, parser) -> None:
@@ -465,8 +493,8 @@ def test_parse_compress_error_frame(parser) -> None:
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
-def test_parse_no_compress_frame_single() -> None:
-    parser_no_compress = WebSocketReader(out, 0, compress=False)
+async def test_parse_no_compress_frame_single(loop: asyncio.AbstractEventLoop) -> None:
+    parser_no_compress = WebSocketReader(aiohttp.DataQueue(loop), 0, compress=False)
     with pytest.raises(WebSocketError) as ctx:
         parser_no_compress.parse_frame(struct.pack("!BB", 0b11000001, 0b00000001))
         parser_no_compress.parse_frame(b"1")
