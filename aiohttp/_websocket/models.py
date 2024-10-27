@@ -2,7 +2,7 @@
 
 import json
 from enum import IntEnum
-from typing import Any, Callable, Final, Literal, NamedTuple, Optional, Union, cast
+from typing import Any, Callable, Final, NamedTuple, Optional, cast
 
 WS_DEFLATE_TRAILING: Final[bytes] = bytes([0x00, 0x00, 0xFF, 0xFF])
 
@@ -38,86 +38,26 @@ class WSMsgType(IntEnum):
     ERROR = 0x102
 
 
-class WSMessageContinuation(NamedTuple):
-    data: bytes
-    extra: Optional[str] = None
-    type: Literal[WSMsgType.CONTINUATION] = WSMsgType.CONTINUATION
+class WSMessage(NamedTuple):
+    type: WSMsgType
+    # To type correctly, this would need some kind of tagged union for each type.
+    data: Any
+    extra: Optional[str]
 
+    def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
+        """Return parsed JSON data.
 
-class WSMessageText(NamedTuple):
-    data: str
-    extra: Optional[str] = None
-    type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
-
-    def json(
-        self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads
-    ) -> Any:
-        """Return parsed JSON data."""
+        .. versionadded:: 0.22
+        """
         return loads(self.data)
 
 
-class WSMessageBinary(NamedTuple):
-    data: bytes
-    extra: Optional[str] = None
-    type: Literal[WSMsgType.BINARY] = WSMsgType.BINARY
-
-    def json(
-        self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads
-    ) -> Any:
-        """Return parsed JSON data."""
-        return loads(self.data)
-
-
-class WSMessagePing(NamedTuple):
-    data: bytes
-    extra: Optional[str] = None
-    type: Literal[WSMsgType.PING] = WSMsgType.PING
-
-
-class WSMessagePong(NamedTuple):
-    data: bytes
-    extra: Optional[str] = None
-    type: Literal[WSMsgType.PONG] = WSMsgType.PONG
-
-
-class WSMessageClose(NamedTuple):
-    data: int
-    extra: Optional[str] = None
-    type: Literal[WSMsgType.CLOSE] = WSMsgType.CLOSE
-
-
-class WSMessageClosing(NamedTuple):
-    data: None = None
-    extra: Optional[str] = None
-    type: Literal[WSMsgType.CLOSING] = WSMsgType.CLOSING
-
-
-class WSMessageClosed(NamedTuple):
-    data: None = None
-    extra: Optional[str] = None
-    type: Literal[WSMsgType.CLOSED] = WSMsgType.CLOSED
-
-
-class WSMessageError(NamedTuple):
-    data: BaseException
-    extra: Optional[str] = None
-    type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
-
-
-WSMessage = Union[
-    WSMessageContinuation,
-    WSMessageText,
-    WSMessageBinary,
-    WSMessagePing,
-    WSMessagePong,
-    WSMessageClose,
-    WSMessageClosing,
-    WSMessageClosed,
-    WSMessageError,
-]
-
-WS_CLOSED_MESSAGE = WSMessageClosed()
-WS_CLOSING_MESSAGE = WSMessageClosing()
+# Constructing the tuple directly to avoid the overhead of
+# the lambda and arg processing since NamedTuples are constructed
+# with a run time built lambda
+# https://github.com/python/cpython/blob/d83fcf8371f2f33c7797bc8f5423a8bca8c46e5c/Lib/collections/__init__.py#L441
+WS_CLOSED_MESSAGE = tuple.__new__(WSMessage, (WSMsgType.CLOSED, None, None))
+WS_CLOSING_MESSAGE = tuple.__new__(WSMessage, (WSMsgType.CLOSING, None, None))
 
 
 class WebSocketError(Exception):

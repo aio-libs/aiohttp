@@ -12,11 +12,6 @@ from .models import (
     WebSocketError,
     WSCloseCode,
     WSMessage,
-    WSMessageBinary,
-    WSMessageClose,
-    WSMessagePing,
-    WSMessagePong,
-    WSMessageText,
     WSMsgType,
 )
 
@@ -164,14 +159,12 @@ class WebSocketReader:
                     # bottleneck, so we use tuple.__new__ to improve performance.
                     # This is not type safe, but many tests should fail in
                     # test_client_ws_functional.py if this is wrong.
-                    msg = tuple.__new__(WSMessageText, (text, "", WSMsgType.TEXT))
-                    self.queue.feed_data(msg)
+                    msg = tuple.__new__(WSMessage, (WSMsgType.TEXT, text, ""))
+                    self.queue.feed_data(msg, len(text))
                     continue
 
-                msg = tuple.__new__(
-                    WSMessageBinary, (payload_merged, "", WSMsgType.BINARY)
-                )
-                self.queue.feed_data(msg)
+                msg = tuple.__new__(WSMessage, (WSMsgType.BINARY, payload_merged, ""))
+                self.queue.feed_data(msg, len(payload_merged))
             elif opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
@@ -186,24 +179,26 @@ class WebSocketReader:
                         raise WebSocketError(
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                         ) from exc
-                    msg = WSMessageClose(data=close_code, extra=close_message)
+                    msg = tuple.__new__(
+                        WSMessage, (WSMsgType.CLOSE, close_code, close_message)
+                    )
                 elif payload:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
                         f"Invalid close frame: {fin} {opcode} {payload!r}",
                     )
                 else:
-                    msg = WSMessageClose(data=0, extra="")
+                    msg = tuple.__new__(WSMessage, (WSMsgType.CLOSE, 0, ""))
 
-                self.queue.feed_data(msg)
+                self.queue.feed_data(msg, 0)
 
             elif opcode == WSMsgType.PING:
-                msg = WSMessagePing(data=payload, extra="")
-                self.queue.feed_data(msg)
+                msg = tuple.__new__(WSMessage, (WSMsgType.PING, payload, ""))
+                self.queue.feed_data(msg, len(payload))
 
             elif opcode == WSMsgType.PONG:
-                msg = WSMessagePong(data=payload, extra="")
-                self.queue.feed_data(msg)
+                msg = tuple.__new__(WSMessage, (WSMsgType.PONG, payload, ""))
+                self.queue.feed_data(msg, len(payload))
 
             else:
                 raise WebSocketError(
