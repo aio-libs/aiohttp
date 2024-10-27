@@ -30,6 +30,9 @@ cdef object WSMessageClose
 cdef set ALLOWED_CLOSE_CODES
 cdef set MESSAGE_TYPES_WITH_CONTENT
 
+cdef object EMPTY_FRAME
+cdef object EMPTY_FRAME_ERROR
+
 cdef class WebSocketReader:
 
     cdef object queue

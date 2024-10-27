@@ -35,6 +35,9 @@ OP_CODE_CLOSE = WSMsgType.CLOSE.value
 OP_CODE_PING = WSMsgType.PING.value
 OP_CODE_PONG = WSMsgType.PONG.value
 
+EMPTY_FRAME_ERROR = (True, b"")
+EMPTY_FRAME = (False, b"")
+
 
 class WebSocketReader:
     def __init__(
@@ -73,9 +76,9 @@ class WebSocketReader:
         except Exception as exc:
             self._exc = exc
             set_exception(self.queue, exc)
-            return True, b""
+            return EMPTY_FRAME_ERROR
 
-        return False, b""
+        return EMPTY_FRAME
 
     def _feed_data(self, data: bytes) -> None:
         msg: WSMessage
