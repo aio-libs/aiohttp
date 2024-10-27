@@ -1,0 +1,1 @@
+Separated ``aiohttp.http_websocket`` into multiple files to make it easier to maintain -- by :user:`bdraco`.
