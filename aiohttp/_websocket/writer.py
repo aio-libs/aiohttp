@@ -6,7 +6,10 @@ import zlib
 from functools import partial
 from typing import Any, Final, Optional, Union
 
-from ._websocket_helpers import (
+from ..base_protocol import BaseProtocol
+from ..client_exceptions import ClientConnectionResetError
+from ..compression_utils import ZLibCompressor
+from .helpers import (
     MASK_LEN,
     MSG_SIZE,
     PACK_CLOSE_CODE,
@@ -16,10 +19,7 @@ from ._websocket_helpers import (
     PACK_RANDBITS,
     websocket_mask,
 )
-from ._websocket_models import WS_DEFLATE_TRAILING, WSMsgType
-from .base_protocol import BaseProtocol
-from .client_exceptions import ClientConnectionResetError
-from .compression_utils import ZLibCompressor
+from .models import WS_DEFLATE_TRAILING, WSMsgType
 
 DEFAULT_LIMIT: Final[int] = 2**16
 

@@ -3,11 +3,11 @@
 to-hash-one = $(dir $1).hash/$(addsuffix .hash,$(notdir $1))
 to-hash = $(foreach fname,$1,$(call to-hash-one,$(fname)))
 
-CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd)
-PY_WITH_PXD := aiohttp/_websocket_reader.py
-PYXS := $(wildcard aiohttp/*.pyx)
-CS := $(wildcard aiohttp/*.c)
-PYS := $(wildcard aiohttp/*.py)
+CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd) $(wildcard aiohttp/_websocket/*.pyx) $(wildcard aiohttp/_websocket/*.pyi) $(wildcard aiohttp/_websocket/*.pxd)
+PY_WITH_PXD := aiohttp/_websocket/reader.py
+PYXS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/_websocket/*.pyx)
+CS := $(wildcard aiohttp/*.c) $(wildcard aiohttp/_websocket/*.c)
+PYS := $(wildcard aiohttp/*.py) $(wildcard aiohttp/_websocket/*.py)
 IN := doc-spelling lint cython dev
 ALLS := $(sort $(CYS) $(CS) $(PYS) $(REQS))
 
@@ -62,6 +62,9 @@ aiohttp/_websocket_reader.c: aiohttp/_websocket_reader.py
 
 # _find_headers generator creates _headers.pyi as well
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
+	cython -3 -o $@ $< -I aiohttp -Werror
+
+aiohttp/_websocket/%.c: aiohttp/_websocket/%.pyx $(call to-hash,$(CYS))
 	cython -3 -o $@ $< -I aiohttp -Werror
 
 vendor/llhttp/node_modules: vendor/llhttp/package.json
