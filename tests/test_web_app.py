@@ -1,10 +1,11 @@
 import asyncio
-from typing import Any, AsyncIterator, Callable, Iterator, NoReturn
+from typing import AsyncIterator, Callable, Iterator, NoReturn, Type
 from unittest import mock
 
 import pytest
 
 from aiohttp import log, web
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
 
@@ -334,7 +335,10 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
     assert ctx_state == "CLEAN"
 
 
-async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
+@pytest.mark.parametrize("exc_cls", (Exception, asyncio.CancelledError))
+async def test_cleanup_ctx_exception_on_cleanup_multiple(
+    exc_cls: Type[BaseException],
+) -> None:
     app = web.Application()
     out = []
 
@@ -346,7 +350,7 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
             yield None
             out.append("post_" + str(num))
             if fail:
-                raise Exception("fail_" + str(num))
+                raise exc_cls("fail_" + str(num))
 
         return inner
 
@@ -388,7 +392,9 @@ async def test_cleanup_ctx_multiple_yields() -> None:
     assert out == ["pre_1", "post_1"]
 
 
-async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> None:
+async def test_subapp_chained_config_dict_visibility(
+    aiohttp_client: AiohttpClient,
+) -> None:
     key1 = web.AppKey("key1", str)
     key2 = web.AppKey("key2", str)
 
@@ -419,7 +425,9 @@ async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> Non
     assert resp.status == 201
 
 
-async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> None:
+async def test_subapp_chained_config_dict_overriding(
+    aiohttp_client: AiohttpClient,
+) -> None:
     key = web.AppKey("key", str)
 
     async def main_handler(request: web.Request) -> web.Response:
@@ -447,7 +455,7 @@ async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> Non
     assert resp.status == 201
 
 
-async def test_subapp_on_startup(aiohttp_client: Any) -> None:
+async def test_subapp_on_startup(aiohttp_client: AiohttpClient) -> None:
     subapp = web.Application()
     startup = web.AppKey("startup", bool)
     cleanup = web.AppKey("cleanup", bool)

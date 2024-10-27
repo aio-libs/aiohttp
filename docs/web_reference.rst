@@ -649,7 +649,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       .. seealso:: :meth:`enable_compression`
 
-   .. method:: enable_compression(force=None)
+   .. method:: enable_compression(force=None, strategy=zlib.Z_DEFAULT_STRATEGY)
 
       Enable compression.
 
@@ -658,6 +658,9 @@ and :ref:`aiohttp-web-signals` handlers::
 
       *Accept-Encoding* is not checked if *force* is set to a
       :class:`ContentCoding`.
+
+      *strategy* accepts a :mod:`zlib` compression strategy.
+      See :func:`zlib.compressobj` for possible values.
 
       .. seealso:: :attr:`compression`
 
@@ -702,8 +705,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
    .. method:: set_cookie(name, value, *, path='/', expires=None, \
                           domain=None, max_age=None, \
-                          secure=None, httponly=None, version=None, \
-                          samesite=None)
+                          secure=None, httponly=None, samesite=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
       some additional properties like *max_age* in a single call.
@@ -743,11 +745,6 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param bool httponly: ``True`` if the cookie HTTP only (optional)
 
-      :param int version: a decimal integer, identifies to which
-                          version of the state management
-                          specification the cookie
-                          conforms. (optional)
-
       :param str samesite: Asserts that a cookie must not be sent with
          cross-origin requests, providing some protection
          against cross-site request forgery attacks.
@@ -755,12 +752,6 @@ and :ref:`aiohttp-web-signals` handlers::
          ``Lax`` or ``Strict``. (optional)
 
             .. versionadded:: 3.7
-
-      .. warning::
-
-         In HTTP version 1.1, ``expires`` was deprecated and replaced with
-         the easier-to-use ``max-age``, but Internet Explorer (IE6, IE7,
-         and IE8) **does not** support ``max-age``.
 
    .. method:: del_cookie(name, *, path='/', domain=None)
 
@@ -942,9 +933,9 @@ and :ref:`aiohttp-web-signals` handlers::
    :meth:`receive` and others.
 
    To enable back-pressure from slow websocket clients treat methods
-   :meth:`ping()`, :meth:`pong()`, :meth:`send_str()`,
-   :meth:`send_bytes()`, :meth:`send_json()` as coroutines.  By
-   default write buffer size is set to 64k.
+   :meth:`ping`, :meth:`pong`, :meth:`send_str`,
+   :meth:`send_bytes`, :meth:`send_json`, :meth:`send_frame` as coroutines.
+   By default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -1157,6 +1148,32 @@ and :ref:`aiohttp-web-signals` handlers::
 
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
+
+   .. method:: send_frame(message, opcode, compress=None)
+      :async:
+
+      Send a :const:`~aiohttp.WSMsgType` message *message* to peer.
+
+      This method is low-level and should be used with caution as it
+      only accepts bytes which must conform to the correct message type
+      for *message*.
+
+      It is recommended to use the :meth:`send_str`, :meth:`send_bytes`
+      or :meth:`send_json` methods instead of this method.
+
+      The primary use case for this method is to send bytes that are
+      have already been encoded without having to decode and
+      re-encode them.
+
+      :param bytes message: message to send.
+
+      :param ~aiohttp.WSMsgType opcode: opcode of the message.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
+
+      .. versionadded:: 3.11
 
    .. method:: close(*, code=WSCloseCode.OK, message=b'', drain=True)
       :async:
@@ -1521,7 +1538,7 @@ Application and Router
       :async:
 
       A :ref:`coroutine<coroutine>` that should be called on
-      server stopping but before :meth:`cleanup()`.
+      server stopping but before :meth:`cleanup`.
 
       The purpose of the method is calling :attr:`on_shutdown` signal
       handlers.
@@ -1749,7 +1766,10 @@ Application and Router
 
          Use :meth:`add_static` for development only. In production,
          static content should be processed by web servers like *nginx*
-         or *apache*.
+         or *apache*. Such web servers will be able to provide significantly
+         better performance and security for static assets. Several past security
+         vulnerabilities in aiohttp only affected applications using
+         :meth:`add_static`.
 
       :param str prefix: URL path prefix for handled static files
 
@@ -2605,7 +2625,8 @@ application on specific TCP or Unix socket, e.g.::
    :param bool handle_signals: add signal handlers for
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
-                               default).
+                               default). These handlers will raise
+                               :exc:`GracefulExit`.
 
    :param kwargs: named parameters to pass into
                   web protocol.
@@ -2614,7 +2635,9 @@ application on specific TCP or Unix socket, e.g.::
 
    :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
    :param int keepalive_timeout: Number of seconds before closing Keep-Alive
-        connection. Default: ``75`` seconds (NGINX's default value).
+        connection. Default: ``3630`` seconds (when deployed behind a reverse proxy
+        it's important for this value to be higher than the proxy's timeout. To avoid
+        race conditions we always want the proxy to close the connection).
    :param logger: Custom logger object. Default:
         :data:`aiohttp.log.server_logger`.
    :param access_log: Custom logging object. Default:
@@ -2678,7 +2701,8 @@ application on specific TCP or Unix socket, e.g.::
    :param bool handle_signals: add signal handlers for
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
-                               default).
+                               default). These handlers will raise
+                               :exc:`GracefulExit`.
 
    :param kwargs: named parameters to pass into
                   web protocol.
@@ -2809,6 +2833,16 @@ application on specific TCP or Unix socket, e.g.::
 
                        ``128`` by default.
 
+.. exception:: GracefulExit
+
+   Raised by signal handlers for :data:`signal.SIGINT` and :data:`signal.SIGTERM`
+   defined in :class:`AppRunner` and :class:`ServerRunner`
+   when ``handle_signals`` is set to ``True``.
+
+   Inherited from :exc:`SystemExit`,
+   which exits with error code ``1`` if not handled.
+
+
 Utilities
 ---------
 
@@ -2838,7 +2872,7 @@ Utilities
 
 .. function:: run_app(app, *, debug=False, host=None, port=None, \
                       path=None, sock=None, shutdown_timeout=60.0, \
-                      keepalive_timeout=75.0, ssl_context=None, \
+                      keepalive_timeout=3630, ssl_context=None, \
                       print=print, backlog=128, \
                       access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
@@ -2906,6 +2940,12 @@ Utilities
    :param float keepalive_timeout: a delay before a TCP connection is
                                    closed after a HTTP request. The delay
                                    allows for reuse of a TCP connection.
+
+                                   When deployed behind a reverse proxy
+                                   it's important for this value to be
+                                   higher than the proxy's timeout. To avoid
+                                   race conditions, we always want the proxy
+                                   to handle connection closing.
 
       .. versionadded:: 3.8
 

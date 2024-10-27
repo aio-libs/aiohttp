@@ -2,22 +2,27 @@ import asyncio
 import base64
 import hashlib
 import os
-from typing import Mapping
+from typing import Mapping, Type
 from unittest import mock
 
 import pytest
 
 import aiohttp
-from aiohttp import client, hdrs
-from aiohttp.client_exceptions import ServerDisconnectedError
-from aiohttp.client_ws import ClientWSTimeout
+from aiohttp import (
+    ClientConnectionResetError,
+    ClientWSTimeout,
+    ServerDisconnectedError,
+    client,
+    hdrs,
+)
 from aiohttp.http import WS_KEY
+from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
 
 
 async def test_ws_connect(
-    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -44,7 +49,7 @@ async def test_ws_connect(
 
 
 async def test_ws_connect_read_timeout_is_reset_to_inf(
-    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -73,7 +78,7 @@ async def test_ws_connect_read_timeout_is_reset_to_inf(
 
 
 async def test_ws_connect_read_timeout_stays_inf(
-    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -104,7 +109,7 @@ async def test_ws_connect_read_timeout_stays_inf(
 
 
 async def test_ws_connect_read_timeout_reset_to_max(
-    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -156,7 +161,7 @@ async def test_ws_connect_with_origin(
 
 
 async def test_ws_connect_with_params(
-    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
 ) -> None:
     params = {"key1": "value1", "key2": "value2"}
 
@@ -183,7 +188,7 @@ async def test_ws_connect_with_params(
 
 
 async def test_ws_connect_custom_response(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     class CustomResponse(client.ClientWebSocketResponse):
         def read(self, decode: bool = False) -> str:
@@ -213,7 +218,7 @@ async def test_ws_connect_custom_response(
 
 
 async def test_ws_connect_err_status(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 500
@@ -237,7 +242,7 @@ async def test_ws_connect_err_status(
 
 
 async def test_ws_connect_err_upgrade(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -261,7 +266,7 @@ async def test_ws_connect_err_upgrade(
 
 
 async def test_ws_connect_err_conn(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -285,7 +290,7 @@ async def test_ws_connect_err_conn(
 
 
 async def test_ws_connect_err_challenge(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -309,7 +314,7 @@ async def test_ws_connect_err_challenge(
 
 
 async def test_ws_connect_common_headers(
-    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
 ) -> None:
     # Emulate a headers dict being reused for a second ws_connect.
 
@@ -357,7 +362,7 @@ async def test_ws_connect_common_headers(
 
 
 async def test_close(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
@@ -381,9 +386,7 @@ async def test_close(
                 resp = await session.ws_connect("http://test.org")
                 assert not resp.closed
 
-                resp._reader.feed_data(
-                    aiohttp.WSMessage(aiohttp.WSMsgType.CLOSE, b"", "")
-                )
+                resp._reader.feed_data(WSMessageClose(data=0, extra=""))
 
                 res = await resp.close()
                 writer.close.assert_called_with(1000, b"")
@@ -400,7 +403,7 @@ async def test_close(
 
 
 async def test_close_eofstream(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
@@ -433,7 +436,7 @@ async def test_close_eofstream(
 
 
 async def test_close_connection_lost(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     """Test the websocket client handles the connection being closed out from under it."""
     mresp = mock.Mock(spec_set=client.ClientResponse)
@@ -466,7 +469,7 @@ async def test_close_connection_lost(
 
 
 async def test_close_exc(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
@@ -501,7 +504,7 @@ async def test_close_exc(
 
 
 async def test_close_exc2(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
@@ -535,8 +538,12 @@ async def test_close_exc2(
                     await resp.close()
 
 
+@pytest.mark.parametrize("exc", (ClientConnectionResetError, ConnectionResetError))
 async def test_send_data_after_close(
-    ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop
+    exc: Type[Exception],
+    ws_key: str,
+    key_data: bytes,
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
@@ -561,13 +568,14 @@ async def test_send_data_after_close(
                 (resp.send_str, ("s",)),
                 (resp.send_bytes, (b"b",)),
                 (resp.send_json, ({},)),
+                (resp.send_frame, (b"", aiohttp.WSMsgType.BINARY)),
             ):
-                with pytest.raises(ConnectionResetError):
+                with pytest.raises(exc):  # Verify exc can be caught with both classes
                     await meth(*args)
 
 
 async def test_send_data_type_errors(
-    ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop
+    ws_key: str, key_data: bytes, loop: asyncio.AbstractEventLoop
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
@@ -596,7 +604,7 @@ async def test_send_data_type_errors(
 
 
 async def test_reader_read_exception(
-    ws_key: bytes, key_data: bytes, loop: asyncio.AbstractEventLoop
+    ws_key: str, key_data: bytes, loop: asyncio.AbstractEventLoop
 ) -> None:
     hresp = mock.Mock()
     hresp.status = 101
@@ -648,7 +656,7 @@ async def test_receive_runtime_err(loop: asyncio.AbstractEventLoop) -> None:
 
 
 async def test_ws_connect_close_resp_on_err(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 500
@@ -671,7 +679,7 @@ async def test_ws_connect_close_resp_on_err(
 
 
 async def test_ws_connect_non_overlapped_protocols(
-    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -696,7 +704,7 @@ async def test_ws_connect_non_overlapped_protocols(
 
 
 async def test_ws_connect_non_overlapped_protocols_2(
-    ws_key: bytes, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -723,7 +731,7 @@ async def test_ws_connect_non_overlapped_protocols_2(
 
 
 async def test_ws_connect_deflate(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -749,7 +757,7 @@ async def test_ws_connect_deflate(
 
 
 async def test_ws_connect_deflate_per_message(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
@@ -767,25 +775,34 @@ async def test_ws_connect_deflate_per_message(
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(mresp)
                 writer = WebSocketWriter.return_value = mock.Mock()
-                send = writer.send = make_mocked_coro()
+                send_frame = writer.send_frame = make_mocked_coro()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
 
                 await resp.send_str("string", compress=-1)
-                send.assert_called_with("string", binary=False, compress=-1)
+                send_frame.assert_called_with(
+                    b"string", aiohttp.WSMsgType.TEXT, compress=-1
+                )
 
                 await resp.send_bytes(b"bytes", compress=15)
-                send.assert_called_with(b"bytes", binary=True, compress=15)
+                send_frame.assert_called_with(
+                    b"bytes", aiohttp.WSMsgType.BINARY, compress=15
+                )
 
                 await resp.send_json([{}], compress=-9)
-                send.assert_called_with("[{}]", binary=False, compress=-9)
+                send_frame.assert_called_with(
+                    b"[{}]", aiohttp.WSMsgType.TEXT, compress=-9
+                )
+
+                await resp.send_frame(b"[{}]", aiohttp.WSMsgType.TEXT, compress=-9)
+                send_frame.assert_called_with(b"[{}]", aiohttp.WSMsgType.TEXT, -9)
 
                 await session.close()
 
 
 async def test_ws_connect_deflate_server_not_support(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -810,7 +827,7 @@ async def test_ws_connect_deflate_server_not_support(
 
 
 async def test_ws_connect_deflate_notakeover(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -837,7 +854,7 @@ async def test_ws_connect_deflate_notakeover(
 
 
 async def test_ws_connect_deflate_client_wbits(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -864,7 +881,7 @@ async def test_ws_connect_deflate_client_wbits(
 
 
 async def test_ws_connect_deflate_client_wbits_bad(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -886,7 +903,7 @@ async def test_ws_connect_deflate_client_wbits_bad(
 
 
 async def test_ws_connect_deflate_server_ext_bad(
-    loop: asyncio.AbstractEventLoop, ws_key: bytes, key_data: bytes
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101

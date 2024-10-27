@@ -120,14 +120,14 @@ parameter of :class:`ClientSession` constructor::
 between multiple requests::
 
     async with aiohttp.ClientSession() as session:
-        await session.get(
-            'http://httpbin.org/cookies/set?my_cookie=my_value')
-        filtered = session.cookie_jar.filter_cookies(
-            URL('http://httpbin.org'))
-        assert filtered['my_cookie'].value == 'my_value'
-        async with session.get('http://httpbin.org/cookies') as r:
+        async with session.get(
+            "http://httpbin.org/cookies/set?my_cookie=my_value",
+            allow_redirects=False
+        ) as resp:
+            assert resp.cookies["my_cookie"].value == "my_value"
+        async with session.get("http://httpbin.org/cookies") as r:
             json_body = await r.json()
-            assert json_body['cookies']['my_cookie'] == 'my_value'
+            assert json_body["cookies"]["my_cookie"] == "my_value"
 
 Response Headers and Cookies
 ----------------------------
@@ -605,6 +605,13 @@ Authentication credentials can be passed in proxy URL::
    session.get("http://python.org",
                proxy="http://user:pass@some.proxy.com")
 
+And you may set default proxy::
+
+   proxy_auth = aiohttp.BasicAuth('user', 'pass')
+   async with aiohttp.ClientSession(proxy="http://proxy.com", proxy_auth=proxy_auth) as session:
+       async with session.get("http://python.org") as resp:
+           print(resp.status)
+
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`
@@ -700,7 +707,7 @@ Graceful Shutdown
 -----------------
 
 When :class:`ClientSession` closes at the end of an ``async with``
-block (or through a direct :meth:`ClientSession.close()` call), the
+block (or through a direct :meth:`ClientSession.close` call), the
 underlying connection remains open due to asyncio internal details. In
 practice, the underlying connection will close after a short
 while. However, if the event loop is stopped before the underlying
@@ -745,7 +752,7 @@ aiohttp does not support HTTP/HTTPS pipelining.
 Character Set Detection
 -----------------------
 
-If you encounter a :exc:`UnicodeDecodeError` when using :meth:`ClientResponse.text()`
+If you encounter a :exc:`UnicodeDecodeError` when using :meth:`ClientResponse.text`
 this may be because the response does not include the charset needed
 to decode the body.
 

@@ -300,7 +300,7 @@ async def test_response_eof(
         "get",
         URL("http://def-cl-resp.org"),
         request_info=mock.Mock(),
-        writer=None,  # type: ignore[arg-type]
+        writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
@@ -346,7 +346,7 @@ async def test_response_eof_after_connection_detach(
         "get",
         URL("http://def-cl-resp.org"),
         request_info=mock.Mock(),
-        writer=None,  # type: ignore[arg-type]
+        writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
@@ -421,6 +421,38 @@ async def test_text_bad_encoding(
     res = await response.text(errors="ignore")
     assert res == '{"key": "value"}'
     assert response._connection is None
+
+
+async def test_text_badly_encoded_encoding_header(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    session._resolve_charset = lambda *_: "utf-8"
+    response = ClientResponse(
+        "get",
+        URL("http://def-cl-resp.org"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
+        fut = loop.create_future()
+        fut.set_result(b"foo")
+        return fut
+
+    h = {"Content-Type": "text/html; charset=\udc81gutf-8\udc81\udc8d"}
+    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    await response.read()
+    encoding = response.get_encoding()
+
+    assert encoding == "utf-8"
 
 
 async def test_text_custom_encoding(
@@ -676,11 +708,13 @@ async def test_json_invalid_content_type(
     h = {"Content-Type": "data/octet-stream"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
     response._body = b""
+    response.status = 500
 
     with pytest.raises(aiohttp.ContentTypeError) as info:
         await response.json()
 
     assert info.value.request_info == response.request_info
+    assert info.value.status == 500
 
 
 async def test_json_no_content(

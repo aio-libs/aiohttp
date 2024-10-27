@@ -48,7 +48,7 @@ repos:
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.6.0'
+  rev: 'v5.0.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
@@ -60,12 +60,12 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '24.8.0'
+  rev: '24.10.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.6.0'
+  rev: 'v5.0.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
@@ -97,7 +97,7 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v3.17.0'
+  rev: 'v3.18.0'
   hooks:
   - id: pyupgrade
     args: ['--py37-plus']
@@ -107,6 +107,7 @@ repos:
   - id: flake8
     additional_dependencies:
       - flake8-docstrings==1.6.0
+      - flake8-no-implicit-concat==0.3.4
       - flake8-requirements==1.7.8
     exclude: "^docs/"
 - repo: https://github.com/Lucas-C/pre-commit-hooks-markup

@@ -12,6 +12,8 @@ updates:
   # Maintain dependencies for Python
   - package-ecosystem: "pip"
     directory: "/"
+    allow:
+      - dependency-type: "all"
     labels:
       - dependencies
     schedule:
@@ -31,6 +33,8 @@ updates:
   # Maintain dependencies for Python aiohttp backport
   - package-ecosystem: "pip"
     directory: "/"
+    allow:
+      - dependency-type: "all"
     labels:
       - dependencies
     target-branch: "3.11"

@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp import ServerTimeoutError, WSMsgType, hdrs, web
+from aiohttp import ClientConnectionResetError, ServerTimeoutError, WSMsgType, hdrs, web
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
@@ -128,6 +128,29 @@ async def test_send_recv_json(aiohttp_client: AiohttpClient) -> None:
 
     data = await resp.receive_json()
     assert data["response"] == payload["request"]
+    await resp.close()
+
+
+async def test_send_recv_frame(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.BINARY
+        await ws.send_frame(msg.data, msg.type)
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    await resp.send_frame(b"test", WSMsgType.BINARY)
+
+    data = await resp.receive()
+    assert data.data == b"test"
+    assert data.type is WSMsgType.BINARY
     await resp.close()
 
 
@@ -661,6 +684,36 @@ async def test_heartbeat(aiohttp_client: AiohttpClient) -> None:
     assert ping_received
 
 
+async def test_heartbeat_connection_closed(aiohttp_client: AiohttpClient) -> None:
+    """Test that the connection is closed while ping is in progress."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse(autoping=False)
+        await ws.prepare(request)
+        await ws.receive()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/", heartbeat=0.1)
+    ping_count = 0
+    # We patch write here to simulate a connection reset error
+    # since if we closed the connection normally, the client would
+    # would cancel the heartbeat task and we wouldn't get a ping
+    assert resp._conn is not None
+    with mock.patch.object(
+        resp._conn.transport, "write", side_effect=ClientConnectionResetError
+    ), mock.patch.object(resp._writer, "ping", wraps=resp._writer.ping) as ping:
+        await resp.receive()
+        ping_count = ping.call_count
+    # Connection should be closed roughly after 1.5x heartbeat.
+    await asyncio.sleep(0.2)
+    assert ping_count == 1
+    assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
+
+
 async def test_heartbeat_no_pong(aiohttp_client: AiohttpClient) -> None:
     """Test that the connection is closed if no pong is received without sending messages."""
     ping_received = False
@@ -788,7 +841,6 @@ async def test_heartbeat_no_pong_concurrent_receive(
         msg = await resp.receive(5.0)
         assert ping_received
         assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
-        assert msg
         assert msg.type is WSMsgType.ERROR
         assert isinstance(msg.data, ServerTimeoutError)
 
@@ -938,6 +990,7 @@ async def test_ws_async_with(aiohttp_server: AiohttpServer) -> None:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
         await ws.send_str(msg.data + "/answer")
         await ws.close()
         return ws
@@ -963,6 +1016,7 @@ async def test_ws_async_with_send(aiohttp_server: AiohttpServer) -> None:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
         await ws.send_str(msg.data + "/answer")
         await ws.close()
         return ws
@@ -986,6 +1040,7 @@ async def test_ws_async_with_shortcut(aiohttp_server: AiohttpServer) -> None:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
         await ws.send_str(msg.data + "/answer")
         await ws.close()
         return ws

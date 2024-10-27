@@ -1,7 +1,6 @@
 import asyncio
 import os
 import pathlib
-import sys
 from contextlib import suppress
 from mimetypes import MimeTypes
 from stat import S_ISREG
@@ -44,9 +43,6 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
-
-if sys.version_info < (3, 9):
-    CONTENT_TYPES.encodings_map[".br"] = "br"
 
 # File extension to IANA encodings map that will be checked in the order defined.
 ENCODING_EXTENSIONS = MappingProxyType(
@@ -133,10 +129,12 @@ class FileResponse(StreamResponse):
         return writer
 
     @staticmethod
-    def _strong_etag_match(etag_value: str, etags: Tuple[ETag, ...]) -> bool:
+    def _etag_match(etag_value: str, etags: Tuple[ETag, ...], *, weak: bool) -> bool:
         if len(etags) == 1 and etags[0].value == ETAG_ANY:
             return True
-        return any(etag.value == etag_value for etag in etags if not etag.is_weak)
+        return any(
+            etag.value == etag_value for etag in etags if weak or not etag.is_weak
+        )
 
     async def _not_modified(
         self, request: "BaseRequest", etag_value: str, last_modified: float
@@ -205,9 +203,11 @@ class FileResponse(StreamResponse):
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
         last_modified = st.st_mtime
 
-        # https://tools.ietf.org/html/rfc7232#section-6
+        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
         ifmatch = request.if_match
-        if ifmatch is not None and not self._strong_etag_match(etag_value, ifmatch):
+        if ifmatch is not None and not self._etag_match(
+            etag_value, ifmatch, weak=False
+        ):
             return await self._precondition_failed(request)
 
         unmodsince = request.if_unmodified_since
@@ -218,8 +218,11 @@ class FileResponse(StreamResponse):
         ):
             return await self._precondition_failed(request)
 
+        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
         ifnonematch = request.if_none_match
-        if ifnonematch is not None and self._strong_etag_match(etag_value, ifnonematch):
+        if ifnonematch is not None and self._etag_match(
+            etag_value, ifnonematch, weak=True
+        ):
             return await self._not_modified(request, etag_value, last_modified)
 
         modsince = request.if_modified_since

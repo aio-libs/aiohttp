@@ -8,7 +8,6 @@ import keyword
 import os
 import re
 import sys
-from contextlib import contextmanager
 from pathlib import Path
 from types import MappingProxyType
 from typing import (
@@ -36,7 +35,7 @@ from typing import (
     cast,
 )
 
-from yarl import URL, __version__ as yarl_version  # type: ignore[attr-defined]
+from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -81,8 +80,6 @@ CIRCULAR_SYMLINK_ERROR = (
     if sys.version_info < (3, 10) and sys.platform.startswith("win32")
     else (RuntimeError,) if sys.version_info < (3, 13) else ()
 )
-
-YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
 
 HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
     r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$"
@@ -273,8 +270,8 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         assert app is not None
         return app
 
-    @contextmanager
-    def set_current_app(self, app: "Application") -> Generator[None, None, None]:
+    @current_app.setter
+    def current_app(self, app: "Application") -> None:
         if DEBUG:  # pragma: no cover
             if app not in self._apps:
                 raise RuntimeError(
@@ -282,12 +279,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
                         self._apps, app
                     )
                 )
-        prev = self._current_app
         self._current_app = app
-        try:
-            yield
-        finally:
-            self._current_app = prev
 
     def freeze(self) -> None:
         self._frozen = True
@@ -321,6 +313,8 @@ async def _default_expect_handler(request: Request) -> None:
     if request.version == HttpVersion11:
         if expect.lower() == "100-continue":
             await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            # Reset output_size as we haven't started the main body yet.
+            request.writer.output_size = 0
         else:
             raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 
@@ -358,7 +352,7 @@ class Resource(AbstractResource):
     async def resolve(self, request: Request) -> _Resolve:
         allowed_methods: Set[str] = set()
 
-        match_dict = self._match(request.rel_url.raw_path)
+        match_dict = self._match(request.rel_url.path_safe)
         if match_dict is None:
             return None, allowed_methods
 
@@ -408,8 +402,7 @@ class PlainResource(Resource):
         # string comparison is about 10 times faster than regexp matching
         if self._path == path:
             return {}
-        else:
-            return None
+        return None
 
     def raw_match(self, path: str) -> bool:
         return self._path == path
@@ -432,6 +425,7 @@ class DynamicResource(Resource):
 
     def __init__(self, path: str, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
+        self._orig_path = path
         pattern = ""
         formatter = ""
         for part in ROUTE_RE.split(path):
@@ -478,13 +472,12 @@ class DynamicResource(Resource):
         match = self._pattern.fullmatch(path)
         if match is None:
             return None
-        else:
-            return {
-                key: _unquote_path(value) for key, value in match.groupdict().items()
-            }
+        return {
+            key: _unquote_path_safe(value) for key, value in match.groupdict().items()
+        }
 
     def raw_match(self, path: str) -> bool:
-        return self._formatter == path
+        return self._orig_path == path
 
     def get_info(self) -> _InfoDict:
         return {"formatter": self._formatter, "pattern": self._pattern}
@@ -575,10 +568,7 @@ class StaticResource(PrefixResource):
 
         url = URL.build(path=self._prefix, encoded=True)
         # filename is not encoded
-        if YARL_VERSION < (1, 6):
-            url = url / filename.replace("%", "%25")
-        else:
-            url = url / filename
+        url = url / filename
 
         if append_version:
             unresolved_path = self._directory.joinpath(filename)
@@ -626,7 +616,7 @@ class StaticResource(PrefixResource):
         )
 
     async def resolve(self, request: Request) -> _Resolve:
-        path = request.rel_url.raw_path
+        path = request.rel_url.path_safe
         method = request.method
         allowed_methods = set(self._routes)
         if not path.startswith(self._prefix2) and path != self._prefix:
@@ -635,7 +625,7 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {"filename": _unquote_path(path[len(self._prefix) + 1 :])}
+        match_dict = {"filename": _unquote_path_safe(path[len(self._prefix) + 1 :])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]), allowed_methods)
 
     def __len__(self) -> int:
@@ -753,7 +743,7 @@ class PrefixedSubAppResource(PrefixResource):
             router.index_resource(resource)
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
-        raise RuntimeError(".url_for() is not supported " "by sub-application root")
+        raise RuntimeError(".url_for() is not supported by sub-application root")
 
     def get_info(self) -> _InfoDict:
         return {"app": self._app, "prefix": self._prefix}
@@ -876,7 +866,7 @@ class MatchedSubAppResource(PrefixedSubAppResource):
         return match_info, methods
 
     def __repr__(self) -> str:
-        return "<MatchedSubAppResource -> {app!r}>" "".format(app=self._app)
+        return f"<MatchedSubAppResource -> {self._app!r}>"
 
 
 class ResourceRoute(AbstractRoute):
@@ -1015,7 +1005,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # candidates for a given url part because there are multiple resources
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
-        url_part = request.rel_url.raw_path
+        url_part = request.rel_url.path_safe
         while url_part:
             for candidate in resource_index.get(url_part, ()):
                 match_dict, allowed = await candidate.resolve(request)
@@ -1140,7 +1130,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             if resource.name == name and resource.raw_match(path):
                 return cast(Resource, resource)
         if not ("{" in path or "}" in path or ROUTE_RE.search(path)):
-            resource = PlainResource(_requote_path(path), name=name)
+            resource = PlainResource(path, name=name)
             self.register_resource(resource)
             return resource
         resource = DynamicResource(path, name=name)
@@ -1170,7 +1160,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,
-    ) -> AbstractResource:
+    ) -> StaticResource:
         """Add static files view.
 
         prefix - url prefix
@@ -1261,13 +1251,13 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
 
 def _quote_path(value: str) -> str:
-    if YARL_VERSION < (1, 6):
-        value = value.replace("%", "%25")
     return URL.build(path=value, encoded=False).raw_path
 
 
-def _unquote_path(value: str) -> str:
-    return URL.build(path=value, encoded=True).path
+def _unquote_path_safe(value: str) -> str:
+    if "%" not in value:
+        return value
+    return value.replace("%2F", "/").replace("%25", "%")
 
 
 def _requote_path(value: str) -> str:

@@ -5,7 +5,7 @@ import dataclasses
 import hashlib
 import json
 import sys
-from typing import Any, Final, Iterable, Optional, Tuple, cast
+from typing import Any, Final, Iterable, Optional, Tuple
 
 from multidict import CIMultiDict
 
@@ -21,10 +21,11 @@ from .http import (
     WebSocketWriter,
     WSCloseCode,
     WSMessage,
-    WSMsgType as WSMsgType,
+    WSMsgType,
     ws_ext_gen,
     ws_ext_parse,
 )
+from .http_websocket import WSMessageError
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import JSONDecoder, JSONEncoder
@@ -189,16 +190,28 @@ class WebSocketResponse(StreamResponse):
         if not ping_task.done():
             self._ping_task = ping_task
             ping_task.add_done_callback(self._ping_task_done)
+        else:
+            self._ping_task_done(ping_task)
 
     def _ping_task_done(self, task: "asyncio.Task[None]") -> None:
         """Callback for when the ping task completes."""
+        if not task.cancelled() and (exc := task.exception()):
+            self._handle_ping_pong_exception(exc)
         self._ping_task = None
 
     def _pong_not_received(self) -> None:
         if self._req is not None and self._req.transport is not None:
-            self._set_closed()
-            self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
-            self._exception = asyncio.TimeoutError()
+            self._handle_ping_pong_exception(asyncio.TimeoutError())
+
+    def _handle_ping_pong_exception(self, exc: BaseException) -> None:
+        """Handle exceptions raised during ping/pong processing."""
+        if self._closed:
+            return
+        self._set_closed()
+        self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
+        self._exception = exc
+        if self._waiting and not self._closing and self._reader is not None:
+            self._reader.feed_data(WSMessageError(data=exc, extra=None))
 
     def _set_closed(self) -> None:
         """Set the connection to closed.
@@ -392,24 +405,34 @@ class WebSocketResponse(StreamResponse):
             raise RuntimeError("Call .prepare() first")
         await self._writer.pong(message)
 
-    async def send_str(self, data: str, compress: Optional[bool] = None) -> None:
+    async def send_frame(
+        self, message: bytes, opcode: WSMsgType, compress: Optional[int] = None
+    ) -> None:
+        """Send a frame over the websocket."""
+        if self._writer is None:
+            raise RuntimeError("Call .prepare() first")
+        await self._writer.send_frame(message, opcode, compress)
+
+    async def send_str(self, data: str, compress: Optional[int] = None) -> None:
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
         if not isinstance(data, str):
             raise TypeError("data argument must be str (%r)" % type(data))
-        await self._writer.send(data, binary=False, compress=compress)
+        await self._writer.send_frame(
+            data.encode("utf-8"), WSMsgType.TEXT, compress=compress
+        )
 
-    async def send_bytes(self, data: bytes, compress: Optional[bool] = None) -> None:
+    async def send_bytes(self, data: bytes, compress: Optional[int] = None) -> None:
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError("data argument must be byte-ish (%r)" % type(data))
-        await self._writer.send(data, binary=True, compress=compress)
+        await self._writer.send_frame(data, WSMsgType.BINARY, compress=compress)
 
     async def send_json(
         self,
         data: Any,
-        compress: Optional[bool] = None,
+        compress: Optional[int] = None,
         *,
         dumps: JSONEncoder = json.dumps,
     ) -> None:
@@ -431,23 +454,10 @@ class WebSocketResponse(StreamResponse):
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
 
-        self._cancel_heartbeat()
-        reader = self._reader
-        assert reader is not None
-
-        # we need to break `receive()` cycle first,
-        # `close()` may be called from different task
-        if self._waiting and not self._closed:
-            if not self._close_wait:
-                assert self._loop is not None
-                self._close_wait = self._loop.create_future()
-            reader.feed_data(WS_CLOSING_MESSAGE)
-            await self._close_wait
-
         if self._closed:
             return False
-
         self._set_closed()
+
         try:
             await self._writer.close(code, message)
             writer = self._payload_writer
@@ -462,12 +472,21 @@ class WebSocketResponse(StreamResponse):
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             return True
 
+        reader = self._reader
+        assert reader is not None
+        # we need to break `receive()` cycle before we can call
+        # `reader.read()` as `close()` may be called from different task
+        if self._waiting:
+            assert self._loop is not None
+            assert self._close_wait is None
+            self._close_wait = self._loop.create_future()
+            reader.feed_data(WS_CLOSING_MESSAGE)
+            await self._close_wait
+
         if self._closing:
             self._close_transport()
             return True
 
-        reader = self._reader
-        assert reader is not None
         try:
             async with async_timeout.timeout(self._timeout):
                 msg = await reader.read()
@@ -487,13 +506,13 @@ class WebSocketResponse(StreamResponse):
         self._exception = asyncio.TimeoutError()
         return True
 
-    def _set_closing(self, code: WSCloseCode) -> None:
+    def _set_closing(self, code: int) -> None:
         """Set the close code and mark the connection as closing."""
         self._closing = True
         self._close_code = code
         self._cancel_heartbeat()
 
-    def _set_code_close_transport(self, code: WSCloseCode) -> None:
+    def _set_code_close_transport(self, code: int) -> None:
         """Set the close code and close the transport."""
         self._close_code = code
         self._close_transport()
@@ -544,16 +563,16 @@ class WebSocketResponse(StreamResponse):
             except EofStream:
                 self._close_code = WSCloseCode.OK
                 await self.close()
-                return WSMessage(WSMsgType.CLOSED, None, None)
+                return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._set_closing(WSCloseCode.ABNORMAL_CLOSURE)
                 await self.close()
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
 
             if msg.type is WSMsgType.CLOSE:
                 self._set_closing(msg.data)
@@ -582,13 +601,13 @@ class WebSocketResponse(StreamResponse):
                     msg.type, msg.data
                 )
             )
-        return cast(str, msg.data)
+        return msg.data
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return cast(bytes, msg.data)
+        return msg.data
 
     async def receive_json(
         self, *, loads: JSONDecoder = json.loads, timeout: Optional[float] = None

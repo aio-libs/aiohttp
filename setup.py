@@ -4,8 +4,8 @@ import sys
 
 from setuptools import Extension, setup
 
-if sys.version_info < (3, 8):
-    raise RuntimeError("aiohttp 4.x requires Python 3.8+")
+if sys.version_info < (3, 9):
+    raise RuntimeError("aiohttp 4.x requires Python 3.9+")
 
 
 NO_EXTENSIONS: bool = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
@@ -40,7 +40,6 @@ extensions = [
         define_macros=[("LLHTTP_STRICT_MODE", 0)],
         include_dirs=["vendor/llhttp/build"],
     ),
-    Extension("aiohttp._helpers", ["aiohttp/_helpers.c"]),
     Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
 ]
 
