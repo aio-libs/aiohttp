@@ -62,9 +62,11 @@ The client session supports the context manager protocol for self closing.
 
 
    :param base_url: Base part of the URL (optional)
-      If set, it allows to skip the base part (https://docs.aiohttp.org) in
-      request calls. It must not include a path (as in
-      https://docs.aiohttp.org/en/stable).
+
+      If set, it allows to prepend a base part to urls in request calls. It
+      must either have a path with a trailing ``/`` (as in
+      https://docs.aiohttp.org/en/stable/) or have no path at all (as in
+      https://docs.aiohttp.org).
 
       .. versionadded:: 3.8
 
@@ -371,6 +373,20 @@ The client session supports the context manager protocol for self closing.
       :param url: Request URL, :class:`~yarl.URL` or :class:`str` that will
                   be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
                   to skip encoding).
+
+                  If the ``_base_url`` parameter is set, request URL must be
+                  relative and will be combined with ``_base_url`` to construct
+                  the final request URL. See :meth:`~yarl.URL.join`.
+
+                  e.g.::
+
+                     session = ClientSession(base_url="http://example.com/foo/")
+
+                     await session.request("GET", "bar")
+                     # request for http://example.com/foo/bar
+
+                     await session.request("GET", "/bar")
+                     # request for http://example.com/bar
 
       :param params: Mapping, iterable of tuple of *key*/*value* pairs or
                      string to be sent as parameters in the query
