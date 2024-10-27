@@ -46,7 +46,7 @@ class WebSocketReader:
         self.queue = queue
         self._max_msg_size = max_msg_size
 
-        self._exc: Optional[BaseException] = None
+        self._exc: Optional[Exception] = None
         self._partial = bytearray()
         self._state = READ_HEADER
 
@@ -68,7 +68,7 @@ class WebSocketReader:
         self.queue.feed_eof()
 
     def feed_data(self, data: bytes) -> Tuple[bool, bytes]:
-        if self._exc:
+        if self._exc is not None:
             return True, data
 
         try:

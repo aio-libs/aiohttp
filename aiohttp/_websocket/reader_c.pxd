@@ -38,7 +38,7 @@ cdef class WebSocketReader:
     cdef object queue
     cdef unsigned int _max_msg_size
 
-    cdef object _exc
+    cdef Exception _exc
     cdef bytearray _partial
     cdef unsigned int _state
 
