@@ -43,7 +43,7 @@ cdef class WebSocketReader:
     cdef unsigned int _state
 
     cdef object _opcode
-    cdef bint _frame_fin
+    cdef object _frame_fin
     cdef object _frame_opcode
     cdef bytearray _frame_payload
 
