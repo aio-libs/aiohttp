@@ -249,6 +249,18 @@ def test_closed_after_ctor() -> None:
     assert ws.close_code is None
 
 
+async def test_raise_writer_limit(make_request) -> None:
+    """Test the writer limit can be adjusted."""
+    req = make_request("GET", "/")
+    ws = WebSocketResponse(writer_limit=1234567)
+    await ws.prepare(req)
+    assert ws._reader is not None
+    assert ws._writer is not None
+    assert ws._writer._limit == 1234567
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    await ws.close()
+
+
 async def test_send_str_closed(make_request) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
