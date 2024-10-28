@@ -848,7 +848,7 @@ async def test_heartbeat_no_pong_concurrent_receive(
 
 
 async def test_close_websocket_while_ping_inflight(
-    aiohttp_client: AiohttpClient,
+    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
 ) -> None:
     """Test closing the websocket while a ping is in-flight."""
     ping_received = False
@@ -872,7 +872,7 @@ async def test_close_websocket_while_ping_inflight(
     await resp.send_bytes(b"ask")
 
     cancelled = False
-    ping_stated = False
+    ping_started = loop.create_future()
     original_send_frame = resp._writer.send_frame
 
     async def delayed_send_frame(
@@ -880,8 +880,8 @@ async def test_close_websocket_while_ping_inflight(
     ) -> None:
         if opcode != WSMsgType.PING:
             await original_send_frame(message, opcode, compress)
-        nonlocal cancelled, ping_stated
-        ping_stated = True
+        nonlocal cancelled, ping_started
+        ping_started.set_result(None)
         try:
             await asyncio.sleep(1)
         except asyncio.CancelledError:
@@ -889,11 +889,12 @@ async def test_close_websocket_while_ping_inflight(
             raise
 
     with mock.patch.object(resp._writer, "send_frame", delayed_send_frame):
-        await asyncio.sleep(0.1)
+        async with async_timeout.timeout(1):
+            await ping_started
 
     await resp.close()
     await asyncio.sleep(0)
-    assert ping_stated is True
+    assert ping_started.result() is None
     assert cancelled is True
 
 
