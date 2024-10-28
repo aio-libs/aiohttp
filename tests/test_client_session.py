@@ -1139,7 +1139,7 @@ async def test_requote_redirect_url_default_disable() -> None:
             "test2?q=foo#bar",
             URL("http://example.com/test1/test2?q=foo#bar"),
             id="base_url=URL('http://example.com/test1/') url='test2?q=foo#bar'",
-        )
+        ),
     ],
 )
 async def test_build_url_returns_expected_url(
