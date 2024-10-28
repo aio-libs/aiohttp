@@ -873,13 +873,11 @@ async def test_close_websocket_while_ping_inflight(
 
     cancelled = False
     ping_started = loop.create_future()
-    original_send_frame = resp._writer.send_frame
 
     async def delayed_send_frame(
         message: bytes, opcode: int, compress: Optional[int] = None
     ) -> None:
-        if opcode != WSMsgType.PING:
-            await original_send_frame(message, opcode, compress)
+        assert opcode == WSMsgType.PING
         nonlocal cancelled, ping_started
         ping_started.set_result(None)
         try:
