@@ -56,7 +56,7 @@ if TYPE_CHECKING or NO_EXTENSIONS:  # pragma: no cover
     websocket_mask = _websocket_mask_python
 else:
     try:
-        from ._websocket import _websocket_mask_cython  # type: ignore[import-not-found]
+        from .mask import _websocket_mask_cython  # type: ignore[import-not-found]
 
         websocket_mask = _websocket_mask_cython
     except ImportError:  # pragma: no cover
