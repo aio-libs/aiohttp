@@ -10,6 +10,7 @@ from typing import Any, Final, Iterable, Optional, Tuple
 from multidict import CIMultiDict
 
 from . import hdrs
+from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
 from .helpers import calculate_timeout_when, set_exception, set_result
 from .http import (
@@ -82,6 +83,7 @@ class WebSocketResponse(StreamResponse):
         "_compress",
         "_max_msg_size",
         "_ping_task",
+        "_writer_limit",
     )
 
     def __init__(
@@ -95,6 +97,7 @@ class WebSocketResponse(StreamResponse):
         protocols: Iterable[str] = (),
         compress: bool = True,
         max_msg_size: int = 4 * 1024 * 1024,
+        writer_limit: int = DEFAULT_LIMIT,
     ) -> None:
         super().__init__(status=101)
         self._length_check = False
@@ -123,6 +126,7 @@ class WebSocketResponse(StreamResponse):
         self._compress = compress
         self._max_msg_size = max_msg_size
         self._ping_task: Optional[asyncio.Task[None]] = None
+        self._writer_limit = writer_limit
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
@@ -331,7 +335,11 @@ class WebSocketResponse(StreamResponse):
         transport = request._protocol.transport
         assert transport is not None
         writer = WebSocketWriter(
-            request._protocol, transport, compress=compress, notakeover=notakeover
+            request._protocol,
+            transport,
+            compress=compress,
+            notakeover=notakeover,
+            limit=self._writer_limit,
         )
 
         return protocol, writer
