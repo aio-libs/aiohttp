@@ -15,7 +15,6 @@ cdef unsigned int OP_CODE_CLOSE
 cdef unsigned int OP_CODE_PING
 cdef unsigned int OP_CODE_PONG
 
-cdef object UNPACK_LEN2
 cdef object UNPACK_LEN3
 cdef object UNPACK_CLOSE_CODE
 cdef object TUPLE_NEW
