@@ -150,7 +150,7 @@ async def test_concurrent_messages(
       and in the executor
     """
     with mock.patch(
-        "aiohttp.http_websocket.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", max_sync_chunk_size
+        "aiohttp._websocket.writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", max_sync_chunk_size
     ):
         writer = WebSocketWriter(protocol, transport, compress=15)
         queue: DataQueue[WSMessage] = DataQueue(asyncio.get_running_loop())
@@ -169,7 +169,8 @@ async def test_concurrent_messages(
         result, _ = reader.feed_data(call_bytes)
         assert result is False
         msg = await queue.read()
-        bytes_data: bytes = msg.data
+        assert msg.type is WSMsgType.BINARY
+        bytes_data = msg.data
         first_char = bytes_data[0:1]
         char_val = ord(first_char)
         assert len(bytes_data) == char_val
