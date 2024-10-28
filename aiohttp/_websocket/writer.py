@@ -105,7 +105,7 @@ class WebSocketWriter:
         if msg_length < 126:
             header = PACK_LEN1(first_byte, msg_length | mask_bit)
             header_len = 2
-        elif msg_length < (1 << 16):
+        elif msg_length < 65536:
             header = PACK_LEN2(first_byte, 126 | mask_bit, msg_length)
             header_len = 4
         else:
