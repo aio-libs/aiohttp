@@ -17,6 +17,7 @@ from aiohttp.http_websocket import (
 def test_read_one_hundred_websocket_text_messages(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
+    """Benchmark reading 100 WebSocket text messages."""
     queue: DataQueue[WSMessage] = DataQueue(loop=loop)
     reader = WebSocketReader(queue, max_msg_size=2**16)
     raw_message = (
@@ -33,26 +34,44 @@ def test_read_one_hundred_websocket_text_messages(
             feed_data(raw_message)
 
 
+class MockTransport(asyncio.Transport):
+    """Mock transport for testing that do no real I/O."""
+
+    def is_closing(self) -> bool:
+        """Swallow is_closing."""
+        return False
+
+    def write(self, data: bytes) -> None:
+        """Swallow writes."""
+
+
+class MockProtocol(BaseProtocol):
+
+    async def _drain_helper(self) -> None:
+        """Swallow drain."""
+
+
 def test_send_one_hundred_websocket_text_messages(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
-
-    class MockTransport(asyncio.Transport):
-        """Mock transport for testing that do no real I/O."""
-
-        def is_closing(self) -> bool:
-            """Swallow is_closing."""
-            return False
-
-        def write(self, data: bytes) -> None:
-            """Swallow writes."""
-
-    class MockProtocol(BaseProtocol):
-
-        async def _drain_helper(self) -> None:
-            """Swallow drain."""
-
+    """Benchmark sending 100 WebSocket text messages."""
     writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport())
+    raw_message = b"Hello, World!" * 100
+
+    async def _send_one_hundred_websocket_text_messages() -> None:
+        for _ in range(100):
+            await writer.send_frame(raw_message, WSMsgType.TEXT)
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(_send_one_hundred_websocket_text_messages())
+
+
+def test_send_one_hundred_websocket_text_messages_with_mask(
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+) -> None:
+    """Benchmark sending 100 masked WebSocket text messages."""
+    writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport(), use_mask=True)
     raw_message = b"Hello, World!" * 100
 
     async def _send_one_hundred_websocket_text_messages() -> None:
