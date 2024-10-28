@@ -58,7 +58,6 @@ class WebSocketReady:
 
 
 class WebSocketResponse(StreamResponse):
-
     __slots__ = (
         "_protocols",
         "_ws_protocol",
