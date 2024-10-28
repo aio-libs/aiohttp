@@ -705,9 +705,11 @@ async def test_heartbeat_connection_closed(aiohttp_client: AiohttpClient) -> Non
     assert resp._conn is not None
     with mock.patch.object(
         resp._conn.transport, "write", side_effect=ClientConnectionResetError
-    ), mock.patch.object(resp._writer, "ping", wraps=resp._writer.ping) as ping:
+    ), mock.patch.object(
+        resp._writer, "send_frame", wraps=resp._writer.send_frame
+    ) as send_frame:
         await resp.receive()
-        ping_count = ping.call_count
+        ping_count = send_frame.call_args_list.count(mock.call(b"", WSMsgType.PING))
     # Connection should be closed roughly after 1.5x heartbeat.
     await asyncio.sleep(0.2)
     assert ping_count == 1
@@ -871,8 +873,13 @@ async def test_close_websocket_while_ping_inflight(
 
     cancelled = False
     ping_stated = False
+    original_send_frame = resp._writer.send_frame
 
-    async def delayed_ping() -> None:
+    async def delayed_send_frame(
+        message: bytes, opcode: int, compress: Optional[int] = None
+    ) -> None:
+        if opcode != WSMsgType.PING:
+            return await original_send_frame(message, opcode, compress)
         nonlocal cancelled, ping_stated
         ping_stated = True
         try:
@@ -881,7 +888,7 @@ async def test_close_websocket_while_ping_inflight(
             cancelled = True
             raise
 
-    with mock.patch.object(resp._writer, "ping", delayed_ping):
+    with mock.patch.object(resp._writer, "send_frame", delayed_send_frame):
         await asyncio.sleep(0.1)
 
     await resp.close()
