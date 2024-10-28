@@ -966,12 +966,6 @@ and :ref:`aiohttp-web-signals` handlers::
 
       .. versionadded:: 3.3
 
-   :param int writer_limit: maximum size of write buffer, 64 KB by default.
-                            Once the buffer is full, the websocket will pause
-                            to drain the buffer.
-
-      .. versionadded:: 3.11
-
    :param bool autoclose: Close connection when the client sends
                            a :const:`~aiohttp.WSMsgType.CLOSE` message,
                            ``True`` by default. If set to ``False``,
@@ -980,6 +974,11 @@ and :ref:`aiohttp-web-signals` handlers::
                            ``request.transport.close()`` to avoid
                            leaking resources.
 
+   :param int writer_limit: maximum size of write buffer, 64 KB by default.
+                            Once the buffer is full, the websocket will pause
+                            to drain the buffer.
+
+      .. versionadded:: 3.11
 
    The class supports ``async for`` statement for iterating over
    incoming messages::
