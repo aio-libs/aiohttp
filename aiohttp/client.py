@@ -506,7 +506,7 @@ class ClientSession:
             warnings.warn("Chunk size is deprecated #1615", DeprecationWarning)
 
         redirects = 0
-        history = []
+        history: List[ClientResponse] = []
         version = self._version
         params = params or {}
 
@@ -590,13 +590,18 @@ class ClientSession:
                             else InvalidUrlClientError
                         )
                         raise err_exc_cls(url)
-                    if auth and auth_from_url:
+                    # If `auth` was passed for an already authenticated URL,
+                    # disallow only if this is the initial URL; this is to avoid issues
+                    # with sketchy redirects that are not the caller's responsibility
+                    if not history and (auth and auth_from_url):
                         raise ValueError(
                             "Cannot combine AUTH argument with "
                             "credentials encoded in URL"
                         )
 
-                    if auth is None:
+                    # Override the auth with the one from the URL only if we
+                    # have no auth, or if we got an auth from a redirect URL
+                    if auth is None or (history and auth_from_url is not None):
                         auth = auth_from_url
                     if auth is None:
                         auth = self._default_auth
