@@ -10,6 +10,274 @@
 
 .. towncrier release notes start
 
+3.11.0b0 (2024-10-28)
+=====================
+
+Bug fixes
+---------
+
+- Raise :exc:`aiohttp.ServerFingerprintMismatch` exception on client-side if request through http proxy with mismatching server fingerprint digest: `aiohttp.ClientSession(headers=headers, connector=TCPConnector(ssl=aiohttp.Fingerprint(mismatch_digest), trust_env=True).request(...)` -- by :user:`gangj`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6652`.
+
+
+
+- Made ``TestClient.app`` a ``Generic`` so type checkers will know the correct type (avoiding unneeded ``client.app is not None`` checks) -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8977`.
+
+
+
+- Authentication provided by a redirect now takes precedence over provided ``auth`` when making requests with the client -- by :user:`PLPeeters`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9436`.
+
+
+
+
+Features
+--------
+
+- Added ``strategy`` parameter to :meth:`aiohttp.web.StreamResponse.enable_compression`
+  The value of this parameter is passed to the :func:`zlib.compressobj` function, allowing people
+  to use a more sufficient compression algorithm for their data served by :mod:`aiohttp.web`
+  -- by :user:`shootkin`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6257`.
+
+
+
+- Exported :py:class:`~aiohttp.ClientWSTimeout` to top-level namespace -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8612`.
+
+
+
+- Added ``secure``/``httponly``/``samesite`` parameters to ``.del_cookie()`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8956`.
+
+
+
+- Updated :py:class:`~aiohttp.ClientSession`'s auth logic to include default auth only if the request URL's origin matches _base_url; otherwise, the auth will not be included -- by :user:`MaximZemskov`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8966`, :issue:`9466`.
+
+
+
+- Added ``proxy`` and ``proxy_auth`` parameters to :py:class:`~aiohttp.ClientSession` -- by :user:`meshya`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9207`.
+
+
+
+- Added ``default_to_multipart`` parameter to ``FormData``.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9335`.
+
+
+
+- Added :py:meth:`~aiohttp.ClientWebSocketResponse.send_frame` and :py:meth:`~aiohttp.web.WebSocketResponse.send_frame` for WebSockets -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9348`.
+
+
+
+- Improved performance of reading WebSocket messages with a Cython implementation -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9543`, :issue:`9554`, :issue:`9556`, :issue:`9558`.
+
+
+
+- Added ``writer_limit`` to the :py:class:`~aiohttp.web.WebSocketResponse` to be able to adjust the limit before the writer forces the buffer to be drained -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9572`.
+
+
+
+
+Deprecations (removal in next major release)
+--------------------------------------------
+
+- Deprecate obsolete `timeout: float` and `receive_timeout: Optional[float]` in :py:meth:`~aiohttp.ClientSession.ws_connect`. Change default websocket receive timeout from `None` to `10.0`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`3945`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Dropped support for Python 3.8 -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8797`.
+
+
+
+- Increased minimum yarl version to 1.17.0 -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8909`, :issue:`9079`, :issue:`9305`, :issue:`9574`.
+
+
+
+- Removed the ``is_ipv6_address`` and ``is_ip4_address`` helpers are they are no longer used -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9344`.
+
+
+
+- Changed ``ClientRequest.connection_key`` to be a `NamedTuple` to improve client performance -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9365`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Switched to using the :mod:`propcache <propcache.api>` package for property caching
+  -- by :user:`bdraco`.
+
+  The :mod:`propcache <propcache.api>` package is derived from the property caching
+  code in :mod:`yarl` and has been broken out to avoid maintaining it for multiple
+  projects.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9394`.
+
+
+
+- Separated ``aiohttp.http_websocket`` into multiple files to make it easier to maintain -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9542`, :issue:`9552`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Changed diagram images generator from ``blockdiag`` to ``GraphViz``.
+  Generating documentation now requires the GraphViz executable to be included in $PATH or sphinx build configuration.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9359`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added flake8 settings to avoid some forms of implicit concatenation. -- by :user:`booniepepper`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7731`.
+
+
+
+- Enabled keep-alive support on proxies (which was originally disabled several years ago) -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8920`.
+
+
+
+- Changed web entry point to not listen on TCP when only a Unix path is passed -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9033`.
+
+
+
+- Disabled automatic retries of failed requests in :class:`aiohttp.test_utils.TestClient`'s client session
+  (which could potentially hide errors in tests) -- by :user:`ShubhAgarwal-dev`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9141`.
+
+
+
+- Changed web ``keepalive_timeout`` default to around an hour in order to reduce race conditions on reverse proxies -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9285`.
+
+
+
+- Reduced memory required for stream objects created during the client request lifecycle -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9407`.
+
+
+
+- Improved performance of the client request lifecycle when there are no cookies -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9470`.
+
+
+
+- Improved performance of sending client requests when the writer can finish synchronously -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9485`.
+
+
+
+
+----
+
+
 3.10.10 (2024-10-10)
 ====================
 
