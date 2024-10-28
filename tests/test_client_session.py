@@ -1146,7 +1146,7 @@ async def test_build_url_returns_expected_url(
     assert session._build_url(url) == expected_url
 
 
-async def test_base_url_without_trailing_slash():
+async def test_base_url_without_trailing_slash() -> None:
     with pytest.raises(ValueError, match="base_url must have a trailing '/'"):
         ClientSession(base_url="http://example.com/test")
 
