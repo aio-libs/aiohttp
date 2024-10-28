@@ -76,7 +76,7 @@ def test_send_one_hundred_websocket_text_messages_with_mask(
 
     async def _send_one_hundred_websocket_text_messages() -> None:
         for _ in range(100):
-            await writer.send_frame(raw_message, WSMsgType.TEXT)
+            await writer._send_frame(raw_message, WSMsgType.TEXT)
 
     @benchmark
     def _run() -> None:
