@@ -119,19 +119,22 @@ class WebSocketWriter:
         # bitwise XOR operation. It is used to prevent certain types
         # of attacks on the websocket protocol. The mask is only used
         # when aiohttp is acting as a client. Servers do not use a mask.
+        if self.transport.is_closing():
+            raise ClientConnectionResetError("Cannot write to closing transport")
+
         if use_mask:
             mask = PACK_RANDBITS(self.get_random_bits())
             message = bytearray(message)
             websocket_mask(mask, message)
-            self._write(header + mask + message)
+            self.transport.write(header + mask + message)
             self._output_size += header_len + MASK_LEN + msg_length
 
         else:
             if msg_length > MSG_SIZE:
-                self._write(header)
-                self._write(message)
+                self.transport.write(header)
+                self.transport.write(message)
             else:
-                self._write(header + message)
+                self.transport.write(header + message)
 
             self._output_size += header_len + msg_length
 
@@ -153,11 +156,6 @@ class WebSocketWriter:
             wbits=-compress,
             max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
         )
-
-    def _write(self, data: bytes) -> None:
-        if self.transport.is_closing():
-            raise ClientConnectionResetError("Cannot write to closing transport")
-        self.transport.write(data)
 
     async def pong(self, message: bytes = b"") -> None:
         """Send pong message."""
