@@ -964,6 +964,8 @@ and :ref:`aiohttp-web-signals` handlers::
    :param int max_msg_size: maximum size of read websocket message, 4
                             MB by default. To disable the size limit use ``0``.
 
+      .. versionadded:: 3.3
+
    :param int writer_limit: maximum size of write buffer, 64 KB by default.
                             Once the buffer is full, the websocket will pause
                             to drain the buffer.
@@ -977,8 +979,6 @@ and :ref:`aiohttp-web-signals` handlers::
                            caller is responsible for calling
                            ``request.transport.close()`` to avoid
                            leaking resources.
-
-      .. versionadded:: 3.3
 
 
    The class supports ``async for`` statement for iterating over
