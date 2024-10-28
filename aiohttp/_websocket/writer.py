@@ -127,16 +127,14 @@ class WebSocketWriter:
             message = bytearray(message)
             websocket_mask(mask, message)
             self.transport.write(header + mask + message)
-            self._output_size += header_len + MASK_LEN + msg_length
-
+            self._output_size += MASK_LEN
+        elif msg_length > MSG_SIZE:
+            self.transport.write(header)
+            self.transport.write(message)
         else:
-            if msg_length > MSG_SIZE:
-                self.transport.write(header)
-                self.transport.write(message)
-            else:
-                self.transport.write(header + message)
+            self.transport.write(header + message)
 
-            self._output_size += header_len + msg_length
+        self._output_size += header_len + msg_length
 
         # It is safe to return control to the event loop when using compression
         # after this point as we have already sent or buffered all the data.
