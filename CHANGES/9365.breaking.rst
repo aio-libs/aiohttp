@@ -1,1 +1,1 @@
-Changed :attr:`~aiohttp.ClientRequest.connection_key` to be a `NamedTuple` to improve client performance -- by :user:`bdraco`.
+Changed ``ClientRequest.connection_key`` to be a `NamedTuple` to improve client performance -- by :user:`bdraco`.
