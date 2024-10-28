@@ -69,15 +69,15 @@ The client session supports the context manager protocol for self closing.
       Note that URL joining follows :rfc:`3986`. This means, in the most
       common case the request URLs should have no leading slash:
 
-                  e.g.::
+        e.g.::
 
-                     session = ClientSession(base_url="http://example.com/foo/")
+            session = ClientSession(base_url="http://example.com/foo/")
 
-                     await session.request("GET", "bar")
-                     # request for http://example.com/foo/bar
+            await session.request("GET", "bar")
+            # request for http://example.com/foo/bar
 
-                     await session.request("GET", "/bar")
-                     # request for http://example.com/bar
+            await session.request("GET", "/bar")
+            # request for http://example.com/bar
 
       .. versionadded:: 3.8
 
