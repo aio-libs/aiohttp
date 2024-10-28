@@ -376,7 +376,9 @@ The client session supports the context manager protocol for self closing.
 
                   If the ``_base_url`` parameter is set, request URL must be
                   relative and will be combined with ``_base_url`` to construct
-                  the final request URL. See :meth:`~yarl.URL.join`.
+                  the final request URL. The path in ``_base_url`` will be
+                  ignored if request URL path starts with ``/``.
+                  See :meth:`~yarl.URL.join`.
 
                   e.g.::
 
