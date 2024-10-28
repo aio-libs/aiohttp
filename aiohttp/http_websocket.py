@@ -675,12 +675,15 @@ class WebSocketWriter:
         if msg_length < 126:
             header = PACK_LEN1(first_byte, msg_length | mask_bit)
             header_len = 2
-        elif msg_length < (1 << 16):
+        elif msg_length < 65536:
             header = PACK_LEN2(first_byte, 126 | mask_bit, msg_length)
             header_len = 4
         else:
             header = PACK_LEN3(first_byte, 127 | mask_bit, msg_length)
             header_len = 10
+
+        if self.transport.is_closing():
+            raise ClientConnectionResetError("Cannot write to closing transport")
 
         # https://datatracker.ietf.org/doc/html/rfc6455#section-5.3
         # If we are using a mask, we need to generate it randomly
@@ -693,17 +696,15 @@ class WebSocketWriter:
             mask = PACK_RANDBITS(self.get_random_bits())
             message = bytearray(message)
             _websocket_mask(mask, message)
-            self._write(header + mask + message)
-            self._output_size += header_len + MASK_LEN + msg_length
-
+            self.transport.write(header + mask + message)
+            self._output_size += MASK_LEN
+        elif msg_length > MSG_SIZE:
+            self.transport.write(header)
+            self.transport.write(message)
         else:
-            if msg_length > MSG_SIZE:
-                self._write(header)
-                self._write(message)
-            else:
-                self._write(header + message)
+            self.transport.write(header + message)
 
-            self._output_size += header_len + msg_length
+        self._output_size += header_len + msg_length
 
         # It is safe to return control to the event loop when using compression
         # after this point as we have already sent or buffered all the data.
@@ -723,11 +724,6 @@ class WebSocketWriter:
             wbits=-compress,
             max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
         )
-
-    def _write(self, data: bytes) -> None:
-        if self.transport is None or self.transport.is_closing():
-            raise ClientConnectionResetError("Cannot write to closing transport")
-        self.transport.write(data)
 
     async def pong(self, message: Union[bytes, str] = b"") -> None:
         """Send pong message."""
