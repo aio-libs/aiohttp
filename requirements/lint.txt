@@ -16,6 +16,7 @@ cffi==1.17.1
     # via
     #   cryptography
     #   pycares
+    #   pytest-codspeed
 cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.4.0
@@ -24,14 +25,16 @@ click==8.1.7
     # via
     #   slotscheck
     #   typer
-cryptography==43.0.1
+cryptography==43.0.3
     # via trustme
 distlib==0.3.9
     # via virtualenv
 exceptiongroup==1.2.2
     # via pytest
 filelock==3.16.1
-    # via virtualenv
+    # via
+    #   pytest-codspeed
+    #   virtualenv
 freezegun==1.5.1
     # via -r requirements/lint.in
 identify==2.6.1
@@ -75,7 +78,10 @@ pygments==2.18.0
 pytest==8.1.1
     # via
     #   -r requirements/lint.in
+    #   pytest-codspeed
     #   pytest-mock
+pytest-codspeed==2.2.1
+    # via -r requirements/lint.in
 pytest-mock==3.14.0
     # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
@@ -86,13 +92,13 @@ pyyaml==6.0.2
     # via pre-commit
 requests==2.32.3
     # via python-on-whales
-rich==13.9.2
+rich==13.9.3
     # via typer
 shellingham==1.5.4
     # via typer
 six==1.16.0
     # via python-dateutil
-slotscheck==0.19.0
+slotscheck==0.19.1
     # via -r requirements/lint.in
 tomli==2.0.2
     # via

@@ -5,7 +5,7 @@ import dataclasses
 import hashlib
 import json
 import sys
-from typing import Any, Final, Iterable, Optional, Tuple, cast
+from typing import Any, Final, Iterable, Optional, Tuple
 
 from multidict import CIMultiDict
 
@@ -22,11 +22,11 @@ from .http import (
     WebSocketWriter,
     WSCloseCode,
     WSMessage,
-    WSMsgType as WSMsgType,
+    WSMsgType,
     ws_ext_gen,
     ws_ext_parse,
 )
-from .http_websocket import MESSAGE_TYPES_WITH_CONTENT
+from .http_websocket import WSMessageError
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import JSONDecoder, JSONEncoder
@@ -212,7 +212,7 @@ class WebSocketResponse(StreamResponse):
         self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
         self._exception = exc
         if self._waiting and not self._closing and self._reader is not None:
-            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
+            self._reader.feed_data(WSMessageError(data=exc, extra=None))
 
     def _set_closed(self) -> None:
         """Set the connection to closed.
@@ -507,13 +507,13 @@ class WebSocketResponse(StreamResponse):
         self._exception = asyncio.TimeoutError()
         return True
 
-    def _set_closing(self, code: WSCloseCode) -> None:
+    def _set_closing(self, code: int) -> None:
         """Set the close code and mark the connection as closing."""
         self._closing = True
         self._close_code = code
         self._cancel_heartbeat()
 
-    def _set_code_close_transport(self, code: WSCloseCode) -> None:
+    def _set_code_close_transport(self, code: int) -> None:
         """Set the close code and close the transport."""
         self._close_code = code
         self._close_transport()
@@ -564,16 +564,16 @@ class WebSocketResponse(StreamResponse):
             except EofStream:
                 self._close_code = WSCloseCode.OK
                 await self.close()
-                return WSMessage(WSMsgType.CLOSED, None, None)
+                return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._set_closing(WSCloseCode.ABNORMAL_CLOSURE)
                 await self.close()
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
 
             if msg.type is WSMsgType.CLOSE:
                 self._set_closing(msg.data)
@@ -597,7 +597,7 @@ class WebSocketResponse(StreamResponse):
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
-            if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
+            if msg.type not in [WSMsgType.CONTINUATION, WSMsgType.BINARY]:
                 raise WSMessageTypeError(
                     f"Received message {msg.type}:{msg.data!r} has no content"
                 )
@@ -606,17 +606,17 @@ class WebSocketResponse(StreamResponse):
                     msg.type, msg.data
                 )
             )
-        return cast(str, msg.data)
+        return msg.data
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
-            if msg.type not in MESSAGE_TYPES_WITH_CONTENT:
+            if msg.type not in [WSMsgType.CONTINUATION, WSMsgType.TEXT]:
                 raise WSMessageTypeError(
                     f"Received message {msg.type}:{msg.data!r} has no content"
                 )
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return cast(bytes, msg.data)
+        return msg.data
 
     async def receive_json(
         self, *, loads: JSONDecoder = json.loads, timeout: Optional[float] = None
