@@ -968,7 +968,7 @@ and :ref:`aiohttp-web-signals` handlers::
                             Once the buffer is full, the websocket will pause
                             to drain the buffer.
 
-      .. versionadded:: 3.3
+      .. versionadded:: 3.11
 
    :param bool autoclose: Close connection when the client sends
                            a :const:`~aiohttp.WSMsgType.CLOSE` message,
@@ -977,6 +977,8 @@ and :ref:`aiohttp-web-signals` handlers::
                            caller is responsible for calling
                            ``request.transport.close()`` to avoid
                            leaking resources.
+
+      .. versionadded:: 3.3
 
 
    The class supports ``async for`` statement for iterating over
