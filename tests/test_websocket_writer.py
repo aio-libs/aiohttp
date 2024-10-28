@@ -29,14 +29,14 @@ def writer(protocol, transport):
     return WebSocketWriter(protocol, transport, use_mask=False)
 
 
-async def test_pong(writer) -> None:
-    await writer.pong()
-    writer.transport.write.assert_called_with(b"\x8a\x00")
+async def test_pong(writer: WebSocketWriter) -> None:
+    await writer.send_frame(b"", WSMsgType.PONG)
+    writer.transport.write.assert_called_with(b"\x8a\x00")  # type: ignore[attr-defined]
 
 
-async def test_ping(writer) -> None:
-    await writer.ping()
-    writer.transport.write.assert_called_with(b"\x89\x00")
+async def test_ping(writer: WebSocketWriter) -> None:
+    await writer.send_frame(b"", WSMsgType.PING)
+    writer.transport.write.assert_called_with(b"\x89\x00")  # type: ignore[attr-defined]
 
 
 async def test_send_text(writer: WebSocketWriter) -> None:

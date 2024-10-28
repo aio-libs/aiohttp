@@ -140,13 +140,14 @@ class ClientWebSocketResponse:
         self._cancel_pong_response_cb()
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
+        coro = self._writer.send_frame(b"", WSMsgType.PING)
         if sys.version_info >= (3, 12):
             # Optimization for Python 3.12, try to send the ping
             # immediately to avoid having to schedule
             # the task on the event loop.
-            ping_task = asyncio.Task(self._writer.ping(), loop=loop, eager_start=True)
+            ping_task = asyncio.Task(coro, loop=loop, eager_start=True)
         else:
-            ping_task = loop.create_task(self._writer.ping())
+            ping_task = loop.create_task(coro)
 
         if not ping_task.done():
             self._ping_task = ping_task
@@ -224,10 +225,10 @@ class ClientWebSocketResponse:
         return self._exception
 
     async def ping(self, message: bytes = b"") -> None:
-        await self._writer.ping(message)
+        await self._writer.send_frame(message, WSMsgType.PING)
 
     async def pong(self, message: bytes = b"") -> None:
-        await self._writer.pong(message)
+        await self._writer.send_frame(message, WSMsgType.PONG)
 
     async def send_frame(
         self, message: bytes, opcode: WSMsgType, compress: Optional[int] = None
