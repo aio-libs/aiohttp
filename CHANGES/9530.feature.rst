@@ -1,2 +1,2 @@
-Updated :py:class:`~aiohttp.ClientSession` to make ``base_url`` parameter allow url with path.
-``base_url`` must have a path that end with a ``/``  -- by :user:`Cycloctane`.
+Updated :py:class:`~aiohttp.ClientSession` to support paths in ``base_url`` parameter.
+``base_url`` paths must end with a ``/``  -- by :user:`Cycloctane`.
