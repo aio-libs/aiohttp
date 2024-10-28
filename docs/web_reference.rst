@@ -922,7 +922,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
                              autoclose=True, autoping=True, heartbeat=None, \
-                             protocols=(), compress=True, max_msg_size=4194304)
+                             protocols=(), compress=True, max_msg_size=4194304, \
+                             writer_limit=65536)
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -962,6 +963,10 @@ and :ref:`aiohttp-web-signals` handlers::
 
    :param int max_msg_size: maximum size of read websocket message, 4
                             MB by default. To disable the size limit use ``0``.
+
+   :param int writer_limit: maximum size of write buffer, 64 KB by default.
+                            Once the buffer is full, the websocket will pause
+                            to drain the buffer.
 
       .. versionadded:: 3.3
 
