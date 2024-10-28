@@ -494,6 +494,9 @@ def test_websocket_mask_cython() -> None:
     message = bytearray(websocket_mask_data)
     _websocket_helpers._websocket_mask_cython(websocket_mask_mask, message)  # type: ignore[attr-defined]
     assert message == websocket_mask_masked
+    assert (
+        _websocket_helpers.websocket_mask is _websocket_helpers._websocket_mask_cython  # type: ignore[attr-defined]
+    )
 
 
 def test_websocket_mask_python_empty() -> None:
