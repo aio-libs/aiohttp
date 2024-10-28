@@ -82,8 +82,8 @@ cdef class WebSocketReader:
         buf_length="unsigned int",
         data=bytes,
         payload=bytearray,
-        first_byte=char,
-        second_byte=char,
+        first_byte="unsigned char",
+        second_byte="unsigned char",
         has_mask=bint,
         fin=bint,
     )
