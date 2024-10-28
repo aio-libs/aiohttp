@@ -34,6 +34,7 @@ cffi==1.17.1
     # via
     #   cryptography
     #   pycares
+    #   pytest-codspeed
 cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.4.0
@@ -63,7 +64,9 @@ docutils==0.20.1
 exceptiongroup==1.2.2
     # via pytest
 filelock==3.16.1
-    # via virtualenv
+    # via
+    #   pytest-codspeed
+    #   virtualenv
 freezegun==1.5.1
     # via
     #   -r requirements/lint.in
@@ -163,8 +166,13 @@ pytest==8.1.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
+    #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+pytest-codspeed==2.2.1
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
@@ -273,7 +281,7 @@ zipp==3.20.2
     #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==24.2
+pip==24.3.1
     # via pip-tools
 setuptools==75.2.0
     # via
