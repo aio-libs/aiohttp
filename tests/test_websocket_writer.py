@@ -31,12 +31,12 @@ def writer(protocol: BaseProtocol, transport: asyncio.Transport) -> WebSocketWri
 
 
 async def test_pong(writer: WebSocketWriter) -> None:
-    await writer.pong()
+    await writer.send_frame(b"", WSMsgType.PONG)
     writer.transport.write.assert_called_with(b"\x8a\x00")  # type: ignore[attr-defined]
 
 
 async def test_ping(writer: WebSocketWriter) -> None:
-    await writer.ping()
+    await writer.send_frame(b"", WSMsgType.PING)
     writer.transport.write.assert_called_with(b"\x89\x00")  # type: ignore[attr-defined]
 
 

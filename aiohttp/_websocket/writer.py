@@ -34,6 +34,14 @@ WEBSOCKET_MAX_SYNC_CHUNK_SIZE = 5 * 1024
 
 
 class WebSocketWriter:
+    """WebSocket writer.
+
+    The writer is responsible for sending messages to the client. It is
+    created by the protocol when a connection is established. The writer
+    should avoid implementing any application logic and should only be
+    concerned with the low-level details of the WebSocket protocol.
+    """
+
     def __init__(
         self,
         protocol: BaseProtocol,
@@ -45,6 +53,7 @@ class WebSocketWriter:
         compress: int = 0,
         notakeover: bool = False,
     ) -> None:
+        """Initialize a WebSocket writer."""
         self.protocol = protocol
         self.transport = transport
         self.use_mask = use_mask
@@ -154,14 +163,6 @@ class WebSocketWriter:
             wbits=-compress,
             max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
         )
-
-    async def pong(self, message: bytes = b"") -> None:
-        """Send pong message."""
-        await self.send_frame(message, WSMsgType.PONG)
-
-    async def ping(self, message: bytes = b"") -> None:
-        """Send ping message."""
-        await self.send_frame(message, WSMsgType.PING)
 
     async def close(self, code: int = 1000, message: Union[bytes, str] = b"") -> None:
         """Close the websocket, sending the specified code and message."""

@@ -785,12 +785,14 @@ async def test_heartbeat_connection_closed(
         with mock.patch.object(
             ws_server._req.transport, "write", side_effect=ConnectionResetError
         ), mock.patch.object(
-            ws_server._writer, "ping", wraps=ws_server._writer.ping
-        ) as ping:
+            ws_server._writer, "send_frame", wraps=ws_server._writer.send_frame
+        ) as send_frame:
             try:
                 await ws_server.receive()
             finally:
-                ping_count = ping.call_count
+                ping_count = send_frame.call_args_list.count(
+                    mock.call(b"", WSMsgType.PING)
+                )
         assert False
 
     app = web.Application()
