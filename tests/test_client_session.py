@@ -1146,6 +1146,11 @@ async def test_build_url_returns_expected_url(
     assert session._build_url(url) == expected_url
 
 
+async def test_base_url_without_trailing_slash():
+    with pytest.raises(ValueError, match="base_url must have a trailing '/'"):
+        ClientSession(base_url="http://example.com/test")
+
+
 async def test_instantiation_with_invalid_timeout_value(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
