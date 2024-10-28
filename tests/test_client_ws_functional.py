@@ -879,7 +879,7 @@ async def test_close_websocket_while_ping_inflight(
         message: bytes, opcode: int, compress: Optional[int] = None
     ) -> None:
         if opcode != WSMsgType.PING:
-            return await original_send_frame(message, opcode, compress)
+            await original_send_frame(message, opcode, compress)
         nonlocal cancelled, ping_stated
         ping_stated = True
         try:
