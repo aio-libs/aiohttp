@@ -112,6 +112,9 @@ class WebSocketWriter:
             header = PACK_LEN3(first_byte, 127 | mask_bit, msg_length)
             header_len = 10
 
+        if self.transport.is_closing():
+            raise ClientConnectionResetError("Cannot write to closing transport")
+
         # https://datatracker.ietf.org/doc/html/rfc6455#section-5.3
         # If we are using a mask, we need to generate it randomly
         # and apply it to the message before sending it. A mask is
@@ -119,9 +122,6 @@ class WebSocketWriter:
         # bitwise XOR operation. It is used to prevent certain types
         # of attacks on the websocket protocol. The mask is only used
         # when aiohttp is acting as a client. Servers do not use a mask.
-        if self.transport.is_closing():
-            raise ClientConnectionResetError("Cannot write to closing transport")
-
         if use_mask:
             mask = PACK_RANDBITS(self.get_random_bits())
             message = bytearray(message)
