@@ -1,1 +1,1 @@
-Increased minimum yarl version to 1.12.0 -- by :user:`bdraco`.
+Increased minimum yarl version to 1.17.0 -- by :user:`bdraco`.
