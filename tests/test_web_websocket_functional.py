@@ -423,7 +423,7 @@ async def test_ping(loop, aiohttp_client) -> None:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        await ws.ping("data")
+        await ws.ping(b"data")
         await ws.receive()
         closed.set_result(None)
         return ws
@@ -460,7 +460,7 @@ async def aiohttp_client_ping(loop, aiohttp_client):
 
     ws = await client.ws_connect("/", autoping=False)
 
-    await ws.ping("data")
+    await ws.ping(b"data")
     msg = await ws.receive()
     assert msg.type == WSMsgType.PONG
     assert msg.data == b"data"
@@ -478,7 +478,7 @@ async def test_pong(loop, aiohttp_client) -> None:
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.PING
-        await ws.pong("data")
+        await ws.pong(b"data")
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSE
@@ -493,7 +493,7 @@ async def test_pong(loop, aiohttp_client) -> None:
 
     ws = await client.ws_connect("/", autoping=False)
 
-    await ws.ping("data")
+    await ws.ping(b"data")
     msg = await ws.receive()
     assert msg.type == WSMsgType.PONG
     assert msg.data == b"data"
@@ -992,7 +992,7 @@ async def test_receive_being_cancelled_keeps_connection_open(
         msg = await ws.receive()
         assert msg.type == WSMsgType.PING
         await asyncio.sleep(0)
-        await ws.pong("data")
+        await ws.pong(b"data")
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSE
@@ -1008,7 +1008,7 @@ async def test_receive_being_cancelled_keeps_connection_open(
     ws = await client.ws_connect("/", autoping=False)
 
     await asyncio.sleep(0)
-    await ws.ping("data")
+    await ws.ping(b"data")
 
     msg = await ws.receive()
     assert msg.type == WSMsgType.PONG
@@ -1038,7 +1038,7 @@ async def test_receive_timeout_keeps_connection_open(
         msg = await ws.receive()
         assert msg.type == WSMsgType.PING
         await asyncio.sleep(0)
-        await ws.pong("data")
+        await ws.pong(b"data")
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSE
@@ -1054,7 +1054,7 @@ async def test_receive_timeout_keeps_connection_open(
     ws = await client.ws_connect("/", autoping=False)
 
     await timed_out
-    await ws.ping("data")
+    await ws.ping(b"data")
 
     msg = await ws.receive()
     assert msg.type == WSMsgType.PONG
