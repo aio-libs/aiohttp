@@ -5,7 +5,7 @@ from typing import Final, List, Optional, Set, Tuple, Union
 from ..compression_utils import ZLibDecompressor
 from ..helpers import set_exception
 from ..streams import DataQueue
-from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN2, UNPACK_LEN3, websocket_mask
+from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
     WS_DEFLATE_TRAILING,
     WebSocketError,
@@ -310,9 +310,10 @@ class WebSocketReader:
                 if length_flag == 126:
                     if buf_length - start_pos < 2:
                         break
-                    data = buf[start_pos : start_pos + 2]
+                    first_byte = buf[start_pos]
+                    second_byte = buf[start_pos + 1]
                     start_pos += 2
-                    self._payload_length = UNPACK_LEN2(data)[0]
+                    self._payload_length = first_byte << 8 | second_byte
                 elif length_flag > 126:
                     if buf_length - start_pos < 8:
                         break

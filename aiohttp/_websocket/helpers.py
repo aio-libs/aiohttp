@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Final, List, Optional, Pattern, Tuple
 from ..helpers import NO_EXTENSIONS
 from .models import WSHandshakeError
 
-UNPACK_LEN2 = Struct("!H").unpack_from
 UNPACK_LEN3 = Struct("!Q").unpack_from
 UNPACK_CLOSE_CODE = Struct("!H").unpack
 PACK_LEN1 = Struct("!BB").pack
