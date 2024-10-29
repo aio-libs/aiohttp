@@ -6,7 +6,14 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp import ClientConnectionResetError, ServerTimeoutError, WSMsgType, hdrs, web
+from aiohttp import (
+    ClientConnectionResetError,
+    ServerTimeoutError,
+    WSMessageTypeError,
+    WSMsgType,
+    hdrs,
+    web,
+)
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
@@ -63,6 +70,24 @@ async def test_send_recv_bytes_bad_type(aiohttp_client: AiohttpClient) -> None:
         await resp.close()
 
 
+async def test_recv_bytes_after_close(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        await ws.close()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+
+    with pytest.raises(WSMessageTypeError):
+        await resp.receive_bytes()
+        await resp.close()
+
+
 async def test_send_recv_bytes(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -106,6 +131,24 @@ async def test_send_recv_text_bad_type(aiohttp_client: AiohttpClient) -> None:
     with pytest.raises(TypeError):
         await resp.receive_str()
 
+        await resp.close()
+
+
+async def test_recv_text_after_close(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        await ws.close()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+
+    with pytest.raises(WSMessageTypeError):
+        await resp.receive_str()
         await resp.close()
 
 
