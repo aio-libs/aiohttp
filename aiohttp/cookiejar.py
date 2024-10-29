@@ -10,6 +10,7 @@ import re
 import time
 import warnings
 from collections import defaultdict
+from http import cookies
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (
     DefaultDict,
@@ -482,3 +483,16 @@ class DummyCookieJar(AbstractCookieJar):
 
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         return SimpleCookie()
+
+
+_empty_reserved = {key: "" for key in Morsel._reserved}
+
+
+def fast_init(self):
+    # Set defaults
+    self._key = self._value = self._coded_value = None
+    # Set default attributes
+    dict.update(self, _empty_reserved)
+
+
+cookies.Morsel.__init__ = fast_init
