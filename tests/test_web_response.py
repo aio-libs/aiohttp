@@ -345,7 +345,7 @@ async def test_start() -> None:
 
     assert resp.keep_alive
 
-    req2 = make_request("GET", "/")
+    req2 = make_request("GET", "/")  # type: ignore[unreachable]
     # with pytest.raises(RuntimeError):
     msg3 = await resp.prepare(req2)
     assert msg is msg3
@@ -359,7 +359,7 @@ async def test_chunked_encoding() -> None:
     resp.enable_chunked_encoding()
     assert resp.chunked
 
-    msg = await resp.prepare(req)
+    msg = await resp.prepare(req)  # type: ignore[unreachable]
     assert msg.chunked
 
 
@@ -390,7 +390,7 @@ async def test_compression_no_accept() -> None:
     resp.enable_compression()
     assert resp.compression
 
-    msg = await resp.prepare(req)
+    msg = await resp.prepare(req)  # type: ignore[unreachable]
     assert not msg.enable_compression.called
 
 
@@ -405,7 +405,7 @@ async def test_compression_default_coding() -> None:
     resp.enable_compression()
     assert resp.compression
 
-    msg = await resp.prepare(req)
+    msg = await resp.prepare(req)  # type: ignore[unreachable]
 
     msg.enable_compression.assert_called_with("deflate", zlib.Z_DEFAULT_STRATEGY)
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -708,7 +708,7 @@ async def test_content_length_on_chunked() -> None:
     assert resp.content_length == 6
     resp.enable_chunked_encoding()
     assert resp.content_length is None
-    await resp.prepare(req)
+    await resp.prepare(req)  # type: ignore[unreachable]
 
 
 async def test_write_non_byteish() -> None:

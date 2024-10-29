@@ -156,7 +156,7 @@ def test__notify_waiter_done(worker: base_worker.GunicornWebWorker) -> None:
     worker._notify_waiter_done()
 
     assert worker._notify_waiter is None
-    waiter.set_result.assert_called_with(True)
+    waiter.set_result.assert_called_with(True)  # type: ignore[unreachable]
 
 
 def test__notify_waiter_done_explicit_waiter(

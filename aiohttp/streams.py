@@ -147,8 +147,6 @@ class StreamReader(AsyncStreamReaderMixin):
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
-        if loop is None:
-            loop = asyncio.get_event_loop()
         self._loop = loop
         self._size = 0
         self._cursor = 0

@@ -1011,7 +1011,6 @@ def test_static_route_user_home(router: web.UrlDispatcher) -> None:
         static_dir = pathlib.Path("~") / here.relative_to(pathlib.Path.home())
     except ValueError:
         pytest.skip("aiohttp folder is not placed in user's HOME")
-        return  # TODO: Remove and fix type error
     route = router.add_static("/st", str(static_dir))
     assert here == route.get_info()["directory"]
 

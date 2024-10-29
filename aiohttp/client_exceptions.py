@@ -331,7 +331,7 @@ if ssl is not None:
     ssl_errors = (ssl.SSLError,)
     ssl_error_bases = (ClientSSLError, ssl.SSLError)
 else:  # pragma: no cover
-    cert_errors = tuple()
+    cert_errors = tuple()  # type: ignore[unreachable]
     cert_errors_bases = (
         ClientSSLError,
         ValueError,

@@ -777,10 +777,6 @@ async def test_get_extra_info() -> None:
     extra_info = req.get_extra_info(valid_key, default_value)
     assert extra_info == default_value
 
-    req._protocol = None  # type: ignore[assignment]
-    extra_info = req.get_extra_info(valid_key, default_value)
-    assert extra_info == default_value
-
 
 def test_eq() -> None:
     req1 = make_mocked_request("GET", "/path/to?a=1&b=2")

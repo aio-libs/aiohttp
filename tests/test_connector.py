@@ -2324,7 +2324,7 @@ async def test_connect_with_limit(
         connection1.release()
         await asyncio.sleep(0)
         assert acquired
-        await task
+        await task  # type: ignore[unreachable]
         await conn.close()
 
 
@@ -2438,7 +2438,7 @@ async def test_connect_with_limit_and_limit_per_host(
         connection1.release()
         await asyncio.sleep(0)
         assert acquired
-        await task
+        await task  # type: ignore[unreachable]
         await conn.close()
 
 
@@ -2471,7 +2471,7 @@ async def test_connect_with_no_limit_and_limit_per_host(
         connection1.release()
         await asyncio.sleep(0)
         assert acquired
-        await task
+        await task  # type: ignore[unreachable]
         await conn.close()
 
 

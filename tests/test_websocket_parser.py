@@ -89,8 +89,6 @@ def build_close_frame(
     code: int = 1000, message: bytes = b"", noheader: bool = False
 ) -> bytes:
     # Close the websocket, sending the specified code and message.
-    if isinstance(message, str):  # pragma: no cover
-        message = message.encode("utf-8")
     return build_frame(
         PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE, noheader=noheader
     )

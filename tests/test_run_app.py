@@ -982,7 +982,7 @@ def test_run_app_context_vars(patched_loop: asyncio.AbstractEventLoop) -> None:
 def test_run_app_raises_exception(patched_loop: asyncio.AbstractEventLoop) -> None:
     async def context(app: web.Application) -> AsyncIterator[None]:
         raise RuntimeError("foo")
-        yield  # pragma: no cover
+        yield  # type: ignore[unreachable]  # pragma: no cover
 
     app = web.Application()
     app.cleanup_ctx.append(context)

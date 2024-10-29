@@ -618,7 +618,7 @@ async def test_client_close_handshake(
         assert not ws.closed
         await ws.close()
         assert ws.closed
-        assert ws.close_code == WSCloseCode.INVALID_TEXT
+        assert ws.close_code == WSCloseCode.INVALID_TEXT  # type: ignore[unreachable]
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSED
@@ -978,7 +978,7 @@ async def test_websocket_disable_keepalive(
         assert request.protocol._keepalive
         await ws.prepare(request)
         assert not request.protocol._keepalive
-        assert not request.protocol._keepalive_handle
+        assert not request.protocol._keepalive_handle  # type: ignore[unreachable]
 
         await ws.send_str("OK")
         await ws.close()

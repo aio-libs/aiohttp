@@ -736,7 +736,7 @@ def _make_ssl_context(verified: bool) -> SSLContext:
     """
     if ssl is None:
         # No ssl support
-        return None
+        return None  # type: ignore[unreachable]
     if verified:
         return ssl.create_default_context()
     sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -1082,7 +1082,7 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             raise client_error(req.connection_key, exc) from exc
 
@@ -1171,7 +1171,7 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             raise client_error(req.connection_key, exc) from exc
         except TypeError as type_err:
@@ -1242,7 +1242,7 @@ class TCPConnector(BaseConnector):
             #  across all connections.
             hosts = await self._resolve_host(host, port, traces=traces)
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
@@ -1437,7 +1437,7 @@ class UnixConnector(BaseConnector):
                     self._factory, self._path
                 )
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
@@ -1506,7 +1506,7 @@ class NamedPipeConnector(BaseConnector):
                 # other option is to manually set transport like
                 # `proto.transport = trans`
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             raise ClientConnectorError(req.connection_key, exc) from exc
 

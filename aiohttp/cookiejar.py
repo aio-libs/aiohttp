@@ -302,7 +302,7 @@ class CookieJar(AbstractCookieJar):
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
         if not isinstance(request_url, URL):
-            warnings.warn(
+            warnings.warn(  # type: ignore[unreachable]
                 "The method accepts yarl.URL instances only, got {}".format(
                     type(request_url)
                 ),
@@ -466,7 +466,7 @@ class DummyCookieJar(AbstractCookieJar):
 
     def __iter__(self) -> "Iterator[Morsel[str]]":
         while False:
-            yield None
+            yield None  # type: ignore[unreachable]
 
     def __len__(self) -> int:
         return 0
