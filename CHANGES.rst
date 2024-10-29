@@ -4971,7 +4971,7 @@ Misc
 - Deprecate Application.finish() / Application.register_on_finish() in favor of on_cleanup.
 - Get rid of bare aiohttp.request(), aiohttp.get() and family in docs (`#729 <https://github.com/aio-libs/aiohttp/pull/729>`_)
 - Deprecate bare aiohttp.request(), aiohttp.get() and family (`#729 <https://github.com/aio-libs/aiohttp/pull/729>`_)
-- Refactor keep-alive support (`#737 <https://github.com/aio-libs/aiohttp/pull/737>`_):
+- Refactor keep-alive support (`#737 <https://github.com/aio-libs/aiohttp/pull/737>`_)
   - Enable keepalive for HTTP 1.0 by default
   - Disable it for HTTP 0.9 (who cares about 0.9, BTW?)
   - For keepalived connections
@@ -4983,8 +4983,7 @@ Misc
 - Add version parameter to ClientSession constructor,
   deprecate it for session.request() and family (`#736 <https://github.com/aio-libs/aiohttp/pull/736>`_)
 - Enable access log by default (`#735 <https://github.com/aio-libs/aiohttp/pull/735>`_)
-- Deprecate app.router.register_route() (the method was not documented
-  intentionally BTW).
+- Deprecate app.router.register_route() (the method was not documented intentionally BTW).
 - Deprecate app.router.named_routes() in favor of app.router.named_resources()
 - route.add_static accepts pathlib.Path now (`#743 <https://github.com/aio-libs/aiohttp/pull/743>`_)
 - Add command line support: `$ python -m aiohttp.web package.main` (`#740 <https://github.com/aio-libs/aiohttp/pull/740>`_)
