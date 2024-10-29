@@ -42,7 +42,6 @@ from .client_exceptions import (
     ServerFingerprintMismatch,
 )
 from .compression_utils import HAS_BROTLI
-from .cookiejar import FastMorsel
 from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
@@ -420,7 +419,7 @@ class ClientRequest:
         for name, value in iter_cookies:
             if isinstance(value, Morsel):
                 # Preserve coded_value
-                mrsl_val = value.get(value.key, FastMorsel())
+                mrsl_val = value.get(value.key, Morsel())
                 mrsl_val.set(value.key, value.value, value.coded_value)
                 c[name] = mrsl_val
             else:
