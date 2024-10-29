@@ -302,9 +302,9 @@ class ClientSession:
         else:
             self._base_url = URL(base_url)
             self._base_url_origin = self._base_url.origin()
-            assert (
-                self._base_url_origin == self._base_url
-            ), "Only absolute URLs without path part are supported"
+            assert self._base_url.absolute, "Only absolute URLs are supported"
+        if self._base_url is not None and not self._base_url.path.endswith("/"):
+            raise ValueError("base_url must have a trailing '/'")
 
         loop = asyncio.get_running_loop()
 
@@ -417,7 +417,7 @@ class ClientSession:
         if self._base_url is None:
             return url
         else:
-            assert not url.absolute and url.path.startswith("/")
+            assert not url.absolute
             return self._base_url.join(url)
 
     async def _request(
@@ -474,7 +474,7 @@ class ClientSession:
             data = payload.JsonPayload(json, dumps=self._json_serialize)
 
         redirects = 0
-        history = []
+        history: List[ClientResponse] = []
         version = self._version
         params = params or {}
 
@@ -562,13 +562,18 @@ class ClientSession:
                             else InvalidUrlClientError
                         )
                         raise err_exc_cls(url)
-                    if auth and auth_from_url:
+                    # If `auth` was passed for an already authenticated URL,
+                    # disallow only if this is the initial URL; this is to avoid issues
+                    # with sketchy redirects that are not the caller's responsibility
+                    if not history and (auth and auth_from_url):
                         raise ValueError(
                             "Cannot combine AUTH argument with "
                             "credentials encoded in URL"
                         )
 
-                    if auth is None:
+                    # Override the auth with the one from the URL only if we
+                    # have no auth, or if we got an auth from a redirect URL
+                    if auth is None or (history and auth_from_url is not None):
                         auth = auth_from_url
 
                     if (

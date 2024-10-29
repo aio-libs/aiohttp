@@ -922,7 +922,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
                              autoclose=True, autoping=True, heartbeat=None, \
-                             protocols=(), compress=True, max_msg_size=4194304)
+                             protocols=(), compress=True, max_msg_size=4194304, \
+                             writer_limit=65536)
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -973,6 +974,11 @@ and :ref:`aiohttp-web-signals` handlers::
                            ``request.transport.close()`` to avoid
                            leaking resources.
 
+   :param int writer_limit: maximum size of write buffer, 64 KB by default.
+                            Once the buffer is full, the websocket will pause
+                            to drain the buffer.
+
+      .. versionadded:: 3.11
 
    The class supports ``async for`` statement for iterating over
    incoming messages::

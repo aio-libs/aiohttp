@@ -10,6 +10,7 @@ from typing import Any, Final, Iterable, Optional, Tuple
 from multidict import CIMultiDict
 
 from . import hdrs
+from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
 from .client_exceptions import WSMessageTypeError
 from .helpers import calculate_timeout_when, set_exception, set_result
@@ -83,6 +84,7 @@ class WebSocketResponse(StreamResponse):
         "_compress",
         "_max_msg_size",
         "_ping_task",
+        "_writer_limit",
     )
 
     def __init__(
@@ -96,6 +98,7 @@ class WebSocketResponse(StreamResponse):
         protocols: Iterable[str] = (),
         compress: bool = True,
         max_msg_size: int = 4 * 1024 * 1024,
+        writer_limit: int = DEFAULT_LIMIT,
     ) -> None:
         super().__init__(status=101)
         self._length_check = False
@@ -124,6 +127,7 @@ class WebSocketResponse(StreamResponse):
         self._compress = compress
         self._max_msg_size = max_msg_size
         self._ping_task: Optional[asyncio.Task[None]] = None
+        self._writer_limit = writer_limit
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
@@ -180,13 +184,14 @@ class WebSocketResponse(StreamResponse):
         self._cancel_pong_response_cb()
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
+        coro = self._writer.send_frame(b"", WSMsgType.PING)
         if sys.version_info >= (3, 12):
             # Optimization for Python 3.12, try to send the ping
             # immediately to avoid having to schedule
             # the task on the event loop.
-            ping_task = asyncio.Task(self._writer.ping(), loop=loop, eager_start=True)
+            ping_task = asyncio.Task(coro, loop=loop, eager_start=True)
         else:
-            ping_task = loop.create_task(self._writer.ping())
+            ping_task = loop.create_task(coro)
 
         if not ping_task.done():
             self._ping_task = ping_task
@@ -331,7 +336,11 @@ class WebSocketResponse(StreamResponse):
         transport = request._protocol.transport
         assert transport is not None
         writer = WebSocketWriter(
-            request._protocol, transport, compress=compress, notakeover=notakeover
+            request._protocol,
+            transport,
+            compress=compress,
+            notakeover=notakeover,
+            limit=self._writer_limit,
         )
 
         return protocol, writer
@@ -398,13 +407,13 @@ class WebSocketResponse(StreamResponse):
     async def ping(self, message: bytes = b"") -> None:
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
-        await self._writer.ping(message)
+        await self._writer.send_frame(message, WSMsgType.PING)
 
     async def pong(self, message: bytes = b"") -> None:
         # unsolicited pong
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
-        await self._writer.pong(message)
+        await self._writer.send_frame(message, WSMsgType.PONG)
 
     async def send_frame(
         self, message: bytes, opcode: WSMsgType, compress: Optional[int] = None
