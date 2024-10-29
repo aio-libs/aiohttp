@@ -370,7 +370,7 @@ class CookieJar(AbstractCookieJar):
 
                 # It's critical we use the Morsel so the coded_value
                 # (based on cookie version) is preserved
-                mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
+                mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, FastMorsel()))
                 mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
                 self._morsel_cache[p][name] = mrsl_val
                 filtered[name] = mrsl_val
@@ -482,3 +482,15 @@ class DummyCookieJar(AbstractCookieJar):
 
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         return SimpleCookie()
+
+
+class FastMorsel(Morsel):
+    """A faster Morsel implementation."""
+
+    _empty_reserved = {key: "" for key in Morsel._reserved}
+
+    def __init__(self):
+        # Set defaults
+        self._key = self._value = self._coded_value = None
+        # Set default attributes
+        super().__init__(self._empty_reserved)
