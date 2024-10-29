@@ -149,7 +149,7 @@ class Fingerprint:
 if ssl is not None:
     SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint)
 else:  # pragma: no cover
-    SSL_ALLOWED_TYPES = (bool,)
+    SSL_ALLOWED_TYPES = (bool,)  # type: ignore[unreachable]
 
 
 _SSL_SCHEMES = frozenset(("https", "wss"))
@@ -193,7 +193,7 @@ class ClientRequest:
     auth = None
     response = None
 
-    __writer = None  # async task for streaming data
+    __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
     # N.B.
@@ -589,7 +589,7 @@ class ClientRequest:
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
-            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
+            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(  # type: ignore[unreachable]
                 underlying_exc, asyncio.TimeoutError
             )
             if exc_is_not_timeout:
@@ -754,14 +754,14 @@ class ClientResponse(HeadersMixin):
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
-    _connection = None  # current connection
+    _connection: Optional["Connection"] = None  # current connection
     _source_traceback: Optional[traceback.StackSummary] = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
     _in_context = False
-    __writer = None
+    __writer: Optional["asyncio.Task[None]"] = None
 
     def __init__(
         self,
@@ -801,7 +801,7 @@ class ClientResponse(HeadersMixin):
         # work after the response has finished reading the body.
         if session is None:
             # TODO: Fix session=None in tests (see ClientRequest.__init__).
-            self._resolve_charset: Callable[["ClientResponse", bytes], str] = (
+            self._resolve_charset: Callable[["ClientResponse", bytes], str] = (  # type: ignore[unreachable]
                 lambda *_: "utf-8"
             )
         else:

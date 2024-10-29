@@ -118,7 +118,7 @@ async def test_connection_lost_waiter_done() -> None:
     pr._drain_waiter = waiter
     pr.connection_lost(None)
     assert pr._drain_waiter is None
-    assert waiter.mock_calls == [mock.call.done()]
+    assert waiter.mock_calls == [mock.call.done()]  # type: ignore[unreachable]
 
 
 async def test_drain_lost() -> None:

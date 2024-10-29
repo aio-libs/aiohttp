@@ -1973,7 +1973,7 @@ async def test_context_manager_close_on_release(
             assert resp.status == 200
             assert resp.connection is not None
         assert resp.connection is None
-        assert proto.close.called
+        assert proto.close.called  # type: ignore[unreachable]
 
         resp.release()  # Trigger handler completion
 
@@ -2272,7 +2272,7 @@ async def test_no_body_for_1xx_204_304_responses(
 
 
 async def test_keepalive_race_condition(aiohttp_client: AiohttpClient) -> None:
-    protocol = None
+    protocol: Optional[RequestHandler[web.Request]] = None
     orig_data_received = RequestHandler.data_received
 
     def delay_received(self: RequestHandler[web.Request], data: bytes) -> None:
