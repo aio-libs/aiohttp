@@ -7,6 +7,7 @@ from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
 from yarl import URL
 
 from aiohttp.client_reqrep import ClientRequest
+from aiohttp.http_writer import HttpVersion11
 
 
 def test_client_request_update_cookies(
@@ -20,3 +21,47 @@ def test_client_request_update_cookies(
     @benchmark
     def _run() -> None:
         req.update_cookies(cookies=morsel_cookie)
+
+
+def test_create_client_request_with_cookies(
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+) -> None:
+    url = URL("http://python.org")
+
+    @benchmark
+    def _run() -> None:
+        ClientRequest(
+            method="get",
+            url=url,
+            loop=loop,
+            headers=None,
+            data=None,
+            cookies={"cookie": "value"},
+            auth=None,
+            version=HttpVersion11,
+            compress=False,
+            chunked=None,
+            expect100=False,
+        )
+
+
+def test_create_client_request_with_headers(
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+) -> None:
+    url = URL("http://python.org")
+
+    @benchmark
+    def _run() -> None:
+        ClientRequest(
+            method="get",
+            url=url,
+            loop=loop,
+            headers={"header": "value", "another": "header"},
+            data=None,
+            cookies=None,
+            auth=None,
+            version=HttpVersion11,
+            compress=False,
+            chunked=None,
+            expect100=False,
+        )
