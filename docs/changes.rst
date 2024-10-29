@@ -16,5 +16,3 @@ Changelog
 
 .. include:: ../CHANGES.rst
    :start-after: .. towncrier release notes start
-
-.. include:: ../HISTORY.rst
