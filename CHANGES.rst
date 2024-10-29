@@ -4611,9 +4611,8 @@ Misc
   but `ClientResponse.url` is an `yarl.URL` instance now. (`#1217 <https://github.com/aio-libs/aiohttp/pull/1217>`_)
 - Close idle keep-alive connections on shutdown (`#1222 <https://github.com/aio-libs/aiohttp/pull/1222>`_)
 - Modify regex in AccessLogger to accept underscore and numbers (`#1225 <https://github.com/aio-libs/aiohttp/pull/1225>`_)
-- Use `yarl.URL` in web server API. `web.Request.rel_url` and
-  `web.Request.url` are added. URLs and templates are percent-encoded
-  now. (`#1224 <https://github.com/aio-libs/aiohttp/pull/1224>`_)
+- Use `yarl.URL` in web server API. `web.Request.rel_url` and `web.Request.url` are added. URLs and templates are
+  percent-encoded now. (`#1224 <https://github.com/aio-libs/aiohttp/pull/1224>`_)
 - Accept `yarl.URL` by server redirections (`#1278 <https://github.com/aio-libs/aiohttp/pull/1278>`_)
 - Return `yarl.URL` by `.make_url()` testing utility (`#1279 <https://github.com/aio-libs/aiohttp/pull/1279>`_)
 - Properly format IPv6 addresses by `aiohttp.web.run_app` (`#1139 <https://github.com/aio-libs/aiohttp/pull/1139>`_)
@@ -4969,8 +4968,7 @@ Misc
 - Implement raw input headers (`#726 <https://github.com/aio-libs/aiohttp/pull/726>`_)
 - Implement web.run_app utility function (`#734 <https://github.com/aio-libs/aiohttp/pull/734>`_)
 - Introduce on_cleanup signal
-- Deprecate Application.finish() / Application.register_on_finish() in favor of
-  on_cleanup.
+- Deprecate Application.finish() / Application.register_on_finish() in favor of on_cleanup.
 - Get rid of bare aiohttp.request(), aiohttp.get() and family in docs (`#729 <https://github.com/aio-libs/aiohttp/pull/729>`_)
 - Deprecate bare aiohttp.request(), aiohttp.get() and family (`#729 <https://github.com/aio-libs/aiohttp/pull/729>`_)
 - Refactor keep-alive support (`#737 <https://github.com/aio-libs/aiohttp/pull/737>`_):
