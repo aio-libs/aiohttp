@@ -4617,6 +4617,7 @@ Misc
 - Return `yarl.URL` by `.make_url()` testing utility (`#1279 <https://github.com/aio-libs/aiohttp/pull/1279>`_)
 - Properly format IPv6 addresses by `aiohttp.web.run_app` (`#1139 <https://github.com/aio-libs/aiohttp/pull/1139>`_)
 - Use `yarl.URL` by server API (`#1288 <https://github.com/aio-libs/aiohttp/pull/1288>`_)
+
   * Introduce `resource.url_for()`, deprecate `resource.url()`.
   * Implement `StaticResource`.
   * Inherit `SystemRoute` from `AbstractRoute`
@@ -4972,12 +4973,15 @@ Misc
 - Get rid of bare aiohttp.request(), aiohttp.get() and family in docs (`#729 <https://github.com/aio-libs/aiohttp/pull/729>`_)
 - Deprecate bare aiohttp.request(), aiohttp.get() and family (`#729 <https://github.com/aio-libs/aiohttp/pull/729>`_)
 - Refactor keep-alive support (`#737 <https://github.com/aio-libs/aiohttp/pull/737>`_)
+
   - Enable keepalive for HTTP 1.0 by default
   - Disable it for HTTP 0.9 (who cares about 0.9, BTW?)
   - For keepalived connections
+
       - Send `Connection: keep-alive` for HTTP 1.0 only
       - don't send `Connection` header for HTTP 1.1
   - For non-keepalived connections
+
       - Send `Connection: close` for HTTP 1.1 only
       - don't send `Connection` header for HTTP 1.0
 - Add version parameter to ClientSession constructor,
