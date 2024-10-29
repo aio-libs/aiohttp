@@ -321,7 +321,7 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
 
     async def fail_ctx(app: web.Application) -> AsyncIterator[NoReturn]:
         raise Exception()
-        yield  # type: ignore[unreachable]
+        yield  # type: ignore[unreachable]  # pragma: no cover
 
     app.cleanup_ctx.append(success_ctx)
     app.cleanup_ctx.append(fail_ctx)
