@@ -493,4 +493,4 @@ class FastMorsel(Morsel):
         # Set defaults
         self._key = self._value = self._coded_value = None
         # Set default attributes
-        super().__init__(self._empty_reserved)
+        dict.__init__(self._empty_reserved)
