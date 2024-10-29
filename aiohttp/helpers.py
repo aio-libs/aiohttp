@@ -258,7 +258,7 @@ def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAu
     # TODO(PY311): Remove this, as password will be empty string
     # if not specified
     if password is None:
-        password = ""
+        password = ""  # type: ignore[unreachable]
 
     return BasicAuth(username, password)
 
@@ -747,11 +747,7 @@ class HeadersMixin:
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
         content_length = self._headers.get(hdrs.CONTENT_LENGTH)
-
-        if content_length is not None:
-            return int(content_length)
-        else:
-            return None
+        return None if content_length is None else int(content_length)
 
 
 def set_result(fut: "asyncio.Future[_T]", result: _T) -> None:
@@ -804,6 +800,7 @@ class AppKey(Generic[_T]):
     # like Iterable, which can't be passed as the second parameter to __init__.
     __orig_class__: Type[object]
 
+    # TODO(PY314): Change Type to TypeForm (this should resolve unreachable below).
     def __init__(self, name: str, t: Optional[Type[_T]] = None):
         # Prefix with module name to help deduplicate key names.
         frame = inspect.currentframe()
@@ -839,7 +836,7 @@ class AppKey(Generic[_T]):
             else:
                 t_repr = f"{t.__module__}.{t.__qualname__}"
         else:
-            t_repr = repr(t)
+            t_repr = repr(t)  # type: ignore[unreachable]
         return f"<AppKey({self._name}, type={t_repr})>"
 
 

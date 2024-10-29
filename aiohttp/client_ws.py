@@ -4,7 +4,7 @@ import asyncio
 import dataclasses
 import sys
 from types import TracebackType
-from typing import Any, Final, Optional, Type, cast
+from typing import Any, Final, Optional, Type
 
 from .client_exceptions import ClientError, ServerTimeoutError
 from .client_reqrep import ClientResponse
@@ -17,7 +17,7 @@ from .http import (
     WSMessage,
     WSMsgType,
 )
-from .http_websocket import WebSocketWriter  # WSMessage
+from .http_websocket import WebSocketWriter, WSMessageError
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -141,13 +141,14 @@ class ClientWebSocketResponse:
         self._cancel_pong_response_cb()
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
+        coro = self._writer.send_frame(b"", WSMsgType.PING)
         if sys.version_info >= (3, 12):
             # Optimization for Python 3.12, try to send the ping
             # immediately to avoid having to schedule
             # the task on the event loop.
-            ping_task = asyncio.Task(self._writer.ping(), loop=loop, eager_start=True)
+            ping_task = asyncio.Task(coro, loop=loop, eager_start=True)
         else:
-            ping_task = loop.create_task(self._writer.ping())
+            ping_task = loop.create_task(coro)
 
         if not ping_task.done():
             self._ping_task = ping_task
@@ -173,7 +174,7 @@ class ClientWebSocketResponse:
         self._exception = exc
         self._response.close()
         if self._waiting and not self._closing:
-            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
+            self._reader.feed_data(WSMessageError(data=exc, extra=None))
 
     def _set_closed(self) -> None:
         """Set the connection to closed.
@@ -225,10 +226,10 @@ class ClientWebSocketResponse:
         return self._exception
 
     async def ping(self, message: bytes = b"") -> None:
-        await self._writer.ping(message)
+        await self._writer.send_frame(message, WSMsgType.PING)
 
     async def pong(self, message: bytes = b"") -> None:
-        await self._writer.pong(message)
+        await self._writer.send_frame(message, WSMsgType.PONG)
 
     async def send_frame(
         self, message: bytes, opcode: WSMsgType, compress: Optional[int] = None
@@ -342,7 +343,7 @@ class ClientWebSocketResponse:
             except EofStream:
                 self._close_code = WSCloseCode.OK
                 await self.close()
-                return WSMessage(WSMsgType.CLOSED, None, None)
+                return WS_CLOSED_MESSAGE
             except ClientError:
                 # Likely ServerDisconnectedError when connection is lost
                 self._set_closed()
@@ -351,13 +352,13 @@ class ClientWebSocketResponse:
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._set_closing()
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 await self.close()
-                return WSMessage(WSMsgType.ERROR, exc, None)
+                return WSMessageError(data=exc)
 
             if msg.type is WSMsgType.CLOSE:
                 self._set_closing()
@@ -379,13 +380,13 @@ class ClientWebSocketResponse:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not str")
-        return cast(str, msg.data)
+        return msg.data
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
             raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
-        return cast(bytes, msg.data)
+        return msg.data
 
     async def receive_json(
         self,

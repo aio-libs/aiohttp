@@ -1,1 +1,1 @@
-Deprecate obsolete `timeout: float` and `receive_timeout: Optional[float]` in `ClientSession.ws_connect()`. Change default websocket receive timeout from `None` to `10.0`.
+Deprecate obsolete `timeout: float` and `receive_timeout: Optional[float]` in :py:meth:`~aiohttp.ClientSession.ws_connect`. Change default websocket receive timeout from `None` to `10.0`.

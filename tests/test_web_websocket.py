@@ -9,7 +9,8 @@ from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 
 from aiohttp import WSMsgType, web
-from aiohttp.http import WS_CLOSED_MESSAGE, WSMessage
+from aiohttp.http import WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE
+from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web_ws import WebSocketReady
@@ -236,6 +237,18 @@ def test_closed_after_ctor() -> None:
     assert ws.close_code is None
 
 
+async def test_raise_writer_limit(make_request: _RequestMaker) -> None:
+    """Test the writer limit can be adjusted."""
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse(writer_limit=1234567)
+    await ws.prepare(req)
+    assert ws._reader is not None
+    assert ws._writer is not None
+    assert ws._writer._limit == 1234567
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    await ws.close()
+
+
 async def test_send_str_closed(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
@@ -420,7 +433,7 @@ async def test_receive_close_but_left_open(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    close_message = WSMessage(WSMsgType.CLOSE, 1000, "close")
+    close_message = WSMessageClose(data=1000, extra="close")
 
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=close_message)
@@ -442,7 +455,7 @@ async def test_receive_closing(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+    closing_message = WS_CLOSING_MESSAGE
 
     ws._reader = mock.Mock()
     read_mock = mock.AsyncMock(return_value=closing_message)
@@ -472,7 +485,7 @@ async def test_close_after_closing(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    closing_message = WSMessage(WSMsgType.CLOSING, 1000, "closing")
+    closing_message = WS_CLOSING_MESSAGE
 
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=closing_message)
@@ -489,7 +502,7 @@ async def test_close_after_closing(
 
     await ws.close()
     assert ws.closed
-    assert len(req.transport.close.mock_calls) == 1
+    assert len(req.transport.close.mock_calls) == 1  # type: ignore[unreachable]
 
 
 async def test_receive_timeouterror(
@@ -616,7 +629,6 @@ async def test_no_transfer_encoding_header(
             "existent",
         ),
         (None, "default"),
-        (mock.MagicMock(transport=None), "default"),
     ],
 )
 async def test_get_extra_info(

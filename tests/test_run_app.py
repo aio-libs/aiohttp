@@ -175,7 +175,7 @@ mock_server_default_8989 = [
         mock.ANY, None, 8989, ssl=None, backlog=128, reuse_address=None, reuse_port=None
     )
 ]
-mock_socket: Any = mock.Mock(getsockname=lambda: ("mock-socket", 123))
+mock_socket = mock.Mock(getsockname=lambda: ("mock-socket", 123))
 mixed_bindings_tests: Tuple[
     Tuple[str, Dict[str, Any], List[mock._Call], List[mock._Call]], ...
 ] = (
@@ -982,7 +982,7 @@ def test_run_app_context_vars(patched_loop: asyncio.AbstractEventLoop) -> None:
 def test_run_app_raises_exception(patched_loop: asyncio.AbstractEventLoop) -> None:
     async def context(app: web.Application) -> AsyncIterator[None]:
         raise RuntimeError("foo")
-        yield  # pragma: no cover
+        yield  # type: ignore[unreachable]  # pragma: no cover
 
     app = web.Application()
     app.cleanup_ctx.append(context)

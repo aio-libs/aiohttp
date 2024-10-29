@@ -41,6 +41,7 @@ async def test_websocket_json(
         await ws.prepare(request)
         msg = await ws.receive()
 
+        assert msg.type is WSMsgType.TEXT
         msg_json = msg.json()
         answer = msg_json["test"]
         await ws.send_str(answer)
@@ -234,6 +235,7 @@ async def test_send_recv_json(
 
     await ws.send_str('{"request": "test"}')
     msg = await ws.receive()
+    assert msg.type is WSMsgType.TEXT
     data = msg.json()
     assert msg.type == aiohttp.WSMsgType.TEXT
     assert data["response"] == "test"
@@ -616,7 +618,7 @@ async def test_client_close_handshake(
         assert not ws.closed
         await ws.close()
         assert ws.closed
-        assert ws.close_code == WSCloseCode.INVALID_TEXT
+        assert ws.close_code == WSCloseCode.INVALID_TEXT  # type: ignore[unreachable]
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSED
@@ -783,12 +785,14 @@ async def test_heartbeat_connection_closed(
         with mock.patch.object(
             ws_server._req.transport, "write", side_effect=ConnectionResetError
         ), mock.patch.object(
-            ws_server._writer, "ping", wraps=ws_server._writer.ping
-        ) as ping:
+            ws_server._writer, "send_frame", wraps=ws_server._writer.send_frame
+        ) as send_frame:
             try:
                 await ws_server.receive()
             finally:
-                ping_count = ping.call_count
+                ping_count = send_frame.call_args_list.count(
+                    mock.call(b"", WSMsgType.PING)
+                )
         assert False
 
     app = web.Application()
@@ -974,7 +978,7 @@ async def test_websocket_disable_keepalive(
         assert request.protocol._keepalive
         await ws.prepare(request)
         assert not request.protocol._keepalive
-        assert not request.protocol._keepalive_handle
+        assert not request.protocol._keepalive_handle  # type: ignore[unreachable]
 
         await ws.send_str("OK")
         await ws.close()
@@ -1173,6 +1177,7 @@ async def test_websocket_shutdown(aiohttp_client: AiohttpClient) -> None:
 
         try:
             async for message in websocket:
+                assert message.type is WSMsgType.TEXT
                 await websocket.send_json({"ok": True, "message": message.json()})
         finally:
             request.app[websockets].discard(websocket)

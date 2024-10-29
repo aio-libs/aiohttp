@@ -3,22 +3,34 @@ import pickle
 import random
 import struct
 import zlib
+from typing import Union
 from unittest import mock
 
 import pytest
 
 import aiohttp
-from aiohttp import http_websocket
-from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
-from aiohttp.http_websocket import (
-    _WS_DEFLATE_TRAILING,
+from aiohttp._websocket import helpers as _websocket_helpers
+from aiohttp._websocket.helpers import (
     PACK_CLOSE_CODE,
     PACK_LEN1,
     PACK_LEN2,
     PACK_LEN3,
-    WebSocketReader,
-    _websocket_mask,
+    websocket_mask,
 )
+from aiohttp._websocket.models import WS_DEFLATE_TRAILING
+from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
+from aiohttp.http_websocket import (
+    WebSocketReader,
+    WSMessageBinary,
+    WSMessageClose,
+    WSMessagePing,
+    WSMessagePong,
+    WSMessageText,
+)
+
+
+class PatchableWebSocketReader(WebSocketReader):
+    """WebSocketReader subclass that allows for patching parse_frame."""
 
 
 def build_frame(
@@ -34,7 +46,7 @@ def build_frame(
         compressobj = zlib.compressobj(wbits=-9)
         message = compressobj.compress(message)
         message = message + compressobj.flush(zlib.Z_SYNC_FLUSH)
-        if message.endswith(_WS_DEFLATE_TRAILING):
+        if message.endswith(WS_DEFLATE_TRAILING):
             message = message[:-4]
     msg_length = len(message)
     if use_mask:  # pragma: no cover
@@ -61,7 +73,7 @@ def build_frame(
         maski = random.randrange(0, 0xFFFFFFFF)
         mask = maski.to_bytes(4, "big")
         message = bytearray(message)
-        _websocket_mask(mask, message)
+        websocket_mask(mask, message)
         if noheader:
             return message
         else:
@@ -77,8 +89,6 @@ def build_close_frame(
     code: int = 1000, message: bytes = b"", noheader: bool = False
 ) -> bytes:
     # Close the websocket, sending the specified code and message.
-    if isinstance(message, str):  # pragma: no cover
-        message = message.encode("utf-8")
     return build_frame(
         PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE, noheader=noheader
     )
@@ -90,8 +100,19 @@ def out(loop: asyncio.AbstractEventLoop) -> aiohttp.DataQueue[WSMessage]:
 
 
 @pytest.fixture()
-def parser(out: aiohttp.DataQueue[WSMessage]) -> WebSocketReader:
-    return WebSocketReader(out, 4 * 1024 * 1024)
+def parser(out: aiohttp.DataQueue[WSMessage]) -> PatchableWebSocketReader:
+    return PatchableWebSocketReader(out, 4 * 1024 * 1024)
+
+
+def test_feed_data_remembers_exception(parser: WebSocketReader) -> None:
+    """Verify that feed_data remembers an exception was already raised internally."""
+    error, data = parser.feed_data(struct.pack("!BB", 0b01100000, 0b00000000))
+    assert error is True
+    assert data == b""
+
+    error, data = parser.feed_data(b"")
+    assert error is True
+    assert data == b""
 
 
 def test_parse_frame(parser: WebSocketReader) -> None:
@@ -117,6 +138,17 @@ def test_parse_frame_length2(parser: WebSocketReader) -> None:
     fin, opcode, payload, compress = res[0]
 
     assert (0, 1, b"1234", False) == (fin, opcode, payload, not not compress)
+
+
+def test_parse_frame_length2_multi_byte(parser: WebSocketReader) -> None:
+    """Ensure a multi-byte length is parsed correctly."""
+    expected_payload = b"1" * 32768
+    parser.parse_frame(struct.pack("!BB", 0b00000001, 126))
+    parser.parse_frame(struct.pack("!H", 32768))
+    res = parser.parse_frame(b"1" * 32768)
+    fin, opcode, payload, compress = res[0]
+
+    assert (0, 1, expected_payload, False) == (fin, opcode, payload, not not compress)
 
 
 def test_parse_frame_length4(parser: WebSocketReader) -> None:
@@ -164,13 +196,24 @@ def test_parse_frame_header_payload_size(
         parser.parse_frame(struct.pack("!BB", 0b10001000, 0b01111110))
 
 
-def test_ping_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) -> None:
+# Protractor event loop will call feed_data with bytearray. Since
+# asyncio technically supports memoryview as well, we should test that.
+@pytest.mark.parametrize(
+    argnames="data",
+    argvalues=[b"", bytearray(b""), memoryview(b"")],
+    ids=["bytes", "bytearray", "memoryview"],
+)
+def test_ping_frame(
+    out: aiohttp.DataQueue[WSMessage],
+    parser: WebSocketReader,
+    data: Union[bytes, bytearray, memoryview],
+) -> None:
     with mock.patch.object(parser, "parse_frame", autospec=True) as m:
         m.return_value = [(1, WSMsgType.PING, b"data", False)]
 
-        parser.feed_data(b"")
+        parser.feed_data(data)
         res = out._buffer[0]
-        assert res == (WSMsgType.PING, b"data", "")
+        assert res == WSMessagePing(data=b"data", extra="")
 
 
 def test_pong_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) -> None:
@@ -179,7 +222,7 @@ def test_pong_frame(out: aiohttp.DataQueue[WSMessage], parser: WebSocketReader) 
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res == (WSMsgType.PONG, b"data", "")
+        assert res == WSMessagePong(data=b"data", extra="")
 
 
 def test_close_frame(
@@ -190,7 +233,7 @@ def test_close_frame(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res == (WSMsgType.CLOSE, 0, "")
+        assert res == WSMessageClose(data=0, extra="")
 
 
 def test_close_frame_info(
@@ -201,7 +244,7 @@ def test_close_frame_info(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res == WSMessage(WSMsgType.CLOSE, 12337, "12345")
+        assert res == WSMessageClose(data=12337, extra="12345")
 
 
 def test_close_frame_invalid(
@@ -252,7 +295,7 @@ def test_simple_text(
     data = build_frame(b"text", WSMsgType.TEXT)
     parser._feed_data(data)
     res = out._buffer[0]
-    assert res == (WSMsgType.TEXT, "text", "")
+    assert res == WSMessageText(data="text", extra="")
 
 
 def test_simple_text_unicode_err(parser: WebSocketReader) -> None:
@@ -272,7 +315,7 @@ def test_simple_binary(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res == (WSMsgType.BINARY, b"binary", "")
+        assert res == WSMessageBinary(data=b"binary", extra="")
 
 
 def test_fragmentation_header(
@@ -283,7 +326,7 @@ def test_fragmentation_header(
     parser._feed_data(data[1:])
 
     res = out._buffer[0]
-    assert res == (WSMessage(WSMsgType.TEXT, "a", ""))
+    assert res == WSMessageText(data="a", extra="")
 
 
 def test_continuation(
@@ -296,7 +339,7 @@ def test_continuation(
     parser._feed_data(data2)
 
     res = out._buffer[0]
-    assert res == (WSMessage(WSMsgType.TEXT, "line1line2", ""))
+    assert res == WSMessageText(data="line1line2", extra="")
 
 
 def test_continuation_with_ping(
@@ -319,9 +362,9 @@ def test_continuation_with_ping(
         parser._feed_data(data3)
 
         res = out._buffer[0]
-        assert res == WSMessage(WSMsgType.PING, b"", "")
+        assert res == WSMessagePing(data=b"", extra="")
         res = out._buffer[1]
-        assert res == WSMessage(WSMsgType.TEXT, "line1line2", "")
+        assert res == WSMessageText(data="line1line2", extra="")
 
 
 def test_continuation_err(
@@ -354,9 +397,9 @@ def test_continuation_with_close(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res, WSMessage(WSMsgType.CLOSE, 1002, "test")
+        assert res == WSMessageClose(data=1002, extra="test")
         res = out._buffer[1]
-        assert res == WSMessage(WSMsgType.TEXT, "line1line2", "")
+        assert res == WSMessageText(data="line1line2", extra="")
 
 
 def test_continuation_with_close_unicode_err(
@@ -424,9 +467,9 @@ def test_continuation_with_close_empty(
 
         parser.feed_data(b"")
         res = out._buffer[0]
-        assert res, WSMessage(WSMsgType.CLOSE, 0, "")
+        assert res == WSMessageClose(data=0, extra="")
         res = out._buffer[1]
-        assert res == WSMessage(WSMsgType.TEXT, "line1line2", "")
+        assert res == WSMessageText(data="line1line2", extra="")
 
 
 websocket_mask_data: bytes = b"some very long data for masking by websocket"
@@ -438,31 +481,34 @@ websocket_mask_masked: bytes = (
 
 def test_websocket_mask_python() -> None:
     message = bytearray(websocket_mask_data)
-    http_websocket._websocket_mask_python(websocket_mask_mask, message)
+    _websocket_helpers._websocket_mask_python(websocket_mask_mask, message)
     assert message == websocket_mask_masked
 
 
 @pytest.mark.skipif(
-    not hasattr(http_websocket, "_websocket_mask_cython"), reason="Requires Cython"
+    not hasattr(_websocket_helpers, "_websocket_mask_cython"), reason="Requires Cython"
 )
 def test_websocket_mask_cython() -> None:
     message = bytearray(websocket_mask_data)
-    http_websocket._websocket_mask_cython(websocket_mask_mask, message)  # type: ignore[attr-defined]
+    _websocket_helpers._websocket_mask_cython(websocket_mask_mask, message)  # type: ignore[attr-defined]
     assert message == websocket_mask_masked
+    assert (
+        _websocket_helpers.websocket_mask is _websocket_helpers._websocket_mask_cython  # type: ignore[attr-defined]
+    )
 
 
 def test_websocket_mask_python_empty() -> None:
     message = bytearray()
-    http_websocket._websocket_mask_python(websocket_mask_mask, message)
+    _websocket_helpers._websocket_mask_python(websocket_mask_mask, message)
     assert message == bytearray()
 
 
 @pytest.mark.skipif(
-    not hasattr(http_websocket, "_websocket_mask_cython"), reason="Requires Cython"
+    not hasattr(_websocket_helpers, "_websocket_mask_cython"), reason="Requires Cython"
 )
 def test_websocket_mask_cython_empty() -> None:
     message = bytearray()
-    http_websocket._websocket_mask_cython(websocket_mask_mask, message)  # type: ignore[attr-defined]
+    _websocket_helpers._websocket_mask_cython(websocket_mask_mask, message)  # type: ignore[attr-defined]
     assert message == bytearray()
 
 

@@ -29,6 +29,7 @@ __all__ = (
     "ClientConnectorError",
     "ClientProxyConnectionError",
     "ClientSSLError",
+    "ClientConnectorDNSError",
     "ClientConnectorSSLError",
     "ClientConnectorCertificateError",
     "ConnectionTimeoutError",
@@ -171,6 +172,14 @@ class ClientConnectorError(ClientOSError):
 
     # OSError.__reduce__ does too much black magick
     __reduce__ = BaseException.__reduce__
+
+
+class ClientConnectorDNSError(ClientConnectorError):
+    """DNS resolution failed during client connection.
+
+    Raised in :class:`aiohttp.connector.TCPConnector` if
+        DNS resolution fails.
+    """
 
 
 class ClientProxyConnectionError(ClientConnectorError):
@@ -322,7 +331,7 @@ if ssl is not None:
     ssl_errors = (ssl.SSLError,)
     ssl_error_bases = (ClientSSLError, ssl.SSLError)
 else:  # pragma: no cover
-    cert_errors = tuple()
+    cert_errors = tuple()  # type: ignore[unreachable]
     cert_errors_bases = (
         ClientSSLError,
         ValueError,

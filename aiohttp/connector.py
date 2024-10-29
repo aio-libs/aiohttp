@@ -10,7 +10,7 @@ from collections import defaultdict, deque
 from contextlib import suppress
 from http import HTTPStatus
 from http.cookies import SimpleCookie
-from itertools import cycle, islice
+from itertools import chain, cycle, islice
 from time import monotonic
 from types import TracebackType
 from typing import (
@@ -39,6 +39,7 @@ from .abc import AbstractResolver, ResolveResult
 from .client_exceptions import (
     ClientConnectionError,
     ClientConnectorCertificateError,
+    ClientConnectorDNSError,
     ClientConnectorError,
     ClientConnectorSSLError,
     ClientHttpProxyError,
@@ -50,8 +51,14 @@ from .client_exceptions import (
 )
 from .client_proto import ResponseHandler
 from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
-from .helpers import _SENTINEL, ceil_timeout, is_ip_address, sentinel, set_result
-from .locks import EventResultOrError
+from .helpers import (
+    _SENTINEL,
+    ceil_timeout,
+    is_ip_address,
+    sentinel,
+    set_exception,
+    set_result,
+)
 from .resolver import DefaultResolver
 
 try:
@@ -729,7 +736,7 @@ def _make_ssl_context(verified: bool) -> SSLContext:
     """
     if ssl is None:
         # No ssl support
-        return None
+        return None  # type: ignore[unreachable]
     if verified:
         return ssl.create_default_context()
     sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -820,7 +827,9 @@ class TCPConnector(BaseConnector):
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
-        self._throttle_dns_events: Dict[Tuple[str, int], EventResultOrError] = {}
+        self._throttle_dns_futures: Dict[Tuple[str, int], Set[asyncio.Future[None]]] = (
+            {}
+        )
         self._family = family
         self._local_addr_infos = aiohappyeyeballs.addr_to_addr_infos(local_addr)
         self._happy_eyeballs_delay = happy_eyeballs_delay
@@ -828,8 +837,8 @@ class TCPConnector(BaseConnector):
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
 
     def _close_immediately(self) -> List[Awaitable[object]]:
-        for ev in self._throttle_dns_events.values():
-            ev.cancel()
+        for fut in chain.from_iterable(self._throttle_dns_futures.values()):
+            fut.cancel()
 
         waiters = super()._close_immediately()
 
@@ -899,18 +908,35 @@ class TCPConnector(BaseConnector):
                     await trace.send_dns_cache_hit(host)
             return result
 
+        futures: Set[asyncio.Future[None]]
         #
         # If multiple connectors are resolving the same host, we wait
         # for the first one to resolve and then use the result for all of them.
-        # We use a throttle event to ensure that we only resolve the host once
+        # We use a throttle to ensure that we only resolve the host once
         # and then use the result for all the waiters.
         #
+        if key in self._throttle_dns_futures:
+            # get futures early, before any await (#4014)
+            futures = self._throttle_dns_futures[key]
+            future: asyncio.Future[None] = self._loop.create_future()
+            futures.add(future)
+            if traces:
+                for trace in traces:
+                    await trace.send_dns_cache_hit(host)
+            try:
+                await future
+            finally:
+                futures.discard(future)
+            return self._cached_hosts.next_addrs(key)
+
+        # update dict early, before any await (#4014)
+        self._throttle_dns_futures[key] = futures = set()
         # In this case we need to create a task to ensure that we can shield
         # the task from cancellation as cancelling this lookup should not cancel
         # the underlying lookup or else the cancel event will get broadcast to
         # all the waiters across all connections.
         #
-        coro = self._resolve_host_with_throttle(key, host, port, traces)
+        coro = self._resolve_host_with_throttle(key, host, port, futures, traces)
         loop = asyncio.get_running_loop()
         if sys.version_info >= (3, 12):
             # Optimization for Python 3.12, try to send immediately
@@ -938,41 +964,39 @@ class TCPConnector(BaseConnector):
         key: Tuple[str, int],
         host: str,
         port: int,
+        futures: Set[asyncio.Future[None]],
         traces: Optional[Sequence["Trace"]],
     ) -> List[ResolveResult]:
-        """Resolve host with a dns events throttle."""
-        if key in self._throttle_dns_events:
-            # get event early, before any await (#4014)
-            event = self._throttle_dns_events[key]
+        """Resolve host and set result for all waiters.
+
+        This method must be run in a task and shielded from cancellation
+        to avoid cancelling the underlying lookup.
+        """
+        if traces:
+            for trace in traces:
+                await trace.send_dns_cache_miss(host)
+        try:
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_hit(host)
-            await event.wait()
-        else:
-            # update dict early, before any await (#4014)
-            self._throttle_dns_events[key] = EventResultOrError(self._loop)
+                    await trace.send_dns_resolvehost_start(host)
+
+            addrs = await self._resolver.resolve(host, port, family=self._family)
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_miss(host)
-            try:
-                if traces:
-                    for trace in traces:
-                        await trace.send_dns_resolvehost_start(host)
+                    await trace.send_dns_resolvehost_end(host)
 
-                addrs = await self._resolver.resolve(host, port, family=self._family)
-                if traces:
-                    for trace in traces:
-                        await trace.send_dns_resolvehost_end(host)
-
-                self._cached_hosts.add(key, addrs)
-                self._throttle_dns_events[key].set()
-            except BaseException as e:
-                # any DNS exception, independently of the implementation
-                # is set for the waiters to raise the same exception.
-                self._throttle_dns_events[key].set(exc=e)
-                raise
-            finally:
-                self._throttle_dns_events.pop(key)
+            self._cached_hosts.add(key, addrs)
+            for fut in futures:
+                set_result(fut, None)
+        except BaseException as e:
+            # any DNS exception is set for the waiters to raise the same exception.
+            # This coro is always run in task that is shielded from cancellation so
+            # we should never be propagating cancellation here.
+            for fut in futures:
+                set_exception(fut, e)
+            raise
+        finally:
+            self._throttle_dns_futures.pop(key)
 
         return self._cached_hosts.next_addrs(key)
 
@@ -1058,7 +1082,7 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             raise client_error(req.connection_key, exc) from exc
 
@@ -1147,7 +1171,7 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             raise client_error(req.connection_key, exc) from exc
         except TypeError as type_err:
@@ -1218,11 +1242,11 @@ class TCPConnector(BaseConnector):
             #  across all connections.
             hosts = await self._resolve_host(host, port, traces=traces)
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
-            raise ClientConnectorError(req.connection_key, exc) from exc
+            raise ClientConnectorDNSError(req.connection_key, exc) from exc
 
         last_exc: Optional[Exception] = None
         addr_infos = self._convert_hosts_to_addr_infos(hosts)
@@ -1413,7 +1437,7 @@ class UnixConnector(BaseConnector):
                     self._factory, self._path
                 )
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
@@ -1482,7 +1506,7 @@ class NamedPipeConnector(BaseConnector):
                 # other option is to manually set transport like
                 # `proto.transport = trans`
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                 raise
             raise ClientConnectorError(req.connection_key, exc) from exc
 

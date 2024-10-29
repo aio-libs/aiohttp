@@ -1032,7 +1032,7 @@ async def test_data_stream(
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
-    assert (
+    assert (  # type: ignore[unreachable]
         buf.split(b"\r\n\r\n", 1)[1] == b"b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n"
     )
     await req.close()
@@ -1057,7 +1057,7 @@ async def test_data_file(
         await resp.wait_for_close()
 
         assert req._writer is None
-        assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"
+        assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"  # type: ignore[unreachable]
         await req.close()
 
 
@@ -1098,7 +1098,7 @@ async def test_data_stream_exc_chain(
     async def gen() -> AsyncIterator[None]:
         await fut
         assert False
-        yield  # pragma: no cover
+        yield  # type: ignore[unreachable]  # pragma: no cover
 
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
 
@@ -1344,7 +1344,7 @@ async def test_custom_req_rep(
             resp = self.response_class(
                 self.method,
                 self.url,
-                writer=self._writer,  # type: ignore[arg-type]
+                writer=self._writer,
                 continue100=self._continue,
                 timer=self._timer,
                 request_info=self.request_info,

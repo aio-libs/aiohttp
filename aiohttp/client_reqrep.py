@@ -4,6 +4,7 @@ import contextlib
 import dataclasses
 import functools
 import io
+import itertools
 import re
 import sys
 import traceback
@@ -148,7 +149,7 @@ class Fingerprint:
 if ssl is not None:
     SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint)
 else:  # pragma: no cover
-    SSL_ALLOWED_TYPES = (bool,)
+    SSL_ALLOWED_TYPES = (bool,)  # type: ignore[unreachable]
 
 
 _SSL_SCHEMES = frozenset(("https", "wss"))
@@ -178,6 +179,9 @@ class ClientRequest:
     }
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
     ALL_METHODS = GET_METHODS.union(POST_METHODS).union({hdrs.METH_DELETE})
+    _HOST_STRINGS = frozenset(
+        map("".join, itertools.product(*zip("host".upper(), "host".lower())))
+    )
 
     DEFAULT_HEADERS = {
         hdrs.ACCEPT: "*/*",
@@ -189,7 +193,7 @@ class ClientRequest:
     auth = None
     response = None
 
-    __writer = None  # async task for streaming data
+    __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
     # N.B.
@@ -280,17 +284,11 @@ class ClientRequest:
         return self.__writer
 
     @_writer.setter
-    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+    def _writer(self, writer: "asyncio.Task[None]") -> None:
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
-        if writer is None:
-            return
-        if writer.done():
-            # The writer is already done, so we can reset it immediately.
-            self.__reset_writer()
-        else:
-            writer.add_done_callback(self.__reset_writer)
+        writer.add_done_callback(self.__reset_writer)
 
     def is_ssl(self) -> bool:
         return self.url.scheme in _SSL_SCHEMES
@@ -306,14 +304,17 @@ class ClientRequest:
         else:
             h = None
         url = self.url
-        return ConnectionKey(
-            url.raw_host or "",
-            url.port,
-            url.scheme in _SSL_SCHEMES,
-            self._ssl,
-            self.proxy,
-            self.proxy_auth,
-            h,
+        return tuple.__new__(
+            ConnectionKey,
+            (
+                url.raw_host or "",
+                url.port,
+                url.scheme in _SSL_SCHEMES,
+                self._ssl,
+                self.proxy,
+                self.proxy_auth,
+                h,
+            ),
         )
 
     @property
@@ -361,30 +362,11 @@ class ClientRequest:
         self.headers: CIMultiDict[str] = CIMultiDict()
 
         # Build the host header
-        host = self.url.host_subcomponent
+        host = self.url.host_port_subcomponent
 
-        # host_subcomponent is None when the URL is a relative URL.
+        # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
         assert host is not None
-
-        if host[-1] == ".":
-            # Remove all trailing dots from the netloc as while
-            # they are valid FQDNs in DNS, TLS validation fails.
-            # See https://github.com/aio-libs/aiohttp/issues/3636.
-            # To avoid string manipulation we only call rstrip if
-            # the last character is a dot.
-            host = host.rstrip(".")
-
-        # If explicit port is not None, it means that the port was
-        # explicitly specified in the URL. In this case we check
-        # if its not the default port for the scheme and add it to
-        # the host header. We check explicit_port first because
-        # yarl caches explicit_port and its likely to already be
-        # in the cache and non-default port URLs are far less common.
-        explicit_port = self.url.explicit_port
-        if explicit_port is not None and not self.url.is_default_port():
-            host = f"{host}:{explicit_port}"
-
         self.headers[hdrs.HOST] = host
 
         if not headers:
@@ -395,7 +377,7 @@ class ClientRequest:
 
         for key, value in headers:  # type: ignore[misc]
             # A special case for Host header
-            if key.lower() == "host":
+            if key in self._HOST_STRINGS:
                 self.headers[key] = value
             else:
                 self.headers.add(key, value)
@@ -607,8 +589,11 @@ class ClientRequest:
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
-            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
-                underlying_exc, asyncio.TimeoutError
+            exc_is_not_timeout = (
+                underlying_exc.errno is not None
+                or not isinstance(  # type: ignore[unreachable]
+                    underlying_exc, asyncio.TimeoutError
+                )
             )
             if exc_is_not_timeout:
                 reraised_exc = ClientOSError(
@@ -697,6 +682,7 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
         coro = self.write_bytes(writer, conn)
 
+        task: Optional["asyncio.Task[None]"]
         if sys.version_info >= (3, 12):
             # Optimization for Python 3.12, try to write
             # bytes immediately to avoid having to schedule
@@ -705,7 +691,11 @@ class ClientRequest:
         else:
             task = self.loop.create_task(coro)
 
-        self._writer = task
+        if task.done():
+            task = None
+        else:
+            self._writer = task
+
         response_class = self.response_class
         assert response_class is not None
         self.response = response_class(
@@ -767,21 +757,21 @@ class ClientResponse(HeadersMixin):
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
-    _connection = None  # current connection
+    _connection: Optional["Connection"] = None  # current connection
     _source_traceback: Optional[traceback.StackSummary] = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
     _in_context = False
-    __writer = None
+    __writer: Optional["asyncio.Task[None]"] = None
 
     def __init__(
         self,
         method: str,
         url: URL,
         *,
-        writer: "asyncio.Task[None]",
+        writer: "Optional[asyncio.Task[None]]",
         continue100: Optional["asyncio.Future[bool]"],
         timer: Optional[BaseTimerContext],
         request_info: RequestInfo,
@@ -798,7 +788,8 @@ class ClientResponse(HeadersMixin):
         self._real_url = url
         self._url = url.with_fragment(None) if url.raw_fragment else url
         self._body: Optional[bytes] = None
-        self._writer = writer
+        if writer is not None:
+            self._writer = writer
         self._continue = continue100  # None by default
         self._closed = True
         self._history: Tuple[ClientResponse, ...] = ()
@@ -813,7 +804,7 @@ class ClientResponse(HeadersMixin):
         # work after the response has finished reading the body.
         if session is None:
             # TODO: Fix session=None in tests (see ClientRequest.__init__).
-            self._resolve_charset: Callable[["ClientResponse", bytes], str] = (
+            self._resolve_charset: Callable[["ClientResponse", bytes], str] = (  # type: ignore[unreachable]
                 lambda *_: "utf-8"
             )
         else:
@@ -842,8 +833,8 @@ class ClientResponse(HeadersMixin):
         if writer is None:
             return
         if writer.done():
-            # The writer is already done, so we can reset it immediately.
-            self.__reset_writer()
+            # The writer is already done, so we can clear it immediately.
+            self.__writer = None
         else:
             writer.add_done_callback(self.__reset_writer)
 

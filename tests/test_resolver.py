@@ -2,7 +2,17 @@ import asyncio
 import ipaddress
 import socket
 from ipaddress import ip_address
-from typing import Any, Awaitable, Callable, Collection, List, NamedTuple, Tuple, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Collection,
+    Iterable,
+    List,
+    NamedTuple,
+    Tuple,
+    Union,
+)
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
@@ -17,10 +27,22 @@ from aiohttp.resolver import (
 try:
     import aiodns
 
-    getaddrinfo: Any = hasattr(aiodns.DNSResolver, "getaddrinfo")
+    getaddrinfo = hasattr(aiodns.DNSResolver, "getaddrinfo")
 except ImportError:
     aiodns = None  # type: ignore[assignment]
     getaddrinfo = False
+
+_AddrInfo4 = List[
+    Tuple[socket.AddressFamily, None, socket.SocketKind, None, Tuple[str, int]]
+]
+_AddrInfo6 = List[
+    Tuple[
+        socket.AddressFamily, None, socket.SocketKind, None, Tuple[str, int, int, int]
+    ]
+]
+_UnknownAddrInfo = List[
+    Tuple[socket.AddressFamily, socket.SocketKind, int, str, Tuple[int, bytes]]
+]
 
 
 class FakeAIODNSAddrInfoNode(NamedTuple):
@@ -54,9 +76,7 @@ class FakeAIODNSNameInfoIPv6Result:
 
 
 class FakeQueryResult:
-    host: Any
-
-    def __init__(self, host: Any) -> None:
+    def __init__(self, host: str) -> None:
         self.host = host
 
 
@@ -78,22 +98,22 @@ async def fake_aiodns_getnameinfo_ipv6_result(
     return FakeAIODNSNameInfoIPv6Result(host)
 
 
-async def fake_query_result(result: Any) -> List[FakeQueryResult]:
+async def fake_query_result(result: Iterable[str]) -> List[FakeQueryResult]:
     return [FakeQueryResult(host=h) for h in result]
 
 
-def fake_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
-    async def fake(*args: Any, **kwargs: Any) -> List[Any]:
+def fake_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[_AddrInfo4]]:
+    async def fake(*args: Any, **kwargs: Any) -> _AddrInfo4:
         if not hosts:
             raise socket.gaierror
 
-        return [(socket.AF_INET, None, socket.SOCK_STREAM, None, [h, 0]) for h in hosts]
+        return [(socket.AF_INET, None, socket.SOCK_STREAM, None, (h, 0)) for h in hosts]
 
     return fake
 
 
-def fake_ipv6_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
-    async def fake(*args: Any, **kwargs: Any) -> List[Any]:
+def fake_ipv6_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[_AddrInfo6]]:
+    async def fake(*args: Any, **kwargs: Any) -> _AddrInfo6:
         if not hosts:
             raise socket.gaierror
 
@@ -111,7 +131,7 @@ def fake_ipv6_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
     return fake
 
 
-def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Any]]:
+def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Tuple[str, int]]]:
     async def fake(*args: Any, **kwargs: Any) -> Tuple[str, int]:
         return host, 0
 
@@ -119,7 +139,9 @@ def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Any]]:
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_positive_ipv4_lookup(loop: Any) -> None:
+async def test_async_resolver_positive_ipv4_lookup(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result(
             ["127.0.0.1"]
@@ -137,7 +159,9 @@ async def test_async_resolver_positive_ipv4_lookup(loop: Any) -> None:
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None:
+async def test_async_resolver_positive_link_local_ipv6_lookup(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(
             ["fe80::1"]
@@ -159,7 +183,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_multiple_replies(loop: Any) -> None:
+async def test_async_resolver_multiple_replies(loop: asyncio.AbstractEventLoop) -> None:
     with patch("aiodns.DNSResolver") as mock:
         ips = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result(ips)
@@ -170,7 +194,7 @@ async def test_async_resolver_multiple_replies(loop: Any) -> None:
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_negative_lookup(loop: Any) -> None:
+async def test_async_resolver_negative_lookup(loop: asyncio.AbstractEventLoop) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.side_effect = aiodns.error.DNSError()
         resolver = AsyncResolver()
@@ -179,7 +203,9 @@ async def test_async_resolver_negative_lookup(loop: Any) -> None:
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_no_hosts_in_getaddrinfo(loop: Any) -> None:
+async def test_async_resolver_no_hosts_in_getaddrinfo(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result([])
         resolver = AsyncResolver()
@@ -240,7 +266,7 @@ async def test_threaded_resolver_multiple_replies() -> None:
 
 async def test_threaded_negative_lookup() -> None:
     loop = Mock()
-    ips: List[Any] = []
+    ips: List[str] = []
     loop.getaddrinfo = fake_addrinfo(ips)
     resolver = ThreadedResolver()
     resolver._loop = loop
@@ -250,7 +276,7 @@ async def test_threaded_negative_lookup() -> None:
 
 async def test_threaded_negative_ipv6_lookup() -> None:
     loop = Mock()
-    ips: List[Any] = []
+    ips: List[str] = []
     loop.getaddrinfo = fake_ipv6_addrinfo(ips)
     resolver = ThreadedResolver()
     resolver._loop = loop
@@ -263,7 +289,7 @@ async def test_threaded_negative_lookup_with_unknown_result() -> None:
 
     # If compile CPython with `--disable-ipv6` option,
     # we will get an (int, bytes) tuple, instead of a Exception.
-    async def unknown_addrinfo(*args: Any, **kwargs: Any) -> List[Any]:
+    async def unknown_addrinfo(*args: Any, **kwargs: Any) -> _UnknownAddrInfo:
         return [
             (
                 socket.AF_INET6,
@@ -282,25 +308,29 @@ async def test_threaded_negative_lookup_with_unknown_result() -> None:
     assert len(res) == 0
 
 
-async def test_close_for_threaded_resolver(loop: Any) -> None:
+async def test_close_for_threaded_resolver(loop: asyncio.AbstractEventLoop) -> None:
     resolver = ThreadedResolver()
     await resolver.close()
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
-async def test_close_for_async_resolver(loop: Any) -> None:
+async def test_close_for_async_resolver(loop: asyncio.AbstractEventLoop) -> None:
     resolver = AsyncResolver()
     await resolver.close()
 
 
-async def test_default_loop_for_threaded_resolver(loop: Any) -> None:
+async def test_default_loop_for_threaded_resolver(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     asyncio.set_event_loop(loop)
     resolver = ThreadedResolver()
     assert resolver._loop is loop
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_ipv6_positive_lookup(loop: Any) -> None:
+async def test_async_resolver_ipv6_positive_lookup(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(["::1"])
         resolver = AsyncResolver()
@@ -315,7 +345,37 @@ async def test_async_resolver_ipv6_positive_lookup(loop: Any) -> None:
         )
 
 
-async def test_async_resolver_aiodns_not_present(loop: Any, monkeypatch: Any) -> None:
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_async_resolver_error_messages_passed(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Ensure error messages are passed through from aiodns."""
+    with patch("aiodns.DNSResolver", autospec=True, spec_set=True) as mock:
+        mock().getaddrinfo.side_effect = aiodns.error.DNSError(1, "Test error message")
+        resolver = AsyncResolver()
+        with pytest.raises(OSError, match="Test error message") as excinfo:
+            await resolver.resolve("x.org")
+
+        assert excinfo.value.strerror == "Test error message"
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_async_resolver_error_messages_passed_no_hosts(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Ensure error messages are passed through from aiodns."""
+    with patch("aiodns.DNSResolver", autospec=True, spec_set=True) as mock:
+        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result([])
+        resolver = AsyncResolver()
+        with pytest.raises(OSError, match="DNS lookup failed") as excinfo:
+            await resolver.resolve("x.org")
+
+        assert excinfo.value.strerror == "DNS lookup failed"
+
+
+async def test_async_resolver_aiodns_not_present(
+    loop: asyncio.AbstractEventLoop, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("aiohttp.resolver.aiodns", None)
     with pytest.raises(RuntimeError):
         AsyncResolver()
