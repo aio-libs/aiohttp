@@ -314,9 +314,9 @@ class ClientSession:
         else:
             self._base_url = URL(base_url)
             self._base_url_origin = self._base_url.origin()
-            assert (
-                self._base_url_origin == self._base_url
-            ), "Only absolute URLs without path part are supported"
+            assert self._base_url.absolute, "Only absolute URLs are supported"
+        if self._base_url is not None and not self._base_url.path.endswith("/"):
+            raise ValueError("base_url must have a trailing '/'")
 
         if timeout is sentinel or timeout is None:
             self._timeout = DEFAULT_TIMEOUT
@@ -463,7 +463,7 @@ class ClientSession:
         if self._base_url is None:
             return url
         else:
-            assert not url.absolute and url.path.startswith("/")
+            assert not url.absolute
             return self._base_url.join(url)
 
     async def _request(
