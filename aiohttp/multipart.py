@@ -314,7 +314,8 @@ class BodyPartReader:
         data = bytearray()
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
-        if decode:
+        # https://github.com/python/mypy/issues/17537
+        if decode:  # type: ignore[unreachable]
             return self.decode(data)
         return data
 
@@ -655,7 +656,8 @@ class MultipartReader:
         else:
             await self._read_boundary()
         if self._at_eof:  # we just read the last boundary, nothing to do there
-            return None
+            # https://github.com/python/mypy/issues/17537
+            return None  # type: ignore[unreachable]
 
         part = await self.fetch_next_part()
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.6

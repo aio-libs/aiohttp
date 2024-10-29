@@ -680,7 +680,7 @@ class ClientSession:
                     except ClientError:
                         raise
                     except OSError as exc:
-                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                             raise
                         raise ClientOSError(*exc.args) from exc
 
@@ -882,7 +882,7 @@ class ClientSession:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
             else:
-                warnings.warn(
+                warnings.warn(  # type: ignore[unreachable]
                     "parameter 'timeout' of type 'float' "
                     "is deprecated, please use "
                     "'timeout=ClientWSTimeout(ws_close=...)'",
