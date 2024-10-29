@@ -8,7 +8,7 @@ import pytest
 from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 
-from aiohttp import WSMsgType, web
+from aiohttp import WSMessageTypeError, WSMsgType, web
 from aiohttp.http import WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE
 from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
@@ -263,6 +263,21 @@ async def test_send_str_closed(make_request: _RequestMaker) -> None:
         await ws.send_str("string")
 
 
+async def test_recv_str_closed(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    await ws.close()
+
+    with pytest.raises(
+        WSMessageTypeError,
+        match=f"Received message {WSMsgType.CLOSED}:.+ has no content",
+    ):
+        await ws.receive_str()
+
+
 async def test_send_bytes_closed(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
@@ -273,6 +288,21 @@ async def test_send_bytes_closed(make_request: _RequestMaker) -> None:
 
     with pytest.raises(ConnectionError):
         await ws.send_bytes(b"bytes")
+
+
+async def test_recv_bytes_closed(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    await ws.close()
+
+    with pytest.raises(
+        WSMessageTypeError,
+        match=f"Received message {WSMsgType.CLOSED}:.+ has no content",
+    ):
+        await ws.receive_bytes()
 
 
 async def test_send_json_closed(make_request: _RequestMaker) -> None:

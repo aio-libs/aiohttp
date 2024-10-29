@@ -83,7 +83,10 @@ async def test_recv_bytes_after_close(aiohttp_client: AiohttpClient) -> None:
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/")
 
-    with pytest.raises(WSMessageTypeError):
+    with pytest.raises(
+        WSMessageTypeError,
+        match=f"Received message {WSMsgType.CLOSE}:.+ has no content",
+    ):
         await resp.receive_bytes()
         await resp.close()
 
@@ -147,7 +150,10 @@ async def test_recv_text_after_close(aiohttp_client: AiohttpClient) -> None:
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/")
 
-    with pytest.raises(WSMessageTypeError):
+    with pytest.raises(
+        WSMessageTypeError,
+        match=f"Received message {WSMsgType.CLOSE}:.+ has no content",
+    ):
         await resp.receive_str()
         await resp.close()
 
