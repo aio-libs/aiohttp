@@ -2,7 +2,7 @@
 
 import asyncio
 
-from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
+from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import DataQueue
 from aiohttp.base_protocol import BaseProtocol
