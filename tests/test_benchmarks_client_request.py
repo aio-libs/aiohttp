@@ -3,7 +3,7 @@
 import asyncio
 from http.cookies import Morsel
 
-from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
+from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
 from aiohttp.client_reqrep import ClientRequest
