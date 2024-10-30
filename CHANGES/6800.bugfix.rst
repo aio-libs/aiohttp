@@ -1,1 +1,1 @@
-Modified websocket ``receive_str`` and ``receive_bytes`` methods to raise new ``WSMessageTypeError`` exception, instead of generic ``TypeError``, when websocket messages without content are received -- by :user:`ara-25`.
+Modified websocket ``receive_str`` and ``receive_bytes`` methods to raise new ``WSMessageTypeError`` exception, instead of generic ``TypeError``, when websocket messages of incorrect types are received -- by :user:`ara-25`.

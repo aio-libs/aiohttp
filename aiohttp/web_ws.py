@@ -606,11 +606,7 @@ class WebSocketResponse(StreamResponse):
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
-            if msg.type not in [WSMsgType.CONTINUATION, WSMsgType.BINARY]:
-                raise WSMessageTypeError(
-                    f"Received message {msg.type}:{msg.data!r} has no content"
-                )
-            raise TypeError(
+            raise WSMessageTypeError(
                 "Received message {}:{!r} is not WSMsgType.TEXT".format(
                     msg.type, msg.data
                 )
@@ -620,11 +616,9 @@ class WebSocketResponse(StreamResponse):
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
-            if msg.type not in [WSMsgType.CONTINUATION, WSMsgType.TEXT]:
-                raise WSMessageTypeError(
-                    f"Received message {msg.type}:{msg.data!r} has no content"
-                )
-            raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
+            raise WSMessageTypeError(
+                f"Received message {msg.type}:{msg.data!r} is not WSMsgType.BINARY"
+            )
         return msg.data
 
     async def receive_json(

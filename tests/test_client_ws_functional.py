@@ -65,7 +65,7 @@ async def test_send_recv_bytes_bad_type(aiohttp_client: AiohttpClient) -> None:
     resp = await client.ws_connect("/")
     await resp.send_str("ask")
 
-    with pytest.raises(TypeError):
+    with pytest.raises(WSMessageTypeError):
         await resp.receive_bytes()
         await resp.close()
 
@@ -85,7 +85,7 @@ async def test_recv_bytes_after_close(aiohttp_client: AiohttpClient) -> None:
 
     with pytest.raises(
         WSMessageTypeError,
-        match=f"Received message {WSMsgType.CLOSE}:.+ has no content",
+        match=f"Received message {WSMsgType.CLOSE}:.+ is not WSMsgType.BINARY",
     ):
         await resp.receive_bytes()
         await resp.close()
@@ -131,7 +131,7 @@ async def test_send_recv_text_bad_type(aiohttp_client: AiohttpClient) -> None:
 
     await resp.send_bytes(b"ask")
 
-    with pytest.raises(TypeError):
+    with pytest.raises(WSMessageTypeError):
         await resp.receive_str()
 
         await resp.close()
@@ -152,7 +152,7 @@ async def test_recv_text_after_close(aiohttp_client: AiohttpClient) -> None:
 
     with pytest.raises(
         WSMessageTypeError,
-        match=f"Received message {WSMsgType.CLOSE}:.+ has no content",
+        match=f"Received message {WSMsgType.CLOSE}:.+ is not WSMsgType.TEXT",
     ):
         await resp.receive_str()
         await resp.close()

@@ -273,7 +273,7 @@ async def test_recv_str_closed(make_request: _RequestMaker) -> None:
 
     with pytest.raises(
         WSMessageTypeError,
-        match=f"Received message {WSMsgType.CLOSED}:.+ has no content",
+        match=f"Received message {WSMsgType.CLOSED}:.+ is not WSMsgType.TEXT",
     ):
         await ws.receive_str()
 
@@ -300,7 +300,7 @@ async def test_recv_bytes_closed(make_request: _RequestMaker) -> None:
 
     with pytest.raises(
         WSMessageTypeError,
-        match=f"Received message {WSMsgType.CLOSED}:.+ has no content",
+        match=f"Received message {WSMsgType.CLOSED}:.+ is not WSMsgType.BINARY",
     ):
         await ws.receive_bytes()
 
