@@ -604,9 +604,7 @@ class WebSocketResponse(StreamResponse):
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise WSMessageTypeError(
-                "Received message {}:{!r} is not WSMsgType.TEXT".format(
-                    msg.type, msg.data
-                )
+                f"Received message {msg.type}:{msg.data!r} is not WSMsgType.TEXT"
             )
         return msg.data
 
