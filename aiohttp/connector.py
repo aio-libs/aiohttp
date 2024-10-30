@@ -707,7 +707,10 @@ class BaseConnector:
             )
 
     async def _create_connection(
-        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+        self,
+        req: ClientRequest,
+        traces: Optional[List["Trace"]],
+        timeout: "ClientTimeout",
     ) -> ResponseHandler:
         raise NotImplementedError()
 
@@ -1024,7 +1027,10 @@ class TCPConnector(BaseConnector):
         return self._cached_hosts.next_addrs(key)
 
     async def _create_connection(
-        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+        self,
+        req: ClientRequest,
+        traces: Optional[List["Trace"]],
+        timeout: "ClientTimeout",
     ) -> ResponseHandler:
         """Create connection.
 
@@ -1242,7 +1248,7 @@ class TCPConnector(BaseConnector):
     async def _create_direct_connection(
         self,
         req: ClientRequest,
-        traces: List["Trace"],
+        traces: Optional[List["Trace"]],
         timeout: "ClientTimeout",
         *,
         client_error: Type[Exception] = ClientConnectorError,
@@ -1314,7 +1320,10 @@ class TCPConnector(BaseConnector):
         raise last_exc
 
     async def _create_proxy_connection(
-        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+        self,
+        req: ClientRequest,
+        traces: Optional[List["Trace"]],
+        timeout: "ClientTimeout",
     ) -> Tuple[asyncio.BaseTransport, ResponseHandler]:
         headers: Dict[str, str] = {}
         if req.proxy_headers is not None:
@@ -1334,7 +1343,7 @@ class TCPConnector(BaseConnector):
 
         # create connection to proxy server
         transport, proto = await self._create_direct_connection(
-            proxy_req, [], timeout, client_error=ClientProxyConnectionError
+            proxy_req, None, timeout, client_error=ClientProxyConnectionError
         )
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
