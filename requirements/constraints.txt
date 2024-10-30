@@ -174,7 +174,7 @@ pytest==8.1.1
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
-pytest-codspeed==2.2.1
+pytest-codspeed==3.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
