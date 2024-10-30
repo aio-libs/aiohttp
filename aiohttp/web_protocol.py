@@ -673,7 +673,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             prepare_meth = resp.prepare
         except AttributeError:
             if resp is None:
-                self.log_exception("Missing return statement on request handler")
+                self.log_exception("Missing return statement on request handler")  # type: ignore[unreachable]
             else:
                 self.log_exception(
                     "Web-handler should return a response instance, "

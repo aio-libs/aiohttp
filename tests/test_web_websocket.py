@@ -532,7 +532,7 @@ async def test_close_after_closing(
 
     await ws.close()
     assert ws.closed
-    assert len(req.transport.close.mock_calls) == 1
+    assert len(req.transport.close.mock_calls) == 1  # type: ignore[unreachable]
 
 
 async def test_receive_timeouterror(
@@ -659,7 +659,6 @@ async def test_no_transfer_encoding_header(
             "existent",
         ),
         (None, "default"),
-        (mock.MagicMock(transport=None), "default"),
     ],
 )
 async def test_get_extra_info(

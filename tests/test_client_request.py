@@ -598,6 +598,14 @@ def test_gen_netloc_no_port(make_request: _RequestMaker) -> None:
     )
 
 
+def test_cookie_coded_value_preserved(loop: asyncio.AbstractEventLoop) -> None:
+    """Verify the coded value of a cookie is preserved."""
+    # https://github.com/aio-libs/aiohttp/pull/1453
+    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+    req.update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
+    assert req.headers["COOKIE"] == 'ip-cookie="second"'
+
+
 async def test_connection_header(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
@@ -1032,7 +1040,7 @@ async def test_data_stream(
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
-    assert (
+    assert (  # type: ignore[unreachable]
         buf.split(b"\r\n\r\n", 1)[1] == b"b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n"
     )
     await req.close()
@@ -1057,7 +1065,7 @@ async def test_data_file(
         await resp.wait_for_close()
 
         assert req._writer is None
-        assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"
+        assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"  # type: ignore[unreachable]
         await req.close()
 
 
@@ -1098,7 +1106,7 @@ async def test_data_stream_exc_chain(
     async def gen() -> AsyncIterator[None]:
         await fut
         assert False
-        yield  # pragma: no cover
+        yield  # type: ignore[unreachable]  # pragma: no cover
 
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
 

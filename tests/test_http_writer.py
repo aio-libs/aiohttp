@@ -262,7 +262,7 @@ async def test_write_drain(
 
         await msg.write(b"1", drain=True)
         assert m.called
-        assert msg.buffer_size == 0
+        assert msg.buffer_size == 0  # type: ignore[unreachable]
 
 
 async def test_write_calls_callback(
