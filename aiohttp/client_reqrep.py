@@ -636,12 +636,16 @@ class ClientRequest:
             protocol,
             self.loop,
             on_chunk_sent=(
-                functools.partial(self._on_chunk_request_sent, self.method, self.url)
+                functools.partial(
+                    self._on_chunk_request_sent, self.method, self.url, self._traces
+                )
                 if self._traces
                 else None
             ),
             on_headers_sent=(
-                functools.partial(self._on_headers_request_sent, self.method, self.url)
+                functools.partial(
+                    self._on_headers_request_sent, self.method, self.url, self._traces
+                )
                 if self._traces
                 else None
             ),
@@ -728,17 +732,17 @@ class ClientRequest:
             self.__writer.remove_done_callback(self.__reset_writer)
             self.__writer = None
 
-    async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
-        if self._traces:
-            for trace in self._traces:
-                await trace.send_request_chunk_sent(method, url, chunk)
+    async def _on_chunk_request_sent(
+        self, method: str, url: URL, chunk: bytes, traces: List[Trace]
+    ) -> None:
+        for trace in traces:
+            await trace.send_request_chunk_sent(method, url, chunk)
 
     async def _on_headers_request_sent(
-        self, method: str, url: URL, headers: "CIMultiDict[str]"
+        self, method: str, url: URL, headers: "CIMultiDict[str]", traces: List[Trace]
     ) -> None:
-        if self._traces:
-            for trace in self._traces:
-                await trace.send_request_headers(method, url, headers)
+        for trace in self.traces:
+            await trace.send_request_headers(method, url, headers)
 
 
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
