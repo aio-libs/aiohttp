@@ -272,8 +272,6 @@ class ClientRequest:
         if data is not None or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-        if traces is None:
-            traces = []
         self._traces = traces
 
     def __reset_writer(self, _: object = None) -> None:
@@ -731,14 +729,16 @@ class ClientRequest:
             self.__writer = None
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
-        for trace in self._traces:
-            await trace.send_request_chunk_sent(method, url, chunk)
+        if self._traces:
+            for trace in self._traces:
+                await trace.send_request_chunk_sent(method, url, chunk)
 
     async def _on_headers_request_sent(
         self, method: str, url: URL, headers: "CIMultiDict[str]"
     ) -> None:
-        for trace in self._traces:
-            await trace.send_request_headers(method, url, headers)
+        if self._traces:
+            for trace in self._traces:
+                await trace.send_request_headers(method, url, headers)
 
 
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
@@ -775,7 +775,7 @@ class ClientResponse(HeadersMixin):
         continue100: Optional["asyncio.Future[bool]"],
         timer: Optional[BaseTimerContext],
         request_info: RequestInfo,
-        traces: List["Trace"],
+        traces: Optional[List["Trace"]],
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
     ) -> None:
@@ -1121,10 +1121,11 @@ class ClientResponse(HeadersMixin):
         if self._body is None:
             try:
                 self._body = await self.content.read()
-                for trace in self._traces:
-                    await trace.send_response_chunk_received(
-                        self.method, self.url, self._body
-                    )
+                if self._traces:
+                    for trace in self._traces:
+                        await trace.send_response_chunk_received(
+                            self.method, self.url, self._body
+                        )
             except BaseException:
                 self.close()
                 raise

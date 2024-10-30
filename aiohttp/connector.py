@@ -485,7 +485,10 @@ class BaseConnector:
         return total_remain
 
     async def connect(
-        self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+        self,
+        req: ClientRequest,
+        traces: Optional[List["Trace"]],
+        timeout: "ClientTimeout",
     ) -> Connection:
         """Get from pool or create new connection."""
         key = req.connection_key
