@@ -49,6 +49,7 @@ __all__ = (
     "NonHttpUrlClientError",
     "InvalidUrlRedirectClientError",
     "NonHttpUrlRedirectClientError",
+    "WSMessageTypeError",
 )
 
 
@@ -331,7 +332,7 @@ if ssl is not None:
     ssl_errors = (ssl.SSLError,)
     ssl_error_bases = (ClientSSLError, ssl.SSLError)
 else:  # pragma: no cover
-    cert_errors = tuple()  # type: ignore[unreachable]
+    cert_errors = tuple()
     cert_errors_bases = (
         ClientSSLError,
         ValueError,
@@ -380,4 +381,4 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
 
 
 class WSMessageTypeError(TypeError):
-    """websocket invalid message type is not valid."""
+    """websocket message type is not valid."""
