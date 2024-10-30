@@ -741,7 +741,7 @@ class ClientRequest:
     async def _on_headers_request_sent(
         self, method: str, url: URL, headers: "CIMultiDict[str]", traces: List[Trace]
     ) -> None:
-        for trace in self.traces:
+        for trace in traces:
             await trace.send_request_headers(method, url, headers)
 
 
