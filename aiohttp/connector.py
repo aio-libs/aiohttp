@@ -494,7 +494,7 @@ class BaseConnector:
         key = req.connection_key
         available = self._available_connections(key)
         wait_for_conn = available <= 0 or key in self._waiters
-        if not wait_for_conn and (proto := self._get(key)):
+        if not wait_for_conn and (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
             if traces:
