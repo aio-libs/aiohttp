@@ -492,7 +492,7 @@ def fast_init(self):
     # Set defaults
     self._key = self._value = self._coded_value = None
     # Set default attributes
-    self |= self._empty_reserved
+    self |= _empty_reserved
 
 
 cookies.Morsel.__init__ = fast_init
