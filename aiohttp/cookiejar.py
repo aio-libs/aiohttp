@@ -485,14 +485,14 @@ class DummyCookieJar(AbstractCookieJar):
         return SimpleCookie()
 
 
-_empty_reserved = {key: "" for key in Morsel._reserved}
+_empty_reserved = dict.fromkeys(Morsel._reserved, "")
 
 
 def fast_init(self):
     # Set defaults
     self._key = self._value = self._coded_value = None
     # Set default attributes
-    dict.update(self, _empty_reserved)
+    self |= self._empty_reserved
 
 
 cookies.Morsel.__init__ = fast_init
