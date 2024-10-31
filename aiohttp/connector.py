@@ -587,7 +587,7 @@ class BaseConnector:
                 await trace.send_connection_queued_end()
 
     async def _send_connect_reuseconn(
-        self, key: ConnectionKey, traces: List["Trace"]
+        self, key: "ConnectionKey", traces: List["Trace"]
     ) -> None:
         """Send tracing events for reusing a connection."""
         # Acquire the connection to prevent race conditions with limits
