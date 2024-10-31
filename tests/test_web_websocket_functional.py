@@ -1276,8 +1276,8 @@ async def test_abnormal_closure_when_client_does_not_close(
         await ws.close()
 
         nonlocal close_code
-        if ws.close_code is not None:
-            close_code = WSCloseCode(ws.close_code)
+        assert ws.close_code is not None
+        close_code = WSCloseCode(ws.close_code)
 
         return ws
 
