@@ -9,7 +9,6 @@ import warnings
 from collections import defaultdict, deque
 from contextlib import suppress
 from http import HTTPStatus
-from http.cookies import SimpleCookie
 from itertools import chain, cycle, islice
 from time import monotonic
 from types import TracebackType
@@ -250,8 +249,6 @@ class BaseConnector:
 
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
-
-        self.cookies = SimpleCookie()
 
         # start keep-alive connection cleanup task
         self._cleanup_handle: Optional[asyncio.TimerHandle] = None
