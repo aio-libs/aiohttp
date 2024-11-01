@@ -1,7 +1,5 @@
 """codspeed benchmarks for http writer."""
 
-import asyncio
-
 from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 
