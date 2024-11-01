@@ -3428,7 +3428,7 @@ async def test_available_connections_with_limit_per_host(
 
 @pytest.mark.parametrize("limit_per_host", [0, 10])
 async def test_available_connections_without_limit_per_host(
-    key: ConnectionKey, other_host_key2: ConnectionKey, limit_per_host: Optional[int]
+    key: ConnectionKey, other_host_key2: ConnectionKey, limit_per_host: int
 ) -> None:
     """Verify expected values based on active connections with higher host limit."""
     conn = aiohttp.BaseConnector(limit=3, limit_per_host=limit_per_host)
