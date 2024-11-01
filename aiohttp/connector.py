@@ -497,9 +497,7 @@ class BaseConnector:
         if not wait_for_conn and (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
-            if traces:
-                await self._send_connect_reuseconn(key, traces)
-            return self._acquired_connection(proto, key)
+            return await self._reused_connection(key, proto, traces)
 
         async with ceil_timeout(
             timeout.connect,
@@ -509,39 +507,44 @@ class BaseConnector:
             # waiters (i.e. don't steal connection from a waiter about to wake up)
             if wait_for_conn:
                 await self._wait_for_available_connection(key, traces)
-                proto = self._get(key)
+                if (proto := self._get(key)) is not None:
+                    return await self._reused_connection(key, proto, traces)
 
-            if proto is None:
-                placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
-                self._acquired.add(placeholder)
-                self._acquired_per_host[key].add(placeholder)
+            placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
+            self._acquired.add(placeholder)
+            self._acquired_per_host[key].add(placeholder)
 
-                if traces:
-                    for trace in traces:
-                        await trace.send_connection_create_start()
+            if traces:
+                for trace in traces:
+                    await trace.send_connection_create_start()
 
-                try:
-                    proto = await self._create_connection(req, traces, timeout)
-                    if self._closed:
-                        proto.close()
-                        raise ClientConnectionError("Connector is closed.")
-                except BaseException:
-                    if not self._closed:
-                        self._acquired.remove(placeholder)
-                        self._drop_acquired_per_host(key, placeholder)
-                        self._release_waiter()
-                    raise
-                else:
-                    if not self._closed:
-                        self._acquired.remove(placeholder)
-                        self._drop_acquired_per_host(key, placeholder)
+            try:
+                proto = await self._create_connection(req, traces, timeout)
+                if self._closed:
+                    proto.close()
+                    raise ClientConnectionError("Connector is closed.")
+            except BaseException:
+                if not self._closed:
+                    self._acquired.remove(placeholder)
+                    self._drop_acquired_per_host(key, placeholder)
+                    self._release_waiter()
+                raise
+            else:
+                if not self._closed:
+                    self._acquired.remove(placeholder)
+                    self._drop_acquired_per_host(key, placeholder)
 
-                if traces:
-                    for trace in traces:
-                        await trace.send_connection_create_end()
-            elif traces:
-                await self._send_connect_reuseconn(key, traces)
+            if traces:
+                for trace in traces:
+                    await trace.send_connection_create_end()
 
+            return self._acquired_connection(proto, key)
+
+    async def _reused_connection(
+        self, key: "ConnectionKey", proto: ResponseHandler, traces: List["Trace"]
+    ) -> Connection:
+        if traces:
+            await self._send_connect_reuseconn(key, traces)
         return self._acquired_connection(proto, key)
 
     def _acquired_connection(
