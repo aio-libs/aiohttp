@@ -482,12 +482,12 @@ class BaseConnector:
         # check limit per host
         if self._limit_per_host:
             if key in self._acquired_per_host:
-                limit = self._limit_per_host - len(self._acquired_per_host[key])
+                host_remain = self._limit_per_host - len(self._acquired_per_host[key])
             else:
-                limit = self._limit_per_host
+                host_remain = self._limit_per_host
 
-            if available > limit:
-                return limit
+            if available > host_remain:
+                return host_remain
 
         return available
 
