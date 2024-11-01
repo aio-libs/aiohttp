@@ -199,8 +199,10 @@ class Connection:
 class _TransportPlaceholder:
     """placeholder for BaseConnector.connect function"""
 
+    __slots__ = ()
+
     def close(self) -> None:
-        pass
+        """Close the placeholder transport."""
 
 
 class BaseConnector:
