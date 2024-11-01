@@ -572,10 +572,9 @@ class BaseConnector:
             if key in self._waiters:
                 # remove a waiter even if it was cancelled, normally it's
                 #  removed when it's notified
-                try:
+                with suppress(ValueError):
+                    # fut may no longer be in list
                     self._waiters[key].remove(fut)
-                except ValueError:  # fut may no longer be in list
-                    pass
 
             raise e
         finally:
