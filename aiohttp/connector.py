@@ -87,7 +87,16 @@ if TYPE_CHECKING:
 
 
 class Connection:
-    _source_traceback = None
+    """Represents a single connection."""
+
+    __slots__ = (
+        "_key",
+        "_connector",
+        "_loop",
+        "_protocol",
+        "_callbacks",
+        "_source_traceback",
+    )
 
     def __init__(
         self,
@@ -101,9 +110,9 @@ class Connection:
         self._loop = loop
         self._protocol: Optional[ResponseHandler] = protocol
         self._callbacks: List[Callable[[], None]] = []
-
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+        self._source_traceback = (
+            traceback.extract_stack(sys._getframe(1)) if loop.get_debug() else None
+        )
 
     def __repr__(self) -> str:
         return f"Connection<{self._key}>"
