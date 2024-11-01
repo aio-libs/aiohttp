@@ -481,12 +481,9 @@ class BaseConnector:
             return total_remain
 
         # check limit per host
-        if self._limit_per_host:
-            if key in self._acquired_per_host:
-                host_remain = self._limit_per_host - len(self._acquired_per_host[key])
-            else:
-                host_remain = self._limit_per_host
-
+        if host_remain := self._limit_per_host:
+            if acquired := self._acquired_per_host.get(key):
+                host_remain -= len(acquired)
             if total_remain > host_remain:
                 return host_remain
 
