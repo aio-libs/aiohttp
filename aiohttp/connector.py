@@ -173,13 +173,14 @@ class Connection:
 class _TransportPlaceholder:
     """placeholder for BaseConnector.connect function"""
 
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
-        fut = loop.create_future()
-        fut.set_result(None)
-        self.closed: asyncio.Future[Optional[Exception]] = fut
+    __slots__ = ("closed",)
+
+    def __init__(self, closed_future: asyncio.Future[Optional[Exception]]) -> None:
+        """Initialize a placeholder for a transport."""
+        self.closed = closed_future
 
     def close(self) -> None:
-        pass
+        """Close the placeholder."""
 
 
 class BaseConnector:
@@ -257,6 +258,11 @@ class BaseConnector:
         self._cleanup_closed_handle: Optional[asyncio.TimerHandle] = None
         self._cleanup_closed_disabled = not enable_cleanup_closed
         self._cleanup_closed_transports: List[Optional[asyncio.Transport]] = []
+
+        self._placeholder_future: asyncio.Future[Optional[Exception]] = (
+            loop.create_future()
+        )
+        self._placeholder_future.set_result(None)
         self._cleanup_closed()
 
     def __del__(self, _warnings: Any = warnings) -> None:
@@ -504,7 +510,9 @@ class BaseConnector:
                 if (proto := self._get(key)) is not None:
                     return await self._reused_connection(key, proto, traces)
 
-            placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
+            placeholder = cast(
+                ResponseHandler, _TransportPlaceholder(self._placeholder_future)
+            )
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
 
@@ -539,7 +547,9 @@ class BaseConnector:
     ) -> Connection:
         if traces:
             # Acquire the connection to prevent race conditions with limits
-            placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
+            placeholder = cast(
+                ResponseHandler, _TransportPlaceholder(self._placeholder_future)
+            )
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
             for trace in traces:
