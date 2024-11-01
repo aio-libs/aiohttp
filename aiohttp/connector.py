@@ -499,10 +499,7 @@ class BaseConnector:
             # we can avoid the timeout ceil logic and directly return the connection
             return await self._reused_connection(key, proto, traces)
 
-        async with ceil_timeout(
-            timeout.connect,
-            ceil_threshold=timeout.ceil_threshold,
-        ):
+        async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             # Wait if there are no available connections or if there are/were
             # waiters (i.e. don't steal connection from a waiter about to wake up)
             if wait_for_conn:
