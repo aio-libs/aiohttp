@@ -631,7 +631,7 @@ class BaseConnector:
 
         # Having the dict keys ordered this avoids to iterate
         # at the same order at each call.
-        queues = list(self._waiters.keys())
+        queues = list(self._waiters)
         random.shuffle(queues)
 
         for key in queues:
