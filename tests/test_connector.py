@@ -3426,7 +3426,7 @@ async def test_available_connections_with_limit_per_host(
     assert conn._available_connections(other_host_key2) == 2
 
 
-@pytest.mark.parametrize("limit_per_host", [None, 10])
+@pytest.mark.parametrize("limit_per_host", [0, 10])
 async def test_available_connections_without_limit_per_host(
     key: ConnectionKey, other_host_key2: ConnectionKey, limit_per_host: Optional[int]
 ) -> None:
