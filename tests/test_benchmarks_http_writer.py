@@ -9,9 +9,7 @@ from aiohttp import hdrs
 from aiohttp.http_writer import _serialize_headers
 
 
-def test_serialize_headers(
-    benchmark: BenchmarkFixture
-) -> None:
+def test_serialize_headers(benchmark: BenchmarkFixture) -> None:
     """Benchmark 100 _serialize_headers."""
     status_line = "HTTP/1.1 200 OK"
     headers = CIMultiDict(
