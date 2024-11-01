@@ -108,7 +108,6 @@ class _DeprecationWaiter:
 class Connection:
 
     _source_traceback = None
-    _transport = None
 
     def __init__(
         self,
@@ -1464,7 +1463,6 @@ class TCPConnector(BaseConnector):
                 raise
             else:
                 conn._protocol = None
-                conn._transport = None
                 try:
                     if resp.status != 200:
                         message = resp.reason
