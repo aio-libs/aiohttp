@@ -3401,7 +3401,7 @@ def test_default_ssl_context_creation_without_ssl() -> None:
 async def test_available_connections_with_limit_per_host(
     key: ConnectionKey, other_host_key2: ConnectionKey
 ) -> None:
-    """Verify expected values based on active connections."""
+    """Verify expected values based on active connections with host limit."""
     conn = aiohttp.BaseConnector(limit=3, limit_per_host=2)
     assert conn._available_connections(key) == 2
     assert conn._available_connections(other_host_key2) == 2
@@ -3430,7 +3430,7 @@ async def test_available_connections_with_limit_per_host(
 async def test_available_connections_without_limit_per_host(
     key: ConnectionKey, other_host_key2: ConnectionKey, limit_per_host: Optional[int]
 ) -> None:
-    """Verify expected values based on active connections."""
+    """Verify expected values based on active connections with higher host limit."""
     conn = aiohttp.BaseConnector(limit=3, limit_per_host=limit_per_host)
     assert conn._available_connections(key) == 3
     assert conn._available_connections(other_host_key2) == 3
@@ -3453,3 +3453,19 @@ async def test_available_connections_without_limit_per_host(
     other_connection1.close()
     assert conn._available_connections(key) == 3
     assert conn._available_connections(other_host_key2) == 3
+
+
+async def test_available_connections_no_limits(
+    key: ConnectionKey, other_host_key2: ConnectionKey
+) -> None:
+    """Verify expected values based on active connections with no limits."""
+    conn = aiohttp.BaseConnector(limit=None, limit_per_host=None)
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 1
+    proto1 = create_mocked_conn()
+    connection1 = conn._acquired_connection(proto1, key)
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 1
+    connection1.close()
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 1
