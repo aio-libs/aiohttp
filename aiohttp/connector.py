@@ -539,9 +539,8 @@ class BaseConnector:
                 if traces:
                     for trace in traces:
                         await trace.send_connection_create_end()
-            else:
-                if traces:
-                    await self._send_connect_reuseconn(key, traces)
+            elif traces:
+                await self._send_connect_reuseconn(key, traces)
 
         return self._acquired_connection(proto, key)
 
