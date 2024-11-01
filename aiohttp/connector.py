@@ -476,6 +476,7 @@ class BaseConnector:
         """
         # check total available connections
         total_available = 1
+
         if self._limit and (total_available := self._limit - len(self._acquired)) <= 0:
             return total_available
 
