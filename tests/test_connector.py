@@ -3398,7 +3398,7 @@ def test_default_ssl_context_creation_without_ssl() -> None:
         assert connector_module._make_ssl_context(True) is None
 
 
-async def test_available_connections(
+async def test_available_connections_with_limit_per_host(
     key: ConnectionKey, other_host_key2: ConnectionKey
 ) -> None:
     """Verify expected values based on active connections."""
@@ -3424,3 +3424,32 @@ async def test_available_connections(
     other_connection1.close()
     assert conn._available_connections(key) == 2
     assert conn._available_connections(other_host_key2) == 2
+
+
+@pytest.mark.parametrize("limit_per_host", [None, 10])
+async def test_available_connections_without_limit_per_host(
+    key: ConnectionKey, other_host_key2: ConnectionKey, limit_per_host: Optional[int]
+) -> None:
+    """Verify expected values based on active connections."""
+    conn = aiohttp.BaseConnector(limit=3, limit_per_host=limit_per_host)
+    assert conn._available_connections(key) == 3
+    assert conn._available_connections(other_host_key2) == 3
+    proto1 = create_mocked_conn()
+    connection1 = conn._acquired_connection(proto1, key)
+    assert conn._available_connections(key) == 2
+    assert conn._available_connections(other_host_key2) == 2
+    proto2 = create_mocked_conn()
+    connection2 = conn._acquired_connection(proto2, key)
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 1
+    connection1.close()
+    assert conn._available_connections(key) == 2
+    assert conn._available_connections(other_host_key2) == 2
+    connection2.close()
+    other_proto1 = create_mocked_conn()
+    other_connection1 = conn._acquired_connection(other_proto1, other_host_key2)
+    assert conn._available_connections(key) == 2
+    assert conn._available_connections(other_host_key2) == 2
+    other_connection1.close()
+    assert conn._available_connections(key) == 3
+    assert conn._available_connections(other_host_key2) == 3
