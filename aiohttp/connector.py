@@ -541,7 +541,14 @@ class BaseConnector:
         self, key: "ConnectionKey", proto: ResponseHandler, traces: List["Trace"]
     ) -> Connection:
         if traces:
-            await self._send_connect_reuseconn(key, traces)
+            # Acquire the connection to prevent race conditions with limits
+            placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
+            self._acquired.add(placeholder)
+            self._acquired_per_host[key].add(placeholder)
+            for trace in traces:
+                await trace.send_connection_reuseconn()
+            self._acquired.remove(placeholder)
+            self._drop_acquired_per_host(key, placeholder)
         return self._acquired_connection(proto, key)
 
     def _acquired_connection(
@@ -583,19 +590,6 @@ class BaseConnector:
         if traces:
             for trace in traces:
                 await trace.send_connection_queued_end()
-
-    async def _send_connect_reuseconn(
-        self, key: "ConnectionKey", traces: List["Trace"]
-    ) -> None:
-        """Send tracing events for reusing a connection."""
-        # Acquire the connection to prevent race conditions with limits
-        placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
-        self._acquired.add(placeholder)
-        self._acquired_per_host[key].add(placeholder)
-        for trace in traces:
-            await trace.send_connection_reuseconn()
-        self._acquired.remove(placeholder)
-        self._drop_acquired_per_host(key, placeholder)
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         try:
