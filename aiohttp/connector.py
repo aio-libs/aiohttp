@@ -459,29 +459,15 @@ class BaseConnector:
         If it returns less than 1 means that there are no connections
         available.
         """
-        if self._limit:
-            # total calc available connections
-            available = self._limit - len(self._acquired)
+        # check total available connections
+        if self._limit and (available := self._limit - len(self._acquired)) <= 0:
+            return available
 
-            # check limit per host
-            if (
-                self._limit_per_host
-                and available > 0
-                and key in self._acquired_per_host
-            ):
-                acquired = self._acquired_per_host.get(key)
-                assert acquired is not None
-                available = self._limit_per_host - len(acquired)
+        # check limit per host
+        if self._limit_per_host and key in self._acquired_per_host:
+            return self._limit_per_host - len(self._acquired_per_host[key])
 
-        elif self._limit_per_host and key in self._acquired_per_host:
-            # check limit per host
-            acquired = self._acquired_per_host.get(key)
-            assert acquired is not None
-            available = self._limit_per_host - len(acquired)
-        else:
-            available = 1
-
-        return available
+        return 1
 
     async def connect(
         self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
