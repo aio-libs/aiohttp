@@ -475,14 +475,21 @@ class BaseConnector:
         available.
         """
         # check total available connections
+        available = 1
         if self._limit and (available := self._limit - len(self._acquired)) <= 0:
             return available
 
         # check limit per host
-        if self._limit_per_host and key in self._acquired_per_host:
-            return self._limit_per_host - len(self._acquired_per_host[key])
+        if self._limit_per_host:
+            limit = (
+                self._limit_per_host - len(self._acquired_per_host[key])
+                if key in self._acquired_per_host
+                else self._limit_per_host
+            )
+            if available > limit:
+                return limit
 
-        return 1
+        return available
 
     async def connect(
         self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
