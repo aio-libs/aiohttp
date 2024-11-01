@@ -3460,7 +3460,7 @@ async def test_available_connections_no_limits(
 ) -> None:
     """Verify expected values based on active connections with no limits."""
     # No limits is a special case where available connections should always be 1.
-    conn = aiohttp.BaseConnector(limit=None, limit_per_host=None)
+    conn = aiohttp.BaseConnector(limit=0, limit_per_host=0)
     assert conn._available_connections(key) == 1
     assert conn._available_connections(other_host_key2) == 1
     proto1 = create_mocked_conn()
