@@ -615,6 +615,7 @@ class BaseConnector:
                     del self._conns[key]
                 return proto
 
+            # Connection cannot be reused, close it
             transport = proto.transport
             proto.close()
             # only for SSL transports
