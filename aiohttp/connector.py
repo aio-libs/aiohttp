@@ -346,11 +346,11 @@ class BaseConnector:
                 for proto, use_time in conns:
                     if proto.is_connected() and use_time - deadline >= 0:
                         alive.append((proto, use_time))
-                    else:
-                        transport = proto.transport
-                        proto.close()
-                        if not self._cleanup_closed_disabled and key.is_ssl:
-                            self._cleanup_closed_transports.append(transport)
+                        continue
+                    transport = proto.transport
+                    proto.close()
+                    if not self._cleanup_closed_disabled and key.is_ssl:
+                        self._cleanup_closed_transports.append(transport)
 
                 if alive:
                     connections[key] = alive
