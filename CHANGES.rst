@@ -10,7 +10,7 @@
 
 .. towncrier release notes start
 
-3.11.0b0 (2024-10-28)
+3.11.0b1 (2024-11-02)
 =====================
 
 Bug fixes
@@ -52,6 +52,14 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`6257`.
+
+
+
+- Added ``server_hostname`` parameter to ``ws_connect``.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7941`.
 
 
 
@@ -100,6 +108,15 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`9348`.
+
+
+
+- Updated :py:class:`~aiohttp.ClientSession` to support paths in ``base_url`` parameter.
+  ``base_url`` paths must end with a ``/``  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9530`.
 
 
 
@@ -164,6 +181,16 @@ Removals and backward incompatible breaking changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9365`.
+
+
+
+- Improved performance of the connector when a connection can be reused -- by :user:`bdraco`.
+
+  If ``BaseConnector.connect`` has been subclassed and replaced with custom logic, the ``ceil_timeout`` must be added.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9600`.
 
 
 
@@ -271,6 +298,14 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9485`.
+
+
+
+- Improved performance of serializing HTTP headers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9603`.
 
 
 
