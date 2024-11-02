@@ -52,7 +52,13 @@ def key2():
 
 
 @pytest.fixture
-def ssl_key():
+def other_host_key2() -> ConnectionKey:
+    # Connection key
+    return ConnectionKey("otherhost", 80, False, True, None, None, None)
+
+
+@pytest.fixture
+def ssl_key() -> ConnectionKey:
     # Connection key
     return ConnectionKey("localhost", 80, True, True, None, None, None)
 
@@ -3151,3 +3157,86 @@ def test_default_ssl_context_creation_without_ssl() -> None:
     with mock.patch.object(connector_module, "ssl", None):
         assert connector_module._make_ssl_context(False) is None
         assert connector_module._make_ssl_context(True) is None
+
+
+def _acquired_connection(
+    conn: aiohttp.BaseConnector, proto: ResponseHandler, key: "ConnectionKey"
+) -> Connection:
+    """Mark proto as acquired and wrap it in a Connection object."""
+    conn._acquired.add(proto)
+    conn._acquired_per_host[key].add(proto)
+    return Connection(conn, key, proto, conn._loop)
+
+
+async def test_available_connections_with_limit_per_host(
+    key: ConnectionKey, other_host_key2: ConnectionKey
+) -> None:
+    """Verify expected values based on active connections with host limit."""
+    conn = aiohttp.BaseConnector(limit=3, limit_per_host=2)
+    assert conn._available_connections(key) == 2
+    assert conn._available_connections(other_host_key2) == 2
+    proto1 = create_mocked_conn()
+    connection1 = _acquired_connection(conn, proto1, key)
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 2
+    proto2 = create_mocked_conn()
+    connection2 = _acquired_connection(conn, proto2, key)
+    assert conn._available_connections(key) == 0
+    assert conn._available_connections(other_host_key2) == 1
+    connection1.close()
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 2
+    connection2.close()
+    other_proto1 = create_mocked_conn()
+    other_connection1 = _acquired_connection(conn, other_proto1, other_host_key2)
+    assert conn._available_connections(key) == 2
+    assert conn._available_connections(other_host_key2) == 1
+    other_connection1.close()
+    assert conn._available_connections(key) == 2
+    assert conn._available_connections(other_host_key2) == 2
+
+
+@pytest.mark.parametrize("limit_per_host", [0, 10])
+async def test_available_connections_without_limit_per_host(
+    key: ConnectionKey, other_host_key2: ConnectionKey, limit_per_host: int
+) -> None:
+    """Verify expected values based on active connections with higher host limit."""
+    conn = aiohttp.BaseConnector(limit=3, limit_per_host=limit_per_host)
+    assert conn._available_connections(key) == 3
+    assert conn._available_connections(other_host_key2) == 3
+    proto1 = create_mocked_conn()
+    connection1 = _acquired_connection(conn, proto1, key)
+    assert conn._available_connections(key) == 2
+    assert conn._available_connections(other_host_key2) == 2
+    proto2 = create_mocked_conn()
+    connection2 = _acquired_connection(conn, proto2, key)
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 1
+    connection1.close()
+    assert conn._available_connections(key) == 2
+    assert conn._available_connections(other_host_key2) == 2
+    connection2.close()
+    other_proto1 = create_mocked_conn()
+    other_connection1 = _acquired_connection(conn, other_proto1, other_host_key2)
+    assert conn._available_connections(key) == 2
+    assert conn._available_connections(other_host_key2) == 2
+    other_connection1.close()
+    assert conn._available_connections(key) == 3
+    assert conn._available_connections(other_host_key2) == 3
+
+
+async def test_available_connections_no_limits(
+    key: ConnectionKey, other_host_key2: ConnectionKey
+) -> None:
+    """Verify expected values based on active connections with no limits."""
+    # No limits is a special case where available connections should always be 1.
+    conn = aiohttp.BaseConnector(limit=0, limit_per_host=0)
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 1
+    proto1 = create_mocked_conn()
+    connection1 = _acquired_connection(conn, proto1, key)
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 1
+    connection1.close()
+    assert conn._available_connections(key) == 1
+    assert conn._available_connections(other_host_key2) == 1
