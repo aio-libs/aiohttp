@@ -599,6 +599,7 @@ class BaseConnector:
                 await trace.send_connection_queued_end()
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
+        """Get next reusable connection for the key or None."""
         try:
             conns = self._conns[key]
         except KeyError:
