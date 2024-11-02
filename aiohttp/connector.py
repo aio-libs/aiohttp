@@ -348,14 +348,14 @@ class BaseConnector:
                         if use_time - deadline < 0:
                             transport = proto.transport
                             proto.close()
-                            if key.is_ssl and not self._cleanup_closed_disabled:
+                            if not self._cleanup_closed_disabled and key.is_ssl:
                                 self._cleanup_closed_transports.append(transport)
                         else:
                             alive.append((proto, use_time))
                     else:
                         transport = proto.transport
                         proto.close()
-                        if key.is_ssl and not self._cleanup_closed_disabled:
+                        if not self._cleanup_closed_disabled and key.is_ssl:
                             self._cleanup_closed_transports.append(transport)
 
                 if alive:
@@ -607,23 +607,19 @@ class BaseConnector:
         t1 = self._loop.time()
         while conns:
             proto, t0 = conns.pop()
-            if proto.is_connected():
-                if t1 - t0 > self._keepalive_timeout:
-                    transport = proto.transport
-                    proto.close()
-                    # only for SSL transports
-                    if key.is_ssl and not self._cleanup_closed_disabled:
-                        self._cleanup_closed_transports.append(transport)
-                else:
-                    if not conns:
-                        # The very last connection was reclaimed: drop the key
-                        del self._conns[key]
-                    return proto
-            else:
-                transport = proto.transport
-                proto.close()
-                if key.is_ssl and not self._cleanup_closed_disabled:
-                    self._cleanup_closed_transports.append(transport)
+            # We will we reuse the connection if its connected and
+            # the keepalive timeout has not been exceeded
+            if proto.is_connected() and t1 - t0 <= self._keepalive_timeout:
+                if not conns:
+                    # The very last connection was reclaimed: drop the key
+                    del self._conns[key]
+                return proto
+
+            transport = proto.transport
+            proto.close()
+            # only for SSL transports
+            if not self._cleanup_closed_disabled and key.is_ssl:
+                self._cleanup_closed_transports.append(transport)
 
         # No more connections: drop the key
         del self._conns[key]
