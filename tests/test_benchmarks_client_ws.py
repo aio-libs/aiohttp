@@ -21,7 +21,7 @@ def test_read_one_hundred_round_trip_websocket_text_messages(
         asyncio.set_event_loop(loop)
         loop.run_forever()
 
-    async def background_server() -> tuple[web.Application, _WSRequestContextManager]:
+    async def background_server() -> _WSRequestContextManager:
         nonlocal resp
 
         async def handler(request: web.Request) -> NoReturn:
@@ -35,12 +35,12 @@ def test_read_one_hundred_round_trip_websocket_text_messages(
         app = web.Application()
         app.router.add_route("GET", "/", handler)
         client = await aiohttp_client(app)
-        return app, await client.ws_connect("/")
+        return await client.ws_connect("/")
 
     thread = threading.Thread(target=start_background_loop, daemon=True)
 
     thread.start()
-    app, resp = asyncio.run_coroutine_threadsafe(background_server(), loop).result()
+    resp = asyncio.run_coroutine_threadsafe(background_server(), loop).result()
 
     async def _receive_one_hundred_websocket_text_messages() -> None:
         for _ in range(100):
