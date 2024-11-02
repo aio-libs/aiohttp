@@ -16,7 +16,6 @@ def test_read_one_hundred_round_trip_websocket_text_messages(
 ) -> None:
     """Benchmark round trip of 100 WebSocket text messages."""
     loop = asyncio.new_event_loop()
-    resp = None
 
     def start_background_loop() -> None:
         asyncio.set_event_loop(loop)
