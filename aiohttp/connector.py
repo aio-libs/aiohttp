@@ -342,7 +342,7 @@ class BaseConnector:
             connections = {}
             deadline = now - timeout
             for key, conns in self._conns.items():
-                alive = []
+                alive: List[Tuple[ResponseHandler, float]] = []
                 for proto, use_time in conns:
                     if proto.is_connected() and use_time - deadline >= 0:
                         alive.append((proto, use_time))
