@@ -137,7 +137,7 @@ class WebSocketWriter:
             self.transport.writelines((header, mask, message))
             self._output_size += MASK_LEN
         else:
-            self.transport.write((header, message))
+            self.transport.writelines((header, message))
 
         self._output_size += header_len + msg_length
 
