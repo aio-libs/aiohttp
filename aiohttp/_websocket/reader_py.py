@@ -246,10 +246,9 @@ class WebSocketReader:
             if self._state == READ_HEADER:
                 if buf_length - start_pos < 2:
                     break
-                data = buf[start_pos : start_pos + 2]
                 start_pos += 2
-                first_byte = data[0]
-                second_byte = data[1]
+                first_byte = buf[start_pos]
+                second_byte = buf[start_pos + 1]
 
                 fin = (first_byte >> 7) & 1
                 rsv1 = (first_byte >> 6) & 1
