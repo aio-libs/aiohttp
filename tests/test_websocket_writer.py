@@ -57,9 +57,9 @@ async def test_send_binary_long(writer: WebSocketWriter) -> None:
 
 async def test_send_binary_very_long(writer: WebSocketWriter) -> None:
     await writer.send_frame(b"b" * 65537, WSMsgType.BINARY)
-    assert writer.transport.writelines.call_args_list[0][0][
+    assert writer.transport.writelines.call_args_list[0][0][  # type: ignore[attr-defined]
         0
-    ] == (  # type: ignore[attr-defined]
+    ] == (
         b"\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01",
         b"b" * 65537,
     )
