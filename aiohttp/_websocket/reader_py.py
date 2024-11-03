@@ -243,10 +243,9 @@ class WebSocketReader:
             if self._state == READ_HEADER:
                 if buf_length - start_pos < 2:
                     break
-                data = buf[start_pos : start_pos + 2]
+                first_byte = buf[start_pos]
+                second_byte = buf[start_pos + 1]
                 start_pos += 2
-                first_byte = data[0]
-                second_byte = data[1]
 
                 fin = (first_byte >> 7) & 1
                 rsv1 = (first_byte >> 6) & 1
@@ -360,6 +359,6 @@ class WebSocketReader:
                 self._frame_payload = bytearray()
                 self._state = READ_HEADER
 
-        self._tail = buf[start_pos:]
+        self._tail = buf[start_pos:] if start_pos < buf_length else b""
 
         return frames
