@@ -1,13 +1,12 @@
 """codspeed benchmarks for websocket client."""
 
 import asyncio
-from typing import NoReturn
 
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
+from aiohttp.client import _WSRequestContextManager
 from aiohttp.pytest_plugin import AiohttpClient
-from aiohttp.test_utils import _WSRequestContextManager
 
 
 def test_one_thousand_round_trip_websocket_text_messages(
@@ -18,7 +17,7 @@ def test_one_thousand_round_trip_websocket_text_messages(
     """Benchmark round trip of 1000 WebSocket text messages."""
     message_count = 1000
 
-    async def handler(request: web.Request) -> NoReturn:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         for _ in range(message_count):
