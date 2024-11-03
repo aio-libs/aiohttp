@@ -17,17 +17,18 @@ def test_one_hundred_round_trip_websocket_text_messages(
 ) -> None:
     """Benchmark round trip of 100 WebSocket text messages."""
 
-    async def run_websocket_benchmark() -> _WSRequestContextManager:
-        async def handler(request: web.Request) -> NoReturn:
-            ws = web.WebSocketResponse()
-            await ws.prepare(request)
-            for _ in range(100):
-                await ws.send_str("answer")
-            await ws.close()
-            return ws
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        for _ in range(100):
+            await ws.send_str("answer")
+        await ws.close()
+        return ws
 
-        app = web.Application()
-        app.router.add_route("GET", "/", handler)
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_websocket_benchmark() -> _WSRequestContextManager:
         client = await aiohttp_client(app)
         resp = await client.ws_connect("/")
         for _ in range(100):
