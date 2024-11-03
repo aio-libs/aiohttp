@@ -1131,33 +1131,36 @@ async def test_empty_stream_reader_iter_chunks() -> None:
 
 
 @pytest.fixture
-async def buffer(loop: asyncio.AbstractEventLoop) -> streams.DataQueue[bytes]:
-    return streams.DataQueue(loop)
+async def buffer(
+    loop: asyncio.AbstractEventLoop,
+) -> streams.FlowControlDataQueue[bytes]:
+    protocol = mock.Mock(_reading_paused=False)
+    return streams.FlowControlDataQueue(protocol, 2**16, loop=loop)
 
 
-class TestDataQueue:
-    def test_is_eof(self, buffer: streams.DataQueue[bytes]) -> None:
+class TestFlowControlDataQueue:
+    def test_is_eof(self, buffer: streams.FlowControlDataQueue[bytes]) -> None:
         assert not buffer.is_eof()
         buffer.feed_eof()
         assert buffer.is_eof()
 
-    def test_at_eof(self, buffer: streams.DataQueue[bytes]) -> None:
+    def test_at_eof(self, buffer: streams.FlowControlDataQueue[bytes]) -> None:
         assert not buffer.at_eof()
         buffer.feed_eof()
         assert buffer.at_eof()
         buffer._buffer.append(b"foo")
         assert not buffer.at_eof()
 
-    def test_feed_data(self, buffer: streams.DataQueue[bytes]) -> None:
+    def test_feed_data(self, buffer: streams.FlowControlDataQueue[bytes]) -> None:
         item = b" "
         buffer.feed_data(item)
-        assert [item] == list(buffer._buffer)
+        assert [(item, 0)] == list(buffer._buffer)
 
-    def test_feed_eof(self, buffer: streams.DataQueue[bytes]) -> None:
+    def test_feed_eof(self, buffer: streams.FlowControlDataQueue[bytes]) -> None:
         buffer.feed_eof()
         assert buffer._eof
 
-    async def test_read(self, buffer: streams.DataQueue[bytes]) -> None:
+    async def test_read(self, buffer: streams.FlowControlDataQueue[bytes]) -> None:
         loop = asyncio.get_event_loop()
         item = b""
 
@@ -1169,7 +1172,7 @@ class TestDataQueue:
         data = await buffer.read()
         assert item is data
 
-    async def test_read_eof(self, buffer: streams.DataQueue[bytes]) -> None:
+    async def test_read_eof(self, buffer: streams.FlowControlDataQueue[bytes]) -> None:
         loop = asyncio.get_event_loop()
 
         def cb() -> None:
@@ -1180,7 +1183,9 @@ class TestDataQueue:
         with pytest.raises(streams.EofStream):
             await buffer.read()
 
-    async def test_read_cancelled(self, buffer: streams.DataQueue[bytes]) -> None:
+    async def test_read_cancelled(
+        self, buffer: streams.FlowControlDataQueue[bytes]
+    ) -> None:
         loop = asyncio.get_event_loop()
         read_task = loop.create_task(buffer.read())
         await asyncio.sleep(0)
@@ -1196,7 +1201,9 @@ class TestDataQueue:
         buffer.feed_data(b"test")
         assert buffer._waiter is None
 
-    async def test_read_until_eof(self, buffer: streams.DataQueue[bytes]) -> None:
+    async def test_read_until_eof(
+        self, buffer: streams.FlowControlDataQueue[bytes]
+    ) -> None:
         item = b""
         buffer.feed_data(item)
         buffer.feed_eof()
@@ -1207,7 +1214,7 @@ class TestDataQueue:
         with pytest.raises(streams.EofStream):
             await buffer.read()
 
-    async def test_read_exc(self, buffer: streams.DataQueue[bytes]) -> None:
+    async def test_read_exc(self, buffer: streams.FlowControlDataQueue[bytes]) -> None:
         item = b""
         buffer.feed_data(item)
         buffer.set_exception(ValueError)
@@ -1218,14 +1225,16 @@ class TestDataQueue:
         with pytest.raises(ValueError):
             await buffer.read()
 
-    async def test_read_exception(self, buffer: streams.DataQueue[bytes]) -> None:
+    async def test_read_exception(
+        self, buffer: streams.FlowControlDataQueue[bytes]
+    ) -> None:
         buffer.set_exception(ValueError())
 
         with pytest.raises(ValueError):
             await buffer.read()
 
     async def test_read_exception_with_data(
-        self, buffer: streams.DataQueue[bytes]
+        self, buffer: streams.FlowControlDataQueue[bytes]
     ) -> None:
         val = b""
         buffer.feed_data(val)
@@ -1236,7 +1245,7 @@ class TestDataQueue:
             await buffer.read()
 
     async def test_read_exception_on_wait(
-        self, buffer: streams.DataQueue[bytes]
+        self, buffer: streams.FlowControlDataQueue[bytes]
     ) -> None:
         loop = asyncio.get_event_loop()
         read_task = loop.create_task(buffer.read())
@@ -1249,14 +1258,16 @@ class TestDataQueue:
         with pytest.raises(ValueError):
             await read_task
 
-    def test_exception(self, buffer: streams.DataQueue[bytes]) -> None:
+    def test_exception(self, buffer: streams.FlowControlDataQueue[bytes]) -> None:
         assert buffer.exception() is None
 
         exc = ValueError()
         buffer.set_exception(exc)
         assert buffer.exception() is exc
 
-    async def test_exception_waiter(self, buffer: streams.DataQueue[bytes]) -> None:
+    async def test_exception_waiter(
+        self, buffer: streams.FlowControlDataQueue[bytes]
+    ) -> None:
         loop = asyncio.get_event_loop()
 
         async def set_err() -> None:
@@ -1472,7 +1483,10 @@ async def test_stream_reader_chunks_incomplete() -> None:
 async def test_data_queue_empty() -> None:
     # Tests that async looping yields nothing if nothing is there
     loop = asyncio.get_event_loop()
-    buffer: streams.DataQueue[bytes] = streams.DataQueue(loop)
+    protocol = mock.Mock(_reading_paused=False)
+    buffer: streams.FlowControlDataQueue[bytes] = streams.FlowControlDataQueue(
+        protocol, 2**16, loop=loop
+    )
     buffer.feed_eof()
 
     async for _ in buffer:
@@ -1482,7 +1496,8 @@ async def test_data_queue_empty() -> None:
 async def test_data_queue_items() -> None:
     # Tests that async looping yields objects identically
     loop = asyncio.get_event_loop()
-    buffer = streams.DataQueue[str](loop)
+    protocol = mock.Mock(_reading_paused=False)
+    buffer = streams.FlowControlDataQueue[str](protocol, 2**16, loop=loop)
 
     items = ["a", "b"]
     buffer.feed_data(items[0])

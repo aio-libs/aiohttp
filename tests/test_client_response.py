@@ -47,7 +47,7 @@ async def test_http_processing_error(session: ClientSession) -> None:
     loop.get_debug.return_value = True
 
     connection = mock.Mock()
-    connection.protocol = aiohttp.DataQueue(loop)
+    connection.protocol = aiohttp.FlowControlDataQueue(loop)
     connection.protocol.set_exception(http.HttpProcessingError())
 
     with pytest.raises(aiohttp.ClientResponseError) as info:
