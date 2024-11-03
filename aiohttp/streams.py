@@ -696,7 +696,23 @@ class FlowControlDataQueue(DataQueue[_SizedT]):
             self._protocol.pause_reading()
 
     async def read(self) -> _SizedT:
-        res = await super().read()
-        if self._size < self._limit and self._protocol._reading_paused:
-            self._protocol.resume_reading()
-        return res
+        if not self._buffer and not self._eof:
+            assert not self._waiter
+            self._waiter = self._loop.create_future()
+            try:
+                await self._waiter
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._waiter = None
+                raise
+
+        if self._buffer:
+            data = self._buffer.popleft()
+            self._size -= len(data)
+            if self._size < self._limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
+            return data
+
+        if self._exception is not None:
+            raise self._exception
+
+        raise EofStream
