@@ -34,6 +34,7 @@ def test_one_thousand_round_trip_websocket_text_messages(
         resp = await client.ws_connect("/")
         for _ in range(message_count):
             await resp.receive()
+        await resp.close()
 
     @benchmark
     def _run() -> None:
