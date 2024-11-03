@@ -143,8 +143,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         "_task",
         "_client_max_size",
         "_loop",
-        "_transport_sslcontext",
-        "_transport_peername",
         "__weakref__",
     )
 
@@ -201,11 +199,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
-
-        transport = self._protocol.transport
-        assert transport is not None
-        self._transport_sslcontext = transport.get_extra_info("sslcontext")
-        self._transport_peername = transport.get_extra_info("peername")
 
         if remote is not None:
             self._cache["remote"] = remote
@@ -389,7 +382,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         'http' or 'https'.
         """
-        if self._transport_sslcontext:
+        transport = self._protocol.transport
+        assert transport is not None
+        if transport.get_extra_info("sslcontext"):
             return "https"
         else:
             return "http"
@@ -438,11 +433,14 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
-        if self._transport_peername is None:
+        transport = self._protocol.transport
+        assert transport is not None
+        transport_peername = transport.get_extra_info("peername")
+        if transport_peername is None:
             return None
-        if isinstance(self._transport_peername, (list, tuple)):
-            return str(self._transport_peername[0])
-        return str(self._transport_peername)
+        if isinstance(transport_peername, (list, tuple)):
+            return str(transport_peername[0])
+        return str(transport_peername)
 
     @reify
     def url(self) -> URL:
