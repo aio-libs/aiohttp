@@ -733,13 +733,13 @@ class ClientRequest:
             self.__writer = None
 
     async def _on_chunk_request_sent(
-        self, method: str, url: URL, chunk: bytes, traces: List[Trace]
+        self, method: str, url: URL, chunk: bytes, traces: List["Trace"]
     ) -> None:
         for trace in traces:
             await trace.send_request_chunk_sent(method, url, chunk)
 
     async def _on_headers_request_sent(
-        self, method: str, url: URL, headers: "CIMultiDict[str]", traces: List[Trace]
+        self, method: str, url: URL, headers: "CIMultiDict[str]", traces: List["Trace"]
     ) -> None:
         for trace in traces:
             await trace.send_request_headers(method, url, headers)
