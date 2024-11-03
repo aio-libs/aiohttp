@@ -42,9 +42,7 @@ class MockTransport(asyncio.Transport):
         """Swallow is_closing."""
         return False
 
-    def writelines(
-        self, data: Iterable[Union[bytes, bytearray, memoryview[int]]]
-    ) -> None:
+    def writelines(self, data: Iterable[Union[bytes, bytearray, memoryview]]) -> None:
         """Swallow writes."""
 
 
