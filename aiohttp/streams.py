@@ -667,11 +667,9 @@ class DataQueue(Generic[_SizedT]):
             data = self._buffer.popleft()
             self._size -= len(data)
             return data
-        else:
-            if self._exception is not None:
-                raise self._exception
-            else:
-                raise EofStream
+        if self._exception is not None:
+            raise self._exception
+        raise EofStream
 
     def __aiter__(self) -> AsyncStreamIterator[_SizedT]:
         return AsyncStreamIterator(self.read)
@@ -698,8 +696,7 @@ class FlowControlDataQueue(DataQueue[_SizedT]):
             self._protocol.pause_reading()
 
     async def read(self) -> _SizedT:
-        try:
-            return await super().read()
-        finally:
-            if self._size < self._limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
+        res = await super().read()
+        if self._size < self._limit and self._protocol._reading_paused:
+            self._protocol.resume_reading()
+        return res
