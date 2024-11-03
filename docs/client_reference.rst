@@ -2241,7 +2241,7 @@ Response errors
 
 .. exception:: WSMessageTypeError
 
-   Received Web socket message of unexpected type
+   Received WebSocket message of unexpected type
 
    Derived from :exc:`TypeError`
 
