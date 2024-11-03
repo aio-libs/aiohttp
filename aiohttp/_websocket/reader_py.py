@@ -346,6 +346,8 @@ class WebSocketReader:
                 if length >= chunk_len:
                     self._payload_length = length - chunk_len
                     if self._frame_payload_len:
+                        if type(payload) is not bytearray:
+                            payload = bytearray(payload)
                         payload += buf[start_pos:]
                     else:
                         payload = buf[start_pos:]
@@ -353,6 +355,8 @@ class WebSocketReader:
                 else:
                     self._payload_length = 0
                     if self._frame_payload_len:
+                        if type(payload) is not bytearray:
+                            payload = bytearray(payload)
                         payload += buf[start_pos : start_pos + length]
                     else:
                         payload = buf[start_pos : start_pos + length]
