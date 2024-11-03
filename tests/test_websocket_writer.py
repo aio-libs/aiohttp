@@ -57,11 +57,12 @@ async def test_send_binary_long(writer: WebSocketWriter) -> None:
 
 async def test_send_binary_very_long(writer: WebSocketWriter) -> None:
     await writer.send_frame(b"b" * 65537, WSMsgType.BINARY)
-    assert (
-        writer.transport.write.call_args_list[0][0][0]  # type: ignore[attr-defined]
-        == b"\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01"
+    assert writer.transport.writelines.call_args_list[0][0][
+        0
+    ] == (  # type: ignore[attr-defined]
+        b"\x82\x7f\x00\x00\x00\x00\x00\x01\x00\x01",
+        b"b" * 65537,
     )
-    assert writer.transport.write.call_args_list[1][0][0] == b"b" * 65537  # type: ignore[attr-defined]
 
 
 async def test_close(writer: WebSocketWriter) -> None:
@@ -83,7 +84,7 @@ async def test_send_text_masked(
         protocol, transport, use_mask=True, random=random.Random(123)
     )
     await writer.send_frame(b"text", WSMsgType.TEXT)
-    writer.transport.write.assert_called_with(b"\x81\x84\rg\xb3fy\x02\xcb\x12")  # type: ignore[attr-defined]
+    writer.transport.writelines.assert_called_with((b"\x81\x84", b"\rg\xb3f", bytearray(b"y\x02\xcb\x12")))  # type: ignore[attr-defined]
 
 
 async def test_send_compress_text(
