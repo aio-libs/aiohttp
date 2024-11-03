@@ -377,7 +377,7 @@ class WebSocketReader:
                 frames.append(
                     (self._frame_fin, self._frame_opcode, payload, self._compressed)
                 )
-                self._frame_payload = bytearray()
+                self._frame_payload = b""
                 self._frame_payload_len = 0
                 self._state = READ_HEADER
 
