@@ -139,6 +139,7 @@ class WebSocketReader:
                         "to be zero, got {!r}".format(opcode),
                     )
 
+                assembled_payload: Union[bytes, bytearray]
                 if has_partial:
                     assembled_payload = self._partial + payload
                     self._partial.clear()
@@ -345,24 +346,19 @@ class WebSocketReader:
                 chunk_len = buf_length - start_pos
                 if length >= chunk_len:
                     self._payload_length = length - chunk_len
-                    if self._frame_payload_len:
-                        if type(payload) is not bytearray:
-                            payload = bytearray(payload)
-                        payload += buf[start_pos:]
-                    else:
-                        # Fast path for the first frame
-                        payload = buf[start_pos:]
-                    start_pos = buf_length
+                    end_pos = buf_length
                 else:
                     self._payload_length = 0
-                    if self._frame_payload_len:
-                        if type(payload) is not bytearray:
-                            payload = bytearray(payload)
-                        payload += buf[start_pos : start_pos + length]
-                    else:
-                        # Fast path for the first frame
-                        payload = buf[start_pos : start_pos + length]
-                    start_pos = start_pos + length
+                    end_pos = start_pos + length
+
+                if self._frame_payload_len:
+                    if type(payload) is not bytearray:
+                        payload = bytearray(payload)
+                    payload += buf[start_pos:end_pos]
+                else:
+                    # Fast path for the first frame
+                    payload = buf[start_pos:end_pos]
+                start_pos = end_pos
 
                 self._frame_payload_len += length
                 if self._payload_length != 0:
