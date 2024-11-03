@@ -172,8 +172,10 @@ class WebSocketReader:
                                 self._max_msg_size + left, self._max_msg_size
                             ),
                         )
-                else:
+                elif type(assembled_payload) is not bytes:
                     payload_merged = bytes(assembled_payload)
+                else:
+                    payload_merged = assembled_payload
 
                 if opcode == OP_CODE_TEXT:
                     try:
