@@ -6,9 +6,9 @@ from typing import Union
 from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
 
 from aiohttp import DataQueue
-from aiohttp._websocket.helpers import MSG_SIZE
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_websocket import (
+    MSG_SIZE,
     WebSocketReader,
     WebSocketWriter,
     WSMessage,
