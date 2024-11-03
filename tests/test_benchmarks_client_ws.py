@@ -47,7 +47,7 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
 ) -> None:
     """Benchmark round trip of 100 large WebSocket text messages."""
     message_count = 100
-    raw_message = b"x" * MSG_SIZE * 4
+    raw_message = "x" * MSG_SIZE * 4
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
