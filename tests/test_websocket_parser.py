@@ -139,6 +139,20 @@ def test_parse_frame_length2_multi_byte(parser: WebSocketReader) -> None:
     assert (0, 1, expected_payload, False) == (fin, opcode, payload, not not compress)
 
 
+def test_parse_frame_length2_multi_byte_multi_packet(parser: WebSocketReader) -> None:
+    """Ensure a multi-byte length with multiple packets is parsed correctly."""
+    expected_payload = b"1" * 32768
+    assert parser.parse_frame(struct.pack("!BB", 0b00000001, 126)) == []
+    assert parser.parse_frame(struct.pack("!H", 32768)) == []
+    assert parser.parse_frame(b"1" * 8192) == []
+    assert parser.parse_frame(b"1" * 8192) == []
+    assert parser.parse_frame(b"1" * 8192) == []
+    res = parser.parse_frame(b"1" * 8192)
+    fin, opcode, payload, compress = res[0]
+    assert len(payload) == 32768
+    assert (0, 1, expected_payload, False) == (fin, opcode, payload, not not compress)
+
+
 def test_parse_frame_length4(parser: WebSocketReader) -> None:
     parser.parse_frame(struct.pack("!BB", 0b00000001, 127))
     parser.parse_frame(struct.pack("!Q", 4))
