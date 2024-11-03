@@ -11,7 +11,6 @@ from ..client_exceptions import ClientConnectionResetError
 from ..compression_utils import ZLibCompressor
 from .helpers import (
     MASK_LEN,
-    MSG_SIZE,
     PACK_CLOSE_CODE,
     PACK_LEN1,
     PACK_LEN2,
@@ -135,13 +134,10 @@ class WebSocketWriter:
             mask = PACK_RANDBITS(self.get_random_bits())
             message = bytearray(message)
             websocket_mask(mask, message)
-            self.transport.write(header + mask + message)
+            self.transport.writelines((header, mask, message))
             self._output_size += MASK_LEN
-        elif msg_length > MSG_SIZE:
-            self.transport.write(header)
-            self.transport.write(message)
         else:
-            self.transport.write(header + message)
+            self.transport.write((header, message))
 
         self._output_size += header_len + msg_length
 
