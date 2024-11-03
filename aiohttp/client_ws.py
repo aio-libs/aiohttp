@@ -360,18 +360,19 @@ class ClientWebSocketResponse:
                 await self.close()
                 return WSMessageError(data=exc)
 
-            if msg.type is WSMsgType.CLOSE:
+            msg_type = msg.type  # Call type property only once
+            if msg_type is WSMsgType.CLOSE:
                 self._set_closing()
                 self._close_code = msg.data
                 # Could be closed elsewhere while awaiting reader
                 if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
                     await self.close()
-            elif msg.type is WSMsgType.CLOSING:
+            elif msg_type is WSMsgType.CLOSING:
                 self._set_closing()
-            elif msg.type is WSMsgType.PING and self._autoping:
+            elif msg_type is WSMsgType.PING and self._autoping:
                 await self.pong(msg.data)
                 continue
-            elif msg.type is WSMsgType.PONG and self._autoping:
+            elif msg_type is WSMsgType.PONG and self._autoping:
                 continue
 
             return msg
