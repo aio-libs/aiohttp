@@ -5,7 +5,7 @@ import asyncio
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
-from aiohttp._websocket.helpers import MSG_SIZE
+from aiohttp.http_websocket import MSG_SIZE
 from aiohttp.pytest_plugin import AiohttpClient
 
 
