@@ -61,6 +61,7 @@ class WebSocketReader:
         self._frame_fin = False
         self._frame_opcode: Optional[int] = None
         self._frame_payload = bytearray()
+        self._frame_payload_len = 0
 
         self._tail: bytes = b""
         self._has_mask = False
@@ -232,9 +233,11 @@ class WebSocketReader:
 
     def parse_frame(
         self, buf: bytes
-    ) -> List[Tuple[bool, Optional[int], bytearray, Optional[bool]]]:
+    ) -> List[Tuple[bool, Optional[int], Union[bytes, bytearray], Optional[bool]]]:
         """Return the next frame from the socket."""
-        frames: List[Tuple[bool, Optional[int], bytearray, Optional[bool]]] = []
+        frames: List[
+            Tuple[bool, Optional[int], Union[bytes, bytearray], Optional[bool]]
+        ] = []
         if self._tail:
             buf, self._tail = self._tail + buf, b""
 
@@ -342,24 +345,34 @@ class WebSocketReader:
                 chunk_len = buf_length - start_pos
                 if length >= chunk_len:
                     self._payload_length = length - chunk_len
-                    payload += buf[start_pos:]
+                    if self._frame_payload_len:
+                        payload += buf[start_pos:]
+                    else:
+                        payload = buf[start_pos:]
                     start_pos = buf_length
                 else:
                     self._payload_length = 0
-                    payload += buf[start_pos : start_pos + length]
+                    if self._frame_payload_len:
+                        payload += buf[start_pos : start_pos + length]
+                    else:
+                        payload = buf[start_pos : start_pos + length]
                     start_pos = start_pos + length
 
+                self._frame_payload_len += length
                 if self._payload_length != 0:
                     break
 
                 if self._has_mask:
                     assert self._frame_mask is not None
+                    if type(payload) is not bytearray:
+                        payload = bytearray(payload)
                     websocket_mask(self._frame_mask, payload)
 
                 frames.append(
                     (self._frame_fin, self._frame_opcode, payload, self._compressed)
                 )
                 self._frame_payload = bytearray()
+                self._frame_payload_len = 0
                 self._state = READ_HEADER
 
         self._tail = buf[start_pos:] if start_pos < buf_length else b""

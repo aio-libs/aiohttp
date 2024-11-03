@@ -51,6 +51,7 @@ cdef class WebSocketReader:
     cdef object _frame_fin
     cdef object _frame_opcode
     cdef bytearray _frame_payload
+    cdef unsigned int _frame_payload_len
 
     cdef bytes _tail
     cdef bint _has_mask
@@ -79,7 +80,6 @@ cdef class WebSocketReader:
         chunk_size="unsigned int",
         chunk_len="unsigned int",
         buf_length="unsigned int",
-        payload=bytearray,
         first_byte="unsigned char",
         second_byte="unsigned char",
         has_mask=bint,
