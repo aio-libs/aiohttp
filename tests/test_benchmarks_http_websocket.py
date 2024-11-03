@@ -1,10 +1,12 @@
 """codspeed benchmarks for http websocket."""
 
 import asyncio
+from typing import Iterable, Union
 
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import DataQueue
+from aiohttp._websocket.helpers import MSG_SIZE
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_websocket import (
     WebSocketReader,
@@ -41,7 +43,7 @@ class MockTransport(asyncio.Transport):
         """Swallow is_closing."""
         return False
 
-    def write(self, data: bytes) -> None:
+    def write(self, data: Iterable[Union[bytes, bytearray, memoryview]]) -> None:
         """Swallow writes."""
 
 
@@ -57,6 +59,22 @@ def test_send_one_hundred_websocket_text_messages(
     """Benchmark sending 100 WebSocket text messages."""
     writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport())
     raw_message = b"Hello, World!" * 100
+
+    async def _send_one_hundred_websocket_text_messages() -> None:
+        for _ in range(100):
+            await writer.send_frame(raw_message, WSMsgType.TEXT)
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(_send_one_hundred_websocket_text_messages())
+
+
+def test_send_one_hundred_large_websocket_text_messages(
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+) -> None:
+    """Benchmark sending 100 WebSocket text messages."""
+    writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport())
+    raw_message = b"x" * MSG_SIZE * 2
 
     async def _send_one_hundred_websocket_text_messages() -> None:
         for _ in range(100):
