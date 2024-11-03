@@ -5,7 +5,6 @@ import asyncio
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
-from aiohttp.client import _WSRequestContextManager
 from aiohttp.pytest_plugin import AiohttpClient
 
 
@@ -28,7 +27,7 @@ def test_one_thousand_round_trip_websocket_text_messages(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    async def run_websocket_benchmark() -> _WSRequestContextManager:
+    async def run_websocket_benchmark() -> None:
         client = await aiohttp_client(app)
         resp = await client.ws_connect("/")
         for _ in range(message_count):
