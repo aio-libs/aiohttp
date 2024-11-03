@@ -363,6 +363,6 @@ class WebSocketReader:
                 self._frame_payload = bytearray()
                 self._state = READ_HEADER
 
-        self._tail = buf[start_pos:]
+        self._tail = buf[start_pos:] if start_pos < buf_length else b""
 
         return frames
