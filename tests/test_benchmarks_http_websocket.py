@@ -64,7 +64,9 @@ def test_send_one_hundred_websocket_text_messages(
         for _ in range(100):
             await writer.send_frame(raw_message, WSMsgType.TEXT)
 
-    benchmark(loop.run_until_complete(_send_one_hundred_websocket_text_messages()))
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(_send_one_hundred_websocket_text_messages())
 
 
 def test_send_one_hundred_large_websocket_text_messages(
@@ -78,7 +80,9 @@ def test_send_one_hundred_large_websocket_text_messages(
         for _ in range(100):
             await writer.send_frame(raw_message, WSMsgType.TEXT)
 
-    benchmark(loop.run_until_complete(_send_one_hundred_websocket_text_messages()))
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(_send_one_hundred_websocket_text_messages())
 
 
 def test_send_one_hundred_websocket_text_messages_with_mask(
@@ -92,4 +96,6 @@ def test_send_one_hundred_websocket_text_messages_with_mask(
         for _ in range(100):
             await writer.send_frame(raw_message, WSMsgType.TEXT)
 
-    benchmark(loop.run_until_complete(_send_one_hundred_websocket_text_messages()))
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(_send_one_hundred_websocket_text_messages())
