@@ -11,6 +11,7 @@ from ..client_exceptions import ClientConnectionResetError
 from ..compression_utils import ZLibCompressor
 from .helpers import (
     MASK_LEN,
+    MSG_SIZE,
     PACK_CLOSE_CODE,
     PACK_LEN1,
     PACK_LEN2,
@@ -136,8 +137,15 @@ class WebSocketWriter:
             websocket_mask(mask, message)
             self.transport.writelines((header, mask, message))
             self._output_size += MASK_LEN
-        else:
+        elif msg_length > MSG_SIZE:
+            # For large messages, we use writelines to avoid copying the
+            # entire message into a new buffer. This is a performance
+            # optimization to avoid unnecessary memory allocations.
             self.transport.writelines((header, message))
+        else:
+            # If the message is small, its faster to copy it into a new
+            # buffer and send it all at once.
+            self.transport.write(header + message)
 
         self._output_size += header_len + msg_length
 
