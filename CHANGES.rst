@@ -10,7 +10,7 @@
 
 .. towncrier release notes start
 
-3.11.0b1 (2024-11-02)
+3.11.0b2 (2024-11-03)
 =====================
 
 Bug fixes
@@ -124,7 +124,7 @@ Features
 
 
   *Related issues and pull requests on GitHub:*
-  :issue:`9543`, :issue:`9554`, :issue:`9556`, :issue:`9558`.
+  :issue:`9543`, :issue:`9554`, :issue:`9556`, :issue:`9558`, :issue:`9636`, :issue:`9649`.
 
 
 
