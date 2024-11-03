@@ -350,6 +350,7 @@ class WebSocketReader:
                             payload = bytearray(payload)
                         payload += buf[start_pos:]
                     else:
+                        # Fast path for the first frame
                         payload = buf[start_pos:]
                     start_pos = buf_length
                 else:
@@ -359,6 +360,7 @@ class WebSocketReader:
                             payload = bytearray(payload)
                         payload += buf[start_pos : start_pos + length]
                     else:
+                        # Fast path for the first frame
                         payload = buf[start_pos : start_pos + length]
                     start_pos = start_pos + length
 
