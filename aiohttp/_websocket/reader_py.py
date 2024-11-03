@@ -342,38 +342,41 @@ class WebSocketReader:
                 self._state = READ_PAYLOAD
 
             if self._state == READ_PAYLOAD:
-                length = self._payload_length
-                payload = self._frame_payload
-
                 chunk_len = buf_length - start_pos
-                if length >= chunk_len:
-                    self._payload_length = length - chunk_len
+                if self._payload_length >= chunk_len:
                     end_pos = buf_length
+                    self._payload_length -= chunk_len
                 else:
+                    end_pos = start_pos + self._payload_length
                     self._payload_length = 0
-                    end_pos = start_pos + length
 
                 if self._frame_payload_len:
-                    if type(payload) is not bytearray:
-                        payload = bytearray(payload)
-                    payload += buf[start_pos:end_pos]
+                    if type(self._frame_payload) is not bytearray:
+                        self._frame_payload = bytearray(self._frame_payload)
+                    self._frame_payload += buf[start_pos:end_pos]
                 else:
                     # Fast path for the first frame
-                    payload = buf[start_pos:end_pos]
+                    self._frame_payload = buf[start_pos:end_pos]
+
+                self._frame_payload_len += end_pos - start_pos
                 start_pos = end_pos
 
-                self._frame_payload_len += length
                 if self._payload_length != 0:
                     break
 
                 if self._has_mask:
                     assert self._frame_mask is not None
-                    if type(payload) is not bytearray:
-                        payload = bytearray(payload)
-                    websocket_mask(self._frame_mask, payload)
+                    if type(self._frame_payload) is not bytearray:
+                        self._frame_payload = bytearray(self._frame_payload)
+                    websocket_mask(self._frame_mask, self._frame_payload)
 
                 frames.append(
-                    (self._frame_fin, self._frame_opcode, payload, self._compressed)
+                    (
+                        self._frame_fin,
+                        self._frame_opcode,
+                        self._frame_payload,
+                        self._compressed,
+                    )
                 )
                 self._frame_payload = b""
                 self._frame_payload_len = 0
