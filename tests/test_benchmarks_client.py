@@ -16,7 +16,7 @@ def test_one_hundred_simple_get_requests(
     """Benchmark 100 simple GET requests."""
     message_count = 100
 
-    async def handler(request: web.Request) -> web.WebSocketResponse:
+    async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
     app = web.Application()
