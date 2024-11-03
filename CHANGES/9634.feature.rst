@@ -1,0 +1,1 @@
+Implemented zero copy writes for WebSockets when using Python 3.12+ -- by :user:`bdraco`.
