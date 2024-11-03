@@ -77,7 +77,7 @@ def test_send_one_hundred_large_websocket_text_messages(
 ) -> None:
     """Benchmark sending 100 WebSocket text messages."""
     writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport())
-    raw_message = b"x" * MSG_SIZE * 2
+    raw_message = b"x" * MSG_SIZE * 4
 
     async def _send_one_hundred_websocket_text_messages() -> None:
         for _ in range(100):
