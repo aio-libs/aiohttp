@@ -60,7 +60,7 @@ class WebSocketReader:
         self._opcode: Optional[int] = None
         self._frame_fin = False
         self._frame_opcode: Optional[int] = None
-        self._frame_payload = bytearray()
+        self._frame_payload: Union[bytes, bytearray] = b""
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
