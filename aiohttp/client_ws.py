@@ -240,14 +240,12 @@ class ClientWebSocketResponse:
     async def send_str(self, data: str, compress: Optional[int] = None) -> None:
         if not isinstance(data, str):
             raise TypeError("data argument must be str (%r)" % type(data))
-        await self._writer.send_frame(
-            data.encode("utf-8"), WSMsgType.TEXT, compress=compress
-        )
+        await self._writer.send_frame(data.encode("utf-8"), WSMsgType.TEXT, compress)
 
     async def send_bytes(self, data: bytes, compress: Optional[int] = None) -> None:
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError("data argument must be byte-ish (%r)" % type(data))
-        await self._writer.send_frame(data, WSMsgType.BINARY, compress=compress)
+        await self._writer.send_frame(data, WSMsgType.BINARY, compress)
 
     async def send_json(
         self,
