@@ -277,7 +277,7 @@ wait-for-it==2.2.2
     # via -r requirements/test.in
 wheel==0.44.0
     # via pip-tools
-yarl==1.17.0
+yarl==1.17.1
     # via -r requirements/runtime-deps.in
 zipp==3.20.2
     # via
