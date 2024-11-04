@@ -495,6 +495,8 @@ class BaseConnector:
         """Get from pool or create new connection."""
         key = req.connection_key
         available = self._available_connections(key)
+        fut: Optional[asyncio.Future[None]] = None
+        waiters: Optional[Deque[asyncio.Future[None]]] = None
         if wait_for_conn := available <= 0 or key in self._waiters:
             # Be sure to fill the waiters dict before the next
             # await statement to guarantee that the available
@@ -513,6 +515,9 @@ class BaseConnector:
             # Wait if there are no available connections or if there are/were
             # waiters (i.e. don't steal connection from a waiter about to wake up)
             if wait_for_conn:
+                if TYPE_CHECKING:
+                    assert fut is not None
+                    assert waiters is not None
                 await self._wait_for_available_connection(fut, waiters, key, traces)
                 if (proto := self._get(key)) is not None:
                     return await self._reused_connection(key, proto, traces)
