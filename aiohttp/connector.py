@@ -510,11 +510,7 @@ class BaseConnector:
                     try:
                         await trace.send_connection_reuseconn()
                     except BaseException:
-                        # If the send_connection_reuseconn() fails
-                        # we need to release the connection and re-raise
-                        if not self._closed:
-                            self._drop_acquired(key, proto)
-                            self._release_waiter()
+                        self._release_acquired(key, proto)
                         raise
             return Connection(self, key, proto, self._loop)
 
@@ -561,11 +557,7 @@ class BaseConnector:
                             for trace in traces:
                                 await trace.send_connection_reuseconn()
                         except BaseException:
-                            # If the send_connection_reuseconn() fails
-                            # we need to release the connection and re-raise
-                            if not self._closed:
-                                self._drop_acquired(key, proto)
-                                self._release_waiter()
+                            self._release_acquired(key, proto)
                             raise
                     return Connection(self, key, proto, self._loop)
 
@@ -587,9 +579,7 @@ class BaseConnector:
                     for trace in traces:
                         await trace.send_connection_create_end()
             except BaseException:
-                if not self._closed:
-                    self._drop_acquired(key, placeholder)
-                    self._release_waiter()
+                self._release_acquired(key, placeholder)
                 raise
             else:
                 if self._closed:
