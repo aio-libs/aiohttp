@@ -554,36 +554,38 @@ class WebSocketResponse(StreamResponse):
 
             try:
                 self._waiting = True
-                try:
-                    if receive_timeout:
-                        # Entering the context manager and creating
-                        # Timeout() object can take almost 50% of the
-                        # run time in this loop so we avoid it if
-                        # there is no read timeout.
-                        async with async_timeout.timeout(receive_timeout):
-                            msg = await self._reader.read()
-                    else:
+                if receive_timeout:
+                    # Entering the context manager and creating
+                    # Timeout() object can take almost 50% of the
+                    # run time in this loop so we avoid it if
+                    # there is no read timeout.
+                    async with async_timeout.timeout(receive_timeout):
                         msg = await self._reader.read()
-                    self._reset_heartbeat()
-                finally:
-                    self._waiting = False
-                    if self._close_wait:
-                        set_result(self._close_wait, None)
+                else:
+                    msg = await self._reader.read()
+                self._reset_heartbeat()
             except asyncio.TimeoutError:
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK
+                self._waiting = False
                 await self.close()
                 return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
+                self._waiting = False
                 await self.close(code=exc.code)
                 return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._set_closing(WSCloseCode.ABNORMAL_CLOSURE)
+                self._waiting = False
                 await self.close()
                 return WSMessageError(data=exc)
+            finally:
+                self._waiting = False
+                if self._close_wait:
+                    set_result(self._close_wait, None)
 
             if msg.type not in _INTERNAL_RECEIVE_TYPES:
                 return msg
