@@ -502,17 +502,10 @@ class BaseConnector:
     ) -> Connection:
         """Get from pool or create new connection."""
         key = req.connection_key
-        if (proto := self._get(key)) is not None:
+        if (conn := await self._get(key, traces)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
-            if traces:
-                for trace in traces:
-                    try:
-                        await trace.send_connection_reuseconn()
-                    except BaseException:
-                        self._release_acquired(key, proto)
-                        raise
-            return Connection(self, key, proto, self._loop)
+            return conn
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             #
@@ -551,15 +544,8 @@ class BaseConnector:
                     if not self._waiters.get(key):
                         del self._waiters[key]
 
-                if (proto := self._get(key)) is not None:
-                    if traces:
-                        try:
-                            for trace in traces:
-                                await trace.send_connection_reuseconn()
-                        except BaseException:
-                            self._release_acquired(key, proto)
-                            raise
-                    return Connection(self, key, proto, self._loop)
+                if (conn := await self._get(key, traces)) is not None:
+                    return conn
 
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
@@ -593,7 +579,9 @@ class BaseConnector:
         self._acquired_per_host[key].add(proto)
         return Connection(self, key, proto, self._loop)
 
-    def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
+    async def _get(
+        self, key: "ConnectionKey", traces: List["Trace"]
+    ) -> Optional[Connection]:
         """Get next reusable connection for the key or None.
 
         The connection will be marked as acquired.
@@ -614,7 +602,16 @@ class BaseConnector:
                     del self._conns[key]
                 self._acquired.add(proto)
                 self._acquired_per_host[key].add(proto)
-                return proto
+                # If we do not have to wait and we can get a connection from the pool
+                # we can avoid the timeout ceil logic and directly return the connection
+                if traces:
+                    for trace in traces:
+                        try:
+                            await trace.send_connection_reuseconn()
+                        except BaseException:
+                            self._release_acquired(key, proto)
+                            raise
+                return Connection(self, key, proto, self._loop)
 
             # Connection cannot be reused, close it
             transport = proto.transport
