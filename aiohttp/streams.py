@@ -622,7 +622,7 @@ class DataQueue(Generic[_T]):
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
-        self._buffer: Deque[_T] = collections.deque()
+        self._buffer: Deque[Tuple[_T, int]] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -648,7 +648,7 @@ class DataQueue(Generic[_T]):
             set_exception(waiter, exc, exc_cause)
 
     def feed_data(self, data: _T, size: int = 0) -> None:
-        self._buffer.append(data)
+        self._buffer.append((data, size))
         if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
@@ -672,7 +672,8 @@ class DataQueue(Generic[_T]):
         if not self._buffer and not self._eof:
             await self._wait_for_data()
         if self._buffer:
-            return self._buffer.popleft()
+            data, _ = self._buffer.popleft()
+            return data
         if self._exception is not None:
             raise self._exception
         raise EofStream
