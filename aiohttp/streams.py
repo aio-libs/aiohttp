@@ -622,7 +622,7 @@ class DataQueue(Generic[_T]):
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
-        self._buffer: Deque[Tuple[_T, int]] = collections.deque()
+        self._buffer: Deque[_T] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -694,6 +694,7 @@ class FlowControlDataQueue(DataQueue[_T]):
         self._size = 0
         self._protocol = protocol
         self._limit = limit * 2
+        self._buffer: Deque[Tuple[_T, int]] = collections.deque()
 
     def feed_data(self, data: _T, size: int = 0) -> None:
         self._size += size
