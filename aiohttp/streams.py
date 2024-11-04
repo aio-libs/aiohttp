@@ -653,23 +653,30 @@ class DataQueue(Generic[_SizedT]):
             self._waiter = None
             set_result(waiter, None)
 
+    def _raise_exception_or_eof(self) -> None:
+        if self._exception is not None:
+            raise self._exception
+        raise EofStream
+
+    async def _wait_for_data(self) -> _SizedT:
+        assert not self._waiter
+        self._waiter = self._loop.create_future()
+        try:
+            await self._waiter
+        except (asyncio.CancelledError, asyncio.TimeoutError):
+            self._waiter = None
+            raise
+
     async def read(self) -> _SizedT:
         if not self._buffer and not self._eof:
-            assert not self._waiter
-            self._waiter = self._loop.create_future()
-            try:
-                await self._waiter
-            except (asyncio.CancelledError, asyncio.TimeoutError):
-                self._waiter = None
-                raise
+            await self._wait_for_data()
 
         if self._buffer:
             data = self._buffer.popleft()
             self._size -= len(data)
             return data
-        if self._exception is not None:
-            raise self._exception
-        raise EofStream
+
+        self._raise_exception_or_eof()
 
     def __aiter__(self) -> AsyncStreamIterator[_SizedT]:
         return AsyncStreamIterator(self.read)
@@ -697,13 +704,7 @@ class FlowControlDataQueue(DataQueue[_SizedT]):
 
     async def read(self) -> _SizedT:
         if not self._buffer and not self._eof:
-            assert not self._waiter
-            self._waiter = self._loop.create_future()
-            try:
-                await self._waiter
-            except (asyncio.CancelledError, asyncio.TimeoutError):
-                self._waiter = None
-                raise
+            await self._wait_for_data()
 
         if self._buffer:
             data = self._buffer.popleft()
@@ -712,7 +713,4 @@ class FlowControlDataQueue(DataQueue[_SizedT]):
                 self._protocol.resume_reading()
             return data
 
-        if self._exception is not None:
-            raise self._exception
-
-        raise EofStream
+        self._raise_exception_or_eof()
