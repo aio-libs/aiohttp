@@ -658,7 +658,7 @@ class DataQueue(Generic[_SizedT]):
             raise self._exception
         raise EofStream
 
-    async def _wait_for_data(self) -> _SizedT:
+    async def _wait_for_data(self) -> None:
         assert not self._waiter
         self._waiter = self._loop.create_future()
         try:
