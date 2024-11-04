@@ -585,24 +585,25 @@ class WebSocketResponse(StreamResponse):
                 await self.close()
                 return WSMessageError(data=exc)
 
-            if msg.type in _INTERNAL_RECEIVE_TYPES:
-                if msg.type is WSMsgType.CLOSE:
-                    self._set_closing(msg.data)
-                    # Could be closed while awaiting reader.
-                    if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
-                        # The client is likely going to close the
-                        # connection out from under us so we do not
-                        # want to drain any pending writes as it will
-                        # likely result writing to a broken pipe.
-                        await self.close(drain=False)
-                elif msg.type is WSMsgType.CLOSING:
-                    self._set_closing(WSCloseCode.OK)
-                elif msg.type is WSMsgType.PING and self._autoping:
-                    await self.pong(msg.data)
-                    continue
-                elif msg.type is WSMsgType.PONG and self._autoping:
-                    continue
+            if msg.type not in _INTERNAL_RECEIVE_TYPES:
+                return msg
 
+            if msg.type is WSMsgType.CLOSE:
+                self._set_closing(msg.data)
+                # Could be closed while awaiting reader.
+                if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
+                    # The client is likely going to close the
+                    # connection out from under us so we do not
+                    # want to drain any pending writes as it will
+                    # likely result writing to a broken pipe.
+                    await self.close(drain=False)
+            elif msg.type is WSMsgType.CLOSING:
+                self._set_closing(WSCloseCode.OK)
+            elif msg.type is WSMsgType.PING and self._autoping:
+                await self.pong(msg.data)
+                continue
+            elif msg.type is WSMsgType.PONG and self._autoping:
+                continue
             return msg
 
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:

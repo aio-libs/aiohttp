@@ -364,21 +364,22 @@ class ClientWebSocketResponse:
                 await self.close()
                 return WSMessageError(data=exc)
 
-            if msg.type in _INTERNAL_RECEIVE_TYPES:
-                if msg.type is WSMsgType.CLOSE:
-                    self._set_closing()
-                    self._close_code = msg.data
-                    # Could be closed elsewhere while awaiting reader
-                    if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
-                        await self.close()
-                elif msg.type is WSMsgType.CLOSING:
-                    self._set_closing()
-                elif msg.type is WSMsgType.PING and self._autoping:
-                    await self.pong(msg.data)
-                    continue
-                elif msg.type is WSMsgType.PONG and self._autoping:
-                    continue
+            if msg.type not in _INTERNAL_RECEIVE_TYPES:
+                return msg
 
+            if msg.type is WSMsgType.CLOSE:
+                self._set_closing()
+                self._close_code = msg.data
+                # Could be closed elsewhere while awaiting reader
+                if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
+                    await self.close()
+            elif msg.type is WSMsgType.CLOSING:
+                self._set_closing()
+            elif msg.type is WSMsgType.PING and self._autoping:
+                await self.pong(msg.data)
+                continue
+            elif msg.type is WSMsgType.PONG and self._autoping:
+                continue
             return msg
 
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
