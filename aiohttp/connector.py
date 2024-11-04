@@ -497,6 +497,7 @@ class BaseConnector:
         if (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
+            self._mark_acquired(key, proto)
             return await self._reused_connection(key, proto, traces)
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
@@ -526,13 +527,13 @@ class BaseConnector:
                         await trace.send_connection_queued_end()
 
                 if (proto := self._get(key)) is not None:
+                    self._mark_acquired(key, proto)
                     return await self._reused_connection(key, proto, traces)
 
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
             )
-            self._acquired.add(placeholder)
-            self._acquired_per_host[key].add(placeholder)
+            self._mark_acquired(key, placeholder)
 
             if traces:
                 for trace in traces:
@@ -563,22 +564,19 @@ class BaseConnector:
     ) -> Connection:
         if traces:
             # Acquire the connection to prevent race conditions with limits
-            placeholder = cast(
-                ResponseHandler, _TransportPlaceholder(self._placeholder_future)
-            )
-            self._acquired.add(placeholder)
-            self._acquired_per_host[key].add(placeholder)
             for trace in traces:
                 await trace.send_connection_reuseconn()
-            self._drop_acquired(key, placeholder)
-        return self._acquired_connection(proto, key)
+        return Connection(self, key, proto, self._loop)
+
+    def _mark_acquired(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
+        self._acquired.add(proto)
+        self._acquired_per_host[key].add(proto)
 
     def _acquired_connection(
         self, proto: ResponseHandler, key: "ConnectionKey"
     ) -> Connection:
         """Mark proto as acquired and wrap it in a Connection object."""
-        self._acquired.add(proto)
-        self._acquired_per_host[key].add(proto)
+        self._mark_acquired(key, proto)
         return Connection(self, key, proto, self._loop)
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
