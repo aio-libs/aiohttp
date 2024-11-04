@@ -502,8 +502,8 @@ class BaseConnector:
             # await statement to guarantee that the available
             # connections are correctly calculated.
             fut = self._loop.create_future()
-            # This connection will now count towards the limit.
             waiters = self._waiters[key]
+            # This connection will now count towards the limit.
             waiters.append(fut)
 
         elif (proto := self._get(key)) is not None:
