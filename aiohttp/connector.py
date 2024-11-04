@@ -521,29 +521,24 @@ class BaseConnector:
                 if iter_count > 1:
                     pprint.pprint(["wait for", iter_count])
 
-                # Be sure to fill the waiters dict before the next
-                # await statement to guarantee that the available
-                # connections are correctly calculated.
                 fut: asyncio.Future[None] = self._loop.create_future()
                 keyed_waiters = self._waiters[key]
-                # This connection will now count towards the limit.
                 keyed_waiters[fut] = None
-                # Wait if there are no available connections or if there are/were
-                # waiters (i.e. don't steal connection from a waiter about to wake up)
-                if traces:
-                    for trace in traces:
-                        await trace.send_connection_queued_start()
 
                 try:
+                    # Traces happen in the try block to ensure that the
+                    # the waiter is still cleaned up if an exception is raised.
+                    if traces:
+                        for trace in traces:
+                            await trace.send_connection_queued_start()
                     await fut
+                    if traces:
+                        for trace in traces:
+                            await trace.send_connection_queued_end()
                 finally:
                     del keyed_waiters[fut]
                     if not self._waiters.get(key):
                         del self._waiters[key]
-
-                if traces:
-                    for trace in traces:
-                        await trace.send_connection_queued_end()
 
                 if (proto := self._get(key)) is not None:
                     conn = Connection(self, key, proto, self._loop)
