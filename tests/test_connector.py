@@ -3399,6 +3399,13 @@ def test_default_ssl_context_creation_without_ssl() -> None:
         assert connector_module._make_ssl_context(True) is None
 
 
+def _acquired_connection(
+    conn: aiohttp.BaseConnector, proto: ResponseHandler, key: ConnectionKey
+) -> Connection:
+    conn._mark_acquired(key, proto)
+    return Connection(conn, key, proto, conn._loop)
+
+
 async def test_available_connections_with_limit_per_host(
     key: ConnectionKey, other_host_key2: ConnectionKey
 ) -> None:
@@ -3407,11 +3414,11 @@ async def test_available_connections_with_limit_per_host(
     assert conn._available_connections(key) == 2
     assert conn._available_connections(other_host_key2) == 2
     proto1 = create_mocked_conn()
-    connection1 = conn._acquired_connection(proto1, key)
+    connection1 = _acquired_connection(conn, proto1, key)
     assert conn._available_connections(key) == 1
     assert conn._available_connections(other_host_key2) == 2
     proto2 = create_mocked_conn()
-    connection2 = conn._acquired_connection(proto2, key)
+    connection2 = _acquired_connection(conn, proto2, key)
     assert conn._available_connections(key) == 0
     assert conn._available_connections(other_host_key2) == 1
     connection1.close()
@@ -3419,7 +3426,7 @@ async def test_available_connections_with_limit_per_host(
     assert conn._available_connections(other_host_key2) == 2
     connection2.close()
     other_proto1 = create_mocked_conn()
-    other_connection1 = conn._acquired_connection(other_proto1, other_host_key2)
+    other_connection1 = _acquired_connection(conn, other_proto1, other_host_key2)
     assert conn._available_connections(key) == 2
     assert conn._available_connections(other_host_key2) == 1
     other_connection1.close()
@@ -3436,11 +3443,11 @@ async def test_available_connections_without_limit_per_host(
     assert conn._available_connections(key) == 3
     assert conn._available_connections(other_host_key2) == 3
     proto1 = create_mocked_conn()
-    connection1 = conn._acquired_connection(proto1, key)
+    connection1 = _acquired_connection(conn, proto1, key)
     assert conn._available_connections(key) == 2
     assert conn._available_connections(other_host_key2) == 2
     proto2 = create_mocked_conn()
-    connection2 = conn._acquired_connection(proto2, key)
+    connection2 = _acquired_connection(conn, proto2, key)
     assert conn._available_connections(key) == 1
     assert conn._available_connections(other_host_key2) == 1
     connection1.close()
@@ -3448,7 +3455,7 @@ async def test_available_connections_without_limit_per_host(
     assert conn._available_connections(other_host_key2) == 2
     connection2.close()
     other_proto1 = create_mocked_conn()
-    other_connection1 = conn._acquired_connection(other_proto1, other_host_key2)
+    other_connection1 = _acquired_connection(conn, other_proto1, other_host_key2)
     assert conn._available_connections(key) == 2
     assert conn._available_connections(other_host_key2) == 2
     other_connection1.close()
@@ -3465,7 +3472,7 @@ async def test_available_connections_no_limits(
     assert conn._available_connections(key) == 1
     assert conn._available_connections(other_host_key2) == 1
     proto1 = create_mocked_conn()
-    connection1 = conn._acquired_connection(proto1, key)
+    connection1 = _acquired_connection(conn, proto1, key)
     assert conn._available_connections(key) == 1
     assert conn._available_connections(other_host_key2) == 1
     connection1.close()

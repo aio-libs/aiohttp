@@ -557,7 +557,8 @@ class BaseConnector:
                 for trace in traces:
                     await trace.send_connection_create_end()
 
-            return self._acquired_connection(proto, key)
+            self._mark_acquired(key, proto)
+            return Connection(self, key, proto, self._loop)
 
     async def _reused_connection(
         self, key: "ConnectionKey", proto: ResponseHandler, traces: List["Trace"]
@@ -571,13 +572,6 @@ class BaseConnector:
     def _mark_acquired(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
-
-    def _acquired_connection(
-        self, proto: ResponseHandler, key: "ConnectionKey"
-    ) -> Connection:
-        """Mark proto as acquired and wrap it in a Connection object."""
-        self._mark_acquired(key, proto)
-        return Connection(self, key, proto, self._loop)
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         """Get next reusable connection for the key or None."""
