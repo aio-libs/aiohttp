@@ -499,7 +499,7 @@ class BaseConnector:
             return await self._reused_connection(key, proto, traces)
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
-            if self._available_connections(key) <= 0:
+            while self._available_connections(key) <= 0:
                 # Be sure to fill the waiters dict before the next
                 # await statement to guarantee that the available
                 # connections are correctly calculated.
