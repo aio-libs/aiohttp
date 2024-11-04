@@ -616,7 +616,7 @@ EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 class _BaseDataQueue:
 
-    _buffer: Deque
+    _buffer: collections.deque
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
