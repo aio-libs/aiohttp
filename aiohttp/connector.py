@@ -511,6 +511,13 @@ class BaseConnector:
             # we can avoid the timeout ceil logic and directly return the connection
             return await self._reused_connection(key, proto, traces)
 
+        if available:
+            placeholder = cast(
+                ResponseHandler, _TransportPlaceholder(self._placeholder_future)
+            )
+            self._acquired.add(placeholder)
+            self._acquired_per_host[key].add(placeholder)
+
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             # Wait if there are no available connections or if there are/were
             # waiters (i.e. don't steal connection from a waiter about to wake up)
@@ -523,12 +530,6 @@ class BaseConnector:
                 )
                 if (proto := self._get(key)) is not None:
                     return await self._reused_connection(key, proto, traces)
-
-            placeholder = cast(
-                ResponseHandler, _TransportPlaceholder(self._placeholder_future)
-            )
-            self._acquired.add(placeholder)
-            self._acquired_per_host[key].add(placeholder)
 
             if traces:
                 for trace in traces:
