@@ -552,8 +552,8 @@ class BaseConnector:
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
             )
-            self._acquired.add(proto)
-            self._acquired_per_host[key].add(proto)
+            self._acquired.add(placeholder)
+            self._acquired_per_host[key].add(placeholder)
 
             if traces:
                 for trace in traces:
@@ -570,22 +570,19 @@ class BaseConnector:
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
-                self._replace_placeholder(key, placeholder, proto)
 
             if traces:
                 for trace in traces:
                     await trace.send_connection_create_end()
 
+            # The connection was successfully created, drop the placeholder
+            # We must never yield to the event loop after this point as
+            # it is not cancellation safe once we have acquired the connection.
+            self._acquired.discard(placeholder)
+            self._acquired_per_host[key].discard(placeholder)
+            self._acquired.add(proto)
+            self._acquired_per_host[key].add(proto)
             return Connection(self, key, proto, self._loop)
-
-    def _replace_placeholder(
-        self, key: "ConnectionKey", placeholder: ResponseHandler, proto: ResponseHandler
-    ) -> None:
-        """Replace the placeholder protocol with the real protocol."""
-        self._acquired.discard(placeholder)
-        self._acquired_per_host[key].discard(placeholder)
-        self._acquired.add(proto)
-        self._acquired_per_host[key].add(proto)
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         """Get next reusable connection for the key or None.
