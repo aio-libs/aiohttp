@@ -497,7 +497,10 @@ class BaseConnector:
         if (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
-            return await self._reused_connection(key, proto, traces)
+            if traces:
+                for trace in traces:
+                    await trace.send_connection_reuseconn()
+            return Connection(self, key, proto, self._loop)
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             #
@@ -535,7 +538,10 @@ class BaseConnector:
                         await trace.send_connection_queued_end()
 
                 if (proto := self._get(key)) is not None:
-                    return await self._reused_connection(key, proto, traces)
+                    if traces:
+                        for trace in traces:
+                            await trace.send_connection_reuseconn()
+                    return Connection(self, key, proto, self._loop)
 
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
@@ -549,34 +555,31 @@ class BaseConnector:
 
             try:
                 proto = await self._create_connection(req, traces, timeout)
-                if self._closed:
-                    proto.close()
-                    raise ClientConnectionError("Connector is closed.")
             except BaseException:
                 if not self._closed:
                     self._drop_acquired(key, placeholder)
                     self._release_waiter()
                 raise
             else:
-                if not self._closed:
-                    self._drop_acquired(key, placeholder)
+                if self._closed:
+                    proto.close()
+                    raise ClientConnectionError("Connector is closed.")
+                self._replace_placeholder(key, placeholder, proto)
 
             if traces:
                 for trace in traces:
                     await trace.send_connection_create_end()
 
-            self._acquired.add(proto)
-            self._acquired_per_host[key].add(proto)
             return Connection(self, key, proto, self._loop)
 
-    async def _reused_connection(
-        self, key: "ConnectionKey", proto: ResponseHandler, traces: List["Trace"]
-    ) -> Connection:
-        if traces:
-            # Acquire the connection to prevent race conditions with limits
-            for trace in traces:
-                await trace.send_connection_reuseconn()
-        return Connection(self, key, proto, self._loop)
+    def _replace_placeholder(
+        self, key: "ConnectionKey", placeholder: ResponseHandler, proto: ResponseHandler
+    ) -> None:
+        """Replace the placeholder protocol with the real protocol."""
+        self._acquired.discard(placeholder)
+        self._acquired_per_host[key].discard(placeholder)
+        self._acquired.add(proto)
+        self._acquired_per_host[key].add(proto)
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         """Get next reusable connection for the key or None.
@@ -632,7 +635,7 @@ class BaseConnector:
                 continue
 
             for waiter in self._waiters[key]:
-                if not waiter.done():
+                if not waiter.done():  # and not waiter.cancelled():
                     waiter.set_result(None)
                     return
 
