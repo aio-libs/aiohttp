@@ -132,7 +132,7 @@ def create_mocked_conn(
     return proto
 
 
-def test_connection_del(loop: asyncio.AbstractEventLoop) -> None:
+async def test_connection_del(loop: asyncio.AbstractEventLoop) -> None:
     connector = mock.Mock()
     key = mock.Mock()
     protocol = mock.Mock()
@@ -145,6 +145,7 @@ def test_connection_del(loop: asyncio.AbstractEventLoop) -> None:
         del conn
         gc.collect()
 
+    await asyncio.sleep(0)
     connector._release.assert_called_with(key, protocol, should_close=True)
     msg = {
         "message": mock.ANY,

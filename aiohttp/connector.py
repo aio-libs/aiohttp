@@ -558,9 +558,8 @@ class BaseConnector:
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
             )
-            acquired_per_host = self._acquired_per_host[key]
             self._acquired.add(placeholder)
-            acquired_per_host.add(placeholder)
+            self._acquired_per_host[key].add(placeholder)
 
             try:
                 # Traces are done inside the try block to ensure that the
@@ -590,7 +589,7 @@ class BaseConnector:
         # and add the real connection to the acquired set. Nothing
         self._drop_acquired(key, placeholder)
         self._acquired.add(proto)
-        acquired_per_host.add(proto)
+        self._acquired_per_host[key].add(proto)
         return Connection(self, key, proto, self._loop)
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
