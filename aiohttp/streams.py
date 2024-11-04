@@ -634,18 +634,17 @@ class DataQueue(Generic[_SizedT]):
             self._waiter = None
             set_exception(waiter, exc, exc_cause)
 
-    def _release_waiter(self) -> None:
+    def feed_data(self, data: _SizedT) -> None:
+        self._buffer.append(data)
         if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
 
-    def feed_data(self, data: _SizedT) -> None:
-        self._buffer.append(data)
-        self._release_waiter()
-
     def feed_eof(self) -> None:
         self._eof = True
-        self._release_waiter()
+        if (waiter := self._waiter) is not None:
+            self._waiter = None
+            set_result(waiter, None)
 
     async def _wait_for_data(self) -> None:
         assert not self._waiter
@@ -686,7 +685,9 @@ class FlowControlDataQueue(DataQueue[_SizedT]):
     def feed_data(self, data: _SizedT) -> None:
         self._size += len(data)
         self._buffer.append(data)
-        self._release_waiter()
+        if (waiter := self._waiter) is not None:
+            self._waiter = None
+            set_result(waiter, None)
         if self._size > self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 
