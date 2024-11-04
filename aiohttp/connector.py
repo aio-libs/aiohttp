@@ -497,10 +497,11 @@ class BaseConnector:
         if (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
+            conn = Connection(self, key, proto, self._loop)
             if traces:
                 for trace in traces:
                     await trace.send_connection_reuseconn()
-            return Connection(self, key, proto, self._loop)
+            return conn
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             #
@@ -545,10 +546,11 @@ class BaseConnector:
                         await trace.send_connection_queued_end()
 
                 if (proto := self._get(key)) is not None:
+                    conn = Connection(self, key, proto, self._loop)
                     if traces:
                         for trace in traces:
                             await trace.send_connection_reuseconn()
-                    return Connection(self, key, proto, self._loop)
+                    return conn
 
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
