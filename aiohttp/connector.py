@@ -6,7 +6,7 @@ import socket
 import sys
 import traceback
 import warnings
-from collections import defaultdict, deque
+from collections import defaultdict
 from contextlib import suppress
 from http import HTTPStatus
 from itertools import chain, cycle, islice
@@ -18,7 +18,6 @@ from typing import (
     Awaitable,
     Callable,
     DefaultDict,
-    Deque,
     Dict,
     Iterator,
     List,
@@ -253,8 +252,8 @@ class BaseConnector:
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
-        self._waiters: DefaultDict[ConnectionKey, Deque[asyncio.Future[None]]] = (
-            defaultdict(deque)
+        self._waiters: DefaultDict[ConnectionKey, dict[asyncio.Future[None], None]] = (
+            defaultdict(dict)
         )
 
         self._loop = loop
@@ -496,7 +495,7 @@ class BaseConnector:
         key = req.connection_key
         available = self._available_connections(key)
         fut: Optional[asyncio.Future[None]] = None
-        keyed_waiters: Optional[Deque[asyncio.Future[None]]] = None
+        keyed_waiters: Optional[dict[asyncio.Future[None], None]] = None
         if wait_for_conn := available <= 0 or key in self._waiters:
             # Be sure to fill the waiters dict before the next
             # await statement to guarantee that the available
@@ -504,7 +503,7 @@ class BaseConnector:
             fut = self._loop.create_future()
             keyed_waiters = self._waiters[key]
             # This connection will now count towards the limit.
-            keyed_waiters.append(fut)
+            keyed_waiters[fut] = None
 
         elif (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
@@ -583,7 +582,7 @@ class BaseConnector:
     async def _wait_for_available_connection(
         self,
         fut: asyncio.Future[None],
-        keyed_waiters: Deque[asyncio.Future[None]],
+        keyed_waiters: dict[asyncio.Future[None], None],
         key: "ConnectionKey",
         traces: List["Trace"],
     ) -> None:
@@ -594,10 +593,8 @@ class BaseConnector:
 
         try:
             await fut
-        except BaseException:
-            keyed_waiters.remove(fut)
-            raise
         finally:
+            del keyed_waiters[fut]
             if not self._waiters.get(key):
                 del self._waiters[key]
 
@@ -653,9 +650,7 @@ class BaseConnector:
             if self._available_connections(key) < 1:
                 continue
 
-            waiters = self._waiters[key]
-            while waiters:
-                waiter = waiters.popleft()
+            for waiter in self._waiters[key]:
                 if not waiter.done():
                     waiter.set_result(None)
                     return
