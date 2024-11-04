@@ -125,15 +125,7 @@ class Connection:
             if self._loop.is_closed():
                 return
 
-            # __del__ may be called in different thread. We have to use call_soon_threadsafe.
-            self._loop.call_soon_threadsafe(
-                functools.partial(
-                    self._connector._release,
-                    self._key,
-                    self._protocol,
-                    should_close=True,
-                )
-            )
+            self._connector._release(self._key, self._protocol, should_close=True)
 
             context = {"client_connection": self, "message": "Unclosed connection"}
             if self._source_traceback is not None:
@@ -260,7 +252,7 @@ class BaseConnector:
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
-        # The FIFO is implemented with a dict with None keys because
+        # The FIFO is implemented with an OrderedDict with None keys because
         # python does not have an ordered set.
         self._waiters: DefaultDict[
             ConnectionKey, OrderedDict[asyncio.Future[None], None]
