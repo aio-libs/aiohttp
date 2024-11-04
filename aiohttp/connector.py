@@ -592,8 +592,10 @@ class BaseConnector:
 
         try:
             await fut
-        finally:
+        except BaseException:
             waiters.remove(fut)
+            raise
+        finally:
             if not self._waiters.get(key):
                 del self._waiters[key]
 
