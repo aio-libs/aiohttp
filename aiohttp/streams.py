@@ -616,14 +616,22 @@ EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 class _BaseDataQueue:
 
+    _buffer: Deque
+
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
 
+    def __len__(self) -> int:
+        return len(self._buffer)
+
     def is_eof(self) -> bool:
         return self._eof
+
+    def at_eof(self) -> bool:
+        return self._eof and not self._buffer
 
     def exception(self) -> Optional[BaseException]:
         return self._exception
@@ -668,12 +676,6 @@ class DataQueue(_BaseDataQueue, Generic[_T]):
         super().__init__(loop=loop)
         self._buffer: Deque[_T] = collections.deque()
 
-    def __len__(self) -> int:
-        return len(self._buffer)
-
-    def at_eof(self) -> bool:
-        return self._eof and not self._buffer
-
     async def read(self) -> _T:
         if not self._buffer and not self._eof:
             await self._wait_for_data()
@@ -695,12 +697,6 @@ class FlowControlDataQueue(_BaseDataQueue, Generic[_T]):
 
     It is a destination for parsed data.
     """
-
-    def __len__(self) -> int:
-        return len(self._buffer)
-
-    def at_eof(self) -> bool:
-        return self._eof and not self._buffer
 
     def __init__(
         self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
