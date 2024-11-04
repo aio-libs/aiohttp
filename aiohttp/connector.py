@@ -447,10 +447,10 @@ class BaseConnector:
         finally:
             self._conns.clear()
             self._acquired.clear()
-            for waiters in self._waiters.values():
-                for waiter in waiters:
-                    if not waiter.done():
-                        waiter.cancel()
+            for keyed_waiters in self._waiters.values():
+                for keyed_waiter in keyed_waiters:
+                    if not keyed_waiter.done():
+                        keyed_waiter.cancel()
             self._waiters.clear()
             self._cleanup_handle = None
             self._cleanup_closed_transports.clear()
