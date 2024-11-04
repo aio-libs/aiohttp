@@ -515,8 +515,7 @@ class BaseConnector:
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
             )
-            self._acquired.add(placeholder)
-            self._acquired_per_host[key].add(placeholder)
+            self._add_acquired(key, proto)
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             # Wait if there are no available connections or if there are/were
@@ -530,6 +529,10 @@ class BaseConnector:
                 )
                 if (proto := self._get(key)) is not None:
                     return await self._reused_connection(key, proto, traces)
+                placeholder = cast(
+                    ResponseHandler, _TransportPlaceholder(self._placeholder_future)
+                )
+                self._add_acquired(key, proto)
 
             if traces:
                 for trace in traces:
@@ -563,8 +566,7 @@ class BaseConnector:
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
             )
-            self._acquired.add(placeholder)
-            self._acquired_per_host[key].add(placeholder)
+            self._add_acquired(key, placeholder)
             for trace in traces:
                 await trace.send_connection_reuseconn()
             self._drop_acquired(key, placeholder)
@@ -574,9 +576,12 @@ class BaseConnector:
         self, proto: ResponseHandler, key: "ConnectionKey"
     ) -> Connection:
         """Mark proto as acquired and wrap it in a Connection object."""
+        self._add_acquired(key, proto)
+        return Connection(self, key, proto, self._loop)
+
+    def _add_acquired(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
-        return Connection(self, key, proto, self._loop)
 
     async def _wait_for_available_connection(
         self,
