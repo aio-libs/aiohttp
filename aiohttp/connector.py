@@ -18,6 +18,7 @@ from typing import (
     Awaitable,
     Callable,
     DefaultDict,
+    Deque,
     Dict,
     Iterator,
     List,
@@ -252,7 +253,7 @@ class BaseConnector:
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
-        self._waiters: DefaultDict[ConnectionKey, deque[asyncio.Future[None]]] = (
+        self._waiters: DefaultDict[ConnectionKey, Deque[asyncio.Future[None]]] = (
             defaultdict(deque)
         )
 
@@ -446,6 +447,10 @@ class BaseConnector:
         finally:
             self._conns.clear()
             self._acquired.clear()
+            for waiters in self._waiters.values():
+                for waiter in waiters:
+                    if not waiter.done():
+                        waiter.cancel()
             self._waiters.clear()
             self._cleanup_handle = None
             self._cleanup_closed_transports.clear()
@@ -490,8 +495,16 @@ class BaseConnector:
         """Get from pool or create new connection."""
         key = req.connection_key
         available = self._available_connections(key)
-        wait_for_conn = available <= 0 or key in self._waiters
-        if not wait_for_conn and (proto := self._get(key)) is not None:
+        if wait_for_conn := available <= 0 or key in self._waiters:
+            # Be sure to fill the waiters dict before the next
+            # await statement to guarantee that the available
+            # connections are correctly calculated.
+            fut: asyncio.Future[None] = self._loop.create_future()
+            # This connection will now count towards the limit.
+            waiters = self._waiters[key]
+            waiters.append(fut)
+
+        elif (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
             return await self._reused_connection(key, proto, traces)
@@ -500,7 +513,7 @@ class BaseConnector:
             # Wait if there are no available connections or if there are/were
             # waiters (i.e. don't steal connection from a waiter about to wake up)
             if wait_for_conn:
-                await self._wait_for_available_connection(key, traces)
+                await self._wait_for_available_connection(fut, waiters, key, traces)
                 if (proto := self._get(key)) is not None:
                     return await self._reused_connection(key, proto, traces)
 
@@ -561,31 +574,24 @@ class BaseConnector:
         return Connection(self, key, proto, self._loop)
 
     async def _wait_for_available_connection(
-        self, key: "ConnectionKey", traces: List["Trace"]
+        self,
+        fut: asyncio.Future[None],
+        waiters: Deque[asyncio.Future[None]],
+        key: "ConnectionKey",
+        traces: List["Trace"],
     ) -> None:
         """Wait until there is an available connection."""
-        fut: asyncio.Future[None] = self._loop.create_future()
-
-        # This connection will now count towards the limit.
-        self._waiters[key].append(fut)
-
         if traces:
             for trace in traces:
                 await trace.send_connection_queued_start()
 
         try:
             await fut
-        except BaseException as e:
-            if key in self._waiters:
-                # remove a waiter even if it was cancelled, normally it's
-                #  removed when it's notified
-                with suppress(ValueError):
-                    # fut may no longer be in list
-                    self._waiters[key].remove(fut)
-
-            raise e
+        except BaseException:
+            waiters.remove(fut)
+            raise
         finally:
-            if key in self._waiters and not self._waiters[key]:
+            if not self._waiters.get(key):
                 del self._waiters[key]
 
         if traces:
