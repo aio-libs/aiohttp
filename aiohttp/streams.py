@@ -630,14 +630,12 @@ class DataQueue(Generic[_SizedT]):
         self._eof = True
         self._exception = exc
 
-        waiter = self._waiter
-        if waiter is not None:
+        if (waiter := self._waiter) is not None:
             self._waiter = None
             set_exception(waiter, exc, exc_cause)
 
     def _release_waiter(self) -> None:
-        waiter = self._waiter
-        if waiter is not None:
+        if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
 
