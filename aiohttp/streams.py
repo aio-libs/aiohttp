@@ -647,11 +647,6 @@ class DataQueue(Generic[_SizedT]):
         self._eof = True
         self._release_waiter()
 
-    def _raise_exception_or_eof(self) -> None:
-        if self._exception is not None:
-            raise self._exception
-        raise EofStream
-
     async def _wait_for_data(self) -> None:
         assert not self._waiter
         self._waiter = self._loop.create_future()
@@ -666,7 +661,9 @@ class DataQueue(Generic[_SizedT]):
             await self._wait_for_data()
         if self._buffer:
             return self._buffer.popleft()
-        self._raise_exception_or_eof()
+        if self._exception is not None:
+            raise self._exception
+        raise EofStream
 
     def __aiter__(self) -> AsyncStreamIterator[_SizedT]:
         return AsyncStreamIterator(self.read)
@@ -702,4 +699,6 @@ class FlowControlDataQueue(DataQueue[_SizedT]):
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
-        self._raise_exception_or_eof()
+        if self._exception is not None:
+            raise self._exception
+        raise EofStream
