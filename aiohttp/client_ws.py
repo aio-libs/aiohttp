@@ -312,6 +312,13 @@ class ClientWebSocketResponse:
             return False
 
     async def _close_from_receive(self, code: int) -> None:
+        """Close the connection from the receive coroutine.
+
+        Called when an error occurs while receiving a message.
+
+        Always sets self._waiting to False before returning
+        to ensure close does not wait.
+        """
         self._waiting = False
         await self.close(code=code)
 
