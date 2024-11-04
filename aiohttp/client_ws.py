@@ -311,6 +311,10 @@ class ClientWebSocketResponse:
         else:
             return False
 
+    async def _close_from_receive(self, code: int) -> None:
+        self._waiting = False
+        await self.close(code=code)
+
     async def receive(self, timeout: Optional[float] = None) -> WSMessage:
         receive_timeout = timeout or self._timeout.ws_receive
 
@@ -341,8 +345,7 @@ class ClientWebSocketResponse:
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK
-                self._waiting = False
-                await self.close()
+                await self._close_from_receive(WSCloseCode.OK)
                 return WS_CLOSED_MESSAGE
             except ClientError:
                 # Likely ServerDisconnectedError when connection is lost
@@ -351,15 +354,13 @@ class ClientWebSocketResponse:
                 return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
-                self._waiting = False
-                await self.close(code=exc.code)
+                await self._close_from_receive(exc.code)
                 return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._set_closing()
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                self._waiting = False
-                await self.close()
+                await self._close_from_receive(WSCloseCode.OK)
                 return WSMessageError(data=exc)
             finally:
                 self._waiting = False

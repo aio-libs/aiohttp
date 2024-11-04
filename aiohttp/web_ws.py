@@ -533,6 +533,10 @@ class WebSocketResponse(StreamResponse):
         if self._req is not None and self._req.transport is not None:
             self._req.transport.close()
 
+    async def _close_from_receive(self, code: int) -> None:
+        self._waiting = False
+        await self.close(code=code)
+
     async def receive(self, timeout: Optional[float] = None) -> WSMessage:
         if self._reader is None:
             raise RuntimeError("Call .prepare() first")
@@ -568,19 +572,16 @@ class WebSocketResponse(StreamResponse):
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK
-                self._waiting = False
-                await self.close()
+                await self._close_from_receive(WSCloseCode.OK)
                 return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
-                self._waiting = False
-                await self.close(code=exc.code)
+                await self._close_from_receive(exc.code)
                 return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._set_closing(WSCloseCode.ABNORMAL_CLOSURE)
-                self._waiting = False
-                await self.close()
+                await self._close_from_receive(WSCloseCode.OK)
                 return WSMessageError(data=exc)
             finally:
                 self._waiting = False
