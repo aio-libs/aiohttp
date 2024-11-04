@@ -512,12 +512,13 @@ class BaseConnector:
             # between the check and the await statement, we
             # need to loop again to check if the connection
             # slot is still available.
-            # iter_count = 0
+            iter_count = 0
             while self._available_connections(key) <= 0:
-                # iter_count += 1
-                # import pprint
-                # if iter_count > 1:
-                #    pprint.pprint(['wait for', iter_count])
+                iter_count += 1
+                import pprint
+
+                if iter_count > 1:
+                    pprint.pprint(["wait for", iter_count])
 
                 # Be sure to fill the waiters dict before the next
                 # await statement to guarantee that the available
