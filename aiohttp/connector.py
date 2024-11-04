@@ -597,7 +597,7 @@ class BaseConnector:
             await fut
         finally:
             del keyed_waiters[fut]
-            if not self._waiters.get(key):
+            if not keyed_waiters:
                 del self._waiters[key]
 
         if traces:
