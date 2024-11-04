@@ -380,6 +380,7 @@ class ClientWebSocketResponse:
                 continue
             elif msg.type is WSMsgType.PONG and self._autoping:
                 continue
+
             return msg
 
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
