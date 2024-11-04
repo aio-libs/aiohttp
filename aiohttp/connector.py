@@ -496,7 +496,6 @@ class BaseConnector:
         if (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
-            self._mark_acquired(key, proto)
             return await self._reused_connection(key, proto, traces)
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
@@ -526,7 +525,6 @@ class BaseConnector:
                         await trace.send_connection_queued_end()
 
                 if (proto := self._get(key)) is not None:
-                    self._mark_acquired(key, proto)
                     return await self._reused_connection(key, proto, traces)
 
             placeholder = cast(
@@ -573,7 +571,10 @@ class BaseConnector:
         self._acquired_per_host[key].add(proto)
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
-        """Get next reusable connection for the key or None."""
+        """Get next reusable connection for the key or None.
+
+        The connection will be marked as acquired.
+        """
         try:
             conns = self._conns[key]
         except KeyError:
@@ -588,6 +589,7 @@ class BaseConnector:
                 if not conns:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
+                self._mark_acquired(key, proto)
                 return proto
 
             # Connection cannot be reused, close it
