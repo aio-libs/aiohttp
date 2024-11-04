@@ -368,7 +368,13 @@ class BaseConnector:
                 timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
 
+    def _mark_acquired(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
+        """Mark connection acquired."""
+        self._acquired.add(proto)
+        self._acquired_per_host[key].add(proto)
+
     def _drop_acquired(self, key: "ConnectionKey", val: ResponseHandler) -> None:
+        """Drop acquired connection."""
         self._acquired.discard(val)
         if conns := self._acquired_per_host.get(key):
             conns.discard(val)
@@ -566,10 +572,6 @@ class BaseConnector:
                 await trace.send_connection_reuseconn()
         return Connection(self, key, proto, self._loop)
 
-    def _mark_acquired(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
-        self._acquired.add(proto)
-        self._acquired_per_host[key].add(proto)
-
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         """Get next reusable connection for the key or None.
 
@@ -628,6 +630,7 @@ class BaseConnector:
                     return
 
     def _release_acquired(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
+        """Release acquired connection."""
         if self._closed:
             # acquired connection is already released on connector closing
             return
