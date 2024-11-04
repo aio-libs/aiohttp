@@ -493,10 +493,10 @@ class BaseConnector:
     ) -> Connection:
         """Get from pool or create new connection."""
         key = req.connection_key
-        available = self._available_connections(key)
+        available = self._available_connections(key) > 0
         fut: Optional[asyncio.Future[None]] = None
         keyed_waiters: Optional[dict[asyncio.Future[None], None]] = None
-        if wait_for_conn := available <= 0 or key in self._waiters:
+        if not available:
             # Be sure to fill the waiters dict before the next
             # await statement to guarantee that the available
             # connections are correctly calculated.
@@ -513,7 +513,7 @@ class BaseConnector:
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             # Wait if there are no available connections or if there are/were
             # waiters (i.e. don't steal connection from a waiter about to wake up)
-            if wait_for_conn:
+            if not available:
                 if TYPE_CHECKING:
                     assert fut is not None
                     assert keyed_waiters is not None
