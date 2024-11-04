@@ -3402,7 +3402,8 @@ def test_default_ssl_context_creation_without_ssl() -> None:
 def _acquired_connection(
     conn: aiohttp.BaseConnector, proto: ResponseHandler, key: ConnectionKey
 ) -> Connection:
-    conn._mark_acquired(key, proto)
+    conn._acquired.add(proto)
+    conn._acquired_per_host[key].add(proto)
     return Connection(conn, key, proto, conn._loop)
 
 
