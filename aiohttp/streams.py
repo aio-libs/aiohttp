@@ -698,12 +698,10 @@ class FlowControlDataQueue(DataQueue[_SizedT]):
     async def read(self) -> _SizedT:
         if not self._buffer and not self._eof:
             await self._wait_for_data()
-
         if self._buffer:
             data = self._buffer.popleft()
             self._size -= len(data)
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
-
         self._raise_exception_or_eof()
