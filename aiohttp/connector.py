@@ -501,7 +501,7 @@ class BaseConnector:
             # Be sure to fill the waiters dict before the next
             # await statement to guarantee that the available
             # connections are correctly calculated.
-            fut: asyncio.Future[None] = self._loop.create_future()
+            fut = self._loop.create_future()
             # This connection will now count towards the limit.
             waiters = self._waiters[key]
             waiters.append(fut)
