@@ -505,11 +505,18 @@ class BaseConnector:
         if (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
-            conn = Connection(self, key, proto, self._loop)
             if traces:
                 for trace in traces:
-                    await trace.send_connection_reuseconn()
-            return conn
+                    try:
+                        await trace.send_connection_reuseconn()
+                    except BaseException:
+                        # If the send_connection_reuseconn() fails
+                        # we need to release the connection and re-raise
+                        if not self._closed:
+                            self._drop_acquired(key, proto)
+                            self._release_waiter()
+                        raise
+            return Connection(self, key, proto, self._loop)
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             #
@@ -549,11 +556,18 @@ class BaseConnector:
                         del self._waiters[key]
 
                 if (proto := self._get(key)) is not None:
-                    conn = Connection(self, key, proto, self._loop)
                     if traces:
-                        for trace in traces:
-                            await trace.send_connection_reuseconn()
-                    return conn
+                        try:
+                            for trace in traces:
+                                await trace.send_connection_reuseconn()
+                        except BaseException:
+                            # If the send_connection_reuseconn() fails
+                            # we need to release the connection and re-raise
+                            if not self._closed:
+                                self._drop_acquired(key, proto)
+                                self._release_waiter()
+                            raise
+                    return Connection(self, key, proto, self._loop)
 
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
