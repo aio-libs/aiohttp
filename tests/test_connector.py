@@ -3340,7 +3340,7 @@ async def test_connector_does_not_remove_needed_waiters(
         "_available_connections",
         autospec=True,
         spec_set=True,
-        return_value=0,
+        side_effect=[0, 1, 1, 1],
     ):
         connector._conns[key] = [(proto, loop.time())]
         with mock.patch.object(
