@@ -523,7 +523,7 @@ class BaseConnector:
                 # Be sure to fill the waiters dict before the next
                 # await statement to guarantee that the available
                 # connections are correctly calculated.
-                fut = self._loop.create_future()
+                fut: asyncio.Future[None] = self._loop.create_future()
                 keyed_waiters = self._waiters[key]
                 # This connection will now count towards the limit.
                 keyed_waiters[fut] = None
@@ -563,7 +563,10 @@ class BaseConnector:
 
             try:
                 proto = await self._create_connection(req, traces, timeout)
-            except BaseException:
+            except BaseException as ex:
+                import pprint
+
+                pprint.pprint(["Got exception", ex, iter_count])
                 if not self._closed:
                     self._drop_acquired(key, placeholder)
                     self._release_waiter()
