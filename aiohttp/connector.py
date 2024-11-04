@@ -557,12 +557,17 @@ class BaseConnector:
             self._acquired.add(placeholder)
             acquired_per_host.add(placeholder)
 
-            if traces:
-                for trace in traces:
-                    await trace.send_connection_create_start()
-
             try:
+                # Traces are done inside the try block to ensure that the
+                # that the placeholder is still cleaned up if an exception
+                # is raised.
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_create_start()
                 proto = await self._create_connection(req, traces, timeout)
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_create_end()
             except BaseException as ex:
                 import pprint
 
@@ -575,10 +580,6 @@ class BaseConnector:
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
-
-            if traces:
-                for trace in traces:
-                    await trace.send_connection_create_end()
 
             # The connection was successfully created, drop the placeholder
             # and add the real connection to the acquired set.
