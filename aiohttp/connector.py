@@ -554,7 +554,8 @@ class BaseConnector:
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
             )
             self._acquired.add(placeholder)
-            self._acquired_per_host[key].add(placeholder)
+            acquired_per_host = self._acquired_per_host[key]
+            acquired_per_host[key].add(placeholder)
 
             if traces:
                 for trace in traces:
@@ -564,7 +565,8 @@ class BaseConnector:
                 proto = await self._create_connection(req, traces, timeout)
             except BaseException:
                 if not self._closed:
-                    self._drop_acquired(key, placeholder)
+                    self._acquired.remove(placeholder)
+                    acquired_per_host[key].remove(placeholder)
                     self._release_waiter()
                 raise
             else:
@@ -580,7 +582,7 @@ class BaseConnector:
             # We must never yield to the event loop after this point as
             # it is not cancellation safe once we have acquired the connection.
             self._acquired.remove(placeholder)
-            self._acquired_per_host[key].remove(placeholder)
+            acquired_per_host[key].remove(placeholder)
             self._acquired.add(proto)
             self._acquired_per_host[key].add(proto)
             return Connection(self, key, proto, self._loop)
