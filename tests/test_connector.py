@@ -581,7 +581,7 @@ async def test__drop_acquire_per_host1(
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
     conn = aiohttp.BaseConnector()
-    conn._drop_acquired_per_host(key, create_mocked_conn(loop))
+    conn._drop_acquired(key, create_mocked_conn(loop))
     assert len(conn._acquired_per_host) == 0
 
 
@@ -591,7 +591,7 @@ async def test__drop_acquire_per_host2(
     conn = aiohttp.BaseConnector()
     handler = create_mocked_conn(loop)
     conn._acquired_per_host[key].add(handler)
-    conn._drop_acquired_per_host(key, handler)
+    conn._drop_acquired(key, handler)
     assert len(conn._acquired_per_host) == 0
 
 
@@ -603,7 +603,7 @@ async def test__drop_acquire_per_host3(
     handler2 = create_mocked_conn(loop)
     conn._acquired_per_host[key].add(handler)
     conn._acquired_per_host[key].add(handler2)
-    conn._drop_acquired_per_host(key, handler)
+    conn._drop_acquired(key, handler)
     assert len(conn._acquired_per_host) == 1
     assert conn._acquired_per_host[key] == {handler2}
 

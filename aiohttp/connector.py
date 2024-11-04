@@ -368,11 +368,10 @@ class BaseConnector:
                 timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
 
-    def _drop_acquired_per_host(
-        self, key: "ConnectionKey", val: ResponseHandler
-    ) -> None:
+    def _drop_acquired(self, key: "ConnectionKey", val: ResponseHandler) -> None:
+        self._acquired.discard(val)
         if conns := self._acquired_per_host.get(key):
-            conns.remove(val)
+            conns.discard(val)
             if not conns:
                 del self._acquired_per_host[key]
 
@@ -542,14 +541,12 @@ class BaseConnector:
                     raise ClientConnectionError("Connector is closed.")
             except BaseException:
                 if not self._closed:
-                    self._acquired.remove(placeholder)
-                    self._drop_acquired_per_host(key, placeholder)
+                    self._drop_acquired(key, placeholder)
                     self._release_waiter()
                 raise
             else:
                 if not self._closed:
-                    self._acquired.remove(placeholder)
-                    self._drop_acquired_per_host(key, placeholder)
+                    self._drop_acquired(key, placeholder)
 
             if traces:
                 for trace in traces:
@@ -569,8 +566,7 @@ class BaseConnector:
             self._acquired_per_host[key].add(placeholder)
             for trace in traces:
                 await trace.send_connection_reuseconn()
-            self._acquired.remove(placeholder)
-            self._drop_acquired_per_host(key, placeholder)
+            self._drop_acquired(key, placeholder)
         return self._acquired_connection(proto, key)
 
     def _acquired_connection(
@@ -597,7 +593,7 @@ class BaseConnector:
             await fut
         finally:
             del keyed_waiters[fut]
-            if not keyed_waiters:
+            if not self._waiters.get(key):
                 del self._waiters[key]
 
         if traces:
@@ -662,15 +658,8 @@ class BaseConnector:
             # acquired connection is already released on connector closing
             return
 
-        try:
-            self._acquired.remove(proto)
-            self._drop_acquired_per_host(key, proto)
-        except KeyError:  # pragma: no cover
-            # this may be result of undetermenistic order of objects
-            # finalization due garbage collection.
-            pass
-        else:
-            self._release_waiter()
+        self._drop_acquired(key, proto)
+        self._release_waiter()
 
     def _release(
         self,
