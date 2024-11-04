@@ -578,12 +578,12 @@ class BaseConnector:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
 
-            # The connection was successfully created, drop the placeholder
-            # and add the real connection to the acquired set.
-            self._drop_acquired(key, placeholder)
-            self._acquired.add(proto)
-            acquired_per_host.add(proto)
-            return Connection(self, key, proto, self._loop)
+        # The connection was successfully created, drop the placeholder
+        # and add the real connection to the acquired set. Nothing
+        self._drop_acquired(key, placeholder)
+        self._acquired.add(proto)
+        acquired_per_host.add(proto)
+        return Connection(self, key, proto, self._loop)
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         """Get next reusable connection for the key or None.
