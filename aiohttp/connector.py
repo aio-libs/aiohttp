@@ -494,33 +494,37 @@ class BaseConnector:
     ) -> Connection:
         """Get from pool or create new connection."""
         key = req.connection_key
-        available = self._available_connections(key) > 0
-        fut: Optional[asyncio.Future[None]] = None
-        keyed_waiters: Optional[dict[asyncio.Future[None], None]] = None
-        if not available:
-            # Be sure to fill the waiters dict before the next
-            # await statement to guarantee that the available
-            # connections are correctly calculated.
-            fut = self._loop.create_future()
-            keyed_waiters = self._waiters[key]
-            # This connection will now count towards the limit.
-            keyed_waiters[fut] = None
-
-        elif (proto := self._get(key)) is not None:
+        if (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
             return await self._reused_connection(key, proto, traces)
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
-            # Wait if there are no available connections or if there are/were
-            # waiters (i.e. don't steal connection from a waiter about to wake up)
-            if not available:
-                if TYPE_CHECKING:
-                    assert fut is not None
-                    assert keyed_waiters is not None
-                await self._wait_for_available_connection(
-                    fut, keyed_waiters, key, traces
-                )
+            if self._available_connections(key) <= 0:
+                # Be sure to fill the waiters dict before the next
+                # await statement to guarantee that the available
+                # connections are correctly calculated.
+                fut = self._loop.create_future()
+                keyed_waiters = self._waiters[key]
+                # This connection will now count towards the limit.
+                keyed_waiters[fut] = None
+                # Wait if there are no available connections or if there are/were
+                # waiters (i.e. don't steal connection from a waiter about to wake up)
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_queued_start()
+
+                try:
+                    await fut
+                finally:
+                    del keyed_waiters[fut]
+                    if not self._waiters.get(key):
+                        del self._waiters[key]
+
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_queued_end()
+
                 if (proto := self._get(key)) is not None:
                     return await self._reused_connection(key, proto, traces)
 
@@ -576,29 +580,6 @@ class BaseConnector:
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
         return Connection(self, key, proto, self._loop)
-
-    async def _wait_for_available_connection(
-        self,
-        fut: asyncio.Future[None],
-        keyed_waiters: dict[asyncio.Future[None], None],
-        key: "ConnectionKey",
-        traces: List["Trace"],
-    ) -> None:
-        """Wait until there is an available connection."""
-        if traces:
-            for trace in traces:
-                await trace.send_connection_queued_start()
-
-        try:
-            await fut
-        finally:
-            del keyed_waiters[fut]
-            if not self._waiters.get(key):
-                del self._waiters[key]
-
-        if traces:
-            for trace in traces:
-                await trace.send_connection_queued_end()
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         """Get next reusable connection for the key or None."""
