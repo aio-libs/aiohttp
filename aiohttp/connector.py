@@ -368,11 +368,6 @@ class BaseConnector:
                 timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
 
-    def _mark_acquired(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
-        """Mark connection acquired."""
-        self._acquired.add(proto)
-        self._acquired_per_host[key].add(proto)
-
     def _drop_acquired(self, key: "ConnectionKey", val: ResponseHandler) -> None:
         """Drop acquired connection."""
         self._acquired.discard(val)
@@ -545,7 +540,8 @@ class BaseConnector:
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
             )
-            self._mark_acquired(key, placeholder)
+            self._acquired.add(proto)
+            self._acquired_per_host[key].add(proto)
 
             if traces:
                 for trace in traces:
@@ -569,7 +565,8 @@ class BaseConnector:
                 for trace in traces:
                     await trace.send_connection_create_end()
 
-            self._mark_acquired(key, proto)
+            self._acquired.add(proto)
+            self._acquired_per_host[key].add(proto)
             return Connection(self, key, proto, self._loop)
 
     async def _reused_connection(
@@ -600,7 +597,8 @@ class BaseConnector:
                 if not conns:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
-                self._mark_acquired(key, proto)
+                self._acquired.add(proto)
+                self._acquired_per_host[key].add(proto)
                 return proto
 
             # Connection cannot be reused, close it
