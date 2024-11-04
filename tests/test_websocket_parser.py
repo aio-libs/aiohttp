@@ -85,7 +85,7 @@ def build_close_frame(code=1000, message=b"", noheader=False):
 @pytest.fixture()
 def out(loop):
     return aiohttp.FlowControlDataQueue(
-        mock.Mock(_paused_reading=False), 2**16, loop=loop
+        mock.Mock(_reading_paused=False), 2**16, loop=loop
     )
 
 
