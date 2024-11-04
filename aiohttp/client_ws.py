@@ -272,10 +272,30 @@ class ClientWebSocketResponse:
             self._reader.feed_data(WS_CLOSING_MESSAGE)
             await self._close_wait
 
-        if not self._closed:
-            self._set_closed()
+        if self._closed:
+            return False
+
+        self._set_closed()
+        try:
+            await self._writer.close(code, message)
+        except asyncio.CancelledError:
+            self._close_code = WSCloseCode.ABNORMAL_CLOSURE
+            self._response.close()
+            raise
+        except Exception as exc:
+            self._close_code = WSCloseCode.ABNORMAL_CLOSURE
+            self._exception = exc
+            self._response.close()
+            return True
+
+        if self._close_code:
+            self._response.close()
+            return True
+
+        while True:
             try:
-                await self._writer.close(code, message)
+                async with async_timeout.timeout(self._timeout.ws_close):
+                    msg = await self._reader.read()
             except asyncio.CancelledError:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 self._response.close()
@@ -286,30 +306,10 @@ class ClientWebSocketResponse:
                 self._response.close()
                 return True
 
-            if self._close_code:
+            if msg.type is WSMsgType.CLOSE:
+                self._close_code = msg.data
                 self._response.close()
                 return True
-
-            while True:
-                try:
-                    async with async_timeout.timeout(self._timeout.ws_close):
-                        msg = await self._reader.read()
-                except asyncio.CancelledError:
-                    self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                    self._response.close()
-                    raise
-                except Exception as exc:
-                    self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                    self._exception = exc
-                    self._response.close()
-                    return True
-
-                if msg.type is WSMsgType.CLOSE:
-                    self._close_code = msg.data
-                    self._response.close()
-                    return True
-        else:
-            return False
 
     async def _close_from_receive(self, code: int) -> None:
         """Close the connection from the receive coroutine.
