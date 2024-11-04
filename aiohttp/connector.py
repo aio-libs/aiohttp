@@ -496,15 +496,15 @@ class BaseConnector:
         key = req.connection_key
         available = self._available_connections(key)
         fut: Optional[asyncio.Future[None]] = None
-        waiters: Optional[Deque[asyncio.Future[None]]] = None
+        keyed_waiters: Optional[Deque[asyncio.Future[None]]] = None
         if wait_for_conn := available <= 0 or key in self._waiters:
             # Be sure to fill the waiters dict before the next
             # await statement to guarantee that the available
             # connections are correctly calculated.
             fut = self._loop.create_future()
-            waiters = self._waiters[key]
+            keyed_waiters = self._waiters[key]
             # This connection will now count towards the limit.
-            waiters.append(fut)
+            keyed_waiters.append(fut)
 
         elif (proto := self._get(key)) is not None:
             # If we do not have to wait and we can get a connection from the pool
@@ -517,8 +517,10 @@ class BaseConnector:
             if wait_for_conn:
                 if TYPE_CHECKING:
                     assert fut is not None
-                    assert waiters is not None
-                await self._wait_for_available_connection(fut, waiters, key, traces)
+                    assert keyed_waiters is not None
+                await self._wait_for_available_connection(
+                    fut, keyed_waiters, key, traces
+                )
                 if (proto := self._get(key)) is not None:
                     return await self._reused_connection(key, proto, traces)
 
@@ -581,7 +583,7 @@ class BaseConnector:
     async def _wait_for_available_connection(
         self,
         fut: asyncio.Future[None],
-        waiters: Deque[asyncio.Future[None]],
+        keyed_waiters: Deque[asyncio.Future[None]],
         key: "ConnectionKey",
         traces: List["Trace"],
     ) -> None:
@@ -593,7 +595,7 @@ class BaseConnector:
         try:
             await fut
         except BaseException:
-            waiters.remove(fut)
+            keyed_waiters.remove(fut)
             raise
         finally:
             if not self._waiters.get(key):
