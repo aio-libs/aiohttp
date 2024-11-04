@@ -469,9 +469,9 @@ async def test_release_waiter_no_limit(
     conn = aiohttp.BaseConnector(limit=0)
     w = mock.Mock()
     w.done.return_value = False
-    conn._waiters[key].append(w)
+    conn._waiters[key][w] = None
     conn._release_waiter()
-    assert len(conn._waiters[key]) == 0
+    assert len(conn._waiters[key]) == 1
     assert w.done.called
     await conn.close()
 
@@ -483,8 +483,8 @@ async def test_release_waiter_first_available(
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
     w2.done.return_value = False
-    conn._waiters[key].append(w2)
-    conn._waiters[key2].append(w1)
+    conn._waiters[key][w2] = None
+    conn._waiters[key2][w1] = None
     conn._release_waiter()
     assert (
         w1.set_result.called
@@ -547,7 +547,7 @@ async def test_release_waiter_no_available(
     conn = aiohttp.BaseConnector(limit=0)
     w = mock.Mock()
     w.done.return_value = False
-    conn._waiters[key].append(w)
+    conn._waiters[key][w] = None
     with mock.patch.object(
         conn, "_available_connections", autospec=True, spec_set=True, return_value=0
     ):
@@ -3329,9 +3329,9 @@ async def test_connector_does_not_remove_needed_waiters(
         # Skip one event loop run cycle in such a case.
         if connection_key not in connector._waiters:
             await asyncio.sleep(0)
-        connector._waiters[connection_key].popleft().set_result(None)
+        list(connector._waiters[connection_key])[0].set_result(None)
         del connector._waiters[connection_key]
-        connector._waiters[connection_key].append(dummy_waiter)
+        connector._waiters[connection_key][dummy_waiter] = None
 
     connector = aiohttp.BaseConnector()
     with mock.patch.object(
