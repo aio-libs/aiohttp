@@ -6,7 +6,7 @@ import socket
 import sys
 import traceback
 import warnings
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from contextlib import suppress
 from http import HTTPStatus
 from itertools import chain, cycle, islice
@@ -262,9 +262,9 @@ class BaseConnector:
         # {host_key: FIFO list of waiters}
         # The FIFO is implemented with a dict with None keys because
         # python does not have an ordered set.
-        self._waiters: DefaultDict[ConnectionKey, dict[asyncio.Future[None], None]] = (
-            defaultdict(dict)
-        )
+        self._waiters: DefaultDict[
+            ConnectionKey, OrderedDict[asyncio.Future[None], None]
+        ] = defaultdict(OrderedDict)
 
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
@@ -521,17 +521,17 @@ class BaseConnector:
             # between the check and the await statement, we
             # need to loop again to check if the connection
             # slot is still available.
-            iter_count = 0
+            wait_count = 0
             while self._available_connections(key) <= 0:
-                iter_count += 1
-                import pprint
-
-                if iter_count > 1:
-                    pprint.pprint(["wait for", iter_count])
-
+                wait_count += 1
                 fut: asyncio.Future[None] = self._loop.create_future()
                 keyed_waiters = self._waiters[key]
                 keyed_waiters[fut] = None
+                if wait_count > 1:
+                    # If we have waited before, we need to move the waiter
+                    # to the front of the queue as otherwise we might get
+                    # starved and hit the timeout.
+                    keyed_waiters.move_to_end(fut, last=False)
 
                 try:
                     # Traces happen in the try block to ensure that the
@@ -572,10 +572,7 @@ class BaseConnector:
                 if traces:
                     for trace in traces:
                         await trace.send_connection_create_end()
-            except BaseException as ex:
-                import pprint
-
-                pprint.pprint(["Got exception", ex, iter_count])
+            except BaseException:
                 if not self._closed:
                     self._drop_acquired(key, placeholder)
                     self._release_waiter()
