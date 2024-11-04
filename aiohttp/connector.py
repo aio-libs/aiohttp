@@ -581,8 +581,7 @@ class BaseConnector:
                     await trace.send_connection_create_end()
 
             # The connection was successfully created, drop the placeholder
-            # We must never yield to the event loop after this point as
-            # it is not cancellation safe once we have acquired the connection.
+            # and add the real connection to the acquired set.
             self._drop_acquired(key, placeholder)
             self._acquired.add(proto)
             acquired_per_host.add(proto)
