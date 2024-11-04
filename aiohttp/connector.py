@@ -252,7 +252,7 @@ class BaseConnector:
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
-        # The FIFO is implemented with a dict with None keys because
+        # The FIFO is implemented with an OrderedDict with None keys because
         # python does not have an ordered set.
         self._waiters: DefaultDict[
             ConnectionKey, OrderedDict[asyncio.Future[None], None]
