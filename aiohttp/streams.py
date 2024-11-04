@@ -622,7 +622,6 @@ class DataQueue(Generic[_T]):
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
         self._exception: Optional[BaseException] = None
-        self._size = 0
         self._buffer: Deque[Tuple[_T, int]] = collections.deque()
 
     def __len__(self) -> int:
@@ -644,48 +643,39 @@ class DataQueue(Generic[_T]):
     ) -> None:
         self._eof = True
         self._exception = exc
-
-        waiter = self._waiter
-        if waiter is not None:
+        if (waiter := self._waiter) is not None:
             self._waiter = None
             set_exception(waiter, exc, exc_cause)
 
     def feed_data(self, data: _T, size: int = 0) -> None:
-        self._size += size
-        self._buffer.append((data, size))
-
-        waiter = self._waiter
-        if waiter is not None:
+        self._buffer.append(data)
+        if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
 
     def feed_eof(self) -> None:
         self._eof = True
-
-        waiter = self._waiter
-        if waiter is not None:
+        if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
 
+    async def _wait_for_data(self) -> None:
+        assert not self._waiter
+        self._waiter = self._loop.create_future()
+        try:
+            await self._waiter
+        except (asyncio.CancelledError, asyncio.TimeoutError):
+            self._waiter = None
+            raise
+
     async def read(self) -> _T:
         if not self._buffer and not self._eof:
-            assert not self._waiter
-            self._waiter = self._loop.create_future()
-            try:
-                await self._waiter
-            except (asyncio.CancelledError, asyncio.TimeoutError):
-                self._waiter = None
-                raise
-
+            await self._wait_for_data()
         if self._buffer:
-            data, size = self._buffer.popleft()
-            self._size -= size
-            return data
-        else:
-            if self._exception is not None:
-                raise self._exception
-            else:
-                raise EofStream
+            return self._buffer.popleft()
+        if self._exception is not None:
+            raise self._exception
+        raise EofStream
 
     def __aiter__(self) -> AsyncStreamIterator[_T]:
         return AsyncStreamIterator(self.read)
@@ -701,19 +691,28 @@ class FlowControlDataQueue(DataQueue[_T]):
         self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
     ) -> None:
         super().__init__(loop=loop)
-
+        self._size = 0
         self._protocol = protocol
         self._limit = limit * 2
 
     def feed_data(self, data: _T, size: int = 0) -> None:
-        super().feed_data(data, size)
-
+        self._size += size
+        self._buffer.append((data, size))
+        if (waiter := self._waiter) is not None:
+            self._waiter = None
+            set_result(waiter, None)
         if self._size > self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 
     async def read(self) -> _T:
-        try:
-            return await super().read()
-        finally:
+        if not self._buffer and not self._eof:
+            await self._wait_for_data()
+        if self._buffer:
+            data, size = self._buffer.popleft()
+            self._size -= size
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
+            return data
+        if self._exception is not None:
+            raise self._exception
+        raise EofStream
