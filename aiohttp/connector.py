@@ -505,6 +505,15 @@ class BaseConnector:
             return await self._reused_connection(key, proto, traces)
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
+            #
+            # Wait for the connection limit.
+            #
+            # we loop here because there is a race between
+            # the connection limit check and the connection
+            # being acquired. If the connection is acquired
+            # between the check and the await statement, we
+            # need to loop again to check if the connection
+            # slot is still available.
             while self._available_connections(key) <= 0:
                 # Be sure to fill the waiters dict before the next
                 # await statement to guarantee that the available
