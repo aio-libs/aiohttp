@@ -662,12 +662,6 @@ class _BaseDataQueue:
             self._waiter = None
             raise
 
-    async def read(self) -> _T:
-        raise NotImplementedError
-
-    def __aiter__(self) -> AsyncStreamIterator[_T]:
-        return AsyncStreamIterator(self.read)
-
 
 class DataQueue(_BaseDataQueue, Generic[_T]):
     """DataQueue is a general-purpose blocking queue with one reader."""
@@ -690,6 +684,9 @@ class DataQueue(_BaseDataQueue, Generic[_T]):
         if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
+
+    def __aiter__(self) -> AsyncStreamIterator[_T]:
+        return AsyncStreamIterator(self.read)
 
 
 class FlowControlDataQueue(_BaseDataQueue, Generic[_T]):
@@ -728,3 +725,6 @@ class FlowControlDataQueue(_BaseDataQueue, Generic[_T]):
         if self._exception is not None:
             raise self._exception
         raise EofStream
+
+    def __aiter__(self) -> AsyncStreamIterator[_T]:
+        return AsyncStreamIterator(self.read)
