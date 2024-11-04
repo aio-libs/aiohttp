@@ -578,8 +578,8 @@ class BaseConnector:
             # The connection was successfully created, drop the placeholder
             # We must never yield to the event loop after this point as
             # it is not cancellation safe once we have acquired the connection.
-            self._acquired.discard(placeholder)
-            self._acquired_per_host[key].discard(placeholder)
+            self._acquired.remove(placeholder)
+            self._acquired_per_host[key].remove(placeholder)
             self._acquired.add(proto)
             self._acquired_per_host[key].add(proto)
             return Connection(self, key, proto, self._loop)
