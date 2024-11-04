@@ -125,7 +125,15 @@ class Connection:
             if self._loop.is_closed():
                 return
 
-            self._connector._release(self._key, self._protocol, should_close=True)
+            # __del__ may be called in different thread. We have to use call_soon_threadsafe.
+            self._loop.call_soon_threadsafe(
+                functools.partial(
+                    self._connector._release,
+                    self._key,
+                    self._protocol,
+                    should_close=True,
+                )
+            )
 
             context = {"client_connection": self, "message": "Unclosed connection"}
             if self._source_traceback is not None:
