@@ -1247,7 +1247,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. method:: receive_bytes(*, timeout=None)
       :async:
@@ -1266,7 +1266,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. method:: receive_json(*, loads=json.loads, timeout=None)
       :async:

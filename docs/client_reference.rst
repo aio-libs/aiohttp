@@ -1673,7 +1673,7 @@ manually.
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. method:: receive_bytes()
       :async:
@@ -1684,7 +1684,7 @@ manually.
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. method:: receive_json(*, loads=json.loads)
       :async:
@@ -2238,6 +2238,12 @@ Response errors
    Web socket server response error.
 
    Derived from :exc:`ClientResponseError`
+
+.. exception:: WSMessageTypeError
+
+   Received WebSocket message of unexpected type
+
+   Derived from :exc:`TypeError`
 
 Connection errors
 ^^^^^^^^^^^^^^^^^

@@ -49,6 +49,7 @@ __all__ = (
     "NonHttpUrlClientError",
     "InvalidUrlRedirectClientError",
     "NonHttpUrlRedirectClientError",
+    "WSMessageTypeError",
 )
 
 
@@ -377,3 +378,7 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
             "[{0.certificate_error.__class__.__name__}: "
             "{0.certificate_error.args}]".format(self)
         )
+
+
+class WSMessageTypeError(TypeError):
+    """WebSocket message type is not valid."""
