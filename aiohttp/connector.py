@@ -500,7 +500,9 @@ class BaseConnector:
             return conn
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
-            await self._wait_for_available_connection(key, traces)
+            if self._available_connections(key) <= 0:
+                await self._wait_for_available_connection(key, traces)
+
             if (conn := await self._get(key, traces)) is not None:
                 return conn
 
@@ -550,7 +552,7 @@ class BaseConnector:
         # need to loop again to check if the connection
         # slot is still available.
         wait_count = 0
-        while self._available_connections(key) <= 0:
+        while True:
             wait_count += 1
             fut: asyncio.Future[None] = self._loop.create_future()
             keyed_waiters = self._waiters[key]
@@ -577,6 +579,9 @@ class BaseConnector:
                 keyed_waiters.pop(fut, None)
                 if not self._waiters.get(key, True):
                     del self._waiters[key]
+
+            if self._available_connections(key) > 0:
+                break
 
     async def _get(
         self, key: "ConnectionKey", traces: List["Trace"]
