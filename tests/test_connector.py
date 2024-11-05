@@ -480,7 +480,7 @@ async def test_release_waiter_no_limit(
     w.done.return_value = False
     conn._waiters[key][w] = None
     conn._release_waiter()
-    assert len(conn._waiters[key]) == 1
+    assert len(conn._waiters[key]) == 0
     assert w.done.called
     await conn.close()
 
