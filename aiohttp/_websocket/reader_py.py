@@ -63,7 +63,10 @@ class WebSocketDataQueue(DataQueue[WSMessage]):
 
     def feed_data(self, data: WSMessage) -> None:
         payload = data[0]
-        self._size += len(payload) if payload is not None else 0
+        payload_type = type(payload)
+        self._size += (
+            len(payload) if payload_type is str or payload_type is bytes else 0
+        )
         self._buffer.append(data)
         if (waiter := self._waiter) is not None:
             self._waiter = None
@@ -78,7 +81,10 @@ class WebSocketDataQueue(DataQueue[WSMessage]):
         if self._buffer:
             data = self._buffer.popleft()
             payload = data[0]
-            self._size -= len(payload) if payload is not None else 0
+            payload_type = type(payload)
+            self._size -= (
+                len(payload) if payload_type is str or payload_type is bytes else 0
+            )
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
