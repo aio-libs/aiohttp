@@ -368,14 +368,6 @@ class BaseConnector:
                 timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
 
-    def _drop_acquired(self, key: "ConnectionKey", val: ResponseHandler) -> None:
-        """Drop acquired connection."""
-        self._acquired.discard(val)
-        if conns := self._acquired_per_host.get(key):
-            conns.discard(val)
-            if not conns:
-                del self._acquired_per_host[key]
-
     def _cleanup_closed(self) -> None:
         """Double confirmation for transport close.
 
@@ -535,9 +527,11 @@ class BaseConnector:
         # be no awaits after the proto is added to the acquired set
         # to ensure that the connection is not left in the acquired set
         # on cancellation.
-        self._drop_acquired(key, placeholder)
+        acquired_per_host = self._acquired_per_host[key]
+        self._acquired.remove(placeholder)
+        acquired_per_host.remove(placeholder)
         self._acquired.add(proto)
-        self._acquired_per_host[key].add(proto)
+        acquired_per_host.add(proto)
         return Connection(self, key, proto, self._loop)
 
     async def _wait_for_available_connection(
@@ -657,7 +651,11 @@ class BaseConnector:
             # acquired connection is already released on connector closing
             return
 
-        self._drop_acquired(key, proto)
+        self._acquired.discard(proto)
+        if conns := self._acquired_per_host.get(key):
+            conns.discard(proto)
+            if not conns:
+                del self._acquired_per_host[key]
         self._release_waiter()
 
     def _release(
