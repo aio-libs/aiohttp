@@ -18,7 +18,7 @@ from .http import (
     WSMsgType,
 )
 from .http_websocket import WebSocketWriter, WSMessageError
-from .streams import EofStream, FlowControlDataQueue
+from .streams import DataQueue, EofStream
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
@@ -46,7 +46,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 class ClientWebSocketResponse:
     def __init__(
         self,
-        reader: "FlowControlDataQueue[WSMessage]",
+        reader: "DataQueue[WSMessage]",
         writer: WebSocketWriter,
         protocol: Optional[str],
         response: ClientResponse,
