@@ -502,9 +502,8 @@ class BaseConnector:
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             if self._available_connections(key) <= 0:
                 await self._wait_for_available_connection(key, traces)
-
-            if (conn := await self._get(key, traces)) is not None:
-                return conn
+                if (conn := await self._get(key, traces)) is not None:
+                    return conn
 
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
