@@ -6,6 +6,7 @@ import sys
 from types import TracebackType
 from typing import Any, Final, Optional, Type
 
+from ._websocket.reader import WebSocketDataQueue
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
@@ -18,7 +19,7 @@ from .http import (
     WSMsgType,
 )
 from .http_websocket import _INTERNAL_RECEIVE_TYPES, WebSocketWriter, WSMessageError
-from .streams import EofStream, FlowControlDataQueue
+from .streams import EofStream
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
@@ -46,7 +47,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 class ClientWebSocketResponse:
     def __init__(
         self,
-        reader: "FlowControlDataQueue[WSMessage]",
+        reader: "WebSocketDataQueue[WSMessage]",
         writer: WebSocketWriter,
         protocol: Optional[str],
         response: ClientResponse,

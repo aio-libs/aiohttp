@@ -1,10 +1,12 @@
 """Reader for WebSocket protocol versions 13 and 8."""
 
+import asyncio
 from typing import Final, List, Optional, Set, Tuple, Union
 
+from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
 from ..helpers import set_exception
-from ..streams import DataQueue
+from ..streams import DataQueue, EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
     WS_DEFLATE_TRAILING,
@@ -45,9 +47,47 @@ EMPTY_FRAME = (False, b"")
 TUPLE_NEW = tuple.__new__
 
 
+class WebSocketDataQueue(DataQueue[WSMessage]):
+    """WebSocketDataQueue resumes and pauses an underlying stream.
+
+    It is a destination for WebSocket data.
+    """
+
+    def __init__(
+        self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
+    ) -> None:
+        super().__init__(loop=loop)
+        self._size = 0
+        self._protocol = protocol
+        self._limit = limit * 2
+
+    def feed_data(self, data: WSMessage) -> None:
+        self._size += len(data[0])
+        self._buffer.append(data)
+        if (waiter := self._waiter) is not None:
+            self._waiter = None
+            if not waiter.done():
+                waiter.set_result(None)
+        if self._size > self._limit and not self._protocol._reading_paused:
+            self._protocol.pause_reading()
+
+    async def read(self) -> WSMessage:
+        if not self._buffer and not self._eof:
+            await self._wait_for_data()
+        if self._buffer:
+            data = self._buffer.popleft()
+            self._size -= len(data)
+            if self._size < self._limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
+            return data
+        if self._exception is not None:
+            raise self._exception
+        raise EofStream
+
+
 class WebSocketReader:
     def __init__(
-        self, queue: DataQueue[WSMessage], max_msg_size: int, compress: bool = True
+        self, queue: WebSocketDataQueue, max_msg_size: int, compress: bool = True
     ) -> None:
         self.queue = queue
         self._queue_feed_data = queue.feed_data
