@@ -13,8 +13,8 @@ from contextlib import closing, suppress
 from typing import (
     Awaitable,
     Callable,
+    DefaultDict,
     Deque,
-    Dict,
     Iterator,
     List,
     Literal,
@@ -1810,7 +1810,7 @@ async def test_cleanup(key: ConnectionKey) -> None:
     m2 = mock.Mock()
     m1.is_connected.return_value = True
     m2.is_connected.return_value = False
-    testset: Dict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
+    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
         key: deque([(m1, 10), (m2, 300)]),
     }
 
@@ -1832,7 +1832,7 @@ async def test_cleanup_close_ssl_transport(
 ) -> None:
     proto = create_mocked_conn(loop)
     transport = proto.transport
-    testset: Dict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
+    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
         ssl_key: deque([(proto, 10)])
     }
 
@@ -1854,7 +1854,7 @@ async def test_cleanup_close_ssl_transport(
 async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn()
     m.is_connected.return_value = True
-    testset: Dict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
+    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
         key: deque([(m, 300)])
     }
 
@@ -1874,7 +1874,7 @@ async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
 async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn(loop)
     m.is_connected.return_value = True
-    testset: Dict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
+    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
         key: deque([(m, 290.1), (create_mocked_conn(loop), 305.1)])
     }
 
