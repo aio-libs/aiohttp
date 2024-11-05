@@ -509,8 +509,6 @@ class WebSocketResponse(StreamResponse):
         if self._reader is None:
             raise RuntimeError("Call .prepare() first")
 
-        loop = self._loop
-        assert loop is not None
         receive_timeout = timeout or self._receive_timeout
         while True:
             if self._waiting:
