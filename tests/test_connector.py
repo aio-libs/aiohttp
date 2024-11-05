@@ -1874,7 +1874,7 @@ async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
 async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn(loop)
     m.is_connected.return_value = True
-    testset: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {
+    testset: Dict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
         key: deque([(m, 290.1), (create_mocked_conn(loop), 305.1)])
     }
 
