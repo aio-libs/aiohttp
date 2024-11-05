@@ -18,6 +18,7 @@ from typing import (
     Awaitable,
     Callable,
     DefaultDict,
+    Deque,
     Dict,
     Iterator,
     List,
@@ -241,7 +242,9 @@ class BaseConnector:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._conns: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {}
+        self._conns: DefaultDict[
+            ConnectionKey, Deque[Tuple[ResponseHandler, float]]
+        ] = defaultdict(deque)
         self._limit = limit
         self._limit_per_host = limit_per_host
         self._acquired: Set[ResponseHandler] = set()
@@ -339,10 +342,10 @@ class BaseConnector:
         timeout = self._keepalive_timeout
 
         if self._conns:
-            connections = {}
+            connections = defaultdict(deque)
             deadline = now - timeout
             for key, conns in self._conns.items():
-                alive: List[Tuple[ResponseHandler, float]] = []
+                alive: Deque[Tuple[ResponseHandler, float]] = deque()
                 for proto, use_time in conns:
                     if proto.is_connected() and use_time - deadline >= 0:
                         alive.append((proto, use_time))
@@ -594,14 +597,15 @@ class BaseConnector:
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         """Get next reusable connection for the key or None."""
-        try:
-            conns = self._conns[key]
-        except KeyError:
+        if (conns := self._conns[key]) is None:
+            del self._conns[key]
+            return None
+        elif not conns:
             return None
 
         t1 = self._loop.time()
         while conns:
-            proto, t0 = conns.pop()
+            proto, t0 = conns.popleft()
             # We will we reuse the connection if its connected and
             # the keepalive timeout has not been exceeded
             if proto.is_connected() and t1 - t0 <= self._keepalive_timeout:
@@ -689,10 +693,7 @@ class BaseConnector:
                 self._cleanup_closed_transports.append(transport)
             return
 
-        conns = self._conns.get(key)
-        if conns is None:
-            conns = self._conns[key] = []
-        conns.append((protocol, self._loop.time()))
+        self._conns[key].append((protocol, self._loop.time()))
 
         if self._cleanup_handle is None:
             self._cleanup_handle = helpers.weakref_handle(
