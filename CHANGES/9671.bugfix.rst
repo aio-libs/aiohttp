@@ -1,3 +1,3 @@
-Fix a deadlock that could occur while attempting to get a new connection slot after a timeout -- by :user:`bdraco`.
+Fixed a deadlock that could occur while attempting to get a new connection slot after a timeout -- by :user:`bdraco`.
 
 The connector was not cancellation-safe.
