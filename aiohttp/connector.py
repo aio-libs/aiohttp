@@ -500,46 +500,9 @@ class BaseConnector:
             return conn
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
-            #
-            # Wait for the connection limit.
-            #
-            # we loop here because there is a race between
-            # the connection limit check and the connection
-            # being acquired. If the connection is acquired
-            # between the check and the await statement, we
-            # need to loop again to check if the connection
-            # slot is still available.
-            wait_count = 0
-            while self._available_connections(key) <= 0:
-                wait_count += 1
-                fut: asyncio.Future[None] = self._loop.create_future()
-                keyed_waiters = self._waiters[key]
-                keyed_waiters[fut] = None
-                if wait_count > 1:
-                    # If we have waited before, we need to move the waiter
-                    # to the front of the queue as otherwise we might get
-                    # starved and hit the timeout.
-                    keyed_waiters.move_to_end(fut, last=False)
-
-                try:
-                    # Traces happen in the try block to ensure that the
-                    # the waiter is still cleaned up if an exception is raised.
-                    if traces:
-                        for trace in traces:
-                            await trace.send_connection_queued_start()
-                    await fut
-                    if traces:
-                        for trace in traces:
-                            await trace.send_connection_queued_end()
-                finally:
-                    # pop the waiter from the queue if its still
-                    # there and not already removed by _release_waiter
-                    keyed_waiters.pop(fut, None)
-                    if not self._waiters.get(key, True):
-                        del self._waiters[key]
-
-                if (conn := await self._get(key, traces)) is not None:
-                    return conn
+            await self._wait_for_available_connection(key, traces)
+            if (conn := await self._get(key, traces)) is not None:
+                return conn
 
             placeholder = cast(
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
@@ -575,6 +538,45 @@ class BaseConnector:
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
         return Connection(self, key, proto, self._loop)
+
+    async def _wait_for_available_connection(
+        self, key: "ConnectionKey", traces: List["Trace"]
+    ) -> None:
+        """Wait for an available connection slot."""
+        # We loop here because there is a race between
+        # the connection limit check and the connection
+        # being acquired. If the connection is acquired
+        # between the check and the await statement, we
+        # need to loop again to check if the connection
+        # slot is still available.
+        wait_count = 0
+        while self._available_connections(key) <= 0:
+            wait_count += 1
+            fut: asyncio.Future[None] = self._loop.create_future()
+            keyed_waiters = self._waiters[key]
+            keyed_waiters[fut] = None
+            if wait_count > 1:
+                # If we have waited before, we need to move the waiter
+                # to the front of the queue as otherwise we might get
+                # starved and hit the timeout.
+                keyed_waiters.move_to_end(fut, last=False)
+
+            try:
+                # Traces happen in the try block to ensure that the
+                # the waiter is still cleaned up if an exception is raised.
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_queued_start()
+                await fut
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_queued_end()
+            finally:
+                # pop the waiter from the queue if its still
+                # there and not already removed by _release_waiter
+                keyed_waiters.pop(fut, None)
+                if not self._waiters.get(key, True):
+                    del self._waiters[key]
 
     async def _get(
         self, key: "ConnectionKey", traces: List["Trace"]
