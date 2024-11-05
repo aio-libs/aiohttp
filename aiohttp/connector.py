@@ -597,10 +597,7 @@ class BaseConnector:
 
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
         """Get next reusable connection for the key or None."""
-        if (conns := self._conns[key]) is None:
-            del self._conns[key]
-            return None
-        elif not conns:
+        if (conns := self._conns.get(key)) is None:
             return None
 
         t1 = self._loop.time()
