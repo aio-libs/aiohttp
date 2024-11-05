@@ -76,7 +76,7 @@ class WebSocketDataQueue(DataQueue[WSMessage]):
             await self._wait_for_data()
         if self._buffer:
             data = self._buffer.popleft()
-            self._size -= len(data)
+            self._size -= len(data[0])
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
