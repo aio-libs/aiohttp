@@ -1035,9 +1035,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader = WebSocketDataQueue(
-                conn_proto, 2**16, loop=self._loop
-            )
+            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
                 conn_proto,
