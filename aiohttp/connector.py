@@ -551,13 +551,12 @@ class BaseConnector:
         # between the check and the await statement, we
         # need to loop again to check if the connection
         # slot is still available.
-        wait_count = 0
+        attempts = 0
         while True:
-            wait_count += 1
             fut: asyncio.Future[None] = self._loop.create_future()
             keyed_waiters = self._waiters[key]
             keyed_waiters[fut] = None
-            if wait_count > 1:
+            if attempts:
                 # If we have waited before, we need to move the waiter
                 # to the front of the queue as otherwise we might get
                 # starved and hit the timeout.
@@ -582,6 +581,7 @@ class BaseConnector:
 
             if self._available_connections(key) > 0:
                 break
+            attempts += 1
 
     async def _get(
         self, key: "ConnectionKey", traces: List["Trace"]

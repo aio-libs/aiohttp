@@ -1732,6 +1732,56 @@ async def test_exception_during_connection_reuse_tracing(
     assert key not in conn._acquired_per_host
 
 
+async def test_cancellation_during_waiting_for_free_connection(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    waiter_wait_stated_future = loop.create_future()
+
+    async def on_connection_queued_start(*args: object, **kwargs: object) -> None:
+        import pprint
+
+        pprint.pprint(["_waiters", conn._waiters])
+        waiter_wait_stated_future.set_result(None)
+
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_queued_start.append(on_connection_queued_start)
+    trace_config.freeze()
+    traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
+
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+
+    req = ClientRequest("GET", URL("http://host:80"), loop=loop)
+    key = req.connection_key
+    conn = aiohttp.BaseConnector(limit=1)
+    assert not conn._acquired
+    assert key not in conn._acquired_per_host
+
+    with mock.patch.object(
+        conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+    ):
+        resp1 = await conn.connect(req, traces, ClientTimeout())
+        assert resp1
+        # 2nd connect request will be queued
+        task = asyncio.create_task(conn.connect(req, traces, ClientTimeout()))
+        await waiter_wait_stated_future
+        import pprint
+
+        pprint.pprint(["_waiters", conn._waiters])
+        list(conn._waiters[key])[0].cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    resp1.close()
+    assert not conn._waiters
+    assert not conn._acquired
+    assert key not in conn._acquired_per_host
+
+
 async def test_close_during_connect(loop: asyncio.AbstractEventLoop) -> None:
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
