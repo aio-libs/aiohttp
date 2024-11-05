@@ -106,7 +106,7 @@ class WebSocketResponse(StreamResponse):
         self._protocols = protocols
         self._ws_protocol: Optional[str] = None
         self._writer: Optional[WebSocketWriter] = None
-        self._reader: Optional[WebSocketDataQueue[WSMessage]] = None
+        self._reader: Optional[WebSocketDataQueue] = None
         self._closed = False
         self._closing = False
         self._conn_lost = 0
