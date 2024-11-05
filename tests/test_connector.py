@@ -319,6 +319,7 @@ async def test_get(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     proto = create_mocked_conn(loop)
     conn._conns[key] = [(proto, loop.time())]
     connection = await conn._get(key, [])
+    assert connection is not None
     assert connection.protocol == proto
     connection.close()
     await conn.close()
@@ -332,6 +333,7 @@ async def test_get_unconnected_proto(loop: asyncio.AbstractEventLoop) -> None:
     proto = create_mocked_conn(loop)
     conn._conns[key] = [(proto, loop.time())]
     connection = await conn._get(key, [])
+    assert connection is not None
     assert connection.protocol == proto
     connection.close()
 
@@ -350,6 +352,7 @@ async def test_get_unconnected_proto_ssl(loop: asyncio.AbstractEventLoop) -> Non
     proto = create_mocked_conn(loop)
     conn._conns[key] = [(proto, loop.time())]
     connection = await conn._get(key, [])
+    assert connection is not None
     assert connection.protocol == proto
     connection.close()
 
