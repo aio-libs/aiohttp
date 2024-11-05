@@ -1288,3 +1288,43 @@ async def test_abnormal_closure_when_client_does_not_close(
         await asyncio.sleep(0.2)
     await client.server.close()
     assert close_code == WSCloseCode.ABNORMAL_CLOSURE
+
+
+async def test_normal_closure_while_client_sends_msg(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test abnormal closure when the server closes and the client doesn't respond."""
+    close_code: Optional[WSCloseCode] = None
+    got_close_code = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        # Setting a short close timeout
+        ws = web.WebSocketResponse(timeout=0.2)
+        await ws.prepare(request)
+        await ws.close()
+
+        nonlocal close_code
+        assert ws.close_code is not None
+        close_code = WSCloseCode(ws.close_code)
+        got_close_code.set()
+
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    async with client.ws_connect("/", autoclose=False) as ws:
+        # send text and close message during server close timeout
+        await asyncio.sleep(0.1)
+        await ws.send_str("Hello")
+        await ws.close()
+    # wait for close code to be received by server
+    await asyncio.wait(
+        [
+            asyncio.create_task(asyncio.sleep(0.5)),
+            asyncio.create_task(got_close_code.wait()),
+        ],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    await client.server.close()
+    assert close_code == WSCloseCode.OK
