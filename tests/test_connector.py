@@ -1620,6 +1620,82 @@ async def test_connect_tracing(loop: asyncio.AbstractEventLoop) -> None:
         )
 
 
+@pytest.mark.parametrize(
+    "signal",
+    [
+        "on_connection_create_start",
+        "on_connection_create_end",
+    ],
+)
+async def test_exception_during_create_tracing(
+    loop: asyncio.AbstractEventLoop, signal: str
+) -> None:
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    on_signal = mock.AsyncMock(side_effect=asyncio.CancelledError)
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
+    )
+    getattr(trace_config, signal).append(on_signal)
+    trace_config.freeze()
+    traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
+
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+
+    req = ClientRequest("GET", URL("http://host:80"), loop=loop)
+    key = req.connection_key
+    conn = aiohttp.BaseConnector()
+    assert not conn._acquired
+    assert key not in conn._acquired_per_host
+
+    with pytest.raises(asyncio.CancelledError), mock.patch.object(
+        conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+    ):
+        await conn.connect(req, traces, ClientTimeout())
+
+    assert not conn._acquired
+    assert key not in conn._acquired_per_host
+
+
+async def test_exception_during_connection_reuse_tracing(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    on_signal = mock.AsyncMock(side_effect=asyncio.CancelledError)
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_reuseconn.append(on_signal)
+    trace_config.freeze()
+    traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
+
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+
+    req = ClientRequest("GET", URL("http://host:80"), loop=loop)
+    key = req.connection_key
+    conn = aiohttp.BaseConnector()
+    assert not conn._acquired
+    assert key not in conn._acquired_per_host
+
+    with pytest.raises(asyncio.CancelledError), mock.patch.object(
+        conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+    ):
+        resp = await conn.connect(req, traces, ClientTimeout())
+        with mock.patch.object(resp.protocol, "should_close", False):
+            resp.release()
+        assert not conn._acquired
+        assert key not in conn._acquired_per_host
+        assert key in conn._conns
+
+        resp = await conn.connect(req, traces, ClientTimeout())
+
+    assert not conn._acquired
+    assert key not in conn._acquired_per_host
+
+
 async def test_close_during_connect(loop: asyncio.AbstractEventLoop) -> None:
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
