@@ -17,7 +17,7 @@ from .http import (
     WSMessage,
     WSMsgType,
 )
-from .http_websocket import WebSocketWriter, WSMessageError
+from .http_websocket import _INTERNAL_RECEIVE_TYPES, WebSocketWriter, WSMessageError
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -359,6 +359,11 @@ class ClientWebSocketResponse:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 await self.close()
                 return WSMessageError(data=exc)
+
+            if msg.type not in _INTERNAL_RECEIVE_TYPES:
+                # If its not a close/closing/ping/pong message
+                # we can return it immediately
+                return msg
 
             if msg.type is WSMsgType.CLOSE:
                 self._set_closing()
