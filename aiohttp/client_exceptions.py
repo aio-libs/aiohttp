@@ -381,4 +381,4 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
 
 
 class WSMessageTypeError(TypeError):
-    """websocket message type is not valid."""
+    """WebSocket message type is not valid."""
