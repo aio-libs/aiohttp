@@ -535,7 +535,7 @@ class BaseConnector:
                     # pop the waiter from the queue if its still
                     # there and not already removed by _release_waiter
                     keyed_waiters.pop(fut, None)
-                    if not self._waiters.get(key):
+                    if not self._waiters.get(key, True):
                         del self._waiters[key]
 
                 if (conn := await self._get(key, traces)) is not None:
