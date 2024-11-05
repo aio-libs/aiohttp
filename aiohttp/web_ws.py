@@ -27,7 +27,7 @@ from .http import (
     ws_ext_gen,
     ws_ext_parse,
 )
-from .http_websocket import WSMessageError
+from .http_websocket import _INTERNAL_RECEIVE_TYPES, WSMessageError
 from .log import ws_logger
 from .streams import DataQueue, EofStream
 from .typedefs import JSONDecoder, JSONEncoder
@@ -533,8 +533,6 @@ class WebSocketResponse(StreamResponse):
         if self._reader is None:
             raise RuntimeError("Call .prepare() first")
 
-        loop = self._loop
-        assert loop is not None
         receive_timeout = timeout or self._receive_timeout
         while True:
             if self._waiting:
@@ -580,6 +578,11 @@ class WebSocketResponse(StreamResponse):
                 self._set_closing(WSCloseCode.ABNORMAL_CLOSURE)
                 await self.close()
                 return WSMessageError(data=exc)
+
+            if msg.type not in _INTERNAL_RECEIVE_TYPES:
+                # If its not a close/closing/ping/pong message
+                # we can return it immediately
+                return msg
 
             if msg.type is WSMsgType.CLOSE:
                 self._set_closing(msg.data)
