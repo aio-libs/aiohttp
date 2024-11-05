@@ -1,0 +1,3 @@
+Removed flow control from the WebSocket reader -- by :user:`bdraco`.
+
+The flow control did not function as expected because it counted all messages as having a size of `3`, and since it did not work, it was deemed unnecessary.
