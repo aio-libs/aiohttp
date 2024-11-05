@@ -954,12 +954,18 @@ and :ref:`aiohttp-web-signals` handlers::
                            connection if `pong` response is not
                            received. The timer is reset on any data reception.
 
+   :param float timeout: Timeout value for the ``close``
+                         operation. After sending the close websocket message,
+                         ``close`` waits for ``timeout`` seconds for a response.
+                         Default value is ``10.0`` (10 seconds for ``close``
+                         operation)
+
    :param float receive_timeout: Timeout value for `receive`
-                                 operations.  Default value is None
+                                 operations.  Default value is :data:`None`
                                  (no timeout for receive operation)
 
    :param bool compress: Enable per-message deflate extension support.
-                          False for disabled, default value is True.
+                          :data:`False` for disabled, default value is :data:`True`.
 
    :param int max_msg_size: maximum size of read websocket message, 4
                             MB by default. To disable the size limit use ``0``.
@@ -1241,7 +1247,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. method:: receive_bytes(*, timeout=None)
       :async:
@@ -1260,7 +1266,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. method:: receive_json(*, loads=json.loads, timeout=None)
       :async:

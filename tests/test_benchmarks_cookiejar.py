@@ -2,7 +2,7 @@
 
 from http.cookies import BaseCookie
 
-from pytest_codspeed import BenchmarkFixture  # type: ignore[import-untyped]
+from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
 from aiohttp.cookiejar import CookieJar

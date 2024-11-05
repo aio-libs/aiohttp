@@ -127,10 +127,6 @@ def _serialize_headers(str status_line, headers):
 
     _init_writer(&writer)
 
-    for key, val in headers.items():
-        _safe_header(to_str(key))
-        _safe_header(to_str(val))
-
     try:
         if _write_str(&writer, status_line) < 0:
             raise
@@ -140,6 +136,9 @@ def _serialize_headers(str status_line, headers):
             raise
 
         for key, val in headers.items():
+            _safe_header(to_str(key))
+            _safe_header(to_str(val))
+
             if _write_str(&writer, to_str(key)) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:

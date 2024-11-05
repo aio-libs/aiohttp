@@ -174,7 +174,7 @@ pytest==8.1.1
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
-pytest-codspeed==2.2.1
+pytest-codspeed==3.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -281,7 +281,7 @@ wait-for-it==2.2.2
     # via -r requirements/test.in
 wheel==0.44.0
     # via pip-tools
-yarl==1.17.0
+yarl==1.17.1
     # via -r requirements/runtime-deps.in
 zipp==3.20.2
     # via

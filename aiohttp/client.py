@@ -68,6 +68,7 @@ from .client_exceptions import (
     ServerTimeoutError,
     SocketTimeoutError,
     TooManyRedirects,
+    WSMessageTypeError,
     WSServerHandshakeError,
 )
 from .client_reqrep import (
@@ -94,7 +95,6 @@ from .helpers import (
     _SENTINEL,
     BasicAuth,
     TimeoutHandle,
-    ceil_timeout,
     get_env_proxy_for_url,
     method_must_be_empty_body,
     sentinel,
@@ -153,6 +153,7 @@ __all__ = (
     "ClientTimeout",
     "ClientWSTimeout",
     "request",
+    "WSMessageTypeError",
 )
 
 
@@ -634,13 +635,9 @@ class ClientSession:
 
                     # connection timeout
                     try:
-                        async with ceil_timeout(
-                            real_timeout.connect,
-                            ceil_threshold=real_timeout.ceil_threshold,
-                        ):
-                            conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
-                            )
+                        conn = await self._connector.connect(
+                            req, traces=traces, timeout=real_timeout
+                        )
                     except asyncio.TimeoutError as exc:
                         raise ConnectionTimeoutError(
                             f"Connection timeout to host {url}"
