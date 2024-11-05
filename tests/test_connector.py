@@ -1810,8 +1810,8 @@ async def test_cleanup(key: ConnectionKey) -> None:
     m2 = mock.Mock()
     m1.is_connected.return_value = True
     m2.is_connected.return_value = False
-    testset: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {
-        key: [(m1, 10), (m2, 300)],
+    testset: Dict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
+        key: deque([(m1, 10), (m2, 300)]),
     }
 
     loop = mock.Mock()
@@ -1832,8 +1832,8 @@ async def test_cleanup_close_ssl_transport(
 ) -> None:
     proto = create_mocked_conn(loop)
     transport = proto.transport
-    testset: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {
-        ssl_key: [(proto, 10)]
+    testset: Dict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = {
+        ssl_key: deque([(proto, 10)])
     }
 
     loop = mock.Mock()
