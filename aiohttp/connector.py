@@ -565,7 +565,10 @@ class BaseConnector:
                     raise ClientConnectionError("Connector is closed.")
 
         # The connection was successfully created, drop the placeholder
-        # and add the real connection to the acquired set. Nothing
+        # and add the real connection to the acquired set. There should
+        # be no awaits after the proto is added to the acquired set
+        # to ensure that the connection is not left in the acquired set
+        # on cancellation.
         self._drop_acquired(key, placeholder)
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
