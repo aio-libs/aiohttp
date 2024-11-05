@@ -1627,7 +1627,7 @@ async def test_connect_tracing(loop: asyncio.AbstractEventLoop) -> None:
         "on_connection_create_end",
     ],
 )
-async def test_exception_during_create_tracing(
+async def test_exception_during_connetion_create_tracing(
     loop: asyncio.AbstractEventLoop, signal: str
 ) -> None:
     session = mock.Mock()
@@ -1654,6 +1654,42 @@ async def test_exception_during_create_tracing(
     ):
         await conn.connect(req, traces, ClientTimeout())
 
+    assert not conn._acquired
+    assert key not in conn._acquired_per_host
+
+
+async def test_exception_during_connection_queued_tracing(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    on_signal = mock.AsyncMock(side_effect=asyncio.CancelledError)
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_queued_start.append(on_signal)
+    trace_config.freeze()
+    traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
+
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+
+    req = ClientRequest("GET", URL("http://host:80"), loop=loop)
+    key = req.connection_key
+    conn = aiohttp.BaseConnector(limit=1)
+    assert not conn._acquired
+    assert key not in conn._acquired_per_host
+
+    with pytest.raises(asyncio.CancelledError), mock.patch.object(
+        conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+    ):
+        resp1 = await conn.connect(req, traces, ClientTimeout())
+        assert resp1
+        # 2nd connect request will be queued
+        await conn.connect(req, traces, ClientTimeout())
+
+    resp1.close()
+    assert not conn._waiters
     assert not conn._acquired
     assert key not in conn._acquired_per_host
 
