@@ -242,6 +242,9 @@ class BaseConnector:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
+        # Connection pool of reusable connections.
+        # We use a deque to store connections because it has O(1) popleft()
+        # and O(1) append() operations to implement a FIFO queue.
         self._conns: DefaultDict[
             ConnectionKey, Deque[Tuple[ResponseHandler, float]]
         ] = defaultdict(deque)
