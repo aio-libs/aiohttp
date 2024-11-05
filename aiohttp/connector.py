@@ -532,6 +532,10 @@ class BaseConnector:
                         for trace in traces:
                             await trace.send_connection_queued_end()
                 finally:
+                    # This is the only point that the waiters
+                    # are removed from the queue. This ensures that
+                    # the waiters are always cleaned up and there
+                    # is no race between other parts of the code
                     del keyed_waiters[fut]
                     if not self._waiters.get(key):
                         del self._waiters[key]
@@ -636,6 +640,10 @@ class BaseConnector:
             if self._available_connections(key) < 1:
                 continue
 
+            # Waiters are not removed from the queue here,
+            # and only one waiter is released at a time.
+            # They are only removed in a finally block
+            # in the connect method where they are added.
             for waiter in self._waiters[key]:
                 if not waiter.done():
                     waiter.set_result(None)
