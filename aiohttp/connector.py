@@ -6,7 +6,7 @@ import socket
 import sys
 import traceback
 import warnings
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, deque
 from contextlib import suppress
 from http import HTTPStatus
 from itertools import chain, cycle, islice
