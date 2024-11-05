@@ -1819,7 +1819,8 @@ async def test_cleanup(key: ConnectionKey) -> None:
     conn._conns = testset
     existing_handle = conn._cleanup_handle = mock.Mock()
 
-    conn._cleanup()
+    with mock.patch("aiohttp.connector.monotonic", return_value=300):
+        conn._cleanup()
     assert existing_handle.cancel.called
     assert conn._conns == {}
     assert conn._cleanup_handle is None
@@ -1835,13 +1836,15 @@ async def test_cleanup_close_ssl_transport(
     }
 
     loop = mock.Mock()
-    loop.time.return_value = asyncio.get_event_loop().time() + 300
+    new_time = asyncio.get_event_loop().time() + 300
+    loop.time.return_value = new_time
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     conn._loop = loop
     conn._conns = testset
     existing_handle = conn._cleanup_handle = mock.Mock()
 
-    conn._cleanup()
+    with mock.patch("aiohttp.connector.monotonic", return_value=new_time):
+        conn._cleanup()
     assert existing_handle.cancel.called
     assert conn._conns == {}
     assert conn._cleanup_closed_transports == [transport]
@@ -1857,8 +1860,9 @@ async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
     conn = aiohttp.BaseConnector(keepalive_timeout=10)
     conn._loop = mock.Mock()
     conn._loop.time.return_value = 300
-    conn._conns = testset
-    conn._cleanup()
+    with mock.patch("aiohttp.connector.monotonic", return_value=300):
+        conn._conns = testset
+        conn._cleanup()
     assert conn._conns == testset
 
     assert conn._cleanup_handle is not None
@@ -1878,7 +1882,9 @@ async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
     conn._loop.time.return_value = 308.5
     conn._conns = testset
 
-    conn._cleanup()
+    with mock.patch("aiohttp.connector.monotonic", return_value=308.5):
+        conn._cleanup()
+
     assert conn._conns == {key: [testset[key][1]]}
 
     assert conn._cleanup_handle is not None

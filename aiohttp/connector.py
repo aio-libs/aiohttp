@@ -337,7 +337,7 @@ class BaseConnector:
             # recreate it ever!
             self._cleanup_handle = None
 
-        now = self._loop.time()
+        now = monotonic()
         timeout = self._keepalive_timeout
 
         if self._conns:
@@ -594,7 +594,7 @@ class BaseConnector:
         except KeyError:
             return None
 
-        t1 = self._loop.time()
+        t1 = monotonic()
         while conns:
             proto, t0 = conns.pop()
             # We will we reuse the connection if its connected and
@@ -690,7 +690,7 @@ class BaseConnector:
         conns = self._conns.get(key)
         if conns is None:
             conns = self._conns[key] = []
-        conns.append((protocol, self._loop.time()))
+        conns.append((protocol, monotonic()))
 
         if self._cleanup_handle is None:
             self._cleanup_handle = helpers.weakref_handle(
