@@ -3,6 +3,7 @@ import contextlib
 import gc
 import io
 import json
+from collections import deque
 from http.cookies import SimpleCookie
 from typing import (
     Any,
@@ -55,7 +56,7 @@ def connector(
     key = ConnectionKey("localhost", 80, False, True, None, None, None)
     conn = loop.run_until_complete(make_conn())
     proto = create_mocked_conn()
-    conn._conns[key] = [(proto, 123)]
+    conn._conns[key] = deque([(proto, 123)])
     yield conn
     loop.run_until_complete(conn.close())
 

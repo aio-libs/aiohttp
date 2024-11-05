@@ -7,12 +7,14 @@ import socket
 import ssl
 import sys
 import uuid
+from collections import defaultdict, deque
 from concurrent import futures
 from contextlib import closing, suppress
 from typing import (
     Awaitable,
     Callable,
-    Dict,
+    DefaultDict,
+    Deque,
     Iterator,
     List,
     Literal,
@@ -225,7 +227,7 @@ async def test_del_with_scheduled_cleanup(
     loop.set_debug(True)
     conn = aiohttp.BaseConnector(keepalive_timeout=0.01)
     transp = create_mocked_conn(loop)
-    conn._conns[key] = [(transp, 123)]
+    conn._conns[key] = deque([(transp, 123)])
 
     conns_impl = conn._conns
     exc_handler = mock.Mock()
@@ -257,7 +259,7 @@ def test_del_with_closed_loop(
 
     conn = loop.run_until_complete(make_conn())
     transp = create_mocked_conn(loop)
-    conn._conns[key] = [(transp, 123)]
+    conn._conns[key] = deque([(transp, 123)])
 
     conns_impl = conn._conns
     exc_handler = mock.Mock()
@@ -304,7 +306,7 @@ async def test_close(key: ConnectionKey) -> None:
 
     conn = aiohttp.BaseConnector()
     assert not conn.closed
-    conn._conns[key] = [(proto, 0)]
+    conn._conns[key] = deque([(proto, 0)])
     await conn.close()
 
     assert not conn._conns
@@ -317,7 +319,7 @@ async def test_get(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     assert await conn._get(key, []) is None
 
     proto = create_mocked_conn(loop)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     connection = await conn._get(key, [])
     assert connection is not None
     assert connection.protocol == proto
@@ -331,14 +333,14 @@ async def test_get_unconnected_proto(loop: asyncio.AbstractEventLoop) -> None:
     assert await conn._get(key, []) is None
 
     proto = create_mocked_conn(loop)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     connection = await conn._get(key, [])
     assert connection is not None
     assert connection.protocol == proto
     connection.close()
 
     assert await conn._get(key, []) is None
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     proto.is_connected = lambda *args: False
     assert await conn._get(key, []) is None
     await conn.close()
@@ -350,14 +352,14 @@ async def test_get_unconnected_proto_ssl(loop: asyncio.AbstractEventLoop) -> Non
     assert await conn._get(key, []) is None
 
     proto = create_mocked_conn(loop)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     connection = await conn._get(key, [])
     assert connection is not None
     assert connection.protocol == proto
     connection.close()
 
     assert await conn._get(key, []) is None
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     proto.is_connected = lambda *args: False
     assert await conn._get(key, []) is None
     await conn.close()
@@ -369,7 +371,7 @@ async def test_get_expired(loop: asyncio.AbstractEventLoop) -> None:
     assert await conn._get(key, []) is None
 
     proto = create_mocked_conn(loop)
-    conn._conns[key] = [(proto, loop.time() - 1000)]
+    conn._conns[key] = deque([(proto, loop.time() - 1000)])
     assert await conn._get(key, []) is None
     assert not conn._conns
     await conn.close()
@@ -382,7 +384,7 @@ async def test_get_expired_ssl(loop: asyncio.AbstractEventLoop) -> None:
 
     proto = create_mocked_conn(loop)
     transport = proto.transport
-    conn._conns[key] = [(proto, loop.time() - 1000)]
+    conn._conns[key] = deque([(proto, loop.time() - 1000)])
     assert await conn._get(key, []) is None
     assert not conn._conns
     assert conn._cleanup_closed_transports == [transport]
@@ -1506,7 +1508,6 @@ async def test_get_pop_empty_conns(
 ) -> None:
     # see issue #473
     conn = aiohttp.BaseConnector()
-    conn._conns[key] = []
     assert await conn._get(key, []) is None
     assert not conn._conns
 
@@ -1530,12 +1531,12 @@ async def test_release_close_do_not_delete_existing_connections(
     proto1 = create_mocked_conn(loop)
 
     conn = aiohttp.BaseConnector()
-    conn._conns[key] = [(proto1, 1)]
+    conn._conns[key] = deque([(proto1, 1)])
 
     proto = create_mocked_conn(loop, should_close=True)
     conn._acquired.add(proto)
     conn._release(key, proto)
-    assert conn._conns[key] == [(proto1, 1)]
+    assert conn._conns[key] == deque([(proto1, 1)])
     assert proto.close.called
     await conn.close()
 
@@ -1573,7 +1574,7 @@ async def test_connect(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> N
     req = ClientRequest("GET", URL("http://localhost:80"), loop=loop)
 
     conn = aiohttp.BaseConnector()
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     with mock.patch.object(conn, "_create_connection", create_mocked_conn(loop)) as m:
         m.return_value = loop.create_future()
         m.return_value.set_result(proto)
@@ -1809,9 +1810,10 @@ async def test_cleanup(key: ConnectionKey) -> None:
     m2 = mock.Mock()
     m1.is_connected.return_value = True
     m2.is_connected.return_value = False
-    testset: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {
-        key: [(m1, 10), (m2, 300)],
-    }
+    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+        defaultdict(deque)
+    )
+    testset[key] = deque([(m1, 10), (m2, 300)])
 
     loop = mock.Mock()
     loop.time.return_value = 300
@@ -1831,9 +1833,10 @@ async def test_cleanup_close_ssl_transport(
 ) -> None:
     proto = create_mocked_conn(loop)
     transport = proto.transport
-    testset: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {
-        ssl_key: [(proto, 10)]
-    }
+    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+        defaultdict(deque)
+    )
+    testset[ssl_key] = deque([(proto, 10)])
 
     loop = mock.Mock()
     new_time = asyncio.get_event_loop().time() + 300
@@ -1853,9 +1856,10 @@ async def test_cleanup_close_ssl_transport(
 async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn()
     m.is_connected.return_value = True
-    testset: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {
-        key: [(m, 300)]
-    }
+    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+        defaultdict(deque)
+    )
+    testset[key] = deque([(m, 300)])
 
     conn = aiohttp.BaseConnector(keepalive_timeout=10)
     conn._loop = mock.Mock()
@@ -1873,9 +1877,10 @@ async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
 async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn(loop)
     m.is_connected.return_value = True
-    testset: Dict[ConnectionKey, List[Tuple[ResponseHandler, float]]] = {
-        key: [(m, 290.1), (create_mocked_conn(loop), 305.1)]
-    }
+    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+        defaultdict(deque)
+    )
+    testset[key] = deque([(m, 290.1), (create_mocked_conn(loop), 305.1)])
 
     conn = aiohttp.BaseConnector(keepalive_timeout=10)
     conn._loop = mock.Mock()
@@ -1885,7 +1890,7 @@ async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
     with mock.patch("aiohttp.connector.monotonic", return_value=308.5):
         conn._cleanup()
 
-    assert conn._conns == {key: [testset[key][1]]}
+    assert conn._conns == {key: deque([testset[key][1]])}
 
     assert conn._cleanup_handle is not None
     conn._loop.call_at.assert_called_with(319, mock.ANY, mock.ANY)
@@ -2073,7 +2078,7 @@ async def test_close_twice(loop: asyncio.AbstractEventLoop, key: ConnectionKey) 
     proto: ResponseHandler = create_mocked_conn(loop)
 
     conn = aiohttp.BaseConnector()
-    conn._conns[key] = [(proto, 0)]
+    conn._conns[key] = deque([(proto, 0)])
     await conn.close()
 
     assert not conn._conns
@@ -2473,7 +2478,7 @@ async def test_connect_with_limit(
     )
 
     conn = aiohttp.BaseConnector(limit=1)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
     ):
@@ -2530,7 +2535,7 @@ async def test_connect_queued_operation_tracing(
     )
 
     conn = aiohttp.BaseConnector(limit=1)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
     ):
@@ -2575,7 +2580,7 @@ async def test_connect_reuseconn_tracing(
     )
 
     conn = aiohttp.BaseConnector(limit=1)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     conn2 = await conn.connect(req, traces, ClientTimeout())
     conn2.release()
 
@@ -2594,7 +2599,7 @@ async def test_connect_with_limit_and_limit_per_host(
     req = ClientRequest("GET", URL("http://localhost:80"), loop=loop)
 
     conn = aiohttp.BaseConnector(limit=1000, limit_per_host=1)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
     ):
@@ -2629,7 +2634,7 @@ async def test_connect_with_no_limit_and_limit_per_host(
     req = ClientRequest("GET", URL("http://localhost1:80"), loop=loop)
 
     conn = aiohttp.BaseConnector(limit=0, limit_per_host=1)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
     ):
@@ -2662,7 +2667,7 @@ async def test_connect_with_no_limits(
     req = ClientRequest("GET", URL("http://localhost:80"), loop=loop)
 
     conn = aiohttp.BaseConnector(limit=0, limit_per_host=0)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
     ):
@@ -2695,7 +2700,7 @@ async def test_connect_with_limit_cancelled(
     req = ClientRequest("GET", URL("http://host:80"), loop=loop)
 
     conn = aiohttp.BaseConnector(limit=1)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
     ):
@@ -2845,7 +2850,7 @@ async def test_close_with_acquired_connection(
     req = ClientRequest("GET", URL("http://host:80"), loop=loop)
 
     conn = aiohttp.BaseConnector(limit=1)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
     ):
@@ -3513,7 +3518,7 @@ async def test_connector_does_not_remove_needed_waiters(
         spec_set=True,
         side_effect=[0, 1, 1, 1],
     ):
-        connector._conns[key] = [(proto, loop.time())]
+        connector._conns[key] = deque([(proto, loop.time())])
         with mock.patch.object(
             connector,
             "_create_connection",
