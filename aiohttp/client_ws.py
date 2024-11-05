@@ -47,7 +47,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 class ClientWebSocketResponse:
     def __init__(
         self,
-        reader: "WebSocketDataQueue[WSMessage]",
+        reader: WebSocketDataQueue,
         writer: WebSocketWriter,
         protocol: Optional[str],
         response: ClientResponse,
