@@ -12,6 +12,7 @@ from multidict import CIMultiDict
 from . import hdrs
 from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
+from .client_exceptions import WSMessageTypeError
 from .helpers import calculate_timeout_when, set_exception, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
@@ -602,17 +603,17 @@ class WebSocketResponse(StreamResponse):
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
-            raise TypeError(
-                "Received message {}:{!r} is not WSMsgType.TEXT".format(
-                    msg.type, msg.data
-                )
+            raise WSMessageTypeError(
+                f"Received message {msg.type}:{msg.data!r} is not WSMsgType.TEXT"
             )
         return msg.data
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
-            raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
+            raise WSMessageTypeError(
+                f"Received message {msg.type}:{msg.data!r} is not WSMsgType.BINARY"
+            )
         return msg.data
 
     async def receive_json(
