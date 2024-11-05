@@ -3,6 +3,7 @@ import contextlib
 import gc
 import io
 import json
+from collections import deque
 from http.cookies import SimpleCookie
 from typing import Any, Awaitable, Callable, List
 from unittest import mock
@@ -32,7 +33,7 @@ def connector(loop):
 
     conn = loop.run_until_complete(make_conn())
     proto = mock.Mock()
-    conn._conns["a"] = [(proto, 123)]
+    conn._conns["a"] = deque([(proto, 123)])
     yield conn
     loop.run_until_complete(conn.close())
 
