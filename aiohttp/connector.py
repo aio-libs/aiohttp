@@ -5,7 +5,7 @@ import socket
 import sys
 import traceback
 import warnings
-from collections import defaultdict, deque
+from collections import OrderedDict, defaultdict
 from contextlib import suppress
 from http import HTTPStatus
 from itertools import chain, cycle, islice
@@ -266,9 +266,11 @@ class BaseConnector:
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
-        self._waiters: DefaultDict[ConnectionKey, deque[asyncio.Future[None]]] = (
-            defaultdict(deque)
-        )
+        # The FIFO is implemented with an OrderedDict with None keys because
+        # python does not have an ordered set.
+        self._waiters: DefaultDict[
+            ConnectionKey, OrderedDict[asyncio.Future[None], None]
+        ] = defaultdict(OrderedDict)
 
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
@@ -356,7 +358,7 @@ class BaseConnector:
             # recreate it ever!
             self._cleanup_handle = None
 
-        now = self._loop.time()
+        now = monotonic()
         timeout = self._keepalive_timeout
 
         if self._conns:
@@ -386,14 +388,6 @@ class BaseConnector:
                 self._loop,
                 timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
-
-    def _drop_acquired_per_host(
-        self, key: "ConnectionKey", val: ResponseHandler
-    ) -> None:
-        if conns := self._acquired_per_host.get(key):
-            conns.remove(val)
-            if not conns:
-                del self._acquired_per_host[key]
 
     def _cleanup_closed(self) -> None:
         """Double confirmation for transport close.
@@ -455,6 +449,9 @@ class BaseConnector:
         finally:
             self._conns.clear()
             self._acquired.clear()
+            for keyed_waiters in self._waiters.values():
+                for keyed_waiter in keyed_waiters:
+                    keyed_waiter.cancel()
             self._waiters.clear()
             self._cleanup_handle = None
             self._cleanup_closed_transports.clear()
@@ -498,113 +495,107 @@ class BaseConnector:
     ) -> Connection:
         """Get from pool or create new connection."""
         key = req.connection_key
-        available = self._available_connections(key)
-        wait_for_conn = available <= 0 or key in self._waiters
-        if not wait_for_conn and (proto := self._get(key)) is not None:
+        if (conn := await self._get(key, traces)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
-            return await self._reused_connection(key, proto, traces)
+            return conn
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
-            # Wait if there are no available connections or if there are/were
-            # waiters (i.e. don't steal connection from a waiter about to wake up)
-            if wait_for_conn:
+            if self._available_connections(key) <= 0:
                 await self._wait_for_available_connection(key, traces)
-                if (proto := self._get(key)) is not None:
-                    return await self._reused_connection(key, proto, traces)
+                if (conn := await self._get(key, traces)) is not None:
+                    return conn
 
             placeholder = cast(ResponseHandler, _TransportPlaceholder())
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
 
-            if traces:
-                for trace in traces:
-                    await trace.send_connection_create_start()
-
             try:
+                # Traces are done inside the try block to ensure that the
+                # that the placeholder is still cleaned up if an exception
+                # is raised.
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_create_start()
                 proto = await self._create_connection(req, traces, timeout)
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_create_end()
+            except BaseException:
+                self._release_acquired(key, placeholder)
+                raise
+            else:
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
-            except BaseException:
-                if not self._closed:
-                    self._acquired.remove(placeholder)
-                    self._drop_acquired_per_host(key, placeholder)
-                    self._release_waiter()
-                raise
-            else:
-                if not self._closed:
-                    self._acquired.remove(placeholder)
-                    self._drop_acquired_per_host(key, placeholder)
 
-            if traces:
-                for trace in traces:
-                    await trace.send_connection_create_end()
-
-            return self._acquired_connection(proto, key)
-
-    async def _reused_connection(
-        self, key: "ConnectionKey", proto: ResponseHandler, traces: List["Trace"]
-    ) -> Connection:
-        if traces:
-            # Acquire the connection to prevent race conditions with limits
-            placeholder = cast(ResponseHandler, _TransportPlaceholder())
-            self._acquired.add(placeholder)
-            self._acquired_per_host[key].add(placeholder)
-            for trace in traces:
-                await trace.send_connection_reuseconn()
-            self._acquired.remove(placeholder)
-            self._drop_acquired_per_host(key, placeholder)
-        return self._acquired_connection(proto, key)
-
-    def _acquired_connection(
-        self, proto: ResponseHandler, key: "ConnectionKey"
-    ) -> Connection:
-        """Mark proto as acquired and wrap it in a Connection object."""
+        # The connection was successfully created, drop the placeholder
+        # and add the real connection to the acquired set. There should
+        # be no awaits after the proto is added to the acquired set
+        # to ensure that the connection is not left in the acquired set
+        # on cancellation.
+        acquired_per_host = self._acquired_per_host[key]
+        self._acquired.remove(placeholder)
+        acquired_per_host.remove(placeholder)
         self._acquired.add(proto)
-        self._acquired_per_host[key].add(proto)
+        acquired_per_host.add(proto)
         return Connection(self, key, proto, self._loop)
 
     async def _wait_for_available_connection(
         self, key: "ConnectionKey", traces: List["Trace"]
     ) -> None:
-        """Wait until there is an available connection."""
-        fut: asyncio.Future[None] = self._loop.create_future()
+        """Wait for an available connection slot."""
+        # We loop here because there is a race between
+        # the connection limit check and the connection
+        # being acquired. If the connection is acquired
+        # between the check and the await statement, we
+        # need to loop again to check if the connection
+        # slot is still available.
+        attempts = 0
+        while True:
+            fut: asyncio.Future[None] = self._loop.create_future()
+            keyed_waiters = self._waiters[key]
+            keyed_waiters[fut] = None
+            if attempts:
+                # If we have waited before, we need to move the waiter
+                # to the front of the queue as otherwise we might get
+                # starved and hit the timeout.
+                keyed_waiters.move_to_end(fut, last=False)
 
-        # This connection will now count towards the limit.
-        self._waiters[key].append(fut)
+            try:
+                # Traces happen in the try block to ensure that the
+                # the waiter is still cleaned up if an exception is raised.
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_queued_start()
+                await fut
+                if traces:
+                    for trace in traces:
+                        await trace.send_connection_queued_end()
+            finally:
+                # pop the waiter from the queue if its still
+                # there and not already removed by _release_waiter
+                keyed_waiters.pop(fut, None)
+                if not self._waiters.get(key, True):
+                    del self._waiters[key]
 
-        if traces:
-            for trace in traces:
-                await trace.send_connection_queued_start()
+            if self._available_connections(key) > 0:
+                break
+            attempts += 1
 
-        try:
-            await fut
-        except BaseException as e:
-            if key in self._waiters:
-                # remove a waiter even if it was cancelled, normally it's
-                #  removed when it's notified
-                with suppress(ValueError):
-                    # fut may no longer be in list
-                    self._waiters[key].remove(fut)
+    async def _get(
+        self, key: "ConnectionKey", traces: List["Trace"]
+    ) -> Optional[Connection]:
+        """Get next reusable connection for the key or None.
 
-            raise e
-        finally:
-            if key in self._waiters and not self._waiters[key]:
-                del self._waiters[key]
-
-        if traces:
-            for trace in traces:
-                await trace.send_connection_queued_end()
-
-    def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
-        """Get next reusable connection for the key or None."""
+        The connection will be marked as acquired.
+        """
         try:
             conns = self._conns[key]
         except KeyError:
             return None
 
-        t1 = self._loop.time()
+        t1 = monotonic()
         while conns:
             proto, t0 = conns.pop()
             # We will we reuse the connection if its connected and
@@ -613,7 +604,16 @@ class BaseConnector:
                 if not conns:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
-                return proto
+                self._acquired.add(proto)
+                self._acquired_per_host[key].add(proto)
+                if traces:
+                    for trace in traces:
+                        try:
+                            await trace.send_connection_reuseconn()
+                        except BaseException:
+                            self._release_acquired(key, proto)
+                            raise
+                return Connection(self, key, proto, self._loop)
 
             # Connection cannot be reused, close it
             transport = proto.transport
@@ -647,25 +647,23 @@ class BaseConnector:
 
             waiters = self._waiters[key]
             while waiters:
-                waiter = waiters.popleft()
+                waiter, _ = waiters.popitem(last=False)
                 if not waiter.done():
                     waiter.set_result(None)
                     return
 
     def _release_acquired(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
+        """Release acquired connection."""
         if self._closed:
             # acquired connection is already released on connector closing
             return
 
-        try:
-            self._acquired.remove(proto)
-            self._drop_acquired_per_host(key, proto)
-        except KeyError:  # pragma: no cover
-            # this may be result of undetermenistic order of objects
-            # finalization due garbage collection.
-            pass
-        else:
-            self._release_waiter()
+        self._acquired.discard(proto)
+        if conns := self._acquired_per_host.get(key):
+            conns.discard(proto)
+            if not conns:
+                del self._acquired_per_host[key]
+        self._release_waiter()
 
     def _release(
         self,
@@ -694,7 +692,7 @@ class BaseConnector:
         conns = self._conns.get(key)
         if conns is None:
             conns = self._conns[key] = []
-        conns.append((protocol, self._loop.time()))
+        conns.append((protocol, monotonic()))
 
         if self._cleanup_handle is None:
             self._cleanup_handle = helpers.weakref_handle(
