@@ -597,8 +597,6 @@ class BaseConnector:
                     del self._conns[key]
                 self._acquired.add(proto)
                 self._acquired_per_host[key].add(proto)
-                # If we do not have to wait and we can get a connection from the pool
-                # we can avoid the timeout ceil logic and directly return the connection
                 if traces:
                     for trace in traces:
                         try:
