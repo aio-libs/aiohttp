@@ -9,7 +9,6 @@ import warnings
 from collections import defaultdict, deque
 from contextlib import suppress
 from http import HTTPStatus
-from http.cookies import SimpleCookie
 from itertools import chain, cycle, islice
 from time import monotonic
 from types import TracebackType
@@ -88,8 +87,16 @@ if TYPE_CHECKING:
 
 
 class Connection:
-    _source_traceback = None
-    _transport = None
+    """Represents a single connection."""
+
+    __slots__ = (
+        "_key",
+        "_connector",
+        "_loop",
+        "_protocol",
+        "_callbacks",
+        "_source_traceback",
+    )
 
     def __init__(
         self,
@@ -103,9 +110,9 @@ class Connection:
         self._loop = loop
         self._protocol: Optional[ResponseHandler] = protocol
         self._callbacks: List[Callable[[], None]] = []
-
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+        self._source_traceback = (
+            traceback.extract_stack(sys._getframe(1)) if loop.get_debug() else None
+        )
 
     def __repr__(self) -> str:
         return f"Connection<{self._key}>"
@@ -174,13 +181,14 @@ class Connection:
 class _TransportPlaceholder:
     """placeholder for BaseConnector.connect function"""
 
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
-        fut = loop.create_future()
-        fut.set_result(None)
-        self.closed: asyncio.Future[Optional[Exception]] = fut
+    __slots__ = ("closed",)
+
+    def __init__(self, closed_future: asyncio.Future[Optional[Exception]]) -> None:
+        """Initialize a placeholder for a transport."""
+        self.closed = closed_future
 
     def close(self) -> None:
-        pass
+        """Close the placeholder."""
 
 
 class BaseConnector:
@@ -251,8 +259,6 @@ class BaseConnector:
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
 
-        self.cookies = SimpleCookie()
-
         # start keep-alive connection cleanup task
         self._cleanup_handle: Optional[asyncio.TimerHandle] = None
 
@@ -260,6 +266,11 @@ class BaseConnector:
         self._cleanup_closed_handle: Optional[asyncio.TimerHandle] = None
         self._cleanup_closed_disabled = not enable_cleanup_closed
         self._cleanup_closed_transports: List[Optional[asyncio.Transport]] = []
+
+        self._placeholder_future: asyncio.Future[Optional[Exception]] = (
+            loop.create_future()
+        )
+        self._placeholder_future.set_result(None)
         self._cleanup_closed()
 
     def __del__(self, _warnings: Any = warnings) -> None:
@@ -331,21 +342,15 @@ class BaseConnector:
             connections = {}
             deadline = now - timeout
             for key, conns in self._conns.items():
-                alive = []
+                alive: List[Tuple[ResponseHandler, float]] = []
                 for proto, use_time in conns:
-                    if proto.is_connected():
-                        if use_time - deadline < 0:
-                            transport = proto.transport
-                            proto.close()
-                            if key.is_ssl and not self._cleanup_closed_disabled:
-                                self._cleanup_closed_transports.append(transport)
-                        else:
-                            alive.append((proto, use_time))
-                    else:
-                        transport = proto.transport
-                        proto.close()
-                        if key.is_ssl and not self._cleanup_closed_disabled:
-                            self._cleanup_closed_transports.append(transport)
+                    if proto.is_connected() and use_time - deadline >= 0:
+                        alive.append((proto, use_time))
+                        continue
+                    transport = proto.transport
+                    proto.close()
+                    if not self._cleanup_closed_disabled and key.is_ssl:
+                        self._cleanup_closed_transports.append(transport)
 
                 if alive:
                     connections[key] = alive
@@ -463,29 +468,21 @@ class BaseConnector:
         If it returns less than 1 means that there are no connections
         available.
         """
-        if self._limit:
-            # total calc available connections
-            available = self._limit - len(self._acquired)
+        # check total available connections
+        # If there are no limits, this will always return 1
+        total_remain = 1
 
-            # check limit per host
-            if (
-                self._limit_per_host
-                and available > 0
-                and key in self._acquired_per_host
-            ):
-                acquired = self._acquired_per_host.get(key)
-                assert acquired is not None
-                available = self._limit_per_host - len(acquired)
+        if self._limit and (total_remain := self._limit - len(self._acquired)) <= 0:
+            return total_remain
 
-        elif self._limit_per_host and key in self._acquired_per_host:
-            # check limit per host
-            acquired = self._acquired_per_host.get(key)
-            assert acquired is not None
-            available = self._limit_per_host - len(acquired)
-        else:
-            available = 1
+        # check limit per host
+        if host_remain := self._limit_per_host:
+            if acquired := self._acquired_per_host.get(key):
+                host_remain -= len(acquired)
+            if total_remain > host_remain:
+                return host_remain
 
-        return available
+        return total_remain
 
     async def connect(
         self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
@@ -493,42 +490,23 @@ class BaseConnector:
         """Get from pool or create new connection."""
         key = req.connection_key
         available = self._available_connections(key)
+        wait_for_conn = available <= 0 or key in self._waiters
+        if not wait_for_conn and (proto := self._get(key)) is not None:
+            # If we do not have to wait and we can get a connection from the pool
+            # we can avoid the timeout ceil logic and directly return the connection
+            return await self._reused_connection(key, proto, traces)
 
-        # Wait if there are no available connections or if there are/were
-        # waiters (i.e. don't steal connection from a waiter about to wake up)
-        if available <= 0 or key in self._waiters:
-            fut: asyncio.Future[None] = self._loop.create_future()
+        async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
+            # Wait if there are no available connections or if there are/were
+            # waiters (i.e. don't steal connection from a waiter about to wake up)
+            if wait_for_conn:
+                await self._wait_for_available_connection(key, traces)
+                if (proto := self._get(key)) is not None:
+                    return await self._reused_connection(key, proto, traces)
 
-            # This connection will now count towards the limit.
-            self._waiters[key].append(fut)
-
-            if traces:
-                for trace in traces:
-                    await trace.send_connection_queued_start()
-
-            try:
-                await fut
-            except BaseException as e:
-                if key in self._waiters:
-                    # remove a waiter even if it was cancelled, normally it's
-                    #  removed when it's notified
-                    try:
-                        self._waiters[key].remove(fut)
-                    except ValueError:  # fut may no longer be in list
-                        pass
-
-                raise e
-            finally:
-                if key in self._waiters and not self._waiters[key]:
-                    del self._waiters[key]
-
-            if traces:
-                for trace in traces:
-                    await trace.send_connection_queued_end()
-
-        proto = self._get(key)
-        if proto is None:
-            placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
+            placeholder = cast(
+                ResponseHandler, _TransportPlaceholder(self._placeholder_future)
+            )
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
 
@@ -555,22 +533,67 @@ class BaseConnector:
             if traces:
                 for trace in traces:
                     await trace.send_connection_create_end()
-        else:
-            if traces:
-                # Acquire the connection to prevent race conditions with limits
-                placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
-                self._acquired.add(placeholder)
-                self._acquired_per_host[key].add(placeholder)
-                for trace in traces:
-                    await trace.send_connection_reuseconn()
-                self._acquired.remove(placeholder)
-                self._drop_acquired_per_host(key, placeholder)
 
+            return self._acquired_connection(proto, key)
+
+    async def _reused_connection(
+        self, key: "ConnectionKey", proto: ResponseHandler, traces: List["Trace"]
+    ) -> Connection:
+        if traces:
+            # Acquire the connection to prevent race conditions with limits
+            placeholder = cast(
+                ResponseHandler, _TransportPlaceholder(self._placeholder_future)
+            )
+            self._acquired.add(placeholder)
+            self._acquired_per_host[key].add(placeholder)
+            for trace in traces:
+                await trace.send_connection_reuseconn()
+            self._acquired.remove(placeholder)
+            self._drop_acquired_per_host(key, placeholder)
+        return self._acquired_connection(proto, key)
+
+    def _acquired_connection(
+        self, proto: ResponseHandler, key: "ConnectionKey"
+    ) -> Connection:
+        """Mark proto as acquired and wrap it in a Connection object."""
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
         return Connection(self, key, proto, self._loop)
 
+    async def _wait_for_available_connection(
+        self, key: "ConnectionKey", traces: List["Trace"]
+    ) -> None:
+        """Wait until there is an available connection."""
+        fut: asyncio.Future[None] = self._loop.create_future()
+
+        # This connection will now count towards the limit.
+        self._waiters[key].append(fut)
+
+        if traces:
+            for trace in traces:
+                await trace.send_connection_queued_start()
+
+        try:
+            await fut
+        except BaseException as e:
+            if key in self._waiters:
+                # remove a waiter even if it was cancelled, normally it's
+                #  removed when it's notified
+                with suppress(ValueError):
+                    # fut may no longer be in list
+                    self._waiters[key].remove(fut)
+
+            raise e
+        finally:
+            if key in self._waiters and not self._waiters[key]:
+                del self._waiters[key]
+
+        if traces:
+            for trace in traces:
+                await trace.send_connection_queued_end()
+
     def _get(self, key: "ConnectionKey") -> Optional[ResponseHandler]:
+        """Get next reusable connection for the key or None."""
         try:
             conns = self._conns[key]
         except KeyError:
@@ -579,23 +602,20 @@ class BaseConnector:
         t1 = self._loop.time()
         while conns:
             proto, t0 = conns.pop()
-            if proto.is_connected():
-                if t1 - t0 > self._keepalive_timeout:
-                    transport = proto.transport
-                    proto.close()
-                    # only for SSL transports
-                    if key.is_ssl and not self._cleanup_closed_disabled:
-                        self._cleanup_closed_transports.append(transport)
-                else:
-                    if not conns:
-                        # The very last connection was reclaimed: drop the key
-                        del self._conns[key]
-                    return proto
-            else:
-                transport = proto.transport
-                proto.close()
-                if key.is_ssl and not self._cleanup_closed_disabled:
-                    self._cleanup_closed_transports.append(transport)
+            # We will we reuse the connection if its connected and
+            # the keepalive timeout has not been exceeded
+            if proto.is_connected() and t1 - t0 <= self._keepalive_timeout:
+                if not conns:
+                    # The very last connection was reclaimed: drop the key
+                    del self._conns[key]
+                return proto
+
+            # Connection cannot be reused, close it
+            transport = proto.transport
+            proto.close()
+            # only for SSL transports
+            if not self._cleanup_closed_disabled and key.is_ssl:
+                self._cleanup_closed_transports.append(transport)
 
         # No more connections: drop the key
         del self._conns[key]
@@ -613,7 +633,7 @@ class BaseConnector:
 
         # Having the dict keys ordered this avoids to iterate
         # at the same order at each call.
-        queues = list(self._waiters.keys())
+        queues = list(self._waiters)
         random.shuffle(queues)
 
         for key in queues:
@@ -1358,7 +1378,6 @@ class TCPConnector(BaseConnector):
                 raise
             else:
                 conn._protocol = None
-                conn._transport = None
                 try:
                     if resp.status != 200:
                         message = resp.reason
