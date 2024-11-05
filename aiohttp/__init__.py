@@ -43,6 +43,7 @@ from .client import (
     TCPConnector,
     TooManyRedirects,
     UnixConnector,
+    WSMessageTypeError,
     WSServerHandshakeError,
     request,
 )
@@ -238,6 +239,7 @@ __all__: Tuple[str, ...] = (
     # workers (imported lazily with __getattr__)
     "GunicornUVLoopWebWorker",
     "GunicornWebWorker",
+    "WSMessageTypeError",
 )
 
 
