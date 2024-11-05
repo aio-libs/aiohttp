@@ -10,7 +10,7 @@
 
 .. towncrier release notes start
 
-3.11.0b2 (2024-11-03)
+3.11.0b3 (2024-11-05)
 =====================
 
 Bug fixes
@@ -21,6 +21,14 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`6652`.
+
+
+
+- Modified websocket :meth:`aiohttp.ClientWebSocketResponse.receive_str`, :py:meth:`aiohttp.ClientWebSocketResponse.receive_bytes`, :py:meth:`aiohttp.web.WebSocketResponse.receive_str` & :py:meth:`aiohttp.web.WebSocketResponse.receive_bytes` methods to raise new :py:exc:`aiohttp.WSMessageTypeError` exception, instead of generic :py:exc:`TypeError`, when websocket messages of incorrect types are received -- by :user:`ara-25`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6800`.
 
 
 
@@ -37,6 +45,26 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9436`.
+
+
+
+- Fixed a deadlock that could occur while attempting to get a new connection slot after a timeout -- by :user:`bdraco`.
+
+  The connector was not cancellation-safe.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9670`, :issue:`9671`.
+
+
+
+- Fixed the keep-alive connection pool to be FIFO instead of LIFO -- by :user:`bdraco`.
+
+  Keep-alive connections are more likely to be reused before they disconnect.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9672`.
 
 
 
@@ -306,6 +334,22 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9603`.
+
+
+
+- Improved performance of the internal ``DataQueue`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9659`.
+
+
+
+- Improved performance of calling ``receive`` for WebSockets for the most common message types -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9679`.
 
 
 
