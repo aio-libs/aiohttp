@@ -1726,7 +1726,7 @@ async def test_exception_during_connection_reuse_tracing(
         assert key not in conn._acquired_per_host
         assert key in conn._conns
 
-        resp = await conn.connect(req, traces, ClientTimeout())
+        await conn.connect(req, traces, ClientTimeout())
 
     assert not conn._acquired
     assert key not in conn._acquired_per_host
@@ -1740,9 +1740,6 @@ async def test_cancellation_during_waiting_for_free_connection(
     waiter_wait_stated_future = loop.create_future()
 
     async def on_connection_queued_start(*args: object, **kwargs: object) -> None:
-        import pprint
-
-        pprint.pprint(["_waiters", conn._waiters])
         waiter_wait_stated_future.set_result(None)
 
     trace_config = aiohttp.TraceConfig(
@@ -1769,9 +1766,6 @@ async def test_cancellation_during_waiting_for_free_connection(
         # 2nd connect request will be queued
         task = asyncio.create_task(conn.connect(req, traces, ClientTimeout()))
         await waiter_wait_stated_future
-        import pprint
-
-        pprint.pprint(["_waiters", conn._waiters])
         list(conn._waiters[key])[0].cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
