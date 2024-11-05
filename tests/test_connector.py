@@ -3518,7 +3518,7 @@ async def test_connector_does_not_remove_needed_waiters(
         spec_set=True,
         side_effect=[0, 1, 1, 1],
     ):
-        connector._conns[key] = [(proto, loop.time())]
+        connector._conns[key] = deque([(proto, loop.time())])
         with mock.patch.object(
             connector,
             "_create_connection",
