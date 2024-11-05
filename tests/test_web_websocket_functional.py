@@ -949,11 +949,54 @@ async def test_websocket_disable_keepalive(loop, aiohttp_client) -> None:
     assert data == "OK"
 
 
-async def test_bug3380(loop, aiohttp_client) -> None:
+async def test_receive_str_nonstring(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        assert ws.can_prepare(request)
+
+        await ws.prepare(request)
+        await ws.send_bytes(b"answer")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/")
+    with pytest.raises(TypeError):
+        await ws.receive_str()
+
+
+async def test_receive_bytes_nonbytes(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse()
+        assert ws.can_prepare(request)
+
+        await ws.prepare(request)
+        await ws.send_str("answer")
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/")
+    with pytest.raises(TypeError):
+        await ws.receive_bytes()
+
+
+async def test_bug3380(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
     async def handle_null(request):
         return aiohttp.web.json_response({"err": None})
 
-    async def ws_handler(request):
+    async def ws_handler(request: web.Request) -> web.Response:
         return web.Response(status=401)
 
     app = web.Application()
