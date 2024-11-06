@@ -226,6 +226,7 @@ Lubomir Gelo
 Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
+Lénárd Szolnoki
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
