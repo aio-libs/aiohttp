@@ -49,7 +49,7 @@ cdef class WebSocketDataQueue:
     cdef object _exception
     cdef public object _buffer
 
-    cpdef feed_data(self, object data, object size)
+    cpdef feed_data(self, object data)
 
 
 cdef class WebSocketReader:

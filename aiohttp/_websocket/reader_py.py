@@ -48,8 +48,6 @@ EMPTY_FRAME = (False, b"")
 
 TUPLE_NEW = tuple.__new__
 
-_int = int
-
 
 class WebSocketDataQueue:
     """WebSocketDataQueue resumes and pauses an underlying stream.
@@ -98,9 +96,9 @@ class WebSocketDataQueue:
             self._waiter = None
             set_result(waiter, None)
 
-    def feed_data(self, data: "WSMessage", size: "_int") -> None:
-        self._size += size
-        self._buffer.append((data, size))
+    def feed_data(self, data: "WSMessage") -> None:
+        self._size += data.size
+        self._buffer.append(data)
         if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
@@ -117,8 +115,8 @@ class WebSocketDataQueue:
                 self._waiter = None
                 raise
         if self._buffer:
-            data, size = self._buffer.popleft()
-            self._size -= size
+            data = self._buffer.popleft()
+            self._size -= data.size
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
@@ -271,13 +269,13 @@ class WebSocketReader:
                     # bottleneck, so we use tuple.__new__ to improve performance.
                     # This is not type safe, but many tests should fail in
                     # test_client_ws_functional.py if this is wrong.
-                    msg = TUPLE_NEW(WSMessageText, (text, "", WS_MSG_TYPE_TEXT))
+                    msg = TUPLE_NEW(WSMessageText, (text, size, "", WS_MSG_TYPE_TEXT))
                 else:
                     msg = TUPLE_NEW(
-                        WSMessageBinary, (payload_merged, "", WS_MSG_TYPE_BINARY)
+                        WSMessageBinary, (payload_merged, size, "", WS_MSG_TYPE_BINARY)
                     )
 
-                self.queue.feed_data(msg, size)
+                self.queue.feed_data(msg)
             elif opcode == OP_CODE_CLOSE:
                 payload_len = len(payload)
                 if payload_len >= 2:
@@ -293,23 +291,25 @@ class WebSocketReader:
                         raise WebSocketError(
                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
                         ) from exc
-                    msg = WSMessageClose(data=close_code, extra=close_message)
+                    msg = WSMessageClose(
+                        data=close_code, size=payload_len, extra=close_message
+                    )
                 elif payload:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
                         f"Invalid close frame: {fin} {opcode} {payload!r}",
                     )
                 else:
-                    msg = WSMessageClose(data=0, extra="")
+                    msg = WSMessageClose(data=0, size=payload_len, extra="")
 
-                self.queue.feed_data(msg, payload_len)
+                self.queue.feed_data(msg)
             elif opcode == OP_CODE_PING:
                 self.queue.feed_data(
-                    WSMessagePing(data=payload, extra=""), len(payload)
+                    WSMessagePing(data=payload, size=len(payload), extra="")
                 )
             elif opcode == OP_CODE_PONG:
                 self.queue.feed_data(
-                    WSMessagePong(data=payload, extra=""), len(payload)
+                    WSMessagePong(data=payload, size=len(payload), extra="")
                 )
             else:
                 raise WebSocketError(
