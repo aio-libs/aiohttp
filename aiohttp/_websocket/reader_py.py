@@ -1,12 +1,14 @@
 """Reader for WebSocket protocol versions 13 and 8."""
 
 import asyncio
-from typing import Final, List, Optional, Set, Tuple, Union
+import builtins
+from collections import deque
+from typing import Deque, Final, List, Optional, Set, Tuple, Type, Union
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
-from ..helpers import set_exception
-from ..streams import DataQueue, EofStream
+from ..helpers import _EXC_SENTINEL, set_exception, set_result
+from ..streams import EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
     WS_DEFLATE_TRAILING,
@@ -47,7 +49,7 @@ EMPTY_FRAME = (False, b"")
 TUPLE_NEW = tuple.__new__
 
 
-class WebSocketDataQueue(DataQueue[WSMessage]):
+class WebSocketDataQueue:
     """WebSocketDataQueue resumes and pauses an underlying stream.
 
     It is a destination for WebSocket data.
@@ -56,18 +58,47 @@ class WebSocketDataQueue(DataQueue[WSMessage]):
     def __init__(
         self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
     ) -> None:
-        super().__init__(loop=loop)
         self._size = 0
         self._protocol = protocol
         self._limit = limit * 2
+        self._loop = loop
+        self._eof = False
+        self._waiter: Optional[asyncio.Future[None]] = None
+        self._exception: Union[Type[BaseException], BaseException, None] = None
+        self._buffer: Deque[WSMessage] = deque()
 
-    def feed_data(self, data: WSMessage) -> None:
-        payload = data[0]
-        payload_type = type(payload)
-        self._size += (
-            len(payload) if payload_type is str or payload_type is bytes else 0
-        )
-        self._buffer.append(data)
+    def __len__(self) -> int:
+        return len(self._buffer)
+
+    def is_eof(self) -> bool:
+        return self._eof
+
+    def at_eof(self) -> bool:
+        return self._eof and not self._buffer
+
+    def exception(self) -> Optional[Union[Type[BaseException], BaseException]]:
+        return self._exception
+
+    def set_exception(
+        self,
+        exc: Union[Type[BaseException], BaseException],
+        exc_cause: builtins.BaseException = _EXC_SENTINEL,
+    ) -> None:
+        self._eof = True
+        self._exception = exc
+        if (waiter := self._waiter) is not None:
+            self._waiter = None
+            set_exception(waiter, exc, exc_cause)
+
+    def feed_eof(self) -> None:
+        self._eof = True
+        if (waiter := self._waiter) is not None:
+            self._waiter = None
+            set_result(waiter, None)
+
+    def feed_data(self, data: WSMessage, size: int) -> None:
+        self._size += size
+        self._buffer.append((data, size))
         if (waiter := self._waiter) is not None:
             self._waiter = None
             if not waiter.done():
@@ -77,14 +108,16 @@ class WebSocketDataQueue(DataQueue[WSMessage]):
 
     async def read(self) -> WSMessage:
         if not self._buffer and not self._eof:
-            await self._wait_for_data()
+            assert not self._waiter
+            self._waiter = self._loop.create_future()
+            try:
+                await self._waiter
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._waiter = None
+                raise
         if self._buffer:
-            data = self._buffer.popleft()
-            payload = data[0]
-            payload_type = type(payload)
-            self._size -= (
-                len(payload) if payload_type is str or payload_type is bytes else 0
-            )
+            data, size = self._buffer.popleft()
+            self._size -= size
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
@@ -225,6 +258,7 @@ class WebSocketReader:
                 else:
                     payload_merged = bytes(assembled_payload)
 
+                size = len(payload_merged)
                 if opcode == OP_CODE_TEXT:
                     try:
                         text = payload_merged.decode("utf-8")
@@ -243,9 +277,10 @@ class WebSocketReader:
                         WSMessageBinary, (payload_merged, "", WS_MSG_TYPE_BINARY)
                     )
 
-                self._queue_feed_data(msg)
+                self._queue_feed_data(msg, size)
             elif opcode == OP_CODE_CLOSE:
-                if len(payload) >= 2:
+                payload_len = len(payload)
+                if payload_len >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
                     if close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES:
                         raise WebSocketError(
@@ -267,15 +302,15 @@ class WebSocketReader:
                 else:
                     msg = WSMessageClose(data=0, extra="")
 
-                self._queue_feed_data(msg)
+                self._queue_feed_data(msg, payload_len)
 
             elif opcode == OP_CODE_PING:
                 msg = WSMessagePing(data=payload, extra="")
-                self._queue_feed_data(msg)
+                self._queue_feed_data(msg, len(payload))
 
             elif opcode == OP_CODE_PONG:
                 msg = WSMessagePong(data=payload, extra="")
-                self._queue_feed_data(msg)
+                self._queue_feed_data(msg, len(payload))
 
             else:
                 raise WebSocketError(

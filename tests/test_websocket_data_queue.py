@@ -24,12 +24,12 @@ class TestWebSocketDataQueue:
     def test_feed_pause(self, buffer: WebSocketDataQueue) -> None:
         buffer._protocol._reading_paused = False
         for _ in range(3):
-            buffer.feed_data(WSMessageBinary(b"x"))
+            buffer.feed_data(WSMessageBinary(b"x"), 1)
 
         assert buffer._protocol.pause_reading.called  # type: ignore[attr-defined]
 
     async def test_resume_on_read(self, buffer: WebSocketDataQueue) -> None:
-        buffer.feed_data(WSMessageBinary(b"x"))
+        buffer.feed_data(WSMessageBinary(b"x"), 1)
 
         buffer._protocol._reading_paused = True
         await buffer.read()
