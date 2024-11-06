@@ -5,10 +5,6 @@ from enum import IntEnum
 from typing import Any, Callable, Final, Literal, NamedTuple, Optional, Union, cast
 
 WS_DEFLATE_TRAILING: Final[bytes] = bytes([0x00, 0x00, 0xFF, 0xFF])
-WS_MSG_DATA: Final = 0
-WS_MSG_SIZE: Final = 1
-WS_MSG_EXTRA: Final = 2
-WS_MSG_TYPE: Final = 3
 
 
 class WSCloseCode(IntEnum):
