@@ -41,13 +41,13 @@ cdef object set_result
 cdef class WebSocketDataQueue:
 
     cdef object _size
-    cdef object _protocol
+    cdef public object _protocol
     cdef object _limit
     cdef object _loop
     cdef bint _eof
     cdef object _waiter
     cdef object _exception
-    cdef object _buffer
+    cdef public object _buffer
 
     cpdef feed_data(self, object data, object size)
 
