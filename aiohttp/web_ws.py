@@ -501,8 +501,6 @@ class WebSocketResponse(StreamResponse):
                     if msg.type is WSMsgType.CLOSE:
                         self._set_code_close_transport(msg.data)
                         return True
-                    if msg.type is WSMsgType.ERROR:
-                        raise msg.data
         except asyncio.CancelledError:
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             raise
