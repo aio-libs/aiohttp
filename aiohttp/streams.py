@@ -643,18 +643,15 @@ class DataQueue(Generic[_T]):
             self._waiter = None
             set_result(waiter, None)
 
-    async def _wait_for_data(self) -> None:
-        assert not self._waiter
-        self._waiter = self._loop.create_future()
-        try:
-            await self._waiter
-        except (asyncio.CancelledError, asyncio.TimeoutError):
-            self._waiter = None
-            raise
-
     async def read(self) -> _T:
         if not self._buffer and not self._eof:
-            await self._wait_for_data()
+            assert not self._waiter
+            self._waiter = self._loop.create_future()
+            try:
+                await self._waiter
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._waiter = None
+                raise
         if self._buffer:
             return self._buffer.popleft()
         if self._exception is not None:
