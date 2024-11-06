@@ -7,7 +7,7 @@ from typing import Deque, Final, List, Optional, Set, Tuple, Type, Union
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
-from ..helpers import _EXC_SENTINEL, set_exception, set_result
+from ..helpers import _EXC_SENTINEL, set_exception
 from ..streams import EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
@@ -84,19 +84,22 @@ class WebSocketDataQueue:
             self._waiter = None
             set_exception(waiter, exc, exc_cause)
 
+    def _release_waiter(self) -> None:
+        if (waiter := self._waiter) is None:
+            return
+        self._waiter = None
+        if not waiter.done():
+            waiter.set_result(None)
+
     def feed_eof(self) -> None:
         self._eof = True
-        if (waiter := self._waiter) is not None:
-            self._waiter = None
-            set_result(waiter, None)
+        self._release_waiter()
 
     def feed_data(self, data: "WSMessage") -> None:
         size = data[WS_MSG_SIZE]
         self._size += size
         self._put_buffer(data)
-        if (waiter := self._waiter) is not None:
-            self._waiter = None
-            set_result(waiter, None)
+        self._release_waiter()
         if self._size > self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 

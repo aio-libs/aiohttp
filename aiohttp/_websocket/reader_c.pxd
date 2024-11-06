@@ -38,8 +38,6 @@ cdef set MESSAGE_TYPES_WITH_CONTENT
 cdef tuple EMPTY_FRAME
 cdef tuple EMPTY_FRAME_ERROR
 
-cdef object set_result
-
 cdef class WebSocketDataQueue:
 
     cdef unsigned int _size
@@ -52,6 +50,8 @@ cdef class WebSocketDataQueue:
     cdef public object _buffer
     cdef object _get_buffer
     cdef object _put_buffer
+
+    cdef void _release_waiter(self)
 
     @cython.locals(size="unsigned int")
     cpdef void feed_data(self, object data)
