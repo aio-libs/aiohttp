@@ -303,20 +303,18 @@ class WebSocketReader:
                     msg = WSMessageClose(data=0, extra="")
 
                 self.queue.feed_data(msg, payload_len)
-
             elif opcode == OP_CODE_PING:
                 self.queue.feed_data(
                     WSMessagePing(data=payload, extra=""), len(payload)
                 )
-
             elif opcode == OP_CODE_PONG:
                 self.queue.feed_data(
                     WSMessagePong(data=payload, extra=""), len(payload)
                 )
-
-            raise WebSocketError(
-                WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
-            )
+            else:
+                raise WebSocketError(
+                    WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
+                )
 
     def parse_frame(
         self, buf: bytes
