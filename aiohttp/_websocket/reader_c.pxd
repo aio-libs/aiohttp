@@ -50,6 +50,8 @@ cdef class WebSocketDataQueue:
     cdef object _waiter
     cdef object _exception
     cdef public object _buffer
+    cdef object _get_buffer
+    cdef object _put_buffer
 
     cpdef feed_data(self, object data)
 
