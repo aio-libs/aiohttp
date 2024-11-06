@@ -36,22 +36,25 @@ cdef set MESSAGE_TYPES_WITH_CONTENT
 cdef tuple EMPTY_FRAME
 cdef tuple EMPTY_FRAME_ERROR
 
+cdef object set_result
+
 cdef class WebSocketDataQueue:
 
-    cdef unsigned int _size
+    cdef object _size
     cdef object _protocol
-    cdef unsigned int _limit
+    cdef object _limit
     cdef object _loop
     cdef bint _eof
     cdef object _waiter
     cdef object _exception
     cdef object _buffer
 
+    cdef feed_data(self, object data, object size)
+
 
 cdef class WebSocketReader:
 
     cdef WebSocketDataQueue queue
-    cdef object _queue_feed_data
     cdef unsigned int _max_msg_size
 
     cdef Exception _exc

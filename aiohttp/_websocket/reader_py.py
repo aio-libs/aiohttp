@@ -48,6 +48,8 @@ EMPTY_FRAME = (False, b"")
 
 TUPLE_NEW = tuple.__new__
 
+_int = int
+
 
 class WebSocketDataQueue:
     """WebSocketDataQueue resumes and pauses an underlying stream.
@@ -96,13 +98,12 @@ class WebSocketDataQueue:
             self._waiter = None
             set_result(waiter, None)
 
-    def feed_data(self, data: WSMessage, size: int) -> None:
+    def feed_data(self, data: "WSMessage", size: "_int") -> None:
         self._size += size
         self._buffer.append((data, size))
         if (waiter := self._waiter) is not None:
             self._waiter = None
-            if not waiter.done():
-                waiter.set_result(None)
+            set_result(waiter, None)
         if self._size > self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 
@@ -131,7 +132,6 @@ class WebSocketReader:
         self, queue: WebSocketDataQueue, max_msg_size: int, compress: bool = True
     ) -> None:
         self.queue = queue
-        self._queue_feed_data = queue.feed_data
         self._max_msg_size = max_msg_size
 
         self._exc: Optional[Exception] = None
@@ -277,7 +277,7 @@ class WebSocketReader:
                         WSMessageBinary, (payload_merged, "", WS_MSG_TYPE_BINARY)
                     )
 
-                self._queue_feed_data(msg, size)
+                self.queue.feed_data(msg, size)
             elif opcode == OP_CODE_CLOSE:
                 payload_len = len(payload)
                 if payload_len >= 2:
@@ -302,20 +302,21 @@ class WebSocketReader:
                 else:
                     msg = WSMessageClose(data=0, extra="")
 
-                self._queue_feed_data(msg, payload_len)
+                self.queue.feed_data(msg, payload_len)
 
             elif opcode == OP_CODE_PING:
-                msg = WSMessagePing(data=payload, extra="")
-                self._queue_feed_data(msg, len(payload))
+                self.queue.feed_data(
+                    WSMessagePing(data=payload, extra=""), len(payload)
+                )
 
             elif opcode == OP_CODE_PONG:
-                msg = WSMessagePong(data=payload, extra="")
-                self._queue_feed_data(msg, len(payload))
-
-            else:
-                raise WebSocketError(
-                    WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
+                self.queue.feed_data(
+                    WSMessagePong(data=payload, extra=""), len(payload)
                 )
+
+            raise WebSocketError(
+                WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
+            )
 
     def parse_frame(
         self, buf: bytes
