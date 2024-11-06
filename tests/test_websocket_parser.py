@@ -377,7 +377,7 @@ def test_continuation_with_ping(
         parser._feed_data(data3)
 
         res = out._buffer[0]
-        assert res == WSMessagePing(data=b"", size=0 extra="")
+        assert res == WSMessagePing(data=b"", size=0, extra="")
         res = out._buffer[1]
         assert res == WSMessageText(data="line1line2", size=10, extra="")
 
