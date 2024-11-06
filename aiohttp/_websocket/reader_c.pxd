@@ -3,6 +3,8 @@ import cython
 from .mask cimport _websocket_mask_cython as websocket_mask
 
 
+cdef unsigned int WS_MSG_SIZE
+
 cdef unsigned int READ_HEADER
 cdef unsigned int READ_PAYLOAD_LENGTH
 cdef unsigned int READ_PAYLOAD_MASK

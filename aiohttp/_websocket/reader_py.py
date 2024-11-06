@@ -12,6 +12,7 @@ from ..streams import EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
     WS_DEFLATE_TRAILING,
+    WS_MSG_SIZE,
     WebSocketError,
     WSCloseCode,
     WSMessage,
@@ -97,7 +98,7 @@ class WebSocketDataQueue:
             set_result(waiter, None)
 
     def feed_data(self, data: "WSMessage") -> None:
-        self._size += data.size
+        self._size += data[WS_MSG_SIZE]
         self._buffer.append(data)
         if (waiter := self._waiter) is not None:
             self._waiter = None
@@ -116,7 +117,7 @@ class WebSocketDataQueue:
                 raise
         if self._buffer:
             data = self._buffer.popleft()
-            self._size -= data.size
+            self._size -= data[WS_MSG_SIZE]
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
