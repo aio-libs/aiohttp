@@ -100,7 +100,8 @@ class WebSocketDataQueue:
             set_result(waiter, None)
 
     def feed_data(self, data: "WSMessage") -> None:
-        self._size += data[WS_MSG_SIZE]
+        size = data[WS_MSG_SIZE]
+        self._size += size
         self._put_buffer(data)
         if (waiter := self._waiter) is not None:
             self._waiter = None
@@ -117,9 +118,13 @@ class WebSocketDataQueue:
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._waiter = None
                 raise
+        return self._read_from_buffer()
+
+    def _read_from_buffer(self) -> WSMessage:
         if self._buffer:
             data = self._get_buffer()
-            self._size -= data[WS_MSG_SIZE]
+            size = data[WS_MSG_SIZE]
+            self._size -= size
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data

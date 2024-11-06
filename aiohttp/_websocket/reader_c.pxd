@@ -42,9 +42,9 @@ cdef object set_result
 
 cdef class WebSocketDataQueue:
 
-    cdef object _size
+    cdef unsigned int _size
     cdef public object _protocol
-    cdef object _limit
+    cdef unsigned int _limit
     cdef object _loop
     cdef bint _eof
     cdef object _waiter
@@ -53,8 +53,11 @@ cdef class WebSocketDataQueue:
     cdef object _get_buffer
     cdef object _put_buffer
 
+    @cython.locals(size="unsigned int")
     cpdef feed_data(self, object data)
 
+    @cython.locals(size="unsigned int")
+    cdef _read_from_buffer(self)
 
 cdef class WebSocketReader:
 
