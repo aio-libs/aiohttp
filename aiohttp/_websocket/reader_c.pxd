@@ -54,7 +54,7 @@ cdef class WebSocketDataQueue:
     cdef object _put_buffer
 
     @cython.locals(size="unsigned int")
-    cpdef feed_data(self, object data)
+    cpdef void feed_data(self, object data)
 
     @cython.locals(size="unsigned int")
     cdef _read_from_buffer(self)
