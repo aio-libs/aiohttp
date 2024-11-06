@@ -4,7 +4,7 @@ from typing import Final, List, Optional, Set, Tuple, Union
 
 from ..compression_utils import ZLibDecompressor
 from ..helpers import set_exception
-from ..streams import DataQueue
+from ..streams import FlowControlDataQueue
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
     WS_DEFLATE_TRAILING,
@@ -42,7 +42,10 @@ TUPLE_NEW = tuple.__new__
 
 class WebSocketReader:
     def __init__(
-        self, queue: DataQueue[WSMessage], max_msg_size: int, compress: bool = True
+        self,
+        queue: FlowControlDataQueue[WSMessage],
+        max_msg_size: int,
+        compress: bool = True,
     ) -> None:
         self.queue = queue
         self._queue_feed_data = queue.feed_data
@@ -185,7 +188,8 @@ class WebSocketReader:
                     # This is not type safe, but many tests should fail in
                     # test_client_ws_functional.py if this is wrong.
                     self._queue_feed_data(
-                        TUPLE_NEW(WSMessage, (WS_MSG_TYPE_TEXT, text, "")), len(text)
+                        TUPLE_NEW(WSMessage, (WS_MSG_TYPE_TEXT, text, "")),
+                        len(payload_merged),
                     )
                 else:
                     self._queue_feed_data(
