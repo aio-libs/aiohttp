@@ -640,16 +640,15 @@ class TestWebSocketError:
             assert err2.foo == "bar"
 
 
-@pytest.mark.xfail(
-    reason="Flow control is currently broken on master branch; see #9685"
-)
+# @pytest.mark.xfail(
+#    reason="Flow control is currently broken on master branch; see #9685"
+# )
 def test_flow_control_binary(
     protocol: BaseProtocol,
     out_low_limit: aiohttp.FlowControlDataQueue[WSMessage],
     parser_low_limit: WebSocketReader,
 ) -> None:
     large_payload = b"b" * (1 + 16 * 2)
-    payload_len = len(large_payload)
     parser_low_limit.parse_frame = mock.Mock()
     parser_low_limit.parse_frame.return_value = [
         (1, WSMsgType.BINARY, large_payload, False)
@@ -657,13 +656,13 @@ def test_flow_control_binary(
     parser_low_limit.feed_data(b"")
 
     res = out_low_limit._buffer[0]
-    assert res == ((WSMsgType.BINARY, large_payload, ""), payload_len)
+    assert res == WSMessageBinary(data=large_payload, extra="")
     assert protocol._reading_paused is True
 
 
-@pytest.mark.xfail(
-    reason="Flow control is currently broken on master branch; see #9685"
-)
+# @pytest.mark.xfail(
+#    reason="Flow control is currently broken on master branch; see #9685"
+# )
 def test_flow_control_multi_byte_text(
     protocol: BaseProtocol,
     out_low_limit: aiohttp.FlowControlDataQueue[WSMessage],
@@ -671,7 +670,6 @@ def test_flow_control_multi_byte_text(
 ) -> None:
     large_payload_text = "𒀁" * (1 + 16 * 2)
     large_payload = large_payload_text.encode("utf-8")
-    payload_len = len(large_payload)
 
     parser_low_limit.parse_frame = mock.Mock()
     parser_low_limit.parse_frame.return_value = [
@@ -680,5 +678,5 @@ def test_flow_control_multi_byte_text(
     parser_low_limit.feed_data(b"")
 
     res = out_low_limit._buffer[0]
-    assert res == ((WSMsgType.TEXT, large_payload, ""), payload_len)
+    assert res == WSMessageText(data=large_payload_text, extra="")
     assert protocol._reading_paused is True
