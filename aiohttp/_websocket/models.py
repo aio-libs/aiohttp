@@ -40,12 +40,14 @@ class WSMsgType(IntEnum):
 
 class WSMessageContinuation(NamedTuple):
     data: bytes
+    size: int
     extra: Optional[str] = None
     type: Literal[WSMsgType.CONTINUATION] = WSMsgType.CONTINUATION
 
 
 class WSMessageText(NamedTuple):
     data: str
+    size: int
     extra: Optional[str] = None
     type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
 
@@ -58,6 +60,7 @@ class WSMessageText(NamedTuple):
 
 class WSMessageBinary(NamedTuple):
     data: bytes
+    size: int
     extra: Optional[str] = None
     type: Literal[WSMsgType.BINARY] = WSMsgType.BINARY
 
@@ -70,36 +73,42 @@ class WSMessageBinary(NamedTuple):
 
 class WSMessagePing(NamedTuple):
     data: bytes
+    size: int
     extra: Optional[str] = None
     type: Literal[WSMsgType.PING] = WSMsgType.PING
 
 
 class WSMessagePong(NamedTuple):
     data: bytes
+    size: int
     extra: Optional[str] = None
     type: Literal[WSMsgType.PONG] = WSMsgType.PONG
 
 
 class WSMessageClose(NamedTuple):
     data: int
+    size: int
     extra: Optional[str] = None
     type: Literal[WSMsgType.CLOSE] = WSMsgType.CLOSE
 
 
 class WSMessageClosing(NamedTuple):
     data: None = None
+    size: int = 0
     extra: Optional[str] = None
     type: Literal[WSMsgType.CLOSING] = WSMsgType.CLOSING
 
 
 class WSMessageClosed(NamedTuple):
     data: None = None
+    size: int = 0
     extra: Optional[str] = None
     type: Literal[WSMsgType.CLOSED] = WSMsgType.CLOSED
 
 
 class WSMessageError(NamedTuple):
     data: BaseException
+    size: int = 0
     extra: Optional[str] = None
     type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
 

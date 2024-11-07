@@ -19,13 +19,6 @@ def stream(
     return streams.StreamReader(protocol, limit=1, loop=loop)
 
 
-@pytest.fixture
-def buffer(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
-) -> streams.FlowControlDataQueue[str]:
-    return streams.FlowControlDataQueue[str](protocol, limit=1, loop=loop)
-
-
 class TestFlowControlStreamReader:
     async def test_read(self, stream: streams.StreamReader) -> None:
         stream.feed_data(b"da")
@@ -114,20 +107,3 @@ class TestFlowControlStreamReader:
         res = stream.read_nowait(5)
         assert res == b""
         assert stream._protocol.resume_reading.call_count == 1  # type: ignore[attr-defined]
-
-
-class TestFlowControlDataQueue:
-    def test_feed_pause(self, buffer: streams.FlowControlDataQueue[str]) -> None:
-        buffer._protocol._reading_paused = False
-        buffer.feed_data("x" * 100)
-
-        assert buffer._protocol.pause_reading.called  # type: ignore[attr-defined]
-
-    async def test_resume_on_read(
-        self, buffer: streams.FlowControlDataQueue[str]
-    ) -> None:
-        buffer.feed_data("x" * 100)
-
-        buffer._protocol._reading_paused = True
-        await buffer.read()
-        assert buffer._protocol.resume_reading.called  # type: ignore[attr-defined]

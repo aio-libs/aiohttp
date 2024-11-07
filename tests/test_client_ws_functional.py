@@ -14,6 +14,7 @@ from aiohttp import (
     hdrs,
     web,
 )
+from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
@@ -22,6 +23,10 @@ if sys.version_info >= (3, 11):
     import asyncio as async_timeout
 else:
     import async_timeout
+
+
+class PatchableWebSocketDataQueue(WebSocketDataQueue):
+    """A WebSocketDataQueue that can be patched."""
 
 
 async def test_send_recv_text(aiohttp_client: AiohttpClient) -> None:
@@ -871,7 +876,10 @@ async def test_heartbeat_no_pong_concurrent_receive(
     async def handler(request: web.Request) -> NoReturn:
         nonlocal ping_received
         ws = web.WebSocketResponse(autoping=False)
-        await ws.prepare(request)
+        with mock.patch(
+            "aiohttp.web_ws.WebSocketDataQueue", PatchableWebSocketDataQueue
+        ):
+            await ws.prepare(request)
         msg = await ws.receive()
         ping_received = msg.type is aiohttp.WSMsgType.PING
         with mock.patch.object(
@@ -883,8 +891,9 @@ async def test_heartbeat_no_pong_concurrent_receive(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    client = await aiohttp_client(app)
-    resp = await client.ws_connect("/", heartbeat=0.1)
+    with mock.patch("aiohttp.client.WebSocketDataQueue", PatchableWebSocketDataQueue):
+        client = await aiohttp_client(app)
+        resp = await client.ws_connect("/", heartbeat=0.1)
     with mock.patch.object(
         resp._reader, "feed_eof", autospec=True, spec_set=True, return_value=None
     ):
