@@ -105,16 +105,11 @@ class ContentDisposition:
     filename: Optional[str]
 
 
-@attr.s(auto_attribs=True, frozen=True, slots=True)
-class RequestInfo:
+class RequestInfo(NamedTuple):
     url: URL
     method: str
     headers: "CIMultiDictProxy[str]"
-    real_url: URL = attr.ib()
-
-    @real_url.default
-    def real_url_default(self) -> URL:
-        return self.url
+    real_url: URL
 
 
 class Fingerprint:
@@ -401,7 +396,11 @@ class ClientRequest:
     @property
     def request_info(self) -> RequestInfo:
         headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
-        return RequestInfo(self.url, self.method, headers, self.original_url)
+        # These are created on every request, so we use a NamedTuple
+        # for performance reasons.
+        return tuple.__new__(
+            RequestInfo, (self.url, self.method, headers, self.original_url)
+        )
 
     def update_host(self, url: URL) -> None:
         """Update destination host, port and connection type (ssl)."""
