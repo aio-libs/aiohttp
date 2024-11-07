@@ -86,16 +86,13 @@ def test_send_client_request_one_hundred(
 
     class MockProtocol(asyncio.BaseProtocol):
 
-        def __init__(self):
+        def __init__(self) -> None:
             self.transport = MockTransport()
 
     class MockConnection:
-        def __init__(self):
+        def __init__(self) -> None:
             self.transport = None
             self.protocol = MockProtocol()
-
-        def get_extra_info(self, key):
-            return None
 
     conn = MockConnection()
 
