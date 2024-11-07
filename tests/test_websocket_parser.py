@@ -641,7 +641,7 @@ class TestWebSocketError:
 
 
 @pytest.mark.xfail(
-   reason="Flow control is currently broken on master branch; see #9685"
+    reason="Flow control is currently broken on master branch; see #9685"
 )
 def test_flow_control_binary(
     protocol: BaseProtocol,
@@ -661,7 +661,7 @@ def test_flow_control_binary(
 
 
 @pytest.mark.xfail(
-   reason="Flow control is currently broken on master branch; see #9685"
+    reason="Flow control is currently broken on master branch; see #9685"
 )
 def test_flow_control_multi_byte_text(
     protocol: BaseProtocol,
