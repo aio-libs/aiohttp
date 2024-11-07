@@ -15,11 +15,6 @@ def stream(loop, protocol):
     return streams.StreamReader(protocol, limit=1, loop=loop)
 
 
-@pytest.fixture
-def buffer(loop, protocol):
-    return streams.FlowControlDataQueue(protocol, limit=1, loop=loop)
-
-
 class TestFlowControlStreamReader:
     async def test_read(self, stream) -> None:
         stream.feed_data(b"da", 2)
@@ -107,19 +102,4 @@ class TestFlowControlStreamReader:
         stream._protocol._reading_paused = False
         res = stream.read_nowait(5)
         assert res == b""
-        assert stream._protocol.resume_reading.call_count == 1
-
-
-class TestFlowControlDataQueue:
-    def test_feed_pause(self, buffer) -> None:
-        buffer._protocol._reading_paused = False
-        buffer.feed_data(object(), 100)
-
-        assert buffer._protocol.pause_reading.called
-
-    async def test_resume_on_read(self, buffer) -> None:
-        buffer.feed_data(object(), 100)
-
-        buffer._protocol._reading_paused = True
-        await buffer.read()
-        assert buffer._protocol.resume_reading.called
+        assert stream._protocol.resume_reading.call_count == 1  # type: ignore[attr-defined]

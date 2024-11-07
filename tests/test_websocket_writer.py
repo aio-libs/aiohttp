@@ -5,7 +5,8 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import DataQueue, WSMessage, WSMsgType
+from aiohttp import WSMsgType
+from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.http import WebSocketReader, WebSocketWriter
 from aiohttp.test_utils import make_mocked_coro
 
@@ -144,7 +145,8 @@ async def test_concurrent_messages(
         "aiohttp._websocket.writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", max_sync_chunk_size
     ):
         writer = WebSocketWriter(protocol, transport, compress=15)
-        queue: DataQueue[WSMessage] = DataQueue(asyncio.get_running_loop())
+        loop = asyncio.get_running_loop()
+        queue = WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
         reader = WebSocketReader(queue, 50000)
         writers = []
         payloads = []

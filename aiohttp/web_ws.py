@@ -10,6 +10,7 @@ import attr
 from multidict import CIMultiDict
 
 from . import hdrs
+from ._websocket.reader import WebSocketDataQueue
 from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
 from .client_exceptions import WSMessageTypeError
@@ -29,7 +30,7 @@ from .http import (
 )
 from .http_websocket import _INTERNAL_RECEIVE_TYPES
 from .log import ws_logger
-from .streams import EofStream, FlowControlDataQueue
+from .streams import EofStream
 from .typedefs import JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
@@ -79,7 +80,7 @@ class WebSocketResponse(StreamResponse):
         self._protocols = protocols
         self._ws_protocol: Optional[str] = None
         self._writer: Optional[WebSocketWriter] = None
-        self._reader: Optional[FlowControlDataQueue[WSMessage]] = None
+        self._reader: Optional[WebSocketDataQueue] = None
         self._closed = False
         self._closing = False
         self._conn_lost = 0
@@ -329,7 +330,7 @@ class WebSocketResponse(StreamResponse):
 
         loop = self._loop
         assert loop is not None
-        self._reader = FlowControlDataQueue(request._protocol, 2**16, loop=loop)
+        self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
         request.protocol.set_parser(
             WebSocketReader(self._reader, self._max_msg_size, compress=self._compress)
         )
