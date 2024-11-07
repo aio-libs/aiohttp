@@ -10,7 +10,9 @@ import attr
 from multidict import CIMultiDict
 
 from . import hdrs
+from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
+from .client_exceptions import WSMessageTypeError
 from .helpers import calculate_timeout_when, set_exception, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
@@ -25,6 +27,7 @@ from .http import (
     ws_ext_gen,
     ws_ext_parse,
 )
+from .http_websocket import _INTERNAL_RECEIVE_TYPES
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import JSONDecoder, JSONEncoder
@@ -70,6 +73,7 @@ class WebSocketResponse(StreamResponse):
         protocols: Iterable[str] = (),
         compress: bool = True,
         max_msg_size: int = 4 * 1024 * 1024,
+        writer_limit: int = DEFAULT_LIMIT,
     ) -> None:
         super().__init__(status=101)
         self._protocols = protocols
@@ -97,6 +101,7 @@ class WebSocketResponse(StreamResponse):
         self._compress = compress
         self._max_msg_size = max_msg_size
         self._ping_task: Optional[asyncio.Task[None]] = None
+        self._writer_limit = writer_limit
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
@@ -153,13 +158,14 @@ class WebSocketResponse(StreamResponse):
         self._cancel_pong_response_cb()
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
+        coro = self._writer.send_frame(b"", WSMsgType.PING)
         if sys.version_info >= (3, 12):
             # Optimization for Python 3.12, try to send the ping
             # immediately to avoid having to schedule
             # the task on the event loop.
-            ping_task = asyncio.Task(self._writer.ping(), loop=loop, eager_start=True)
+            ping_task = asyncio.Task(coro, loop=loop, eager_start=True)
         else:
-            ping_task = loop.create_task(self._writer.ping())
+            ping_task = loop.create_task(coro)
 
         if not ping_task.done():
             self._ping_task = ping_task
@@ -304,7 +310,11 @@ class WebSocketResponse(StreamResponse):
         transport = request._protocol.transport
         assert transport is not None
         writer = WebSocketWriter(
-            request._protocol, transport, compress=compress, notakeover=notakeover
+            request._protocol,
+            transport,
+            compress=compress,
+            notakeover=notakeover,
+            limit=self._writer_limit,
         )
 
         return protocol, writer
@@ -371,13 +381,13 @@ class WebSocketResponse(StreamResponse):
     async def ping(self, message: bytes = b"") -> None:
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
-        await self._writer.ping(message)
+        await self._writer.send_frame(message, WSMsgType.PING)
 
     async def pong(self, message: bytes = b"") -> None:
         # unsolicited pong
         if self._writer is None:
             raise RuntimeError("Call .prepare() first")
-        await self._writer.pong(message)
+        await self._writer.send_frame(message, WSMsgType.PONG)
 
     async def send_frame(
         self, message: bytes, opcode: WSMsgType, compress: Optional[int] = None
@@ -463,7 +473,11 @@ class WebSocketResponse(StreamResponse):
 
         try:
             async with async_timeout.timeout(self._timeout):
-                msg = await reader.read()
+                while True:
+                    msg = await reader.read()
+                    if msg.type is WSMsgType.CLOSE:
+                        self._set_code_close_transport(msg.data)
+                        return True
         except asyncio.CancelledError:
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             raise
@@ -471,14 +485,6 @@ class WebSocketResponse(StreamResponse):
             self._exception = exc
             self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
             return True
-
-        if msg.type is WSMsgType.CLOSE:
-            self._set_code_close_transport(msg.data)
-            return True
-
-        self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
-        self._exception = asyncio.TimeoutError()
-        return True
 
     def _set_closing(self, code: WSCloseCode) -> None:
         """Set the close code and mark the connection as closing."""
@@ -500,8 +506,6 @@ class WebSocketResponse(StreamResponse):
         if self._reader is None:
             raise RuntimeError("Call .prepare() first")
 
-        loop = self._loop
-        assert loop is not None
         receive_timeout = timeout or self._receive_timeout
         while True:
             if self._waiting:
@@ -548,6 +552,11 @@ class WebSocketResponse(StreamResponse):
                 await self.close()
                 return WSMessage(WSMsgType.ERROR, exc, None)
 
+            if msg.type not in _INTERNAL_RECEIVE_TYPES:
+                # If its not a close/closing/ping/pong message
+                # we can return it immediately
+                return msg
+
             if msg.type is WSMsgType.CLOSE:
                 self._set_closing(msg.data)
                 # Could be closed while awaiting reader.
@@ -570,17 +579,17 @@ class WebSocketResponse(StreamResponse):
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
-            raise TypeError(
-                "Received message {}:{!r} is not WSMsgType.TEXT".format(
-                    msg.type, msg.data
-                )
+            raise WSMessageTypeError(
+                f"Received message {msg.type}:{msg.data!r} is not WSMsgType.TEXT"
             )
         return cast(str, msg.data)
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
-            raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
+            raise WSMessageTypeError(
+                f"Received message {msg.type}:{msg.data!r} is not WSMsgType.BINARY"
+            )
         return cast(bytes, msg.data)
 
     async def receive_json(

@@ -56,6 +56,44 @@ For *text/plain* ::
 
     await session.post(url, data='Привет, Мир!')
 
+Authentication
+--------------
+
+Instead of setting the ``Authorization`` header directly,
+:class:`ClientSession` and individual request methods provide an ``auth``
+argument. An instance of :class:`BasicAuth` can be passed in like this::
+
+    auth = BasicAuth(login="...", password="...")
+    async with ClientSession(auth=auth) as session:
+        ...
+
+Note that if the request is redirected and the redirect URL contains
+credentials, those credentials will supersede any previously set credentials.
+In other words, if ``http://user@example.com`` redirects to
+``http://other_user@example.com``, the second request will be authenticated
+as ``other_user``. Providing both the ``auth`` parameter and authentication in
+the *initial* URL will result in a :exc:`ValueError`.
+
+For other authentication flows, the ``Authorization`` header can be set
+directly::
+
+    headers = {"Authorization": "Bearer eyJh...0M30"}
+    async with ClientSession(headers=headers) as session:
+        ...
+
+The authentication header for a session may be updated as and when required.
+For example::
+
+    session.headers["Authorization"] = "Bearer eyJh...1OH0"
+
+Note that a *copy* of the headers dictionary is set as an attribute when
+creating a :class:`ClientSession` instance (as a :class:`multidict.CIMultiDict`
+object). Updating the original dictionary does not have any effect.
+
+In cases where the authentication header value expires periodically, an
+:mod:`asyncio` task may be used to update the session's default headers in the
+background.
+
 .. note::
    ``Authorization`` header will be removed if you get redirected
    to a different host or protocol.
@@ -566,6 +604,13 @@ Authentication credentials can be passed in proxy URL::
 
    session.get("http://python.org",
                proxy="http://user:pass@some.proxy.com")
+
+And you may set default proxy::
+
+   proxy_auth = aiohttp.BasicAuth('user', 'pass')
+   async with aiohttp.ClientSession(proxy="http://proxy.com", proxy_auth=proxy_auth) as session:
+       async with session.get("http://python.org") as resp:
+           print(resp.status)
 
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing

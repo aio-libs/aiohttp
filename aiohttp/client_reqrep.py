@@ -3,6 +3,7 @@ import codecs
 import contextlib
 import functools
 import io
+import itertools
 import re
 import sys
 import traceback
@@ -18,6 +19,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    NamedTuple,
     Optional,
     Tuple,
     Type,
@@ -208,8 +210,13 @@ def _merge_ssl_params(
     return ssl
 
 
-@attr.s(auto_attribs=True, slots=True, frozen=True, cache_hash=True)
-class ConnectionKey:
+_SSL_SCHEMES = frozenset(("https", "wss"))
+
+
+# ConnectionKey is a NamedTuple because it is used as a key in a dict
+# and a set in the connector. Since a NamedTuple is a tuple it uses
+# the fast native tuple __hash__ and __eq__ implementation in CPython.
+class ConnectionKey(NamedTuple):
     # the key should contain an information about used proxy / TLS
     # to prevent reusing wrong connections from a pool
     host: str
@@ -238,6 +245,9 @@ class ClientRequest:
     }
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
     ALL_METHODS = GET_METHODS.union(POST_METHODS).union({hdrs.METH_DELETE})
+    _HOST_STRINGS = frozenset(
+        map("".join, itertools.product(*zip("host".upper(), "host".lower())))
+    )
 
     DEFAULT_HEADERS = {
         hdrs.ACCEPT: "*/*",
@@ -302,7 +312,7 @@ class ClientRequest:
         if params:
             url = url.extend_query(params)
         self.original_url = url
-        self.url = url.with_fragment(None)
+        self.url = url.with_fragment(None) if url.raw_fragment else url
         self.method = method.upper()
         self.chunked = chunked
         self.compress = compress
@@ -345,20 +355,14 @@ class ClientRequest:
         return self.__writer
 
     @_writer.setter
-    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+    def _writer(self, writer: "asyncio.Task[None]") -> None:
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
-        if writer is None:
-            return
-        if writer.done():
-            # The writer is already done, so we can reset it immediately.
-            self.__reset_writer()
-        else:
-            writer.add_done_callback(self.__reset_writer)
+        writer.add_done_callback(self.__reset_writer)
 
     def is_ssl(self) -> bool:
-        return self.url.scheme in ("https", "wss")
+        return self.url.scheme in _SSL_SCHEMES
 
     @property
     def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
@@ -366,19 +370,22 @@ class ClientRequest:
 
     @property
     def connection_key(self) -> ConnectionKey:
-        proxy_headers = self.proxy_headers
-        if proxy_headers:
+        if proxy_headers := self.proxy_headers:
             h: Optional[int] = hash(tuple(proxy_headers.items()))
         else:
             h = None
-        return ConnectionKey(
-            self.host,
-            self.port,
-            self.is_ssl(),
-            self.ssl,
-            self.proxy,
-            self.proxy_auth,
-            h,
+        url = self.url
+        return tuple.__new__(
+            ConnectionKey,
+            (
+                url.raw_host or "",
+                url.port,
+                url.scheme in _SSL_SCHEMES,
+                self._ssl,
+                self.proxy,
+                self.proxy_auth,
+                h,
+            ),
         )
 
     @property
@@ -426,30 +433,11 @@ class ClientRequest:
         self.headers: CIMultiDict[str] = CIMultiDict()
 
         # Build the host header
-        host = self.url.host_subcomponent
+        host = self.url.host_port_subcomponent
 
-        # host_subcomponent is None when the URL is a relative URL.
+        # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
         assert host is not None
-
-        if host[-1] == ".":
-            # Remove all trailing dots from the netloc as while
-            # they are valid FQDNs in DNS, TLS validation fails.
-            # See https://github.com/aio-libs/aiohttp/issues/3636.
-            # To avoid string manipulation we only call rstrip if
-            # the last character is a dot.
-            host = host.rstrip(".")
-
-        # If explicit port is not None, it means that the port was
-        # explicitly specified in the URL. In this case we check
-        # if its not the default port for the scheme and add it to
-        # the host header. We check explicit_port first because
-        # yarl caches explicit_port and its likely to already be
-        # in the cache and non-default port URLs are far less common.
-        explicit_port = self.url.explicit_port
-        if explicit_port is not None and not self.url.is_default_port():
-            host = f"{host}:{explicit_port}"
-
         self.headers[hdrs.HOST] = host
 
         if not headers:
@@ -460,7 +448,7 @@ class ClientRequest:
 
         for key, value in headers:  # type: ignore[misc]
             # A special case for Host header
-            if key.lower() == "host":
+            if key in self._HOST_STRINGS:
                 self.headers[key] = value
             else:
                 self.headers.add(key, value)
@@ -601,7 +589,10 @@ class ClientRequest:
     def update_expect_continue(self, expect: bool = False) -> None:
         if expect:
             self.headers[hdrs.EXPECT] = "100-continue"
-        elif self.headers.get(hdrs.EXPECT, "").lower() == "100-continue":
+        elif (
+            hdrs.EXPECT in self.headers
+            and self.headers[hdrs.EXPECT].lower() == "100-continue"
+        ):
             expect = True
 
         if expect:
@@ -756,6 +747,7 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
         coro = self.write_bytes(writer, conn)
 
+        task: Optional["asyncio.Task[None]"]
         if sys.version_info >= (3, 12):
             # Optimization for Python 3.12, try to write
             # bytes immediately to avoid having to schedule
@@ -764,7 +756,11 @@ class ClientRequest:
         else:
             task = self.loop.create_task(coro)
 
-        self._writer = task
+        if task.done():
+            task = None
+        else:
+            self._writer = task
+
         response_class = self.response_class
         assert response_class is not None
         self.response = response_class(
@@ -810,6 +806,9 @@ class ClientRequest:
             await trace.send_request_headers(method, url, headers)
 
 
+_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
+
+
 class ClientResponse(HeadersMixin):
 
     # Some of these attributes are None when created,
@@ -838,7 +837,7 @@ class ClientResponse(HeadersMixin):
         method: str,
         url: URL,
         *,
-        writer: "asyncio.Task[None]",
+        writer: "Optional[asyncio.Task[None]]",
         continue100: Optional["asyncio.Future[bool]"],
         timer: BaseTimerContext,
         request_info: RequestInfo,
@@ -852,9 +851,10 @@ class ClientResponse(HeadersMixin):
         self.cookies = SimpleCookie()
 
         self._real_url = url
-        self._url = url.with_fragment(None)
+        self._url = url.with_fragment(None) if url.raw_fragment else url
         self._body: Optional[bytes] = None
-        self._writer = writer
+        if writer is not None:
+            self._writer = writer
         self._continue = continue100  # None by default
         self._closed = True
         self._history: Tuple[ClientResponse, ...] = ()
@@ -898,8 +898,8 @@ class ClientResponse(HeadersMixin):
         if writer is None:
             return
         if writer.done():
-            # The writer is already done, so we can reset it immediately.
-            self.__reset_writer()
+            # The writer is already done, so we can clear it immediately.
+            self.__writer = None
         else:
             writer.add_done_callback(self.__reset_writer)
 
@@ -1169,7 +1169,7 @@ class ClientResponse(HeadersMixin):
     def _notify_content(self) -> None:
         content = self.content
         if content and content.exception() is None:
-            set_exception(content, ClientConnectionError("Connection closed"))
+            set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
         self._released = True
 
     async def wait_for_close(self) -> None:

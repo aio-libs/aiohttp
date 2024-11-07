@@ -1,1 +1,0 @@
-Improved performance of resolving hosts with Python 3.12+ -- by :user:`bdraco`.

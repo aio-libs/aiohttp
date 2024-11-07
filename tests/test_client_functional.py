@@ -12,7 +12,7 @@ import sys
 import tarfile
 import time
 import zipfile
-from typing import Any, AsyncIterator, Optional, Type
+from typing import Any, AsyncIterator, Awaitable, Callable, List, Optional, Type
 from unittest import mock
 
 import pytest
@@ -21,7 +21,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
-from aiohttp.abc import AbstractResolver
+from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.client_exceptions import (
     ClientResponseError,
     InvalidURL,
@@ -35,8 +35,9 @@ from aiohttp.client_exceptions import (
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer, TestClient
-from aiohttp.test_utils import unused_port
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
+from aiohttp.test_utils import TestClient, TestServer, unused_port
+from aiohttp.typedefs import Handler
 
 
 @pytest.fixture
@@ -2888,6 +2889,68 @@ async def test_creds_in_auth_and_url() -> None:
         await session.close()
 
 
+async def test_creds_in_auth_and_redirect_url(
+    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+) -> None:
+    """Verify that credentials in redirect URLs can and do override any previous credentials."""
+    url_from = URL("http://example.com")
+    url_to = URL("http://user@example.com")
+    redirected = False
+
+    async def srv(request: web.Request) -> web.Response:
+        nonlocal redirected
+
+        assert request.host == url_from.host
+
+        if not redirected:
+            redirected = True
+            raise web.HTTPMovedPermanently(url_to)
+
+        return web.Response()
+
+    server = await create_server_for_url_and_handler(url_from, srv)
+
+    etc_hosts = {
+        (url_from.host, 80): server,
+    }
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> List[ResolveResult]:
+            server = etc_hosts[(host, port)]
+            assert server.port is not None
+
+            return [
+                {
+                    "hostname": host,
+                    "host": server.host,
+                    "port": server.port,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            """Dummy"""
+
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
+    async with aiohttp.ClientSession(connector=connector) as client, client.get(
+        url_from, auth=aiohttp.BasicAuth("user", "pass")
+    ) as resp:
+        assert len(resp.history) == 1
+        assert str(resp.url) == "http://example.com"
+        assert resp.status == 200
+        assert (
+            resp.request_info.headers.get("authorization") == "Basic dXNlcjo="
+        ), "Expected redirect credentials to take precedence over provided auth"
+
+
 @pytest.fixture
 def create_server_for_url_and_handler(aiohttp_server, tls_certificate_authority):
     def create(url, srv):
@@ -3248,7 +3311,38 @@ async def test_aiohttp_request_ctx_manager_not_found() -> None:
             assert False, "never executed"  # pragma: no cover
 
 
-async def test_yield_from_in_session_request(aiohttp_client) -> None:
+async def test_raising_client_connector_dns_error_on_dns_failure() -> None:
+    """Verify that the exception raised when a DNS lookup fails is specific to DNS."""
+    with mock.patch(
+        "aiohttp.connector.TCPConnector._resolve_host", autospec=True, spec_set=True
+    ) as mock_resolve_host:
+        mock_resolve_host.side_effect = OSError(None, "DNS lookup failed")
+        with pytest.raises(aiohttp.ClientConnectorDNSError, match="DNS lookup failed"):
+            async with aiohttp.request("GET", "http://wrong-dns-name.com"):
+                assert False, "never executed"
+
+
+async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    not_an_awaitable = aiohttp.request("GET", server.make_url("/"))
+    with pytest.raises(
+        TypeError,
+        match="^object _SessionRequestContextManager "
+        "can't be used in 'await' expression$",
+    ):
+        await not_an_awaitable  # type: ignore[misc]
+
+    await not_an_awaitable._coro  # coroutine 'ClientSession._request' was never awaited
+    await server.close()
+
+
+async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> None:
     # a test for backward compatibility with yield from syntax
     async def handler(request):
         return web.Response()

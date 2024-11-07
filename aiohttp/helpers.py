@@ -47,6 +47,7 @@ from urllib.request import getproxies, proxy_bypass
 
 import attr
 from multidict import MultiDict, MultiDictProxy, MultiMapping
+from propcache.api import under_cached_property as reify
 from yarl import URL
 
 from . import hdrs
@@ -57,7 +58,7 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
-__all__ = ("BasicAuth", "ChainMapProxy", "ETag")
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "reify")
 
 IS_MACOS = platform.system() == "Darwin"
 IS_WINDOWS = platform.system() == "Windows"
@@ -425,53 +426,6 @@ def content_disposition_header(
     return value
 
 
-class _TSelf(Protocol, Generic[_T]):
-    _cache: Dict[str, _T]
-
-
-class reify(Generic[_T]):
-    """Use as a class method decorator.
-
-    It operates almost exactly like
-    the Python `@property` decorator, but it puts the result of the
-    method it decorates into the instance dict after the first call,
-    effectively replacing the function it decorates with an instance
-    variable.  It is, in Python parlance, a data descriptor.
-    """
-
-    def __init__(self, wrapped: Callable[..., _T]) -> None:
-        self.wrapped = wrapped
-        self.__doc__ = wrapped.__doc__
-        self.name = wrapped.__name__
-
-    def __get__(self, inst: _TSelf[_T], owner: Optional[Type[Any]] = None) -> _T:
-        try:
-            try:
-                return inst._cache[self.name]
-            except KeyError:
-                val = self.wrapped(inst)
-                inst._cache[self.name] = val
-                return val
-        except AttributeError:
-            if inst is None:
-                return self
-            raise
-
-    def __set__(self, inst: _TSelf[_T], value: _T) -> None:
-        raise AttributeError("reified property is read-only")
-
-
-reify_py = reify
-
-try:
-    from ._helpers import reify as reify_c
-
-    if not NO_EXTENSIONS:
-        reify = reify_c  # type: ignore[misc,assignment]
-except ImportError:
-    pass
-
-
 def is_ip_address(host: Optional[str]) -> bool:
     """Check if host looks like an IP Address.
 
@@ -581,6 +535,8 @@ def calculate_timeout_when(
 class TimeoutHandle:
     """Timeout handle"""
 
+    __slots__ = ("_timeout", "_loop", "_ceil_threshold", "_callbacks")
+
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
@@ -629,11 +585,17 @@ class TimeoutHandle:
 
 
 class BaseTimerContext(ContextManager["BaseTimerContext"]):
+
+    __slots__ = ()
+
     def assert_timeout(self) -> None:
         """Raise TimeoutError if timeout has been exceeded."""
 
 
 class TimerNoop(BaseTimerContext):
+
+    __slots__ = ()
+
     def __enter__(self) -> BaseTimerContext:
         return self
 
@@ -648,6 +610,8 @@ class TimerNoop(BaseTimerContext):
 
 class TimerContext(BaseTimerContext):
     """Low resolution timeout context manager"""
+
+    __slots__ = ("_loop", "_tasks", "_cancelled", "_cancelling")
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
@@ -664,12 +628,6 @@ class TimerContext(BaseTimerContext):
         task = asyncio.current_task(loop=self._loop)
         if task is None:
             raise RuntimeError("Timeout context manager should be used inside a task")
-
-        if sys.version_info >= (3, 11):
-            # Remember if the task was already cancelling
-            # so when we __exit__ we can decide if we should
-            # raise asyncio.TimeoutError or let the cancellation propagate
-            self._cancelling = task.cancelling()
 
         if sys.version_info >= (3, 11):
             # Remember if the task was already cancelling
@@ -772,11 +730,7 @@ class HeadersMixin:
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
         content_length = self._headers.get(hdrs.CONTENT_LENGTH)
-
-        if content_length is not None:
-            return int(content_length)
-        else:
-            return None
+        return None if content_length is None else int(content_length)
 
 
 def set_result(fut: "asyncio.Future[_T]", result: _T) -> None:

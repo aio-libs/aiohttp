@@ -3,6 +3,7 @@ import contextlib
 import gc
 import io
 import json
+from collections import deque
 from http.cookies import SimpleCookie
 from typing import Any, Awaitable, Callable, List
 from unittest import mock
@@ -32,7 +33,7 @@ def connector(loop):
 
     conn = loop.run_until_complete(make_conn())
     proto = mock.Mock()
-    conn._conns["a"] = [(proto, 123)]
+    conn._conns["a"] = deque([(proto, 123)])
     yield conn
     loop.run_until_complete(conn.close())
 
@@ -659,8 +660,57 @@ def test_proxy_str(session, params) -> None:
     ]
 
 
-async def test_request_tracing(loop, aiohttp_client) -> None:
-    async def handler(request):
+async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
+    proxy_url = URL("http://proxy.example.com")
+    proxy_auth = mock.Mock()
+    proxy_url2 = URL("http://proxy.example2.com")
+    proxy_auth2 = mock.Mock()
+
+    class OnCall(Exception):
+        pass
+
+    request_class_mock = mock.Mock(side_effect=OnCall())
+    session = ClientSession(
+        proxy=proxy_url, proxy_auth=proxy_auth, request_class=request_class_mock
+    )
+
+    assert session._default_proxy == proxy_url, "`ClientSession._default_proxy` not set"
+    assert (
+        session._default_proxy_auth == proxy_auth
+    ), "`ClientSession._default_proxy_auth` not set"
+
+    with pytest.raises(OnCall):
+        await session.get(
+            "http://example.com",
+        )
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("proxy") == proxy_url
+    ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
+    assert (
+        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth
+    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
+
+    request_class_mock.reset_mock()
+    with pytest.raises(OnCall):
+        await session.get(
+            "http://example.com", proxy=proxy_url2, proxy_auth=proxy_auth2
+        )
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("proxy") == proxy_url2
+    ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
+    assert (
+        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth2
+    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
+
+    await session.close()
+
+
+async def test_request_tracing(loop: asyncio.AbstractEventLoop, aiohttp_client) -> None:
+    async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
     app = web.Application()
@@ -913,7 +963,9 @@ async def test_client_session_timeout_args(loop) -> None:
 
     with pytest.warns(DeprecationWarning):
         session2 = ClientSession(loop=loop, read_timeout=20 * 60, conn_timeout=30 * 60)
-    assert session2._timeout == client.ClientTimeout(total=20 * 60, connect=30 * 60)
+    assert session2._timeout == client.ClientTimeout(
+        total=20 * 60, connect=30 * 60, sock_connect=client.DEFAULT_TIMEOUT.sock_connect
+    )
 
     with pytest.raises(ValueError):
         ClientSession(
@@ -1017,6 +1069,24 @@ async def test_requote_redirect_setter() -> None:
             URL("http://example.com/test"),
             id="base_url=URL('http://example.com') url='/test'",
         ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "test2",
+            URL("http://example.com/test1/test2"),
+            id="base_url=URL('http://example.com/test1/') url='test2'",
+        ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "/test2",
+            URL("http://example.com/test2"),
+            id="base_url=URL('http://example.com/test1/') url='/test2'",
+        ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "test2?q=foo#bar",
+            URL("http://example.com/test1/test2?q=foo#bar"),
+            id="base_url=URL('http://example.com/test1/') url='test2?q=foo#bar'",
+        ),
     ],
 )
 async def test_build_url_returns_expected_url(
@@ -1024,6 +1094,11 @@ async def test_build_url_returns_expected_url(
 ) -> None:
     session = await create_session(base_url)
     assert session._build_url(url) == expected_url
+
+
+async def test_base_url_without_trailing_slash() -> None:
+    with pytest.raises(ValueError, match="base_url must have a trailing '/'"):
+        ClientSession(base_url="http://example.com/test")
 
 
 async def test_instantiation_with_invalid_timeout_value(loop):

@@ -42,6 +42,7 @@ from .client_exceptions import (
     ClientConnectionError,
     ClientConnectionResetError,
     ClientConnectorCertificateError,
+    ClientConnectorDNSError,
     ClientConnectorError,
     ClientConnectorSSLError,
     ClientError,
@@ -65,6 +66,7 @@ from .client_exceptions import (
     ServerTimeoutError,
     SocketTimeoutError,
     TooManyRedirects,
+    WSMessageTypeError,
     WSServerHandshakeError,
 )
 from .client_reqrep import (
@@ -92,7 +94,6 @@ from .helpers import (
     DEBUG,
     BasicAuth,
     TimeoutHandle,
-    ceil_timeout,
     get_env_proxy_for_url,
     method_must_be_empty_body,
     sentinel,
@@ -109,6 +110,7 @@ __all__ = (
     "ClientConnectionError",
     "ClientConnectionResetError",
     "ClientConnectorCertificateError",
+    "ClientConnectorDNSError",
     "ClientConnectorError",
     "ClientConnectorSSLError",
     "ClientError",
@@ -150,6 +152,7 @@ __all__ = (
     "ClientTimeout",
     "ClientWSTimeout",
     "request",
+    "WSMessageTypeError",
 )
 
 
@@ -183,7 +186,7 @@ class _RequestOptions(TypedDict, total=False):
     ssl: Union[SSLContext, bool, Fingerprint]
     server_hostname: Union[str, None]
     proxy_headers: Union[LooseHeaders, None]
-    trace_request_ctx: Union[Mapping[str, str], None]
+    trace_request_ctx: Union[Mapping[str, Any], None]
     read_bufsize: Union[int, None]
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
@@ -213,7 +216,7 @@ class ClientTimeout:
 
 
 # 5 Minute default read timeout
-DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60)
+DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
@@ -228,9 +231,9 @@ class ClientSession:
     ATTRS = frozenset(
         [
             "_base_url",
+            "_base_url_origin",
             "_source_traceback",
             "_connector",
-            "requote_redirect_url",
             "_loop",
             "_cookie_jar",
             "_connector_owner",
@@ -252,6 +255,10 @@ class ClientSession:
             "_max_line_size",
             "_max_field_size",
             "_resolve_charset",
+            "_default_proxy",
+            "_default_proxy_auth",
+            "_retry_connection",
+            "requote_redirect_url",
         ]
     )
 
@@ -266,6 +273,8 @@ class ClientSession:
         loop: Optional[asyncio.AbstractEventLoop] = None,
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
+        proxy: Optional[StrOrURL] = None,
+        proxy_auth: Optional[BasicAuth] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
         auth: Optional[BasicAuth] = None,
         json_serialize: JSONEncoder = json.dumps,
@@ -302,11 +311,13 @@ class ClientSession:
 
         if base_url is None or isinstance(base_url, URL):
             self._base_url: Optional[URL] = base_url
+            self._base_url_origin = None if base_url is None else base_url.origin()
         else:
             self._base_url = URL(base_url)
-            assert (
-                self._base_url.origin() == self._base_url
-            ), "Only absolute URLs without path part are supported"
+            self._base_url_origin = self._base_url.origin()
+            assert self._base_url.absolute, "Only absolute URLs are supported"
+        if self._base_url is not None and not self._base_url.path.endswith("/"):
+            raise ValueError("base_url must have a trailing '/'")
 
         if timeout is sentinel or timeout is None:
             self._timeout = DEFAULT_TIMEOUT
@@ -359,7 +370,7 @@ class ClientSession:
             cookie_jar = CookieJar(loop=loop)
         self._cookie_jar = cookie_jar
 
-        if cookies is not None:
+        if cookies:
             self._cookie_jar.update_cookies(cookies)
 
         self._connector = connector
@@ -395,6 +406,10 @@ class ClientSession:
             trace_config.freeze()
 
         self._resolve_charset = fallback_charset_resolver
+
+        self._default_proxy = proxy
+        self._default_proxy_auth = proxy_auth
+        self._retry_connection: bool = True
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         warnings.warn(
@@ -449,7 +464,7 @@ class ClientSession:
         if self._base_url is None:
             return url
         else:
-            assert not url.absolute and url.path.startswith("/")
+            assert not url.absolute
             return self._base_url.join(url)
 
     async def _request(
@@ -482,7 +497,7 @@ class ClientSession:
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
-        trace_request_ctx: Optional[Mapping[str, str]] = None,
+        trace_request_ctx: Optional[Mapping[str, Any]] = None,
         read_bufsize: Optional[int] = None,
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
@@ -509,7 +524,7 @@ class ClientSession:
             warnings.warn("Chunk size is deprecated #1615", DeprecationWarning)
 
         redirects = 0
-        history = []
+        history: List[ClientResponse] = []
         version = self._version
         params = params or {}
 
@@ -529,6 +544,11 @@ class ClientSession:
         if skip_auto_headers is not None:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
+
+        if proxy is None:
+            proxy = self._default_proxy
+        if proxy_auth is None:
+            proxy_auth = self._default_proxy_auth
 
         if proxy is None:
             proxy_headers = None
@@ -581,7 +601,9 @@ class ClientSession:
         try:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
-                retry_persistent_connection = method in IDEMPOTENT_METHODS
+                retry_persistent_connection = (
+                    self._retry_connection and method in IDEMPOTENT_METHODS
+                )
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
                     if not url.raw_host:
@@ -593,17 +615,26 @@ class ClientSession:
                             else InvalidUrlClientError
                         )
                         raise err_exc_cls(url)
-                    if auth and auth_from_url:
+                    # If `auth` was passed for an already authenticated URL,
+                    # disallow only if this is the initial URL; this is to avoid issues
+                    # with sketchy redirects that are not the caller's responsibility
+                    if not history and (auth and auth_from_url):
                         raise ValueError(
                             "Cannot combine AUTH argument with "
                             "credentials encoded in URL"
                         )
 
-                    if auth is None:
+                    # Override the auth with the one from the URL only if we
+                    # have no auth, or if we got an auth from a redirect URL
+                    if auth is None or (history and auth_from_url is not None):
                         auth = auth_from_url
 
-                    if auth is None and (
-                        not self._base_url or self._base_url.origin() == url.origin()
+                    if (
+                        auth is None
+                        and self._default_auth
+                        and (
+                            not self._base_url or self._base_url_origin == url.origin()
+                        )
                     ):
                         auth = self._default_auth
                     # It would be confusing if we support explicit
@@ -662,13 +693,9 @@ class ClientSession:
 
                     # connection timeout
                     try:
-                        async with ceil_timeout(
-                            real_timeout.connect,
-                            ceil_threshold=real_timeout.ceil_threshold,
-                        ):
-                            conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
-                            )
+                        conn = await self._connector.connect(
+                            req, traces=traces, timeout=real_timeout
+                        )
                     except asyncio.TimeoutError as exc:
                         raise ConnectionTimeoutError(
                             f"Connection timeout to host {url}"
@@ -712,7 +739,8 @@ class ClientSession:
                             raise
                         raise ClientOSError(*exc.args) from exc
 
-                    self._cookie_jar.update_cookies(resp.cookies, resp.url)
+                    if cookies := resp.cookies:
+                        self._cookie_jar.update_cookies(cookies, resp.url)
 
                     # redirects
                     if resp.status in (301, 302, 303, 307, 308) and allow_redirects:
@@ -847,6 +875,7 @@ class ClientSession:
         verify_ssl: Optional[bool] = None,
         fingerprint: Optional[bytes] = None,
         ssl_context: Optional[SSLContext] = None,
+        server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
@@ -872,6 +901,7 @@ class ClientSession:
                 verify_ssl=verify_ssl,
                 fingerprint=fingerprint,
                 ssl_context=ssl_context,
+                server_hostname=server_hostname,
                 proxy_headers=proxy_headers,
                 compress=compress,
                 max_msg_size=max_msg_size,
@@ -899,6 +929,7 @@ class ClientSession:
         verify_ssl: Optional[bool] = None,
         fingerprint: Optional[bytes] = None,
         ssl_context: Optional[SSLContext] = None,
+        server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
@@ -973,6 +1004,7 @@ class ClientSession:
             proxy=proxy,
             proxy_auth=proxy_auth,
             ssl=ssl,
+            server_hostname=server_hostname,
             proxy_headers=proxy_headers,
         )
 

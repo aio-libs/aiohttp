@@ -1,4 +1,4 @@
-__version__ = "3.11.0.dev0"
+__version__ = "3.11.0b3"
 
 from typing import TYPE_CHECKING, Tuple
 
@@ -8,6 +8,7 @@ from .client import (
     ClientConnectionError,
     ClientConnectionResetError,
     ClientConnectorCertificateError,
+    ClientConnectorDNSError,
     ClientConnectorError,
     ClientConnectorSSLError,
     ClientError,
@@ -42,6 +43,7 @@ from .client import (
     TCPConnector,
     TooManyRedirects,
     UnixConnector,
+    WSMessageTypeError,
     WSServerHandshakeError,
     request,
 )
@@ -128,6 +130,7 @@ __all__: Tuple[str, ...] = (
     "ClientConnectionError",
     "ClientConnectionResetError",
     "ClientConnectorCertificateError",
+    "ClientConnectorDNSError",
     "ClientConnectorError",
     "ClientConnectorSSLError",
     "ClientError",
@@ -236,6 +239,7 @@ __all__: Tuple[str, ...] = (
     # workers (imported lazily with __getattr__)
     "GunicornUVLoopWebWorker",
     "GunicornWebWorker",
+    "WSMessageTypeError",
 )
 
 

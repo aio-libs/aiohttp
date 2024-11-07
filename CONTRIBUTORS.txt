@@ -1,6 +1,7 @@
 - Contributors -
 ----------------
 A. Jesse Jiryu Davis
+Abdur Rehman Ali
 Adam Bannister
 Adam Cooper
 Adam Horacek
@@ -60,6 +61,7 @@ Bob Haddleton
 Boris Feld
 Boyi Chen
 Brett Cannon
+Brett Higgins
 Brian Bouterse
 Brian C. Lane
 Brian Muller
@@ -217,11 +219,13 @@ Lubomir Gelo
 Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
+Lénárd Szolnoki
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
 Marc Mueller
 Marco Paolini
+Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
 Marko Kohtala
@@ -237,6 +241,7 @@ Matthieu Hauglustaine
 Matthieu Rigal
 Matvey Tingaev
 Meet Mangukiya
+Meshya
 Michael Ihnatenko
 Michał Górny
 Mikhail Burshteyn
@@ -298,6 +303,7 @@ Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
+Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum

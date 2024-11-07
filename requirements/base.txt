@@ -18,7 +18,7 @@ brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 cffi==1.17.1
     # via pycares
-frozenlist==1.4.1
+frozenlist==1.5.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
@@ -32,13 +32,17 @@ multidict==6.1.0
     #   yarl
 packaging==24.1
     # via gunicorn
+propcache==0.2.0
+    # via
+    #   -r requirements/runtime-deps.in
+    #   yarl
 pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
 typing-extensions==4.12.2
     # via multidict
-uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-yarl==1.13.1
+yarl==1.17.1
     # via -r requirements/runtime-deps.in

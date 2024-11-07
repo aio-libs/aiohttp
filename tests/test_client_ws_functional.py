@@ -1,12 +1,19 @@
 import asyncio
 import sys
-from typing import Any, NoReturn
+from typing import Any, NoReturn, Optional
 from unittest import mock
 
 import pytest
 
 import aiohttp
-from aiohttp import ClientConnectionResetError, ServerTimeoutError, WSMsgType, hdrs, web
+from aiohttp import (
+    ClientConnectionResetError,
+    ServerTimeoutError,
+    WSMessageTypeError,
+    WSMsgType,
+    hdrs,
+    web,
+)
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
 from aiohttp.pytest_plugin import AiohttpClient
@@ -58,7 +65,28 @@ async def test_send_recv_bytes_bad_type(aiohttp_client) -> None:
     resp = await client.ws_connect("/")
     await resp.send_str("ask")
 
-    with pytest.raises(TypeError):
+    with pytest.raises(WSMessageTypeError):
+        await resp.receive_bytes()
+        await resp.close()
+
+
+async def test_recv_bytes_after_close(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        await ws.close()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+
+    with pytest.raises(
+        WSMessageTypeError,
+        match=f"Received message {WSMsgType.CLOSE}:.+ is not WSMsgType.BINARY",
+    ):
         await resp.receive_bytes()
         await resp.close()
 
@@ -103,14 +131,35 @@ async def test_send_recv_text_bad_type(aiohttp_client) -> None:
 
     await resp.send_bytes(b"ask")
 
-    with pytest.raises(TypeError):
+    with pytest.raises(WSMessageTypeError):
         await resp.receive_str()
 
         await resp.close()
 
 
-async def test_send_recv_json(aiohttp_client) -> None:
-    async def handler(request):
+async def test_recv_text_after_close(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        await ws.close()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+
+    with pytest.raises(
+        WSMessageTypeError,
+        match=f"Received message {WSMsgType.CLOSE}:.+ is not WSMsgType.TEXT",
+    ):
+        await resp.receive_str()
+        await resp.close()
+
+
+async def test_send_recv_json(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
@@ -704,9 +753,11 @@ async def test_heartbeat_connection_closed(aiohttp_client: AiohttpClient) -> Non
     assert resp._conn is not None
     with mock.patch.object(
         resp._conn.transport, "write", side_effect=ClientConnectionResetError
-    ), mock.patch.object(resp._writer, "ping", wraps=resp._writer.ping) as ping:
+    ), mock.patch.object(
+        resp._writer, "send_frame", wraps=resp._writer.send_frame
+    ) as send_frame:
         await resp.receive()
-        ping_count = ping.call_count
+        ping_count = send_frame.call_args_list.count(mock.call(b"", WSMsgType.PING))
     # Connection should be closed roughly after 1.5x heartbeat.
     await asyncio.sleep(0.2)
     assert ping_count == 1
@@ -842,7 +893,7 @@ async def test_heartbeat_no_pong_concurrent_receive(
 
 
 async def test_close_websocket_while_ping_inflight(
-    aiohttp_client: AiohttpClient,
+    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
 ) -> None:
     """Test closing the websocket while a ping is in-flight."""
     ping_received = False
@@ -866,23 +917,27 @@ async def test_close_websocket_while_ping_inflight(
     await resp.send_bytes(b"ask")
 
     cancelled = False
-    ping_stated = False
+    ping_started = loop.create_future()
 
-    async def delayed_ping() -> None:
-        nonlocal cancelled, ping_stated
-        ping_stated = True
+    async def delayed_send_frame(
+        message: bytes, opcode: int, compress: Optional[int] = None
+    ) -> None:
+        assert opcode == WSMsgType.PING
+        nonlocal cancelled, ping_started
+        ping_started.set_result(None)
         try:
             await asyncio.sleep(1)
         except asyncio.CancelledError:
             cancelled = True
             raise
 
-    with mock.patch.object(resp._writer, "ping", delayed_ping):
-        await asyncio.sleep(0.1)
+    with mock.patch.object(resp._writer, "send_frame", delayed_send_frame):
+        async with async_timeout.timeout(1):
+            await ping_started
 
     await resp.close()
     await asyncio.sleep(0)
-    assert ping_stated is True
+    assert ping_started.result() is None
     assert cancelled is True
 
 

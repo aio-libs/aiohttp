@@ -62,9 +62,20 @@ The client session supports the context manager protocol for self closing.
 
 
    :param base_url: Base part of the URL (optional)
-      If set, it allows to skip the base part (https://docs.aiohttp.org) in
-      request calls. It must not include a path (as in
-      https://docs.aiohttp.org/en/stable).
+      If set, allows to join a base part to relative URLs in request calls.
+      If the URL has a path it must have a trailing ``/`` (as in
+      https://docs.aiohttp.org/en/stable/).
+
+      Note that URL joining follows :rfc:`3986`. This means, in the most
+      common case the request URLs should have no leading slash, e.g.::
+
+        session = ClientSession(base_url="http://example.com/foo/")
+
+        await session.request("GET", "bar")
+        # request for http://example.com/foo/bar
+
+        await session.request("GET", "/bar")
+        # request for http://example.com/bar
 
       .. versionadded:: 3.8
 
@@ -166,9 +177,13 @@ The client session supports the context manager protocol for self closing.
       overwrite it on a per-request basis.
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
-        total timeout by default.
+        total timeout, 30 seconds socket connect timeout by default.
 
       .. versionadded:: 3.3
+
+      .. versionchanged:: 3.10.9
+
+         The default value for the ``sock_connect`` timeout has been changed to 30 seconds.
 
    :param bool auto_decompress: Automatically decompress response body (``True`` by default).
 
@@ -898,7 +913,7 @@ certification chaining.
       .. versionadded:: 3.7
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
-        total timeout by default.
+        total timeout, 30 seconds socket connect timeout by default.
 
    :param loop: :ref:`event loop<asyncio-event-loop>`
                 used for processing HTTP requests.
@@ -1674,7 +1689,7 @@ manually.
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. method:: receive_bytes()
       :async:
@@ -1685,7 +1700,7 @@ manually.
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. method:: receive_json(*, loads=json.loads)
       :async:
@@ -2242,6 +2257,12 @@ Response errors
 
    Derived from :exc:`ClientResponseError`
 
+.. exception:: WSMessageTypeError
+
+   Received WebSocket message of unexpected type
+
+   Derived from :exc:`TypeError`
+
 Connection errors
 ^^^^^^^^^^^^^^^^^
 
@@ -2267,6 +2288,12 @@ Connection errors
    Connector related exceptions.
 
    Derived from :exc:`ClientOSError`
+
+.. class:: ClientConnectorDNSError
+
+   DNS resolution error.
+
+   Derived from :exc:`ClientConnectorError`
 
 .. class:: ClientProxyConnectionError
 
@@ -2348,6 +2375,8 @@ Hierarchy of exceptions
       * :exc:`ClientConnectorError`
 
         * :exc:`ClientProxyConnectionError`
+
+        * :exc:`ClientConnectorDNSError`
 
         * :exc:`ClientSSLError`
 
