@@ -25,7 +25,6 @@ from typing import (
     Tuple,
     Type,
     Union,
-    cast,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -233,11 +232,17 @@ class ClientRequest:
                 f"Method cannot contain non-token characters {method!r} "
                 f"(found at least {match.group()!r})"
             )
-        assert isinstance(url, URL), url
-        assert isinstance(proxy, (URL, type(None))), proxy
+
+        # URL forbids subclasses, so a simple type check is enough.
+        assert type(url) is URL, url
+        if proxy is not None:
+            assert type(proxy) is URL, proxy
+
         # FIXME: session is None in tests only, need to fix tests
         # assert session is not None
-        self._session = cast("ClientSession", session)
+        if TYPE_CHECKING:
+            assert session is not None
+        self._session = session
         if params:
             url = url.extend_query(params)
         self.original_url = url
