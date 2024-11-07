@@ -89,6 +89,12 @@ def test_send_client_request_one_hundred(
         def __init__(self) -> None:
             self.transport = MockTransport()
 
+        async def _drain_helper(self) -> None:
+            """Swallow drain."""
+
+        def start_timeout(self) -> None:
+            """Swallow start_timeout."""
+
     class MockConnection:
         def __init__(self) -> None:
             self.transport = None
