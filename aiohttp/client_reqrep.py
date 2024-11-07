@@ -560,10 +560,8 @@ class ClientRequest:
             # keep alive not supported at all
             return False
         if self.version == HttpVersion10:
-            if self.headers.get(hdrs.CONNECTION) == "keep-alive":
-                return True
-            else:  # no headers means we close for Http 1.0
-                return False
+            # no headers means we close for Http 1.0
+            return self.headers.get(hdrs.CONNECTION) == "keep-alive"
         elif self.headers.get(hdrs.CONNECTION) == "close":
             return False
 
