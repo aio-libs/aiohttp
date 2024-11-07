@@ -106,8 +106,7 @@ class ContentDisposition:
     filename: Optional[str]
 
 
-@dataclasses.dataclass(frozen=True)
-class RequestInfo:
+class RequestInfo(NamedTuple):
     url: URL
     method: str
     headers: "CIMultiDictProxy[str]"
@@ -330,7 +329,9 @@ class ClientRequest:
     @property
     def request_info(self) -> RequestInfo:
         headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
-        return RequestInfo(self.url, self.method, headers, self.original_url)
+        return tuple.__new__(
+            RequestInfo, (self.url, self.method, headers, self.original_url)
+        )
 
     def update_host(self, url: URL) -> None:
         """Update destination host, port and connection type (ssl)."""
