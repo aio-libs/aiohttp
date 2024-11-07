@@ -9,6 +9,7 @@ import pathlib
 import pickle
 import re
 import time
+import warnings
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (
@@ -309,7 +310,14 @@ class CookieJar(AbstractCookieJar):
         if not self._cookies:
             # Skip rest of function if no non-expired cookies.
             return filtered
-        request_url = URL(request_url)
+        if type(request_url) is not URL:
+            warnings.warn(
+                "filter_cookies expects yarl.URL instances only,"
+                f"and will stop working in 4.x, got {type(request_url)}",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            request_url = URL(request_url)
         hostname = request_url.raw_host or ""
 
         is_not_secure = request_url.scheme not in ("https", "wss")
