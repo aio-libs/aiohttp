@@ -273,9 +273,7 @@ class ClientRequest:
         if data is not None or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-        if traces is None:
-            traces = []
-        self._traces = traces
+        self._traces = [] if traces is None else traces
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
