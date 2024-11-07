@@ -96,7 +96,7 @@ def build_close_frame(
 
 
 @pytest.fixture()
-def protocol(loop) -> BaseProtocol:
+def protocol(loop: asyncio.AbstractEventLoop) -> BaseProtocol:
     transport = mock.Mock(spec_set=asyncio.Transport)
     protocol = BaseProtocol(loop)
     protocol.connection_made(transport)
@@ -649,11 +649,10 @@ def test_flow_control_binary(
     parser_low_limit: WebSocketReader,
 ) -> None:
     large_payload = b"b" * (1 + 16 * 2)
-    parser_low_limit.parse_frame = mock.Mock()
-    parser_low_limit.parse_frame.return_value = [
-        (1, WSMsgType.BINARY, large_payload, False)
-    ]
-    parser_low_limit.feed_data(b"")
+    with mock.patch.object(parser_low_limit, "parse_frame", autospec=True) as m:
+        m.return_value = [(1, WSMsgType.BINARY, large_payload, False)]
+
+        parser_low_limit.feed_data(b"")
 
     res = out_low_limit._buffer[0]
     assert res == WSMessageBinary(data=large_payload, extra="")
@@ -671,11 +670,10 @@ def test_flow_control_multi_byte_text(
     large_payload_text = "𒀁" * (1 + 16 * 2)
     large_payload = large_payload_text.encode("utf-8")
 
-    parser_low_limit.parse_frame = mock.Mock()
-    parser_low_limit.parse_frame.return_value = [
-        (1, WSMsgType.TEXT, large_payload, False)
-    ]
-    parser_low_limit.feed_data(b"")
+    with mock.patch.object(parser_low_limit, "parse_frame", autospec=True) as m:
+        m.return_value = [(1, WSMsgType.TEXT, large_payload, False)]
+
+        parser_low_limit.feed_data(b"")
 
     res = out_low_limit._buffer[0]
     assert res == WSMessageText(data=large_payload_text, extra="")
