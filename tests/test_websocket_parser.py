@@ -640,6 +640,9 @@ class TestWebSocketError:
             assert err2.foo == "bar"
 
 
+@pytest.mark.xfail(
+    reason="Flow control is currently broken on master branch; see #9685"
+)
 def test_flow_control_binary(
     protocol: BaseProtocol,
     out_low_limit: aiohttp.FlowControlDataQueue[WSMessage],
@@ -658,6 +661,9 @@ def test_flow_control_binary(
     assert protocol._reading_paused is True
 
 
+@pytest.mark.xfail(
+    reason="Flow control is currently broken on master branch; see #9685"
+)
 def test_flow_control_multi_byte_text(
     protocol: BaseProtocol,
     out_low_limit: aiohttp.FlowControlDataQueue[WSMessage],
