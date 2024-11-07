@@ -599,7 +599,7 @@ async def test_static_file_if_none_match_weak(
     await client.close()
 
 
-@pytest.mark.skipif(not ssl, reason="ssl not supported")
+@pytest.mark.skipif(ssl is None, reason="ssl not supported")
 async def test_static_file_ssl(
     aiohttp_server: AiohttpServer,
     ssl_ctx: ssl.SSLContext,

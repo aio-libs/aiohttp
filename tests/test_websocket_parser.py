@@ -18,6 +18,7 @@ from aiohttp._websocket.helpers import (
     websocket_mask,
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
+from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
 from aiohttp.http_websocket import (
     WebSocketReader,
@@ -95,8 +96,32 @@ def build_close_frame(
 
 
 @pytest.fixture()
-def out(loop: asyncio.AbstractEventLoop) -> aiohttp.DataQueue[WSMessage]:
-    return aiohttp.DataQueue(loop)
+def protocol(loop: asyncio.AbstractEventLoop) -> BaseProtocol:
+    transport = mock.Mock(spec_set=asyncio.Transport)
+    protocol = BaseProtocol(loop)
+    protocol.connection_made(transport)
+    return protocol
+
+
+@pytest.fixture()
+def out(
+    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+) -> aiohttp.DataQueue[WSMessage]:
+    return aiohttp.FlowControlDataQueue(protocol, 2**16, loop=loop)
+
+
+@pytest.fixture()
+def out_low_limit(
+    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+) -> aiohttp.DataQueue[WSMessage]:
+    return aiohttp.FlowControlDataQueue(protocol, 16, loop=loop)
+
+
+@pytest.fixture()
+def parser_low_limit(
+    out_low_limit: aiohttp.DataQueue[WSMessage],
+) -> PatchableWebSocketReader:
+    return PatchableWebSocketReader(out_low_limit, 4 * 1024 * 1024)
 
 
 @pytest.fixture()
@@ -613,3 +638,43 @@ class TestWebSocketError:
             assert err2.code == WSCloseCode.PROTOCOL_ERROR
             assert str(err2) == "Something invalid"
             assert err2.foo == "bar"
+
+
+@pytest.mark.xfail(
+    reason="Flow control is currently broken on master branch; see #9685"
+)
+def test_flow_control_binary(
+    protocol: BaseProtocol,
+    out_low_limit: aiohttp.FlowControlDataQueue[WSMessage],
+    parser_low_limit: WebSocketReader,
+) -> None:
+    large_payload = b"b" * (1 + 16 * 2)
+    with mock.patch.object(parser_low_limit, "parse_frame", autospec=True) as m:
+        m.return_value = [(1, WSMsgType.BINARY, large_payload, False)]
+
+        parser_low_limit.feed_data(b"")
+
+    res = out_low_limit._buffer[0]
+    assert res == WSMessageBinary(data=large_payload, extra="")
+    assert protocol._reading_paused is True
+
+
+@pytest.mark.xfail(
+    reason="Flow control is currently broken on master branch; see #9685"
+)
+def test_flow_control_multi_byte_text(
+    protocol: BaseProtocol,
+    out_low_limit: aiohttp.FlowControlDataQueue[WSMessage],
+    parser_low_limit: WebSocketReader,
+) -> None:
+    large_payload_text = "𒀁" * (1 + 16 * 2)
+    large_payload = large_payload_text.encode("utf-8")
+
+    with mock.patch.object(parser_low_limit, "parse_frame", autospec=True) as m:
+        m.return_value = [(1, WSMsgType.TEXT, large_payload, False)]
+
+        parser_low_limit.feed_data(b"")
+
+    res = out_low_limit._buffer[0]
+    assert res == WSMessageText(data=large_payload_text, extra="")
+    assert protocol._reading_paused is True
