@@ -8,7 +8,7 @@ from math import ceil, modf
 from pathlib import Path
 from typing import Dict, Iterator, Optional, Union
 from unittest import mock
-from urllib.request import getproxies_environment  # type: ignore[attr-defined]
+from urllib.request import getproxies_environment
 
 import pytest
 from multidict import CIMultiDict, MultiDict, MultiDictProxy

@@ -669,6 +669,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     ) -> Tuple[List[Tuple[RawResponseMessage, StreamReader]], bool, bytes]:
         if SEP is None:
             SEP = b"\r\n" if DEBUG else b"\n"
+            assert SEP is not None
         return super().feed_data(data, SEP, *args, **kwargs)
 
     def parse_message(self, lines: List[bytes]) -> RawResponseMessage:
