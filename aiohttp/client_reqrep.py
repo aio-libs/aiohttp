@@ -226,18 +226,15 @@ class ClientRequest:
         trust_env: bool = False,
         server_hostname: Optional[str] = None,
     ):
-        match = _CONTAINS_CONTROL_CHAR_RE.search(method)
-        if match:
+        if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
                 f"Method cannot contain non-token characters {method!r} "
                 f"(found at least {match.group()!r})"
             )
-
         # URL forbids subclasses, so a simple type check is enough.
         assert type(url) is URL, url
         if proxy is not None:
             assert type(proxy) is URL, proxy
-
         # FIXME: session is None in tests only, need to fix tests
         # assert session is not None
         if TYPE_CHECKING:
