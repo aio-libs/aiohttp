@@ -104,7 +104,7 @@ def test_send_client_request_one_hundred(
 
     async def send_requests() -> None:
         for _ in range(100):
-            await req.send(conn)
+            await req.send(conn)  # type: ignore[arg-type]
 
     @benchmark
     def _run() -> None:
