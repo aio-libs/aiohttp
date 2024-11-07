@@ -10,7 +10,7 @@
 
 .. towncrier release notes start
 
-3.11.0b3 (2024-11-05)
+3.11.0b4 (2024-11-07)
 =====================
 
 Bug fixes
@@ -48,6 +48,14 @@ Bug fixes
 
 
 
+- Fixed :py:meth:`WebSocketResponse.close() <aiohttp.web.WebSocketResponse.close>` to discard non-close messages within its timeout window after sending close -- by :user:`lenard-mosys`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9506`.
+
+
+
 - Fixed a deadlock that could occur while attempting to get a new connection slot after a timeout -- by :user:`bdraco`.
 
   The connector was not cancellation-safe.
@@ -65,6 +73,14 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9672`.
+
+
+
+- Fixed the WebSocket flow control calculation undercounting with multi-byte data -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9686`.
 
 
 
@@ -219,6 +235,14 @@ Removals and backward incompatible breaking changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9600`.
+
+
+
+- Changed ``ClientRequest.request_info`` to be a `NamedTuple` to improve client performance -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9692`.
 
 
 
