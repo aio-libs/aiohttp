@@ -112,7 +112,7 @@ def test_release(connector, key, protocol, loop) -> None:
     conn.release()
     assert not protocol.transport.close.called
     assert conn._protocol is None
-    connector._release.assert_called_with(key, protocol, should_close=False)
+    connector._release.assert_called_with(key, protocol)
     assert conn.closed
 
 
@@ -123,7 +123,7 @@ def test_release_proto_should_close(connector, key, protocol, loop) -> None:
     conn.release()
     assert not protocol.transport.close.called
     assert conn._protocol is None
-    connector._release.assert_called_with(key, protocol, should_close=True)
+    connector._release.assert_called_with(key, protocol)
     assert conn.closed
 
 
