@@ -296,19 +296,20 @@ class ClientRequest:
     ):
         if loop is None:
             loop = asyncio.get_event_loop()
-
-        match = _CONTAINS_CONTROL_CHAR_RE.search(method)
-        if match:
+        if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
                 f"Method cannot contain non-token characters {method!r} "
-                "(found at least {match.group()!r})"
+                f"(found at least {match.group()!r})"
             )
-
-        assert isinstance(url, URL), url
-        assert isinstance(proxy, (URL, type(None))), proxy
+        # URL forbids subclasses, so a simple type check is enough.
+        assert type(url) is URL, url
+        if proxy is not None:
+            assert type(proxy) is URL, proxy
         # FIXME: session is None in tests only, need to fix tests
         # assert session is not None
-        self._session = cast("ClientSession", session)
+        if TYPE_CHECKING:
+            assert session is not None
+        self._session = session
         if params:
             url = url.extend_query(params)
         self.original_url = url
@@ -343,9 +344,7 @@ class ClientRequest:
         if data is not None or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-        if traces is None:
-            traces = []
-        self._traces = traces
+        self._traces = [] if traces is None else traces
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
