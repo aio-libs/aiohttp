@@ -89,14 +89,14 @@ def protocol(loop: asyncio.AbstractEventLoop) -> BaseProtocol:
 @pytest.fixture()
 def out(
     loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
-) -> aiohttp.DataQueue[WSMessage]:
+) -> aiohttp.FlowControlDataQueue[WSMessage]:
     return aiohttp.FlowControlDataQueue(protocol, 2**16, loop=loop)
 
 
 @pytest.fixture()
 def out_low_limit(
     loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
-) -> aiohttp.DataQueue[WSMessage]:
+) -> aiohttp.FlowControlDataQueue[WSMessage]:
     return aiohttp.FlowControlDataQueue(protocol, 16, loop=loop)
 
 
