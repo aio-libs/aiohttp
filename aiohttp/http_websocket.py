@@ -417,7 +417,7 @@ class WebSocketReader:
 
                     # tuple.__new__ is used to avoid the overhead of the lambda
                     msg = tuple.__new__(WSMessage, (WSMsgType.TEXT, text, ""))
-                    self.queue.feed_data(msg, len(text))
+                    self.queue.feed_data(msg, len(payload_merged))
                     continue
 
                 # tuple.__new__ is used to avoid the overhead of the lambda
