@@ -312,10 +312,8 @@ class CookieJar(AbstractCookieJar):
             return filtered
         if type(request_url) is not URL:
             warnings.warn(
-                (
-                    "filter_cookies expects yarl.URL instances only,"
-                    f"and will stop working in 4.x, got {type(request_url)}"
-                ),
+                "filter_cookies expects yarl.URL instances only,"
+                f"and will stop working in 4.x, got {type(request_url)}",
                 DeprecationWarning,
                 stacklevel=2,
             )
