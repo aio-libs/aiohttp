@@ -463,7 +463,7 @@ async def test_receive_close_but_left_open(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    close_message = WSMessageClose(data=1000, extra="close")
+    close_message = WSMessageClose(data=1000, size=0, extra="close")
 
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=close_message)
