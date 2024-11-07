@@ -1285,7 +1285,7 @@ async def test_feed_data_waiters(protocol: BaseProtocol) -> None:
     assert waiter.done()
     assert not eof_waiter.done()
     assert reader._waiter is None
-    assert reader._eof_waiter is eof_waiter
+    assert reader._eof_waiter is eof_waiter  # type: ignore[unreachable]
 
 
 async def test_feed_data_completed_waiters(protocol: BaseProtocol) -> None:
@@ -1311,7 +1311,7 @@ async def test_feed_eof_waiters(protocol: BaseProtocol) -> None:
     assert waiter.done()
     assert eof_waiter.done()
     assert reader._waiter is None
-    assert reader._eof_waiter is None
+    assert reader._eof_waiter is None  # type: ignore[unreachable]
 
 
 async def test_feed_eof_cancelled(protocol: BaseProtocol) -> None:
@@ -1328,7 +1328,7 @@ async def test_feed_eof_cancelled(protocol: BaseProtocol) -> None:
     assert waiter.done()
     assert eof_waiter.done()
     assert reader._waiter is None
-    assert reader._eof_waiter is None
+    assert reader._eof_waiter is None  # type: ignore[unreachable]
 
 
 async def test_on_eof(protocol: BaseProtocol) -> None:
@@ -1363,7 +1363,7 @@ async def test_on_eof_exc_in_callback(protocol: BaseProtocol) -> None:
     assert not on_eof.called
     reader.feed_eof()
     assert on_eof.called
-    assert not reader._eof_callbacks
+    assert not reader._eof_callbacks  # type: ignore[unreachable]
 
 
 async def test_on_eof_exc_in_callback_empty_stream_reader() -> None:
@@ -1412,7 +1412,7 @@ async def test_set_exception(protocol: BaseProtocol) -> None:
     assert waiter.exception() is exc
     assert eof_waiter.exception() is exc
     assert reader._waiter is None
-    assert reader._eof_waiter is None
+    assert reader._eof_waiter is None  # type: ignore[unreachable]
 
 
 async def test_set_exception_cancelled(protocol: BaseProtocol) -> None:
@@ -1430,7 +1430,7 @@ async def test_set_exception_cancelled(protocol: BaseProtocol) -> None:
     assert waiter.exception() is None
     assert eof_waiter.exception() is None
     assert reader._waiter is None
-    assert reader._eof_waiter is None
+    assert reader._eof_waiter is None  # type: ignore[unreachable]
 
 
 async def test_set_exception_eof_callbacks(protocol: BaseProtocol) -> None:

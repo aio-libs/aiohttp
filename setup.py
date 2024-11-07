@@ -27,7 +27,7 @@ if IS_GIT_REPO and not (HERE / "vendor/llhttp/README.md").exists():
 # NOTE: makefile cythonizes all Cython modules
 
 extensions = [
-    Extension("aiohttp._websocket", ["aiohttp/_websocket.c"]),
+    Extension("aiohttp._websocket.mask", ["aiohttp/_websocket/mask.c"]),
     Extension(
         "aiohttp._http_parser",
         [
@@ -41,6 +41,7 @@ extensions = [
         include_dirs=["vendor/llhttp/build"],
     ),
     Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
+    Extension("aiohttp._websocket.reader_c", ["aiohttp/_websocket/reader_c.c"]),
 ]
 
 

@@ -68,6 +68,7 @@ from .client_exceptions import (
     ServerTimeoutError,
     SocketTimeoutError,
     TooManyRedirects,
+    WSMessageTypeError,
     WSServerHandshakeError,
 )
 from .client_reqrep import (
@@ -94,7 +95,6 @@ from .helpers import (
     _SENTINEL,
     BasicAuth,
     TimeoutHandle,
-    ceil_timeout,
     get_env_proxy_for_url,
     method_must_be_empty_body,
     sentinel,
@@ -153,6 +153,7 @@ __all__ = (
     "ClientTimeout",
     "ClientWSTimeout",
     "request",
+    "WSMessageTypeError",
 )
 
 
@@ -300,9 +301,9 @@ class ClientSession:
         else:
             self._base_url = URL(base_url)
             self._base_url_origin = self._base_url.origin()
-            assert (
-                self._base_url_origin == self._base_url
-            ), "Only absolute URLs without path part are supported"
+            assert self._base_url.absolute, "Only absolute URLs are supported"
+        if self._base_url is not None and not self._base_url.path.endswith("/"):
+            raise ValueError("base_url must have a trailing '/'")
 
         loop = asyncio.get_running_loop()
 
@@ -415,7 +416,7 @@ class ClientSession:
         if self._base_url is None:
             return url
         else:
-            assert not url.absolute and url.path.startswith("/")
+            assert not url.absolute
             return self._base_url.join(url)
 
     async def _request(
@@ -472,7 +473,7 @@ class ClientSession:
             data = payload.JsonPayload(json, dumps=self._json_serialize)
 
         redirects = 0
-        history = []
+        history: List[ClientResponse] = []
         version = self._version
         params = params or {}
 
@@ -560,13 +561,18 @@ class ClientSession:
                             else InvalidUrlClientError
                         )
                         raise err_exc_cls(url)
-                    if auth and auth_from_url:
+                    # If `auth` was passed for an already authenticated URL,
+                    # disallow only if this is the initial URL; this is to avoid issues
+                    # with sketchy redirects that are not the caller's responsibility
+                    if not history and (auth and auth_from_url):
                         raise ValueError(
                             "Cannot combine AUTH argument with "
                             "credentials encoded in URL"
                         )
 
-                    if auth is None:
+                    # Override the auth with the one from the URL only if we
+                    # have no auth, or if we got an auth from a redirect URL
+                    if auth is None or (history and auth_from_url is not None):
                         auth = auth_from_url
 
                     if (
@@ -629,13 +635,9 @@ class ClientSession:
 
                     # connection timeout
                     try:
-                        async with ceil_timeout(
-                            real_timeout.connect,
-                            ceil_threshold=real_timeout.ceil_threshold,
-                        ):
-                            conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
-                            )
+                        conn = await self._connector.connect(
+                            req, traces=traces, timeout=real_timeout
+                        )
                     except asyncio.TimeoutError as exc:
                         raise ConnectionTimeoutError(
                             f"Connection timeout to host {url}"
@@ -675,7 +677,7 @@ class ClientSession:
                     except ClientError:
                         raise
                     except OSError as exc:
-                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
+                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
                             raise
                         raise ClientOSError(*exc.args) from exc
 
@@ -877,7 +879,7 @@ class ClientSession:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
             else:
-                warnings.warn(
+                warnings.warn(  # type: ignore[unreachable]
                     "parameter 'timeout' of type 'float' "
                     "is deprecated, please use "
                     "'timeout=ClientWSTimeout(ws_close=...)'",

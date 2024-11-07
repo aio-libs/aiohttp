@@ -321,7 +321,7 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
 
     async def fail_ctx(app: web.Application) -> AsyncIterator[NoReturn]:
         raise Exception()
-        yield
+        yield  # type: ignore[unreachable]  # pragma: no cover
 
     app.cleanup_ctx.append(success_ctx)
     app.cleanup_ctx.append(fail_ctx)
@@ -516,7 +516,7 @@ async def test_subapp_on_startup(aiohttp_client: AiohttpClient) -> None:
     client = await aiohttp_client(app)
 
     assert startup_called
-    assert ctx_pre_called
+    assert ctx_pre_called  # type: ignore[unreachable]
     assert not ctx_post_called
     assert not shutdown_called
     assert not cleanup_called

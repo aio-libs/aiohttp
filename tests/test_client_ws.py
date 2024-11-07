@@ -16,6 +16,7 @@ from aiohttp import (
     hdrs,
 )
 from aiohttp.http import WS_KEY
+from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
 
@@ -385,14 +386,12 @@ async def test_close(
                 resp = await session.ws_connect("http://test.org")
                 assert not resp.closed
 
-                resp._reader.feed_data(
-                    aiohttp.WSMessage(aiohttp.WSMsgType.CLOSE, b"", "")
-                )
+                resp._reader.feed_data(WSMessageClose(data=0, extra=""))
 
                 res = await resp.close()
                 writer.close.assert_called_with(1000, b"")
                 assert resp.closed
-                assert res
+                assert res  # type: ignore[unreachable]
                 assert resp.exception() is None
 
                 # idempotent
@@ -433,7 +432,7 @@ async def test_close_eofstream(
                 writer.close.assert_called_with(1000, b"")
                 assert resp.closed
 
-                await session.close()
+                await session.close()  # type: ignore[unreachable]
 
 
 async def test_close_connection_lost(
@@ -466,7 +465,7 @@ async def test_close_connection_lost(
         assert msg.type is aiohttp.WSMsgType.CLOSED
         assert resp.closed
 
-        await session.close()
+        await session.close()  # type: ignore[unreachable]
 
 
 async def test_close_exc(
@@ -499,7 +498,7 @@ async def test_close_exc(
 
                 await resp.close()
                 assert resp.closed
-                assert resp.exception() is exc
+                assert resp.exception() is exc  # type: ignore[unreachable]
 
                 await session.close()
 
@@ -531,7 +530,7 @@ async def test_close_exc2(
 
                 await resp.close()
                 assert resp.closed
-                assert resp.exception() is exc
+                assert resp.exception() is exc  # type: ignore[unreachable]
 
                 resp._closed = False
                 writer.close.side_effect = asyncio.CancelledError()

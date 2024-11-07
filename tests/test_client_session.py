@@ -3,6 +3,7 @@ import contextlib
 import gc
 import io
 import json
+from collections import deque
 from http.cookies import SimpleCookie
 from typing import (
     Any,
@@ -55,7 +56,7 @@ def connector(
     key = ConnectionKey("localhost", 80, False, True, None, None, None)
     conn = loop.run_until_complete(make_conn())
     proto = create_mocked_conn()
-    conn._conns[key] = [(proto, 123)]
+    conn._conns[key] = deque([(proto, 123)])
     yield conn
     loop.run_until_complete(conn.close())
 
@@ -1122,6 +1123,24 @@ async def test_requote_redirect_url_default_disable() -> None:
             URL("http://example.com/test"),
             id="base_url=URL('http://example.com') url='/test'",
         ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "test2",
+            URL("http://example.com/test1/test2"),
+            id="base_url=URL('http://example.com/test1/') url='test2'",
+        ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "/test2",
+            URL("http://example.com/test2"),
+            id="base_url=URL('http://example.com/test1/') url='/test2'",
+        ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "test2?q=foo#bar",
+            URL("http://example.com/test1/test2?q=foo#bar"),
+            id="base_url=URL('http://example.com/test1/') url='test2?q=foo#bar'",
+        ),
     ],
 )
 async def test_build_url_returns_expected_url(
@@ -1132,6 +1151,11 @@ async def test_build_url_returns_expected_url(
 ) -> None:
     session = await create_session(base_url)
     assert session._build_url(url) == expected_url
+
+
+async def test_base_url_without_trailing_slash() -> None:
+    with pytest.raises(ValueError, match="base_url must have a trailing '/'"):
+        ClientSession(base_url="http://example.com/test")
 
 
 async def test_instantiation_with_invalid_timeout_value(

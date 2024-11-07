@@ -22,6 +22,7 @@ cffi==1.17.1
     # via
     #   cryptography
     #   pycares
+    #   pytest-codspeed
 charset-normalizer==3.4.0
     # via requests
 click==8.1.7
@@ -36,9 +37,11 @@ cryptography==43.0.3
     # via trustme
 exceptiongroup==1.2.2
     # via pytest
+filelock==3.16.1
+    # via pytest-codspeed
 freezegun==1.5.1
     # via -r requirements/test.in
-frozenlist==1.4.1
+frozenlist==1.5.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
@@ -88,8 +91,11 @@ pygments==2.18.0
 pytest==8.1.1
     # via
     #   -r requirements/test.in
+    #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+pytest-codspeed==3.0.0
+    # via -r requirements/test.in
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
@@ -100,7 +106,7 @@ python-on-whales==0.73.0
     # via -r requirements/test.in
 requests==2.32.3
     # via python-on-whales
-rich==13.9.2
+rich==13.9.3
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
@@ -135,5 +141,5 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     # via -r requirements/base.in
 wait-for-it==2.2.2
     # via -r requirements/test.in
-yarl==1.15.2
+yarl==1.17.1
     # via -r requirements/runtime-deps.in

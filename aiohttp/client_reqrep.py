@@ -149,7 +149,7 @@ class Fingerprint:
 if ssl is not None:
     SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint)
 else:  # pragma: no cover
-    SSL_ALLOWED_TYPES = (bool,)
+    SSL_ALLOWED_TYPES = (bool,)  # type: ignore[unreachable]
 
 
 _SSL_SCHEMES = frozenset(("https", "wss"))
@@ -193,7 +193,7 @@ class ClientRequest:
     auth = None
     response = None
 
-    __writer = None  # async task for streaming data
+    __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
     # N.B.
@@ -362,30 +362,11 @@ class ClientRequest:
         self.headers: CIMultiDict[str] = CIMultiDict()
 
         # Build the host header
-        host = self.url.host_subcomponent
+        host = self.url.host_port_subcomponent
 
-        # host_subcomponent is None when the URL is a relative URL.
+        # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
         assert host is not None
-
-        if host[-1] == ".":
-            # Remove all trailing dots from the netloc as while
-            # they are valid FQDNs in DNS, TLS validation fails.
-            # See https://github.com/aio-libs/aiohttp/issues/3636.
-            # To avoid string manipulation we only call rstrip if
-            # the last character is a dot.
-            host = host.rstrip(".")
-
-        # If explicit port is not None, it means that the port was
-        # explicitly specified in the URL. In this case we check
-        # if its not the default port for the scheme and add it to
-        # the host header. We check explicit_port first because
-        # yarl caches explicit_port and its likely to already be
-        # in the cache and non-default port URLs are far less common.
-        explicit_port = self.url.explicit_port
-        if explicit_port is not None and not self.url.is_default_port():
-            host = f"{host}:{explicit_port}"
-
         self.headers[hdrs.HOST] = host
 
         if not headers:
@@ -608,8 +589,11 @@ class ClientRequest:
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
-            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
-                underlying_exc, asyncio.TimeoutError
+            exc_is_not_timeout = (
+                underlying_exc.errno is not None
+                or not isinstance(  # type: ignore[unreachable]
+                    underlying_exc, asyncio.TimeoutError
+                )
             )
             if exc_is_not_timeout:
                 reraised_exc = ClientOSError(
@@ -773,14 +757,14 @@ class ClientResponse(HeadersMixin):
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
-    _connection = None  # current connection
+    _connection: Optional["Connection"] = None  # current connection
     _source_traceback: Optional[traceback.StackSummary] = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
     _in_context = False
-    __writer = None
+    __writer: Optional["asyncio.Task[None]"] = None
 
     def __init__(
         self,
@@ -820,7 +804,7 @@ class ClientResponse(HeadersMixin):
         # work after the response has finished reading the body.
         if session is None:
             # TODO: Fix session=None in tests (see ClientRequest.__init__).
-            self._resolve_charset: Callable[["ClientResponse", bytes], str] = (
+            self._resolve_charset: Callable[["ClientResponse", bytes], str] = (  # type: ignore[unreachable]
                 lambda *_: "utf-8"
             )
         else:
