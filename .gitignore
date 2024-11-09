@@ -43,6 +43,8 @@ aiohttp/_http_writer.c
 aiohttp/_http_writer.html
 aiohttp/_websocket.c
 aiohttp/_websocket.html
+aiohttp/_websocket/mask.c
+aiohttp/_websocket/reader_c.c
 bin
 build
 coverage.xml
