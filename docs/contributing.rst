@@ -10,14 +10,23 @@ Instructions for contributors
 
 In order to make a clone of the GitHub_ repo: open the link and press the "Fork" button on the upper-right menu of the web page.
 
-I hope everybody knows how to work with git and github nowadays :)
+If you'd like to learn more about Git and GitHub, `check out GitHub's helpful introduction
+<https://docs.github.com/en/get-started/using-git/about-git>`_.
 
 Workflow is pretty straightforward:
 
   0. Make sure you are reading the latest version of this document.
      It can be found in the GitHub_ repo in the ``docs`` subdirectory.
 
-  1. Clone the GitHub_ repo using the ``--recurse-submodules`` argument
+  1. Clone your forked GitHub_ repo with the ``--recurse-submodules`` flag as shown in the command below,
+     ensuring to replace the placeholder with your github username:
+
+      .. code-block:: shell
+
+         $ git clone \
+            https://github.com/<your_github_username>/aiohttp.git \
+            --recurse-submodules
+
 
   2. Setup your machine with the required development environment
 
@@ -56,6 +65,8 @@ Preconditions for running aiohttp test suite
 --------------------------------------------
 
 We expect you to use a python virtual environment to run our tests.
+Also, ensure that you have `npm
+<https://docs.npmjs.com/downloading-and-installing-node-js-and-npm>`_ installed.
 
 There are several ways to make a virtual environment.
 
@@ -237,9 +248,22 @@ Please before making a Pull Request about documentation changes run:
    $ make doc
 
 Once it finishes it will output the index html page
+
 ``open file:///.../aiohttp/docs/_build/html/index.html``.
 
 Go to the link and make sure your doc changes looks good.
+
+Note that this page doesn't automatically refresh itself. So, if you make more changes, build the docs again to see how they look on the page.
+
+.. note::
+   If you are on MacOS, you might need to install `graphviz <https://graphviz.org/>`_ first.
+   Use
+
+   .. code-block:: shell
+
+      $ brew install graphviz
+
+   and then run the command above to build the docs.
 
 Spell checking
 --------------
