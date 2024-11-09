@@ -76,7 +76,7 @@ sentinel = _SENTINEL.sentinel
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 
 # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
-EMPTY_BODY_STATUS_CODES = {204, 304, *range(100, 200)}
+EMPTY_BODY_STATUS_CODES = frozenset((204, 304, *range(100, 200)))
 
 DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
