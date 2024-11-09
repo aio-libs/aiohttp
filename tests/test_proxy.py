@@ -5,6 +5,7 @@ import ssl
 import unittest
 from unittest import mock
 
+import pytest
 from yarl import URL
 
 import aiohttp
@@ -421,6 +422,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
+    @pytest.mark.usefixtures("enable_cleanup_closed")
     def test_https_connect_fingerprint_mismatch(
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:

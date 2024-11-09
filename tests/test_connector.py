@@ -377,6 +377,7 @@ async def test_get_expired(loop: asyncio.AbstractEventLoop) -> None:
     await conn.close()
 
 
+@pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_get_expired_ssl(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     key = ConnectionKey("localhost", 80, True, False, None, None, None)
@@ -440,6 +441,7 @@ async def test_release(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> N
         await conn.close()
 
 
+@pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_release_ssl_transport(
     loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
 ) -> None:
@@ -1797,6 +1799,7 @@ async def test_close_during_connect(loop: asyncio.AbstractEventLoop) -> None:
         assert proto.close.called
 
 
+@pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_ctor_cleanup() -> None:
     loop = mock.Mock()
     loop.time.return_value = 1.5
@@ -1828,6 +1831,7 @@ async def test_cleanup(key: ConnectionKey) -> None:
     assert conn._cleanup_handle is None
 
 
+@pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_cleanup_close_ssl_transport(
     loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
 ) -> None:
@@ -1897,6 +1901,7 @@ async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
     await conn.close()
 
 
+@pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_cleanup_closed(
     loop: asyncio.AbstractEventLoop, mocker: MockerFixture
 ) -> None:
@@ -1914,6 +1919,15 @@ async def test_cleanup_closed(
     assert not conn._cleanup_closed_transports
     assert m.called
     assert cleanup_closed_handle.cancel.called
+
+
+async def test_cleanup_closed_is_noop_on_fixed_cpython() -> None:
+    """Ensure that enable_cleanup_closed is a noop on fixed Python versions."""
+    with mock.patch("aiohttp.connector.NEEDS_CLEANUP_CLOSED", False), pytest.warns(
+        DeprecationWarning, match="cleanup_closed ignored"
+    ):
+        conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
+        assert conn._cleanup_closed_disabled is True
 
 
 async def test_cleanup_closed_disabled(
@@ -2440,6 +2454,7 @@ async def test_close_abort_closed_transports(loop: asyncio.AbstractEventLoop) ->
     assert conn.closed
 
 
+@pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_close_cancels_cleanup_closed_handle(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
