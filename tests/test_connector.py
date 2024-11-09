@@ -2697,18 +2697,21 @@ async def test_connect_with_limit_cancelled(loop) -> None:
     await conn.close()
 
 
-async def test_connect_with_capacity_release_waiters(loop) -> None:
-    def check_with_exc(err):
-        conn = aiohttp.BaseConnector(limit=1, loop=loop)
-        conn._create_connection = mock.Mock()
-        conn._create_connection.return_value = loop.create_future()
-        conn._create_connection.return_value.set_exception(err)
+async def test_connect_with_capacity_release_waiters(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    async def check_with_exc(err: Exception) -> None:
+        conn = aiohttp.BaseConnector(limit=1)
+        with mock.patch.object(
+            conn, "_create_connection", autospec=True, spec_set=True, side_effect=err
+        ):
+            with pytest.raises(Exception):
+                req = mock.Mock()
+                await conn.connect(req, [], ClientTimeout())
 
-        with pytest.raises(Exception):
-            req = mock.Mock()
-            yield from conn.connect(req, None, ClientTimeout())
+            assert not conn._waiters
 
-        conn.close()
+        await conn.close()
 
     await check_with_exc(OSError(1, "permission error"))
     await check_with_exc(RuntimeError())
