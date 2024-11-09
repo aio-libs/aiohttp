@@ -49,6 +49,7 @@ _TARGET_TIMINGS_BY_PYTHON_VERSION = {
     not sys.platform.startswith("linux") or platform.python_implementation() == "PyPy",
     reason="Timing is more reliable on Linux",
 )
+@pytest.mark.dev_mode
 def test_import_time(pytester: pytest.Pytester) -> None:
     """Check that importing aiohttp doesn't take too long.
 
