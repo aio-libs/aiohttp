@@ -139,6 +139,7 @@ async def web_server_endpoint_url(
 # Filter out the warning from
 # https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
 # otherwise this test will fail because the proxy will die with an error.
+@pytest.mark.usefixtures("loop")
 async def test_secure_https_proxy_absolute_path(
     client_ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
@@ -159,6 +160,7 @@ async def test_secure_https_proxy_absolute_path(
 
     await sess.close()
     await conn.close()
+    await asyncio.sleep(0.1)
 
 
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
@@ -231,6 +233,8 @@ async def test_https_proxy_unsupported_tls_in_tls(
 
     await sess.close()
     await conn.close()
+
+    await asyncio.sleep(0.1)
 
 
 @pytest.fixture

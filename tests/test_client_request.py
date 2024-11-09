@@ -736,7 +736,8 @@ async def test_urlencoded_formdata_charset(
         data=aiohttp.FormData({"hey": "you"}, charset="koi8-r"),
         loop=loop,
     )
-    await req.send(conn)
+    async with await req.send(conn):
+        await asyncio.sleep(0)
     assert "application/x-www-form-urlencoded; charset=koi8-r" == req.headers.get(
         "CONTENT-TYPE"
     )
@@ -755,7 +756,8 @@ async def test_formdata_boundary_from_headers(
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
             loop=loop,
         )
-        await req.send(conn)
+        async with await req.send(conn):
+            await asyncio.sleep(0)
         assert req.body._boundary == boundary.encode()
 
 
@@ -1088,13 +1090,13 @@ async def test_data_stream_exc(
 
     t = loop.create_task(throw_exc())
 
-    await req.send(conn)
-    assert req._writer is not None
-    await req._writer
-    await t
-    # assert conn.close.called
-    assert conn.protocol is not None
-    assert conn.protocol.set_exception.called
+    async with await req.send(conn):
+        assert req._writer is not None
+        await req._writer
+        await t
+        # assert conn.close.called
+        assert conn.protocol is not None
+        assert conn.protocol.set_exception.called
     await req.close()
 
 
@@ -1118,9 +1120,9 @@ async def test_data_stream_exc_chain(
 
     t = loop.create_task(throw_exc())
 
-    await req.send(conn)
-    assert req._writer is not None
-    await req._writer
+    async with await req.send(conn):
+        assert req._writer is not None
+        await req._writer
     await t
     # assert conn.close.called
     assert conn.protocol.set_exception.called
