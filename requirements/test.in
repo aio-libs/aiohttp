@@ -4,10 +4,11 @@
 coverage
 freezegun
 mypy; implementation_name == "cpython"
-proxy.py >= 2.4.4rc4
+proxy.py >= 2.4.4rc5
 pytest
 pytest-cov
 pytest-mock
+pytest-xdist
 pytest_codspeed
 python-on-whales
 re-assert
