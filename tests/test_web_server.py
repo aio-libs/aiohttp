@@ -237,6 +237,7 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
     site = web.SockSite(runner, sock=sock)
 
     await site.start()
+    await asyncio.sleep(0.5)
 
     assert runner.server is not None
     try:
@@ -278,6 +279,7 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
     site = web.SockSite(runner, sock=sock)
 
     await site.start()
+    await asyncio.sleep(0.5)
 
     try:
         async with client.ClientSession(
