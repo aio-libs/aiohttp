@@ -3,7 +3,7 @@ import asyncio
 import os
 import socket
 import ssl
-from typing import TYPE_CHECKING, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 from unittest import mock
 
 import pytest
@@ -209,13 +209,11 @@ def test__get_valid_log_format_exc(worker: base_worker.GunicornWebWorker) -> Non
 async def test__run_ok_parent_changed(
     worker: base_worker.GunicornWebWorker,
     loop: asyncio.AbstractEventLoop,
-    aiohttp_unused_port: Callable[[], int],
+    unused_port_socket: socket.socket,
 ) -> None:
     worker.ppid = 0
     worker.alive = True
-    sock = socket.socket()
-    addr = ("localhost", aiohttp_unused_port())
-    sock.bind(addr)
+    sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
     worker.loop = loop
@@ -232,13 +230,11 @@ async def test__run_ok_parent_changed(
 async def test__run_exc(
     worker: base_worker.GunicornWebWorker,
     loop: asyncio.AbstractEventLoop,
-    aiohttp_unused_port: Callable[[], int],
+    unused_port_socket: socket.socket,
 ) -> None:
     worker.ppid = os.getppid()
     worker.alive = True
-    sock = socket.socket()
-    addr = ("localhost", aiohttp_unused_port())
-    sock.bind(addr)
+    sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
     worker.loop = loop
