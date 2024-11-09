@@ -380,7 +380,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             keep_alive = request.keep_alive
         self._keep_alive = keep_alive
 
-        version = request._version
+        version = request.version
 
         headers = self._headers
         if self._cookies:
