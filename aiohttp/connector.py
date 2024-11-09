@@ -282,7 +282,7 @@ class BaseConnector:
         if enable_cleanup_closed and not NEEDS_CLEANUP_CLOSED:
             warnings.warn(
                 "enable_cleanup_closed ignored because "
-                "https://github.com/python/cpython/pull/118960 is fixed in "
+                "https://github.com/python/cpython/pull/118960 is fixed "
                 f"in Python version {sys.version_info}",
                 DeprecationWarning,
                 stacklevel=2,
