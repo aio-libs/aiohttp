@@ -263,3 +263,4 @@ def unused_port_socket() -> Generator[socket.socket, None, None]:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
         yield s
+        s.close()
