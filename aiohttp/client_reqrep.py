@@ -681,7 +681,7 @@ class ClientRequest:
             self.body
             or self._continue is not None
             or self.compress
-            or writer.chunked
+            or self.chunked
             or protocol.paused
         ):
             coro = self.write_bytes(writer, conn)
