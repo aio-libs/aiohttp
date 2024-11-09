@@ -677,7 +677,7 @@ class ClientRequest:
         v = self.version
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
         await writer.write_headers(status_line, self.headers)
-        if self.body or self._continue is not None or protocol.paused:
+        if self.body or self._continue is not None or writer.chunked or protocol.paused:
             coro = self.write_bytes(writer, conn)
 
             task: Optional["asyncio.Task[None]"]
@@ -697,8 +697,10 @@ class ClientRequest:
             # We have nothing to write because
             # - there is no body
             # - the protocol is not paused
+            # - we do not have a chunk to write (not chunked)
             # - we are not waiting for a 100-continue response
             protocol.start_timeout()
+            await writer.write_eof()
             task = None
         response_class = self.response_class
         assert response_class is not None
