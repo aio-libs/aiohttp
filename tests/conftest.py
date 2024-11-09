@@ -15,7 +15,7 @@ import pytest
 
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.http import WS_KEY
-from aiohttp.test_utils import loop_context
+from aiohttp.test_utils import get_unused_port_socket, loop_context
 
 try:
     import trustme
@@ -260,9 +260,8 @@ def unused_port_socket() -> Generator[socket.socket, None, None]:
     race condition between checking if the port is in use and
     binding to it later in the test.
     """
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        try:
-            yield s
-        finally:
-            s.close()
+    s = get_unused_port_socket("127.0.0.1")
+    try:
+        yield s
+    finally:
+        s.close()
