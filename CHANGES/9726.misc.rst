@@ -1,0 +1,1 @@
+Passing ``enable_cleanup_closed`` to :py:class:`aiohttp.TCPConnector` is now ignored on Python 3.12.7+ and 3.13.1+ since the underlying bug that caused asyncio to leak SSL connections has been fixed upstream -- by :user:`bdraco`.
