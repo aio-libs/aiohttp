@@ -18,6 +18,8 @@ alabaster==0.7.13
     # via sphinx
 annotated-types==0.7.0
     # via pydantic
+apipkg==1.5
+    # via execnet
 async-timeout==4.0.3 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
@@ -71,6 +73,8 @@ filelock==3.16.1
     # via
     #   pytest-codspeed
     #   virtualenv
+execnet==2.1.1
+    # via pytest-xdist
 freezegun==1.5.1
     # via
     #   -r requirements/lint.in
@@ -144,7 +148,11 @@ propcache==0.2.0
     #   -r requirements/runtime-deps.in
     #   yarl
 proxy-py==2.4.9
-    # via -r requirements/test.in
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
+py==1.11.0
+    # via pytest
 pycares==4.4.0
     # via aiodns
 pycparser==2.22
@@ -174,7 +182,20 @@ pytest==8.3.3
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+    #   pytest-xdist
 pytest-codspeed==3.0.0
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
+pytest-cov==5.0.0
+    # via -r requirements/test.in
+pytest-mock==3.14.0
+    # via -r requirements/test.in
+pytest-xdist==3.6.1
+    # via -r requirements/test.txt
+python-dateutil==2.8.2
+    # via freezegun
+python-on-whales==0.71.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
