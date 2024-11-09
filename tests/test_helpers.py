@@ -15,7 +15,7 @@ from yarl import URL
 
 from aiohttp import helpers
 from aiohttp.helpers import (
-    method_must_be_empty_body,
+    EMPTY_BODY_METHODS,
     must_be_empty_body,
     parse_http_date,
     should_remove_content_length,
@@ -897,9 +897,9 @@ def test_read_basicauth_from_empty_netrc():
 
 def test_method_must_be_empty_body():
     """Test that HEAD is the only method that unequivocally must have an empty body."""
-    assert method_must_be_empty_body("HEAD") is True
+    assert "HEAD" in EMPTY_BODY_METHODS
     # CONNECT is only empty on a successful response
-    assert method_must_be_empty_body("CONNECT") is False
+    assert "CONNECT" not in EMPTY_BODY_METHODS
 
 
 def test_should_remove_content_length_is_subset_of_must_be_empty_body():

@@ -776,7 +776,7 @@ class Response(StreamResponse):
                 body_len = len(self._body) if self._body else "0"
                 # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-7
                 if body_len != "0" or (
-                    self.status != 304 and request.method.upper() != hdrs.METH_HEAD
+                    self.status != 304 and request.method not in hdrs.METH_HEAD_ALL
                 ):
                     self._headers[hdrs.CONTENT_LENGTH] = str(body_len)
 
