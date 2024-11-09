@@ -457,6 +457,7 @@ def is_ip_address(host: Optional[str]) -> bool:
 _cached_current_datetime: Optional[int] = None
 _cached_formatted_datetime = ""
 
+
 def rfc822_formatted_time() -> str:
     global _cached_current_datetime
     global _cached_formatted_datetime
@@ -1004,6 +1005,7 @@ class CookieMixin:
             httponly=httponly,
             samesite=samesite,
         )
+
 
 def populate_with_cookies(headers: "CIMultiDict[str]", cookies: SimpleCookie) -> None:
     for cookie in cookies.values():
