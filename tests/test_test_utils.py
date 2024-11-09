@@ -375,9 +375,16 @@ async def test_client_context_manager_response(method, app, loop) -> None:
                 assert "Hello, world" in text
 
 
-async def test_custom_port(loop, app, aiohttp_unused_port) -> None:
-    port = aiohttp_unused_port()
-    client = _TestClient(TestServer(app, loop=loop, port=port), loop=loop)
+async def test_custom_port(
+    loop: asyncio.AbstractEventLoop,
+    app: web.Application,
+    unused_port_socket: socket,
+) -> None:
+    sock = unused_port_socket
+    port = sock.getsockname()[1]
+    client = _TestClient(
+        TestServer(app, port=port, socket_factory=lambda *args, **kwargs: sock)
+    )
     await client.start_server()
 
     assert client.server.port == port

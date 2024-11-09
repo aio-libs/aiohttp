@@ -15,7 +15,7 @@ import pytest
 
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.http import WS_KEY
-from aiohttp.test_utils import loop_context
+from aiohttp.test_utils import get_unused_port_socket, loop_context
 
 try:
     import trustme
@@ -249,3 +249,18 @@ def enable_cleanup_closed() -> Generator[None, None, None]:
     """
     with mock.patch("aiohttp.connector.NEEDS_CLEANUP_CLOSED", True):
         yield
+
+
+@pytest.fixture
+def unused_port_socket() -> Generator[socket.socket, None, None]:
+    """Return a socket that is unused on the current host.
+
+    Unlike aiohttp_used_port, the socket is yielded so there is no
+    race condition between checking if the port is in use and
+    binding to it later in the test.
+    """
+    s = get_unused_port_socket("127.0.0.1")
+    try:
+        yield s
+    finally:
+        s.close()
