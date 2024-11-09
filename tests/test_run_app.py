@@ -492,7 +492,7 @@ def test_run_app_nondefault_host_port(
     )
 
     patched_loop.create_server.assert_called_with(  # type: ignore[attr-defined]
-        mock.ANY, host, port, ssl=None, backlog=128, reuse_address=None, reuse_port=None
+        mock.ANY, sock=sock, ssl=None, backlog=128
     )
 
 
