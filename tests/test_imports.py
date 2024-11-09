@@ -44,6 +44,7 @@ _TARGET_TIMINGS_BY_PYTHON_VERSION = {
 
 
 @pytest.mark.internal
+@pytest.mark.dev_mode
 @pytest.mark.skipif(
     not sys.platform.startswith("linux") or platform.python_implementation() == "PyPy",
     reason="Timing is more reliable on Linux",
