@@ -19,7 +19,7 @@ Async http client/server framework
 
 .. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
    :target: https://codspeed.io/aio-libs/aiohttp
-    :alt: Codspeed.io status for aiohttp
+   :alt: Codspeed.io status for aiohttp
 
 .. image:: https://badge.fury.io/py/aiohttp.svg
    :target: https://pypi.org/project/aiohttp
