@@ -1048,7 +1048,7 @@ class TestShutdown:
                 self._connections = DictRecordClear()
 
         async def test() -> None:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
             async with ClientSession() as sess:
                 for _ in range(5):  # pragma: no cover
                     try:
