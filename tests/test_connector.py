@@ -396,7 +396,7 @@ async def test_get_expired_ssl(loop: asyncio.AbstractEventLoop) -> None:
 
 async def test_release_acquired(key: ConnectionKey) -> None:
     proto = create_mocked_conn()
-    conn = aiohttp.BaseConnector(limit=5)
+    conn = aiohttp.BaseConnector(limit=5, limit_per_host=10)
     with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True) as m:
         conn._acquired.add(proto)
         conn._acquired_per_host[key].add(proto)
@@ -601,7 +601,7 @@ async def test_release_proto_closed_future(
 async def test__release_acquired_per_host1(
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
-    conn = aiohttp.BaseConnector()
+    conn = aiohttp.BaseConnector(limit_per_host=10)
     conn._release_acquired(key, create_mocked_conn(loop))
     assert len(conn._acquired_per_host) == 0
 
@@ -611,7 +611,7 @@ async def test__release_acquired_per_host1(
 async def test__release_acquired_per_host2(
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
-    conn = aiohttp.BaseConnector()
+    conn = aiohttp.BaseConnector(limit_per_host=10)
     handler = create_mocked_conn(loop)
     conn._acquired_per_host[key].add(handler)
     conn._release_acquired(key, handler)
@@ -623,7 +623,7 @@ async def test__release_acquired_per_host2(
 async def test__release_acquired_per_host3(
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
-    conn = aiohttp.BaseConnector()
+    conn = aiohttp.BaseConnector(limit_per_host=10)
     handler = create_mocked_conn(loop)
     handler2 = create_mocked_conn(loop)
     conn._acquired_per_host[key].add(handler)
@@ -2592,7 +2592,7 @@ async def test_connect_with_limit(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
     )
 
-    conn = aiohttp.BaseConnector(limit=1)
+    conn = aiohttp.BaseConnector(limit=1, limit_per_host=10)
     conn._conns[key] = deque([(proto, loop.time())])
     with mock.patch.object(
         conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
@@ -2794,7 +2794,7 @@ async def test_connect_with_no_limits(
             connection2 = await conn.connect(req, [], ClientTimeout())
             acquired = True
             assert 1 == len(conn._acquired)
-            assert 1 == len(conn._acquired_per_host[key])
+            assert not conn._acquired_per_host
             connection2.release()
 
         task = loop.create_task(f())
@@ -2942,7 +2942,7 @@ async def test_connect_waiters_cleanup_key_error(
 
     req = ClientRequest("GET", URL("http://host:80"), loop=loop)
 
-    conn = aiohttp.BaseConnector(limit=1)
+    conn = aiohttp.BaseConnector(limit=1, limit_per_host=10)
     with mock.patch.object(
         conn, "_available_connections", autospec=True, spec_set=True, return_value=0
     ):
@@ -3033,7 +3033,7 @@ async def test_force_close_and_explicit_keep_alive(
 async def test_error_on_connection(
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
-    conn = aiohttp.BaseConnector(limit=1)
+    conn = aiohttp.BaseConnector(limit=1, limit_per_host=10)
 
     req = mock.Mock()
     req.connection_key = key
@@ -3104,7 +3104,7 @@ async def test_cancelled_waiter(loop: asyncio.AbstractEventLoop) -> None:
 async def test_error_on_connection_with_cancelled_waiter(
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
-    conn = aiohttp.BaseConnector(limit=1)
+    conn = aiohttp.BaseConnector(limit=1, limit_per_host=10)
 
     req = mock.Mock()
     req.connection_key = key
