@@ -494,15 +494,10 @@ def test_run_app_with_sock(
     patched_loop: asyncio.AbstractEventLoop, unused_port_socket: socket.socket
 ) -> None:
     sock = unused_port_socket
-    port = sock.getsockname()[1]
-    host = "127.0.0.1"
-
     app = web.Application()
     web.run_app(
         app,
         sock=sock,
-        host=host,
-        port=port,
         print=stopper(patched_loop),
         loop=patched_loop,
     )
@@ -1091,7 +1086,7 @@ class TestShutdown:
         app.router.add_get("/stop", self.stop)
 
         with mock.patch("aiohttp.web_runner.Server", ServerWithRecordClear):
-            web.run_app(app, sock=sock, port=port, shutdown_timeout=timeout)
+            web.run_app(app, sock=sock, shutdown_timeout=timeout)
         assert test_task is not None
         assert test_task.exception() is None
         assert t is not None
@@ -1224,7 +1219,7 @@ class TestShutdown:
         app.router.add_get("/", handler)
         app.router.add_get("/stop", self.stop)
 
-        web.run_app(app, sock=sock, port=port, shutdown_timeout=5)
+        web.run_app(app, sock=sock, shutdown_timeout=5)
         assert t is not None
         assert t.exception() is None
         assert finished is True
@@ -1257,7 +1252,7 @@ class TestShutdown:
         app.cleanup_ctx.append(run_test)
         app.router.add_get("/stop", self.stop)
 
-        web.run_app(app, sock=sock, port=port, shutdown_timeout=10)
+        web.run_app(app, sock=sock, shutdown_timeout=10)
         # If connection closed, then test() will be cancelled in cleanup_ctx.
         # If not, then shutdown_timeout will allow it to sleep until complete.
         assert t is not None
@@ -1312,7 +1307,7 @@ class TestShutdown:
         app.router.add_get("/stop", self.stop)
 
         start = time.time()
-        web.run_app(app, sock=sock, port=port, shutdown_timeout=10)
+        web.run_app(app, sock=sock, shutdown_timeout=10)
         assert time.time() - start < 5
         assert client_finished
         assert server_finished
@@ -1365,9 +1360,7 @@ class TestShutdown:
         app.router.add_get("/", handler)
         app.router.add_get("/stop", self.stop)
 
-        web.run_app(
-            app, sock=sock, port=port, shutdown_timeout=2, handler_cancellation=True
-        )
+        web.run_app(app, sock=sock, shutdown_timeout=2, handler_cancellation=True)
         assert t is not None
         assert t.exception() is None
         assert actions == ["CANCELLED", "SUPPRESSED", "PRESTOP", "STOPPING", "DONE"]
