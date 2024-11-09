@@ -75,6 +75,9 @@ sentinel = _SENTINEL.sentinel
 
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 
+# https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+EMPTY_BODY_STATUS_CODES = {204, 304, *range(100, 200)}
+
 DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
 )
@@ -1050,7 +1053,7 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
 def must_be_empty_body(method: str, code: int) -> bool:
     """Check if a request must return an empty body."""
     return (
-        status_code_must_be_empty_body(code)
+        code in EMPTY_BODY_STATUS_CODES
         or method_must_be_empty_body(method)
         or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
     )
@@ -1063,12 +1066,6 @@ def method_must_be_empty_body(method: str) -> bool:
     return method.upper() == hdrs.METH_HEAD
 
 
-def status_code_must_be_empty_body(code: int) -> bool:
-    """Check if a status code must return an empty body."""
-    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
-    return code in {204, 304} or 100 <= code < 200
-
-
 def should_remove_content_length(method: str, code: int) -> bool:
     """Check if a Content-Length header should be removed.
 
@@ -1076,8 +1073,6 @@ def should_remove_content_length(method: str, code: int) -> bool:
     """
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-8
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5-4
-    return (
-        code in {204, 304}
-        or 100 <= code < 200
-        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    return code in EMPTY_BODY_STATUS_CODES or (
+        200 <= code < 300 and method.upper() == hdrs.METH_CONNECT
     )
