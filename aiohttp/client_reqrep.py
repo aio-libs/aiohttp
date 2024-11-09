@@ -677,22 +677,29 @@ class ClientRequest:
         v = self.version
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
         await writer.write_headers(status_line, self.headers)
-        coro = self.write_bytes(writer, conn)
+        if self.body is not None or self._continue is not None or protocol.paused:
+            coro = self.write_bytes(writer, conn)
 
-        task: Optional["asyncio.Task[None]"]
-        if sys.version_info >= (3, 12):
-            # Optimization for Python 3.12, try to write
-            # bytes immediately to avoid having to schedule
-            # the task on the event loop.
-            task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+            task: Optional["asyncio.Task[None]"]
+            if sys.version_info >= (3, 12):
+                # Optimization for Python 3.12, try to write
+                # bytes immediately to avoid having to schedule
+                # the task on the event loop.
+                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+            else:
+                task = self.loop.create_task(coro)
+
+            if task.done():
+                task = None
+            else:
+                self._writer = task
         else:
-            task = self.loop.create_task(coro)
-
-        if task.done():
+            # We have nothing to write because
+            # - there is no body
+            # - the protocol is not paused
+            # - we are not waiting for a 100-continue response
+            protocol.start_timeout()
             task = None
-        else:
-            self._writer = task
-
         response_class = self.response_class
         assert response_class is not None
         self.response = response_class(
