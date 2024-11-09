@@ -465,7 +465,6 @@ class StreamResponse(BaseClass, HeadersMixin):
         version = request.version
 
         headers = self._headers
-
         if self._cookies:
             for cookie in self._cookies.values():
                 value = cookie.output(header="")[1:]
