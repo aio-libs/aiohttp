@@ -247,7 +247,7 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
             timeout=client.ClientTimeout(total=0.15)
         ) as sess:
             with pytest.raises(asyncio.TimeoutError):
-                await sess.get(f"http://localhost:{port}/")
+                await sess.get(f"http://127.0.0.1:{port}/")
 
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(event.wait(), timeout=1)
@@ -286,7 +286,7 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
             timeout=client.ClientTimeout(total=0.2)
         ) as sess:
             with pytest.raises(asyncio.TimeoutError):
-                await sess.get(f"http://localhost:{port}/")
+                await sess.get(f"http://127.0.0.1:{port}/")
         await asyncio.sleep(0.1)
         timeout_event.set()
 
