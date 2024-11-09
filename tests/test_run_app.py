@@ -1054,7 +1054,7 @@ class TestShutdown:
                     try:
                         with pytest.raises(asyncio.TimeoutError):
                             async with sess.get(
-                                f"http://localhost:{port}/",
+                                f"http://127.0.0.1:{port}/",
                                 timeout=ClientTimeout(total=0.2),
                             ):
                                 pass
@@ -1062,7 +1062,7 @@ class TestShutdown:
                         await asyncio.sleep(0.5)
                     else:
                         break
-                async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.get(f"http://127.0.0.1:{port}/stop"):
                     pass
 
                 if extra_test:
@@ -1163,7 +1163,7 @@ class TestShutdown:
             with pytest.raises(ClientConnectorError):
                 # Use a new session to try and open a new connection.
                 async with ClientSession() as sess:
-                    async with sess.get(f"http://localhost:{port}/"):
+                    async with sess.get(f"http://127.0.0.1:{port}/"):
                         pass
             assert finished is False
 
@@ -1183,7 +1183,7 @@ class TestShutdown:
 
         async def test() -> None:
             async def test_resp(sess: ClientSession) -> None:
-                async with sess.get(f"http://localhost:{port}/") as resp:
+                async with sess.get(f"http://127.0.0.1:{port}/") as resp:
                     assert await resp.text() == "FOO"
 
             await asyncio.sleep(1)
@@ -1191,7 +1191,7 @@ class TestShutdown:
                 t = asyncio.create_task(test_resp(sess))
                 await asyncio.sleep(1)
                 # Handler is in-progress while we trigger server shutdown.
-                async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.get(f"http://127.0.0.1:{port}/stop"):
                     pass
 
                 assert finished is False
@@ -1230,7 +1230,7 @@ class TestShutdown:
         async def test() -> None:
             await asyncio.sleep(1)
             async with ClientSession() as sess:
-                async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.get(f"http://127.0.0.1:{port}/stop"):
                     pass
 
                 # Hold on to keep-alive connection.
@@ -1278,8 +1278,8 @@ class TestShutdown:
         async def test() -> None:
             await asyncio.sleep(1)
             async with ClientSession() as sess:
-                async with sess.ws_connect(f"http://localhost:{port}/ws") as ws:
-                    async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.ws_connect(f"http://127.0.0.1:{port}/ws") as ws:
+                    async with sess.get(f"http://127.0.0.1:{port}/stop"):
                         pass
 
                     async for msg in ws:
@@ -1320,7 +1320,7 @@ class TestShutdown:
             async def test_resp(sess: ClientSession) -> None:
                 t = ClientTimeout(total=0.4)
                 with pytest.raises(asyncio.TimeoutError):
-                    async with sess.get(f"http://localhost:{port}/", timeout=t) as resp:
+                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t) as resp:
                         assert await resp.text() == "FOO"
                 actions.append("CANCELLED")
 
@@ -1329,7 +1329,7 @@ class TestShutdown:
                 await asyncio.sleep(0.5)
                 # Handler is in-progress while we trigger server shutdown.
                 actions.append("PRESTOP")
-                async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.get(f"http://127.0.0.1:{port}/stop"):
                     pass
 
                 actions.append("STOPPING")
