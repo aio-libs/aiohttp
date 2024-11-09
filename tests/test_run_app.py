@@ -9,7 +9,16 @@ import ssl
 import subprocess
 import sys
 import time
-from typing import AsyncIterator, Callable, NoReturn, Set
+from typing import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Coroutine,
+    NoReturn,
+    Optional,
+    Set,
+    Tuple,
+)
 from unittest import mock
 from uuid import uuid4
 
@@ -440,8 +449,10 @@ def test_run_app_https(patched_loop) -> None:
     )
 
 
-def test_run_app_nondefault_host_port(patched_loop, aiohttp_unused_port) -> None:
-    port = aiohttp_unused_port()
+def test_run_app_nondefault_host_port(
+    patched_loop: asyncio.AbstractEventLoop, unused_port_socket: socket.socket
+) -> None:
+    port = unused_port_socket.getsockname()[1]
     host = "127.0.0.1"
 
     app = web.Application()
@@ -454,7 +465,24 @@ def test_run_app_nondefault_host_port(patched_loop, aiohttp_unused_port) -> None
     )
 
 
-def test_run_app_multiple_hosts(patched_loop) -> None:
+def test_run_app_with_sock(
+    patched_loop: asyncio.AbstractEventLoop, unused_port_socket: socket.socket
+) -> None:
+    sock = unused_port_socket
+    app = web.Application()
+    web.run_app(
+        app,
+        sock=sock,
+        print=stopper(patched_loop),
+        loop=patched_loop,
+    )
+
+    patched_loop.create_server.assert_called_with(  # type: ignore[attr-defined]
+        mock.ANY, sock=sock, ssl=None, backlog=128
+    )
+
+
+def test_run_app_multiple_hosts(patched_loop: asyncio.AbstractEventLoop) -> None:
     hosts = ("127.0.0.1", "127.0.0.2")
 
     app = web.Application()
@@ -931,8 +959,16 @@ class TestShutdown:
         asyncio.get_running_loop().call_soon(self.raiser)
         return web.Response()
 
-    def run_app(self, port: int, timeout: int, task, extra_test=None) -> asyncio.Task:
+    def run_app(
+        self,
+        sock: socket.socket,
+        timeout: int,
+        task: Callable[[], Coroutine[None, None, None]],
+        extra_test: Optional[Callable[[ClientSession], Awaitable[None]]] = None,
+    ) -> Tuple["asyncio.Task[None]", int]:
         num_connections = -1
+        t = test_task = None
+        port = sock.getsockname()[1]
 
         class DictRecordClear(dict):
             def clear(self):
@@ -956,7 +992,7 @@ class TestShutdown:
                     try:
                         with pytest.raises(asyncio.TimeoutError):
                             async with sess.get(
-                                f"http://localhost:{port}/",
+                                f"http://127.0.0.1:{port}/",
                                 timeout=ClientTimeout(total=0.1),
                             ):
                                 pass
@@ -964,7 +1000,7 @@ class TestShutdown:
                         await asyncio.sleep(0.5)
                     else:
                         break
-                async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.get(f"http://127.0.0.1:{port}/stop"):
                     pass
 
                 if extra_test:
@@ -989,14 +1025,12 @@ class TestShutdown:
         app.router.add_get("/stop", self.stop)
 
         with mock.patch("aiohttp.web_app.Server", ServerWithRecordClear):
-            web.run_app(app, port=port, shutdown_timeout=timeout)
+            web.run_app(app, sock=sock, shutdown_timeout=timeout)
         assert test_task.exception() is None
         return t, num_connections
 
-    def test_shutdown_wait_for_handler(
-        self, aiohttp_unused_port: Callable[[], int]
-    ) -> None:
-        port = aiohttp_unused_port()
+    def test_shutdown_wait_for_handler(self, unused_port_socket: socket.socket) -> None:
+        sock = unused_port_socket
         finished = False
 
         async def task():
@@ -1004,17 +1038,15 @@ class TestShutdown:
             await asyncio.sleep(2)
             finished = True
 
-        t, connection_count = self.run_app(port, 3, task)
+        t, connection_count = self.run_app(sock, 3, task)
 
         assert finished is True
         assert t.done()
         assert not t.cancelled()
         assert connection_count == 0
 
-    def test_shutdown_timeout_handler(
-        self, aiohttp_unused_port: Callable[[], int]
-    ) -> None:
-        port = aiohttp_unused_port()
+    def test_shutdown_timeout_handler(self, unused_port_socket: socket.socket) -> None:
+        sock = unused_port_socket
         finished = False
 
         async def task():
@@ -1022,7 +1054,7 @@ class TestShutdown:
             await asyncio.sleep(2)
             finished = True
 
-        t, connection_count = self.run_app(port, 1, task)
+        t, connection_count = self.run_app(sock, 1, task)
 
         assert finished is False
         assert t.done()
@@ -1030,9 +1062,9 @@ class TestShutdown:
         assert connection_count == 1
 
     def test_shutdown_timeout_not_reached(
-        self, aiohttp_unused_port: Callable[[], int]
+        self, unused_port_socket: socket.socket
     ) -> None:
-        port = aiohttp_unused_port()
+        sock = unused_port_socket
         finished = False
 
         async def task():
@@ -1041,7 +1073,8 @@ class TestShutdown:
             finished = True
 
         start_time = time.time()
-        t, connection_count = self.run_app(port, 15, task)
+
+        t, connection_count = self.run_app(sock, 15, task)
 
         assert finished is True
         assert t.done()
@@ -1050,9 +1083,10 @@ class TestShutdown:
         assert time.time() - start_time < 10
 
     def test_shutdown_new_conn_rejected(
-        self, aiohttp_unused_port: Callable[[], int]
+        self, unused_port_socket: socket.socket
     ) -> None:
-        port = aiohttp_unused_port()
+        sock = unused_port_socket
+        port = sock.getsockname()[1]
         finished = False
 
         async def task() -> None:
@@ -1066,25 +1100,26 @@ class TestShutdown:
             with pytest.raises(ClientConnectorError):
                 # Use a new session to try and open a new connection.
                 async with ClientSession() as sess:
-                    async with sess.get(f"http://localhost:{port}/"):
+                    async with sess.get(f"http://127.0.0.1:{port}/"):
                         pass
             assert finished is False
 
-        t, connection_count = self.run_app(port, 10, task, test)
+        t, connection_count = self.run_app(sock, 10, task, test)
 
         assert finished is True
         assert t.done()
         assert connection_count == 0
 
     def test_shutdown_pending_handler_responds(
-        self, aiohttp_unused_port: Callable[[], int]
+        self, unused_port_socket: socket.socket
     ) -> None:
-        port = aiohttp_unused_port()
+        sock = unused_port_socket
+        port = sock.getsockname()[1]
         finished = False
 
         async def test() -> None:
-            async def test_resp(sess):
-                async with sess.get(f"http://localhost:{port}/") as resp:
+            async def test_resp(sess: ClientSession) -> None:
+                async with sess.get(f"http://127.0.0.1:{port}/") as resp:
                     assert await resp.text() == "FOO"
 
             await asyncio.sleep(1)
@@ -1092,7 +1127,7 @@ class TestShutdown:
                 t = asyncio.create_task(test_resp(sess))
                 await asyncio.sleep(1)
                 # Handler is in-progress while we trigger server shutdown.
-                async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.get(f"http://127.0.0.1:{port}/stop"):
                     pass
 
                 assert finished is False
@@ -1117,19 +1152,22 @@ class TestShutdown:
         app.router.add_get("/", handler)
         app.router.add_get("/stop", self.stop)
 
-        web.run_app(app, port=port, shutdown_timeout=5)
+        web.run_app(app, sock=sock, shutdown_timeout=5)
+        assert t is not None
         assert t.exception() is None
         assert finished is True
 
     def test_shutdown_close_idle_keepalive(
-        self, aiohttp_unused_port: Callable[[], int]
+        self, unused_port_socket: socket.socket
     ) -> None:
-        port = aiohttp_unused_port()
+        sock = unused_port_socket
+        port = sock.getsockname()[1]
+        t = None
 
         async def test() -> None:
             await asyncio.sleep(1)
             async with ClientSession() as sess:
-                async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.get(f"http://127.0.0.1:{port}/stop"):
                     pass
 
                 # Hold on to keep-alive connection.
@@ -1148,15 +1186,14 @@ class TestShutdown:
         app.cleanup_ctx.append(run_test)
         app.router.add_get("/stop", self.stop)
 
-        web.run_app(app, port=port, shutdown_timeout=10)
+        web.run_app(app, sock=sock, shutdown_timeout=10)
         # If connection closed, then test() will be cancelled in cleanup_ctx.
         # If not, then shutdown_timeout will allow it to sleep until complete.
         assert t.cancelled()
 
-    def test_shutdown_close_websockets(
-        self, aiohttp_unused_port: Callable[[], int]
-    ) -> None:
-        port = aiohttp_unused_port()
+    def test_shutdown_close_websockets(self, unused_port_socket: socket.socket) -> None:
+        sock = unused_port_socket
+        port = sock.getsockname()[1]
         WS = web.AppKey("ws", Set[web.WebSocketResponse])
         client_finished = server_finished = False
 
@@ -1177,8 +1214,8 @@ class TestShutdown:
         async def test() -> None:
             await asyncio.sleep(1)
             async with ClientSession() as sess:
-                async with sess.ws_connect(f"http://localhost:{port}/ws") as ws:
-                    async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.ws_connect(f"http://127.0.0.1:{port}/ws") as ws:
+                    async with sess.get(f"http://127.0.0.1:{port}/stop"):
                         pass
 
                     async for msg in ws:
@@ -1203,22 +1240,23 @@ class TestShutdown:
         app.router.add_get("/stop", self.stop)
 
         start = time.time()
-        web.run_app(app, port=port, shutdown_timeout=10)
+        web.run_app(app, sock=sock, shutdown_timeout=10)
         assert time.time() - start < 5
         assert client_finished
         assert server_finished
 
     def test_shutdown_handler_cancellation_suppressed(
-        self, aiohttp_unused_port: Callable[[], int]
+        self, unused_port_socket: socket.socket
     ) -> None:
-        port = aiohttp_unused_port()
+        sock = unused_port_socket
+        port = sock.getsockname()[1]
         actions = []
 
         async def test() -> None:
             async def test_resp(sess):
                 t = ClientTimeout(total=0.4)
                 with pytest.raises(asyncio.TimeoutError):
-                    async with sess.get(f"http://localhost:{port}/", timeout=t) as resp:
+                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t) as resp:
                         assert await resp.text() == "FOO"
                 actions.append("CANCELLED")
 
@@ -1227,7 +1265,7 @@ class TestShutdown:
                 await asyncio.sleep(0.5)
                 # Handler is in-progress while we trigger server shutdown.
                 actions.append("PRESTOP")
-                async with sess.get(f"http://localhost:{port}/stop"):
+                async with sess.get(f"http://127.0.0.1:{port}/stop"):
                     pass
 
                 actions.append("STOPPING")
@@ -1255,6 +1293,6 @@ class TestShutdown:
         app.router.add_get("/", handler)
         app.router.add_get("/stop", self.stop)
 
-        web.run_app(app, port=port, shutdown_timeout=2, handler_cancellation=True)
+        web.run_app(app, sock=sock, shutdown_timeout=2, handler_cancellation=True)
         assert t.exception() is None
         assert actions == ["CANCELLED", "SUPPRESSED", "PRESTOP", "STOPPING", "DONE"]
