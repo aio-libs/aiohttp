@@ -1024,9 +1024,8 @@ class TestShutdown:
         app.router.add_get("/", handler)
         app.router.add_get("/stop", self.stop)
 
-        with mock.patch("aiohttp.web_runner.Server", ServerWithRecordClear):
+        with mock.patch("aiohttp.web_app.Server", ServerWithRecordClear):
             web.run_app(app, sock=sock, shutdown_timeout=timeout)
-        assert test_task is not None
         assert test_task.exception() is None
         return t, num_connections
 
@@ -1295,6 +1294,5 @@ class TestShutdown:
         app.router.add_get("/stop", self.stop)
 
         web.run_app(app, sock=sock, shutdown_timeout=2, handler_cancellation=True)
-        assert t is not None
         assert t.exception() is None
         assert actions == ["CANCELLED", "SUPPRESSED", "PRESTOP", "STOPPING", "DONE"]

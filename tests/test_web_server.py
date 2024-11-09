@@ -194,7 +194,6 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
     site = web.SockSite(runner, sock=sock)
 
     await site.start()
-    assert runner.server is not None
     try:
         assert runner.server.handler_cancellation, "Flag was not propagated"
 
