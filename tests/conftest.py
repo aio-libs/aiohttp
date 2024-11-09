@@ -7,7 +7,7 @@ import sys
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, Generator
 from unittest import mock
 from uuid import uuid4
 
@@ -238,3 +238,14 @@ def key(key_data: Any):
 @pytest.fixture
 def ws_key(key: Any):
     return base64.b64encode(sha1(key + WS_KEY).digest()).decode()
+
+
+@pytest.fixture
+def enable_cleanup_closed() -> Generator[None, None, None]:
+    """Fixture to override the NEEDS_CLEANUP_CLOSED flag.
+
+    On Python 3.12.7+ and 3.13.1+ enable_cleanup_closed is not needed,
+    however we still want to test that it works.
+    """
+    with mock.patch("aiohttp.connector.NEEDS_CLEANUP_CLOSED", True):
+        yield
