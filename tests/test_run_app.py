@@ -1048,7 +1048,7 @@ class TestShutdown:
                 self._connections = DictRecordClear()
 
         async def test() -> None:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
             async with ClientSession() as sess:
                 for _ in range(5):  # pragma: no cover
                     try:
@@ -1058,10 +1058,7 @@ class TestShutdown:
                                 timeout=ClientTimeout(total=0.2),
                             ):
                                 pass
-                    except ClientConnectorError as ex:
-                        import pprint
-
-                        pprint.pprint(["client connector error", ex])
+                    except ClientConnectorError:
                         await asyncio.sleep(0.5)
                     else:
                         break
