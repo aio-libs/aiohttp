@@ -152,19 +152,66 @@ else:  # pragma: no cover
 _SSL_SCHEMES = frozenset(("https", "wss"))
 
 
-# ConnectionKey is a NamedTuple because it is used as a key in a dict
+# ConnectionKey is a tuple because it is used as a key in a dict
 # and a set in the connector. Since a NamedTuple is a tuple it uses
 # the fast native tuple __hash__ and __eq__ implementation in CPython.
-class ConnectionKey(NamedTuple):
+class ConnectionKey(tuple):
     # the key should contain an information about used proxy / TLS
     # to prevent reusing wrong connections from a pool
-    host: str
-    port: Optional[int]
-    is_ssl: bool
-    ssl: Union[SSLContext, bool, Fingerprint]
-    proxy: Optional[URL]
-    proxy_auth: Optional[BasicAuth]
-    proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
+    def __new__(
+        cls,
+        host: str,
+        port: Optional[int],
+        is_ssl: bool,
+        ssl: Union[SSLContext, bool, Fingerprint],
+        proxy: Optional[URL],
+        proxy_auth: Optional[BasicAuth],
+        proxy_headers_hash: Optional[int],  # hash(CIMultiDict)
+    ) -> "ConnectionKey":
+        return super().__new__(
+            cls, (host, port, is_ssl, ssl, proxy, proxy_auth, proxy_headers_hash)
+        )
+
+    def __init__(
+        self,
+        host: str,
+        port: Optional[int],
+        is_ssl: bool,
+        ssl: Union[SSLContext, bool, Fingerprint],
+        proxy: Optional[URL],
+        proxy_auth: Optional[BasicAuth],
+        proxy_headers_hash: Optional[int],  # hash(CIMultiDict)
+    ) -> None:
+        _hash = hash(self)
+        self.__hash__ = functools.cache(lambda: _hash)
+
+    @property
+    def host(self) -> str:
+        return self[0]
+
+    @property
+    def port(self) -> Optional[int]:
+        return self[1]
+
+    @property
+    def is_ssl(self) -> bool:
+        return self[2]
+
+    @property
+    def ssl(self) -> Union[SSLContext, bool, Fingerprint]:
+        return self[3]
+
+    @property
+    def proxy(self) -> Optional[URL]:
+        return self[4]
+
+    @property
+    def proxy_auth(self) -> Optional[BasicAuth]:
+        return self[5]
+
+    @property
+    def proxy_headers_hash(self) -> Optional[int]:
+        return self[6]
 
 
 class ClientRequest:
@@ -299,17 +346,14 @@ class ClientRequest:
         else:
             h = None
         url = self.url
-        return tuple.__new__(
-            ConnectionKey,
-            (
-                url.raw_host or "",
-                url.port,
-                url.scheme in _SSL_SCHEMES,
-                self._ssl,
-                self.proxy,
-                self.proxy_auth,
-                h,
-            ),
+        return ConnectionKey(
+            url.raw_host or "",
+            url.port,
+            url.scheme in _SSL_SCHEMES,
+            self._ssl,
+            self.proxy,
+            self.proxy_auth,
+            h,
         )
 
     @property

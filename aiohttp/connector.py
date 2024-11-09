@@ -1369,8 +1369,15 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = req.connection_key._replace(
-                proxy=None, proxy_auth=None, proxy_headers_hash=None
+            current_key = req.connection_key
+            key = ConnectionKey(
+                current_key.host,
+                current_key.port,
+                current_key.is_ssl,
+                current_key.ssl,
+                None,
+                None,
+                None,
             )
             conn = Connection(self, key, proto, self._loop)
             proxy_resp = await proxy_req.send(conn)
