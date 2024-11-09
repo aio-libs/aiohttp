@@ -555,7 +555,7 @@ async def test_access_special_resource(
 
     my_special = pathlib.Path(unix_sockname)
     tmp_path = my_special.parent
-    
+
     my_socket = socket.socket(socket.AF_UNIX)
     my_socket.bind(str(my_special))
     assert my_special.is_socket()
