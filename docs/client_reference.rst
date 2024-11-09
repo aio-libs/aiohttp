@@ -969,7 +969,7 @@ is controlled by *force_close* constructor's parameter).
 
       For Python version 3.12.7+, or 3.13.1 and later,
       this parameter is ignored because the asyncio SSL connection
-      leak is fixed in Python.
+      leak is fixed in these versions of Python.
 
 
    :param loop: :ref:`event loop<asyncio-event-loop>`
