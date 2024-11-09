@@ -77,6 +77,14 @@ WS_SCHEMA_SET = frozenset({"ws", "wss"})
 HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
 HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
 
+NEEDS_CLEANUP_CLOSED = (3, 13, 0) <= sys.version_info < (
+    3,
+    13,
+    1,
+) or sys.version_info < (3, 12, 7)
+# Cleanup closed is no longer needed after https://github.com/python/cpython/pull/118960
+# which first appeared in Python 3.12.7 and 3.13.1
+
 
 __all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
 
@@ -270,6 +278,17 @@ class BaseConnector:
 
         # start cleanup closed transports task
         self._cleanup_closed_handle: Optional[asyncio.TimerHandle] = None
+
+        if enable_cleanup_closed and not NEEDS_CLEANUP_CLOSED:
+            warnings.warn(
+                "enable_cleanup_closed ignored because "
+                "https://github.com/python/cpython/pull/118960 is fixed in "
+                f"in Python version {sys.version_info}",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            enable_cleanup_closed = False
+
         self._cleanup_closed_disabled = not enable_cleanup_closed
         self._cleanup_closed_transports: List[Optional[asyncio.Transport]] = []
 
