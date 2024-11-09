@@ -1921,6 +1921,15 @@ async def test_cleanup_closed(
     assert cleanup_closed_handle.cancel.called
 
 
+async def test_cleanup_closed_is_noop_on_fixed_cpython() -> None:
+    """Ensure that enable_cleanup_closed is a noop on fixed Python versions."""
+    with mock.patch("aiohttp.connector.NEEDS_CLEANUP_CLOSED", False), pytest.warns(
+        DeprecationWarning, match="cleanup_closed ignored"
+    ):
+        conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
+        assert conn._cleanup_closed_disabled is True
+
+
 async def test_cleanup_closed_disabled(
     loop: asyncio.AbstractEventLoop, mocker: MockerFixture
 ) -> None:
