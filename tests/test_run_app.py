@@ -1055,7 +1055,7 @@ class TestShutdown:
                         with pytest.raises(asyncio.TimeoutError):
                             async with sess.get(
                                 f"http://localhost:{port}/",
-                                timeout=ClientTimeout(total=0.2),
+                                timeout=ClientTimeout(total=0.1),
                             ):
                                 pass
                     except ClientConnectorError:
