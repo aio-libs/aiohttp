@@ -477,6 +477,22 @@ def test_run_app_https(patched_loop: asyncio.AbstractEventLoop) -> None:
 def test_run_app_nondefault_host_port(
     patched_loop: asyncio.AbstractEventLoop, unused_port_socket: socket.socket
 ) -> None:
+    port = unused_port_socket.getsockname()[1]
+    host = "127.0.0.1"
+
+    app = web.Application()
+    web.run_app(
+        app, host=host, port=port, print=stopper(patched_loop), loop=patched_loop
+    )
+
+    patched_loop.create_server.assert_called_with(  # type: ignore[attr-defined]
+        mock.ANY, host, port, ssl=None, backlog=128, reuse_address=None, reuse_port=None
+    )
+
+
+def test_run_app_with_sock(
+    patched_loop: asyncio.AbstractEventLoop, unused_port_socket: socket.socket
+) -> None:
     sock = unused_port_socket
     port = sock.getsockname()[1]
     host = "127.0.0.1"
