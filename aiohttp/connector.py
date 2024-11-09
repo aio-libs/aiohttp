@@ -531,7 +531,8 @@ class BaseConnector:
 
             placeholder = cast(ResponseHandler, _TransportPlaceholder())
             self._acquired.add(placeholder)
-            self._acquired_per_host[key].add(placeholder)
+            if self._limit_per_host:
+                self._acquired_per_host[key].add(placeholder)
 
             try:
                 # Traces are done inside the try block to ensure that the
@@ -557,11 +558,12 @@ class BaseConnector:
         # be no awaits after the proto is added to the acquired set
         # to ensure that the connection is not left in the acquired set
         # on cancellation.
-        acquired_per_host = self._acquired_per_host[key]
         self._acquired.remove(placeholder)
-        acquired_per_host.remove(placeholder)
         self._acquired.add(proto)
-        acquired_per_host.add(proto)
+        if self._limit_per_host:
+            acquired_per_host = self._acquired_per_host[key]
+            acquired_per_host.remove(placeholder)
+            acquired_per_host.add(proto)
         return Connection(self, key, proto, self._loop)
 
     async def _wait_for_available_connection(
@@ -626,7 +628,8 @@ class BaseConnector:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
                 self._acquired.add(proto)
-                self._acquired_per_host[key].add(proto)
+                if self._limit_per_host:
+                    self._acquired_per_host[key].add(proto)
                 if traces:
                     for trace in traces:
                         try:
@@ -680,7 +683,7 @@ class BaseConnector:
             return
 
         self._acquired.discard(proto)
-        if conns := self._acquired_per_host.get(key):
+        if self._limit_per_host and (conns := self._acquired_per_host.get(key)):
             conns.discard(proto)
             if not conns:
                 del self._acquired_per_host[key]
