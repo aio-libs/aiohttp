@@ -384,7 +384,9 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_https_connect(self, start_connection: Any, ClientRequestMock: Any) -> None:
+    def test_https_connect(
+        self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
+    ) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
         )
