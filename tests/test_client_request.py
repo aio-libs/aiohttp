@@ -744,14 +744,15 @@ async def test_urlencoded_formdata_charset(loop, conn) -> None:
         data=aiohttp.FormData({"hey": "you"}, charset="koi8-r"),
         loop=loop,
     )
-    await req.send(conn)
+    async with await req.send(conn):
+        await asyncio.sleep(0)
     assert "application/x-www-form-urlencoded; charset=koi8-r" == req.headers.get(
         "CONTENT-TYPE"
     )
     await req.close()
 
 
-async def test_post_data(loop, conn) -> None:
+async def test_post_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
     for meth in ClientRequest.POST_METHODS:
         req = ClientRequest(
             meth, URL("http://python.org/"), data={"life": "42"}, loop=loop
@@ -1080,10 +1081,12 @@ async def test_data_stream_exc(loop, conn) -> None:
 
     loop.create_task(throw_exc())
 
-    await req.send(conn)
-    await req._writer
-    # assert conn.close.called
-    assert conn.protocol.set_exception.called
+    async with await req.send(conn):
+        assert req._writer is not None
+        await req._writer
+        # assert conn.close.called
+        assert conn.protocol is not None
+        assert conn.protocol.set_exception.called
     await req.close()
 
 
@@ -1105,9 +1108,10 @@ async def test_data_stream_exc_chain(loop, conn) -> None:
 
     loop.create_task(throw_exc())
 
-    await req.send(conn)
-    await req._writer
-    # assert connection.close.called
+    async with await req.send(conn):
+        assert req._writer is not None
+        await req._writer
+    # assert conn.close.called
     assert conn.protocol.set_exception.called
     outer_exc = conn.protocol.set_exception.call_args[0][0]
     assert isinstance(outer_exc, ClientConnectionError)
