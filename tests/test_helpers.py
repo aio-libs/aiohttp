@@ -1115,9 +1115,9 @@ def test_read_basicauth_from_empty_netrc() -> None:
 
 def test_method_must_be_empty_body() -> None:
     """Test that HEAD is the only method that unequivocally must have an empty body."""
-    assert "HEAD" in EMPTY_BODY_METHODS is True
+    assert "HEAD" in EMPTY_BODY_METHODS
     # CONNECT is only empty on a successful response
-    assert "CONNECT" in EMPTY_BODY_METHODS is False
+    assert "CONNECT" not in EMPTY_BODY_METHODS
 
 
 def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
