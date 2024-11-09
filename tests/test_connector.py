@@ -14,6 +14,7 @@ from unittest import mock
 
 import pytest
 from aiohappyeyeballs import AddrInfoType
+from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
@@ -359,6 +360,7 @@ async def test_get_expired(loop: asyncio.AbstractEventLoop) -> None:
     await conn.close()
 
 
+@pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_get_expired_ssl(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     key = ConnectionKey("localhost", 80, True, False, None, None, None)
@@ -425,9 +427,16 @@ async def test_release(loop, key) -> None:
     await conn.close()
 
 
-async def test_release_ssl_transport(loop, ssl_key) -> None:
-    conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
-    conn._release_waiter = mock.Mock()
+@pytest.mark.usefixtures("enable_cleanup_closed")
+async def test_release_ssl_transport(
+    loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
+) -> None:
+    conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
+    with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True):
+        proto = create_mocked_conn(loop)
+        transport = proto.transport
+        conn._acquired.add(proto)
+        conn._acquired_per_host[ssl_key].add(proto)
 
     proto = mock.Mock()
     transport = proto.transport
@@ -1682,6 +1691,7 @@ async def test_close_during_connect(loop: asyncio.AbstractEventLoop) -> None:
     assert proto.close.called
 
 
+@pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_ctor_cleanup() -> None:
     loop = mock.Mock()
     loop.time.return_value = 1.5
@@ -1712,8 +1722,11 @@ async def test_cleanup(key) -> None:
     assert conn._cleanup_handle is None
 
 
-async def test_cleanup_close_ssl_transport(ssl_key) -> None:
-    proto = mock.Mock()
+@pytest.mark.usefixtures("enable_cleanup_closed")
+async def test_cleanup_close_ssl_transport(
+    loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
+) -> None:
+    proto = create_mocked_conn(loop)
     transport = proto.transport
     testset = {ssl_key: [(proto, 10)]}
 
@@ -1769,7 +1782,10 @@ async def test_cleanup3(key) -> None:
     await conn.close()
 
 
-async def test_cleanup_closed(loop, mocker) -> None:
+@pytest.mark.usefixtures("enable_cleanup_closed")
+async def test_cleanup_closed(
+    loop: asyncio.AbstractEventLoop, mocker: MockerFixture
+) -> None:
     if not hasattr(loop, "__dict__"):
         pytest.skip("can not override loop attributes")
 
@@ -1786,8 +1802,19 @@ async def test_cleanup_closed(loop, mocker) -> None:
     assert cleanup_closed_handle.cancel.called
 
 
-async def test_cleanup_closed_disabled(loop, mocker) -> None:
-    conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=False)
+async def test_cleanup_closed_is_noop_on_fixed_cpython() -> None:
+    """Ensure that enable_cleanup_closed is a noop on fixed Python versions."""
+    with mock.patch("aiohttp.connector.NEEDS_CLEANUP_CLOSED", False), pytest.warns(
+        DeprecationWarning, match="cleanup_closed ignored"
+    ):
+        conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
+        assert conn._cleanup_closed_disabled is True
+
+
+async def test_cleanup_closed_disabled(
+    loop: asyncio.AbstractEventLoop, mocker: MockerFixture
+) -> None:
+    conn = aiohttp.BaseConnector(enable_cleanup_closed=False)
 
     tr = mock.Mock()
     conn._cleanup_closed_transports = [tr]
@@ -2293,8 +2320,11 @@ async def test_close_abort_closed_transports(loop: asyncio.AbstractEventLoop) ->
     assert conn.closed
 
 
-async def test_close_cancels_cleanup_closed_handle(loop) -> None:
-    conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
+@pytest.mark.usefixtures("enable_cleanup_closed")
+async def test_close_cancels_cleanup_closed_handle(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     assert conn._cleanup_closed_handle is not None
     await conn.close()
     assert conn._cleanup_closed_handle is None
