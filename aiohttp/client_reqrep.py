@@ -3,7 +3,6 @@ import codecs
 import contextlib
 import functools
 import io
-import itertools
 import re
 import sys
 import traceback
@@ -239,9 +238,6 @@ class ClientRequest:
     }
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
     ALL_METHODS = GET_METHODS.union(POST_METHODS).union({hdrs.METH_DELETE})
-    _HOST_STRINGS = frozenset(
-        map("".join, itertools.product(*zip("host".upper(), "host".lower())))
-    )
 
     DEFAULT_HEADERS = {
         hdrs.ACCEPT: "*/*",
@@ -445,7 +441,7 @@ class ClientRequest:
 
         for key, value in headers:  # type: ignore[misc]
             # A special case for Host header
-            if key in self._HOST_STRINGS:
+            if key in hdrs.HOST_ALL:
                 self.headers[key] = value
             else:
                 self.headers.add(key, value)
