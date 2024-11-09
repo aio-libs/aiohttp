@@ -212,7 +212,7 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml
+        pytest -vvvs --junitxml=junit.xml
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
