@@ -94,10 +94,10 @@ from .connector import (
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
     get_env_proxy_for_url,
-    method_must_be_empty_body,
     sentinel,
     strip_auth_from_url,
 )
@@ -648,7 +648,7 @@ class ClientSession:
                     assert conn.protocol is not None
                     conn.protocol.set_response_params(
                         timer=timer,
-                        skip_payload=method_must_be_empty_body(method),
+                        skip_payload=method in EMPTY_BODY_METHODS,
                         read_until_eof=read_until_eof,
                         auto_decompress=auto_decompress,
                         read_timeout=real_timeout.sock_read,
