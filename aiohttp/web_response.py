@@ -432,8 +432,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             if keep_alive:
                 if version == HttpVersion10:
                     headers[hdrs.CONNECTION] = "keep-alive"
-                elif version == HttpVersion11:
-                    headers[hdrs.CONNECTION] = "close"
+            elif version == HttpVersion11:
+                headers[hdrs.CONNECTION] = "close"
 
     async def _write_headers(self) -> None:
         request = self._req
