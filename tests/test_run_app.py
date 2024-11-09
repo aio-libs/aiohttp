@@ -1024,13 +1024,13 @@ class TestShutdown:
     def run_app(
         self,
         sock: socket.socket,
-        port: int,
         timeout: int,
         task: Callable[[], Coroutine[None, None, None]],
         extra_test: Optional[Callable[[ClientSession], Awaitable[None]]] = None,
     ) -> Tuple["asyncio.Task[None]", int]:
         num_connections = -1
         t = test_task = None
+        port = sock.getsockname()[1]
 
         class DictRecordClear(Dict[RequestHandler[web.Request], asyncio.Transport]):
             def clear(self) -> None:
@@ -1055,7 +1055,7 @@ class TestShutdown:
                         with pytest.raises(asyncio.TimeoutError):
                             async with sess.get(
                                 f"http://localhost:{port}/",
-                                timeout=ClientTimeout(total=0.1),
+                                timeout=ClientTimeout(total=0.2),
                             ):
                                 pass
                     except ClientConnectorError:
@@ -1094,7 +1094,6 @@ class TestShutdown:
 
     def test_shutdown_wait_for_handler(self, unused_port_socket: socket.socket) -> None:
         sock = unused_port_socket
-        port = sock.getsockname()[1]
         finished = False
 
         async def task() -> None:
@@ -1102,7 +1101,7 @@ class TestShutdown:
             await asyncio.sleep(2)
             finished = True
 
-        t, connection_count = self.run_app(sock, port, 3, task)
+        t, connection_count = self.run_app(sock, 3, task)
 
         assert finished is True
         assert t.done()
@@ -1111,7 +1110,6 @@ class TestShutdown:
 
     def test_shutdown_timeout_handler(self, unused_port_socket: socket.socket) -> None:
         sock = unused_port_socket
-        port = sock.getsockname()[1]
         finished = False
 
         async def task() -> None:
@@ -1119,7 +1117,7 @@ class TestShutdown:
             await asyncio.sleep(2)
             finished = True
 
-        t, connection_count = self.run_app(sock, port, 1, task)
+        t, connection_count = self.run_app(sock, 1, task)
 
         assert finished is False
         assert t.done()
@@ -1130,7 +1128,6 @@ class TestShutdown:
         self, unused_port_socket: socket.socket
     ) -> None:
         sock = unused_port_socket
-        port = sock.getsockname()[1]
         finished = False
 
         async def task() -> None:
@@ -1140,7 +1137,7 @@ class TestShutdown:
 
         start_time = time.time()
 
-        t, connection_count = self.run_app(sock, port, 15, task)
+        t, connection_count = self.run_app(sock, 15, task)
 
         assert finished is True
         assert t.done()
@@ -1170,8 +1167,7 @@ class TestShutdown:
                         pass
             assert finished is False
 
-        # FIXME: sock reuse
-        t, connection_count = self.run_app(sock, port, 10, task, test)
+        t, connection_count = self.run_app(sock, 10, task, test)
 
         assert finished is True
         assert t.done()
