@@ -1058,7 +1058,10 @@ class TestShutdown:
                                 timeout=ClientTimeout(total=0.2),
                             ):
                                 pass
-                    except ClientConnectorError:
+                    except ClientConnectorError as ex:
+                        import pprint
+
+                        pprint.pprint(["client connector error", ex])
                         await asyncio.sleep(0.5)
                     else:
                         break
