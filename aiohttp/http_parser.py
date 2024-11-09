@@ -30,11 +30,11 @@ from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
 from .helpers import (
     _EXC_SENTINEL,
     DEBUG,
+    EMPTY_BODY_METHODS,
+    EMPTY_BODY_STATUS_CODES,
     NO_EXTENSIONS,
     BaseTimerContext,
-    method_must_be_empty_body,
     set_exception,
-    status_code_must_be_empty_body,
 )
 from .http_exceptions import (
     BadHttpMessage,
@@ -364,8 +364,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                         assert self.protocol is not None
                         # calculate payload
-                        empty_body = status_code_must_be_empty_body(code) or bool(
-                            method and method_must_be_empty_body(method)
+                        empty_body = code in EMPTY_BODY_STATUS_CODES or bool(
+                            method and method in EMPTY_BODY_METHODS
                         )
                         if not empty_body and (
                             ((length is not None and length > 0) or msg.chunked)

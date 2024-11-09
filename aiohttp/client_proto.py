@@ -12,10 +12,10 @@ from .client_exceptions import (
 )
 from .helpers import (
     _EXC_SENTINEL,
+    EMPTY_BODY_STATUS_CODES,
     BaseTimerContext,
     set_exception,
     set_result,
-    status_code_must_be_empty_body,
 )
 from .http import HttpResponseParser, RawResponseMessage, WebSocketReader
 from .http_exceptions import HttpProcessingError
@@ -300,9 +300,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
                     self._payload = payload
 
-                    if self._skip_payload or status_code_must_be_empty_body(
-                        message.code
-                    ):
+                    if self._skip_payload or message.code in EMPTY_BODY_STATUS_CODES:
                         self.feed_data((message, EMPTY_PAYLOAD))
                     else:
                         self.feed_data((message, payload))
