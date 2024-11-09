@@ -283,7 +283,7 @@ class BaseConnector:
             warnings.warn(
                 "enable_cleanup_closed ignored because "
                 "https://github.com/python/cpython/pull/118960 is fixed in "
-                "this Python version {sys.version_info}.",
+                f"in Python version {sys.version_info}",
                 DeprecationWarning,
                 stacklevel=2,
             )
