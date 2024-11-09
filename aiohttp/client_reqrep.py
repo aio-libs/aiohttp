@@ -677,7 +677,7 @@ class ClientRequest:
         v = self.version
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
         await writer.write_headers(status_line, self.headers)
-        if self.body is not None or self._continue is not None or protocol.paused:
+        if self.body or self._continue is not None or protocol.paused:
             coro = self.write_bytes(writer, conn)
 
             task: Optional["asyncio.Task[None]"]
