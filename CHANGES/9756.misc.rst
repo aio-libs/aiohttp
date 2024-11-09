@@ -1,1 +1,1 @@
-Improved performance of :py:class:`aiohttp.BaseConnector` when there is no limit per host set -- by :user:`bdraco`.
+Improved performance of :py:class:`aiohttp.BaseConnector` when there is no ``limit_per_host`` -- by :user:`bdraco`.
