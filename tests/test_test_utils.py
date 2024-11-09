@@ -344,7 +344,7 @@ async def test_client_context_manager_response(method, app, loop) -> None:
 async def test_custom_port(
     loop: asyncio.AbstractEventLoop,
     app: web.Application,
-    unused_port_socket: socket.socket,
+    unused_port_socket: socket,
 ) -> None:
     sock = unused_port_socket
     port = sock.getsockname()[1]
