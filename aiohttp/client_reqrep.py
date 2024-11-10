@@ -682,7 +682,7 @@ class ClientRequest:
             or self._continue is not None
             or self.compress
             or self.chunked
-            or protocol.paused
+            or protocol.writing_paused
         ):
             coro = self.write_bytes(writer, conn)
 

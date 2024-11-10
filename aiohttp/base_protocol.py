@@ -30,7 +30,7 @@ class BaseProtocol(asyncio.Protocol):
         return self.transport is not None
 
     @property
-    def paused(self) -> bool:
+    def writing_paused(self) -> bool:
         return self._paused
 
     def pause_writing(self) -> None:
