@@ -1,0 +1,1 @@
+Improved performance of sending HTTP requests when there is no body -- by :user:`bdraco`.
