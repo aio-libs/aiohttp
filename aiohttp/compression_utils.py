@@ -70,6 +70,14 @@ class ZLibCompressor(ZlibBaseHandler):
         return self._compressor.compress(data)
 
     async def compress(self, data: bytes) -> bytes:
+        """Compress the data and returned the compressed bytes.
+
+        Note that flush() must be called after the last call to compress()
+
+        If the data size is large than the max_sync_chunk_size, the compression
+        will be done in the executor. Otherwise, the compression will be done
+        in the event loop.
+        """
         async with self._compress_lock:
             # To ensure the stream is consistent in the event
             # there are multiple writers, we need to lock
@@ -79,8 +87,8 @@ class ZLibCompressor(ZlibBaseHandler):
                 self._max_sync_chunk_size is not None
                 and len(data) > self._max_sync_chunk_size
             ):
-                return await asyncio.get_event_loop().run_in_executor(
-                    self._executor, self.compress_sync, data
+                return await asyncio.get_running_loop().run_in_executor(
+                    self._executor, self._compressor.compress, data
                 )
             return self.compress_sync(data)
 
@@ -107,12 +115,18 @@ class ZLibDecompressor(ZlibBaseHandler):
         return self._decompressor.decompress(data, max_length)
 
     async def decompress(self, data: bytes, max_length: int = 0) -> bytes:
+        """Decompress the data and return the decompressed bytes.
+
+        If the data size is large than the max_sync_chunk_size, the decompression
+        will be done in the executor. Otherwise, the decompression will be done
+        in the event loop.
+        """
         if (
             self._max_sync_chunk_size is not None
             and len(data) > self._max_sync_chunk_size
         ):
-            return await asyncio.get_event_loop().run_in_executor(
-                self._executor, self.decompress_sync, data, max_length
+            return await asyncio.get_running_loop().run_in_executor(
+                self._executor, self._decompressor.decompress, data, max_length
             )
         return self.decompress_sync(data, max_length)
 
