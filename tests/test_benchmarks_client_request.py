@@ -89,6 +89,10 @@ def test_send_client_request_one_hundred(
         def __init__(self) -> None:
             self.transport = MockTransport()
 
+        @property
+        def writing_paused(self) -> bool:
+            return False
+
         async def _drain_helper(self) -> None:
             """Swallow drain."""
 

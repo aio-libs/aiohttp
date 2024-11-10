@@ -18,8 +18,10 @@ async def test_pause_writing() -> None:
     loop = asyncio.get_event_loop()
     pr = BaseProtocol(loop)
     assert not pr._paused
+    assert pr.writing_paused is False
     pr.pause_writing()
     assert pr._paused
+    assert pr.writing_paused is True  # type: ignore[unreachable]
 
 
 async def test_pause_reading_no_transport() -> None:

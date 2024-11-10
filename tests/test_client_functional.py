@@ -1503,10 +1503,7 @@ async def test_POST_MultiDict(aiohttp_client) -> None:
         assert 200 == resp.status
 
 
-@pytest.mark.parametrize("data", (None, b""))
-async def test_GET_DEFLATE(
-    aiohttp_client: AiohttpClient, data: Optional[bytes]
-) -> None:
+async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
@@ -1529,7 +1526,7 @@ async def test_GET_DEFLATE(
         app.router.add_get("/", handler)
         client = await aiohttp_client(app)
 
-        async with client.get("/", data=data, compress=True) as resp:
+        async with client.get("/", data=b"", compress=True) as resp:
             assert resp.status == 200
             content = await resp.json()
             assert content == {"ok": True}
@@ -1537,6 +1534,24 @@ async def test_GET_DEFLATE(
     assert write_mock is not None
     # No chunks should have been sent for an empty body.
     write_mock.assert_not_called()
+
+
+async def test_GET_DEFLATE_no_body(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"ok": True})
+
+    with mock.patch.object(ClientRequest, "write_bytes") as mock_write_bytes:
+        app = web.Application()
+        app.router.add_get("/", handler)
+        client = await aiohttp_client(app)
+
+        async with client.get("/", data=None, compress=True) as resp:
+            assert resp.status == 200
+            content = await resp.json()
+            assert content == {"ok": True}
+
+    # No chunks should have been sent for an empty body.
+    mock_write_bytes.assert_not_called()
 
 
 async def test_POST_DATA_DEFLATE(aiohttp_client: AiohttpClient) -> None:
