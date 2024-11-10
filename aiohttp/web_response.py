@@ -330,15 +330,16 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._headers[CONTENT_TYPE] = ctype
 
     async def _do_start_compression(self, coding: ContentCoding) -> None:
-        if coding != ContentCoding.identity:
-            assert self._payload_writer is not None
-            self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._payload_writer.enable_compression(
-                coding.value, self._compression_strategy
-            )
-            # Compressed payload may have different content length,
-            # remove the header
-            self._headers.popall(hdrs.CONTENT_LENGTH, None)
+        if coding is ContentCoding.identity:
+            return
+        assert self._payload_writer is not None
+        self._headers[hdrs.CONTENT_ENCODING] = coding.value
+        self._payload_writer.enable_compression(
+            coding.value, self._compression_strategy
+        )
+        # Compressed payload may have different content length,
+        # remove the header
+        self._headers.popall(hdrs.CONTENT_LENGTH, None)
 
     async def _start_compression(self, request: "BaseRequest") -> None:
         if self._compression_force:
@@ -705,30 +706,28 @@ class Response(StreamResponse):
     async def _do_start_compression(self, coding: ContentCoding) -> None:
         if self._chunked or isinstance(self._body, Payload):
             return await super()._do_start_compression(coding)
-
-        if coding != ContentCoding.identity:
-            # Instead of using _payload_writer.enable_compression,
-            # compress the whole body
-            compressor = ZLibCompressor(
-                encoding=str(coding.value),
-                max_sync_chunk_size=self._zlib_executor_size,
-                executor=self._zlib_executor,
+        if coding is ContentCoding.identity:
+            return
+        # Instead of using _payload_writer.enable_compression,
+        # compress the whole body
+        compressor = ZLibCompressor(
+            encoding=coding.value,
+            max_sync_chunk_size=self._zlib_executor_size,
+            executor=self._zlib_executor,
+        )
+        assert self._body is not None
+        if self._zlib_executor_size is None and len(self._body) > 1024 * 1024:
+            warnings.warn(
+                "Synchronous compression of large response bodies "
+                f"({len(self._body)} bytes) might block the async event loop. "
+                "Consider providing a custom value to zlib_executor_size/"
+                "zlib_executor response properties or disabling compression on it."
             )
-            assert self._body is not None
-            if self._zlib_executor_size is None and len(self._body) > 1024 * 1024:
-                warnings.warn(
-                    "Synchronous compression of large response bodies "
-                    f"({len(self._body)} bytes) might block the async event loop. "
-                    "Consider providing a custom value to zlib_executor_size/"
-                    "zlib_executor response properties or disabling compression on it."
-                )
-            self._compressed_body = (
-                await compressor.compress(self._body) + compressor.flush()
-            )
-            assert self._compressed_body is not None
-
-            self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._headers[hdrs.CONTENT_LENGTH] = str(len(self._compressed_body))
+        self._compressed_body = (
+            await compressor.compress(self._body) + compressor.flush()
+        )
+        self._headers[hdrs.CONTENT_ENCODING] = coding.value
+        self._headers[hdrs.CONTENT_LENGTH] = str(len(self._compressed_body))
 
 
 def json_response(
