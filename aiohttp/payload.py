@@ -113,13 +113,13 @@ class PayloadRegistry:
         if isinstance(data, Payload):
             return data
         if self._first:
-            for factory, type in self._first:
+            for factory, type_ in self._first:
                 if isinstance(data, type):
                     return factory(data, *args, **kwargs)
         if factory := self._normal_lookup.get(type(data)):
             return factory(data, *args, **kwargs)
-        for factory, type in _CHAIN(self._normal, self._last):
-            if isinstance(data, type):
+        for factory, type_ in _CHAIN(self._normal, self._last):
+            if isinstance(data, type_):
                 return factory(data, *args, **kwargs)
         raise LookupError()
 
