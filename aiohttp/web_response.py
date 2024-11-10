@@ -44,6 +44,7 @@ from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
 REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
+LARGE_BODY_SIZE = 1024**2
 
 __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
@@ -716,7 +717,7 @@ class Response(StreamResponse):
             executor=self._zlib_executor,
         )
         assert self._body is not None
-        if self._zlib_executor_size is None and len(self._body) > 1024 * 1024:
+        if self._zlib_executor_size is None and len(self._body) > LARGE_BODY_SIZE:
             warnings.warn(
                 "Synchronous compression of large response bodies "
                 f"({len(self._body)} bytes) might block the async event loop. "
