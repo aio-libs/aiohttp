@@ -628,19 +628,17 @@ class Response(StreamResponse):
                 real_headers[hdrs.CONTENT_TYPE] = content_type + "; charset=" + charset
                 body = text.encode(charset)
                 text = None
-        else:
-            if hdrs.CONTENT_TYPE in real_headers:
-                if content_type is not None or charset is not None:
-                    raise ValueError(
-                        "passing both Content-Type header and "
-                        "content_type or charset params "
-                        "is forbidden"
-                    )
-            else:
-                if content_type is not None:
-                    if charset is not None:
-                        content_type += "; charset=" + charset
-                    real_headers[hdrs.CONTENT_TYPE] = content_type
+        elif hdrs.CONTENT_TYPE in real_headers:
+            if content_type is not None or charset is not None:
+                raise ValueError(
+                    "passing both Content-Type header and "
+                    "content_type or charset params "
+                    "is forbidden"
+                )
+        elif content_type is not None:
+            if charset is not None:
+                content_type += "; charset=" + charset
+            real_headers[hdrs.CONTENT_TYPE] = content_type
 
         super().__init__(status=status, reason=reason, headers=real_headers)
 
