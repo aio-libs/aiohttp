@@ -110,14 +110,17 @@ class PayloadRegistry:
         _CHAIN: "Type[chain[_PayloadRegistryItem]]" = chain,
         **kwargs: Any,
     ) -> "Payload":
-        if isinstance(data, Payload):
-            return data
         if self._first:
             for factory, type_ in self._first:
                 if isinstance(data, type_):
                     return factory(data, *args, **kwargs)
+        # Try the fast lookup first
         if lookup_factory := self._normal_lookup.get(type(data)):
             return lookup_factory(data, *args, **kwargs)
+        # Bail early if its already a Payload
+        if isinstance(data, Payload):
+            return data
+        # Fallback to the slower linear search
         for factory, type_ in _CHAIN(self._normal, self._last):
             if isinstance(data, type_):
                 return factory(data, *args, **kwargs)
