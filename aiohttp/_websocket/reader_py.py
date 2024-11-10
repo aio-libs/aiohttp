@@ -319,10 +319,14 @@ class WebSocketReader:
 
     def parse_frame(
         self, buf: bytes
-    ) -> List[Tuple[bool, Optional[int], Union[bytes, bytearray], Optional[bool]]]:
+    ) -> List[
+        Tuple[bool, Optional[int], Union[bytes, bytearray, memoryview], Optional[bool]]
+    ]:
         """Return the next frame from the socket."""
         frames: List[
-            Tuple[bool, Optional[int], Union[bytes, bytearray], Optional[bool]]
+            Tuple[
+                bool, Optional[int], Union[bytes, bytearray, memoryview], Optional[bool]
+            ]
         ] = []
         if self._tail:
             buf, self._tail = self._tail + buf, b""
@@ -439,7 +443,7 @@ class WebSocketReader:
                     self._frame_payload += buf[start_pos:end_pos]
                 else:
                     # Fast path for the first frame
-                    self._frame_payload = buf[start_pos:end_pos]
+                    self._frame_payload = memoryview(buf)[start_pos:end_pos]
 
                 self._frame_payload_len += end_pos - start_pos
                 start_pos = end_pos
