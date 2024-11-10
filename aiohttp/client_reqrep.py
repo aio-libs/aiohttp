@@ -696,7 +696,7 @@ class ClientRequest:
         else:
             # We have nothing to write because
             # - there is no body
-            # - the protocol is not paused
+            # - the protocol does not have writing paused
             # - we are not waiting for a 100-continue response
             protocol.start_timeout()
             writer.set_eof()
