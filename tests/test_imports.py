@@ -34,13 +34,14 @@ _IS_XDIST_RUN = _XDIST_WORKER_COUNT > 1
 
 _TARGET_TIMINGS_BY_PYTHON_VERSION = {
     "3.12": (
-        # 3.12 is expected to be a bit slower due to performance trade-offs,
+        # 3.12+ is expected to be a bit slower due to performance trade-offs,
         # and even slower under pytest-xdist, especially in CI
         _XDIST_WORKER_COUNT * 100 * (1 if _IS_CI_ENV else 1.53)
         if _IS_XDIST_RUN
         else 250
     ),
 }
+_TARGET_TIMINGS_BY_PYTHON_VERSION["3.13"] = _TARGET_TIMINGS_BY_PYTHON_VERSION["3.12"]
 
 
 @pytest.mark.internal
