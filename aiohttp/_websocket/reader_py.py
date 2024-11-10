@@ -241,6 +241,8 @@ class WebSocketReader:
                         self._decompressobj = ZLibDecompressor(
                             suppress_deflate_header=True
                         )
+                    if type(assembled_payload) is memoryview:
+                        assembled_payload = bytes(assembled_payload)
                     payload_merged = self._decompressobj.decompress_sync(
                         assembled_payload + WS_DEFLATE_TRAILING, self._max_msg_size
                     )
