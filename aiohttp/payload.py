@@ -114,7 +114,7 @@ class PayloadRegistry:
             return data
         if self._first:
             for factory, type_ in self._first:
-                if isinstance(data, type):
+                if isinstance(data, type_):
                     return factory(data, *args, **kwargs)
         if factory := self._normal_lookup.get(type(data)):
             return factory(data, *args, **kwargs)
