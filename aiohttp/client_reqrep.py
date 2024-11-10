@@ -707,7 +707,7 @@ class ClientRequest:
             # - we do not have a compressed payload
             # - we are not waiting for a 100-continue response
             protocol.start_timeout()
-            await writer.write_eof()
+            writer.set_eof()
             task = None
         response_class = self.response_class
         assert response_class is not None
