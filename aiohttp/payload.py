@@ -173,7 +173,8 @@ class Payload(ABC):
             self._headers[hdrs.CONTENT_TYPE] = content_type
         else:
             self._headers[hdrs.CONTENT_TYPE] = self._default_content_type
-        self._headers.update(headers or {})
+        if headers:
+            self._headers.update(headers)
 
     @property
     def size(self) -> Optional[int]:
@@ -242,9 +243,6 @@ class BytesPayload(Payload):
     def __init__(
         self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
     ) -> None:
-        if not isinstance(value, (bytes, bytearray, memoryview)):
-            raise TypeError(f"value argument must be byte-ish, not {type(value)!r}")
-
         if "content_type" not in kwargs:
             kwargs["content_type"] = "application/octet-stream"
 
@@ -252,8 +250,10 @@ class BytesPayload(Payload):
 
         if isinstance(value, memoryview):
             self._size = value.nbytes
-        else:
+        elif isinstance(value, (bytes, bytearray)):
             self._size = len(value)
+        else:
+            raise TypeError(f"value argument must be byte-ish, not {type(value)!r}")
 
         if self._size > TOO_LARGE_BYTES_BODY:
             warnings.warn(
