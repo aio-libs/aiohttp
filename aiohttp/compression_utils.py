@@ -79,8 +79,8 @@ class ZLibCompressor(ZlibBaseHandler):
                 self._max_sync_chunk_size is not None
                 and len(data) > self._max_sync_chunk_size
             ):
-                return await asyncio.get_event_loop().run_in_executor(
-                    self._executor, self.compress_sync, data
+                return await asyncio.get_running_loop().run_in_executor(
+                    self._executor, self._compressor.compress, data
                 )
             return self.compress_sync(data)
 
@@ -111,8 +111,8 @@ class ZLibDecompressor(ZlibBaseHandler):
             self._max_sync_chunk_size is not None
             and len(data) > self._max_sync_chunk_size
         ):
-            return await asyncio.get_event_loop().run_in_executor(
-                self._executor, self.decompress_sync, data, max_length
+            return await asyncio.get_running_loop().run_in_executor(
+                self._executor, self._decompressor.decompress, data, max_length
             )
         return self.decompress_sync(data, max_length)
 
