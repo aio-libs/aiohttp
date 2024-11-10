@@ -481,6 +481,24 @@ async def test_force_compression_deflate() -> None:
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
+async def test_force_compression_deflate_large_payload() -> None:
+    """Make sure a warning is thrown for large payloads compressed in the event loop."""
+    req = make_request(
+        "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip, deflate"})
+    )
+    resp = Response(body=b"large")
+
+    resp.enable_compression(ContentCoding.deflate)
+    assert resp.compression
+
+    with pytest.warns(
+        Warning, match="Synchronous compression of large response bodies"
+    ), mock.patch("aiohttp.web_response.LARGE_BODY_SIZE", 2):
+        msg = await resp.prepare(req)
+        assert msg is not None
+    assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
+
+
 async def test_force_compression_no_accept_deflate() -> None:
     req = make_request("GET", "/")
     resp = StreamResponse()
