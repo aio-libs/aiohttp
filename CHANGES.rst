@@ -10,7 +10,7 @@
 
 .. towncrier release notes start
 
-3.11.0b4 (2024-11-07)
+3.11.0b5 (2024-11-10)
 =====================
 
 Bug fixes
@@ -374,6 +374,38 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9679`.
+
+
+
+- Replace internal helper methods ``method_must_be_empty_body`` and ``status_code_must_be_empty_body`` with simple `set` lookups -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9722`.
+
+
+
+- Passing ``enable_cleanup_closed`` to :py:class:`aiohttp.TCPConnector` is now ignored on Python 3.12.7+ and 3.13.1+ since the underlying bug that caused asyncio to leak SSL connections has been fixed upstream -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9726`, :issue:`9736`.
+
+
+
+- Improved performance of :py:class:`aiohttp.BaseConnector` when there is no ``limit_per_host`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9756`.
+
+
+
+- Improved performance of sending HTTP requests when there is no body -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9757`.
 
 
 
