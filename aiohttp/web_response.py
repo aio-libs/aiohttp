@@ -753,16 +753,13 @@ class Response(StreamResponse):
         assert not data, f"data arg is not supported, got {data!r}"
         assert self._req is not None
         assert self._payload_writer is not None
-        if body is not None:
-            if self._must_be_empty_body:
-                await super().write_eof()
-            elif isinstance(self._body, Payload):
-                await self._body.write(self._payload_writer)
-                await super().write_eof()
-            else:
-                await super().write_eof(cast(bytes, body))
-        else:
+        if body is None or self._must_be_empty_body:
             await super().write_eof()
+        elif isinstance(self._body, Payload):
+            await self._body.write(self._payload_writer)
+            await super().write_eof()
+        else:
+            await super().write_eof(cast(bytes, body))
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
         if hdrs.CONTENT_LENGTH in self._headers:
