@@ -836,7 +836,7 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
             assert to_trace_urls(on_request_redirect) == []
             assert to_trace_urls(on_request_end) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_exception) == []
-            assert to_trace_urls(on_request_chunk_sent) == [to_url("/?x=0")]
+            assert to_trace_urls(on_request_chunk_sent) == []
             assert to_trace_urls(on_response_chunk_received) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_headers_sent) == [to_url("/?x=0")]
 
@@ -852,10 +852,7 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
             assert to_trace_urls(on_request_redirect) == [to_url("/redirect?x=0")]
             assert to_trace_urls(on_request_end) == [to_url("/")]
             assert to_trace_urls(on_request_exception) == []
-            assert to_trace_urls(on_request_chunk_sent) == [
-                to_url("/redirect?x=0"),
-                to_url("/"),
-            ]
+            assert to_trace_urls(on_request_chunk_sent) == []
             assert to_trace_urls(on_response_chunk_received) == [to_url("/")]
             assert to_trace_urls(on_request_headers_sent) == [
                 to_url("/redirect?x=0"),

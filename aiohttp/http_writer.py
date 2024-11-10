@@ -130,6 +130,10 @@ class StreamWriter(AbstractStreamWriter):
         buf = _serialize_headers(status_line, headers)
         self._write(buf)
 
+    def set_eof(self) -> None:
+        """Indicate that the message is complete."""
+        self._eof = True
+
     async def write_eof(self, chunk: bytes = b"") -> None:
         if self._eof:
             return
