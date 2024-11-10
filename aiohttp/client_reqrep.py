@@ -677,10 +677,9 @@ class ClientRequest:
         v = self.version
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
         await writer.write_headers(status_line, self.headers)
+        task: Optional["asyncio.Task[None]"]
         if self.body or self._continue is not None or protocol.writing_paused:
             coro = self.write_bytes(writer, conn)
-
-            task: Optional["asyncio.Task[None]"]
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write
                 # bytes immediately to avoid having to schedule
@@ -688,7 +687,6 @@ class ClientRequest:
                 task = asyncio.Task(coro, loop=self.loop, eager_start=True)
             else:
                 task = self.loop.create_task(coro)
-
             if task.done():
                 task = None
             else:
