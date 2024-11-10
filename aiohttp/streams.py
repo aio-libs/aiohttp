@@ -272,9 +272,10 @@ class StreamReader(AsyncStreamReaderMixin):
         if not data:
             return
 
-        self._size += len(data)
+        data_len = len(data)
+        self._size += data_len
         self._buffer.append(data)
-        self.total_bytes += len(data)
+        self.total_bytes += data_len
 
         waiter = self._waiter
         if waiter is not None:
