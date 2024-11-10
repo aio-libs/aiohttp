@@ -360,3 +360,19 @@ async def test_write_headers_prevents_injection(
     wrong_headers = CIMultiDict({"Content-Length": "256\r\nSet-Cookie: abc=123"})
     with pytest.raises(ValueError):
         await msg.write_headers(status_line, wrong_headers)
+
+
+async def test_set_eof_after_write_headers(
+    protocol: BaseProtocol,
+    transport: mock.Mock,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    status_line = "HTTP/1.1 200 OK"
+    good_headers = CIMultiDict({"Set-Cookie": "abc=123"})
+    await msg.write_headers(status_line, good_headers)
+    assert transport.write.called
+    transport.write.reset_mock()
+    msg.set_eof()
+    await msg.write_eof()
+    assert not transport.write.called
