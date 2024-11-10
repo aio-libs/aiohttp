@@ -486,9 +486,9 @@ async def test_force_compression_deflate_large_payload() -> None:
     req = make_request(
         "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip, deflate"})
     )
-    resp = web.Response(body=b"large")
+    resp = Response(body=b"large")
 
-    resp.enable_compression(web.ContentCoding.deflate)
+    resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
     with pytest.warns(
