@@ -101,6 +101,7 @@ class PayloadRegistry:
         self._first: List[_PayloadRegistryItem] = []
         self._normal: List[_PayloadRegistryItem] = []
         self._last: List[_PayloadRegistryItem] = []
+        self._normal_lookup: Dict[Any, PayloadType] = {}
 
     def get(
         self,
@@ -111,10 +112,15 @@ class PayloadRegistry:
     ) -> "Payload":
         if isinstance(data, Payload):
             return data
-        for factory, type in _CHAIN(self._first, self._normal, self._last):
+        if self._first:
+            for factory, type in self._first:
+                if isinstance(data, type):
+                    return factory(data, *args, **kwargs)
+        if factory := self._normal_lookup.get(type(data)):
+            return factory(data, *args, **kwargs)
+        for factory, type in _CHAIN(self._normal, self._last):
             if isinstance(data, type):
                 return factory(data, *args, **kwargs)
-
         raise LookupError()
 
     def register(
@@ -124,6 +130,11 @@ class PayloadRegistry:
             self._first.append((factory, type))
         elif order is Order.normal:
             self._normal.append((factory, type))
+            if isinstance(type, Iterable):
+                for t in type:
+                    self._normal_lookup[t] = factory
+            else:
+                self._normal_lookup[type] = factory
         elif order is Order.try_last:
             self._last.append((factory, type))
         else:
