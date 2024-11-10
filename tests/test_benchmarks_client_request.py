@@ -90,7 +90,7 @@ def test_send_client_request_one_hundred(
             self.transport = MockTransport()
 
         @property
-        def paused(self) -> bool:
+        def writing_paused(self) -> bool:
             return False
 
         async def _drain_helper(self) -> None:
