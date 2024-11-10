@@ -70,12 +70,12 @@ cdef class WebSocketReader:
     cdef object _frame_fin
     cdef object _frame_opcode
     cdef object _frame_payload
-    cdef unsigned int _frame_payload_len
+    cdef unsigned long long _frame_payload_len
 
     cdef bytes _tail
     cdef bint _has_mask
     cdef bytes _frame_mask
-    cdef unsigned int _payload_length
+    cdef unsigned long long _payload_length
     cdef unsigned int _payload_length_flag
     cdef object _compressed
     cdef object _decompressobj
