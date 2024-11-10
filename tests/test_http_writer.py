@@ -1,11 +1,13 @@
 # Tests for aiohttp/http_writer.py
 import array
+import asyncio
 from unittest import mock
 
 import pytest
 from multidict import CIMultiDict
 
 from aiohttp import ClientConnectionResetError, http
+from aiohttp.base_protocol import BaseProtocol
 from aiohttp.test_utils import make_mocked_coro
 
 

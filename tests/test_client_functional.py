@@ -12,7 +12,7 @@ import sys
 import tarfile
 import time
 import zipfile
-from typing import Any, AsyncIterator, Awaitable, Callable, List, Optional, Type
+from typing import Any, AsyncIterator, Awaitable, Callable, List, Type
 from unittest import mock
 
 import pytest
