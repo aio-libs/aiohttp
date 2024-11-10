@@ -9,7 +9,7 @@ from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
 from ..helpers import _EXC_SENTINEL, set_exception
 from ..streams import EofStream
-from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
+from .helpers import UNPACK_CLOSE_CODE, websocket_mask
 from .models import (
     WS_DEFLATE_TRAILING,
     WebSocketError,
@@ -408,9 +408,10 @@ class WebSocketReader:
                 elif length_flag > 126:
                     if buf_length - start_pos < 8:
                         break
-                    data = buf[start_pos : start_pos + 8]
+                    for i in range(8):
+                        first_byte = buf[start_pos + i]
+                        self._payload_length = (self._payload_length << 8) | first_byte
                     start_pos += 8
-                    self._payload_length = UNPACK_LEN3(data)[0]
                 else:
                     self._payload_length = length_flag
 

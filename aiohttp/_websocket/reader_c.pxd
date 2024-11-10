@@ -15,7 +15,6 @@ cdef unsigned int OP_CODE_CLOSE
 cdef unsigned int OP_CODE_PING
 cdef unsigned int OP_CODE_PONG
 
-cdef object UNPACK_LEN3
 cdef object UNPACK_CLOSE_CODE
 cdef object TUPLE_NEW
 
@@ -102,6 +101,7 @@ cdef class WebSocketReader:
         first_byte="unsigned char",
         second_byte="unsigned char",
         end_pos="unsigned int",
+        i="unsigned int",
         has_mask=bint,
         fin=bint,
     )
