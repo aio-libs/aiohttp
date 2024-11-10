@@ -15,14 +15,12 @@ def test_read_large_binary_websocket_messages(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Read one hundred large binary websocket messages."""
-    queue = WebSocketDataQueue(BaseProtocol(loop), 2**16, loop=loop)
-    reader = WebSocketReader(queue, max_msg_size=2**16)
+    queue = WebSocketDataQueue(BaseProtocol(loop), 2**18, loop=loop)
+    reader = WebSocketReader(queue, max_msg_size=2**18)
 
     # PACK3 has a minimum message length of 2**16 bytes.
     message = b"x" * ((2**16) + 1)
     msg_length = len(message)
-    # Depending on the message length, the header is assembled differently.
-    # The first byte is reserved for the opcode and the RSV bits.
     first_byte = 0x80 | 0 | WSMsgType.BINARY.value
     header = PACK_LEN3(first_byte, 127, msg_length)
     raw_message = header + message
