@@ -5,10 +5,31 @@ from typing import Union
 
 from pytest_codspeed import BenchmarkFixture
 
-from aiohttp._websocket.helpers import MSG_SIZE
+from aiohttp._websocket.helpers import MSG_SIZE, PACK_LEN3
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_websocket import WebSocketReader, WebSocketWriter, WSMsgType
+
+
+def test_read_large_binary_websocket_messages(
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+) -> None:
+    """Read one hundred large binary websocket messages."""
+    queue = WebSocketDataQueue(BaseProtocol(loop), 2**18, loop=loop)
+    reader = WebSocketReader(queue, max_msg_size=2**18)
+
+    # PACK3 has a minimum message length of 2**16 bytes.
+    message = b"x" * ((2**16) + 1)
+    msg_length = len(message)
+    first_byte = 0x80 | 0 | WSMsgType.BINARY.value
+    header = PACK_LEN3(first_byte, 127, msg_length)
+    raw_message = header + message
+    feed_data = reader.feed_data
+
+    @benchmark
+    def _run() -> None:
+        for _ in range(100):
+            feed_data(raw_message)
 
 
 def test_read_one_hundred_websocket_text_messages(
