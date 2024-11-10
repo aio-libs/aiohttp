@@ -344,14 +344,14 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
     async def _start_compression(self, request: "BaseRequest") -> None:
         if self._compression_force:
             await self._do_start_compression(self._compression_force)
-        else:
-            # Encoding comparisons should be case-insensitive
-            # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
-            accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
-            for value, coding in CONTENT_CODINGS.items():
-                if value in accept_encoding:
-                    await self._do_start_compression(coding)
-                    return
+            return
+        # Encoding comparisons should be case-insensitive
+        # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
+        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
+        for value, coding in CONTENT_CODINGS.items():
+            if value in accept_encoding:
+                await self._do_start_compression(coding)
+                return
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         if self._eof_sent:
