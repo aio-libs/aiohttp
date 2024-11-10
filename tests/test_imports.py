@@ -41,6 +41,7 @@ _TARGET_TIMINGS_BY_PYTHON_VERSION = {
         else 250
     ),
 }
+_TARGET_TIMINGS_BY_PYTHON_VERSION["3.13"] = _TARGET_TIMINGS_BY_PYTHON_VERSION["3.12"]
 
 
 @pytest.mark.internal
