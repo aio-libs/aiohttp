@@ -227,6 +227,8 @@ class AbstractStreamWriter(ABC):
 class AbstractAccessLogger(ABC):
     """Abstract writer to access log."""
 
+    __slots__ = ("logger", "log_format")
+
     def __init__(self, logger: logging.Logger, log_format: str) -> None:
         self.logger = logger
         self.log_format = log_format
