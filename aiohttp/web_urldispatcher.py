@@ -230,7 +230,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
 
     __slots__ = ("_route", "_apps", "_current_app", "_frozen")
 
-    def __init__(self, match_dict: Dict[str, str], route: AbstractRoute):
+    def __init__(self, match_dict: Dict[str, str], route: AbstractRoute) -> None:
         super().__init__(match_dict)
         self._route = route
         self._apps: List[Application] = []
