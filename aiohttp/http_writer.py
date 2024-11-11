@@ -172,8 +172,9 @@ class StreamWriter(AbstractStreamWriter):
           await w.write(data)
           await w.drain()
         """
-        if self._protocol.transport is not None:
-            await self._protocol._drain_helper()
+        protocol = self._protocol
+        if protocol.transport is not None and protocol._paused:
+            await protocol._drain_helper()
 
 
 def _safe_header(string: str) -> str:
