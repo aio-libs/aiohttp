@@ -71,7 +71,7 @@ class WebSocketDataQueue:
 
     def set_exception(
         self,
-        exc: BaseException,
+        exc: "BaseException",
         exc_cause: builtins.BaseException = _EXC_SENTINEL,
     ) -> None:
         self._eof = True
