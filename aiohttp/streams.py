@@ -10,9 +10,7 @@ from typing import (
     List,
     Optional,
     Tuple,
-    Type,
     TypeVar,
-    Union,
 )
 
 from .base_protocol import BaseProtocol
@@ -623,8 +621,8 @@ class DataQueue(Generic[_T]):
         self._loop = loop
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Union[Type[BaseException], BaseException, None] = None
-        self._buffer: Deque[_T] = collections.deque()
+        self._exception: Optional[BaseException] = None
+        self._buffer: Deque[Tuple[_T, int]] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -649,8 +647,8 @@ class DataQueue(Generic[_T]):
             self._waiter = None
             set_exception(waiter, exc, exc_cause)
 
-    def feed_data(self, data: _T) -> None:
-        self._buffer.append(data)
+    def feed_data(self, data: _T, size: int = 0) -> None:
+        self._buffer.append((data, size))
         if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
