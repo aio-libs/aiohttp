@@ -3,7 +3,7 @@
 import asyncio
 import builtins
 from collections import deque
-from typing import Deque, Final, List, Optional, Set, Tuple, Type, Union
+from typing import Deque, Final, List, Optional, Set, Tuple, Union
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
@@ -61,17 +61,17 @@ class WebSocketDataQueue:
         self._loop = loop
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Union[Type[BaseException], BaseException, None] = None
+        self._exception: Union[BaseException, None] = None
         self._buffer: Deque[Tuple[WSMessage, int]] = deque()
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
 
-    def exception(self) -> Optional[Union[BaseException]]:
+    def exception(self) -> Optional[BaseException]:
         return self._exception
 
     def set_exception(
         self,
-        exc: Union[BaseException],
+        exc: BaseException,
         exc_cause: builtins.BaseException = _EXC_SENTINEL,
     ) -> None:
         self._eof = True
