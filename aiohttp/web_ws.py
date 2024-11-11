@@ -125,7 +125,7 @@ class WebSocketResponse(StreamResponse):
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb: Optional[asyncio.TimerHandle] = None
-        self._compress = compress
+        self._compress: Union[bool, int] = compress
         self._max_msg_size = max_msg_size
         self._ping_task: Optional[asyncio.Task[None]] = None
         self._writer_limit = writer_limit
