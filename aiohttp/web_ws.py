@@ -358,7 +358,9 @@ class WebSocketResponse(StreamResponse):
         assert loop is not None
         self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
         request.protocol.set_parser(
-            WebSocketReader(self._reader, self._max_msg_size, compress=self._compress)
+            WebSocketReader(
+                self._reader, self._max_msg_size, compress=bool(self._compress)
+            )
         )
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
