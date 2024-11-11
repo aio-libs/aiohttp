@@ -85,7 +85,7 @@ class BaseProtocol(asyncio.Protocol):
             )
 
     async def _drain_helper(self) -> None:
-        if not self.connected:
+        if self.transport is None:
             raise ClientConnectionResetError("Connection lost")
         if not self._paused:
             return
