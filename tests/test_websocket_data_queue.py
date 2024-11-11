@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp._websocket.models import WSMessageBinary
+from aiohttp._websocket.models import WSMessage, WSMsgType
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 
@@ -24,12 +24,12 @@ class TestWebSocketDataQueue:
     def test_feed_pause(self, buffer: WebSocketDataQueue) -> None:
         buffer._protocol._reading_paused = False
         for _ in range(3):
-            buffer.feed_data(WSMessageBinary(b"x", size=1))
+            buffer.feed_data(WSMessage(data=b"x", type=WSMsgType.BINARY, extra=""), 1)
 
         assert buffer._protocol.pause_reading.called  # type: ignore[attr-defined]
 
     async def test_resume_on_read(self, buffer: WebSocketDataQueue) -> None:
-        buffer.feed_data(WSMessageBinary(b"x", size=1))
+        buffer.feed_data(WSMessage(data=b"x", type=WSMsgType.BINARY, extra=""), 1)
 
         buffer._protocol._reading_paused = True
         await buffer.read()
