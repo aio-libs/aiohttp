@@ -242,7 +242,7 @@ class WebSocketResponse(StreamResponse):
 
     def _handshake(
         self, request: BaseRequest
-    ) -> Tuple["CIMultiDict[str]", str, bool, bool]:
+    ) -> Tuple["CIMultiDict[str]", str, int, bool]:
         headers = request.headers
         if "websocket" != headers.get(hdrs.UPGRADE, "").lower().strip():
             raise HTTPBadRequest(
@@ -323,7 +323,7 @@ class WebSocketResponse(StreamResponse):
             protocol,
             compress,
             notakeover,
-        )  # type: ignore[return-value]
+        )
 
     def _pre_start(self, request: BaseRequest) -> Tuple[str, WebSocketWriter]:
         self._loop = request._loop
@@ -333,7 +333,7 @@ class WebSocketResponse(StreamResponse):
         self.set_status(101)
         self.headers.update(headers)
         self.force_close()
-        self._compress = compress
+        self._compress = bool(compress)
         transport = request._protocol.transport
         assert transport is not None
         writer = WebSocketWriter(
