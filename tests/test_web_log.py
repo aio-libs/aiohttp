@@ -297,11 +297,13 @@ async def test_logger_does_not_log_when_not_enabled(
         return web.Response()
 
     class Logger(AbstractAccessLogger):
+
         def log(
             self, request: web.BaseRequest, response: web.StreamResponse, time: float
         ) -> None:
-            self.logger.info("This should not be logged")
+            self.logger.critical("This should not be logged")
 
+        @property
         def enabled(self) -> bool:
             return False
 
