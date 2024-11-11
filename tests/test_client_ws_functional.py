@@ -14,6 +14,7 @@ from aiohttp import (
     hdrs,
     web,
 )
+from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
 from aiohttp.pytest_plugin import AiohttpClient
@@ -24,8 +25,12 @@ else:
     import async_timeout
 
 
-async def test_send_recv_text(aiohttp_client) -> None:
-    async def handler(request):
+class PatchableWebSocketDataQueue(WebSocketDataQueue):
+    """A WebSocketDataQueue that can be patched."""
+
+
+async def test_send_recv_text(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
@@ -870,7 +875,10 @@ async def test_heartbeat_no_pong_concurrent_receive(
     async def handler(request):
         nonlocal ping_received
         ws = web.WebSocketResponse(autoping=False)
-        await ws.prepare(request)
+        with mock.patch(
+            "aiohttp.web_ws.WebSocketDataQueue", PatchableWebSocketDataQueue
+        ):
+            await ws.prepare(request)
         msg = await ws.receive()
         ping_received = msg.type is aiohttp.WSMsgType.PING
         ws._reader.feed_eof = lambda: None
@@ -879,17 +887,18 @@ async def test_heartbeat_no_pong_concurrent_receive(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    client = await aiohttp_client(app)
-    resp = await client.ws_connect("/", heartbeat=0.1)
-    resp._reader.feed_eof = lambda: None
-
-    # Connection should be closed roughly after 1.5x heartbeat.
-    msg = await resp.receive(5.0)
-    assert ping_received
-    assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
-    assert msg
-    assert msg.type is WSMsgType.ERROR
-    assert isinstance(msg.data, ServerTimeoutError)
+    with mock.patch("aiohttp.client.WebSocketDataQueue", PatchableWebSocketDataQueue):
+        client = await aiohttp_client(app)
+        resp = await client.ws_connect("/", heartbeat=0.1)
+    with mock.patch.object(
+        resp._reader, "feed_eof", autospec=True, spec_set=True, return_value=None
+    ):
+        # Connection should be closed roughly after 1.5x heartbeat.
+        msg = await resp.receive(5.0)
+        assert ping_received
+        assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
+        assert msg.type is WSMsgType.ERROR
+        assert isinstance(msg.data, ServerTimeoutError)
 
 
 async def test_close_websocket_while_ping_inflight(

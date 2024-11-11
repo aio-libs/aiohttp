@@ -258,7 +258,7 @@ async def test_raise_writer_limit(make_request) -> None:
     assert ws._reader is not None
     assert ws._writer is not None
     assert ws._writer._limit == 1234567
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
 
@@ -279,7 +279,7 @@ async def test_recv_str_closed(make_request) -> None:
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
     with pytest.raises(
@@ -305,7 +305,7 @@ async def test_recv_bytes_closed(make_request) -> None:
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
     with pytest.raises(
@@ -331,7 +331,7 @@ async def test_send_frame_closed(make_request) -> None:
     ws = WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
     with pytest.raises(ConnectionError):

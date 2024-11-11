@@ -37,6 +37,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
 from . import hdrs, http, payload
+from ._websocket.reader import WebSocketDataQueue
 from .abc import AbstractCookieJar
 from .client_exceptions import (
     ClientConnectionError,
@@ -100,8 +101,7 @@ from .helpers import (
     strip_auth_from_url,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
-from .http_websocket import WSHandshakeError, WSMessage, ws_ext_gen, ws_ext_parse
-from .streams import FlowControlDataQueue
+from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
 
@@ -1098,9 +1098,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader: FlowControlDataQueue[WSMessage] = FlowControlDataQueue(
-                conn_proto, 2**16, loop=self._loop
-            )
+            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
                 conn_proto,
