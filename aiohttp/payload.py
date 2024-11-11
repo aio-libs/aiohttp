@@ -97,6 +97,8 @@ class PayloadRegistry:
     note: we need zope.interface for more efficient adapter search
     """
 
+    __slots__ = ("_first", "_normal", "_last", "_normal_lookup")
+
     def __init__(self) -> None:
         self._first: List[_PayloadRegistryItem] = []
         self._normal: List[_PayloadRegistryItem] = []
