@@ -88,6 +88,7 @@ def test_send_client_request_one_hundred(
 
         def __init__(self) -> None:
             self.transport = MockTransport()
+            self._paused = False
 
         async def _drain_helper(self) -> None:
             """Swallow drain."""
