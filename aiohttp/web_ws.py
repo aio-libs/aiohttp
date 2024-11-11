@@ -4,7 +4,7 @@ import binascii
 import hashlib
 import json
 import sys
-from typing import Any, Final, Iterable, Optional, Tuple, cast
+from typing import Any, Final, Iterable, Optional, Tuple, Union, cast
 
 import attr
 from multidict import CIMultiDict
@@ -99,7 +99,7 @@ class WebSocketResponse(StreamResponse):
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb: Optional[asyncio.TimerHandle] = None
-        self._compress = compress
+        self._compress: Union[bool, int] = compress
         self._max_msg_size = max_msg_size
         self._ping_task: Optional[asyncio.Task[None]] = None
         self._writer_limit = writer_limit
@@ -216,7 +216,7 @@ class WebSocketResponse(StreamResponse):
 
     def _handshake(
         self, request: BaseRequest
-    ) -> Tuple["CIMultiDict[str]", str, bool, bool]:
+    ) -> Tuple["CIMultiDict[str]", Optional[str], int, bool]:
         headers = request.headers
         if "websocket" != headers.get(hdrs.UPGRADE, "").lower().strip():
             raise HTTPBadRequest(
@@ -234,7 +234,7 @@ class WebSocketResponse(StreamResponse):
             )
 
         # find common sub-protocol between client and server
-        protocol = None
+        protocol: Optional[str] = None
         if hdrs.SEC_WEBSOCKET_PROTOCOL in headers:
             req_protocols = [
                 str(proto.strip())
@@ -297,9 +297,9 @@ class WebSocketResponse(StreamResponse):
             protocol,
             compress,
             notakeover,
-        )  # type: ignore[return-value]
+        )
 
-    def _pre_start(self, request: BaseRequest) -> Tuple[str, WebSocketWriter]:
+    def _pre_start(self, request: BaseRequest) -> Tuple[Optional[str], WebSocketWriter]:
         self._loop = request._loop
 
         headers, protocol, compress, notakeover = self._handshake(request)
@@ -321,7 +321,7 @@ class WebSocketResponse(StreamResponse):
         return protocol, writer
 
     def _post_start(
-        self, request: BaseRequest, protocol: str, writer: WebSocketWriter
+        self, request: BaseRequest, protocol: Optional[str], writer: WebSocketWriter
     ) -> None:
         self._ws_protocol = protocol
         self._writer = writer
@@ -332,7 +332,9 @@ class WebSocketResponse(StreamResponse):
         assert loop is not None
         self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
         request.protocol.set_parser(
-            WebSocketReader(self._reader, self._max_msg_size, compress=self._compress)
+            WebSocketReader(
+                self._reader, self._max_msg_size, compress=bool(self._compress)
+            )
         )
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
@@ -360,7 +362,7 @@ class WebSocketResponse(StreamResponse):
         return self._ws_protocol
 
     @property
-    def compress(self) -> bool:
+    def compress(self) -> Union[int, bool]:
         return self._compress
 
     def get_extra_info(self, name: str, default: Any = None) -> Any:
