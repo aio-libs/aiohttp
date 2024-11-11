@@ -43,6 +43,8 @@ EMPTY_FRAME = (False, b"")
 
 TUPLE_NEW = tuple.__new__
 
+int_ = int
+
 
 class WebSocketDataQueue:
     """WebSocketDataQueue resumes and pauses an underlying stream.
@@ -89,8 +91,7 @@ class WebSocketDataQueue:
         self._eof = True
         self._release_waiter()
 
-    def feed_data(self, data: "WSMessage", size: int) -> None:
-        size = data.size
+    def feed_data(self, data: "WSMessage", size: "int_") -> None:
         self._size += size
         self._put_buffer((data, size))
         self._release_waiter()

@@ -18,6 +18,7 @@ from aiohttp._websocket.helpers import (
     websocket_mask,
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
+from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
 from aiohttp.http_websocket import WebSocketReader
@@ -92,28 +93,26 @@ def protocol(loop: asyncio.AbstractEventLoop) -> BaseProtocol:
 
 
 @pytest.fixture()
-def out(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
-) -> aiohttp.FlowControlDataQueue[WSMessage]:
-    return aiohttp.FlowControlDataQueue(protocol, 2**16, loop=loop)
+def out(loop: asyncio.AbstractEventLoop) -> WebSocketDataQueue:
+    return WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
 
 
 @pytest.fixture()
 def out_low_limit(
     loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
-) -> aiohttp.FlowControlDataQueue[WSMessage]:
-    return aiohttp.FlowControlDataQueue(protocol, 16, loop=loop)
+) -> WebSocketDataQueue:
+    return WebSocketDataQueue(protocol, 16, loop=loop)
 
 
 @pytest.fixture()
 def parser_low_limit(
-    out_low_limit: aiohttp.FlowControlDataQueue[WSMessage],
+    out_low_limit: WebSocketDataQueue,
 ) -> PatchableWebSocketReader:
     return PatchableWebSocketReader(out_low_limit, 4 * 1024 * 1024)
 
 
 @pytest.fixture()
-def parser(out: aiohttp.FlowControlDataQueue[WSMessage]) -> PatchableWebSocketReader:
+def parser(out: WebSocketDataQueue) -> PatchableWebSocketReader:
     return PatchableWebSocketReader(out, 4 * 1024 * 1024)
 
 
@@ -598,7 +597,7 @@ class TestWebSocketError:
 
 def test_flow_control_binary(
     protocol: BaseProtocol,
-    out_low_limit: aiohttp.FlowControlDataQueue[WSMessage],
+    out_low_limit: WebSocketDataQueue,
     parser_low_limit: WebSocketReader,
 ) -> None:
     large_payload = b"b" * (1 + 16 * 2)
@@ -615,7 +614,7 @@ def test_flow_control_binary(
 
 def test_flow_control_multi_byte_text(
     protocol: BaseProtocol,
-    out_low_limit: aiohttp.FlowControlDataQueue[WSMessage],
+    out_low_limit: WebSocketDataQueue,
     parser_low_limit: WebSocketReader,
 ) -> None:
     large_payload_text = "𒀁" * (1 + 16 * 2)
