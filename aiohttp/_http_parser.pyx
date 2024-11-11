@@ -377,8 +377,6 @@ cdef class HttpParser:
         self._last_error = None
         self._limit = limit
 
-        self._headers_add = self._headers.add
-
     cdef _process_header(self):
         cdef str value
         if self._raw_name:
@@ -676,6 +674,7 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except -1:
 
     pyparser._started = True
     pyparser._headers = CIMultiDict()
+    pyparser._headers_add = pyparser._headers.add
     pyparser._raw_headers = []
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
