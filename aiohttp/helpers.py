@@ -750,7 +750,7 @@ _EXC_SENTINEL = BaseException()
 class ErrorableProtocol(Protocol):
     def set_exception(
         self,
-        exc: BaseException,
+        exc: Union[Type[BaseException], BaseException],
         exc_cause: BaseException = ...,
     ) -> None: ...  # pragma: no cover
 
