@@ -10,7 +10,7 @@
 
 .. towncrier release notes start
 
-3.11.0rc0 (2024-11-10)
+3.11.0rc1 (2024-11-10)
 ======================
 
 Bug fixes
@@ -168,7 +168,7 @@ Features
 
 
   *Related issues and pull requests on GitHub:*
-  :issue:`9543`, :issue:`9554`, :issue:`9556`, :issue:`9558`, :issue:`9636`, :issue:`9649`.
+  :issue:`9543`, :issue:`9554`, :issue:`9556`, :issue:`9558`, :issue:`9636`, :issue:`9649`, :issue:`9781`.
 
 
 
@@ -235,6 +235,14 @@ Removals and backward incompatible breaking changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9600`.
+
+
+
+- ``FlowControlDataQueue`` has been replaced with the ``WebSocketDataQueue`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9685`.
 
 
 
