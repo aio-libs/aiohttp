@@ -242,7 +242,7 @@ class WebSocketResponse(StreamResponse):
 
     def _handshake(
         self, request: BaseRequest
-    ) -> Tuple["CIMultiDict[str]", str, int, bool]:
+    ) -> Tuple["CIMultiDict[str]", Optional[str], int, bool]:
         headers = request.headers
         if "websocket" != headers.get(hdrs.UPGRADE, "").lower().strip():
             raise HTTPBadRequest(
@@ -260,7 +260,7 @@ class WebSocketResponse(StreamResponse):
             )
 
         # find common sub-protocol between client and server
-        protocol = None
+        protocol: Optional[str] = None
         if hdrs.SEC_WEBSOCKET_PROTOCOL in headers:
             req_protocols = [
                 str(proto.strip())
@@ -325,7 +325,7 @@ class WebSocketResponse(StreamResponse):
             notakeover,
         )
 
-    def _pre_start(self, request: BaseRequest) -> Tuple[str, WebSocketWriter]:
+    def _pre_start(self, request: BaseRequest) -> Tuple[Optional[str], WebSocketWriter]:
         self._loop = request._loop
 
         headers, protocol, compress, notakeover = self._handshake(request)
@@ -347,7 +347,7 @@ class WebSocketResponse(StreamResponse):
         return protocol, writer
 
     def _post_start(
-        self, request: BaseRequest, protocol: str, writer: WebSocketWriter
+        self, request: BaseRequest, protocol: Optional[str], writer: WebSocketWriter
     ) -> None:
         self._ws_protocol = protocol
         self._writer = writer
