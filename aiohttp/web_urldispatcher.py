@@ -227,7 +227,10 @@ class AbstractRoute(abc.ABC):
 
 
 class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
-    def __init__(self, match_dict: Dict[str, str], route: AbstractRoute):
+
+    __slots__ = ("_route", "_apps", "_current_app", "_frozen")
+
+    def __init__(self, match_dict: Dict[str, str], route: AbstractRoute) -> None:
         super().__init__(match_dict)
         self._route = route
         self._apps: List[Application] = []
@@ -289,6 +292,9 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
 
 
 class MatchInfoError(UrlMappingMatchInfo):
+
+    __slots__ = ("_exception",)
+
     def __init__(self, http_exception: HTTPException) -> None:
         self._exception = http_exception
         super().__init__({}, SystemRoute(self._exception))
