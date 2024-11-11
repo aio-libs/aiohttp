@@ -140,7 +140,7 @@ If your logging needs to perform IO you can instead inherit from
                                     f'done in {time}s: {response.status}')
 
       @property
-      def enabled(self):
+      def enabled(self) -> bool:
           """Return True if logger is enabled.
 
           Override this property if logging is disabled to avoid the
