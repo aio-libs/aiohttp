@@ -296,6 +296,7 @@ cdef class HttpParser:
         str     _path
         str     _reason
         object  _headers
+        object  _headers_add
         list    _raw_headers
         bint    _upgraded
         list    _messages
@@ -376,7 +377,10 @@ cdef class HttpParser:
         self._last_error = None
         self._limit = limit
 
+        self._headers_add = self._headers.add
+
     cdef _process_header(self):
+        cdef str value
         if self._raw_name:
             raw_name = bytes(self._raw_name)
             raw_value = bytes(self._raw_value)
@@ -384,7 +388,7 @@ cdef class HttpParser:
             name = find_header(raw_name)
             value = raw_value.decode('utf-8', 'surrogateescape')
 
-            self._headers.add(name, value)
+            self._headers_add(name, value)
 
             if name is CONTENT_ENCODING:
                 self._content_encoding = value
