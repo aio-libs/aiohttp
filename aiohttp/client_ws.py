@@ -174,7 +174,7 @@ class ClientWebSocketResponse:
         self._exception = exc
         self._response.close()
         if self._waiting and not self._closing:
-            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
+            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None), 0)
 
     def _set_closed(self) -> None:
         """Set the connection to closed.
