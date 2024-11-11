@@ -93,7 +93,6 @@ from .streams import (
     EMPTY_PAYLOAD as EMPTY_PAYLOAD,
     DataQueue as DataQueue,
     EofStream as EofStream,
-    FlowControlDataQueue as FlowControlDataQueue,
     StreamReader as StreamReader,
 )
 from .tracing import (
@@ -216,7 +215,6 @@ __all__: Tuple[str, ...] = (
     "DataQueue",
     "EMPTY_PAYLOAD",
     "EofStream",
-    "FlowControlDataQueue",
     "StreamReader",
     # tracing
     "TraceConfig",

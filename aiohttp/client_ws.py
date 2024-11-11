@@ -7,6 +7,7 @@ from typing import Any, Optional, Type, cast
 
 import attr
 
+from ._websocket.reader import WebSocketDataQueue
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
@@ -19,7 +20,7 @@ from .http import (
     WSMsgType,
 )
 from .http_websocket import _INTERNAL_RECEIVE_TYPES, WebSocketWriter
-from .streams import EofStream, FlowControlDataQueue
+from .streams import EofStream
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
@@ -45,7 +46,7 @@ DEFAULT_WS_CLIENT_TIMEOUT = ClientWSTimeout(ws_receive=None, ws_close=10.0)
 class ClientWebSocketResponse:
     def __init__(
         self,
-        reader: "FlowControlDataQueue[WSMessage]",
+        reader: WebSocketDataQueue,
         writer: WebSocketWriter,
         protocol: Optional[str],
         response: ClientResponse,
@@ -173,7 +174,7 @@ class ClientWebSocketResponse:
         self._exception = exc
         self._response.close()
         if self._waiting and not self._closing:
-            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
+            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None), 0)
 
     def _set_closed(self) -> None:
         """Set the connection to closed.

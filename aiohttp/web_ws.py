@@ -10,6 +10,7 @@ import attr
 from multidict import CIMultiDict
 
 from . import hdrs
+from ._websocket.reader import WebSocketDataQueue
 from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
 from .client_exceptions import WSMessageTypeError
@@ -29,7 +30,7 @@ from .http import (
 )
 from .http_websocket import _INTERNAL_RECEIVE_TYPES
 from .log import ws_logger
-from .streams import EofStream, FlowControlDataQueue
+from .streams import EofStream
 from .typedefs import JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
@@ -79,7 +80,7 @@ class WebSocketResponse(StreamResponse):
         self._protocols = protocols
         self._ws_protocol: Optional[str] = None
         self._writer: Optional[WebSocketWriter] = None
-        self._reader: Optional[FlowControlDataQueue[WSMessage]] = None
+        self._reader: Optional[WebSocketDataQueue] = None
         self._closed = False
         self._closing = False
         self._conn_lost = 0
@@ -191,7 +192,7 @@ class WebSocketResponse(StreamResponse):
         self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
         self._exception = exc
         if self._waiting and not self._closing and self._reader is not None:
-            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None))
+            self._reader.feed_data(WSMessage(WSMsgType.ERROR, exc, None), 0)
 
     def _set_closed(self) -> None:
         """Set the connection to closed.
@@ -329,7 +330,7 @@ class WebSocketResponse(StreamResponse):
 
         loop = self._loop
         assert loop is not None
-        self._reader = FlowControlDataQueue(request._protocol, 2**16, loop=loop)
+        self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
         request.protocol.set_parser(
             WebSocketReader(self._reader, self._max_msg_size, compress=self._compress)
         )
@@ -464,7 +465,7 @@ class WebSocketResponse(StreamResponse):
             assert self._loop is not None
             assert self._close_wait is None
             self._close_wait = self._loop.create_future()
-            reader.feed_data(WS_CLOSING_MESSAGE)
+            reader.feed_data(WS_CLOSING_MESSAGE, 0)
             await self._close_wait
 
         if self._closing:
