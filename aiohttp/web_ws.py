@@ -5,7 +5,7 @@ import dataclasses
 import hashlib
 import json
 import sys
-from typing import Any, Final, Iterable, Optional, Tuple
+from typing import Any, Final, Iterable, Optional, Tuple, Union
 
 from multidict import CIMultiDict
 
@@ -333,7 +333,7 @@ class WebSocketResponse(StreamResponse):
         self.set_status(101)
         self.headers.update(headers)
         self.force_close()
-        self._compress = bool(compress)
+        self._compress = compress
         transport = request._protocol.transport
         assert transport is not None
         writer = WebSocketWriter(
@@ -386,7 +386,7 @@ class WebSocketResponse(StreamResponse):
         return self._ws_protocol
 
     @property
-    def compress(self) -> bool:
+    def compress(self) -> Union[int, bool]:
         return self._compress
 
     def get_extra_info(self, name: str, default: Any = None) -> Any:
