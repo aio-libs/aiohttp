@@ -182,7 +182,7 @@ Abstract Access Logger
 
       :param float time: Time taken to serve the request.
 
-   .. method:: enabled
+   .. attribute:: enabled
 
         Return True if logger is enabled.
 
