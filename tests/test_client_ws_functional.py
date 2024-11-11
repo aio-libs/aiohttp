@@ -1,4 +1,5 @@
 import asyncio
+import json
 import sys
 from typing import NoReturn, Optional
 from unittest import mock
@@ -14,6 +15,7 @@ from aiohttp import (
     hdrs,
     web,
 )
+from aiohttp._websocket.models import WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
@@ -182,6 +184,24 @@ async def test_send_recv_json(aiohttp_client: AiohttpClient) -> None:
 
     data = await resp.receive_json()
     assert data["response"] == payload["request"]
+    await resp.close()
+
+
+async def test_send_recv_json_bytes(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.send_bytes(json.dumps({"response": "x"}).encode())
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    data = await resp.receive()
+    assert isinstance(data, WSMessageBinary)
+    assert data.json() == {"response": "x"}
     await resp.close()
 
 
