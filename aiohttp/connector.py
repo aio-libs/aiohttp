@@ -698,10 +698,6 @@ class BaseConnector:
         if self._force_close or should_close or protocol.should_close:
             transport = protocol.transport
             protocol.close()
-            # TODO: Remove once fixed: https://bugs.python.org/issue39951
-            # See PR #6321
-            set_result(protocol.closed, None)
-
             if key.is_ssl and not self._cleanup_closed_disabled:
                 self._cleanup_closed_transports.append(transport)
             return
