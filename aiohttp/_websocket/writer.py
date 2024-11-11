@@ -155,7 +155,8 @@ class WebSocketWriter:
         # if the writer is not paused.
         if self._output_size > self._limit:
             self._output_size = 0
-            await self.protocol._drain_helper()
+            if self.protocol.writing_paused:
+                await self.protocol._drain_helper()
 
     def _make_compress_obj(self, compress: int) -> ZLibCompressor:
         return ZLibCompressor(
