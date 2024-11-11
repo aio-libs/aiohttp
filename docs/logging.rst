@@ -139,6 +139,15 @@ If your logging needs to perform IO you can instead inherit from
                                     f'"{request.method} {request.path} '
                                     f'done in {time}s: {response.status}')
 
+      @property
+      def enabled(self):
+          """Return True if logger is enabled.
+
+          Override this property if logging is disabled to avoid the
+          overhead of calculating details to feed the logger.
+          """
+          return True
+
 
 This also allows access to the results of coroutines on the ``request`` and
 ``response``, e.g. ``request.text()``.
