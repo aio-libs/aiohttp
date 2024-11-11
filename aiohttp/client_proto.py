@@ -54,14 +54,14 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
     @property
     def should_close(self) -> bool:
-        return (
+        return bool(
             self._should_close
             or (self._payload is not None and not self._payload.is_eof())
             or self._upgraded
             or self._exception is not None
             or self._payload_parser is not None
-            or bool(self._buffer)
-            or bool(self._tail)
+            or self._buffer
+            or self._tail
         )
 
     def close(self) -> None:
