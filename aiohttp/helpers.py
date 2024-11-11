@@ -756,8 +756,8 @@ class ErrorableProtocol(Protocol):
 
 
 def set_exception(
-    fut: "asyncio.Future[_T] | ErrorableProtocol",
-    exc: BaseException,
+    fut: Union["asyncio.Future[_T]", ErrorableProtocol],
+    exc: Union[Type[BaseException], BaseException],
     exc_cause: BaseException = _EXC_SENTINEL,
 ) -> None:
     """Set future exception.
