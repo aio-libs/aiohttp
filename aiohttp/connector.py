@@ -702,10 +702,7 @@ class BaseConnector:
 
         self._release_acquired(key, protocol)
 
-        if self._force_close:
-            should_close = True
-
-        if should_close or protocol.should_close:
+        if self._force_close or should_close or protocol.should_close:
             transport = protocol.transport
             protocol.close()
 
