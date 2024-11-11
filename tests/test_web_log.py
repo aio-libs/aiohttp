@@ -301,7 +301,7 @@ async def test_logger_does_not_log_when_not_enabled(
         def log(
             self, request: web.BaseRequest, response: web.StreamResponse, time: float
         ) -> None:
-            assert False, "This should not be called"
+            self.logger.critical("This should not be logged")  # pragma: no cover
 
         @property
         def enabled(self) -> bool:
@@ -313,3 +313,4 @@ async def test_logger_does_not_log_when_not_enabled(
     client = await aiohttp_client(server)
     resp = await client.get("/")
     assert 200 == resp.status
+    assert "This should not be logged" not in caplog.text
