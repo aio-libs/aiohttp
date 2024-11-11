@@ -43,7 +43,7 @@ EMPTY_FRAME = (False, b"")
 
 TUPLE_NEW = tuple.__new__
 
-int_ = int
+int_ = int  # Prevent Cython from converting to PyInt
 
 
 class WebSocketDataQueue:
