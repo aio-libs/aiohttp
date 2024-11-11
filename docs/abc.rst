@@ -182,6 +182,15 @@ Abstract Access Logger
 
       :param float time: Time taken to serve the request.
 
+   .. attr:: enabled
+
+        Return True if logger is enabled.
+
+        Override this property if logging is disabled to avoid the
+        overhead of calculating details to feed the logger.
+
+        This property may be omitted if logging is always enabled.
+
 
 Abstract Resolver
 -------------------------------
