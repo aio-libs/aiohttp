@@ -225,7 +225,7 @@ def test_parse_frame_header_payload_size(out, parser) -> None:
     ids=["bytes", "bytearray", "memoryview"],
 )
 def test_ping_frame(
-    out: aiohttp.DataQueue[WSMessage],
+    out: WebSocketDataQueue,
     parser: WebSocketReader,
     data: Union[bytes, bytearray, memoryview],
 ) -> None:
@@ -545,8 +545,10 @@ def test_parse_compress_error_frame(parser) -> None:
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
-async def test_parse_no_compress_frame_single(loop: asyncio.AbstractEventLoop) -> None:
-    parser_no_compress = WebSocketReader(aiohttp.DataQueue(loop), 0, compress=False)
+async def test_parse_no_compress_frame_single(
+    loop: asyncio.AbstractEventLoop, out: WebSocketDataQueue
+) -> None:
+    parser_no_compress = WebSocketReader(out, 0, compress=False)
     with pytest.raises(WebSocketError) as ctx:
         parser_no_compress.parse_frame(struct.pack("!BB", 0b11000001, 0b00000001))
         parser_no_compress.parse_frame(b"1")
