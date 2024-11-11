@@ -274,8 +274,7 @@ class WebSocketReader:
                         len(payload_merged),
                     )
             elif opcode == OP_CODE_CLOSE:
-                payload_len = len(payload)
-                if payload_len >= 2:
+                if len(payload) >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
                     if close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES:
                         raise WebSocketError(
