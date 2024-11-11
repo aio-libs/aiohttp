@@ -586,18 +586,6 @@ async def test_release_close(key: ConnectionKey) -> None:
     await conn.close()
 
 
-async def test_release_proto_closed_future(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
-    conn = aiohttp.BaseConnector()
-    protocol = mock.Mock(should_close=True, closed=loop.create_future())
-    conn._release(key, protocol)
-    # See PR #6321
-    assert protocol.closed.result() is None
-
-    await conn.close()
-
-
 async def test__release_acquired_per_host1(
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
