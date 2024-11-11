@@ -59,6 +59,9 @@ class AbstractRouter(ABC):
 
 
 class AbstractMatchInfo(ABC):
+
+    __slots__ = ()
+
     @property  # pragma: no branch
     @abstractmethod
     def handler(self) -> Callable[[Request], Awaitable[StreamResponse]]:
