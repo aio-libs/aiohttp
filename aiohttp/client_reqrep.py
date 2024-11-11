@@ -552,16 +552,13 @@ class ClientRequest:
         self.proxy_headers = proxy_headers
 
     def keep_alive(self) -> bool:
-        if self.version < HttpVersion10:
-            # keep alive not supported at all
-            return False
+        if self.version >= HttpVersion11:
+            return self.headers.get(hdrs.CONNECTION) != "close"
         if self.version == HttpVersion10:
             # no headers means we close for Http 1.0
             return self.headers.get(hdrs.CONNECTION) == "keep-alive"
-        elif self.headers.get(hdrs.CONNECTION) == "close":
-            return False
-
-        return True
+        # keep alive not supported at all
+        return False
 
     async def write_bytes(
         self, writer: AbstractStreamWriter, conn: "Connection"
