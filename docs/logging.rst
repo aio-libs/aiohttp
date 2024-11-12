@@ -115,6 +115,16 @@ Example of a drop-in replacement for the default access logger::
                            f'"{request.method} {request.path} '
                            f'done in {time}s: {response.status}')
 
+      @property
+      def enabled(self):
+          """Return True if logger is enabled.
+
+          Override this property if logging is disabled to avoid the
+          overhead of calculating details to feed the logger.
+
+          This property may be omitted if logging is always enabled.
+          """
+          return self.logger.isEnabledFor(logging.INFO)
 
 .. _gunicorn-accesslog:
 

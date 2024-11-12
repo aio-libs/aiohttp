@@ -438,7 +438,7 @@ class RequestHandler(BaseProtocol):
     def log_access(
         self, request: BaseRequest, response: StreamResponse, time: float
     ) -> None:
-        if self.access_logger is not None:
+        if self.access_logger is not None and self.access_logger.enabled:
             self.access_logger.log(request, response, self._loop.time() - time)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
