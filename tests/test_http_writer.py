@@ -226,13 +226,21 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
     msg = http.StreamWriter(protocol, loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
+
     await msg.write(b"data" * 4096)
-    await msg.write_eof(b"data" * 4096)
+    # This payload compresses poorly to ~256KiB.
+    payload = (
+        bytes(range(0, 256))
+        + bytes(range(255, 0, -1))
+        + bytes(range(0, 128))
+        + bytes(range(255, 0, -1))
+    ) * 512
+    await msg.write_eof(payload)
 
     chunks = [c[1][0][1] for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
     assert all(chunks)
     content = b"".join(chunks)
-    assert zlib.decompress(content) == b"data" * 8192
+    assert zlib.decompress(content) == (b"data" * 4096) + payload
 
 
 async def test_write_payload_deflate_compression_chunked_connection_lost(
