@@ -40,7 +40,7 @@ def test_one_hundred_get_requests_with_payload(
 ) -> None:
     """Benchmark 100 GET requests with a payload."""
     message_count = 100
-    payload = b"any" * 1024
+    payload = b"a" * 16384
 
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=payload)
