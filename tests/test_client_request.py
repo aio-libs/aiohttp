@@ -915,6 +915,25 @@ async def test_chunked2(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> Non
     resp.close()
 
 
+async def test_chunked_empty_body(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
+    """Ensure write_bytes is called even if the body is empty."""
+    req = ClientRequest(
+        "post",
+        URL("http://python.org/"),
+        chunked=True,
+        loop=loop,
+        data=b"",
+    )
+    with mock.patch.object(req, "write_bytes") as write_bytes:
+        resp = await req.send(conn)
+    assert "chunked" == req.headers["TRANSFER-ENCODING"]
+    assert write_bytes.called
+    await req.close()
+    resp.close()
+
+
 async def test_chunked_explicit(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
