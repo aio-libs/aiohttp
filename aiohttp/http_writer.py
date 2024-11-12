@@ -174,12 +174,16 @@ class StreamWriter(AbstractStreamWriter):
             chunks.append(flush_chunk)
 
             if self.chunked:
-                chunk_len_pre = f"{chunks_len:x}\r\n".encode("ascii")
-                self._writelines((chunk_len_pre, *chunks, b"\r\n0\r\n\r\n"))
-            elif chunks_len and len(chunks) == 1:
-                self._write(chunks[0])
+                if chunks_len:
+                    chunk_len_pre = f"{chunks_len:x}\r\n".encode("ascii")
+                    self._writelines((chunk_len_pre, *chunks, b"\r\n0\r\n\r\n"))
+                else:
+                    self._write(b"0\r\n\r\n")
             elif chunks_len:
-                self._writelines(chunks)
+                if len(chunks) == 1:
+                    self._write(chunks[0])
+                else:
+                    self._writelines(chunks)
         elif self.chunked:
             if chunk:
                 chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
