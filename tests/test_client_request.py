@@ -81,7 +81,7 @@ def protocol(
 
 
 @pytest.fixture
-def transport(buf: bytearray) -> Any:
+def transport(buf: bytearray) -> mock.Mock:
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
 
     def write(chunk: bytes) -> None:
@@ -94,7 +94,7 @@ def transport(buf: bytearray) -> Any:
     transport.write.side_effect = write
     transport.writelines.side_effect = writelines
     transport.is_closing.return_value = False
-    return transport
+    return transport  # type: ignore[no-any-return]
 
 
 @pytest.fixture
