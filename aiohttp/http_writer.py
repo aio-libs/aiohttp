@@ -169,9 +169,9 @@ class StreamWriter(AbstractStreamWriter):
                 chunks_len = len(compressed_chunk)
                 chunks.append(compressed_chunk)
 
-            if flush_chunk := self._compress.flush():
-                chunks_len += len(flush_chunk)
-                chunks.append(flush_chunk)
+            flush_chunk = self._compress.flush()
+            chunks_len += len(flush_chunk)
+            chunks.append(flush_chunk)
 
             if chunks_len:
                 if self.chunked:
