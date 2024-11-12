@@ -94,6 +94,7 @@ def transport(buf: bytearray) -> mock.Mock:
     transport.write.side_effect = write
     transport.writelines.side_effect = writelines
     transport.is_closing.return_value = False
+
     return transport  # type: ignore[no-any-return]
 
 
