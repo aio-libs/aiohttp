@@ -401,7 +401,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 if not block:
                     break
                 blocks.append(block)
-            return b"".join(blocks)
+            return b"".join(blocks) if len(blocks) > 1 else blocks[0] if blocks else b""
 
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
@@ -470,7 +470,7 @@ class StreamReader(AsyncStreamReaderMixin):
             blocks.append(block)
             n -= len(block)
 
-        return b"".join(blocks)
+        return b"".join(blocks) if len(blocks) > 1 else blocks[0] if blocks else b""
 
     def read_nowait(self, n: int = -1) -> bytes:
         # default was changed to be consistent with .read(-1)
@@ -527,7 +527,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 if n == 0:
                     break
 
-        return b"".join(chunks) if chunks else b""
+        return b"".join(chunks) if len(chunks) > 1 else chunks[0] if chunks else b""
 
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
