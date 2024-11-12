@@ -33,14 +33,14 @@ def test_one_hundred_simple_get_requests(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_2048_chunked_payload(
+def test_one_hundred_get_requests_with_1024_chunked_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a small payload of 2048 bytes."""
+    """Benchmark 100 GET requests with a small payload of 1024 bytes."""
     message_count = 100
-    payload = b"a" * 2048
+    payload = b"a" * 1024
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=payload)
@@ -62,14 +62,14 @@ def test_one_hundred_get_requests_with_2048_chunked_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_32768_chunked_payload(
+def test_one_hundred_get_requests_with_30000_chunked_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 32768 bytes."""
+    """Benchmark 100 GET requests with a payload of 30000 bytes."""
     message_count = 100
-    payload = b"a" * 32768
+    payload = b"a" * 30000
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=payload)
@@ -91,14 +91,14 @@ def test_one_hundred_get_requests_with_32768_chunked_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_1mib_chunked_payload(
+def test_one_hundred_get_requests_with_512kib_chunked_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 1MiB bytes."""
+    """Benchmark 100 GET requests with a payload of 512KiB."""
     message_count = 100
-    payload = b"a" * 1024**2
+    payload = b"a" * (2**19)
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=payload)
@@ -120,14 +120,14 @@ def test_one_hundred_get_requests_with_1mib_chunked_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_2048_content_length_payload(
+def test_one_hundred_get_requests_with_1024_content_length_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a small payload of 2048 bytes."""
+    """Benchmark 100 GET requests with a small payload of 1024 bytes."""
     message_count = 100
-    payload = b"a" * 2048
+    payload = b"a" * 1024
     headers = {hdrs.CONTENT_LENGTH: str(len(payload))}
 
     async def handler(request: web.Request) -> web.Response:
@@ -148,14 +148,14 @@ def test_one_hundred_get_requests_with_2048_content_length_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_32768_content_length_payload(
+def test_one_hundred_get_requests_with_30000_content_length_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 32768 bytes."""
+    """Benchmark 100 GET requests with a payload of 30000 bytes."""
     message_count = 100
-    payload = b"a" * 32768
+    payload = b"a" * 30000
     headers = {hdrs.CONTENT_LENGTH: str(len(payload))}
 
     async def handler(request: web.Request) -> web.Response:
@@ -176,14 +176,14 @@ def test_one_hundred_get_requests_with_32768_content_length_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_1mib_content_length_payload(
+def test_one_hundred_get_requests_with_512kib_content_length_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 1MiB bytes."""
+    """Benchmark 100 GET requests with a payload of 512KiB."""
     message_count = 100
-    payload = b"a" * 1024**2
+    payload = b"a" * (2**19)
     headers = {hdrs.CONTENT_LENGTH: str(len(payload))}
 
     async def handler(request: web.Request) -> web.Response:
