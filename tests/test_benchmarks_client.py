@@ -136,7 +136,7 @@ def test_get_request_with_251308_compressed_chunked_payload(
     )
 
     async def handler(request: web.Request) -> web.Response:
-        resp = web.Response(body=payload)
+        resp = web.Response(body=payload, zlib_executor_size=16384)
         resp.enable_compression()
         return resp
 
