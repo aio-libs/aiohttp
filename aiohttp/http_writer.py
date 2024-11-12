@@ -178,7 +178,7 @@ class StreamWriter(AbstractStreamWriter):
                 if self.chunked:
                     self._writelines(
                         (
-                            f"{len(chunks_len):x}\r\n".encode("ascii"),
+                            f"{chunks_len:x}\r\n".encode("ascii"),
                             *chunks,
                             b"\r\n0\r\n\r\n",
                         )
