@@ -199,6 +199,39 @@ async def test_write_payload_deflate_and_chunked(
     assert thing == buf
 
 
+async def test_write_payload_deflate_compression_chunked_data_in_eof(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    expected = b"2\r\nx\x9c\r\nd\r\nKI,IL\xcdK\x01\x00\x0b@\x02\xd2\r\n0\r\n\r\n"
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    await msg.write_eof(b"end")
+
+    chunks = [b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert content == expected
+
+
+async def test_write_payload_deflate_compression_chunked_connection_lost(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    with pytest.raises(
+        ClientConnectionResetError, match="Cannot write to closing transport"
+    ), mock.patch.object(transport, "is_closing", return_value=True):
+        await msg.write_eof(b"end")
+
+
 async def test_write_payload_bytes_memoryview(
     buf: bytearray,
     protocol: BaseProtocol,
