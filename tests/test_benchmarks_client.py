@@ -43,7 +43,7 @@ def test_one_hundred_get_requests_with_payload(
     payload = b"any" * 1024
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(b=payload)
+        return web.Response(body=payload)
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
