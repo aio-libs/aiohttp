@@ -33,6 +33,33 @@ def test_one_hundred_simple_get_requests(
         loop.run_until_complete(run_client_benchmark())
 
 
+def test_one_hundred_get_requests_with_payload(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 100 GET requests with a payload."""
+    message_count = 100
+    payload = b"any" * 1024
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(b=payload)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        for _ in range(message_count):
+            resp = await client.get("/")
+            await resp.read()
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
 def test_one_hundred_simple_post_requests(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
