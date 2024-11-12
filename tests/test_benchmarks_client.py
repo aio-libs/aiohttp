@@ -33,14 +33,68 @@ def test_one_hundred_simple_get_requests(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_payload(
+def test_one_hundred_get_requests_with_2048_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload."""
+    """Benchmark 100 GET requests with a small payload of 2048 bytes."""
     message_count = 100
-    payload = b"a" * 16384
+    payload = b"a" * 2048
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=payload)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        for _ in range(message_count):
+            resp = await client.get("/")
+            await resp.read()
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
+def test_one_hundred_get_requests_with_32768_payload(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 100 GET requests with a payload of 32768 bytes."""
+    message_count = 100
+    payload = b"a" * 32768
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=payload)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        for _ in range(message_count):
+            resp = await client.get("/")
+            await resp.read()
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
+def test_one_hundred_get_requests_with_1mib_payload(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 100 GET requests with a payload of 1MiB bytes."""
+    message_count = 100
+    payload = b"a" * 1024**2
 
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=payload)
