@@ -1,1 +1,1 @@
-Implemented zerocopy writes for ``StreamWriter`` -- by :user:`bdraco`.
+Implemented zero copy writes for ``StreamWriter`` -- by :user:`bdraco`.
