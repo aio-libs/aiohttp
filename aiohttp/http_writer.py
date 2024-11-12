@@ -165,8 +165,7 @@ class StreamWriter(AbstractStreamWriter):
         if self._compress:
             chunks: List[bytes] = []
             chunks_len = 0
-            if chunk:
-                compressed_chunk = await self._compress.compress(chunk)
+            if chunk and (compressed_chunk := await self._compress.compress(chunk)):
                 chunks_len = len(compressed_chunk)
                 chunks.append(compressed_chunk)
 
@@ -183,6 +182,8 @@ class StreamWriter(AbstractStreamWriter):
                             b"\r\n0\r\n\r\n",
                         )
                     )
+                elif len(chunks) == 1:
+                    self._write(chunks[0])
                 else:
                     self._writelines(chunks)
         elif self.chunked:
