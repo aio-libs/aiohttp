@@ -177,10 +177,10 @@ class StreamWriter(AbstractStreamWriter):
             if self.chunked:
                 chunk_len_pre = f"{chunks_len:x}\r\n".encode("ascii")
                 self._writelines((chunk_len_pre, *chunks, b"\r\n0\r\n\r\n"))
-            elif len(chunks) == 1:
-                self._write(chunks[0])
-            else:
+            elif len(chunks) > 1:
                 self._writelines(chunks)
+            else:
+                self._write(chunks[0])
         elif self.chunked:
             if chunk:
                 chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
