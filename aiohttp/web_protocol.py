@@ -96,6 +96,8 @@ _PAYLOAD_ACCESS_ERROR = PayloadAccessError()
 class AccessLoggerWrapper(AbstractAsyncAccessLogger):
     """Wrap an AbstractAccessLogger so it behaves like an AbstractAsyncAccessLogger."""
 
+    __slots__ = ("access_logger", "_loop")
+
     def __init__(
         self, access_logger: AbstractAccessLogger, loop: asyncio.AbstractEventLoop
     ) -> None:
@@ -107,6 +109,11 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
         self, request: BaseRequest, response: StreamResponse, request_start: float
     ) -> None:
         self.access_logger.log(request, response, self._loop.time() - request_start)
+
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        return self.access_logger.enabled
 
 
 @dataclasses.dataclass(frozen=True)
@@ -461,7 +468,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     async def log_access(
         self, request: BaseRequest, response: StreamResponse, request_start: float
     ) -> None:
-        if self.access_logger is not None:
+        if self.access_logger is not None and self.access_logger.enabled:
             await self.access_logger.log(request, response, request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
