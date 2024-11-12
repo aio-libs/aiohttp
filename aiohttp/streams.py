@@ -396,12 +396,14 @@ class StreamReader(AsyncStreamReaderMixin):
             # deadlock if the subprocess sends more than self.limit
             # bytes.  So just call self.readany() until EOF.
             blocks = []
+            block_count = 0
             while True:
                 block = await self.readany()
                 if not block:
                     break
                 blocks.append(block)
-            return b"".join(blocks) if len(blocks) > 1 else blocks[0] if blocks else b""
+                block_count += 1
+            return b"".join(blocks) if block_count > 1 else blocks[0] if blocks else b""
 
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
@@ -462,6 +464,7 @@ class StreamReader(AsyncStreamReaderMixin):
             raise self._exception
 
         blocks: List[bytes] = []
+        block_count = n
         while n > 0:
             block = await self.read(n)
             if not block:
@@ -470,7 +473,7 @@ class StreamReader(AsyncStreamReaderMixin):
             blocks.append(block)
             n -= len(block)
 
-        return b"".join(blocks) if len(blocks) > 1 else blocks[0] if blocks else b""
+        return b"".join(blocks) if block_count > 1 else blocks[0] if blocks else b""
 
     def read_nowait(self, n: int = -1) -> bytes:
         # default was changed to be consistent with .read(-1)
@@ -519,15 +522,17 @@ class StreamReader(AsyncStreamReaderMixin):
         self._timer.assert_timeout()
 
         chunks = []
+        chunk_count = 0
         while self._buffer:
             chunk = self._read_nowait_chunk(n)
             chunks.append(chunk)
+            chunk_count += 1
             if n != -1:
                 n -= len(chunk)
                 if n == 0:
                     break
 
-        return b"".join(chunks) if len(chunks) > 1 else chunks[0] if chunks else b""
+        return b"".join(chunks) if chunk_count > 1 else chunks[0] if chunks else b""
 
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
