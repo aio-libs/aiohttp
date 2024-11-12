@@ -1,6 +1,7 @@
 # Tests for aiohttp/http_writer.py
 import array
 import asyncio
+import zlib
 from typing import Any, Iterable
 from unittest import mock
 
@@ -215,6 +216,23 @@ async def test_write_payload_deflate_compression_chunked_data_in_eof(
     assert all(chunks)
     content = b"".join(chunks)
     assert content == expected
+
+
+async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data" * 4096)
+    await msg.write_eof(b"data" * 4096)
+
+    chunks = [c[1][0][1] for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert zlib.decompress(content) == b"data" * 8192
 
 
 async def test_write_payload_deflate_compression_chunked_connection_lost(
