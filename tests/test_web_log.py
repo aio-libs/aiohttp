@@ -9,6 +9,7 @@ import pytest
 import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger
 
@@ -215,8 +216,8 @@ async def test_contextvars_logger(aiohttp_server, aiohttp_client):
     assert msg == "contextvars: uuid"
 
 
-def test_logger_does_nothing_when_disabled(caplog: pytest.LogCaptureFixture) -> None:
-    """Test that the logger does nothing when the log level is disabled."""
+def test_access_logger_feeds_logger(caplog: pytest.LogCaptureFixture) -> None:
+    """Test that the logger still works."""
     mock_logger = logging.getLogger("test.aiohttp.log")
     mock_logger.setLevel(logging.INFO)
     access_logger = AccessLogger(mock_logger, "%b")
@@ -224,3 +225,33 @@ def test_logger_does_nothing_when_disabled(caplog: pytest.LogCaptureFixture) -> 
         mock.Mock(name="mock_request"), mock.Mock(name="mock_response"), 42
     )
     assert "mock_response" in caplog.text
+
+
+async def test_logger_does_not_log_when_not_enabled(
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test logger does nothing when not enabled."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    class Logger(AbstractAccessLogger):
+
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
+            self.logger.critical("This should not be logged")  # pragma: no cover
+
+        @property
+        def enabled(self) -> bool:
+            return False
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, access_log_class=Logger)
+    client = await aiohttp_client(server)
+    resp = await client.get("/")
+    assert 200 == resp.status
+    assert "This should not be logged" not in caplog.text
