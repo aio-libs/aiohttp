@@ -228,13 +228,14 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
     msg.enable_chunking()
 
     await msg.write(b"data" * 4096)
-    # This payload compresses poorly to ~512KiB.
-    payload = (
-        bytes(range(0, 256))
-        + bytes(range(255, 0, -1))
-        + bytes(range(0, 128))
-        + bytes(range(255, 0, -1))
-    ) * 1024
+    # This payload compresses to 251308 bytes
+    payload = b"".join(
+        [
+            bytes((*range(0, i), *range(i, 0, -1)))
+            for _ in range(255)
+            for i in range(255)
+        ]
+    )
     await msg.write_eof(payload)
 
     chunks = [c[1][0][1] for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
