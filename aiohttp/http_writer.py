@@ -2,7 +2,16 @@
 
 import asyncio
 import zlib
-from typing import Any, Awaitable, Callable, List, NamedTuple, Optional, Union  # noqa
+from typing import (  # noqa
+    Any,
+    Awaitable,
+    Callable,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 from multidict import CIMultiDict
 
@@ -76,7 +85,7 @@ class StreamWriter(AbstractStreamWriter):
             raise ClientConnectionResetError("Cannot write to closing transport")
         transport.write(chunk)
 
-    def _writelines(self, chunks: List[bytes]) -> None:
+    def _writelines(self, chunks: Iterable[bytes]) -> None:
         size = 0
         for chunk in chunks:
             size += len(chunk)
@@ -122,7 +131,7 @@ class StreamWriter(AbstractStreamWriter):
         if chunk:
             if self.chunked:
                 self._writelines(
-                    [f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n"]
+                    (f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n")
                 )
             else:
                 self._write(chunk)
@@ -168,18 +177,18 @@ class StreamWriter(AbstractStreamWriter):
             if chunks_len:
                 if self.chunked:
                     self._writelines(
-                        [
+                        (
                             f"{len(chunks_len):x}\r\n".encode("ascii"),
                             *chunks,
                             b"\r\n0\r\n\r\n",
-                        ]
+                        )
                     )
                 else:
                     self._writelines(chunks)
         elif self.chunked:
             if chunk:
                 self._writelines(
-                    [f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n0\r\n\r\n"]
+                    (f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n0\r\n\r\n")
                 )
             else:
                 self._write(b"0\r\n\r\n")
