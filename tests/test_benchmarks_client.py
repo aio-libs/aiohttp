@@ -120,6 +120,41 @@ def test_one_hundred_get_requests_with_512kib_chunked_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
+def test_five_get_requests_with_567296_compressed_chunked_payload(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 5 compressed GET requests with a payload of 567296."""
+    message_count = 5
+    # This payload compresses poorly to ~567296 bytes.
+    payload = (
+        bytes(range(0, 256))
+        + bytes(range(255, 0, -1))
+        + bytes(range(0, 128))
+        + bytes(range(255, 0, -1))
+    ) * 1024
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=payload)
+        resp.enable_compression()
+        return resp
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        for _ in range(message_count):
+            resp = await client.get("/")
+            await resp.read()
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
 def test_one_hundred_get_requests_with_1024_content_length_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
