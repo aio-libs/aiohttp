@@ -231,10 +231,10 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
     # This payload compresses to 1111 bytes
     payload = b"".join([bytes((*range(0, i), *range(i, 0, -1))) for i in range(255)])
     await msg.write_eof(payload)
-    assert not transport.write.called
+    assert not transport.write.called  # type: ignore[attr-defined]
 
     chunks = []
-    for write_lines_call in transport.writelines.mock_calls:
+    for write_lines_call in transport.writelines.mock_calls:  # type: ignore[attr-defined]
         chunked_payload = list(write_lines_call[1][0])[1:]
         chunked_payload.pop()
         chunks.extend(chunked_payload)
