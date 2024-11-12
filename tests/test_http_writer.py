@@ -228,17 +228,17 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
     msg.enable_chunking()
 
     await msg.write(b"data" * 4096)
-    # This payload compresses to 251308 bytes
-    payload = b"".join(
-        [
-            bytes((*range(0, i), *range(i, 0, -1)))
-            for _ in range(255)
-            for i in range(255)
-        ]
-    )
+    # This payload compresses to 1111 bytes
+    payload = b"".join([bytes((*range(0, i), *range(i, 0, -1))) for i in range(255)])
     await msg.write_eof(payload)
+    assert not transport.write.called
 
-    chunks = [c[1][0][1] for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    chunks = []
+    for write_lines_call in transport.writelines.mock_calls:
+        chunked_payload = list(write_lines_call[1][0])[1:]
+        chunked_payload.pop()
+        chunks.extend(chunked_payload)
+
     assert all(chunks)
     content = b"".join(chunks)
     assert zlib.decompress(content) == (b"data" * 4096) + payload
