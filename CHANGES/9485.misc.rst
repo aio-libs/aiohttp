@@ -1,1 +1,0 @@
-Improved performance of sending client requests when the writer can finish synchronously -- by :user:`bdraco`.

@@ -1,1 +1,0 @@
-Fixed the WebSocket flow control calculation undercounting with multi-byte data -- by :user:`bdraco`.
