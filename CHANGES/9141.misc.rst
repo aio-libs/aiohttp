@@ -1,2 +1,0 @@
-Disabled automatic retries of failed requests in :class:`aiohttp.test_utils.TestClient`'s client session
-(which could potentially hide errors in tests) -- by :user:`ShubhAgarwal-dev`.

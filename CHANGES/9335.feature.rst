@@ -1,1 +1,0 @@
-Added ``default_to_multipart`` parameter to ``FormData``.
