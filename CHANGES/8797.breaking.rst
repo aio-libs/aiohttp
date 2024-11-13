@@ -1,1 +1,0 @@
-Dropped support for Python 3.8 -- by :user:`Dreamsorcerer`.

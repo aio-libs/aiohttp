@@ -1,6 +1,0 @@
-Switched to using the :mod:`propcache <propcache.api>` package for property caching
--- by :user:`bdraco`.
-
-The :mod:`propcache <propcache.api>` package is derived from the property caching
-code in :mod:`yarl` and has been broken out to avoid maintaining it for multiple
-projects.

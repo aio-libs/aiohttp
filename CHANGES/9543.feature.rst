@@ -1,1 +1,0 @@
-Improved performance of reading WebSocket messages with a Cython implementation -- by :user:`bdraco`.
