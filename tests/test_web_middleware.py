@@ -1,10 +1,11 @@
 import re
-from typing import Any
+from typing import Any, NoReturn
 
 import pytest
 from yarl import URL
 
-from aiohttp import web
+from aiohttp import web, web_app
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
 
 
@@ -520,3 +521,27 @@ async def test_new_style_middleware_method(loop, aiohttp_client) -> None:
     assert 201 == resp.status
     txt = await resp.text()
     assert "OK[new style middleware]" == txt
+
+
+async def test_middleware_does_not_leak(aiohttp_client: AiohttpClient) -> None:
+    async def any_handler(request: web.Request) -> NoReturn:
+        assert False
+
+    class Middleware:
+        @web.middleware
+        async def call(
+            self, request: web.Request, handler: Handler
+        ) -> web.StreamResponse:
+            return await handler(request)
+
+    app = web.Application()
+    app.router.add_route("POST", "/any", any_handler)
+    app.middlewares.append(Middleware().call)
+
+    client = await aiohttp_client(app)
+
+    web_app._cached_build_middleware.cache_clear()
+    for _ in range(10):
+        resp = await client.get("/any")
+        assert resp.status == 405
+    assert web_app._cached_build_middleware.cache_info().currsize < 10
