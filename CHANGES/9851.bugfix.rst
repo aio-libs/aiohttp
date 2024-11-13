@@ -1,1 +1,0 @@
-Fixed incorrect parsing of chunk extensions with the pure Python parser -- by :user:`bdraco`.
