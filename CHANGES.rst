@@ -10,7 +10,7 @@
 
 .. towncrier release notes start
 
-3.11.0rc1 (2024-11-10)
+3.11.0rc2 (2024-11-12)
 ======================
 
 Bug fixes
@@ -177,6 +177,14 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`9572`.
+
+
+
+- Added an :attr:`~aiohttp.abc.AbstractAccessLogger.enabled` property to :class:`aiohttp.abc.AbstractAccessLogger` to dynamically check if logging is enabled -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9822`.
 
 
 
@@ -414,6 +422,22 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`9757`.
+
+
+
+- Improved performance of the ``WebsocketWriter`` when the protocol is not paused -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9796`.
+
+
+
+- Implemented zero copy writes for ``StreamWriter`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9839`.
 
 
 
