@@ -1478,7 +1478,55 @@ async def test_parse_chunked_payload_split_chunks(response: Any) -> None:
     assert await reader.read() == b"firstsecond"
 
 
-def test_partial_url(parser: Any) -> None:
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+async def test_parse_chunked_payload_with_lf_in_extensions_c_parser(
+    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+) -> None:
+    """Test the C-parser with a chunked payload that has a LF in the chunk extensions."""
+    # The C parser will raise a BadHttpMessage from feed_data
+    parser = HttpRequestParserC(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    payload = (
+        b"GET / HTTP/1.1\r\nHost: localhost:5001\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n2;\nxx\r\n4c\r\n0\r\n\r\n"
+        b"GET /admin HTTP/1.1\r\nHost: localhost:5001\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage, match="\\\\nxx"):
+        parser.feed_data(payload)
+
+
+async def test_parse_chunked_payload_with_lf_in_extensions_py_parser(
+    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+) -> None:
+    """Test the py-parser with a chunked payload that has a LF in the chunk extensions."""
+    # The py parser will not raise the BadHttpMessage directly, but instead
+    # it will set the exception on the StreamReader.
+    parser = HttpRequestParserPy(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    payload = (
+        b"GET / HTTP/1.1\r\nHost: localhost:5001\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n2;\nxx\r\n4c\r\n0\r\n\r\n"
+        b"GET /admin HTTP/1.1\r\nHost: localhost:5001\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n"
+    )
+    messages, _, _ = parser.feed_data(payload)
+    reader = messages[0][1]
+    assert isinstance(reader.exception(), http_exceptions.BadHttpMessage)
+    assert "\\nxx" in str(reader.exception())
+
+
+def test_partial_url(parser: HttpRequestParser) -> None:
     messages, upgrade, tail = parser.feed_data(b"GET /te")
     assert len(messages) == 0
     messages, upgrade, tail = parser.feed_data(b"st HTTP/1.1\r\n\r\n")
