@@ -1,6 +1,8 @@
 # Tests for aiohttp/http_writer.py
 import array
 import asyncio
+import zlib
+from typing import Iterable
 from unittest import mock
 
 import pytest
@@ -23,7 +25,12 @@ def transport(buf):
     def write(chunk):
         buf.extend(chunk)
 
+    def writelines(chunks: Iterable[bytes]) -> None:
+        for chunk in chunks:
+            buf.extend(chunk)
+
     transport.write.side_effect = write
+    transport.writelines.side_effect = writelines
     transport.is_closing.return_value = False
     return transport
 
@@ -85,21 +92,53 @@ async def test_write_payload_length(protocol, transport, loop) -> None:
     assert b"da" == content.split(b"\r\n\r\n", 1)[-1]
 
 
-async def test_write_payload_chunked_filter(protocol, transport, loop) -> None:
-    write = transport.write = mock.Mock()
+async def test_write_large_payload_deflate_compression_data_in_eof(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
 
+    await msg.write(b"data" * 4096)
+    assert transport.write.called  # type: ignore[attr-defined]
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    transport.write.reset_mock()  # type: ignore[attr-defined]
+    assert not transport.writelines.called  # type: ignore[attr-defined]
+
+    # This payload compresses to 20447 bytes
+    payload = b"".join(
+        [bytes((*range(0, i), *range(i, 0, -1))) for i in range(255) for _ in range(64)]
+    )
+    await msg.write_eof(payload)
+    assert not transport.write.called  # type: ignore[attr-defined]
+    assert transport.writelines.called  # type: ignore[attr-defined]
+    chunks.extend(transport.writelines.mock_calls[0][1][0])  # type: ignore[attr-defined]
+    content = b"".join(chunks)
+    assert zlib.decompress(content) == (b"data" * 4096) + payload
+
+
+async def test_write_payload_chunked_filter(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.enable_chunking()
     await msg.write(b"da")
     await msg.write(b"ta")
     await msg.write_eof()
 
-    content = b"".join([c[1][0] for c in list(write.mock_calls)])
+    content = b"".join([b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)])  # type: ignore[attr-defined]
+    content += b"".join([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
     assert content.endswith(b"2\r\nda\r\n2\r\nta\r\n0\r\n\r\n")
 
 
-async def test_write_payload_chunked_filter_mutiple_chunks(protocol, transport, loop):
-    write = transport.write = mock.Mock()
+async def test_write_payload_chunked_filter_multiple_chunks(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.enable_chunking()
     await msg.write(b"da")
@@ -108,14 +147,14 @@ async def test_write_payload_chunked_filter_mutiple_chunks(protocol, transport, 
     await msg.write(b"at")
     await msg.write(b"a2")
     await msg.write_eof()
-    content = b"".join([c[1][0] for c in list(write.mock_calls)])
+    content = b"".join([b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)])  # type: ignore[attr-defined]
+    content += b"".join([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
     assert content.endswith(
         b"2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n2\r\na2\r\n0\r\n\r\n"
     )
 
 
 async def test_write_payload_deflate_compression(protocol, transport, loop) -> None:
-
     COMPRESSED = b"x\x9cKI,I\x04\x00\x04\x00\x01\x9b"
     write = transport.write = mock.Mock()
     msg = http.StreamWriter(protocol, loop)
@@ -129,7 +168,30 @@ async def test_write_payload_deflate_compression(protocol, transport, loop) -> N
     assert COMPRESSED == content.split(b"\r\n\r\n", 1)[-1]
 
 
-async def test_write_payload_deflate_and_chunked(buf, protocol, transport, loop):
+async def test_write_payload_deflate_compression_chunked(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    expected = b"2\r\nx\x9c\r\na\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n0\r\n\r\n"
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    await msg.write_eof()
+
+    chunks = [b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert content == expected
+
+
+async def test_write_payload_deflate_and_chunked(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     msg = http.StreamWriter(protocol, loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
@@ -142,8 +204,71 @@ async def test_write_payload_deflate_and_chunked(buf, protocol, transport, loop)
     assert thing == buf
 
 
-async def test_write_payload_bytes_memoryview(buf, protocol, transport, loop):
+async def test_write_payload_deflate_compression_chunked_data_in_eof(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    expected = b"2\r\nx\x9c\r\nd\r\nKI,IL\xcdK\x01\x00\x0b@\x02\xd2\r\n0\r\n\r\n"
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    await msg.write_eof(b"end")
 
+    chunks = [b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert content == expected
+
+
+async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+
+    await msg.write(b"data" * 4096)
+    # This payload compresses to 1111 bytes
+    payload = b"".join([bytes((*range(0, i), *range(i, 0, -1))) for i in range(255)])
+    await msg.write_eof(payload)
+    assert not transport.write.called  # type: ignore[attr-defined]
+
+    chunks = []
+    for write_lines_call in transport.writelines.mock_calls:  # type: ignore[attr-defined]
+        chunked_payload = list(write_lines_call[1][0])[1:]
+        chunked_payload.pop()
+        chunks.extend(chunked_payload)
+
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert zlib.decompress(content) == (b"data" * 4096) + payload
+
+
+async def test_write_payload_deflate_compression_chunked_connection_lost(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    with pytest.raises(
+        ClientConnectionResetError, match="Cannot write to closing transport"
+    ), mock.patch.object(transport, "is_closing", return_value=True):
+        await msg.write_eof(b"end")
+
+
+async def test_write_payload_bytes_memoryview(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     msg = http.StreamWriter(protocol, loop)
 
     mv = memoryview(b"abcd")
