@@ -111,6 +111,32 @@ async def test_write_payload_length(
     assert b"da" == content.split(b"\r\n\r\n", 1)[-1]
 
 
+async def test_write_large_payload_deflate_compression_data_in_eof(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+
+    await msg.write(b"data" * 4096)
+    assert transport.write.called  # type: ignore[attr-defined]
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    transport.write.reset_mock()  # type: ignore[attr-defined]
+    assert not transport.writelines.called  # type: ignore[attr-defined]
+
+    # This payload compresses to 20447 bytes
+    payload = b"".join(
+        [bytes((*range(0, i), *range(i, 0, -1))) for i in range(255) for _ in range(64)]
+    )
+    await msg.write_eof(payload)
+    assert not transport.write.called  # type: ignore[attr-defined]
+    assert transport.writelines.called  # type: ignore[attr-defined]
+    chunks.extend(transport.writelines.mock_calls[0][1][0])  # type: ignore[attr-defined]
+    content = b"".join(chunks)
+    assert zlib.decompress(content) == (b"data" * 4096) + payload
+
+
 async def test_write_payload_chunked_filter(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
