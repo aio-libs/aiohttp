@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import warnings
-from functools import cache, partial, update_wrapper
+from functools import lru_cache, partial, update_wrapper
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -54,6 +54,7 @@ from .web_urldispatcher import (
     MaskDomain,
     MatchedSubAppResource,
     PrefixedSubAppResource,
+    SystemRoute,
     UrlDispatcher,
 )
 
@@ -79,7 +80,6 @@ _U = TypeVar("_U")
 _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
-@cache
 def _build_middlewares(
     handler: Handler, apps: Tuple["Application", ...]
 ) -> Callable[[Request], Awaitable[StreamResponse]]:
@@ -88,6 +88,9 @@ def _build_middlewares(
         for m, _ in app._middlewares_handlers:  # type: ignore[union-attr]
             handler = update_wrapper(partial(m, handler=handler), handler)  # type: ignore[misc]
     return handler
+
+
+_cached_build_middleware = lru_cache(maxsize=1024)(_build_middlewares)
 
 
 class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
@@ -544,8 +547,13 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         handler = match_info.handler
 
         if self._run_middlewares:
-            if not self._has_legacy_middlewares:
-                handler = _build_middlewares(handler, match_info.apps)
+            # If its a SystemRoute, don't cache building the middlewares since
+            # they are constructed for every MatchInfoError as a new handler
+            # is made each time.
+            if not self._has_legacy_middlewares and not isinstance(
+                match_info.route, SystemRoute
+            ):
+                handler = _cached_build_middleware(handler, match_info.apps)
             else:
                 for app in match_info.apps[::-1]:
                     for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
