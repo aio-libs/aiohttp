@@ -1,1 +1,0 @@
-Improved performance of the ``WebsocketWriter`` when the protocol is not paused -- by :user:`bdraco`.
