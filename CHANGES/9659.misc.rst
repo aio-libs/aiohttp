@@ -1,1 +1,0 @@
-Improved performance of the internal ``DataQueue`` -- by :user:`bdraco`.

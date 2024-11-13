@@ -1,1 +1,0 @@
-Improved performance of calling ``receive`` for WebSockets for the most common message types -- by :user:`bdraco`.

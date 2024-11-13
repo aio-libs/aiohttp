@@ -1,3 +1,0 @@
-Fixed the keep-alive connection pool to be FIFO instead of LIFO -- by :user:`bdraco`.
-
-Keep-alive connections are more likely to be reused before they disconnect.
