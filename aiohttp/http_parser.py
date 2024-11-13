@@ -825,6 +825,13 @@ class HttpPayloadParser:
                         i = chunk.find(CHUNK_EXT, 0, pos)
                         if i >= 0:
                             size_b = chunk[:i]  # strip chunk-extensions
+                            # Verify no LF in the chunk-extension
+                            if b"\n" in (ext := chunk[i:pos]):
+                                exc = BadHttpMessage(
+                                    f"Unexpected LF in chunk-extension: {ext!r}"
+                                )
+                                set_exception(self.payload, exc)
+                                raise exc
                         else:
                             size_b = chunk[:pos]
 
