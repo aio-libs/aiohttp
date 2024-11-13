@@ -6,7 +6,7 @@ import sys
 import urllib.parse
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Iterable, Optional
 from unittest import mock
 
 import pytest
@@ -67,17 +67,18 @@ def protocol(loop, transport):
 
 
 @pytest.fixture
-def transport(buf):
-    transport = mock.Mock()
+def transport(buf: bytearray) -> mock.Mock:
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
 
     def write(chunk):
         buf.extend(chunk)
 
-    async def write_eof():
-        pass
+    def writelines(chunks: Iterable[bytes]) -> None:
+        for chunk in chunks:
+            buf.extend(chunk)
 
     transport.write.side_effect = write
-    transport.write_eof.side_effect = write_eof
+    transport.writelines.side_effect = writelines
     transport.is_closing.return_value = False
 
     return transport
