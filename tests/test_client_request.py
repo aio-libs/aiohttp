@@ -5,7 +5,16 @@ import pathlib
 import sys
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, AsyncIterator, Callable, Dict, Iterator, List, Protocol
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Protocol,
+)
 from unittest import mock
 
 import pytest
@@ -73,12 +82,17 @@ def protocol(
 
 @pytest.fixture
 def transport(buf: bytearray) -> mock.Mock:
-    transport = mock.create_autospec(asyncio.Transport, spec_set=True)
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
 
     def write(chunk: bytes) -> None:
         buf.extend(chunk)
 
+    def writelines(chunks: Iterable[bytes]) -> None:
+        for chunk in chunks:
+            buf.extend(chunk)
+
     transport.write.side_effect = write
+    transport.writelines.side_effect = writelines
     transport.is_closing.return_value = False
 
     return transport  # type: ignore[no-any-return]

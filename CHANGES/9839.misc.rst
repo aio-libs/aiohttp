@@ -1,0 +1,1 @@
+Implemented zero copy writes for ``StreamWriter`` -- by :user:`bdraco`.
