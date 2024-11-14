@@ -69,6 +69,9 @@ class WebSocketDataQueue:
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
 
+    def is_eof(self) -> bool:
+        return self._eof
+
     def exception(self) -> Optional[Union[Type[BaseException], BaseException]]:
         return self._exception
 
