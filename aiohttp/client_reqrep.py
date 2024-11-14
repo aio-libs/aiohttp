@@ -42,6 +42,7 @@ from .client_exceptions import (
 from .compression_utils import HAS_BROTLI
 from .formdata import FormData
 from .helpers import (
+    _SENTINEL,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -103,11 +104,29 @@ class ContentDisposition:
     filename: Optional[str]
 
 
-class RequestInfo(NamedTuple):
+class _RequestInfo(NamedTuple):
     url: URL
     method: str
     headers: "CIMultiDictProxy[str]"
     real_url: URL
+
+
+class RequestInfo(_RequestInfo):
+
+    def __new__(
+        cls,
+        url: URL,
+        method: str,
+        headers: "CIMultiDictProxy[str]",
+        real_url: URL = _SENTINEL,  # type: ignore[assignment]
+    ) -> "RequestInfo":
+        """Create a new RequestInfo instance.
+
+        For backwards compatibility, the real_url parameter is optional.
+        """
+        return tuple.__new__(
+            cls, (url, method, headers, url if real_url is _SENTINEL else real_url)
+        )
 
 
 class Fingerprint:
@@ -391,7 +410,9 @@ class ClientRequest:
     def request_info(self) -> RequestInfo:
         headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
         # These are created on every request, so we use a NamedTuple
-        # for performance reasons.
+        # for performance reasons. We don't use the RequestInfo.__new__
+        # method because it has a different signature which is provided
+        # for backwards compatibility only.
         return tuple.__new__(
             RequestInfo, (self.url, self.method, headers, self.original_url)
         )
