@@ -1232,3 +1232,27 @@ async def test_ws_connect_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> 
 
     with pytest.raises(TypeError, match="ssl should be SSLContext, .*"):
         await session.ws_connect("/", ssl=42)
+
+
+async def test_websocket_connection_not_closed_property(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that closing the connection via __del__ does not raise an exception."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    assert resp._conn is not None
+    # Simulate the connection not being closed properly
+    # https://github.com/aio-libs/aiohttp/issues/9880
+    resp._conn.release()
+
+    # Clean up so the test does not leak
+    await resp.close()
