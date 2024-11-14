@@ -1492,3 +1492,31 @@ async def test_connection_key_without_proxy() -> None:
     )
     assert req.connection_key.proxy_headers_hash is None
     await req.close()
+
+
+def test_request_info_back_compat() -> None:
+    """Test RequestInfo can be created without real_url."""
+    url = URL("http://example.com")
+    other_url = URL("http://example.org")
+    assert (
+        aiohttp.RequestInfo(url=url, method="GET", headers=CIMultiDict()).real_url
+        is url
+    )
+    assert aiohttp.RequestInfo(url, "GET", CIMultiDict()).real_url is url
+    assert aiohttp.RequestInfo(url, "GET", CIMultiDict(), real_url=url).real_url is url
+    assert (
+        aiohttp.RequestInfo(url, "GET", CIMultiDict(), real_url=other_url).real_url
+        is other_url
+    )
+
+
+def test_request_info_tuple_new() -> None:
+    """Test RequestInfo must be created with real_url using tuple.__new__."""
+    url = URL("http://example.com")
+    with pytest.raises(IndexError):
+        tuple.__new__(aiohttp.RequestInfo, (url, "GET", CIMultiDict())).real_url
+
+    assert (
+        tuple.__new__(aiohttp.RequestInfo, (url, "GET", CIMultiDict(), url)).real_url
+        is url
+    )
