@@ -1293,8 +1293,7 @@ async def test_websocket_connection_cancellation(
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    websocket = websockets[0]
-    websockets.clear()
+    websocket = websockets.pop()
     # Ensure any __del__ methods is called
     # since when it gets gc'd it not
     # reproducible
