@@ -119,7 +119,7 @@ class RequestInfo(_RequestInfo):
         url: URL,
         method: str,
         headers: "CIMultiDictProxy[str]",
-        real_url: URL = _SENTINEL,
+        real_url: URL = _SENTINEL,  # type: ignore[assignment]
     ) -> "RequestInfo":
         """Create a new RequestInfo instance.
 
