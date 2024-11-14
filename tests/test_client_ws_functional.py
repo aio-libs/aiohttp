@@ -1,8 +1,7 @@
 import asyncio
-import gc
 import json
 import sys
-from typing import NoReturn, Optional
+from typing import List, NoReturn, Optional
 from unittest import mock
 
 import pytest
@@ -1270,23 +1269,35 @@ async def test_websocket_connection_cancellation(
         await ws.close()
         assert False
 
-    sync_future: "asyncio.Future[None]" = loop.create_future()
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    sync_future: "asyncio.Future[List[aiohttp.ClientWebSocketResponse]]" = (
+        loop.create_future()
+    )
+    client = await aiohttp_client(app)
 
     async def websocket_task() -> None:
-        app = web.Application()
-        app.router.add_route("GET", "/", handler)
-        client = await aiohttp_client(app)
         resp = await client.ws_connect("/")
-        sync_future.set_result(None)
+        # The test harness will cleanup the unclosed websocket
+        # for us, so we need to copy the websockets to ensure
+        # we can control the cleanup
+        sync_future.set_result(client._websockets.copy())
+        client._websockets.clear()
         await asyncio.sleep(0)
         await resp.close()
 
     task = loop.create_task(websocket_task())
-    await sync_future
+    websockets = await sync_future
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
-    await asyncio.sleep(0)
 
-    # Ensure any __del__ methods are called
-    gc.collect()
+    websocket = websockets[0]
+    websockets.clear()
+    # Ensure any __del__ methods is called
+    del websocket._response
+
+    # Cleanup properly
+    websocket._response = mock.Mock()
+    await websocket.close()
