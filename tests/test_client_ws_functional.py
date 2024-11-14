@@ -1279,13 +1279,13 @@ async def test_websocket_connection_cancellation(
 
     async def websocket_task() -> None:
         resp = await client.ws_connect("/")
+        assert resp
         # The test harness will cleanup the unclosed websocket
         # for us, so we need to copy the websockets to ensure
         # we can control the cleanup
         sync_future.set_result(client._websockets.copy())
         client._websockets.clear()
         await asyncio.sleep(0)
-        await resp.close()
 
     task = loop.create_task(websocket_task())
     websockets = await sync_future
