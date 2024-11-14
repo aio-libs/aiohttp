@@ -10,6 +10,24 @@
 
 .. towncrier release notes start
 
+3.11.2 (2024-11-14)
+===================
+
+Bug fixes
+---------
+
+- Fixed improperly closed WebSocket connections generating an unhandled exception -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9883`.
+
+
+
+
+----
+
+
 3.11.1 (2024-11-14)
 ===================
 
