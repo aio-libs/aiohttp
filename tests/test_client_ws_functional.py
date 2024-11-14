@@ -1239,11 +1239,11 @@ async def test_websocket_connection_not_closed_property(
 ) -> None:
     """Test that closing the connection via __del__ does not raise an exception."""
 
-    async def handler(request: web.Request) -> web.WebSocketResponse:
+    async def handler(request: web.Request) -> NoReturn:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         await ws.close()
-        return ws
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
