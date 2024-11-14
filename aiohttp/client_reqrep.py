@@ -43,6 +43,7 @@ from .compression_utils import HAS_BROTLI
 from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
+    _SENTINEL,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -104,11 +105,25 @@ class ContentDisposition:
     filename: Optional[str]
 
 
-class RequestInfo(NamedTuple):
+class _RequestInfo(NamedTuple):
     url: URL
     method: str
     headers: "CIMultiDictProxy[str]"
     real_url: URL
+
+
+class RequestInfo(_RequestInfo):
+
+    def __new__(
+        cls,
+        url: URL,
+        method: str,
+        headers: "CIMultiDictProxy[str]",
+        real_url: URL = _SENTINEL,
+    ) -> "RequestInfo":
+        return tuple.__new__(
+            cls, (url, method, headers, url if real_url is _SENTINEL else real_url)
+        )
 
 
 class Fingerprint:
