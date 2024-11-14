@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import json
 import sys
 from typing import NoReturn, Optional
@@ -1234,7 +1235,7 @@ async def test_ws_connect_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> 
         await session.ws_connect("/", ssl=42)
 
 
-async def test_websocket_connection_not_closed_property(
+async def test_websocket_connection_not_closed_properly(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Test that closing the connection via __del__ does not raise an exception."""
@@ -1256,3 +1257,36 @@ async def test_websocket_connection_not_closed_property(
 
     # Clean up so the test does not leak
     await resp.close()
+
+
+async def test_websocket_connection_cancellation(
+    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
+) -> None:
+    """Test canceling the WebSocket connection task does not raise an exception in __del__."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close()
+        assert False
+
+    sync_future: "asyncio.Future[None]" = loop.create_future()
+
+    async def websocket_task() -> None:
+        app = web.Application()
+        app.router.add_route("GET", "/", handler)
+        client = await aiohttp_client(app)
+        resp = await client.ws_connect("/")
+        sync_future.set_result(None)
+        await asyncio.sleep(0)
+        await resp.close()
+
+    task = loop.create_task(websocket_task())
+    await sync_future
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    await asyncio.sleep(0)
+
+    # Ensure any __del__ methods are called
+    gc.collect()
