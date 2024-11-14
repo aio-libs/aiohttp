@@ -24,6 +24,7 @@ def test_ten_web_middlewares(
     app.router.add_route("GET", "/", handler)
 
     class MiddlewareClass:
+        @web.middleware
         async def call(
             self, request: web.Request, handler: Handler
         ) -> web.StreamResponse:
