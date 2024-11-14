@@ -9,7 +9,7 @@ from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
 
 
-def test_serialize_headers(
+def test_ten_web_middlewares(
     benchmark: BenchmarkFixture,
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
