@@ -1294,9 +1294,7 @@ async def test_websocket_connection_cancellation(
         await task
 
     websocket = websockets.pop()
-    # Ensure any __del__ methods is called
-    # since when it gets gc'd it not
-    # reproducible
+    # Call the `__del__` methods manually since when it gets gc'd it not reproducible
     del websocket._response
 
     # Cleanup properly
