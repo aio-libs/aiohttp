@@ -345,7 +345,9 @@ class ClientRequest:
     def request_info(self) -> RequestInfo:
         headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
         # These are created on every request, so we use a NamedTuple
-        # for performance reasons.
+        # for performance reasons. We don't use the RequestInfo.__new__
+        # method because it has a different signature which is provided
+        # for backwards compatibility only.
         return tuple.__new__(
             RequestInfo, (self.url, self.method, headers, self.original_url)
         )
