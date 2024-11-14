@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from typing import Any, NoReturn, Optional
+from typing import Any, List, NoReturn, Optional
 from unittest import mock
 
 import pytest
@@ -1203,3 +1203,71 @@ async def test_ws_connect_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> 
 
     with pytest.raises(TypeError, match="ssl should be SSLContext, .*"):
         await session.ws_connect("/", ssl=42)
+
+
+async def test_websocket_connection_not_closed_properly(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that closing the connection via __del__ does not raise an exception."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    assert resp._conn is not None
+    # Simulate the connection not being closed properly
+    # https://github.com/aio-libs/aiohttp/issues/9880
+    resp._conn.release()
+
+    # Clean up so the test does not leak
+    await resp.close()
+
+
+async def test_websocket_connection_cancellation(
+    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
+) -> None:
+    """Test canceling the WebSocket connection task does not raise an exception in __del__."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close()
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    sync_future: "asyncio.Future[List[aiohttp.ClientWebSocketResponse]]" = (
+        loop.create_future()
+    )
+    client = await aiohttp_client(app)
+
+    async def websocket_task() -> None:
+        resp = await client.ws_connect("/")
+        assert resp is not None  # ensure we hold a reference to the response
+        # The test harness will cleanup the unclosed websocket
+        # for us, so we need to copy the websockets to ensure
+        # we can control the cleanup
+        sync_future.set_result(client._websockets.copy())
+        client._websockets.clear()
+        await asyncio.sleep(0)
+
+    task = loop.create_task(websocket_task())
+    websockets = await sync_future
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    websocket = websockets.pop()
+    # Call the `__del__` methods manually since when it gets gc'd it not reproducible
+    del websocket._response
+
+    # Cleanup properly
+    websocket._response = mock.Mock()
+    await websocket.close()
