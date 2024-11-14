@@ -1296,6 +1296,8 @@ async def test_websocket_connection_cancellation(
     websocket = websockets[0]
     websockets.clear()
     # Ensure any __del__ methods is called
+    # since when it gets gc'd it not
+    # reproducible
     del websocket._response
 
     # Cleanup properly
