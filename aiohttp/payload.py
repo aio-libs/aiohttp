@@ -147,8 +147,10 @@ class PayloadRegistry:
 
 
 class Payload(ABC):
+
     _default_content_type: str = "application/octet-stream"
-    _size: Optional[int] = None
+
+    __slots__ = ("_encoding", "_filename", "_headers", "_value", "_size")
 
     def __init__(
         self,
@@ -161,6 +163,7 @@ class Payload(ABC):
         encoding: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
+        self._size: Optional[int] = None
         self._encoding = encoding
         self._filename = filename
         self._headers: _CIMultiDict = CIMultiDict()
@@ -242,6 +245,8 @@ class Payload(ABC):
 class BytesPayload(Payload):
     _value: bytes
 
+    __slots__ = ()
+
     def __init__(
         self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
     ) -> None:
@@ -274,6 +279,9 @@ class BytesPayload(Payload):
 
 
 class StringPayload(BytesPayload):
+
+    __slots__ = ()
+
     def __init__(
         self,
         value: str,
@@ -304,12 +312,17 @@ class StringPayload(BytesPayload):
 
 
 class StringIOPayload(StringPayload):
+
+    __slots__ = ()
+
     def __init__(self, value: IO[str], *args: Any, **kwargs: Any) -> None:
         super().__init__(value.read(), *args, **kwargs)
 
 
 class IOBasePayload(Payload):
     _value: io.IOBase
+
+    __slots__ = ()
 
     def __init__(
         self, value: IO[Any], disposition: str = "attachment", *args: Any, **kwargs: Any
@@ -339,6 +352,8 @@ class IOBasePayload(Payload):
 
 class TextIOPayload(IOBasePayload):
     _value: io.TextIOBase
+
+    __slots__ = ()
 
     def __init__(
         self,
@@ -396,6 +411,8 @@ class TextIOPayload(IOBasePayload):
 class BytesIOPayload(IOBasePayload):
     _value: io.BytesIO
 
+    __slots__ = ()
+
     @property
     def size(self) -> int:
         position = self._value.tell()
@@ -409,6 +426,8 @@ class BytesIOPayload(IOBasePayload):
 
 class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
+
+    __slots__ = ()
 
     @property
     def size(self) -> Optional[int]:
@@ -426,6 +445,9 @@ class BufferedReaderPayload(IOBasePayload):
 
 
 class JsonPayload(BytesPayload):
+
+    __slots__ = ()
+
     def __init__(
         self,
         value: Any,
@@ -457,8 +479,9 @@ else:
 
 
 class AsyncIterablePayload(Payload):
-    _iter: Optional[_AsyncIterator] = None
     _value: _AsyncIterable
+
+    __slots__ = "_iter"
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
@@ -473,7 +496,7 @@ class AsyncIterablePayload(Payload):
 
         super().__init__(value, *args, **kwargs)
 
-        self._iter = value.__aiter__()
+        self._iter: Optional[_AsyncIterator] = value.__aiter__()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         if self._iter:
@@ -491,6 +514,9 @@ class AsyncIterablePayload(Payload):
 
 
 class StreamReaderPayload(AsyncIterablePayload):
+
+    __slots__ = ()
+
     def __init__(self, value: StreamReader, *args: Any, **kwargs: Any) -> None:
         super().__init__(value.iter_any(), *args, **kwargs)
 
