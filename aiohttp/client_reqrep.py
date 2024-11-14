@@ -121,6 +121,10 @@ class RequestInfo(_RequestInfo):
         headers: "CIMultiDictProxy[str]",
         real_url: URL = _SENTINEL,
     ) -> "RequestInfo":
+        """Create a new RequestInfo instance.
+
+        For backwards compatibility, the real_url parameter is optional.
+        """
         return tuple.__new__(
             cls, (url, method, headers, url if real_url is _SENTINEL else real_url)
         )
