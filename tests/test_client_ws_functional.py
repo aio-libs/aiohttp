@@ -1279,7 +1279,7 @@ async def test_websocket_connection_cancellation(
 
     async def websocket_task() -> None:
         resp = await client.ws_connect("/")
-        assert resp is not None  # ensure we hold a reference to the websocket
+        assert resp is not None  # ensure we hold a reference to the response
         # The test harness will cleanup the unclosed websocket
         # for us, so we need to copy the websockets to ensure
         # we can control the cleanup
