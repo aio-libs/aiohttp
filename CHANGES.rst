@@ -10,6 +10,24 @@
 
 .. towncrier release notes start
 
+3.11.1 (2024-11-14)
+===================
+
+Bug fixes
+---------
+
+- Added a backward compatibility layer to :class:`aiohttp.RequestInfo` to allow creating these objects without a ``real_url`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9873`.
+
+
+
+
+----
+
+
 3.11.0 (2024-11-13)
 ===================
 
