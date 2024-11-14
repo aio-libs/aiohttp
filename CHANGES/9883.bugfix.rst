@@ -1,1 +1,0 @@
-Fixed improperly closed WebSocket connections generating an unhandled exception -- by :user:`bdraco`.
