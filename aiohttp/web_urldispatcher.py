@@ -1073,19 +1073,17 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
         if self._hyperdb is not None:
             if (
-                (ret := await self._resolve_fast(request,
-                    request.rel_url.path_safe, allowed_methods
-                ))
-                is not None
-            ):
+                ret := await self._resolve_fast(
+                    request, request.rel_url.path_safe, allowed_methods
+                )
+            ) is not None:
                 return ret
         else:
             if (
-                (ret := await self._resolve_fallback(request,
-                    request.rel_url.path_safe, allowed_methods
-                ))
-                is not None
-            ):
+                ret := await self._resolve_fallback(
+                    request, request.rel_url.path_safe, allowed_methods
+                )
+            ) is not None:
                 return ret
 
         #
