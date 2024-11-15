@@ -45,7 +45,7 @@ def test_one_hundred_simple_get_requests_multiple_route_method(
         return web.Response()
 
     app = web.Application()
-    for method in ("GET", "DELETE", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"):
+    for method in ("DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"):
         app.router.add_route(method, "/", handler)
 
     async def run_client_benchmark() -> None:
