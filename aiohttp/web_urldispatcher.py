@@ -339,7 +339,7 @@ class Resource(AbstractResource):
         *,
         expect_handler: Optional[_ExpectHandler] = None,
     ) -> "ResourceRoute":
-        if route := self._routes.get(method) or self._any_route:
+        if route := self._routes.get(method, self._any_route):
             raise RuntimeError(
                 "Added route will never be executed, "
                 f"method {route.method} is already "
@@ -363,7 +363,7 @@ class Resource(AbstractResource):
     async def resolve(self, request: Request) -> _Resolve:
         if (match_dict := self._match(request.rel_url.path_safe)) is None:
             return None, set()
-        if route := self._routes.get(request.method) or self._any_route:
+        if route := self._routes.get(request.method, self._any_route):
             return UrlMappingMatchInfo(match_dict, route), self._allowed_methods
         return None, self._allowed_methods
 
