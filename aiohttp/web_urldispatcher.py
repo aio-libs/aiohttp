@@ -116,6 +116,9 @@ class _InfoDict(TypedDict, total=False):
 
 
 class AbstractResource(Sized, Iterable["AbstractRoute"]):
+
+    __slots__ = ("_name",)
+
     def __init__(self, *, name: Optional[str] = None) -> None:
         self._name = name
 
@@ -326,6 +329,9 @@ async def _default_expect_handler(request: Request) -> None:
 
 
 class Resource(AbstractResource):
+
+    __slots__ = ("_routes", "_any_route", "_allowed_methods")
+
     def __init__(self, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
         self._routes: Dict[str, ResourceRoute] = {}
@@ -381,6 +387,9 @@ class Resource(AbstractResource):
 
 
 class PlainResource(Resource):
+
+    __slots__ = ("_path",)
+
     def __init__(self, path: str, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
         assert not path or path.startswith("/")
@@ -421,6 +430,9 @@ class PlainResource(Resource):
 
 
 class DynamicResource(Resource):
+
+    __slots__ = ("_orig_path", "_pattern", "_formatter")
+
     DYN = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}")
     DYN_WITH_RE = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}")
     GOOD = r"[^{}/]+"
@@ -496,6 +508,9 @@ class DynamicResource(Resource):
 
 
 class PrefixResource(AbstractResource):
+
+    __slots__ = ("_prefix", "_prefix2")
+
     def __init__(self, prefix: str, *, name: Optional[str] = None) -> None:
         assert not prefix or prefix.startswith("/"), prefix
         assert prefix in ("", "/") or not prefix.endswith("/"), prefix
@@ -522,6 +537,16 @@ class PrefixResource(AbstractResource):
 
 class StaticResource(PrefixResource):
     VERSION_KEY = "v"
+
+    __slots__ = (
+        "_directory",
+        "_show_index",
+        "_chunk_size",
+        "_follow_symlinks",
+        "_expect_handler",
+        "_append_version",
+        "_routes",
+    )
 
     def __init__(
         self,
@@ -726,6 +751,9 @@ class StaticResource(PrefixResource):
 
 
 class PrefixedSubAppResource(PrefixResource):
+
+    __slots__ = ("_app",)
+
     def __init__(self, prefix: str, app: "Application") -> None:
         super().__init__(prefix)
         self._app = app
