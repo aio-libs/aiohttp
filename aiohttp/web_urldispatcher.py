@@ -1013,12 +1013,15 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._named_resources: dict[str, AbstractResource] = {}
         self._resource_index: dict[str, list[AbstractResource]] = {}
         self._matched_sub_app_resources: list[MatchedSubAppResource] = []
-        self._hyperdb: hyperscan.Database | None = None
+        self._hyperdb: hyperscan.Database | None = None  # type: ignore[no-any-unimported]
         self._hyper_index: dict[int, AbstractResource] = {}
 
     async def _resolve_fast(
         self, request: Request, path: str, allowed_methods: set[str]
     ) -> UrlMappingMatchInfo | None:
+        if self._hyperdb is None:
+            return await self._resolve_fallback(request, path, allowed_methods)
+
         # N.B.: allowed_methods variable in modified in-place
         found: list[int] = []
 
@@ -1026,6 +1029,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             id_: int, from_: int, to: int, flags: int, context: Any | None
         ) -> bool | None:
             found.append(id_)
+            return None
 
         self._hyperdb.scan(path.encode("utf8"), match_event_handler=on_match)
         if not found:
@@ -1071,20 +1075,13 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
         allowed_methods: set[str] = set()
 
-        if self._hyperdb is not None:
-            if (
-                ret := await self._resolve_fast(
-                    request, request.rel_url.path_safe, allowed_methods
-                )
-            ) is not None:
-                return ret
-        else:
-            if (
-                ret := await self._resolve_fallback(
-                    request, request.rel_url.path_safe, allowed_methods
-                )
-            ) is not None:
-                return ret
+        if (
+            (ret := await self._resolve_fast(request,
+                request.rel_url.path_safe, allowed_methods
+            ))
+            is not None
+        ):
+            return ret
 
         #
         # We didn't find any candidates, so we'll try the matched sub-app
