@@ -680,20 +680,19 @@ class ClientRequest:
 
         # set the connection header
         connection = self.headers.get(hdrs.CONNECTION)
+        v_major, v_minor = self.version
         if not connection:
             if self.keep_alive():
-                if self.version == HttpVersion10:
+                if v_major == 1 and v_minor == 0:
                     connection = "keep-alive"
-            else:
-                if self.version == HttpVersion11:
-                    connection = "close"
+            elif v_major == 1 and v_minor == 1:
+                connection = "close"
 
         if connection is not None:
             self.headers[hdrs.CONNECTION] = connection
 
         # status + headers
-        v = self.version
-        status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
+        status_line = f"{self.method} {path} HTTP/{v_major}.{v_minor}"
         await writer.write_headers(status_line, self.headers)
         task: Optional["asyncio.Task[None]"]
         if self.body or self._continue is not None or protocol.writing_paused:
