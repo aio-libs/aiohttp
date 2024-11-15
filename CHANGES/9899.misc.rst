@@ -1,0 +1,1 @@
+Improved performance of resolving resources when multiple methods are registered for the same route -- by :user:`bdraco`.
