@@ -392,7 +392,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             await self._start_compression(request)
 
         if self._chunked:
-            if version_major != 1 and version_minor != 1:
+            if not (version_major == 1 and version_minor == 1):
                 raise RuntimeError(
                     "Using chunked encoding is forbidden "
                     f"for HTTP/{version_major}.{version_minor}"
