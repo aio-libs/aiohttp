@@ -364,17 +364,8 @@ class Resource(AbstractResource):
         match_dict = self._match(request.rel_url.path_safe)
         if match_dict is None:
             return None, set()
-        request_method = request.method
-        if request_method in self._routes:
-            return (
-                UrlMappingMatchInfo(match_dict, self._routes[request_method]),
-                self._allowed_methods,
-            )
-        if self._any_route is not None:
-            return (
-                UrlMappingMatchInfo(match_dict, self._any_route),
-                self._allowed_methods,
-            )
+        if route := self._routes.get(request.method) or self._any_route:
+            return UrlMappingMatchInfo(match_dict, route), self._allowed_methods
         return None, self._allowed_methods
 
     @abc.abstractmethod
