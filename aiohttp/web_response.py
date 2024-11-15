@@ -39,7 +39,7 @@ from .helpers import (
     should_remove_content_length,
     validate_etag_value,
 )
-from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
+from .http import SERVER_SOFTWARE
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
@@ -382,7 +382,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             keep_alive = request.keep_alive
         self._keep_alive = keep_alive
 
-        version = request.version
+        version_major, version_minor = request.version
 
         headers = self._headers
         if self._cookies:
@@ -392,10 +392,10 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             await self._start_compression(request)
 
         if self._chunked:
-            if version != HttpVersion11:
+            if version_major != 1 and version_minor != 1:
                 raise RuntimeError(
                     "Using chunked encoding is forbidden "
-                    "for HTTP/{0.major}.{0.minor}".format(request.version)
+                    f"for HTTP/{version_major}.{version_minor}"
                 )
             if not self._must_be_empty_body:
                 writer.enable_chunking()
@@ -405,7 +405,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         elif self._length_check:  # Disabled for WebSockets
             writer.length = self.content_length
             if writer.length is None:
-                if version >= HttpVersion11:
+                if (version_major == 1 and version_minor == 1) or version_major > 1:
                     if not self._must_be_empty_body:
                         writer.enable_chunking()
                         headers[hdrs.TRANSFER_ENCODING] = "chunked"
@@ -432,9 +432,9 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         # connection header
         if hdrs.CONNECTION not in headers:
             if keep_alive:
-                if version == HttpVersion10:
+                if version_major == 1 and version_minor == 0:
                     headers[hdrs.CONNECTION] = "keep-alive"
-            elif version == HttpVersion11:
+            elif version_major == 1 and version_minor == 1:
                 headers[hdrs.CONNECTION] = "close"
 
     async def _write_headers(self) -> None:
