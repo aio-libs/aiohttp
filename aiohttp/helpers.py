@@ -926,7 +926,7 @@ class CookieMixin:
     @property
     def cookies(self) -> SimpleCookie:
         if self._cookies is None:
-            self._cookies = SimpleCookie()
+            self._cookies = SimpleCookie()  # type: ignore[misc]
         return self._cookies
 
     def set_cookie(
@@ -948,7 +948,7 @@ class CookieMixin:
         Also updates only those params which are not None.
         """
         if self._cookies is None:
-            self._cookies = SimpleCookie()
+            self._cookies = SimpleCookie()  # type: ignore[misc]
         elif (old := self._cookies.get(name)) is not None and old.coded_value == "":
             # deleted cookie
             self._cookies.pop(name, None)
