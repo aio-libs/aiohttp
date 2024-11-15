@@ -423,12 +423,15 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             # https://datatracker.ietf.org/doc/html/rfc9112#section-6.1-13
             if hdrs.TRANSFER_ENCODING in headers:
                 del headers[hdrs.TRANSFER_ENCODING]
-        elif (writer.length if self._length_check else self.content_length) != 0:
+        elif (
+            writer.length if self._length_check else self.content_length
+        ) != 0 and hdrs.CONTENT_TYPE not in headers:
             # https://www.rfc-editor.org/rfc/rfc9110#section-8.3-5
-            headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
-        headers.setdefault(hdrs.DATE, rfc822_formatted_time())
-        headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
-
+            headers[hdrs.CONTENT_TYPE] = "application/octet-stream"
+        if hdrs.DATE not in headers:
+            headers[hdrs.DATE] = rfc822_formatted_time()
+        if hdrs.SERVER not in headers:
+            headers[hdrs.SERVER] = SERVER_SOFTWARE
         # connection header
         if hdrs.CONNECTION not in headers:
             if keep_alive:
