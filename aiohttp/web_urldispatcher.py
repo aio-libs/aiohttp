@@ -629,10 +629,7 @@ class StaticResource(PrefixResource):
             return None, allowed_methods
 
         match_dict = {"filename": _unquote_path_safe(path[len(self._prefix) + 1 :])}
-        return (
-            UrlMappingMatchInfo(match_dict, self._routes[method]),
-            self._allowed_methods,
-        )
+        return (UrlMappingMatchInfo(match_dict, self._routes[method]), allowed_methods)
 
     def __len__(self) -> int:
         return len(self._routes)
