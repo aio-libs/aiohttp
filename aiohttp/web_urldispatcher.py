@@ -1076,11 +1076,10 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         allowed_methods: set[str] = set()
 
         if (
-            (ret := await self._resolve_fast(request,
-                request.rel_url.path_safe, allowed_methods
-            ))
-            is not None
-        ):
+            ret := await self._resolve_fast(
+                request, request.rel_url.path_safe, allowed_methods
+            )
+        ) is not None:
             return ret
 
         #
