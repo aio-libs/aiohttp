@@ -33,7 +33,7 @@ def test_one_hundred_simple_get_requests(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_simple_get_requests_multiple_route_method(
+def test_one_hundred_simple_get_requests_multiple_methods_route(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
