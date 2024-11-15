@@ -1,0 +1,1 @@
+Removed non-existing `__author__` from `__dir__` -- by :user:`Dreamsorcerer`.
