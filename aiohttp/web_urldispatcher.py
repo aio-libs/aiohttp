@@ -361,8 +361,7 @@ class Resource(AbstractResource):
             self._routes[route.method] = route
 
     async def resolve(self, request: Request) -> _Resolve:
-        match_dict = self._match(request.rel_url.path_safe)
-        if match_dict is None:
+        if (match_dict := self._match(request.rel_url.path_safe)) is None:
             return None, set()
         if route := self._routes.get(request.method) or self._any_route:
             return UrlMappingMatchInfo(match_dict, route), self._allowed_methods
