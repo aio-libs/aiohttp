@@ -63,9 +63,6 @@ def test_resolve_static_root_route(
     """Resolve top level StaticResource route 100 times."""
     resolve_count = 100
 
-    async def handler(request: web.Request) -> NoReturn:
-        assert False
-
     app = web.Application()
     app.router.add_static("/", pathlib.Path(aiohttp.__file__).parent)
     request = _mock_request(method="GET", path="/")
