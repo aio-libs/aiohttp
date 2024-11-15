@@ -45,7 +45,9 @@ def test_one_hundred_simple_get_requests_multiple_methods_route(
         return web.Response()
 
     app = web.Application()
-    for method in ("DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"):
+    # GET intentionally registered last to ensure time complexity
+    # of the route lookup is benchmarked
+    for method in ("DELETE", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "GET"):
         app.router.add_route(method, "/", handler)
 
     async def run_client_benchmark() -> None:
