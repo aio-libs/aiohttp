@@ -557,6 +557,7 @@ class StaticResource(PrefixResource):
                 "HEAD", self._handle, self, expect_handler=expect_handler
             ),
         }
+        self._allowed_methods = set(self._routes)
 
     def url_for(  # type: ignore[override]
         self,
@@ -620,15 +621,18 @@ class StaticResource(PrefixResource):
     async def resolve(self, request: Request) -> _Resolve:
         path = request.rel_url.path_safe
         method = request.method
-        allowed_methods = set(self._routes)
         if not path.startswith(self._prefix2) and path != self._prefix:
             return None, set()
 
+        allowed_methods = self._allowed_methods
         if method not in allowed_methods:
             return None, allowed_methods
 
         match_dict = {"filename": _unquote_path_safe(path[len(self._prefix) + 1 :])}
-        return (UrlMappingMatchInfo(match_dict, self._routes[method]), allowed_methods)
+        return (
+            UrlMappingMatchInfo(match_dict, self._routes[method]),
+            self._allowed_methods,
+        )
 
     def __len__(self) -> int:
         return len(self._routes)
