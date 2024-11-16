@@ -173,7 +173,7 @@ def test_resolve_multiple_level_fixed_url_with_many_routes(
         loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
-def test_resolve_dynamic_resource_url_with_many_routes(
+def test_resolve_dynamic_resource_url_with_many_static_routes(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -191,6 +191,66 @@ def test_resolve_dynamic_resource_url_with_many_routes(
 
     requests = [
         _mock_request(method="GET", path=f"/api/server/dispatch/{customer}/update")
+        for customer in range(250)
+    ]
+
+    async def run_url_dispatcher_benchmark() -> None:
+        for request in requests:
+            await router.resolve(request)
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_url_dispatcher_benchmark())
+
+
+def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
+    loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Resolve different a DynamicResource when there are 250 DynamicResources registered."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app = web.Application()
+    for count in range(250):
+        app.router.add_route("GET", "/api/server/other/{count}/update", handler)
+    app.router.add_route("GET", "/api/server/dispatch/{customer}/update", handler)
+    app.freeze()
+    router = app.router
+
+    requests = [
+        _mock_request(method="GET", path=f"/api/server/dispatch/{customer}/update")
+        for customer in range(250)
+    ]
+
+    async def run_url_dispatcher_benchmark() -> None:
+        for request in requests:
+            await router.resolve(request)
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_url_dispatcher_benchmark())
+
+
+def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefix(
+    loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Resolve different a DynamicResource when there are 250 DynamicResources registered with the same common prefix."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app = web.Application()
+    for count in range(250):
+        app.router.add_route("GET", "/api/{customer}/show", handler)
+    app.router.add_route("GET", "/api/{customer}/update", handler)
+    app.freeze()
+    router = app.router
+
+    requests = [
+        _mock_request(method="GET", path=f"/api/{customer}/update")
         for customer in range(250)
     ]
 
