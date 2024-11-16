@@ -214,7 +214,9 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
 
     app = web.Application()
     for count in range(250):
-        app.router.add_route("GET", "/api/server/other/{count}/update", handler)
+        app.router.add_route(
+            "GET", f"/api/server/other/{{customer}}/update{count}", handler
+        )
     app.router.add_route("GET", "/api/server/dispatch/{customer}/update", handler)
     app.freeze()
     router = app.router
@@ -244,7 +246,7 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
 
     app = web.Application()
     for count in range(250):
-        app.router.add_route("GET", "/api/{customer}/show", handler)
+        app.router.add_route("GET", f"/api/{{customer}}/show_{count}", handler)
     app.router.add_route("GET", "/api/{customer}/update", handler)
     app.freeze()
     router = app.router
