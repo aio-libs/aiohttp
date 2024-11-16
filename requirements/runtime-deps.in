@@ -7,7 +7,7 @@ async-timeout >= 4.0, < 6.0 ; python_version < "3.11"
 Brotli; platform_python_implementation == 'CPython'
 brotlicffi; platform_python_implementation != 'CPython'
 frozenlist >= 1.1.1
-hyperscan >= 0.7.8; platform_python_implementation == 'CPython'
+hyperscan >= 0.7.8; platform_python_implementation == 'CPython' and (sys_platform=="linux" or sys_platform=="darwin")
 multidict >=4.5, < 7.0
 propcache >= 0.2.0
 yarl >= 1.17.0, < 2.0
