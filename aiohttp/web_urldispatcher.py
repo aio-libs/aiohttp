@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import abc
 import asyncio
 import base64
@@ -116,13 +114,13 @@ class _InfoDict(TypedDict, total=False):
 
     directory: Path
     prefix: str
-    routes: Mapping[str, AbstractRoute]
+    routes: Mapping[str, "AbstractRoute"]
 
-    app: Application
+    app: "Application"
 
     domain: str
 
-    rule: AbstractRuleMatching
+    rule: "AbstractRuleMatching"
 
     http_exception: HTTPException
 
@@ -269,10 +267,10 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         return self._route.get_info()
 
     @property
-    def apps(self) -> tuple[Application, ...]:
+    def apps(self) -> tuple["Application", ...]:
         return tuple(self._apps)
 
-    def add_app(self, app: Application) -> None:
+    def add_app(self, app: "Application") -> None:
         if self._frozen:
             raise RuntimeError("Cannot change apps stack after .freeze() call")
         if self._current_app is None:
@@ -280,13 +278,13 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         self._apps.insert(0, app)
 
     @property
-    def current_app(self) -> Application:
+    def current_app(self) -> "Application":
         app = self._current_app
         assert app is not None
         return app
 
     @current_app.setter
-    def current_app(self, app: Application) -> None:
+    def current_app(self, app: "Application") -> None:
         if DEBUG:  # pragma: no cover
             if app not in self._apps:
                 raise RuntimeError(
@@ -348,7 +346,7 @@ class Resource(AbstractResource):
         handler: type[AbstractView] | Handler,
         *,
         expect_handler: _ExpectHandler | None = None,
-    ) -> ResourceRoute:
+    ) -> "ResourceRoute":
         for route_obj in self._routes:
             if route_obj.method == method or route_obj.method == hdrs.METH_ANY:
                 raise RuntimeError(
@@ -361,7 +359,7 @@ class Resource(AbstractResource):
         self.register_route(route_obj)
         return route_obj
 
-    def register_route(self, route: ResourceRoute) -> None:
+    def register_route(self, route: "ResourceRoute") -> None:
         assert isinstance(
             route, ResourceRoute
         ), f"Instance of Route class is required, got {route!r}"
@@ -390,7 +388,7 @@ class Resource(AbstractResource):
     def __len__(self) -> int:
         return len(self._routes)
 
-    def __iter__(self) -> Iterator[ResourceRoute]:
+    def __iter__(self) -> Iterator["ResourceRoute"]:
         return iter(self._routes)
 
     # TODO: implement all abstract methods
@@ -742,7 +740,7 @@ class StaticResource(PrefixResource):
 
 
 class PrefixedSubAppResource(PrefixResource):
-    def __init__(self, prefix: str, app: Application) -> None:
+    def __init__(self, prefix: str, app: "Application") -> None:
         super().__init__(prefix)
         self._app = app
         self._add_prefix_to_resources(prefix)
@@ -859,7 +857,7 @@ class MaskDomain(Domain):
 
 
 class MatchedSubAppResource(PrefixedSubAppResource):
-    def __init__(self, rule: AbstractRuleMatching, app: Application) -> None:
+    def __init__(self, rule: AbstractRuleMatching, app: "Application") -> None:
         AbstractResource.__init__(self)
         self._prefix = ""
         self._app = app
@@ -1016,6 +1014,12 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._hyperdb: hyperscan.Database | None = None  # type: ignore[no-any-unimported]
         self._hyper_index: dict[int, AbstractResource] = {}
 
+    def _on_match(
+        self, id_: int, from_: int, to: int, flags: int, found: list[int]
+    ) -> bool | None:
+        found.append(id_)
+        return None
+
     async def _resolve_fast(
         self, request: Request, path: str, allowed_methods: set[str]
     ) -> UrlMappingMatchInfo | None:
@@ -1025,13 +1029,9 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # N.B.: allowed_methods variable in modified in-place
         found: list[int] = []
 
-        def on_match(
-            id_: int, from_: int, to: int, flags: int, context: Any | None
-        ) -> bool | None:
-            found.append(id_)
-            return None
-
-        self._hyperdb.scan(path.encode("utf8"), match_event_handler=on_match)
+        self._hyperdb.scan(
+            path.encode("utf8"), match_event_handler=self._on_match, context=found
+        )
         if not found:
             return None
         if len(found) > 1:
