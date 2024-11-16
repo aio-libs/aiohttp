@@ -1016,81 +1016,52 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         found.append(id_)
         return None
 
-    async def _resolve_fast(
-        self, request: Request, path: str, allowed_methods: set[str]
-    ) -> Optional[UrlMappingMatchInfo]:
-        if self._hyperdb is None:
-            return await self._resolve_fallback(request, path, allowed_methods)
-
-        # N.B.: allowed_methods variable in modified in-place
-        found: list[int] = []
-        resources = self._resources
-        res_count = len(resources)
-
-        self._hyperdb.scan(
-            path.encode("utf8"), match_event_handler=self._on_match, context=found
-        )
-        if not found:
-            return None
-        if len(found) > 1:
-            # Multiple matches are found,
-            # use the FIRST match.
-            # Match ids are basically indexes in self._resources
-            # with an offset for variable resources
-            found.sort()
-
-        for idx in found:
-            resource = resources[idx if idx < res_count else idx - res_count]
-            match_dict, allowed = await resource.resolve(request)
-            if match_dict is not None:
-                return match_dict
-            else:
-                allowed_methods |= allowed
-
-        return None
-
-    async def _resolve_fallback(
-        self, request: Request, url_part: str, allowed_methods: set[str]
-    ) -> Optional[UrlMappingMatchInfo]:
-        # N.B.: allowed_methods variable in modified in-place
-
-        resource_index = self._resource_index
-
-        # Walk the url parts looking for candidates. We walk the url backwards
-        # to ensure the most explicit match is found first. If there are multiple
-        # candidates for a given url part because there are multiple resources
-        # registered for the same canonical path, we resolve them in a linear
-        # fashion to ensure registration order is respected.
-        while url_part:
-            for candidate in resource_index.get(url_part, ()):
-                match_dict, allowed = await candidate.resolve(request)
-                if match_dict is not None:
-                    return match_dict
-                else:
-                    allowed_methods |= allowed
-            if url_part == "/":
-                break
-            url_part = url_part.rpartition("/")[0] or "/"
-
-        return None
-
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
         allowed_methods: set[str] = set()
 
         if self._hyperdb is not None:
-            if (
-                ret := await self._resolve_fast(
-                    request, request.rel_url.path_safe, allowed_methods
-                )
-            ) is not None:
-                return ret
+            path = request.rel_url.path_safe
+            found: list[int] = []
+            resources = self._resources
+            res_count = len(resources)
+
+            self._hyperdb.scan(
+                path.encode("utf8"), match_event_handler=self._on_match, context=found
+            )
+            if found:
+                if len(found) > 1:
+                    # Multiple matches are found,
+                    # use the FIRST match.
+                    # Match ids are basically indexes in self._resources
+                    # with an offset for variable resources
+                    found.sort()
+
+                for idx in found:
+                    resource = resources[idx if idx < res_count else idx - res_count]
+                    match_dict, allowed = await resource.resolve(request)
+                    if match_dict is not None:
+                        return match_dict
+                    else:
+                        allowed_methods |= allowed
         else:
-            if (
-                ret := await self._resolve_fallback(
-                    request, request.rel_url.path_safe, allowed_methods
-                )
-            ) is not None:
-                return ret
+            url_part = request.rel_url.path_safe
+            resource_index = self._resource_index
+
+            # Walk the url parts looking for candidates. We walk the url backwards
+            # to ensure the most explicit match is found first. If there are multiple
+            # candidates for a given url part because there are multiple resources
+            # registered for the same canonical path, we resolve them in a linear
+            # fashion to ensure registration order is respected.
+            while url_part:
+                for candidate in resource_index.get(url_part, ()):
+                    match_dict, allowed = await candidate.resolve(request)
+                    if match_dict is not None:
+                        return match_dict
+                    else:
+                        allowed_methods |= allowed
+                if url_part == "/":
+                    break
+                url_part = url_part.rpartition("/")[0] or "/"
 
         #
         # We didn't find any candidates, so we'll try the matched sub-app
