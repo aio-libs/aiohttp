@@ -4,7 +4,6 @@ import base64
 import functools
 import hashlib
 import html
-import itertools
 import keyword
 import os
 import re
@@ -745,6 +744,7 @@ class PrefixedSubAppResource(PrefixResource):
     def add_prefix(self, prefix: str) -> None:
         super().add_prefix(prefix)
         self._add_prefix_to_resources(prefix)
+        self._app.router._rebuild()
 
     def _add_prefix_to_resources(self, prefix: str) -> None:
         router = self._app.router
@@ -1009,7 +1009,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._resource_index: dict[str, list[AbstractResource]] = {}
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
         self._hyperdb: hyperscan.Database | None = None  # type: ignore[no-any-unimported]
-        self._hyper_index: dict[int, AbstractResource] = {}
 
     def _on_match(
         self, id_: int, from_: int, to: int, flags: int, found: list[int]
@@ -1025,6 +1024,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
         # N.B.: allowed_methods variable in modified in-place
         found: list[int] = []
+        res_count = len(self._resources)
 
         self._hyperdb.scan(
             path.encode("utf8"), match_event_handler=self._on_match, context=found
@@ -1033,16 +1033,20 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             return None
         if len(found) > 1:
             # Multiple matches are found,
-            # fall back to explicit iteration to find the FIRST match
-            return await self._resolve_fallback(request, path, allowed_methods)
+            # use the FIRST match.
+            # Match ids are basically indexes in self._resources
+            # with an offset for variable resources
+            found.sort()
 
-        resource = self._hyper_index[found[0]]
-        match_dict, allowed = await resource.resolve(request)
-        if match_dict is not None:
-            return match_dict
-        else:
-            allowed_methods |= allowed
-            return None
+        for idx in found:
+            resource = self._resources[idx if idx < res_count else idx - res_count]
+            match_dict, allowed = await resource.resolve(request)
+            if match_dict is not None:
+                return match_dict
+            else:
+                allowed_methods |= allowed
+
+        return None
 
     async def _resolve_fallback(
         self, request: Request, url_part: str, allowed_methods: set[str]
@@ -1298,50 +1302,61 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         super().freeze()
         for resource in self._resources:
             resource.freeze()
-        if HAS_HYPERSCAN:
-            self._hyperdb = hyperscan.Database()
-            patterns: list[bytes] = []
-            ids: list[int] = []
-            counter = itertools.count()
-            for resource in self._resources:
-                pattern: str | None = None
-                if isinstance(resource, PlainResource):
-                    pattern = re.escape(resource.get_info()["path"])
-                elif isinstance(resource, DynamicResource):
-                    pattern = resource.get_info()["pattern"].pattern
-                elif isinstance(resource, StaticResource):
-                    pattern = resource.get_info()["prefix"] + "/.+"
-                else:
-                    pattern = None
+        self._rebuild()
 
-                if pattern is None:
+    def _rebuild(self) -> None:
+        self._hyperdb = None
+        if not HAS_HYPERSCAN:
+            return
+
+        patterns: list[bytes] = []
+        ids: list[int] = []
+        res_count = len(self._resources)
+        for id_, resource in enumerate(self._resources):
+            pattern: str | None = None
+            if isinstance(resource, PlainResource):
+                pattern = re.escape(resource.get_info()["path"])
+            elif isinstance(resource, DynamicResource):
+                pattern = resource.get_info()["pattern"].pattern
+                # put variable resources at the end of search order list
+                id_ += res_count
+            elif isinstance(resource, PrefixResource):
+                if isinstance(resource, MatchedSubAppResource):
+                    # wildcard resources doesn't fit hyperscan table
                     continue
-
-                id_ = next(counter)
-                patterns.append(f"^{pattern}$".encode())
-                self._hyper_index[id_] = resource
-                ids.append(id_)
-
-            count = len(patterns)
-            try:
-                self._hyperdb.compile(
-                    expressions=patterns,
-                    ids=ids,
-                    elements=count,
-                    flags=[
-                        hyperscan.HS_FLAG_UTF8
-                        | hyperscan.HS_FLAG_UCP
-                        | hyperscan.HS_FLAG_SINGLEMATCH
-                    ]
-                    * count,
-                )
-            except hyperscan.error as exc:
+                pattern = resource.get_info()["prefix"] + "(/.*)?"
+            else:
                 web_logger.warning(
-                    "Cannot compile hyperscan database: %s, switching to fallback url resolver",
-                    repr(exc),
+                    "Unsupported resource [%s] %s, switching to fallback url resolver",
+                    type(resource),
+                    resource.canonical,
                 )
-                self._hyperdb = None
-                self._hyper_index.clear()
+                return
+
+            patterns.append(f"^{pattern}$".encode())
+            ids.append(id_)
+
+        count = len(patterns)
+        self._hyperdb = hyperscan.Database()
+        self._hyperpatterns = patterns
+        try:
+            self._hyperdb.compile(
+                expressions=patterns,
+                ids=ids,
+                elements=count,
+                flags=[
+                    hyperscan.HS_FLAG_UTF8
+                    | hyperscan.HS_FLAG_UCP
+                    | hyperscan.HS_FLAG_SINGLEMATCH
+                ]
+                * count,
+            )
+        except hyperscan.error as exc:
+            web_logger.warning(
+                "Cannot compile hyperscan database: %s, switching to fallback url resolver",
+                repr(exc),
+            )
+            self._hyperdb = None
 
     def add_routes(self, routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
         """Append routes to route table.
