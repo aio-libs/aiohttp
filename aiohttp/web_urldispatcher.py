@@ -982,7 +982,7 @@ class ResourcesView(Sized, Iterable[AbstractResource], Container[AbstractResourc
 
 
 class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
-    def __init__(self, resources: list[AbstractResource]):
+    def __init__(self, resources: List[AbstractResource]):
         self._routes: List[AbstractRoute] = []
         for resource in resources:
             for route in resource:
@@ -1007,7 +1007,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._resources: List[AbstractResource] = []
         self._named_resources: Dict[str, AbstractResource] = {}
         self._resource_index: dict[str, list[AbstractResource]] = {}
-        self._matched_sub_app_resources: list[MatchedSubAppResource] = []
+        self._matched_sub_app_resources: List[MatchedSubAppResource] = []
         self._hyperdb: hyperscan.Database | None = None  # type: ignore[no-any-unimported]
         self._hyper_index: dict[int, AbstractResource] = {}
 
