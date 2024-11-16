@@ -1076,12 +1076,20 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
         allowed_methods: set[str] = set()
 
-        if (
-            ret := await self._resolve_fast(
-                request, request.rel_url.path_safe, allowed_methods
-            )
-        ) is not None:
-            return ret
+        if self._hyperdb is not None:
+            if (
+                ret := await self._resolve_fast(
+                    request, request.rel_url.path_safe, allowed_methods
+                )
+            ) is not None:
+                return ret
+        else:
+            if (
+                ret := await self._resolve_fallback(
+                    request, request.rel_url.path_safe, allowed_methods
+                )
+            ) is not None:
+                return ret
 
         #
         # We didn't find any candidates, so we'll try the matched sub-app
