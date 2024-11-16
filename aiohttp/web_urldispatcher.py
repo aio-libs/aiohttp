@@ -1313,7 +1313,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         ids: list[int] = []
         res_count = len(self._resources)
         for id_, resource in enumerate(self._resources):
-            pattern: str | None = None
             if isinstance(resource, PlainResource):
                 pattern = re.escape(resource.get_info()["path"])
             elif isinstance(resource, DynamicResource):
