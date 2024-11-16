@@ -1012,7 +1012,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def _on_match(
         self, id_: int, from_: int, to: int, flags: int, found: list[int]
-    ) -> bool | None:
+    ) -> Optional[bool]:
         found.append(id_)
         return None
 
