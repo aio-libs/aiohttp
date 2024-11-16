@@ -1009,7 +1009,8 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._resource_index: dict[str, list[AbstractResource]] = {}
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
         self._hyperdb: Optional[hyperscan.Database] = None  # type: ignore[no-any-unimported]
-        self._plain_resources: dict[str, AbstractResource] = {}
+        self._plain_resources: dict[str, PlainResource] = {}
+        self._prefix_resources: dict[str, PrefixResource] = {}
 
     def _on_match(
         self, id_: int, from_: int, to: int, flags: int, found: list[int]
@@ -1021,8 +1022,15 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         allowed_methods: set[str] = set()
         path = request.rel_url.path_safe
 
-        if (resource := self._plain_resources.get(path)) is not None:
-            match_dict, allowed = await resource.resolve(request)
+        if (plain_resource := self._plain_resources.get(path)) is not None:
+            match_dict, allowed = await plain_resource.resolve(request)
+            if match_dict is not None:
+                return match_dict
+            else:
+                allowed_methods |= allowed
+
+        for prefix, prefix_resource in self._prefix_resources.items():
+            match_dict, allowed = await prefix_resource.resolve(request)
             if match_dict is not None:
                 return match_dict
             else:
@@ -1031,7 +1039,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         if self._hyperdb is not None:
             found: list[int] = []
             resources = self._resources
-            res_count = len(resources)
 
             self._hyperdb.scan(
                 path.encode("utf8"), match_event_handler=self._on_match, context=found
@@ -1045,7 +1052,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                     found.sort()
 
                 for idx in found:
-                    resource = resources[idx if idx < res_count else idx - res_count]
+                    resource = resources[idx]
                     match_dict, allowed = await resource.resolve(request)
                     if match_dict is not None:
                         return match_dict
@@ -1295,22 +1302,21 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def _rebuild(self) -> None:
         self._hyperdb = None
         self._plain_resources.clear()
+        self._prefix_resources.clear()
         patterns: list[bytes] = []
         ids: list[int] = []
-        res_count = len(self._resources)
         for id_, resource in enumerate(self._resources):
             if isinstance(resource, PlainResource):
                 self._plain_resources[resource.get_info()["path"]] = resource
                 continue
             elif isinstance(resource, DynamicResource):
                 pattern = resource.get_info()["pattern"].pattern
-                # put variable resources at the end of search order list
-                id_ += res_count
             elif isinstance(resource, PrefixResource):
                 if isinstance(resource, MatchedSubAppResource):
                     # wildcard resources doesn't fit hyperscan table
                     continue
-                pattern = resource.get_info()["prefix"] + "(/.*)?"
+                self._prefix_resources[resource.get_info()["prefix"]] = resource
+                continue
             else:
                 raise RuntimeError(f"Unsupported resource type {type(resource)}")
 
