@@ -1338,7 +1338,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
         count = len(patterns)
         self._hyperdb = hyperscan.Database()
-        self._hyperpatterns = patterns
         try:
             self._hyperdb.compile(
                 expressions=patterns,
