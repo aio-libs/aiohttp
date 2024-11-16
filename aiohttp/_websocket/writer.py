@@ -161,7 +161,7 @@ class WebSocketWriter:
     def _make_compress_obj(self, compress: int) -> ZLibCompressor:
         return ZLibCompressor(
             level=zlib.Z_BEST_SPEED,
-            wbits=-compress,
+            wbits=-compress if compress <= zlib.MAX_WBITS else compress,
             max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
         )
 
