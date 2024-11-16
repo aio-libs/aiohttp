@@ -45,6 +45,7 @@ def test_resolve_root_route(
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
+    app.freeze()
     request = _mock_request(method="GET", path="/")
 
     async def run_url_dispatcher_benchmark() -> None:
@@ -65,6 +66,7 @@ def test_resolve_static_root_route(
 
     app = web.Application()
     app.router.add_static("/", pathlib.Path(aiohttp.__file__).parent)
+    app.freeze()
     request = _mock_request(method="GET", path="/")
 
     async def run_url_dispatcher_benchmark() -> None:
@@ -89,6 +91,7 @@ def test_resolve_single_fixed_url_with_many_routes(
     app = web.Application()
     for count in range(250):
         app.router.add_route("GET", f"/api/server/dispatch/{count}/update", handler)
+    app.freeze()
     request = _mock_request(method="GET", path="/api/server/dispatch/1/update")
 
     async def run_url_dispatcher_benchmark() -> None:
@@ -112,6 +115,7 @@ def test_resolve_multiple_fixed_url_with_many_routes(
     app = web.Application()
     for count in range(250):
         app.router.add_route("GET", f"/api/server/dispatch/{count}/update", handler)
+    app.freeze()
 
     requests = [
         _mock_request(method="GET", path=f"/api/server/dispatch/{count}/update")
@@ -147,6 +151,7 @@ def test_resolve_multiple_level_fixed_url_with_many_routes(
     ]
     for url in urls:
         app.router.add_route("GET", url, handler)
+    app.freeze()
 
     requests = [_mock_request(method="GET", path=url) for url in urls]
 
@@ -172,6 +177,7 @@ def test_resolve_dynamic_resource_url_with_many_routes(
     for count in range(250):
         app.router.add_route("GET", f"/api/server/other/{count}/update", handler)
     app.router.add_route("GET", "/api/server/dispatch/{customer}/update", handler)
+    app.freeze()
 
     requests = [
         _mock_request(method="GET", path=f"/api/server/dispatch/{customer}/update")
