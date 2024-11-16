@@ -1009,6 +1009,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._resource_index: dict[str, list[AbstractResource]] = {}
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
         self._hyperdb: Optional[hyperscan.Database] = None  # type: ignore[no-any-unimported]
+        self._plain_resources: dict[str, AbstractResource] = {}
 
     def _on_match(
         self, id_: int, from_: int, to: int, flags: int, found: list[int]
@@ -1018,9 +1019,16 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
         allowed_methods: set[str] = set()
+        path = request.rel_url.path_safe
+
+        if (resource := self._plain_resources.get(path)) is not None:
+            match_dict, allowed = await resource.resolve(request)
+            if match_dict is not None:
+                return match_dict
+            else:
+                allowed_methods |= allowed
 
         if self._hyperdb is not None:
-            path = request.rel_url.path_safe
             found: list[int] = []
             resources = self._resources
             res_count = len(resources)
@@ -1044,7 +1052,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                     else:
                         allowed_methods |= allowed
         else:
-            url_part = request.rel_url.path_safe
+            url_part = path
             resource_index = self._resource_index
 
             # Walk the url parts looking for candidates. We walk the url backwards
@@ -1286,15 +1294,14 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def _rebuild(self) -> None:
         self._hyperdb = None
-        if not HAS_HYPERSCAN:
-            return
-
+        self._plain_resources.clear()
         patterns: list[bytes] = []
         ids: list[int] = []
         res_count = len(self._resources)
         for id_, resource in enumerate(self._resources):
             if isinstance(resource, PlainResource):
-                pattern = re.escape(resource.get_info()["path"])
+                self._plain_resources[resource.get_info()["path"]] = resource
+                continue
             elif isinstance(resource, DynamicResource):
                 pattern = resource.get_info()["pattern"].pattern
                 # put variable resources at the end of search order list
@@ -1305,15 +1312,13 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                     continue
                 pattern = resource.get_info()["prefix"] + "(/.*)?"
             else:
-                web_logger.warning(
-                    "Unsupported resource [%s] %s, switching to fallback url resolver",
-                    type(resource),
-                    resource.canonical,
-                )
-                return
+                raise RuntimeError(f"Unsupported resource type {type(resource)}")
 
             patterns.append(f"^{pattern}$".encode())
             ids.append(id_)
+
+        if not HAS_HYPERSCAN:
+            return
 
         count = len(patterns)
         self._hyperdb = hyperscan.Database()
