@@ -1008,7 +1008,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._named_resources: Dict[str, AbstractResource] = {}
         self._resource_index: dict[str, list[AbstractResource]] = {}
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
-        self._hyperdb: hyperscan.Database | None = None  # type: ignore[no-any-unimported]
+        self._hyperdb: Optional[hyperscan.Database] = None  # type: ignore[no-any-unimported]
 
     def _on_match(
         self, id_: int, from_: int, to: int, flags: int, found: list[int]
@@ -1018,7 +1018,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     async def _resolve_fast(
         self, request: Request, path: str, allowed_methods: set[str]
-    ) -> UrlMappingMatchInfo | None:
+    ) -> Optional[UrlMappingMatchInfo]:
         if self._hyperdb is None:
             return await self._resolve_fallback(request, path, allowed_methods)
 
@@ -1050,7 +1050,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     async def _resolve_fallback(
         self, request: Request, url_part: str, allowed_methods: set[str]
-    ) -> UrlMappingMatchInfo | None:
+    ) -> Optional[UrlMappingMatchInfo]:
         # N.B.: allowed_methods variable in modified in-place
 
         resource_index = self._resource_index
