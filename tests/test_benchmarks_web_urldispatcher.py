@@ -257,7 +257,7 @@ def test_resolve_gitapi_subapps(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Resolve DynamicResource for simulated github API, some common urls are grouped in subapps.
+    """Resolve DynamicResource for simulated github API, grouped in subapps.
 
     The benchmark uses OpenAPI generated info for github.
     To update the local data file please run the following command:
