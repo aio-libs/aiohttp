@@ -1024,7 +1024,8 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
         # N.B.: allowed_methods variable in modified in-place
         found: list[int] = []
-        res_count = len(self._resources)
+        resources = self._resources
+        res_count = len(resources)
 
         self._hyperdb.scan(
             path.encode("utf8"), match_event_handler=self._on_match, context=found
@@ -1039,7 +1040,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             found.sort()
 
         for idx in found:
-            resource = self._resources[idx if idx < res_count else idx - res_count]
+            resource = resources[idx if idx < res_count else idx - res_count]
             match_dict, allowed = await resource.resolve(request)
             if match_dict is not None:
                 return match_dict
