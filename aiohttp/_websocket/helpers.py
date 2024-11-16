@@ -120,7 +120,7 @@ def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bo
                 break
         # Return Fail if client side and not match
         elif not isserver:
-            raise WSHandshakeError("Extension for deflate not supported" + ext.group(1))
+            raise WSHandshakeError("Extension for deflate not supported" + defext)
 
     return compress, notakeover
 
