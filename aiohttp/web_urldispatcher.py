@@ -1010,7 +1010,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
         self._hyperdb: Optional[hyperscan.Database] = None  # type: ignore[no-any-unimported]
         self._plain_resources: dict[str, PlainResource] = {}
-        self._prefix_resources: dict[str, PrefixResource] = {}
+        self._prefix_resources: list[tuple[str, PrefixResource]] = []
 
     def _on_match(
         self, id_: int, from_: int, to: int, flags: int, found: list[int]
@@ -1029,7 +1029,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             else:
                 allowed_methods |= allowed
 
-        for prefix, prefix_resource in self._prefix_resources.items():
+        for prefix, prefix_resource in self._prefix_resources:
             match_dict, allowed = await prefix_resource.resolve(request)
             if match_dict is not None:
                 return match_dict
@@ -1302,7 +1302,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def _rebuild(self) -> None:
         self._hyperdb = None
         self._plain_resources.clear()
-        self._prefix_resources.clear()
+        del self._prefix_resources[:]
         patterns: list[bytes] = []
         ids: list[int] = []
         for id_, resource in enumerate(self._resources):
@@ -1315,7 +1315,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 if isinstance(resource, MatchedSubAppResource):
                     # wildcard resources doesn't fit hyperscan table
                     continue
-                self._prefix_resources[resource.get_info()["prefix"]] = resource
+                self._prefix_resources.append((resource.get_info()["prefix"], resource))
                 continue
             else:
                 raise RuntimeError(f"Unsupported resource type {type(resource)}")
