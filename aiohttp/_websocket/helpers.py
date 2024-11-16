@@ -2,6 +2,7 @@
 
 import functools
 import re
+import zlib
 from struct import Struct
 from typing import TYPE_CHECKING, Final, List, Optional, Pattern, Tuple
 
@@ -82,13 +83,13 @@ def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bo
     notakeover = False
     for ext in _WS_EXT_RE_SPLIT.finditer(extstr):
         defext = ext.group(1)
-        # Return compress = 15 when get `permessage-deflate`
+        # Return compress = zlib.MAX_WBITS when get `permessage-deflate`
         if not defext:
-            compress = 15
+            compress = zlib.MAX_WBITS
             break
         match = _WS_EXT_RE.match(defext)
         if match:
-            compress = 15
+            compress = zlib.MAX_WBITS
             if isserver:
                 # Server never fail to detect compress handshake.
                 # Server does not need to send max wbit to client
@@ -98,7 +99,7 @@ def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bo
                     # Compress wbit 8 does not support in zlib
                     # If compress level not support,
                     # CONTINUE to next extension
-                    if compress > 15 or compress < 9:
+                    if compress > zlib.MAX_WBITS or compress < 9:
                         compress = 0
                         continue
                 if match.group(1):
@@ -112,7 +113,7 @@ def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bo
                     # Compress wbit 8 does not support in zlib
                     # If compress level not support,
                     # FAIL the parse progress
-                    if compress > 15 or compress < 9:
+                    if compress > zlib.MAX_WBITS or compress < 9:
                         raise WSHandshakeError("Invalid window size")
                 if match.group(2):
                     notakeover = True
@@ -126,11 +127,13 @@ def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bo
 
 
 def ws_ext_gen(
-    compress: int = 15, isserver: bool = False, server_notakeover: bool = False
+    compress: int = zlib.MAX_WBITS,
+    isserver: bool = False,
+    server_notakeover: bool = False,
 ) -> str:
     # client_notakeover=False not used for server
     # compress wbit 8 does not support in zlib
-    if compress < 9 or compress > 15:
+    if compress < 9 or compress > zlib.MAX_WBITS:
         raise ValueError(
             "Compress wbits must between 9 and 15, zlib does not support wbits=8"
         )
@@ -138,7 +141,7 @@ def ws_ext_gen(
     if not isserver:
         enabledext.append("client_max_window_bits")
 
-    if compress < 15:
+    if compress < zlib.MAX_WBITS:
         enabledext.append("server_max_window_bits=" + str(compress))
     if server_notakeover:
         enabledext.append("server_no_context_takeover")
