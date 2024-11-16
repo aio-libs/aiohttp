@@ -126,11 +126,11 @@ class _InfoDict(TypedDict, total=False):
 
 
 class AbstractResource(Sized, Iterable["AbstractRoute"]):
-    def __init__(self, *, name: str | None = None) -> None:
+    def __init__(self, *, name: Optional[str] = None) -> None:
         self._name = name
 
     @property
-    def name(self) -> str | None:
+    def name(self) -> Optional[str]:
         return self._name
 
     @property
@@ -176,10 +176,10 @@ class AbstractRoute(abc.ABC):
     def __init__(
         self,
         method: str,
-        handler: Handler | type[AbstractView],
+        handler: Union[Handler, Type[AbstractView]],
         *,
-        expect_handler: _ExpectHandler | None = None,
-        resource: AbstractResource | None = None,
+        expect_handler: Optional[_ExpectHandler] = None,
+        resource: Optional[AbstractResource] = None,
     ) -> None:
         if expect_handler is None:
             expect_handler = _default_expect_handler
@@ -217,11 +217,11 @@ class AbstractRoute(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def name(self) -> str | None:
+    def name(self) -> Optional[str]:
         """Optional route's name, always equals to resource's name."""
 
     @property
-    def resource(self) -> AbstractResource | None:
+    def resource(self) -> Optional[AbstractResource]:
         return self._resource
 
     @abc.abstractmethod
@@ -232,7 +232,7 @@ class AbstractRoute(abc.ABC):
     def url_for(self, *args: str, **kwargs: str) -> URL:
         """Construct url for route with additional params."""
 
-    async def handle_expect_header(self, request: Request) -> StreamResponse | None:
+    async def handle_expect_header(self, request: Request) -> Optional[StreamResponse]:
         return await self._expect_handler(request)
 
 
@@ -240,11 +240,11 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
 
     __slots__ = ("_route", "_apps", "_current_app", "_frozen")
 
-    def __init__(self, match_dict: dict[str, str], route: AbstractRoute) -> None:
+    def __init__(self, match_dict: Dict[str, str], route: AbstractRoute) -> None:
         super().__init__(match_dict)
         self._route = route
-        self._apps: list[Application] = []
-        self._current_app: Application | None = None
+        self._apps: List[Application] = []
+        self._current_app: Optional[Application] = None
         self._frozen = False
 
     @property
@@ -260,14 +260,14 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
         return self._route.handle_expect_header
 
     @property
-    def http_exception(self) -> HTTPException | None:
+    def http_exception(self) -> Optional[HTTPException]:
         return None
 
     def get_info(self) -> _InfoDict:  # type: ignore[override]
         return self._route.get_info()
 
     @property
-    def apps(self) -> tuple["Application", ...]:
+    def apps(self) -> Tuple["Application", ...]:
         return tuple(self._apps)
 
     def add_app(self, app: "Application") -> None:
@@ -336,16 +336,16 @@ async def _default_expect_handler(request: Request) -> None:
 
 
 class Resource(AbstractResource):
-    def __init__(self, *, name: str | None = None) -> None:
+    def __init__(self, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
-        self._routes: list[ResourceRoute] = []
+        self._routes: List[ResourceRoute] = []
 
     def add_route(
         self,
         method: str,
-        handler: type[AbstractView] | Handler,
+        handler: Union[Type[AbstractView], Handler],
         *,
-        expect_handler: _ExpectHandler | None = None,
+        expect_handler: Optional[_ExpectHandler] = None,
     ) -> "ResourceRoute":
         for route_obj in self._routes:
             if route_obj.method == method or route_obj.method == hdrs.METH_ANY:
@@ -382,7 +382,7 @@ class Resource(AbstractResource):
             return None, allowed_methods
 
     @abc.abstractmethod
-    def _match(self, path: str) -> dict[str, str] | None:
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
         pass  # pragma: no cover
 
     def __len__(self) -> int:
@@ -395,7 +395,7 @@ class Resource(AbstractResource):
 
 
 class PlainResource(Resource):
-    def __init__(self, path: str, *, name: str | None = None) -> None:
+    def __init__(self, path: str, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
         assert not path or path.startswith("/")
         self._path = path
@@ -414,7 +414,7 @@ class PlainResource(Resource):
         assert len(prefix) > 1
         self._path = prefix + self._path
 
-    def _match(self, path: str) -> dict[str, str] | None:
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
         # string comparison is about 10 times faster than regexp matching
         if self._path == path:
             return {}
@@ -439,7 +439,7 @@ class DynamicResource(Resource):
     DYN_WITH_RE = re.compile(r"\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}")
     GOOD = r"[^{}/]+"
 
-    def __init__(self, path: str, *, name: str | None = None) -> None:
+    def __init__(self, path: str, *, name: Optional[str] = None) -> None:
         super().__init__(name=name)
         self._orig_path = path
         pattern = ""
@@ -484,7 +484,7 @@ class DynamicResource(Resource):
         self._pattern = re.compile(re.escape(prefix) + self._pattern.pattern)
         self._formatter = prefix + self._formatter
 
-    def _match(self, path: str) -> dict[str, str] | None:
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
         match = self._pattern.fullmatch(path)
         if match is None:
             return None
@@ -510,7 +510,7 @@ class DynamicResource(Resource):
 
 
 class PrefixResource(AbstractResource):
-    def __init__(self, prefix: str, *, name: str | None = None) -> None:
+    def __init__(self, prefix: str, *, name: Optional[str] = None) -> None:
         assert not prefix or prefix.startswith("/"), prefix
         assert prefix in ("", "/") or not prefix.endswith("/"), prefix
         super().__init__(name=name)
@@ -542,8 +542,8 @@ class StaticResource(PrefixResource):
         prefix: str,
         directory: PathLike,
         *,
-        name: str | None = None,
-        expect_handler: _ExpectHandler | None = None,
+        name: Optional[str] = None,
+        expect_handler: Optional[_ExpectHandler] = None,
         chunk_size: int = 256 * 1024,
         show_index: bool = False,
         follow_symlinks: bool = False,
@@ -576,7 +576,7 @@ class StaticResource(PrefixResource):
         self,
         *,
         filename: PathLike,
-        append_version: bool | None = None,
+        append_version: Optional[bool] = None,
     ) -> URL:
         if append_version is None:
             append_version = self._append_version
@@ -891,10 +891,10 @@ class ResourceRoute(AbstractRoute):
     def __init__(
         self,
         method: str,
-        handler: Handler | type[AbstractView],
+        handler: Union[Handler, Type[AbstractView]],
         resource: AbstractResource,
         *,
-        expect_handler: _ExpectHandler | None = None,
+        expect_handler: Optional[_ExpectHandler] = None,
     ) -> None:
         super().__init__(
             method, handler, expect_handler=expect_handler, resource=resource
@@ -906,7 +906,7 @@ class ResourceRoute(AbstractRoute):
         )
 
     @property
-    def name(self) -> str | None:
+    def name(self) -> Optional[str]:
         if self._resource is None:
             return None
         return self._resource.name
@@ -930,7 +930,7 @@ class SystemRoute(AbstractRoute):
         raise RuntimeError(".url_for() is not allowed for SystemRoute")
 
     @property
-    def name(self) -> str | None:
+    def name(self) -> Optional[str]:
         return None
 
     def get_info(self) -> _InfoDict:
@@ -955,7 +955,7 @@ class View(AbstractView):
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method: Callable[[], Awaitable[StreamResponse]] | None = getattr(
+        method: Optional[Callable[[], Awaitable[StreamResponse]]] = getattr(
             self, self.request.method.lower(), None
         )
         if method is None:
@@ -971,7 +971,7 @@ class View(AbstractView):
 
 
 class ResourcesView(Sized, Iterable[AbstractResource], Container[AbstractResource]):
-    def __init__(self, resources: list[AbstractResource]) -> None:
+    def __init__(self, resources: List[AbstractResource]) -> None:
         self._resources = resources
 
     def __len__(self) -> int:
@@ -986,7 +986,7 @@ class ResourcesView(Sized, Iterable[AbstractResource], Container[AbstractResourc
 
 class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
     def __init__(self, resources: list[AbstractResource]):
-        self._routes: list[AbstractRoute] = []
+        self._routes: List[AbstractRoute] = []
         for resource in resources:
             for route in resource:
                 self._routes.append(route)
@@ -1007,8 +1007,8 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._resources: list[AbstractResource] = []
-        self._named_resources: dict[str, AbstractResource] = {}
+        self._resources: List[AbstractResource] = []
+        self._named_resources: Dict[str, AbstractResource] = {}
         self._resource_index: dict[str, list[AbstractResource]] = {}
         self._matched_sub_app_resources: list[MatchedSubAppResource] = []
         self._hyperdb: hyperscan.Database | None = None  # type: ignore[no-any-unimported]
@@ -1186,7 +1186,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         resource_key = self._get_resource_index_key(resource)
         self._resource_index[resource_key].remove(resource)
 
-    def add_resource(self, path: str, *, name: str | None = None) -> Resource:
+    def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
         if path and not path.startswith("/"):
             raise ValueError("path should be started with / or be empty")
         # Reuse last added resource if path and name are the same
@@ -1206,10 +1206,10 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self,
         method: str,
         path: str,
-        handler: Handler | type[AbstractView],
+        handler: Union[Handler, Type[AbstractView]],
         *,
-        name: str | None = None,
-        expect_handler: _ExpectHandler | None = None,
+        name: Optional[str] = None,
+        expect_handler: Optional[_ExpectHandler] = None,
     ) -> AbstractRoute:
         resource = self.add_resource(path, name=name)
         return resource.add_route(method, handler, expect_handler=expect_handler)
@@ -1219,8 +1219,8 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         prefix: str,
         path: PathLike,
         *,
-        name: str | None = None,
-        expect_handler: _ExpectHandler | None = None,
+        name: Optional[str] = None,
+        expect_handler: Optional[_ExpectHandler] = None,
         chunk_size: int = 256 * 1024,
         show_index: bool = False,
         follow_symlinks: bool = False,
@@ -1261,7 +1261,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         path: str,
         handler: Handler,
         *,
-        name: str | None = None,
+        name: Optional[str] = None,
         allow_head: bool = True,
         **kwargs: Any,
     ) -> AbstractRoute:
@@ -1292,7 +1292,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
     def add_view(
-        self, path: str, handler: type[AbstractView], **kwargs: Any
+        self, path: str, handler: Type[AbstractView], **kwargs: Any
     ) -> AbstractRoute:
         """Shortcut for add_route with ANY methods for a class-based view."""
         return self.add_route(hdrs.METH_ANY, path, handler, **kwargs)
@@ -1346,7 +1346,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 self._hyperdb = None
                 self._hyper_index.clear()
 
-    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> list[AbstractRoute]:
+    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
         """Append routes to route table.
 
         Parameter should be a sequence of RouteDef objects.
