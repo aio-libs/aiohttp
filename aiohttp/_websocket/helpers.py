@@ -72,17 +72,23 @@ _WS_EXT_RE: Final[Pattern[str]] = re.compile(
     r"(client_max_window_bits(?:=(\d+))?)))*$"
 )
 
-_WS_EXT_RE_SPLIT: Final[Pattern[str]] = re.compile(r"permessage-deflate([^,]+)?")
+_WS_EXT_RE_SPLIT: Final[Pattern[str]] = re.compile(r"permessage-(deflate|gzip)([^,]+)?")
 
 
-def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bool]:
+def ws_ext_parse(
+    extstr: Optional[str], isserver: bool = False, detect_gzip: bool = False
+) -> Tuple[int, bool]:
     if not extstr:
         return 0, False
 
+    is_gzip = False
     compress = 0
     notakeover = False
     for ext in _WS_EXT_RE_SPLIT.finditer(extstr):
-        defext = ext.group(1)
+        is_gzip = ext.group(1) == "gzip"
+        if is_gzip and not detect_gzip:
+            continue
+        defext = ext.group(2)
         # Return compress = zlib.MAX_WBITS when get `permessage-deflate`
         if not defext:
             compress = zlib.MAX_WBITS
@@ -122,6 +128,11 @@ def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bo
         # Return Fail if client side and not match
         elif not isserver:
             raise WSHandshakeError("Extension for deflate not supported" + defext)
+
+    # support messages with gzip header and trailer
+    # https://docs.python.org/3/library/zlib.html#zlib.decompress
+    if is_gzip:
+        compress += 16
 
     return compress, notakeover
 
