@@ -1055,21 +1055,20 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             self._hyperdb.scan(
                 path.encode("utf8"), match_event_handler=self._on_match, context=found
             )
-            if found:
-                if len(found) > 1:
-                    # Multiple matches are found,
-                    # use the FIRST match.
-                    # Match ids are basically indexes in self._resources
-                    # with an offset for variable resources
-                    found.sort()
+            if len(found) > 1:
+                # Multiple matches are found,
+                # use the FIRST match.
+                # Match ids are basically indexes in self._resources
+                # with an offset for variable resources
+                found.sort()
 
-                for idx in found:
-                    resource = resources[idx]
-                    match_dict, allowed = await resource.resolve(request)
-                    if match_dict is not None:
-                        return match_dict
-                    else:
-                        allowed_methods |= allowed
+            for idx in found:
+                resource = resources[idx]
+                match_dict, allowed = await resource.resolve(request)
+                if match_dict is not None:
+                    return match_dict
+                else:
+                    allowed_methods |= allowed
         else:
             url_part = path
             resource_index = self._resource_index
