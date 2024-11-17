@@ -1,6 +1,7 @@
 import abc
 import asyncio
 import base64
+import dataclasses
 import functools
 import hashlib
 import html
@@ -998,6 +999,12 @@ class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
         return route in self._routes
 
 
+@dataclasses.dataclass
+class _PrefixSubtree:
+    common_prefix: str
+    resources: list[PrefixResource]
+
+
 class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     NAME_SPLIT_RE = re.compile(r"[.:-]")
     HTTP_NOT_FOUND = HTTPNotFound()
@@ -1010,7 +1017,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
         self._hyperdb: Optional[hyperscan.Database] = None  # type: ignore[no-any-unimported]
         self._plain_resources: dict[str, PlainResource] = {}
-        self._prefix_resources: list[tuple[str, PrefixResource]] = []
+        self._prefix_resources: dict[str, _PrefixSubtree] = {}
 
     def _on_match(
         self, id_: int, from_: int, to: int, flags: int, found: list[int]
@@ -1029,12 +1036,17 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             else:
                 allowed_methods |= allowed
 
-        for prefix, prefix_resource in self._prefix_resources:
-            match_dict, allowed = await prefix_resource.resolve(request)
-            if match_dict is not None:
-                return match_dict
-            else:
-                allowed_methods |= allowed
+        parts = path.split("/")
+        # path.startswith("/"), thus parts[0] == "".
+        # parts[1] is the first prefix segment
+        if (subtree := self._prefix_resources.get(parts[1])) is not None:
+            if path.startswith(subtree.common_prefix):
+                for prefix_resource in subtree.resources:
+                    match_dict, allowed = await prefix_resource.resolve(request)
+                    if match_dict is not None:
+                        return match_dict
+                    else:
+                        allowed_methods |= allowed
 
         if self._hyperdb is not None:
             found: list[int] = []
@@ -1302,7 +1314,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
     def _rebuild(self) -> None:
         self._hyperdb = None
         self._plain_resources.clear()
-        del self._prefix_resources[:]
+        self._prefix_resources.clear()
         patterns: list[bytes] = []
         ids: list[int] = []
         for id_, resource in enumerate(self._resources):
@@ -1315,7 +1327,21 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 if isinstance(resource, MatchedSubAppResource):
                     # wildcard resources doesn't fit hyperscan table
                     continue
-                self._prefix_resources.append((resource.get_info()["prefix"], resource))
+                prefix = resource.get_info()["prefix"]
+                parts = prefix.split("/")
+                segment = parts[0]
+                subtree = self._prefix_resources.get(segment)
+                if subtree is None:
+                    subtree = _PrefixSubtree(prefix, [resource])
+                    self._prefix_resources[segment] = subtree
+                else:
+                    subtree_parts = subtree.common_prefix.split("/")
+                    segments = []
+                    for lft, rgt in zip(parts, subtree_parts):
+                        if lft == rgt:
+                            segments.append(lft)
+                    subtree.common_prefix = "/".join(segments)
+                    subtree.resources.append(resource)
                 continue
             else:
                 raise RuntimeError(f"Unsupported resource type {type(resource)}")
