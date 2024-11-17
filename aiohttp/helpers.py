@@ -949,9 +949,6 @@ class CookieMixin:
         """
         if self._cookies is None:
             self._cookies = SimpleCookie()  # type: ignore[misc]
-        elif (old := self._cookies.get(name)) is not None and old.coded_value == "":
-            # deleted cookie
-            self._cookies.pop(name, None)
 
         self._cookies[name] = value
         c = self._cookies[name]
