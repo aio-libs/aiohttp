@@ -1,16 +1,11 @@
 """codspeed benchmarks for the web responses."""
 
-import asyncio
-
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
 
 
-def test_simple_web_response(
-    loop: asyncio.AbstractEventLoop,
-    benchmark: BenchmarkFixture,
-) -> None:
+def test_simple_web_response(benchmark: BenchmarkFixture) -> None:
     """Benchmark creating 100 simple web.Response."""
     response_count = 100
 
@@ -20,10 +15,7 @@ def test_simple_web_response(
             web.Response()
 
 
-def test_web_response_with_headers(
-    loop: asyncio.AbstractEventLoop,
-    benchmark: BenchmarkFixture,
-) -> None:
+def test_web_response_with_headers(benchmark: BenchmarkFixture) -> None:
     """Benchmark creating 100 web.Response with headers."""
     response_count = 100
     headers = {
@@ -39,7 +31,6 @@ def test_web_response_with_headers(
 
 
 def test_web_response_with_bytes_body(
-    loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark creating 100 web.Response with bytes."""
@@ -51,10 +42,7 @@ def test_web_response_with_bytes_body(
             web.Response(body=b"Hello, World!")
 
 
-def test_web_response_with_text_body(
-    loop: asyncio.AbstractEventLoop,
-    benchmark: BenchmarkFixture,
-) -> None:
+def test_web_response_with_text_body(benchmark: BenchmarkFixture) -> None:
     """Benchmark creating 100 web.Response with text."""
     response_count = 100
 
@@ -64,10 +52,7 @@ def test_web_response_with_text_body(
             web.Response(text="Hello, World!")
 
 
-def test_simple_web_stream_response(
-    loop: asyncio.AbstractEventLoop,
-    benchmark: BenchmarkFixture,
-) -> None:
+def test_simple_web_stream_response(benchmark: BenchmarkFixture) -> None:
     """Benchmark creating 100 simple web.StreamResponse."""
     response_count = 100
 
