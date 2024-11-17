@@ -1,0 +1,1 @@
+Provided experimental support for communicating with WebSocket servers that require the `permessage-gzip` extension -- by :user:`jakob-keller`.

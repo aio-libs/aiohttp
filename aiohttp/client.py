@@ -9,6 +9,7 @@ import os
 import sys
 import traceback
 import warnings
+import zlib
 from contextlib import suppress
 from types import TracebackType
 from typing import (
@@ -1005,7 +1006,9 @@ class ClientSession:
                 compress_hdrs = resp.headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
                 if compress_hdrs:
                     try:
-                        compress, notakeover = ws_ext_parse(compress_hdrs)
+                        compress, notakeover = ws_ext_parse(
+                            compress_hdrs, detect_gzip=True
+                        )
                     except WSHandshakeError as exc:
                         raise WSServerHandshakeError(
                             resp.request_info,
@@ -1036,7 +1039,12 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
-            conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
+            conn_proto.set_parser(
+                WebSocketReader(
+                    reader, max_msg_size, compress=compress <= zlib.MAX_WBITS or "gzip"
+                ),
+                reader,
+            )
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
