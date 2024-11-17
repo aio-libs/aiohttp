@@ -1058,8 +1058,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             if len(found) > 1:
                 # Multiple matches are found,
                 # use the FIRST match.
-                # Match ids are basically indexes in self._resources
-                # with an offset for variable resources
+                # Match ids are basically indexes in self._resources.
                 found.sort()
 
             for idx in found:
