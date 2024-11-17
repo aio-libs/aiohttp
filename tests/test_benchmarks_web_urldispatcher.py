@@ -55,7 +55,8 @@ def test_resolve_root_route(
 
     async def run_url_dispatcher_benchmark() -> None:
         for _ in range(resolve_count):
-            await router.resolve(request)
+            ret = await router.resolve(request)
+            assert ret.get_info()["path"] == "/", ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -70,14 +71,16 @@ def test_resolve_static_root_route(
     resolve_count = 100
 
     app = web.Application()
-    app.router.add_static("/", pathlib.Path(aiohttp.__file__).parent)
+    here = pathlib.Path(aiohttp.__file__).parent
+    app.router.add_static("/", here)
     app.freeze()
     router = app.router
     request = _mock_request(method="GET", path="/")
 
     async def run_url_dispatcher_benchmark() -> None:
         for _ in range(resolve_count):
-            await router.resolve(request)
+            ret = await router.resolve(request)
+            assert ret.get_info()["directory"] == here, ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -103,7 +106,10 @@ def test_resolve_single_fixed_url_with_many_routes(
 
     async def run_url_dispatcher_benchmark() -> None:
         for _ in range(resolve_count):
-            await router.resolve(request)
+            ret = await router.resolve(request)
+            assert (
+                ret.get_info()["path"] == "/api/server/dispatch/1/update"
+            ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -126,13 +132,17 @@ def test_resolve_multiple_fixed_url_with_many_routes(
     router = app.router
 
     requests = [
-        _mock_request(method="GET", path=f"/api/server/dispatch/{count}/update")
+        (
+            _mock_request(method="GET", path=f"/api/server/dispatch/{count}/update"),
+            f"/api/server/dispatch/{count}/update",
+        )
         for count in range(250)
     ]
 
     async def run_url_dispatcher_benchmark() -> None:
-        for request in requests:
-            await router.resolve(request)
+        for request, path in requests:
+            ret = await router.resolve(request)
+            assert ret.get_info()["path"] == path, ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -162,11 +172,12 @@ def test_resolve_multiple_level_fixed_url_with_many_routes(
     app.freeze()
     router = app.router
 
-    requests = [_mock_request(method="GET", path=url) for url in urls]
+    requests = [(_mock_request(method="GET", path=url), url) for url in urls]
 
     async def run_url_dispatcher_benchmark() -> None:
-        for request in requests:
-            await router.resolve(request)
+        for request, path in requests:
+            ret = await router.resolve(request)
+            assert ret.get_info()["path"] == path, ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -196,7 +207,10 @@ def test_resolve_dynamic_resource_url_with_many_static_routes(
 
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
-            await router.resolve(request)
+            ret = await router.resolve(request)
+            assert (
+                ret.get_info()["formatter"] == "/api/server/dispatch/{customer}/update"
+            ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -228,7 +242,10 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
 
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
-            await router.resolve(request)
+            ret = await router.resolve(request)
+            assert (
+                ret.get_info()["formatter"] == "/api/server/dispatch/{customer}/update"
+            ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -258,7 +275,10 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
 
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
-            await router.resolve(request)
+            ret = await router.resolve(request)
+            assert (
+                ret.get_info()["formatter"] == "/api/{customer}/update"
+            ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -308,7 +328,11 @@ def test_resolve_gitapi(
 
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
-            await router.resolve(request)
+            ret = await router.resolve(request)
+            assert (
+                ret.get_info()["formatter"]
+                == "/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
+            ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -346,8 +370,14 @@ def test_resolve_gitapi_subapps(
     app = web.Application()
     for url in urls:
         parts = url.split("/")
-        subapp = subapps.get(parts[1], app)
-        subapp.router.add_get(url, handler)
+        subapp = subapps.get(parts[1])
+        if subapp is not None:
+            sub_url = "/".join([""] + parts[2:])
+            if not sub_url:
+                sub_url = "/"
+            subapp.router.add_get(sub_url, handler)
+        else:
+            app.router.add_get(url, handler)
     for key, subapp in subapps.items():
         app.add_subapp("/" + key, subapp)
     app.freeze()
@@ -372,7 +402,11 @@ def test_resolve_gitapi_subapps(
 
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
-            await router.resolve(request)
+            ret = await router.resolve(request)
+            assert (
+                ret.get_info()["formatter"]
+                == "/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
+            ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -406,7 +440,10 @@ def test_resolve_prefix_resources_many_prefix_many_plain(
 
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
-            await router.resolve(request)
+            ret = await router.resolve(request)
+            assert (
+                ret.get_info()["path"] == "/api/path/to/plugin/249/deep/enough/sub/path"
+            ), ret.get_info()
 
     @benchmark
     def _run() -> None:
