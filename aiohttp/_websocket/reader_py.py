@@ -3,7 +3,7 @@
 import asyncio
 import builtins
 from collections import deque
-from typing import Deque, Final, List, Optional, Set, Tuple, Type, Union
+from typing import Deque, Final, List, Literal, Optional, Set, Tuple, Type, Union
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
@@ -131,7 +131,10 @@ class WebSocketDataQueue:
 
 class WebSocketReader:
     def __init__(
-        self, queue: WebSocketDataQueue, max_msg_size: int, compress: bool = True
+        self,
+        queue: WebSocketDataQueue,
+        max_msg_size: int,
+        compress: Union[bool, Literal["gzip"]] = True,
     ) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size
@@ -241,8 +244,9 @@ class WebSocketReader:
                 # received.
                 if compressed:
                     if not self._decompressobj:
+                        encoding = "gzip" if self._compress == "gzip" else None
                         self._decompressobj = ZLibDecompressor(
-                            suppress_deflate_header=True
+                            encoding=encoding, suppress_deflate_header=True
                         )
                     payload_merged = self._decompressobj.decompress_sync(
                         assembled_payload + WS_DEFLATE_TRAILING, self._max_msg_size
