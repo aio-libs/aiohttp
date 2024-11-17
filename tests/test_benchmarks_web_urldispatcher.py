@@ -56,7 +56,11 @@ def test_resolve_root_route(
     async def run_url_dispatcher_benchmark() -> None:
         for _ in range(resolve_count):
             ret = await router.resolve(request)
-            assert ret.get_info()["path"] == "/", ret.get_info()
+
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert ret.get_info()["path"] == "/", ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -80,7 +84,11 @@ def test_resolve_static_root_route(
     async def run_url_dispatcher_benchmark() -> None:
         for _ in range(resolve_count):
             ret = await router.resolve(request)
-            assert ret.get_info()["directory"] == here, ret.get_info()
+
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert ret.get_info()["directory"] == here, ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -107,9 +115,11 @@ def test_resolve_single_fixed_url_with_many_routes(
     async def run_url_dispatcher_benchmark() -> None:
         for _ in range(resolve_count):
             ret = await router.resolve(request)
-            assert (
-                ret.get_info()["path"] == "/api/server/dispatch/1/update"
-            ), ret.get_info()
+
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert ret.get_info()["path"] == "/api/server/dispatch/1/update", ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -132,17 +142,17 @@ def test_resolve_multiple_fixed_url_with_many_routes(
     router = app.router
 
     requests = [
-        (
-            _mock_request(method="GET", path=f"/api/server/dispatch/{count}/update"),
-            f"/api/server/dispatch/{count}/update",
-        )
+        _mock_request(method="GET", path=f"/api/server/dispatch/{count}/update")
         for count in range(250)
     ]
 
     async def run_url_dispatcher_benchmark() -> None:
-        for request, path in requests:
+        for request in requests:
             ret = await router.resolve(request)
-            assert ret.get_info()["path"] == path, ret.get_info()
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert ret.get_info()["path"] == "/api/server/dispatch/249/update", ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -177,7 +187,11 @@ def test_resolve_multiple_level_fixed_url_with_many_routes(
     async def run_url_dispatcher_benchmark() -> None:
         for request, path in requests:
             ret = await router.resolve(request)
-            assert ret.get_info()["path"] == path, ret.get_info()
+
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert ret.get_info()["path"] == url, ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -208,9 +222,13 @@ def test_resolve_dynamic_resource_url_with_many_static_routes(
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
             ret = await router.resolve(request)
-            assert (
-                ret.get_info()["formatter"] == "/api/server/dispatch/{customer}/update"
-            ), ret.get_info()
+
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert (
+        ret.get_info()["formatter"] == "/api/server/dispatch/{customer}/update"
+    ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -243,9 +261,13 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
             ret = await router.resolve(request)
-            assert (
-                ret.get_info()["formatter"] == "/api/server/dispatch/{customer}/update"
-            ), ret.get_info()
+
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert (
+        ret.get_info()["formatter"] == "/api/server/dispatch/{customer}/update"
+    ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -276,9 +298,11 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
             ret = await router.resolve(request)
-            assert (
-                ret.get_info()["formatter"] == "/api/{customer}/update"
-            ), ret.get_info()
+
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert ret.get_info()["formatter"] == "/api/{customer}/update", ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -329,10 +353,13 @@ def test_resolve_gitapi(
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
             ret = await router.resolve(request)
-            assert (
-                ret.get_info()["formatter"]
-                == "/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
-            ), ret.get_info()
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert (
+        ret.get_info()["formatter"]
+        == "/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
+    ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -403,10 +430,13 @@ def test_resolve_gitapi_subapps(
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
             ret = await router.resolve(request)
-            assert (
-                ret.get_info()["formatter"]
-                == "/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
-            ), ret.get_info()
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert (
+        ret.get_info()["formatter"]
+        == "/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
+    ), ret.get_info()
 
     @benchmark
     def _run() -> None:
@@ -441,9 +471,12 @@ def test_resolve_prefix_resources_many_prefix_many_plain(
     async def run_url_dispatcher_benchmark() -> None:
         for request in requests:
             ret = await router.resolve(request)
-            assert (
-                ret.get_info()["path"] == "/api/path/to/plugin/249/deep/enough/sub/path"
-            ), ret.get_info()
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert (
+        ret.get_info()["path"] == "/api/path/to/plugin/249/deep/enough/sub/path"
+    ), ret.get_info()
 
     @benchmark
     def _run() -> None:
