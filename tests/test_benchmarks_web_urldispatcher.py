@@ -377,3 +377,37 @@ def test_resolve_gitapi_subapps(
     @benchmark
     def _run() -> None:
         loop.run_until_complete(run_url_dispatcher_benchmark())
+
+
+def test_resolve_prefix_resources_many_prefix_many_plain(
+    loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Resolve prefix resource (sub_app) whene 250 PlainResources registered and there are 250 subapps that shares the same sub_app path prefix."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app = web.Application()
+    for count in range(250):
+        app.router.add_get(f"/api/server/other/{count}/update", handler)
+    for count in range(250):
+        subapp = web.Application()
+        # sub_apps exists for handling deep enough nested route trees
+        subapp.router.add_get("/deep/enough/sub/path", handler)
+        app.add_subapp(f"/api/path/to/plugin/{count}", subapp)
+    app.freeze()
+    router = app.router
+
+    requests = [
+        _mock_request(method="GET", path="/api/path/to/plugin/249/deep/enough/sub/path")
+        for customer in range(250)
+    ]
+
+    async def run_url_dispatcher_benchmark() -> None:
+        for request in requests:
+            await router.resolve(request)
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_url_dispatcher_benchmark())
