@@ -936,6 +936,8 @@ def test_cookies_mixin() -> None:
         "expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/"
     )
     assert str(sut.cookies) == expected
+    sut.del_cookie("name")
+    assert str(sut.cookies) == expected
 
     sut.set_cookie("name", "value", domain="local.host")
     expected = "Set-Cookie: name=value; Domain=local.host; Path=/"
