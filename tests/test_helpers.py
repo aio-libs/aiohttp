@@ -916,6 +916,10 @@ def test_cookies_mixin() -> None:
 
     sut.set_cookie("name", "value")
     assert str(sut.cookies) == "Set-Cookie: name=value; Path=/"
+    # Verify setting the cookie again
+    sut.set_cookie("name", "value")
+    assert str(sut.cookies) == "Set-Cookie: name=value; Path=/"
+
     sut.set_cookie("name", "other_value")
     assert str(sut.cookies) == "Set-Cookie: name=other_value; Path=/"
 
