@@ -630,14 +630,14 @@ class Response(StreamResponse):
 
     @text.setter
     def text(self, text: str) -> None:
-        assert isinstance(text, str), "text argument must be str (%r)" % type(text)
+        assert isinstance(text, str), f"text argument must be str ({type(text)!r})"
 
         if self.content_type == "application/octet-stream":
             self.content_type = "text/plain"
-        if self.charset is None:
-            self.charset = "utf-8"
+        if (charset := self.charset) is None:
+            charset = self.charset = "utf-8"
 
-        self._body = text.encode(self.charset)
+        self._body = text.encode(charset)
         self._compressed_body = None
 
     @property
