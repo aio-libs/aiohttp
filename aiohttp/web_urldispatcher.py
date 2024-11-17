@@ -1040,7 +1040,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # path.startswith("/"), thus parts[0] == "".
         # parts[1] is the first prefix segment
         if (subtree := self._prefix_resources.get(parts[1])) is not None:
-            if path.startswith(subtree.common_prefix):
+            if len(subtree.resources) == 1 or path.startswith(subtree.common_prefix):
                 for prefix_resource in subtree.resources:
                     match_dict, allowed = await prefix_resource.resolve(request)
                     if match_dict is not None:
