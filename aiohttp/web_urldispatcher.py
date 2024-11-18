@@ -1011,6 +1011,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._hyperdb: Optional[hyperscan.Database] = None  # type: ignore[no-any-unimported]
         self._plain_resources: dict[str, PlainResource] = {}
         self._prefix_resources: dict[str, list[PrefixResource]] = {}
+        self._max_prefix_cardinality = 0
         self._has_variable_resources = True
 
     def _on_match(
@@ -1032,24 +1033,27 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 allowed_methods |= allowed
 
         # prefix resource lookup
-        url_part = path
+        parts = tuple(
+            path[1:].split("/", self._max_prefix_cardinality)[
+                : self._max_prefix_cardinality
+            ]
+        )
         prefix_resources = self._prefix_resources
-
         # Walk the url parts looking for candidates. We walk the url backwards
         # to ensure the most explicit match is found first. If there are multiple
         # candidates for a given url part because there are multiple resources
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
-        while url_part:
-            for prefix_resource in prefix_resources.get(url_part, ()):
+        while True:
+            for prefix_resource in prefix_resources.get(parts, ()):
                 match_dict, allowed = await prefix_resource.resolve(request)
                 if match_dict is not None:
                     return match_dict
                 else:
                     allowed_methods |= allowed
-            if url_part == "/":
+            if len(parts) <= 1:
                 break
-            url_part = url_part.rpartition("/")[0] or "/"
+            parts = parts[:-1]
 
         # variable resource lookup
         if self._has_variable_resources:
@@ -1321,6 +1325,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._hyperdb = None
         self._plain_resources.clear()
         self._prefix_resources.clear()
+        self._max_prefix_cardinality = 0
         patterns: list[bytes] = []
         ids: list[int] = []
         for id_, resource in enumerate(self._resources):
@@ -1338,9 +1343,12 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
                 # There may be multiple resources for a prefix
                 # so we keep them in a list to ensure that registration
                 # order is respected.
-                self._prefix_resources.setdefault(prefix.rstrip("/") or "/", []).append(
-                    resource
+                parts = tuple(prefix.split("/")[1:])
+                self._prefix_resources.setdefault(parts, []).append(resource)
+                self._max_prefix_cardinality = max(
+                    self._max_prefix_cardinality, len(parts)
                 )
+                # breakpoint()
             else:
                 raise RuntimeError(f"Unsupported resource type {type(resource)}")
 
