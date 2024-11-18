@@ -69,6 +69,44 @@ def test_resolve_root_route(
         loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
+def test_resolve_root_route_with_many_fixed_routes(
+    loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Resolve top level PlainResources route 100 times."""
+    resolve_count = 100
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    for count in range(250):
+        app.router.add_route("GET", f"/api/server/dispatch/{count}/update", handler)
+        app.router.add_route("GET", f"/api/server/dispatch/{count}", handler)
+    app.router.add_route("GET", "/api/server/dispatch", handler)
+    app.router.add_route("GET", "/api/server", handler)
+    app.router.add_route("GET", "/api", handler)
+    app.freeze()
+    router = app.router
+    request = _mock_request(method="GET", path="/")
+
+    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+        ret = None
+        for _ in range(resolve_count):
+            ret = await router.resolve(request)
+
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert ret is not None
+    assert ret.get_info()["path"] == "/", ret.get_info()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_url_dispatcher_benchmark())
+
+
 def test_resolve_static_root_route(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
