@@ -39,7 +39,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
 from . import hdrs, http, payload
-from ._websocket.reader import WebSocketDataQueue
+from ._websocket.reader import DEFAULT_LIMIT, WebSocketDataQueue
 from .abc import AbstractCookieJar
 from .client_exceptions import (
     ClientConnectionError,
@@ -1035,7 +1035,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
+            reader = WebSocketDataQueue(conn_proto, DEFAULT_LIMIT, loop=self._loop)
             conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
                 conn_proto,

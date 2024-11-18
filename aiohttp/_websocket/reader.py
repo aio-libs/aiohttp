@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 from ..helpers import NO_EXTENSIONS
 
+DEFAULT_LIMIT = 2**18
+
 if TYPE_CHECKING or NO_EXTENSIONS:  # pragma: no cover
     from .reader_py import (
         WebSocketDataQueue as WebSocketDataQueuePython,

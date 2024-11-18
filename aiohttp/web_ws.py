@@ -10,8 +10,8 @@ from typing import Any, Final, Iterable, Optional, Tuple, Union
 from multidict import CIMultiDict
 
 from . import hdrs
-from ._websocket.reader import WebSocketDataQueue
-from ._websocket.writer import DEFAULT_LIMIT
+from ._websocket.reader import DEFAULT_LIMIT as DEFAULT_READER_LIMIT, WebSocketDataQueue
+from ._websocket.writer import DEFAULT_LIMIT as DEFAULT_WRITER_LIMIT
 from .abc import AbstractStreamWriter
 from .client_exceptions import WSMessageTypeError
 from .helpers import calculate_timeout_when, set_exception, set_result
@@ -99,7 +99,7 @@ class WebSocketResponse(StreamResponse):
         protocols: Iterable[str] = (),
         compress: bool = True,
         max_msg_size: int = 4 * 1024 * 1024,
-        writer_limit: int = DEFAULT_LIMIT,
+        writer_limit: int = DEFAULT_WRITER_LIMIT,
     ) -> None:
         super().__init__(status=101)
         self._length_check = False
@@ -356,7 +356,9 @@ class WebSocketResponse(StreamResponse):
 
         loop = self._loop
         assert loop is not None
-        self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
+        self._reader = WebSocketDataQueue(
+            request._protocol, DEFAULT_READER_LIMIT, loop=loop
+        )
         request.protocol.set_parser(
             WebSocketReader(
                 self._reader, self._max_msg_size, compress=bool(self._compress)
