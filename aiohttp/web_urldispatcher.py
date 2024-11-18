@@ -1010,7 +1010,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
         self._hyperdb: Optional[hyperscan.Database] = None  # type: ignore[no-any-unimported]
         self._plain_resources: dict[str, PlainResource] = {}
-        self._prefix_resources: dict[str, list[PrefixResource]] = {}
+        self._prefix_resources: dict[tuple[str, ...], list[PrefixResource]] = {}
         self._max_prefix_cardinality = 0
         self._has_variable_resources = True
 
@@ -1045,13 +1045,12 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
         while True:
-            if (found_prefix_resources := prefix_resources.get(parts)) is not None:
-                for prefix_resource in found_prefix_resources:
-                    match_dict, allowed = await prefix_resource.resolve(request)
-                    if match_dict is not None:
-                        return match_dict
-                    else:
-                        allowed_methods |= allowed
+            for prefix_resource in prefix_resources.get(parts, ()):
+                match_dict, allowed = await prefix_resource.resolve(request)
+                if match_dict is not None:
+                    return match_dict
+                else:
+                    allowed_methods |= allowed
             if len(parts) <= 1:
                 break
             parts = parts[:-1]
