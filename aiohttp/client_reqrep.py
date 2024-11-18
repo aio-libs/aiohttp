@@ -4,7 +4,6 @@ import contextlib
 import dataclasses
 import functools
 import io
-import itertools
 import re
 import sys
 import traceback
@@ -25,7 +24,6 @@ from typing import (
     Tuple,
     Type,
     Union,
-    cast,
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -45,6 +43,7 @@ from .compression_utils import HAS_BROTLI
 from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
+    _SENTINEL,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -106,12 +105,29 @@ class ContentDisposition:
     filename: Optional[str]
 
 
-@dataclasses.dataclass(frozen=True)
-class RequestInfo:
+class _RequestInfo(NamedTuple):
     url: URL
     method: str
     headers: "CIMultiDictProxy[str]"
     real_url: URL
+
+
+class RequestInfo(_RequestInfo):
+
+    def __new__(
+        cls,
+        url: URL,
+        method: str,
+        headers: "CIMultiDictProxy[str]",
+        real_url: URL = _SENTINEL,  # type: ignore[assignment]
+    ) -> "RequestInfo":
+        """Create a new RequestInfo instance.
+
+        For backwards compatibility, the real_url parameter is optional.
+        """
+        return tuple.__new__(
+            cls, (url, method, headers, url if real_url is _SENTINEL else real_url)
+        )
 
 
 class Fingerprint:
@@ -179,9 +195,6 @@ class ClientRequest:
     }
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
     ALL_METHODS = GET_METHODS.union(POST_METHODS).union({hdrs.METH_DELETE})
-    _HOST_STRINGS = frozenset(
-        map("".join, itertools.product(*zip("host".upper(), "host".lower())))
-    )
 
     DEFAULT_HEADERS = {
         hdrs.ACCEPT: "*/*",
@@ -228,17 +241,20 @@ class ClientRequest:
         trust_env: bool = False,
         server_hostname: Optional[str] = None,
     ):
-        match = _CONTAINS_CONTROL_CHAR_RE.search(method)
-        if match:
+        if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
                 f"Method cannot contain non-token characters {method!r} "
                 f"(found at least {match.group()!r})"
             )
-        assert isinstance(url, URL), url
-        assert isinstance(proxy, (URL, type(None))), proxy
+        # URL forbids subclasses, so a simple type check is enough.
+        assert type(url) is URL, url
+        if proxy is not None:
+            assert type(proxy) is URL, proxy
         # FIXME: session is None in tests only, need to fix tests
         # assert session is not None
-        self._session = cast("ClientSession", session)
+        if TYPE_CHECKING:
+            assert session is not None
+        self._session = session
         if params:
             url = url.extend_query(params)
         self.original_url = url
@@ -272,9 +288,7 @@ class ClientRequest:
         if data is not None or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-        if traces is None:
-            traces = []
-        self._traces = traces
+        self._traces = [] if traces is None else traces
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
@@ -330,7 +344,13 @@ class ClientRequest:
     @property
     def request_info(self) -> RequestInfo:
         headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
-        return RequestInfo(self.url, self.method, headers, self.original_url)
+        # These are created on every request, so we use a NamedTuple
+        # for performance reasons. We don't use the RequestInfo.__new__
+        # method because it has a different signature which is provided
+        # for backwards compatibility only.
+        return tuple.__new__(
+            RequestInfo, (self.url, self.method, headers, self.original_url)
+        )
 
     def update_host(self, url: URL) -> None:
         """Update destination host, port and connection type (ssl)."""
@@ -377,7 +397,7 @@ class ClientRequest:
 
         for key, value in headers:  # type: ignore[misc]
             # A special case for Host header
-            if key in self._HOST_STRINGS:
+            if key in hdrs.HOST_ALL:
                 self.headers[key] = value
             else:
                 self.headers.add(key, value)
@@ -553,18 +573,13 @@ class ClientRequest:
         self.proxy_headers = proxy_headers
 
     def keep_alive(self) -> bool:
-        if self.version < HttpVersion10:
-            # keep alive not supported at all
-            return False
+        if self.version >= HttpVersion11:
+            return self.headers.get(hdrs.CONNECTION) != "close"
         if self.version == HttpVersion10:
-            if self.headers.get(hdrs.CONNECTION) == "keep-alive":
-                return True
-            else:  # no headers means we close for Http 1.0
-                return False
-        elif self.headers.get(hdrs.CONNECTION) == "close":
-            return False
-
-        return True
+            # no headers means we close for Http 1.0
+            return self.headers.get(hdrs.CONNECTION) == "keep-alive"
+        # keep alive not supported at all
+        return False
 
     async def write_bytes(
         self, writer: AbstractStreamWriter, conn: "Connection"
@@ -680,22 +695,28 @@ class ClientRequest:
         v = self.version
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
         await writer.write_headers(status_line, self.headers)
-        coro = self.write_bytes(writer, conn)
-
         task: Optional["asyncio.Task[None]"]
-        if sys.version_info >= (3, 12):
-            # Optimization for Python 3.12, try to write
-            # bytes immediately to avoid having to schedule
-            # the task on the event loop.
-            task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+        if self.body or self._continue is not None or protocol.writing_paused:
+            coro = self.write_bytes(writer, conn)
+            if sys.version_info >= (3, 12):
+                # Optimization for Python 3.12, try to write
+                # bytes immediately to avoid having to schedule
+                # the task on the event loop.
+                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+            else:
+                task = self.loop.create_task(coro)
+            if task.done():
+                task = None
+            else:
+                self._writer = task
         else:
-            task = self.loop.create_task(coro)
-
-        if task.done():
+            # We have nothing to write because
+            # - there is no body
+            # - the protocol does not have writing paused
+            # - we are not waiting for a 100-continue response
+            protocol.start_timeout()
+            writer.set_eof()
             task = None
-        else:
-            self._writer = task
-
         response_class = self.response_class
         assert response_class is not None
         self.response = response_class(

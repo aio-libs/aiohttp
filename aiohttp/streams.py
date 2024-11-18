@@ -30,11 +30,9 @@ __all__ = (
     "EofStream",
     "StreamReader",
     "DataQueue",
-    "FlowControlDataQueue",
 )
 
 _T = TypeVar("_T")
-_SizedT = TypeVar("_SizedT", bound=collections.abc.Sized)
 
 
 class EofStream(Exception):
@@ -274,9 +272,10 @@ class StreamReader(AsyncStreamReaderMixin):
         if not data:
             return
 
-        self._size += len(data)
+        data_len = len(data)
+        self._size += data_len
         self._buffer.append(data)
-        self.total_bytes += len(data)
+        self.total_bytes += data_len
 
         waiter = self._waiter
         if waiter is not None:
@@ -600,7 +599,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 
 
-class DataQueue(Generic[_SizedT]):
+class DataQueue(Generic[_T]):
     """DataQueue is a general-purpose blocking queue with one reader."""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
@@ -608,7 +607,7 @@ class DataQueue(Generic[_SizedT]):
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
         self._exception: Union[Type[BaseException], BaseException, None] = None
-        self._buffer: Deque[_SizedT] = collections.deque()
+        self._buffer: Deque[_T] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -633,7 +632,7 @@ class DataQueue(Generic[_SizedT]):
             self._waiter = None
             set_exception(waiter, exc, exc_cause)
 
-    def feed_data(self, data: _SizedT) -> None:
+    def feed_data(self, data: _T) -> None:
         self._buffer.append(data)
         if (waiter := self._waiter) is not None:
             self._waiter = None
@@ -645,60 +644,20 @@ class DataQueue(Generic[_SizedT]):
             self._waiter = None
             set_result(waiter, None)
 
-    async def _wait_for_data(self) -> None:
-        assert not self._waiter
-        self._waiter = self._loop.create_future()
-        try:
-            await self._waiter
-        except (asyncio.CancelledError, asyncio.TimeoutError):
-            self._waiter = None
-            raise
-
-    async def read(self) -> _SizedT:
+    async def read(self) -> _T:
         if not self._buffer and not self._eof:
-            await self._wait_for_data()
+            assert not self._waiter
+            self._waiter = self._loop.create_future()
+            try:
+                await self._waiter
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._waiter = None
+                raise
         if self._buffer:
             return self._buffer.popleft()
         if self._exception is not None:
             raise self._exception
         raise EofStream
 
-    def __aiter__(self) -> AsyncStreamIterator[_SizedT]:
+    def __aiter__(self) -> AsyncStreamIterator[_T]:
         return AsyncStreamIterator(self.read)
-
-
-class FlowControlDataQueue(DataQueue[_SizedT]):
-    """FlowControlDataQueue resumes and pauses an underlying stream.
-
-    It is a destination for parsed data.
-    """
-
-    def __init__(
-        self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
-    ) -> None:
-        super().__init__(loop=loop)
-        self._size = 0
-        self._protocol = protocol
-        self._limit = limit * 2
-
-    def feed_data(self, data: _SizedT) -> None:
-        self._size += len(data)
-        self._buffer.append(data)
-        if (waiter := self._waiter) is not None:
-            self._waiter = None
-            set_result(waiter, None)
-        if self._size > self._limit and not self._protocol._reading_paused:
-            self._protocol.pause_reading()
-
-    async def read(self) -> _SizedT:
-        if not self._buffer and not self._eof:
-            await self._wait_for_data()
-        if self._buffer:
-            data = self._buffer.popleft()
-            self._size -= len(data)
-            if self._size < self._limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-            return data
-        if self._exception is not None:
-            raise self._exception
-        raise EofStream

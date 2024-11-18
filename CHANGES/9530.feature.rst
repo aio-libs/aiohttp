@@ -1,2 +1,0 @@
-Updated :py:class:`~aiohttp.ClientSession` to support paths in ``base_url`` parameter.
-``base_url`` paths must end with a ``/``  -- by :user:`Cycloctane`.

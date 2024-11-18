@@ -6,7 +6,8 @@ import sys
 from types import TracebackType
 from typing import Any, Final, Optional, Type
 
-from .client_exceptions import ClientError, ServerTimeoutError
+from ._websocket.reader import WebSocketDataQueue
+from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, set_result
 from .http import (
@@ -17,8 +18,8 @@ from .http import (
     WSMessage,
     WSMsgType,
 )
-from .http_websocket import WebSocketWriter, WSMessageError
-from .streams import EofStream, FlowControlDataQueue
+from .http_websocket import _INTERNAL_RECEIVE_TYPES, WebSocketWriter, WSMessageError
+from .streams import EofStream
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
@@ -46,7 +47,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 class ClientWebSocketResponse:
     def __init__(
         self,
-        reader: "FlowControlDataQueue[WSMessage]",
+        reader: WebSocketDataQueue,
         writer: WebSocketWriter,
         protocol: Optional[str],
         response: ClientResponse,
@@ -360,6 +361,11 @@ class ClientWebSocketResponse:
                 await self.close()
                 return WSMessageError(data=exc)
 
+            if msg.type not in _INTERNAL_RECEIVE_TYPES:
+                # If its not a close/closing/ping/pong message
+                # we can return it immediately
+                return msg
+
             if msg.type is WSMsgType.CLOSE:
                 self._set_closing()
                 self._close_code = msg.data
@@ -379,13 +385,17 @@ class ClientWebSocketResponse:
     async def receive_str(self, *, timeout: Optional[float] = None) -> str:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
-            raise TypeError(f"Received message {msg.type}:{msg.data!r} is not str")
+            raise WSMessageTypeError(
+                f"Received message {msg.type}:{msg.data!r} is not WSMsgType.TEXT"
+            )
         return msg.data
 
     async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
-            raise TypeError(f"Received message {msg.type}:{msg.data!r} is not bytes")
+            raise WSMessageTypeError(
+                f"Received message {msg.type}:{msg.data!r} is not WSMsgType.BINARY"
+            )
         return msg.data
 
     async def receive_json(

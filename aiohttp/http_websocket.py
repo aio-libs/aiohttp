@@ -22,6 +22,12 @@ from ._websocket.models import (
 from ._websocket.reader import WebSocketReader
 from ._websocket.writer import WebSocketWriter
 
+# Messages that the WebSocketResponse.receive needs to handle internally
+_INTERNAL_RECEIVE_TYPES = frozenset(
+    (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.PING, WSMsgType.PONG)
+)
+
+
 __all__ = (
     "WS_CLOSED_MESSAGE",
     "WS_CLOSING_MESSAGE",

@@ -8,7 +8,7 @@ from math import ceil, modf
 from pathlib import Path
 from typing import Dict, Iterator, Optional, Union
 from unittest import mock
-from urllib.request import getproxies_environment  # type: ignore[attr-defined]
+from urllib.request import getproxies_environment
 
 import pytest
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
@@ -16,8 +16,8 @@ from yarl import URL
 
 from aiohttp import helpers, web
 from aiohttp.helpers import (
+    EMPTY_BODY_METHODS,
     is_expected_content_type,
-    method_must_be_empty_body,
     must_be_empty_body,
     parse_http_date,
     should_remove_content_length,
@@ -1115,9 +1115,9 @@ def test_read_basicauth_from_empty_netrc() -> None:
 
 def test_method_must_be_empty_body() -> None:
     """Test that HEAD is the only method that unequivocally must have an empty body."""
-    assert method_must_be_empty_body("HEAD") is True
+    assert "HEAD" in EMPTY_BODY_METHODS
     # CONNECT is only empty on a successful response
-    assert method_must_be_empty_body("CONNECT") is False
+    assert "CONNECT" not in EMPTY_BODY_METHODS
 
 
 def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
