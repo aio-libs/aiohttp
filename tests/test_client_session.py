@@ -3,6 +3,7 @@ import contextlib
 import gc
 import io
 import json
+from collections import deque
 from http.cookies import SimpleCookie
 from typing import (
     Any,
@@ -55,7 +56,7 @@ def connector(
     key = ConnectionKey("localhost", 80, False, True, None, None, None)
     conn = loop.run_until_complete(make_conn())
     proto = create_mocked_conn()
-    conn._conns[key] = [(proto, 123)]
+    conn._conns[key] = deque([(proto, 123)])
     yield conn
     loop.run_until_complete(conn.close())
 
@@ -917,7 +918,7 @@ async def test_request_tracing_url_params(
             assert to_trace_urls(on_request_redirect) == []
             assert to_trace_urls(on_request_end) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_exception) == []
-            assert to_trace_urls(on_request_chunk_sent) == [to_url("/?x=0")]
+            assert to_trace_urls(on_request_chunk_sent) == []
             assert to_trace_urls(on_response_chunk_received) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_headers_sent) == [to_url("/?x=0")]
 
@@ -933,10 +934,7 @@ async def test_request_tracing_url_params(
             assert to_trace_urls(on_request_redirect) == [to_url("/redirect?x=0")]
             assert to_trace_urls(on_request_end) == [to_url("/")]
             assert to_trace_urls(on_request_exception) == []
-            assert to_trace_urls(on_request_chunk_sent) == [
-                to_url("/redirect?x=0"),
-                to_url("/"),
-            ]
+            assert to_trace_urls(on_request_chunk_sent) == []
             assert to_trace_urls(on_response_chunk_received) == [to_url("/")]
             assert to_trace_urls(on_request_headers_sent) == [
                 to_url("/redirect?x=0"),

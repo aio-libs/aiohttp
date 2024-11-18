@@ -149,7 +149,7 @@ def test_release(
     assert protocol.transport is not None
     assert not protocol.transport.close.called  # type: ignore[attr-defined]
     assert conn._protocol is None
-    connector._release.assert_called_with(key, protocol, should_close=False)  # type: ignore[attr-defined]
+    connector._release.assert_called_with(key, protocol)  # type: ignore[attr-defined]
     assert conn.closed
 
 
@@ -166,7 +166,7 @@ def test_release_proto_should_close(
     assert protocol.transport is not None
     assert not protocol.transport.close.called  # type: ignore[attr-defined]
     assert conn._protocol is None
-    connector._release.assert_called_with(key, protocol, should_close=True)  # type: ignore[attr-defined]
+    connector._release.assert_called_with(key, protocol)  # type: ignore[attr-defined]
     assert conn.closed
 
 

@@ -92,16 +92,16 @@ class WebSocketWriter:
                     self._compressobj = self._make_compress_obj(self.compress)
                 compressobj = self._compressobj
 
-            message = await compressobj.compress(message)
+            message = (
+                await compressobj.compress(message)
+                + compressobj.flush(
+                    zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH
+                )
+            ).removesuffix(WS_DEFLATE_TRAILING)
             # Its critical that we do not return control to the event
             # loop until we have finished sending all the compressed
             # data. Otherwise we could end up mixing compressed frames
             # if there are multiple coroutines compressing data.
-            message += compressobj.flush(
-                zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH
-            )
-            if message.endswith(WS_DEFLATE_TRAILING):
-                message = message[:-4]
 
         msg_length = len(message)
 
@@ -155,7 +155,8 @@ class WebSocketWriter:
         # if the writer is not paused.
         if self._output_size > self._limit:
             self._output_size = 0
-            await self.protocol._drain_helper()
+            if self.protocol._paused:
+                await self.protocol._drain_helper()
 
     def _make_compress_obj(self, compress: int) -> ZLibCompressor:
         return ZLibCompressor(

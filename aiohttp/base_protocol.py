@@ -29,6 +29,10 @@ class BaseProtocol(asyncio.Protocol):
         """Return True if the connection is open."""
         return self.transport is not None
 
+    @property
+    def writing_paused(self) -> bool:
+        return self._paused
+
     def pause_writing(self) -> None:
         assert not self._paused
         self._paused = True
@@ -85,7 +89,7 @@ class BaseProtocol(asyncio.Protocol):
             )
 
     async def _drain_helper(self) -> None:
-        if not self.connected:
+        if self.transport is None:
             raise ClientConnectionResetError("Connection lost")
         if not self._paused:
             return

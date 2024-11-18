@@ -963,9 +963,13 @@ is controlled by *force_close* constructor's parameter).
                             connection releasing (optional).
 
    :param bool enable_cleanup_closed: some SSL servers do not properly complete
-      SSL shutdown process, in that case asyncio leaks ssl connections.
+      SSL shutdown process, in that case asyncio leaks SSL connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
+
+      For Python version 3.12.7+, or 3.13.1 and later,
+      this parameter is ignored because the asyncio SSL connection
+      leak is fixed in these versions of Python.
 
 
    :param loop: :ref:`event loop<asyncio-event-loop>`
@@ -1467,7 +1471,7 @@ Response object
 
    .. attribute:: request_info
 
-       A namedtuple with request URL and headers from :class:`~aiohttp.ClientRequest`
+       A :class:`typing.NamedTuple` with request URL and headers from :class:`~aiohttp.ClientRequest`
        object, :class:`aiohttp.RequestInfo` instance.
 
    .. method:: get_encoding()
@@ -1673,7 +1677,7 @@ manually.
 
       :return str: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.TEXT`.
 
    .. method:: receive_bytes()
       :async:
@@ -1684,7 +1688,7 @@ manually.
 
       :return bytes: peer's message content.
 
-      :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
+      :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.BINARY`.
 
    .. method:: receive_json(*, loads=json.loads)
       :async:
@@ -1824,7 +1828,7 @@ Utilities
 
 .. class:: RequestInfo()
 
-   A data class with request URL and headers from :class:`~aiohttp.ClientRequest`
+   A :class:`typing.NamedTuple` with request URL and headers from :class:`~aiohttp.ClientRequest`
    object, available as :attr:`ClientResponse.request_info` attribute.
 
    .. attribute:: url
@@ -2238,6 +2242,12 @@ Response errors
    Web socket server response error.
 
    Derived from :exc:`ClientResponseError`
+
+.. exception:: WSMessageTypeError
+
+   Received WebSocket message of unexpected type
+
+   Derived from :exc:`TypeError`
 
 Connection errors
 ^^^^^^^^^^^^^^^^^

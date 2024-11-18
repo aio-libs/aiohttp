@@ -36,11 +36,30 @@ cdef set MESSAGE_TYPES_WITH_CONTENT
 cdef tuple EMPTY_FRAME
 cdef tuple EMPTY_FRAME_ERROR
 
+cdef class WebSocketDataQueue:
+
+    cdef unsigned int _size
+    cdef public object _protocol
+    cdef unsigned int _limit
+    cdef object _loop
+    cdef bint _eof
+    cdef object _waiter
+    cdef object _exception
+    cdef public object _buffer
+    cdef object _get_buffer
+    cdef object _put_buffer
+
+    cdef void _release_waiter(self)
+
+    @cython.locals(size="unsigned int")
+    cpdef void feed_data(self, object data)
+
+    @cython.locals(size="unsigned int")
+    cdef _read_from_buffer(self)
 
 cdef class WebSocketReader:
 
-    cdef object queue
-    cdef object _queue_feed_data
+    cdef WebSocketDataQueue queue
     cdef unsigned int _max_msg_size
 
     cdef Exception _exc
@@ -51,12 +70,12 @@ cdef class WebSocketReader:
     cdef object _frame_fin
     cdef object _frame_opcode
     cdef object _frame_payload
-    cdef unsigned int _frame_payload_len
+    cdef unsigned long long _frame_payload_len
 
     cdef bytes _tail
     cdef bint _has_mask
     cdef bytes _frame_mask
-    cdef unsigned int _payload_length
+    cdef unsigned long long _payload_length
     cdef unsigned int _payload_length_flag
     cdef object _compressed
     cdef object _decompressobj

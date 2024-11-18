@@ -1,6 +1,7 @@
 - Contributors -
 ----------------
 A. Jesse Jiryu Davis
+Abdur Rehman Ali
 Adam Bannister
 Adam Cooper
 Adam Horacek
@@ -225,6 +226,7 @@ Lubomir Gelo
 Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
+Lénárd Szolnoki
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov

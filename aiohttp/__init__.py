@@ -43,6 +43,7 @@ from .client import (
     TCPConnector,
     TooManyRedirects,
     UnixConnector,
+    WSMessageTypeError,
     WSServerHandshakeError,
     request,
 )
@@ -83,13 +84,7 @@ from .payload import (
     payload_type,
 )
 from .resolver import AsyncResolver, DefaultResolver, ThreadedResolver
-from .streams import (
-    EMPTY_PAYLOAD,
-    DataQueue,
-    EofStream,
-    FlowControlDataQueue,
-    StreamReader,
-)
+from .streams import EMPTY_PAYLOAD, DataQueue, EofStream, StreamReader
 from .tracing import (
     TraceConfig,
     TraceConnectionCreateEndParams,
@@ -205,7 +200,6 @@ __all__: Tuple[str, ...] = (
     "DataQueue",
     "EMPTY_PAYLOAD",
     "EofStream",
-    "FlowControlDataQueue",
     "StreamReader",
     # tracing
     "TraceConfig",
@@ -228,11 +222,12 @@ __all__: Tuple[str, ...] = (
     # workers (imported lazily with __getattr__)
     "GunicornUVLoopWebWorker",
     "GunicornWebWorker",
+    "WSMessageTypeError",
 )
 
 
 def __dir__() -> Tuple[str, ...]:
-    return __all__ + ("__author__", "__doc__")
+    return __all__ + ("__doc__",)
 
 
 def __getattr__(name: str) -> object:

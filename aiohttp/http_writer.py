@@ -2,7 +2,16 @@
 
 import asyncio
 import zlib
-from typing import Any, Awaitable, Callable, NamedTuple, Optional, Union  # noqa
+from typing import (  # noqa
+    Any,
+    Awaitable,
+    Callable,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 from multidict import CIMultiDict
 
@@ -76,6 +85,17 @@ class StreamWriter(AbstractStreamWriter):
             raise ClientConnectionResetError("Cannot write to closing transport")
         transport.write(chunk)
 
+    def _writelines(self, chunks: Iterable[bytes]) -> None:
+        size = 0
+        for chunk in chunks:
+            size += len(chunk)
+        self.buffer_size += size
+        self.output_size += size
+        transport = self._protocol.transport
+        if transport is None or transport.is_closing():
+            raise ClientConnectionResetError("Cannot write to closing transport")
+        transport.writelines(chunks)
+
     async def write(
         self, chunk: bytes, *, drain: bool = True, LIMIT: int = 0x10000
     ) -> None:
@@ -110,10 +130,11 @@ class StreamWriter(AbstractStreamWriter):
 
         if chunk:
             if self.chunked:
-                chunk_len_pre = ("%x\r\n" % len(chunk)).encode("ascii")
-                chunk = chunk_len_pre + chunk + b"\r\n"
-
-            self._write(chunk)
+                self._writelines(
+                    (f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n")
+                )
+            else:
+                self._write(chunk)
 
             if self.buffer_size > LIMIT and drain:
                 self.buffer_size = 0
@@ -130,6 +151,10 @@ class StreamWriter(AbstractStreamWriter):
         buf = _serialize_headers(status_line, headers)
         self._write(buf)
 
+    def set_eof(self) -> None:
+        """Indicate that the message is complete."""
+        self._eof = True
+
     async def write_eof(self, chunk: bytes = b"") -> None:
         if self._eof:
             return
@@ -138,22 +163,31 @@ class StreamWriter(AbstractStreamWriter):
             await self._on_chunk_sent(chunk)
 
         if self._compress:
-            if chunk:
-                chunk = await self._compress.compress(chunk)
+            chunks: List[bytes] = []
+            chunks_len = 0
+            if chunk and (compressed_chunk := await self._compress.compress(chunk)):
+                chunks_len = len(compressed_chunk)
+                chunks.append(compressed_chunk)
 
-            chunk += self._compress.flush()
-            if chunk and self.chunked:
-                chunk_len = ("%x\r\n" % len(chunk)).encode("ascii")
-                chunk = chunk_len + chunk + b"\r\n0\r\n\r\n"
-        else:
+            flush_chunk = self._compress.flush()
+            chunks_len += len(flush_chunk)
+            chunks.append(flush_chunk)
+            assert chunks_len
+
             if self.chunked:
-                if chunk:
-                    chunk_len = ("%x\r\n" % len(chunk)).encode("ascii")
-                    chunk = chunk_len + chunk + b"\r\n0\r\n\r\n"
-                else:
-                    chunk = b"0\r\n\r\n"
-
-        if chunk:
+                chunk_len_pre = f"{chunks_len:x}\r\n".encode("ascii")
+                self._writelines((chunk_len_pre, *chunks, b"\r\n0\r\n\r\n"))
+            elif len(chunks) > 1:
+                self._writelines(chunks)
+            else:
+                self._write(chunks[0])
+        elif self.chunked:
+            if chunk:
+                chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
+                self._writelines((chunk_len_pre, chunk, b"\r\n0\r\n\r\n"))
+            else:
+                self._write(b"0\r\n\r\n")
+        elif chunk:
             self._write(chunk)
 
         await self.drain()
@@ -168,8 +202,9 @@ class StreamWriter(AbstractStreamWriter):
           await w.write(data)
           await w.drain()
         """
-        if self._protocol.transport is not None:
-            await self._protocol._drain_helper()
+        protocol = self._protocol
+        if protocol.transport is not None and protocol._paused:
+            await protocol._drain_helper()
 
 
 def _safe_header(string: str) -> str:
