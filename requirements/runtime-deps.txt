@@ -20,7 +20,7 @@ frozenlist==1.5.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-hyperscan == 0.7.8 ; platform_python_implementation == "CPython" and (sys_platform=="linux" or sys_platform=="darwin") and (python_version < "3.14")
+hyperscan == 0.7.8 ; platform_python_implementation == "CPython" and (sys_platform=="linux" or sys_platform=="darwin")
     # via -r requirements/runtime-deps.in
 idna==3.6
     # via yarl
