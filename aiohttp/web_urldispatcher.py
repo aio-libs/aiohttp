@@ -1045,12 +1045,13 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
         while True:
-            for prefix_resource in prefix_resources.get(parts, ()):
-                match_dict, allowed = await prefix_resource.resolve(request)
-                if match_dict is not None:
-                    return match_dict
-                else:
-                    allowed_methods |= allowed
+            if (found_prefix_resources := prefix_resources.get(parts)) is not None:
+                for prefix_resource in found_prefix_resources:
+                    match_dict, allowed = await prefix_resource.resolve(request)
+                    if match_dict is not None:
+                        return match_dict
+                    else:
+                        allowed_methods |= allowed
             if len(parts) <= 1:
                 break
             parts = parts[:-1]
