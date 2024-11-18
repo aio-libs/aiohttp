@@ -154,8 +154,12 @@ def test_flow_control_data_queue_feed_pause(
     """Test feeding data and pausing the reader."""
     buffer._protocol._reading_paused = False
     buffer.feed_data(object(), 100)
-
     assert buffer._protocol.pause_reading.called
+
+    buffer._protocol._reading_paused = True
+    buffer._protocol.pause_reading.reset_mock()
+    buffer.feed_data(object(), 100)
+    assert not buffer._protocol.pause_reading.called
 
 
 async def test_flow_control_data_queue_resume_on_read(
@@ -167,3 +171,12 @@ async def test_flow_control_data_queue_resume_on_read(
     buffer._protocol._reading_paused = True
     await buffer.read()
     assert buffer._protocol.resume_reading.called
+
+
+async def test_flow_control_data_queue_read_eof(
+    buffer: streams.FlowControlDataQueue,
+) -> None:
+    """Test that reading after eof raises EofStream."""
+    buffer.feed_eof()
+    with pytest.raises(streams.EofStream):
+        await buffer.read()
