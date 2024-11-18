@@ -814,16 +814,24 @@ async def test_tcp_connector_multiple_hosts_errors(
 
         assert False
 
-    with mock.patch.object(
-        conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
-    ), mock.patch.object(
-        conn._loop,
-        "create_connection",
-        autospec=True,
-        spec_set=True,
-        side_effect=create_connection,
-    ), mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+    with (
+        mock.patch.object(
+            conn,
+            "_resolve_host",
+            autospec=True,
+            spec_set=True,
+            side_effect=_resolve_host,
+        ),
+        mock.patch.object(
+            conn._loop,
+            "create_connection",
+            autospec=True,
+            spec_set=True,
+            side_effect=create_connection,
+        ),
+        mock.patch(
+            "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+        ),
     ):
         established_connection = await conn.connect(req, [], ClientTimeout())
 
@@ -996,16 +1004,24 @@ async def test_tcp_connector_interleave(loop: asyncio.AbstractEventLoop) -> None
         pr = create_mocked_conn(loop)
         return tr, pr
 
-    with mock.patch.object(
-        conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
-    ), mock.patch.object(
-        conn._loop,
-        "create_connection",
-        autospec=True,
-        spec_set=True,
-        side_effect=create_connection,
-    ), mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+    with (
+        mock.patch.object(
+            conn,
+            "_resolve_host",
+            autospec=True,
+            spec_set=True,
+            side_effect=_resolve_host,
+        ),
+        mock.patch.object(
+            conn._loop,
+            "create_connection",
+            autospec=True,
+            spec_set=True,
+            side_effect=create_connection,
+        ),
+        mock.patch(
+            "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+        ),
     ):
         established_connection = await conn.connect(req, [], ClientTimeout())
 
@@ -1182,16 +1198,24 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
         pr = create_mocked_conn(loop)
         return tr, pr
 
-    with mock.patch.object(
-        conn, "_resolve_host", autospec=True, spec_set=True, side_effect=_resolve_host
-    ), mock.patch.object(
-        conn._loop,
-        "create_connection",
-        autospec=True,
-        spec_set=True,
-        side_effect=create_connection,
-    ), mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+    with (
+        mock.patch.object(
+            conn,
+            "_resolve_host",
+            autospec=True,
+            spec_set=True,
+            side_effect=_resolve_host,
+        ),
+        mock.patch.object(
+            conn._loop,
+            "create_connection",
+            autospec=True,
+            spec_set=True,
+            side_effect=create_connection,
+        ),
+        mock.patch(
+            "aiohttp.connector.aiohappyeyeballs.start_connection", start_connection
+        ),
     ):
         established_connection = await conn.connect(req, [], ClientTimeout())
 
@@ -1698,8 +1722,11 @@ async def test_exception_during_connetion_create_tracing(
     assert not conn._acquired
     assert key not in conn._acquired_per_host
 
-    with pytest.raises(asyncio.CancelledError), mock.patch.object(
-        conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+    with (
+        pytest.raises(asyncio.CancelledError),
+        mock.patch.object(
+            conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+        ),
     ):
         await conn.connect(req, traces, ClientTimeout())
 
@@ -1729,8 +1756,11 @@ async def test_exception_during_connection_queued_tracing(
     assert not conn._acquired
     assert key not in conn._acquired_per_host
 
-    with pytest.raises(asyncio.CancelledError), mock.patch.object(
-        conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+    with (
+        pytest.raises(asyncio.CancelledError),
+        mock.patch.object(
+            conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+        ),
     ):
         resp1 = await conn.connect(req, traces, ClientTimeout())
         assert resp1
@@ -1767,8 +1797,11 @@ async def test_exception_during_connection_reuse_tracing(
     assert not conn._acquired
     assert key not in conn._acquired_per_host
 
-    with pytest.raises(asyncio.CancelledError), mock.patch.object(
-        conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+    with (
+        pytest.raises(asyncio.CancelledError),
+        mock.patch.object(
+            conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+        ),
     ):
         resp = await conn.connect(req, traces, ClientTimeout())
         with mock.patch.object(resp.protocol, "should_close", False):
@@ -1987,8 +2020,9 @@ async def test_cleanup_closed(
 
 async def test_cleanup_closed_is_noop_on_fixed_cpython() -> None:
     """Ensure that enable_cleanup_closed is a noop on fixed Python versions."""
-    with mock.patch("aiohttp.connector.NEEDS_CLEANUP_CLOSED", False), pytest.warns(
-        DeprecationWarning, match="cleanup_closed ignored"
+    with (
+        mock.patch("aiohttp.connector.NEEDS_CLEANUP_CLOSED", False),
+        pytest.warns(DeprecationWarning, match="cleanup_closed ignored"),
     ):
         conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
         assert conn._cleanup_closed_disabled is True
@@ -2257,9 +2291,12 @@ async def test_multiple_dns_resolution_requests_success(
     req = ClientRequest(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
     )
-    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection",
-        side_effect=OSError(1, "Forced connection to fail"),
+    with (
+        mock.patch.object(conn._resolver, "resolve", delay_resolve),
+        mock.patch(
+            "aiohttp.connector.aiohappyeyeballs.start_connection",
+            side_effect=OSError(1, "Forced connection to fail"),
+        ),
     ):
         task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
 
@@ -2307,9 +2344,12 @@ async def test_multiple_dns_resolution_requests_failure(
     req = ClientRequest(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
     )
-    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection",
-        side_effect=OSError(1, "Forced connection to fail"),
+    with (
+        mock.patch.object(conn._resolver, "resolve", delay_resolve),
+        mock.patch(
+            "aiohttp.connector.aiohappyeyeballs.start_connection",
+            side_effect=OSError(1, "Forced connection to fail"),
+        ),
     ):
         task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
 
@@ -2357,9 +2397,12 @@ async def test_multiple_dns_resolution_requests_cancelled(
     req = ClientRequest(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
     )
-    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection",
-        side_effect=OSError(1, "Forced connection to fail"),
+    with (
+        mock.patch.object(conn._resolver, "resolve", delay_resolve),
+        mock.patch(
+            "aiohttp.connector.aiohappyeyeballs.start_connection",
+            side_effect=OSError(1, "Forced connection to fail"),
+        ),
     ):
         task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
 
@@ -2415,9 +2458,12 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
     req = ClientRequest(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
     )
-    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection",
-        side_effect=OSError(1, "Forced connection to fail"),
+    with (
+        mock.patch.object(conn._resolver, "resolve", delay_resolve),
+        mock.patch(
+            "aiohttp.connector.aiohappyeyeballs.start_connection",
+            side_effect=OSError(1, "Forced connection to fail"),
+        ),
     ):
         task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
 
@@ -2480,9 +2526,12 @@ async def test_multiple_dns_resolution_requests_first_fails_second_successful(
     req = ClientRequest(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
     )
-    with mock.patch.object(conn._resolver, "resolve", delay_resolve), mock.patch(
-        "aiohttp.connector.aiohappyeyeballs.start_connection",
-        side_effect=OSError(1, "Forced connection to fail"),
+    with (
+        mock.patch.object(conn._resolver, "resolve", delay_resolve),
+        mock.patch(
+            "aiohttp.connector.aiohappyeyeballs.start_connection",
+            side_effect=OSError(1, "Forced connection to fail"),
+        ),
     ):
         task1 = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
 

@@ -60,9 +60,10 @@ async def test_ws_connect_read_timeout_is_reset_to_inf(
         hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
     }
     resp.connection.protocol.read_timeout = 0.5
-    with mock.patch("aiohttp.client.os") as m_os, mock.patch(
-        "aiohttp.client.ClientSession.request"
-    ) as m_req:
+    with (
+        mock.patch("aiohttp.client.os") as m_os,
+        mock.patch("aiohttp.client.ClientSession.request") as m_req,
+    ):
         m_os.urandom.return_value = key_data
         m_req.return_value = loop.create_future()
         m_req.return_value.set_result(resp)
@@ -89,9 +90,10 @@ async def test_ws_connect_read_timeout_stays_inf(
         hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
     }
     resp.connection.protocol.read_timeout = None
-    with mock.patch("aiohttp.client.os") as m_os, mock.patch(
-        "aiohttp.client.ClientSession.request"
-    ) as m_req:
+    with (
+        mock.patch("aiohttp.client.os") as m_os,
+        mock.patch("aiohttp.client.ClientSession.request") as m_req,
+    ):
         m_os.urandom.return_value = key_data
         m_req.return_value = loop.create_future()
         m_req.return_value.set_result(resp)
@@ -120,9 +122,10 @@ async def test_ws_connect_read_timeout_reset_to_max(
         hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
     }
     resp.connection.protocol.read_timeout = 0.5
-    with mock.patch("aiohttp.client.os") as m_os, mock.patch(
-        "aiohttp.client.ClientSession.request"
-    ) as m_req:
+    with (
+        mock.patch("aiohttp.client.os") as m_os,
+        mock.patch("aiohttp.client.ClientSession.request") as m_req,
+    ):
         m_os.urandom.return_value = key_data
         m_req.return_value = loop.create_future()
         m_req.return_value.set_result(resp)
@@ -447,9 +450,11 @@ async def test_close_connection_lost(
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     mresp.connection.protocol.read_timeout = None
-    with mock.patch("aiohttp.client.WebSocketWriter"), mock.patch(
-        "aiohttp.client.os"
-    ) as m_os, mock.patch("aiohttp.client.ClientSession.request") as m_req:
+    with (
+        mock.patch("aiohttp.client.WebSocketWriter"),
+        mock.patch("aiohttp.client.os") as m_os,
+        mock.patch("aiohttp.client.ClientSession.request") as m_req,
+    ):
         m_os.urandom.return_value = key_data
         m_req.return_value = loop.create_future()
         m_req.return_value.set_result(mresp)
