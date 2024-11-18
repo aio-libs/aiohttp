@@ -1,3 +1,4 @@
+import asyncio
 from unittest import mock
 
 import pytest
@@ -13,6 +14,13 @@ def protocol():
 @pytest.fixture
 def stream(loop, protocol):
     return streams.StreamReader(protocol, limit=1, loop=loop)
+
+
+@pytest.fixture
+def buffer(loop, protocol: mock.Mock) -> streams.FlowControlDataQueue:
+    out = streams.FlowControlDataQueue(protocol, limit=1, loop=loop)
+    out._allow_pause = True
+    return out
 
 
 class TestFlowControlStreamReader:
@@ -103,3 +111,59 @@ class TestFlowControlStreamReader:
         res = stream.read_nowait(5)
         assert res == b""
         assert stream._protocol.resume_reading.call_count == 1  # type: ignore[attr-defined]
+
+
+async def test_flow_control_data_queue_waiter_cancelled(
+    buffer: streams.FlowControlDataQueue,
+) -> None:
+    """Test that the waiter is cancelled it is cleared."""
+    task = asyncio.create_task(buffer.read())
+    await asyncio.sleep(0)
+    assert buffer._waiter is not None
+    buffer._waiter.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert buffer._waiter is None
+
+
+async def test_flow_control_data_queue_has_buffer(
+    buffer: streams.FlowControlDataQueue,
+) -> None:
+    """Test reading from the buffer."""
+    data = object()
+    buffer.feed_data(data, 100)
+    assert buffer._size == 100
+    read_data = await buffer.read()
+    assert read_data is data
+    assert buffer._size == 0
+
+
+async def test_flow_control_data_queue_read_with_exception(
+    buffer: streams.FlowControlDataQueue,
+) -> None:
+    """Test reading when the buffer is empty and an exception is set."""
+    buffer.set_exception(ValueError("unique_string"))
+    with pytest.raises(ValueError, match="unique_string"):
+        await buffer.read()
+
+
+def test_flow_control_data_queue_feed_pause(
+    buffer: streams.FlowControlDataQueue,
+) -> None:
+    """Test feeding data and pausing the reader."""
+    buffer._protocol._reading_paused = False
+    buffer.feed_data(object(), 100)
+
+    assert buffer._protocol.pause_reading.called
+
+
+async def test_flow_control_data_queue_resume_on_read(
+    buffer: streams.FlowControlDataQueue,
+) -> None:
+    """Test that the reader is resumed when reading."""
+    buffer.feed_data(object(), 100)
+
+    buffer._protocol._reading_paused = True
+    await buffer.read()
+    assert buffer._protocol.resume_reading.called
