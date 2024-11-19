@@ -756,11 +756,14 @@ async def test_heartbeat_connection_closed(aiohttp_client: AiohttpClient) -> Non
     # since if we closed the connection normally, the client would
     # would cancel the heartbeat task and we wouldn't get a ping
     assert resp._conn is not None
-    with mock.patch.object(
-        resp._conn.transport, "write", side_effect=ClientConnectionResetError
-    ), mock.patch.object(
-        resp._writer, "send_frame", wraps=resp._writer.send_frame
-    ) as send_frame:
+    with (
+        mock.patch.object(
+            resp._conn.transport, "write", side_effect=ClientConnectionResetError
+        ),
+        mock.patch.object(
+            resp._writer, "send_frame", wraps=resp._writer.send_frame
+        ) as send_frame,
+    ):
         await resp.receive()
         ping_count = send_frame.call_args_list.count(mock.call(b"", WSMsgType.PING))
     # Connection should be closed roughly after 1.5x heartbeat.
