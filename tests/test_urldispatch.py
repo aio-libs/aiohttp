@@ -520,7 +520,7 @@ async def test_static_not_match(router: web.UrlDispatcher) -> None:
 async def test_add_static_access_resources(router: web.UrlDispatcher) -> None:
     """Test accessing resource._routes externally.
 
-    aiohttp-cors access the resource._routes, this test ensures that this
+    aiohttp-cors accesses the resource._routes, this test ensures that this
     continues to work.
     """
     # https://github.com/aio-libs/aiohttp-cors/blob/38c6c17bffc805e46baccd7be1b4fd8c69d95dc3/aiohttp_cors/urldispatcher_router_adapter.py#L187
