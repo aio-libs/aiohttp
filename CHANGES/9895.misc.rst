@@ -1,0 +1,1 @@
+Improved performance of creating web responses when there are no cookies -- by :user:`bdraco`.
