@@ -10,6 +10,24 @@
 
 .. towncrier release notes start
 
+3.11.6 (2024-11-19)
+===================
+
+Bug fixes
+---------
+
+- Restored the ``force_close`` method to the ``ResponseHandler`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9997`.
+
+
+
+
+----
+
+
 3.11.5 (2024-11-19)
 ===================
 
