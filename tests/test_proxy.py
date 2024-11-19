@@ -417,18 +417,21 @@ class TestProxy(unittest.TestCase):
                 fingerprint_mock.check.side_effect = aiohttp.ServerFingerprintMismatch(
                     b"exp", b"got", "example.com", 8080
                 )
-                with mock.patch.object(
-                    proxy_req,
-                    "send",
-                    autospec=True,
-                    spec_set=True,
-                    return_value=proxy_resp,
-                ), mock.patch.object(
-                    proxy_resp,
-                    "start",
-                    autospec=True,
-                    spec_set=True,
-                    return_value=mock.Mock(status=200),
+                with (
+                    mock.patch.object(
+                        proxy_req,
+                        "send",
+                        autospec=True,
+                        spec_set=True,
+                        return_value=proxy_resp,
+                    ),
+                    mock.patch.object(
+                        proxy_resp,
+                        "start",
+                        autospec=True,
+                        spec_set=True,
+                        return_value=mock.Mock(status=200),
+                    ),
                 ):
                     connector = self.loop.run_until_complete(make_conn())
                     host = [
@@ -441,30 +444,35 @@ class TestProxy(unittest.TestCase):
                             "flags": 0,
                         }
                     ]
-                    with mock.patch.object(
-                        connector,
-                        "_resolve_host",
-                        autospec=True,
-                        spec_set=True,
-                        return_value=host,
-                    ), mock.patch.object(
-                        connector,
-                        "_get_fingerprint",
-                        autospec=True,
-                        spec_set=True,
-                        return_value=fingerprint_mock,
-                    ), mock.patch.object(  # Called on connection to http://proxy.example.com
-                        self.loop,
-                        "create_connection",
-                        autospec=True,
-                        spec_set=True,
-                        return_value=(mock.Mock(), mock.Mock()),
-                    ), mock.patch.object(  # Called on connection to https://www.python.org
-                        self.loop,
-                        "start_tls",
-                        autospec=True,
-                        spec_set=True,
-                        return_value=TransportMock(),
+                    with (
+                        mock.patch.object(
+                            connector,
+                            "_resolve_host",
+                            autospec=True,
+                            spec_set=True,
+                            return_value=host,
+                        ),
+                        mock.patch.object(
+                            connector,
+                            "_get_fingerprint",
+                            autospec=True,
+                            spec_set=True,
+                            return_value=fingerprint_mock,
+                        ),
+                        mock.patch.object(  # Called on connection to http://proxy.example.com
+                            self.loop,
+                            "create_connection",
+                            autospec=True,
+                            spec_set=True,
+                            return_value=(mock.Mock(), mock.Mock()),
+                        ),
+                        mock.patch.object(  # Called on connection to https://www.python.org
+                            self.loop,
+                            "start_tls",
+                            autospec=True,
+                            spec_set=True,
+                            return_value=TransportMock(),
+                        ),
                     ):
                         req = ClientRequest(
                             "GET",

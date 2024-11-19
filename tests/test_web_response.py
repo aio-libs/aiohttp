@@ -491,9 +491,10 @@ async def test_force_compression_deflate_large_payload() -> None:
     resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
-    with pytest.warns(
-        Warning, match="Synchronous compression of large response bodies"
-    ), mock.patch("aiohttp.web_response.LARGE_BODY_SIZE", 2):
+    with (
+        pytest.warns(Warning, match="Synchronous compression of large response bodies"),
+        mock.patch("aiohttp.web_response.LARGE_BODY_SIZE", 2),
+    ):
         msg = await resp.prepare(req)
         assert msg is not None
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
