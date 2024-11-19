@@ -523,6 +523,7 @@ async def test_add_static_mutate_resources(router: web.UrlDispatcher) -> None:
     aiohttp-cors mutates the resource._routes, this test ensures that this
     continues to work.
     """
+    # https://github.com/aio-libs/aiohttp-cors/blob/38c6c17bffc805e46baccd7be1b4fd8c69d95dc3/aiohttp_cors/urldispatcher_router_adapter.py#L187
     resource = router.add_static(
         "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
     )
