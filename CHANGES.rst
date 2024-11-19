@@ -10,6 +10,36 @@
 
 .. towncrier release notes start
 
+3.11.4 (2024-11-18)
+===================
+
+Bug fixes
+---------
+
+- Fixed ``StaticResource`` not allowing the ``OPTIONS`` method after calling ``set_options_route`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9972`, :issue:`9975`, :issue:`9976`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of creating web responses when there are no cookies -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9895`.
+
+
+
+
+----
+
+
 3.11.3 (2024-11-18)
 ===================
 
