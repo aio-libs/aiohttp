@@ -535,6 +535,19 @@ async def test_add_static_mutate_resources(router: web.UrlDispatcher) -> None:
     assert allowed_methods == {hdrs.METH_GET, hdrs.METH_OPTIONS, hdrs.METH_HEAD}
 
 
+async def test_add_static_set_options_route(router: web.UrlDispatcher) -> None:
+    """Ensure set_options_route works as expected."""
+    resource = router.add_static(
+        "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
+    )
+    resource.set_options_route(resource._routes[hdrs.METH_GET])
+    mapping, allowed_methods = await resource.resolve(
+        make_mocked_request("OPTIONS", "/st/path")
+    )
+    assert mapping is not None
+    assert allowed_methods == {hdrs.METH_GET, hdrs.METH_OPTIONS, hdrs.METH_HEAD}
+
+
 def test_dynamic_with_trailing_slash(router: web.UrlDispatcher) -> None:
     handler = make_handler()
     router.add_route("GET", "/get/{name}/", handler, name="name")
