@@ -10,6 +10,46 @@
 
 .. towncrier release notes start
 
+3.11.3 (2024-11-18)
+===================
+
+Bug fixes
+---------
+
+- Removed non-existing ``__author__`` from ``dir(aiohttp)`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9918`.
+
+
+
+- Restored the ``FlowControlDataQueue`` class -- by :user:`bdraco`.
+
+  This class is no longer used internally, and will be permanently removed in the next major version.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9963`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of resolving resources when multiple methods are registered for the same route -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9899`.
+
+
+
+
+----
+
+
 3.11.2 (2024-11-14)
 ===================
 
