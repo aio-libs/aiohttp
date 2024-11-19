@@ -514,11 +514,12 @@ async def test_ws_connect_allowed_protocols(
         return create_mocked_conn()
 
     connector = session._connector
-    with mock.patch.object(connector, "connect", connect), mock.patch.object(
-        connector, "_create_connection", create_connection
-    ), mock.patch.object(connector, "_release"), mock.patch(
-        "aiohttp.client.os"
-    ) as m_os:
+    with (
+        mock.patch.object(connector, "connect", connect),
+        mock.patch.object(connector, "_create_connection", create_connection),
+        mock.patch.object(connector, "_release"),
+        mock.patch("aiohttp.client.os") as m_os,
+    ):
         m_os.urandom.return_value = key_data
         await session.ws_connect(f"{protocol}://example")
 
@@ -575,11 +576,12 @@ async def test_ws_connect_unix_socket_allowed_protocols(
         return create_mocked_conn()
 
     connector = session._connector
-    with mock.patch.object(connector, "connect", connect), mock.patch.object(
-        connector, "_create_connection", create_connection
-    ), mock.patch.object(connector, "_release"), mock.patch(
-        "aiohttp.client.os"
-    ) as m_os:
+    with (
+        mock.patch.object(connector, "connect", connect),
+        mock.patch.object(connector, "_create_connection", create_connection),
+        mock.patch.object(connector, "_release"),
+        mock.patch("aiohttp.client.os") as m_os,
+    ):
         m_os.urandom.return_value = key_data
         await session.ws_connect(f"{protocol}://example")
 

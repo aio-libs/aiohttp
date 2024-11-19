@@ -41,7 +41,7 @@ class AiohttpClient(Protocol):
         __param: Union[Application, BaseTestServer],
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Awaitable[TestClient]: ...
 
 
@@ -370,7 +370,7 @@ def aiohttp_client(
         __param: Union[Application, BaseTestServer],
         *args: Any,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient:
 
         if isinstance(__param, Callable) and not isinstance(  # type: ignore[arg-type]

@@ -186,13 +186,16 @@ async def test_https_proxy_unsupported_tls_in_tls(
         r"$"
     )
 
-    with pytest.warns(
-        RuntimeWarning,
-        match=expected_warning_text,
-    ), pytest.raises(
-        ClientConnectionError,
-        match=expected_exception_reason,
-    ) as conn_err:
+    with (
+        pytest.warns(
+            RuntimeWarning,
+            match=expected_warning_text,
+        ),
+        pytest.raises(
+            ClientConnectionError,
+            match=expected_exception_reason,
+        ) as conn_err,
+    ):
         async with sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx):
             pass
 
