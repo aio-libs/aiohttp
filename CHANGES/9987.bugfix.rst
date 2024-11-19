@@ -1,1 +1,0 @@
-Fixed the ``ANY`` method not appearing in :meth:`~aiohttp.web.UrlDispatcher.routes` -- by :user:`bdraco`.
