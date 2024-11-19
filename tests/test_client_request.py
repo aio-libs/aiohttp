@@ -5,7 +5,16 @@ import pathlib
 import sys
 import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, AsyncIterator, Callable, Dict, Iterator, List, Protocol
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Protocol,
+)
 from unittest import mock
 
 import pytest
@@ -73,12 +82,17 @@ def protocol(
 
 @pytest.fixture
 def transport(buf: bytearray) -> mock.Mock:
-    transport = mock.create_autospec(asyncio.Transport, spec_set=True)
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
 
     def write(chunk: bytes) -> None:
         buf.extend(chunk)
 
+    def writelines(chunks: Iterable[bytes]) -> None:
+        for chunk in chunks:
+            buf.extend(chunk)
+
     transport.write.side_effect = write
+    transport.writelines.side_effect = writelines
     transport.is_closing.return_value = False
 
     return transport  # type: ignore[no-any-return]
@@ -598,6 +612,14 @@ def test_gen_netloc_no_port(make_request: _RequestMaker) -> None:
     )
 
 
+def test_cookie_coded_value_preserved(loop: asyncio.AbstractEventLoop) -> None:
+    """Verify the coded value of a cookie is preserved."""
+    # https://github.com/aio-libs/aiohttp/pull/1453
+    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+    req.update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
+    assert req.headers["COOKIE"] == 'ip-cookie="second"'
+
+
 async def test_connection_header(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
@@ -728,7 +750,8 @@ async def test_urlencoded_formdata_charset(
         data=aiohttp.FormData({"hey": "you"}, charset="koi8-r"),
         loop=loop,
     )
-    await req.send(conn)
+    async with await req.send(conn):
+        await asyncio.sleep(0)
     assert "application/x-www-form-urlencoded; charset=koi8-r" == req.headers.get(
         "CONTENT-TYPE"
     )
@@ -747,7 +770,8 @@ async def test_formdata_boundary_from_headers(
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
             loop=loop,
         )
-        await req.send(conn)
+        async with await req.send(conn):
+            await asyncio.sleep(0)
         assert req.body._boundary == boundary.encode()
 
 
@@ -905,6 +929,25 @@ async def test_chunked2(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> Non
     resp.close()
 
 
+async def test_chunked_empty_body(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
+    """Ensure write_bytes is called even if the body is empty."""
+    req = ClientRequest(
+        "post",
+        URL("http://python.org/"),
+        chunked=True,
+        loop=loop,
+        data=b"",
+    )
+    with mock.patch.object(req, "write_bytes") as write_bytes:
+        resp = await req.send(conn)
+    assert "chunked" == req.headers["TRANSFER-ENCODING"]
+    assert write_bytes.called
+    await req.close()
+    resp.close()
+
+
 async def test_chunked_explicit(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
@@ -1032,7 +1075,7 @@ async def test_data_stream(
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
-    assert (
+    assert (  # type: ignore[unreachable]
         buf.split(b"\r\n\r\n", 1)[1] == b"b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n"
     )
     await req.close()
@@ -1057,7 +1100,7 @@ async def test_data_file(
         await resp.wait_for_close()
 
         assert req._writer is None
-        assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"
+        assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"  # type: ignore[unreachable]
         await req.close()
 
 
@@ -1080,13 +1123,13 @@ async def test_data_stream_exc(
 
     t = loop.create_task(throw_exc())
 
-    await req.send(conn)
-    assert req._writer is not None
-    await req._writer
-    await t
-    # assert conn.close.called
-    assert conn.protocol is not None
-    assert conn.protocol.set_exception.called
+    async with await req.send(conn):
+        assert req._writer is not None
+        await req._writer
+        await t
+        # assert conn.close.called
+        assert conn.protocol is not None
+        assert conn.protocol.set_exception.called
     await req.close()
 
 
@@ -1098,7 +1141,7 @@ async def test_data_stream_exc_chain(
     async def gen() -> AsyncIterator[None]:
         await fut
         assert False
-        yield  # pragma: no cover
+        yield  # type: ignore[unreachable]  # pragma: no cover
 
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
 
@@ -1110,9 +1153,9 @@ async def test_data_stream_exc_chain(
 
     t = loop.create_task(throw_exc())
 
-    await req.send(conn)
-    assert req._writer is not None
-    await req._writer
+    async with await req.send(conn):
+        assert req._writer is not None
+        await req._writer
     await t
     # assert conn.close.called
     assert conn.protocol.set_exception.called
@@ -1344,7 +1387,7 @@ async def test_custom_req_rep(
             resp = self.response_class(
                 self.method,
                 self.url,
-                writer=self._writer,  # type: ignore[arg-type]
+                writer=self._writer,
                 continue100=self._continue,
                 timer=self._timer,
                 request_info=self.request_info,
@@ -1501,3 +1544,46 @@ async def test_connection_key_without_proxy() -> None:
     )
     assert req.connection_key.proxy_headers_hash is None
     await req.close()
+
+
+def test_request_info_back_compat() -> None:
+    """Test RequestInfo can be created without real_url."""
+    url = URL("http://example.com")
+    other_url = URL("http://example.org")
+    assert (
+        aiohttp.RequestInfo(
+            url=url, method="GET", headers=CIMultiDictProxy(CIMultiDict())
+        ).real_url
+        is url
+    )
+    assert (
+        aiohttp.RequestInfo(url, "GET", CIMultiDictProxy(CIMultiDict())).real_url is url
+    )
+    assert (
+        aiohttp.RequestInfo(
+            url, "GET", CIMultiDictProxy(CIMultiDict()), real_url=url
+        ).real_url
+        is url
+    )
+    assert (
+        aiohttp.RequestInfo(
+            url, "GET", CIMultiDictProxy(CIMultiDict()), real_url=other_url
+        ).real_url
+        is other_url
+    )
+
+
+def test_request_info_tuple_new() -> None:
+    """Test RequestInfo must be created with real_url using tuple.__new__."""
+    url = URL("http://example.com")
+    with pytest.raises(IndexError):
+        tuple.__new__(
+            aiohttp.RequestInfo, (url, "GET", CIMultiDictProxy(CIMultiDict()))
+        ).real_url
+
+    assert (
+        tuple.__new__(
+            aiohttp.RequestInfo, (url, "GET", CIMultiDictProxy(CIMultiDict()), url)
+        ).real_url
+        is url
+    )

@@ -41,6 +41,7 @@ async def test_websocket_json(
         await ws.prepare(request)
         msg = await ws.receive()
 
+        assert msg.type is WSMsgType.TEXT
         msg_json = msg.json()
         answer = msg_json["test"]
         await ws.send_str(answer)
@@ -234,6 +235,7 @@ async def test_send_recv_json(
 
     await ws.send_str('{"request": "test"}')
     msg = await ws.receive()
+    assert msg.type is WSMsgType.TEXT
     data = msg.json()
     assert msg.type == aiohttp.WSMsgType.TEXT
     assert data["response"] == "test"
@@ -616,7 +618,7 @@ async def test_client_close_handshake(
         assert not ws.closed
         await ws.close()
         assert ws.closed
-        assert ws.close_code == WSCloseCode.INVALID_TEXT
+        assert ws.close_code == WSCloseCode.INVALID_TEXT  # type: ignore[unreachable]
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSED
@@ -780,15 +782,20 @@ async def test_heartbeat_connection_closed(
         # would cancel the heartbeat task and we wouldn't get a ping
         assert ws_server._req is not None
         assert ws_server._writer is not None
-        with mock.patch.object(
-            ws_server._req.transport, "write", side_effect=ConnectionResetError
-        ), mock.patch.object(
-            ws_server._writer, "ping", wraps=ws_server._writer.ping
-        ) as ping:
+        with (
+            mock.patch.object(
+                ws_server._req.transport, "write", side_effect=ConnectionResetError
+            ),
+            mock.patch.object(
+                ws_server._writer, "send_frame", wraps=ws_server._writer.send_frame
+            ) as send_frame,
+        ):
             try:
                 await ws_server.receive()
             finally:
-                ping_count = ping.call_count
+                ping_count = send_frame.call_args_list.count(
+                    mock.call(b"", WSMsgType.PING)
+                )
         assert False
 
     app = web.Application()
@@ -974,7 +981,7 @@ async def test_websocket_disable_keepalive(
         assert request.protocol._keepalive
         await ws.prepare(request)
         assert not request.protocol._keepalive
-        assert not request.protocol._keepalive_handle
+        assert not request.protocol._keepalive_handle  # type: ignore[unreachable]
 
         await ws.send_str("OK")
         await ws.close()
@@ -1022,7 +1029,7 @@ async def test_receive_bytes_nonbytes(
         assert ws.can_prepare(request)
 
         await ws.prepare(request)
-        await ws.send_bytes("answer")  # type: ignore[arg-type]
+        await ws.send_str("answer")
         assert False
 
     app = web.Application()
@@ -1173,6 +1180,7 @@ async def test_websocket_shutdown(aiohttp_client: AiohttpClient) -> None:
 
         try:
             async for message in websocket:
+                assert message.type is WSMsgType.TEXT
                 await websocket.send_json({"ok": True, "message": message.json()})
         finally:
             request.app[websockets].discard(websocket)
@@ -1238,7 +1246,11 @@ async def test_abnormal_closure_when_server_does_not_receive(
     """Test abnormal closure when the server closes and a message is pending."""
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse()
+        # Setting close timeout to 0, otherwise the server waits for a
+        # close response for 10 seconds by default.
+        # This would make the client's autoclose in resp.receive() to succeed,
+        # closing the connection cleanly from both sides.
+        ws = web.WebSocketResponse(timeout=0)
         await ws.prepare(request)
         await ws.close()
         return ws
@@ -1252,3 +1264,70 @@ async def test_abnormal_closure_when_server_does_not_receive(
     msg = await resp.receive()
     assert msg.type is aiohttp.WSMsgType.CLOSE
     assert resp.close_code == WSCloseCode.ABNORMAL_CLOSURE
+
+
+async def test_abnormal_closure_when_client_does_not_close(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test abnormal closure when the server closes and the client doesn't respond."""
+    close_code: Optional[WSCloseCode] = None
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        # Setting a short close timeout
+        ws = web.WebSocketResponse(timeout=0.1)
+        await ws.prepare(request)
+        await ws.close()
+
+        nonlocal close_code
+        assert ws.close_code is not None
+        close_code = WSCloseCode(ws.close_code)
+
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    async with client.ws_connect("/", autoclose=False):
+        await asyncio.sleep(0.2)
+    await client.server.close()
+    assert close_code == WSCloseCode.ABNORMAL_CLOSURE
+
+
+async def test_normal_closure_while_client_sends_msg(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test abnormal closure when the server closes and the client doesn't respond."""
+    close_code: Optional[WSCloseCode] = None
+    got_close_code = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        # Setting a short close timeout
+        ws = web.WebSocketResponse(timeout=0.2)
+        await ws.prepare(request)
+        await ws.close()
+
+        nonlocal close_code
+        assert ws.close_code is not None
+        close_code = WSCloseCode(ws.close_code)
+        got_close_code.set()
+
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    async with client.ws_connect("/", autoclose=False) as ws:
+        # send text and close message during server close timeout
+        await asyncio.sleep(0.1)
+        await ws.send_str("Hello")
+        await ws.close()
+    # wait for close code to be received by server
+    await asyncio.wait(
+        [
+            asyncio.create_task(asyncio.sleep(0.5)),
+            asyncio.create_task(got_close_code.wait()),
+        ],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    await client.server.close()
+    assert close_code == WSCloseCode.OK

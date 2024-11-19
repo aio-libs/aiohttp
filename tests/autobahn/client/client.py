@@ -8,7 +8,9 @@ import aiohttp
 async def client(url: str, name: str) -> None:
     async with aiohttp.ClientSession() as session:
         async with session.ws_connect(url + "/getCaseCount") as ws:
-            num_tests = int((await ws.receive()).data)
+            msg = await ws.receive()
+            assert msg.type is aiohttp.WSMsgType.TEXT
+            num_tests = int(msg.data)
             print("running %d cases" % num_tests)
 
         for i in range(1, num_tests + 1):
@@ -16,9 +18,9 @@ async def client(url: str, name: str) -> None:
             text_url = url + "/runCase?case=%d&agent=%s" % (i, name)
             async with session.ws_connect(text_url) as ws:
                 async for msg in ws:
-                    if msg.type == aiohttp.WSMsgType.TEXT:
+                    if msg.type is aiohttp.WSMsgType.TEXT:
                         await ws.send_str(msg.data)
-                    elif msg.type == aiohttp.WSMsgType.BINARY:
+                    elif msg.type is aiohttp.WSMsgType.BINARY:
                         await ws.send_bytes(msg.data)
                     else:
                         break

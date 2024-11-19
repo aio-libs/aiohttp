@@ -59,6 +59,9 @@ class AbstractRouter(ABC):
 
 
 class AbstractMatchInfo(ABC):
+
+    __slots__ = ()
+
     @property  # pragma: no branch
     @abstractmethod
     def handler(self) -> Callable[[Request], Awaitable[StreamResponse]]:
@@ -224,6 +227,8 @@ class AbstractStreamWriter(ABC):
 class AbstractAccessLogger(ABC):
     """Abstract writer to access log."""
 
+    __slots__ = ("logger", "log_format")
+
     def __init__(self, logger: logging.Logger, log_format: str) -> None:
         self.logger = logger
         self.log_format = log_format
@@ -232,12 +237,24 @@ class AbstractAccessLogger(ABC):
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
         """Emit log to logger."""
 
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        return True
+
 
 class AbstractAsyncAccessLogger(ABC):
     """Abstract asynchronous writer to access log."""
+
+    __slots__ = ()
 
     @abstractmethod
     async def log(
         self, request: BaseRequest, response: StreamResponse, request_start: float
     ) -> None:
         """Emit log to logger."""
+
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        return True

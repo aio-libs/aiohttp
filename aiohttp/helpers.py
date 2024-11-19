@@ -85,6 +85,12 @@ sentinel = _SENTINEL.sentinel
 
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 
+# https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+EMPTY_BODY_STATUS_CODES = frozenset((204, 304, *range(100, 200)))
+# https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+# https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
+EMPTY_BODY_METHODS = hdrs.METH_HEAD_ALL
+
 DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
 )
@@ -268,7 +274,7 @@ def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAu
     # TODO(PY311): Remove this, as password will be empty string
     # if not specified
     if password is None:
-        password = ""
+        password = ""  # type: ignore[unreachable]
 
     return BasicAuth(username, password)
 
@@ -757,11 +763,7 @@ class HeadersMixin:
     def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
         content_length = self._headers.get(hdrs.CONTENT_LENGTH)
-
-        if content_length is not None:
-            return int(content_length)
-        else:
-            return None
+        return None if content_length is None else int(content_length)
 
 
 def set_result(fut: "asyncio.Future[_T]", result: _T) -> None:
@@ -814,6 +816,7 @@ class AppKey(Generic[_T]):
     # like Iterable, which can't be passed as the second parameter to __init__.
     __orig_class__: Type[object]
 
+    # TODO(PY314): Change Type to TypeForm (this should resolve unreachable below).
     def __init__(self, name: str, t: Optional[Type[_T]] = None):
         # Prefix with module name to help deduplicate key names.
         frame = inspect.currentframe()
@@ -849,7 +852,7 @@ class AppKey(Generic[_T]):
             else:
                 t_repr = f"{t.__module__}.{t.__qualname__}"
         else:
-            t_repr = repr(t)
+            t_repr = repr(t)  # type: ignore[unreachable]
         return f"<AppKey({self._name}, type={t_repr})>"
 
 
@@ -928,10 +931,12 @@ class CookieMixin:
         super().__init__()
         # Mypy doesn't like that _cookies isn't in __slots__.
         # See the comment on this class's __slots__ for why this is OK.
-        self._cookies = SimpleCookie()  # type: ignore[misc]
+        self._cookies: Optional[SimpleCookie] = None  # type: ignore[misc]
 
     @property
     def cookies(self) -> SimpleCookie:
+        if self._cookies is None:
+            self._cookies = SimpleCookie()  # type: ignore[misc]
         return self._cookies
 
     def set_cookie(
@@ -952,10 +957,8 @@ class CookieMixin:
         Sets new cookie or updates existent with new value.
         Also updates only those params which are not None.
         """
-        old = self._cookies.get(name)
-        if old is not None and old.coded_value == "":
-            # deleted cookie
-            self._cookies.pop(name, None)
+        if self._cookies is None:
+            self._cookies = SimpleCookie()  # type: ignore[misc]
 
         self._cookies[name] = value
         c = self._cookies[name]
@@ -1006,7 +1009,8 @@ class CookieMixin:
         Creates new empty expired cookie.
         """
         # TODO: do we need domain/path here?
-        self._cookies.pop(name, None)
+        if self._cookies is not None:
+            self._cookies.pop(name, None)
         self.set_cookie(
             name,
             "",
@@ -1063,23 +1067,10 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
 def must_be_empty_body(method: str, code: int) -> bool:
     """Check if a request must return an empty body."""
     return (
-        status_code_must_be_empty_body(code)
-        or method_must_be_empty_body(method)
-        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+        code in EMPTY_BODY_STATUS_CODES
+        or method in EMPTY_BODY_METHODS
+        or (200 <= code < 300 and method in hdrs.METH_CONNECT_ALL)
     )
-
-
-def method_must_be_empty_body(method: str) -> bool:
-    """Check if a method must return an empty body."""
-    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
-    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
-    return method.upper() == hdrs.METH_HEAD
-
-
-def status_code_must_be_empty_body(code: int) -> bool:
-    """Check if a status code must return an empty body."""
-    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
-    return code in {204, 304} or 100 <= code < 200
 
 
 def should_remove_content_length(method: str, code: int) -> bool:
@@ -1089,8 +1080,6 @@ def should_remove_content_length(method: str, code: int) -> bool:
     """
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-8
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5-4
-    return (
-        code in {204, 304}
-        or 100 <= code < 200
-        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    return code in EMPTY_BODY_STATUS_CODES or (
+        200 <= code < 300 and method in hdrs.METH_CONNECT_ALL
     )

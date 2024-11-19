@@ -12,10 +12,10 @@ from .client_exceptions import (
 )
 from .helpers import (
     _EXC_SENTINEL,
+    EMPTY_BODY_STATUS_CODES,
     BaseTimerContext,
     set_exception,
     set_result,
-    status_code_must_be_empty_body,
 )
 from .http import HttpResponseParser, RawResponseMessage, WebSocketReader
 from .http_exceptions import HttpProcessingError
@@ -54,14 +54,14 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
     @property
     def should_close(self) -> bool:
-        return (
+        return bool(
             self._should_close
             or (self._payload is not None and not self._payload.is_eof())
             or self._upgraded
             or self._exception is not None
             or self._payload_parser is not None
-            or bool(self._buffer)
-            or bool(self._tail)
+            or self._buffer
+            or self._tail
         )
 
     def close(self) -> None:
@@ -167,7 +167,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
     def set_parser(self, parser: Any, payload: Any) -> None:
         # TODO: actual types are:
         #   parser: WebSocketReader
-        #   payload: FlowControlDataQueue
+        #   payload: WebSocketDataQueue
         # but they are not generi enough
         # Need an ABC for both types
         self._payload = payload
@@ -300,9 +300,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
                     self._payload = payload
 
-                    if self._skip_payload or status_code_must_be_empty_body(
-                        message.code
-                    ):
+                    if self._skip_payload or message.code in EMPTY_BODY_STATUS_CODES:
                         self.feed_data((message, EMPTY_PAYLOAD))
                     else:
                         self.feed_data((message, payload))

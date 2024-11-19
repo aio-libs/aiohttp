@@ -295,6 +295,7 @@ ssl
 SSLContext
 startup
 subapplication
+subclassed
 subclasses
 subdirectory
 submodules
@@ -329,6 +330,7 @@ tuples
 UI
 un
 unawaited
+undercounting
 unclosed
 unhandled
 unicode
@@ -363,8 +365,6 @@ wildcard
 Workflow
 ws
 wsgi
-WSMessage
-WSMsgType
 wss
 www
 xxx

@@ -279,8 +279,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     @property
     def transport(self) -> Optional[asyncio.Transport]:
-        if self._protocol is None:
-            return None
         return self._protocol.transport
 
     @property
@@ -800,11 +798,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     def get_extra_info(self, name: str, default: Any = None) -> Any:
         """Extra info from protocol transport"""
-        protocol = self._protocol
-        if protocol is None:
-            return default
-
-        transport = protocol.transport
+        transport = self._protocol.transport
         if transport is None:
             return default
 

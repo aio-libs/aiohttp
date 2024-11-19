@@ -1,1 +1,0 @@
-Exported ``ClientWSTimeout`` to top-level namespace -- by :user:`Dreamsorcerer`.

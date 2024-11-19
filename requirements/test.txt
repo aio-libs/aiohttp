@@ -22,7 +22,8 @@ cffi==1.17.1
     # via
     #   cryptography
     #   pycares
-charset-normalizer==3.3.2
+    #   pytest-codspeed
+charset-normalizer==3.4.0
     # via requests
 click==8.1.7
     # via
@@ -32,13 +33,17 @@ coverage==7.6.1
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==43.0.1
+cryptography==43.0.3
     # via trustme
 exceptiongroup==1.2.2
     # via pytest
+execnet==2.1.1
+    # via pytest-xdist
+filelock==3.16.1
+    # via pytest-codspeed
 freezegun==1.5.1
     # via -r requirements/test.in
-frozenlist==1.4.1
+frozenlist==1.5.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
@@ -59,7 +64,7 @@ multidict==6.1.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.11.2 ; implementation_name == "cpython"
+mypy==1.13.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy
@@ -73,8 +78,10 @@ propcache==0.2.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-proxy-py==2.4.8
+proxy-py==2.4.9
     # via -r requirements/test.in
+py==1.11.0
+    # via pytest
 pycares==4.4.0
     # via aiodns
 pycparser==2.22
@@ -88,11 +95,18 @@ pygments==2.18.0
 pytest==8.1.1
     # via
     #   -r requirements/test.in
+    #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+pytest-codspeed==3.0.0
+    # via
+    #   -r requirements/test.in
+    #   pytest-xdist
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
+    # via -r requirements/test.in
+pytest-xdist==3.6.1
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
@@ -100,7 +114,7 @@ python-on-whales==0.73.0
     # via -r requirements/test.in
 requests==2.32.3
     # via python-on-whales
-rich==13.9.2
+rich==13.9.3
     # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
@@ -131,9 +145,9 @@ typing-extensions==4.12.2
     #   typer
 urllib3==2.2.3
     # via requests
-uvloop==0.21.0b1 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 wait-for-it==2.2.2
     # via -r requirements/test.in
-yarl==1.14.0
+yarl==1.17.2
     # via -r requirements/runtime-deps.in

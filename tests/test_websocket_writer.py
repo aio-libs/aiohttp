@@ -5,7 +5,8 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import DataQueue, WSMessage, WSMsgType
+from aiohttp import WSMsgType
+from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http import WebSocketReader, WebSocketWriter
 from aiohttp.test_utils import make_mocked_coro
@@ -31,12 +32,12 @@ def writer(protocol: BaseProtocol, transport: asyncio.Transport) -> WebSocketWri
 
 
 async def test_pong(writer: WebSocketWriter) -> None:
-    await writer.pong()
+    await writer.send_frame(b"", WSMsgType.PONG)
     writer.transport.write.assert_called_with(b"\x8a\x00")  # type: ignore[attr-defined]
 
 
 async def test_ping(writer: WebSocketWriter) -> None:
-    await writer.ping()
+    await writer.send_frame(b"", WSMsgType.PING)
     writer.transport.write.assert_called_with(b"\x89\x00")  # type: ignore[attr-defined]
 
 
@@ -150,10 +151,11 @@ async def test_concurrent_messages(
       and in the executor
     """
     with mock.patch(
-        "aiohttp.http_websocket.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", max_sync_chunk_size
+        "aiohttp._websocket.writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", max_sync_chunk_size
     ):
         writer = WebSocketWriter(protocol, transport, compress=15)
-        queue: DataQueue[WSMessage] = DataQueue(asyncio.get_running_loop())
+        loop = asyncio.get_running_loop()
+        queue = WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
         reader = WebSocketReader(queue, 50000)
         writers = []
         payloads = []
@@ -169,7 +171,8 @@ async def test_concurrent_messages(
         result, _ = reader.feed_data(call_bytes)
         assert result is False
         msg = await queue.read()
-        bytes_data: bytes = msg.data
+        assert msg.type is WSMsgType.BINARY
+        bytes_data = msg.data
         first_char = bytes_data[0:1]
         char_val = ord(first_char)
         assert len(bytes_data) == char_val

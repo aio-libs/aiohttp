@@ -3,6 +3,7 @@ import contextlib
 import gc
 import io
 import json
+from collections import deque
 from http.cookies import SimpleCookie
 from typing import (
     Any,
@@ -55,7 +56,7 @@ def connector(
     key = ConnectionKey("localhost", 80, False, True, None, None, None)
     conn = loop.run_until_complete(make_conn())
     proto = create_mocked_conn()
-    conn._conns[key] = [(proto, 123)]
+    conn._conns[key] = deque([(proto, 123)])
     yield conn
     loop.run_until_complete(conn.close())
 
@@ -534,7 +535,7 @@ async def test_ws_connect_allowed_protocols(
     create_session: Callable[..., Awaitable[ClientSession]],
     create_mocked_conn: Callable[[], ResponseHandler],
     protocol: str,
-    ws_key: bytes,
+    ws_key: str,
     key_data: bytes,
 ) -> None:
     resp = mock.create_autospec(aiohttp.ClientResponse)
@@ -573,11 +574,12 @@ async def test_ws_connect_allowed_protocols(
         return create_mocked_conn()
 
     connector = session._connector
-    with mock.patch.object(connector, "connect", connect), mock.patch.object(
-        connector, "_create_connection", create_connection
-    ), mock.patch.object(connector, "_release"), mock.patch(
-        "aiohttp.client.os"
-    ) as m_os:
+    with (
+        mock.patch.object(connector, "connect", connect),
+        mock.patch.object(connector, "_create_connection", create_connection),
+        mock.patch.object(connector, "_release"),
+        mock.patch("aiohttp.client.os") as m_os,
+    ):
         m_os.urandom.return_value = key_data
         await session.ws_connect(f"{protocol}://example")
 
@@ -595,7 +597,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(
     create_session: Callable[..., Awaitable[ClientSession]],
     create_mocked_conn: Callable[[], ResponseHandler],
     protocol: str,
-    ws_key: bytes,
+    ws_key: str,
     key_data: bytes,
 ) -> None:
     resp = mock.create_autospec(aiohttp.ClientResponse)
@@ -634,11 +636,12 @@ async def test_ws_connect_unix_socket_allowed_protocols(
         return create_mocked_conn()
 
     connector = session._connector
-    with mock.patch.object(connector, "connect", connect), mock.patch.object(
-        connector, "_create_connection", create_connection
-    ), mock.patch.object(connector, "_release"), mock.patch(
-        "aiohttp.client.os"
-    ) as m_os:
+    with (
+        mock.patch.object(connector, "connect", connect),
+        mock.patch.object(connector, "_create_connection", create_connection),
+        mock.patch.object(connector, "_release"),
+        mock.patch("aiohttp.client.os") as m_os,
+    ):
         m_os.urandom.return_value = key_data
         await session.ws_connect(f"{protocol}://example")
 
@@ -917,7 +920,7 @@ async def test_request_tracing_url_params(
             assert to_trace_urls(on_request_redirect) == []
             assert to_trace_urls(on_request_end) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_exception) == []
-            assert to_trace_urls(on_request_chunk_sent) == [to_url("/?x=0")]
+            assert to_trace_urls(on_request_chunk_sent) == []
             assert to_trace_urls(on_response_chunk_received) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_headers_sent) == [to_url("/?x=0")]
 
@@ -933,10 +936,7 @@ async def test_request_tracing_url_params(
             assert to_trace_urls(on_request_redirect) == [to_url("/redirect?x=0")]
             assert to_trace_urls(on_request_end) == [to_url("/")]
             assert to_trace_urls(on_request_exception) == []
-            assert to_trace_urls(on_request_chunk_sent) == [
-                to_url("/redirect?x=0"),
-                to_url("/"),
-            ]
+            assert to_trace_urls(on_request_chunk_sent) == []
             assert to_trace_urls(on_response_chunk_received) == [to_url("/")]
             assert to_trace_urls(on_request_headers_sent) == [
                 to_url("/redirect?x=0"),
@@ -1122,6 +1122,24 @@ async def test_requote_redirect_url_default_disable() -> None:
             URL("http://example.com/test"),
             id="base_url=URL('http://example.com') url='/test'",
         ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "test2",
+            URL("http://example.com/test1/test2"),
+            id="base_url=URL('http://example.com/test1/') url='test2'",
+        ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "/test2",
+            URL("http://example.com/test2"),
+            id="base_url=URL('http://example.com/test1/') url='/test2'",
+        ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "test2?q=foo#bar",
+            URL("http://example.com/test1/test2?q=foo#bar"),
+            id="base_url=URL('http://example.com/test1/') url='test2?q=foo#bar'",
+        ),
     ],
 )
 async def test_build_url_returns_expected_url(
@@ -1132,6 +1150,11 @@ async def test_build_url_returns_expected_url(
 ) -> None:
     session = await create_session(base_url)
     assert session._build_url(url) == expected_url
+
+
+async def test_base_url_without_trailing_slash() -> None:
+    with pytest.raises(ValueError, match="base_url must have a trailing '/'"):
+        ClientSession(base_url="http://example.com/test")
 
 
 async def test_instantiation_with_invalid_timeout_value(

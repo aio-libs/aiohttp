@@ -50,7 +50,7 @@ from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestClient, TestServer, unused_port
-from aiohttp.typedefs import Handler
+from aiohttp.typedefs import Handler, Query
 
 
 @pytest.fixture
@@ -723,7 +723,7 @@ async def test_params_and_query_string(aiohttp_client: AiohttpClient) -> None:
 
 @pytest.mark.parametrize("params", [None, "", {}, MultiDict()])
 async def test_empty_params_and_query_string(
-    aiohttp_client: AiohttpClient, params: Any
+    aiohttp_client: AiohttpClient, params: Query
 ) -> None:
     """Test combining empty params with an existing query_string."""
 
@@ -1540,10 +1540,7 @@ async def test_POST_MultiDict(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
 
 
-@pytest.mark.parametrize("data", (None, b""))
-async def test_GET_DEFLATE(
-    aiohttp_client: AiohttpClient, data: Optional[bytes]
-) -> None:
+async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
@@ -1566,7 +1563,7 @@ async def test_GET_DEFLATE(
         app.router.add_get("/", handler)
         client = await aiohttp_client(app)
 
-        async with client.get("/", data=data, compress=True) as resp:
+        async with client.get("/", data=b"", compress=True) as resp:
             assert resp.status == 200
             content = await resp.json()
             assert content == {"ok": True}
@@ -1574,6 +1571,24 @@ async def test_GET_DEFLATE(
     assert write_mock is not None
     # No chunks should have been sent for an empty body.
     write_mock.assert_not_called()
+
+
+async def test_GET_DEFLATE_no_body(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"ok": True})
+
+    with mock.patch.object(ClientRequest, "write_bytes") as mock_write_bytes:
+        app = web.Application()
+        app.router.add_get("/", handler)
+        client = await aiohttp_client(app)
+
+        async with client.get("/", data=None, compress=True) as resp:
+            assert resp.status == 200
+            content = await resp.json()
+            assert content == {"ok": True}
+
+    # No chunks should have been sent for an empty body.
+    mock_write_bytes.assert_not_called()
 
 
 async def test_POST_DATA_DEFLATE(aiohttp_client: AiohttpClient) -> None:
@@ -2927,6 +2942,69 @@ async def test_creds_in_auth_and_url() -> None:
         await session.close()
 
 
+async def test_creds_in_auth_and_redirect_url(
+    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+) -> None:
+    """Verify that credentials in redirect URLs can and do override any previous credentials."""
+    url_from = URL("http://example.com")
+    url_to = URL("http://user@example.com")
+    redirected = False
+
+    async def srv(request: web.Request) -> web.Response:
+        nonlocal redirected
+
+        assert request.host == url_from.host
+
+        if not redirected:
+            redirected = True
+            raise web.HTTPMovedPermanently(url_to)
+
+        return web.Response()
+
+    server = await create_server_for_url_and_handler(url_from, srv)
+
+    etc_hosts = {
+        (url_from.host, 80): server,
+    }
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> List[ResolveResult]:
+            server = etc_hosts[(host, port)]
+            assert server.port is not None
+
+            return [
+                {
+                    "hostname": host,
+                    "host": server.host,
+                    "port": server.port,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            """Dummy"""
+
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
+    async with (
+        aiohttp.ClientSession(connector=connector) as client,
+        client.get(url_from, auth=aiohttp.BasicAuth("user", "pass")) as resp,
+    ):
+        assert len(resp.history) == 1
+        assert str(resp.url) == "http://example.com"
+        assert resp.status == 200
+        assert (
+            resp.request_info.headers.get("authorization") == "Basic dXNlcjo="
+        ), "Expected redirect credentials to take precedence over provided auth"
+
+
 @pytest.fixture
 def create_server_for_url_and_handler(
     aiohttp_server: AiohttpServer, tls_certificate_authority: trustme.CA
@@ -3313,6 +3391,17 @@ async def test_aiohttp_request_ctx_manager_not_found() -> None:
     with pytest.raises(aiohttp.ClientConnectionError):
         async with aiohttp.request("GET", "http://wrong-dns-name.com"):
             assert False, "never executed"  # pragma: no cover
+
+
+async def test_raising_client_connector_dns_error_on_dns_failure() -> None:
+    """Verify that the exception raised when a DNS lookup fails is specific to DNS."""
+    with mock.patch(
+        "aiohttp.connector.TCPConnector._resolve_host", autospec=True, spec_set=True
+    ) as mock_resolve_host:
+        mock_resolve_host.side_effect = OSError(None, "DNS lookup failed")
+        with pytest.raises(aiohttp.ClientConnectorDNSError, match="DNS lookup failed"):
+            async with aiohttp.request("GET", "http://wrong-dns-name.com"):
+                assert False, "never executed"
 
 
 async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:

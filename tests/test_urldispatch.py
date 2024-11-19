@@ -517,6 +517,42 @@ async def test_static_not_match(router: web.UrlDispatcher) -> None:
     assert (None, set()) == ret
 
 
+async def test_add_static_access_resources(router: web.UrlDispatcher) -> None:
+    """Test accessing resource._routes externally.
+
+    aiohttp-cors accesses the resource._routes, this test ensures that this
+    continues to work.
+    """
+    # https://github.com/aio-libs/aiohttp-cors/blob/38c6c17bffc805e46baccd7be1b4fd8c69d95dc3/aiohttp_cors/urldispatcher_router_adapter.py#L187
+    resource = router.add_static(
+        "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
+    )
+    resource._routes[hdrs.METH_OPTIONS] = resource._routes[hdrs.METH_GET]
+    resource._allowed_methods.add(hdrs.METH_OPTIONS)
+    mapping, allowed_methods = await resource.resolve(
+        make_mocked_request("OPTIONS", "/st/path")
+    )
+    assert mapping is not None
+    assert allowed_methods == {hdrs.METH_GET, hdrs.METH_OPTIONS, hdrs.METH_HEAD}
+
+
+async def test_add_static_set_options_route(router: web.UrlDispatcher) -> None:
+    """Ensure set_options_route works as expected."""
+    resource = router.add_static(
+        "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
+    )
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    resource.set_options_route(handler)
+    mapping, allowed_methods = await resource.resolve(
+        make_mocked_request("OPTIONS", "/st/path")
+    )
+    assert mapping is not None
+    assert allowed_methods == {hdrs.METH_GET, hdrs.METH_OPTIONS, hdrs.METH_HEAD}
+
+
 def test_dynamic_with_trailing_slash(router: web.UrlDispatcher) -> None:
     handler = make_handler()
     router.add_route("GET", "/get/{name}/", handler, name="name")
@@ -1011,7 +1047,6 @@ def test_static_route_user_home(router: web.UrlDispatcher) -> None:
         static_dir = pathlib.Path("~") / here.relative_to(pathlib.Path.home())
     except ValueError:
         pytest.skip("aiohttp folder is not placed in user's HOME")
-        return  # TODO: Remove and fix type error
     route = router.add_static("/st", str(static_dir))
     assert here == route.get_info()["directory"]
 

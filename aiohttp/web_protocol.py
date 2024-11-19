@@ -95,6 +95,8 @@ _PAYLOAD_ACCESS_ERROR = PayloadAccessError()
 class AccessLoggerWrapper(AbstractAsyncAccessLogger):
     """Wrap an AbstractAccessLogger so it behaves like an AbstractAsyncAccessLogger."""
 
+    __slots__ = ("access_logger", "_loop")
+
     def __init__(
         self, access_logger: AbstractAccessLogger, loop: asyncio.AbstractEventLoop
     ) -> None:
@@ -106,6 +108,11 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
         self, request: BaseRequest, response: StreamResponse, request_start: float
     ) -> None:
         self.access_logger.log(request, response, self._loop.time() - request_start)
+
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        return self.access_logger.enabled
 
 
 @frozen_dataclass_decorator
@@ -460,7 +467,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     async def log_access(
         self, request: BaseRequest, response: StreamResponse, request_start: float
     ) -> None:
-        if self.access_logger is not None:
+        if self.access_logger is not None and self.access_logger.enabled:
             await self.access_logger.log(request, response, request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
@@ -574,13 +581,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 else:
                     task = loop.create_task(coro)
                 try:
-                    resp, reset = await task
+                    resp, reset = await task  # type: ignore[possibly-undefined]
                 except ConnectionError:
                     self.log_debug("Ignored premature client disconnection")
                     break
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
-                del task
+                del task  # type: ignore[possibly-undefined]
                 # https://github.com/python/mypy/issues/14309
                 if reset:  # type: ignore[possibly-undefined]
                     self.log_debug("Ignored premature client disconnection 2")
@@ -672,7 +679,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             prepare_meth = resp.prepare
         except AttributeError:
             if resp is None:
-                self.log_exception("Missing return statement on request handler")
+                self.log_exception("Missing return statement on request handler")  # type: ignore[unreachable]
             else:
                 self.log_exception(
                     "Web-handler should return a response instance, "

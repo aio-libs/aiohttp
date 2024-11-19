@@ -300,7 +300,7 @@ async def test_response_eof(
         "get",
         URL("http://def-cl-resp.org"),
         request_info=mock.Mock(),
-        writer=None,  # type: ignore[arg-type]
+        writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
@@ -346,7 +346,7 @@ async def test_response_eof_after_connection_detach(
         "get",
         URL("http://def-cl-resp.org"),
         request_info=mock.Mock(),
-        writer=None,  # type: ignore[arg-type]
+        writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
