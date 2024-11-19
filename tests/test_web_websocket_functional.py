@@ -738,11 +738,14 @@ async def test_heartbeat_connection_closed(
         # We patch write here to simulate a connection reset error
         # since if we closed the connection normally, the server would
         # would cancel the heartbeat task and we wouldn't get a ping
-        with mock.patch.object(
-            ws_server._req.transport, "write", side_effect=ConnectionResetError
-        ), mock.patch.object(
-            ws_server._writer, "send_frame", wraps=ws_server._writer.send_frame
-        ) as send_frame:
+        with (
+            mock.patch.object(
+                ws_server._req.transport, "write", side_effect=ConnectionResetError
+            ),
+            mock.patch.object(
+                ws_server._writer, "send_frame", wraps=ws_server._writer.send_frame
+            ) as send_frame,
+        ):
             try:
                 await ws_server.receive()
             finally:
