@@ -1,3 +1,4 @@
+import asyncio
 from unittest import mock
 
 from yarl import URL
@@ -9,7 +10,18 @@ from aiohttp.client_reqrep import ClientResponse
 from aiohttp.helpers import TimerNoop
 
 
-async def test_oserror(loop) -> None:
+async def test_force_close(loop: asyncio.AbstractEventLoop) -> None:
+    """Ensure that the force_close method sets the should_close attribute to True.
+
+    This is used externally in aiodocker
+    https://github.com/aio-libs/aiodocker/issues/920
+    """
+    proto = ResponseHandler(loop=loop)
+    proto.force_close()
+    assert proto.should_close
+
+
+async def test_oserror(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
