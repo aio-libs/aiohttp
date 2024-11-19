@@ -2993,9 +2993,10 @@ async def test_creds_in_auth_and_redirect_url(
 
     connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
 
-    async with aiohttp.ClientSession(connector=connector) as client, client.get(
-        url_from, auth=aiohttp.BasicAuth("user", "pass")
-    ) as resp:
+    async with (
+        aiohttp.ClientSession(connector=connector) as client,
+        client.get(url_from, auth=aiohttp.BasicAuth("user", "pass")) as resp,
+    ):
         assert len(resp.history) == 1
         assert str(resp.url) == "http://example.com"
         assert resp.status == 200
