@@ -257,7 +257,13 @@ async def test_any_method(router) -> None:
     assert info1.route is info2.route
 
 
-async def test_match_second_result_in_table(router) -> None:
+async def test_any_method_appears_in_routes(router: web.UrlDispatcher) -> None:
+    handler = make_handler()
+    route = router.add_route(hdrs.METH_ANY, "/", handler)
+    assert route in router.routes()
+
+
+async def test_match_second_result_in_table(router: web.UrlDispatcher) -> None:
     handler1 = make_handler()
     handler2 = make_handler()
     router.add_route("GET", "/h1", handler1)
