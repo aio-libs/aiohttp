@@ -20,7 +20,7 @@ class Server:
         request_factory: Optional[_RequestFactory] = None,
         handler_cancellation: bool = False,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self._loop = loop or asyncio.get_running_loop()
         self._connections: Dict[RequestHandler, asyncio.Transport] = {}
