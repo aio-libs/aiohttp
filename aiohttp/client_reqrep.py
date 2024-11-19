@@ -1,7 +1,6 @@
 import asyncio
 import codecs
 import contextlib
-import dataclasses
 import functools
 import io
 import re
@@ -49,6 +48,7 @@ from .helpers import (
     HeadersMixin,
     TimerNoop,
     basicauth_from_netrc,
+    frozen_dataclass_decorator,
     is_expected_content_type,
     netrc_from_env,
     parse_mimetype,
@@ -98,7 +98,7 @@ def _gen_default_accept_encoding() -> str:
     return "gzip, deflate, br" if HAS_BROTLI else "gzip, deflate"
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class ContentDisposition:
     type: Optional[str]
     parameters: "MappingProxyType[str, str]"

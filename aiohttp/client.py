@@ -97,6 +97,7 @@ from .helpers import (
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
+    frozen_dataclass_decorator,
     get_env_proxy_for_url,
     sentinel,
     strip_auth_from_url,
@@ -194,7 +195,7 @@ class _RequestOptions(TypedDict, total=False):
     max_field_size: Union[int, None]
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class ClientTimeout:
     total: Optional[float] = None
     connect: Optional[float] = None
