@@ -1,3 +1,0 @@
-Restored the ``FlowControlDataQueue`` class -- by :user:`bdraco`.
-
-This class is no longer used internally, and will be permanently removed in the next major version.
