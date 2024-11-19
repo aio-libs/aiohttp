@@ -7,7 +7,7 @@ import sys
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, Generator
 from unittest import mock
 from uuid import uuid4
 
@@ -15,7 +15,7 @@ import pytest
 
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.http import WS_KEY
-from aiohttp.test_utils import loop_context
+from aiohttp.test_utils import get_unused_port_socket, loop_context
 
 try:
     import trustme
@@ -238,3 +238,29 @@ def key(key_data: Any):
 @pytest.fixture
 def ws_key(key: Any):
     return base64.b64encode(sha1(key + WS_KEY).digest()).decode()
+
+
+@pytest.fixture
+def enable_cleanup_closed() -> Generator[None, None, None]:
+    """Fixture to override the NEEDS_CLEANUP_CLOSED flag.
+
+    On Python 3.12.7+ and 3.13.1+ enable_cleanup_closed is not needed,
+    however we still want to test that it works.
+    """
+    with mock.patch("aiohttp.connector.NEEDS_CLEANUP_CLOSED", True):
+        yield
+
+
+@pytest.fixture
+def unused_port_socket() -> Generator[socket.socket, None, None]:
+    """Return a socket that is unused on the current host.
+
+    Unlike aiohttp_used_port, the socket is yielded so there is no
+    race condition between checking if the port is in use and
+    binding to it later in the test.
+    """
+    s = get_unused_port_socket("127.0.0.1")
+    try:
+        yield s
+    finally:
+        s.close()

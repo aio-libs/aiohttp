@@ -206,14 +206,15 @@ jobs:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: >-  # `exit 1` makes sure that the job remains red with flaky runs
-        pytest --no-cov -vvvvv --lf && exit 1
+        pytest --no-cov --numprocesses=0 -vvvvv --lf && exit 1
       shell: bash
     - name: Run dev_mode tests
       env:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
-      run: python -X dev -m pytest -m dev_mode --cov-append
+        PYTHONDEVMODE: 1
+      run: pytest -m dev_mode --cov-append --numprocesses=0
       shell: bash
     - name: Turn coverage into xml
       env:
@@ -278,7 +279,7 @@ jobs:
       uses: CodSpeedHQ/action@v3
       with:
         token: ${{ secrets.CODSPEED_TOKEN }}
-        run: python -Im pytest --no-cov -vvvvv --codspeed
+        run: python -Im pytest --no-cov --numprocesses=0 -vvvvv --codspeed
 
 
   check:  # This job does nothing and is only used for the branch protection
