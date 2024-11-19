@@ -356,9 +356,8 @@ class Resource(AbstractResource):
         ), f"Instance of Route class is required, got {route!r}"
         if route.method == hdrs.METH_ANY:
             self._any_route = route
-        else:
-            self._allowed_methods.add(route.method)
-            self._routes[route.method] = route
+        self._allowed_methods.add(route.method)
+        self._routes[route.method] = route
 
     async def resolve(self, request: Request) -> _Resolve:
         if (match_dict := self._match(request.rel_url.path_safe)) is None:
