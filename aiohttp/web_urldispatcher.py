@@ -626,6 +626,7 @@ class StaticResource(PrefixResource):
         self._routes["OPTIONS"] = ResourceRoute(
             "OPTIONS", handler, self, expect_handler=self._expect_handler
         )
+        self._allowed_methods.add("OPTIONS")
 
     async def resolve(self, request: Request) -> _Resolve:
         path = request.rel_url.path_safe
