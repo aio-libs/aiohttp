@@ -97,7 +97,6 @@ from .helpers import (
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
-    ceil_timeout,
     frozen_dataclass_decorator,
     get_env_proxy_for_url,
     sentinel,
