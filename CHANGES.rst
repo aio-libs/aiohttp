@@ -10,6 +10,24 @@
 
 .. towncrier release notes start
 
+3.11.5 (2024-11-19)
+===================
+
+Bug fixes
+---------
+
+- Fixed the ``ANY`` method not appearing in :meth:`~aiohttp.web.UrlDispatcher.routes` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9899`, :issue:`9987`.
+
+
+
+
+----
+
+
 3.11.4 (2024-11-18)
 ===================
 
