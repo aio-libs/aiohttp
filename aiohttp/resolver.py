@@ -85,7 +85,7 @@ class AsyncResolver(AbstractResolver):
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
