@@ -1,6 +1,5 @@
 import asyncio
 import asyncio.streams
-import dataclasses
 import sys
 import traceback
 from collections import deque
@@ -28,7 +27,7 @@ import yarl
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout
+from .helpers import ceil_timeout, frozen_dataclass_decorator
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -116,7 +115,7 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
         return self.access_logger.enabled
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class _ErrInfo:
     status: int
     exc: BaseException
