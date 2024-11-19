@@ -517,10 +517,10 @@ async def test_static_not_match(router: web.UrlDispatcher) -> None:
     assert (None, set()) == ret
 
 
-async def test_add_static_mutate_resources(router: web.UrlDispatcher) -> None:
-    """Test mutating resource._routes to add an options method.
+async def test_add_static_access_resources(router: web.UrlDispatcher) -> None:
+    """Test accessing resource._routes externally.
 
-    aiohttp-cors mutates the resource._routes, this test ensures that this
+    aiohttp-cors access the resource._routes, this test ensures that this
     continues to work.
     """
     # https://github.com/aio-libs/aiohttp-cors/blob/38c6c17bffc805e46baccd7be1b4fd8c69d95dc3/aiohttp_cors/urldispatcher_router_adapter.py#L187
@@ -540,7 +540,11 @@ async def test_add_static_set_options_route(router: web.UrlDispatcher) -> None:
     resource = router.add_static(
         "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
     )
-    resource.set_options_route(resource._routes[hdrs.METH_GET])
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    resource.set_options_route(handler)
     mapping, allowed_methods = await resource.resolve(
         make_mocked_request("OPTIONS", "/st/path")
     )
