@@ -528,6 +528,7 @@ async def test_add_static_access_resources(router: web.UrlDispatcher) -> None:
         "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
     )
     resource._routes[hdrs.METH_OPTIONS] = resource._routes[hdrs.METH_GET]
+    resource._allowed_methods.add(hdrs.METH_OPTIONS)
     mapping, allowed_methods = await resource.resolve(
         make_mocked_request("OPTIONS", "/st/path")
     )

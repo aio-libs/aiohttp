@@ -557,6 +557,7 @@ class StaticResource(PrefixResource):
                 "HEAD", self._handle, self, expect_handler=expect_handler
             ),
         }
+        self._allowed_methods = set(self._routes)
 
     def url_for(  # type: ignore[override]
         self,
@@ -616,6 +617,7 @@ class StaticResource(PrefixResource):
         self._routes["OPTIONS"] = ResourceRoute(
             "OPTIONS", handler, self, expect_handler=self._expect_handler
         )
+        self._allowed_methods.add("OPTIONS")
 
     async def resolve(self, request: Request) -> _Resolve:
         path = request.rel_url.path_safe
@@ -623,7 +625,7 @@ class StaticResource(PrefixResource):
         if not path.startswith(self._prefix2) and path != self._prefix:
             return None, set()
 
-        allowed_methods = set(self._routes)
+        allowed_methods = self._allowed_methods
         if method not in allowed_methods:
             return None, allowed_methods
 
