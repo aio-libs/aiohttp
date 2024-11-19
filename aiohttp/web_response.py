@@ -93,7 +93,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         self._compression = False
         self._compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
         self._compression_force: Optional[ContentCoding] = None
-        self._cookies = SimpleCookie()
+        self._cookies: Optional[SimpleCookie] = None
 
         self._req: Optional[BaseRequest] = None
         self._payload_writer: Optional[AbstractStreamWriter] = None
@@ -209,6 +209,8 @@ class StreamResponse(BaseClass, HeadersMixin):
 
     @property
     def cookies(self) -> SimpleCookie:
+        if self._cookies is None:
+            self._cookies = SimpleCookie()
         return self._cookies
 
     def set_cookie(
@@ -230,10 +232,8 @@ class StreamResponse(BaseClass, HeadersMixin):
         Sets new cookie or updates existent with new value.
         Also updates only those params which are not None.
         """
-        old = self._cookies.get(name)
-        if old is not None and old.coded_value == "":
-            # deleted cookie
-            self._cookies.pop(name, None)
+        if self._cookies is None:
+            self._cookies = SimpleCookie()
 
         self._cookies[name] = value
         c = self._cookies[name]
@@ -277,7 +277,8 @@ class StreamResponse(BaseClass, HeadersMixin):
         Creates new empty expired cookie.
         """
         # TODO: do we need domain/path here?
-        self._cookies.pop(name, None)
+        if self._cookies is not None:
+            self._cookies.pop(name, None)
         self.set_cookie(
             name,
             "",

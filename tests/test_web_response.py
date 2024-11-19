@@ -864,6 +864,10 @@ def test_response_cookies() -> None:
 
     resp.set_cookie("name", "value")
     assert str(resp.cookies) == "Set-Cookie: name=value; Path=/"
+    resp.set_cookie("name", "")
+    assert str(resp.cookies) == 'Set-Cookie: name=""; Path=/'
+    resp.set_cookie("name", "value")
+    assert str(resp.cookies) == "Set-Cookie: name=value; Path=/"
     resp.set_cookie("name", "other_value")
     assert str(resp.cookies) == "Set-Cookie: name=other_value; Path=/"
 
@@ -879,6 +883,8 @@ def test_response_cookies() -> None:
         "expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/"
     )
     assert Matches(expected) == str(resp.cookies)
+    resp.del_cookie("name")
+    assert str(resp.cookies) == Matches(expected)
 
     resp.set_cookie("name", "value", domain="local.host")
     expected = "Set-Cookie: name=value; Domain=local.host; Path=/"
