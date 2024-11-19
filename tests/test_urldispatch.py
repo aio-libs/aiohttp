@@ -517,6 +517,23 @@ async def test_static_not_match(router: web.UrlDispatcher) -> None:
     assert (None, set()) == ret
 
 
+async def test_add_static_mutate_resources(router: web.UrlDispatcher) -> None:
+    """Test mutating resource._routes to add an options method.
+
+    aiohttp-cors mutates the resource._routes, this test ensures that this
+    continues to work.
+    """
+    resource = router.add_static(
+        "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
+    )
+    resource._routes[hdrs.METH_OPTIONS] = resource._routes[hdrs.METH_GET]
+    mapping, allowed_methods = await resource.resolve(
+        make_mocked_request("OPTIONS", "/st/path")
+    )
+    assert mapping is not None
+    assert allowed_methods == {hdrs.METH_GET, hdrs.METH_OPTIONS, hdrs.METH_HEAD}
+
+
 def test_dynamic_with_trailing_slash(router: web.UrlDispatcher) -> None:
     handler = make_handler()
     router.add_route("GET", "/get/{name}/", handler, name="name")
