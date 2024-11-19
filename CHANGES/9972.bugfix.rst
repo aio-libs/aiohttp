@@ -1,1 +1,0 @@
-Fixed ``StaticResource`` not allowing the ``OPTIONS`` method after calling ``set_options_route`` -- by :user:`bdraco`.
