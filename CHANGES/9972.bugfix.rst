@@ -1,0 +1,3 @@
+Reverted an optimization to avoid rebuilding the allowed methods for `StaticResource` on every request -- by :user:`bdraco`.
+
+``aiohttp-cors`` needs to be able to modify the allowed methods at run time via this internal.
