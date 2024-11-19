@@ -43,7 +43,7 @@ class AiohttpClient(Protocol):
         __param: Application,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
     @overload
     async def __call__(
@@ -51,7 +51,7 @@ class AiohttpClient(Protocol):
         __param: BaseTestServer,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[BaseRequest, None]: ...
 
 
@@ -379,7 +379,7 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
         __param: Application,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
 
     @overload
@@ -387,14 +387,14 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
         __param: BaseTestServer,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[BaseRequest, None]: ...
 
     async def go(
         __param: Union[Application, BaseTestServer],
         *args: Any,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[Any, Any]:
         if isinstance(__param, Callable) and not isinstance(  # type: ignore[arg-type]
             __param, (Application, BaseTestServer)
