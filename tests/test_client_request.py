@@ -620,6 +620,12 @@ async def test_connection_header(
         await req.send(conn)
     assert req.headers.get("CONNECTION") == "close"
 
+    req.version = HttpVersion10
+    req.headers.clear()
+    with mock.patch.object(conn._connector, "force_close", True):
+        await req.send(conn)
+    assert not req.headers.get("CONNECTION")
+
 
 async def test_no_content_length(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
