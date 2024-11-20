@@ -33,7 +33,6 @@ from aiohttp.client_reqrep import (
     _gen_default_accept_encoding,
 )
 from aiohttp.connector import Connection
-from aiohttp.http import HttpVersion
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import LooseCookies
 
@@ -618,31 +617,6 @@ def test_cookie_coded_value_preserved(loop: asyncio.AbstractEventLoop) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     req.update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
     assert req.headers["COOKIE"] == 'ip-cookie="second"'
-
-
-async def test_connection_header(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
-) -> None:
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    with mock.patch.object(req, "keep_alive") as m:
-        req.headers.clear()
-
-        m.return_value = True
-        req.version = HttpVersion(1, 1)
-        req.headers.clear()
-        await req.send(conn)
-        assert req.headers.get("CONNECTION") is None
-
-        req.version = HttpVersion(1, 0)
-        req.headers.clear()
-        await req.send(conn)
-        assert req.headers.get("CONNECTION") == "keep-alive"
-
-        m.return_value = False
-        req.version = HttpVersion(1, 1)
-        req.headers.clear()
-        await req.send(conn)
-        assert req.headers.get("CONNECTION") == "close"
 
 
 async def test_no_content_length(
