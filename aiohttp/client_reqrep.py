@@ -56,7 +56,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
-from .http import SERVER_SOFTWARE, HttpVersion, StreamWriter
+from .http import SERVER_SOFTWARE, HttpVersion, HttpVersion10, StreamWriter
 from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
@@ -663,8 +663,15 @@ class ClientRequest:
         ):
             self.headers[hdrs.CONTENT_TYPE] = "application/octet-stream"
 
-        # status + headers
         v = self.version
+        if (
+            hdrs.CONNECTION not in self.headers
+            and v == HttpVersion10
+            and hdrs.CONNECTION not in self.skip_auto_headers
+        ):
+            self.headers[hdrs.CONNECTION] = "keep-alive"
+
+        # status + headers
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
         await writer.write_headers(status_line, self.headers)
         task: Optional["asyncio.Task[None]"]
