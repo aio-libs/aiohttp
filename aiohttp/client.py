@@ -1239,7 +1239,7 @@ class ClientSession:
     @property
     def skip_auto_headers(self) -> FrozenSet[istr]:
         """Headers for which autogeneration should be skipped"""
-        return self._skip_auto_headers
+        return self._skip_auto_headers or frozenset()
 
     @property
     def auth(self) -> Optional[BasicAuth]:
