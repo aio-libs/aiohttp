@@ -494,7 +494,8 @@ class ClientSession:
         skip_headers: Optional[Union[frozenset[istr], set[istr]]] = None
         if skip_auto_headers is not None:
             skip_headers = {istr(i) for i in skip_auto_headers}
-            skip_headers.update(self._skip_auto_headers)
+            if self._skip_auto_headers is not None:
+                skip_headers.update(self._skip_auto_headers)
         elif self._skip_auto_headers is not None:
             skip_headers = self._skip_auto_headers
 
