@@ -521,10 +521,15 @@ class ClientSession:
         if url.scheme not in self._connector.allowed_protocol_schema_set:
             raise NonHttpUrlClientError(url)
 
-        skip_headers = set(self._skip_auto_headers)
+        skip_headers: Optional[Iterable[istr]]
         if skip_auto_headers is not None:
-            for i in skip_auto_headers:
-                skip_headers.add(istr(i))
+            skip_headers = {
+                istr(i) for i in skip_auto_headers
+            } | self._skip_auto_headers
+        elif self._skip_auto_headers:
+            skip_headers = self._skip_auto_headers
+        else:
+            skip_headers = None
 
         if proxy is None:
             proxy_headers = None
@@ -637,7 +642,7 @@ class ClientSession:
                         url,
                         params=params,
                         headers=headers,
-                        skip_auto_headers=skip_headers if skip_headers else None,
+                        skip_auto_headers=skip_headers,
                         data=data,
                         cookies=all_cookies,
                         auth=auth,
