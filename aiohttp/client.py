@@ -358,10 +358,11 @@ class ClientSession:
         else:
             real_headers = CIMultiDict()
         self._default_headers: CIMultiDict[str] = real_headers
+        self._skip_auto_headers: Optional[FrozenSet[istr]]
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
-            self._skip_auto_headers = frozenset()
+            self._skip_auto_headers = None
 
         self._request_class = request_class
         self._response_class = response_class
