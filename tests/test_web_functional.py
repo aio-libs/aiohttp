@@ -696,9 +696,8 @@ async def test_http11_keep_alive_default(aiohttp_client) -> None:
     await resp.release()
 
 
-@pytest.mark.xfail
-async def test_http10_keep_alive_default(aiohttp_client) -> None:
-    async def handler(request):
+async def test_http10_keep_alive_default(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
     app = web.Application()

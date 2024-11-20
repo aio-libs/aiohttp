@@ -23,7 +23,7 @@ from aiohttp.client_reqrep import (
     _gen_default_accept_encoding,
     _merge_ssl_params,
 )
-from aiohttp.http import HttpVersion
+from aiohttp.http import HttpVersion10, HttpVersion11
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -139,30 +139,6 @@ def test_request_info_with_fragment(make_request) -> None:
 def test_version_err(make_request) -> None:
     with pytest.raises(ValueError):
         make_request("get", "http://python.org/", version="1.c")
-
-
-def test_keep_alive(make_request) -> None:
-    req = make_request("get", "http://python.org/", version=(0, 9))
-    assert not req.keep_alive()
-
-    req = make_request("get", "http://python.org/", version=(1, 0))
-    assert not req.keep_alive()
-
-    req = make_request(
-        "get",
-        "http://python.org/",
-        version=(1, 0),
-        headers={"connection": "keep-alive"},
-    )
-    assert req.keep_alive()
-
-    req = make_request("get", "http://python.org/", version=(1, 1))
-    assert req.keep_alive()
-
-    req = make_request(
-        "get", "http://python.org/", version=(1, 1), headers={"connection": "close"}
-    )
-    assert not req.keep_alive()
 
 
 def test_host_port_default_http(make_request) -> None:
@@ -628,32 +604,40 @@ def test_gen_netloc_no_port(make_request) -> None:
     )
 
 
-async def test_connection_header(loop, conn) -> None:
+async def test_connection_header(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    req.keep_alive = mock.Mock()
     req.headers.clear()
 
-    req.keep_alive.return_value = True
-    req.version = HttpVersion(1, 1)
+    req.version = HttpVersion11
     req.headers.clear()
-    await req.send(conn)
+    with mock.patch.object(conn._connector, "force_close", False):
+        await req.send(conn)
     assert req.headers.get("CONNECTION") is None
 
-    req.version = HttpVersion(1, 0)
+    req.version = HttpVersion10
     req.headers.clear()
-    await req.send(conn)
+    with mock.patch.object(conn._connector, "force_close", False):
+        await req.send(conn)
     assert req.headers.get("CONNECTION") == "keep-alive"
 
-    req.keep_alive.return_value = False
-    req.version = HttpVersion(1, 1)
+    req.version = HttpVersion11
     req.headers.clear()
-    await req.send(conn)
+    with mock.patch.object(conn._connector, "force_close", True):
+        await req.send(conn)
     assert req.headers.get("CONNECTION") == "close"
 
-    await req.close()
+    req.version = HttpVersion10
+    req.headers.clear()
+    with mock.patch.object(conn._connector, "force_close", True):
+        await req.send(conn)
+    assert not req.headers.get("CONNECTION")
 
 
-async def test_no_content_length(loop, conn) -> None:
+async def test_no_content_length(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     resp = await req.send(conn)
     assert req.headers.get("CONTENT-LENGTH") is None
