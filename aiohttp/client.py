@@ -490,7 +490,7 @@ class ClientSession:
         if url.scheme not in self._connector.allowed_protocol_schema_set:
             raise NonHttpUrlClientError(url)
 
-        skip_headers: Optional[Union[frozenset[istr], set[istr]]]
+        skip_headers: Optional[Iterable[istr]]
         if skip_auto_headers is not None:
             skip_headers = {
                 istr(i) for i in skip_auto_headers
