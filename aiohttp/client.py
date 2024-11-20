@@ -490,13 +490,15 @@ class ClientSession:
         if url.scheme not in self._connector.allowed_protocol_schema_set:
             raise NonHttpUrlClientError(url)
 
-        skip_headers: Optional[Union[frozenset[istr], set[istr]]] = None
+        skip_headers: Optional[Union[frozenset[istr], set[istr]]]
         if skip_auto_headers is not None:
-            skip_headers = {istr(i) for i in skip_auto_headers}
-            if self._skip_auto_headers:
-                skip_headers.update(self._skip_auto_headers)
+            skip_headers = {
+                istr(i) for i in skip_auto_headers
+            } | self._skip_auto_headers
         elif self._skip_auto_headers:
             skip_headers = self._skip_auto_headers
+        else:
+            skip_headers = None
 
         if proxy is None:
             proxy = self._default_proxy
