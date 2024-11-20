@@ -56,7 +56,13 @@ from .helpers import (
     set_exception,
     set_result,
 )
-from .http import SERVER_SOFTWARE, HttpVersion, HttpVersion10, StreamWriter
+from .http import (
+    SERVER_SOFTWARE,
+    HttpVersion,
+    HttpVersion10,
+    HttpVersion11,
+    StreamWriter,
+)
 from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
@@ -664,12 +670,12 @@ class ClientRequest:
             self.headers[hdrs.CONTENT_TYPE] = "application/octet-stream"
 
         v = self.version
-        if (
-            hdrs.CONNECTION not in self.headers
-            and v == HttpVersion10
-            and hdrs.CONNECTION not in self.skip_auto_headers
-        ):
-            self.headers[hdrs.CONNECTION] = "keep-alive"
+        if hdrs.CONNECTION not in self.headers:
+            if self._session.connector.force_close:
+                if v == HttpVersion11:
+                    self.headers[hdrs.CONNECTION] = "close"
+            elif v == HttpVersion10:
+                self.headers[hdrs.CONNECTION] = "keep-alive"
 
         # status + headers
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
