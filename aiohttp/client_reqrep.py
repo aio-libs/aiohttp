@@ -56,13 +56,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
-from .http import (
-    SERVER_SOFTWARE,
-    HttpVersion,
-    HttpVersion10,
-    HttpVersion11,
-    StreamWriter,
-)
+from .http import SERVER_SOFTWARE, HttpVersion, StreamWriter
 from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
@@ -571,15 +565,6 @@ class ClientRequest:
         ):
             proxy_headers = CIMultiDict(proxy_headers)
         self.proxy_headers = proxy_headers
-
-    def keep_alive(self) -> bool:
-        if self.version >= HttpVersion11:
-            return self.headers.get(hdrs.CONNECTION) != "close"
-        if self.version == HttpVersion10:
-            # no headers means we close for Http 1.0
-            return self.headers.get(hdrs.CONNECTION) == "keep-alive"
-        # keep alive not supported at all
-        return False
 
     async def write_bytes(
         self, writer: AbstractStreamWriter, conn: "Connection"
