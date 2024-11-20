@@ -600,25 +600,25 @@ async def test_connection_header(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    with mock.patch.object(req._session.connector, "force_close") as m:
-        req.headers.clear()
+    req.headers.clear()
 
-        m.return_value = False
-        req.version = HttpVersion11
-        req.headers.clear()
+    req.version = HttpVersion11
+    req.headers.clear()
+    with mock.patch.object(conn._connector, "force_close", False):
         await req.send(conn)
-        assert req.headers.get("CONNECTION") is None
+    assert req.headers.get("CONNECTION") is None
 
-        req.version = HttpVersion10
-        req.headers.clear()
+    req.version = HttpVersion10
+    req.headers.clear()
+    with mock.patch.object(conn._connector, "force_close", False):
         await req.send(conn)
-        assert req.headers.get("CONNECTION") == "keep-alive"
+    assert req.headers.get("CONNECTION") == "keep-alive"
 
-        m.return_value = True
-        req.version = HttpVersion11
-        req.headers.clear()
+    req.version = HttpVersion11
+    req.headers.clear()
+    with mock.patch.object(conn._connector, "force_close", True):
         await req.send(conn)
-        assert req.headers.get("CONNECTION") == "close"
+    assert req.headers.get("CONNECTION") == "close"
 
 
 async def test_no_content_length(

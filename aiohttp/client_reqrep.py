@@ -671,7 +671,7 @@ class ClientRequest:
 
         v = self.version
         if hdrs.CONNECTION not in self.headers:
-            if self._session.connector.force_close:
+            if conn._connector.force_close:
                 if v == HttpVersion11:
                     self.headers[hdrs.CONNECTION] = "close"
             elif v == HttpVersion10:
