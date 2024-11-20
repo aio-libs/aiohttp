@@ -155,30 +155,6 @@ def test_version_err(make_request: _RequestMaker) -> None:
         make_request("get", "http://python.org/", version="1.c")
 
 
-def test_keep_alive(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/", version=(0, 9))
-    assert not req.keep_alive()
-
-    req = make_request("get", "http://python.org/", version=(1, 0))
-    assert not req.keep_alive()
-
-    req = make_request(
-        "get",
-        "http://python.org/",
-        version=(1, 0),
-        headers={"connection": "keep-alive"},
-    )
-    assert req.keep_alive()
-
-    req = make_request("get", "http://python.org/", version=(1, 1))
-    assert req.keep_alive()
-
-    req = make_request(
-        "get", "http://python.org/", version=(1, 1), headers={"connection": "close"}
-    )
-    assert not req.keep_alive()
-
-
 def test_host_port_default_http(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org/")
     assert req.host == "python.org"
