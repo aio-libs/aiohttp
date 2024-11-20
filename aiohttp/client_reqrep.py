@@ -639,18 +639,6 @@ class ClientRequest:
             proxy_headers = CIMultiDict(proxy_headers)
         self.proxy_headers = proxy_headers
 
-    def keep_alive(self) -> bool:
-        if self.version < HttpVersion10:
-            # keep alive not supported at all
-            return False
-        if self.version == HttpVersion10:
-            # no headers means we close for Http 1.0
-            return self.headers.get(hdrs.CONNECTION) == "keep-alive"
-        elif self.headers.get(hdrs.CONNECTION) == "close":
-            return False
-
-        return True
-
     async def write_bytes(
         self, writer: AbstractStreamWriter, conn: "Connection"
     ) -> None:
@@ -751,21 +739,15 @@ class ClientRequest:
         ):
             self.headers[hdrs.CONTENT_TYPE] = "application/octet-stream"
 
-        # set the connection header
-        connection = self.headers.get(hdrs.CONNECTION)
-        if not connection:
-            if self.keep_alive():
-                if self.version == HttpVersion10:
-                    connection = "keep-alive"
-            else:
-                if self.version == HttpVersion11:
-                    connection = "close"
-
-        if connection is not None:
-            self.headers[hdrs.CONNECTION] = connection
+        v = self.version
+        if hdrs.CONNECTION not in self.headers:
+            if conn._connector.force_close:
+                if v == HttpVersion11:
+                    self.headers[hdrs.CONNECTION] = "close"
+            elif v == HttpVersion10:
+                self.headers[hdrs.CONNECTION] = "keep-alive"
 
         # status + headers
-        v = self.version
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
         await writer.write_headers(status_line, self.headers)
         coro = self.write_bytes(writer, conn)
