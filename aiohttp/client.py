@@ -358,11 +358,10 @@ class ClientSession:
         else:
             real_headers = CIMultiDict()
         self._default_headers: CIMultiDict[str] = real_headers
-        self._skip_auto_headers: Optional[FrozenSet[istr]]
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset(istr(i) for i in skip_auto_headers)
         else:
-            self._skip_auto_headers = None
+            self._skip_auto_headers = frozenset()
 
         self._request_class = request_class
         self._response_class = response_class
@@ -494,9 +493,9 @@ class ClientSession:
         skip_headers: Optional[Union[frozenset[istr], set[istr]]] = None
         if skip_auto_headers is not None:
             skip_headers = {istr(i) for i in skip_auto_headers}
-            if self._skip_auto_headers is not None:
+            if self._skip_auto_headers:
                 skip_headers.update(self._skip_auto_headers)
-        elif self._skip_auto_headers is not None:
+        elif self._skip_auto_headers:
             skip_headers = self._skip_auto_headers
 
         if proxy is None:
@@ -1240,7 +1239,7 @@ class ClientSession:
     @property
     def skip_auto_headers(self) -> FrozenSet[istr]:
         """Headers for which autogeneration should be skipped"""
-        return self._skip_auto_headers or frozenset()
+        return self._skip_auto_headers
 
     @property
     def auth(self) -> Optional[BasicAuth]:
