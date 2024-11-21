@@ -99,7 +99,7 @@ cdef inline int _write_str(Writer* writer, str s):
 
 # --------------- _serialize_headers ----------------------
 
-cdef str to_str(object s):
+cdef inline str to_str(object s):
     if type(s) is str:
         return <str>s
     elif type(s) is _istr:
