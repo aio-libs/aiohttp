@@ -1,9 +1,9 @@
-# type: ignore
 import datetime
 import logging
 import platform
 import sys
-from typing import Any
+from contextvars import ContextVar
+from typing import Dict, NoReturn, Optional
 from unittest import mock
 
 import pytest
@@ -11,16 +11,18 @@ import pytest
 import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer, AiohttpServer
+from aiohttp.test_utils import make_mocked_request
 from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger
 from aiohttp.web_response import Response
 
-try:
-    from contextvars import ContextVar
-except ImportError:
-    ContextVar = None
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing import Any as Self
 
-IS_PYPY: Any = platform.python_implementation() == "PyPy"
+IS_PYPY = platform.python_implementation() == "PyPy"
 
 
 def test_access_logger_format() -> None:
@@ -52,7 +54,7 @@ def test_access_logger_format() -> None:
     Ref: https://bitbucket.org/pypy/pypy/issues/1187/call-to-isinstance-in-__sub__-self-other
     Ref: https://github.com/celery/celery/issues/811
     Ref: https://stackoverflow.com/a/46102240/595220
-    """,  # noqa: E501
+    """,
 )
 @pytest.mark.parametrize(
     "log_format,expected,extra",
@@ -84,12 +86,15 @@ def test_access_logger_format() -> None:
     ],
 )
 def test_access_logger_atoms(
-    monkeypatch: Any, log_format: Any, expected: Any, extra: Any
+    monkeypatch: pytest.MonkeyPatch,
+    log_format: str,
+    expected: str,
+    extra: Dict[str, object],
 ) -> None:
     class PatchedDatetime(datetime.datetime):
-        @staticmethod
-        def now(tz):
-            return datetime.datetime(1843, 1, 1, 0, 30, tzinfo=tz)
+        @classmethod
+        def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
+            return cls(1843, 1, 1, 0, 30, tzinfo=tz)
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
     monkeypatch.setattr("time.timezone", -28800)
@@ -145,60 +150,68 @@ def test_logger_no_message() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%r %{content-type}i")
     extra_dict = {
-        "first_request_line": "-",
-        "request_header": {"content-type": "(no headers)"},
+        "first_request_line": "GET / HTTP/1.1",
+        "request_header": {"content-type": "-"},
     }
 
-    access_logger.log(None, None, 0.0)
-    mock_logger.info.assert_called_with("- (no headers)", extra=extra_dict)
+    access_logger.log(make_mocked_request("GET", "/"), web.Response(), 0.0)
+    mock_logger.info.assert_called_with("GET / HTTP/1.1 -", extra=extra_dict)
 
 
 def test_logger_internal_error() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%D")
-    access_logger.log(None, None, "invalid")
+    access_logger.log(make_mocked_request("GET", "/"), web.Response(), "invalid")  # type: ignore[arg-type]
     mock_logger.exception.assert_called_with("Error in logging")
 
 
 def test_logger_no_transport() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%a")
-    access_logger.log(None, None, 0)
+    access_logger.log(make_mocked_request("GET", "/"), web.Response(), 0.0)
     mock_logger.info.assert_called_with("-", extra={"remote_address": "-"})
 
 
 def test_logger_abc() -> None:
     class Logger(AbstractAccessLogger):
-        def log(self, request, response, time):
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             1 / 0
 
     mock_logger = mock.Mock()
-    access_logger = Logger(mock_logger, None)
+    access_logger: AbstractAccessLogger = Logger(mock_logger, "")
 
     with pytest.raises(ZeroDivisionError):
-        access_logger.log(None, None, None)
+        access_logger.log(make_mocked_request("GET", "/"), web.Response(), 0.0)
 
-    class Logger(AbstractAccessLogger):
-        def log(self, request, response, time):
+    class Logger2(AbstractAccessLogger):
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             self.logger.info(
                 self.log_format.format(request=request, response=response, time=time)
             )
 
     mock_logger = mock.Mock()
-    access_logger = Logger(mock_logger, "{request} {response} {time}")
-    access_logger.log("request", "response", 1)
+    access_logger = Logger2(mock_logger, "{request} {response} {time}")
+    access_logger.log("request", "response", 1)  # type: ignore[arg-type]
     mock_logger.info.assert_called_with("request response 1")
 
 
-async def test_exc_info_context(aiohttp_raw_server: Any, aiohttp_client: Any) -> None:
+async def test_exc_info_context(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     exc_msg = None
 
     class Logger(AbstractAccessLogger):
-        def log(self, request, response, time):
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             nonlocal exc_msg
             exc_msg = "{0.__name__}: {1}".format(*sys.exc_info())
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise RuntimeError("intentional runtime error")
 
     logger = mock.Mock()
@@ -209,15 +222,19 @@ async def test_exc_info_context(aiohttp_raw_server: Any, aiohttp_client: Any) ->
     assert exc_msg == "RuntimeError: intentional runtime error"
 
 
-async def test_async_logger(aiohttp_raw_server: Any, aiohttp_client: Any):
+async def test_async_logger(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     msg = None
 
     class Logger(AbstractAsyncAccessLogger):
-        async def log(self, request, response, time):
+        async def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             nonlocal msg
             msg = f"{request.path}: {response.status}"
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> web.Response:
         return Response(text="ok")
 
     logger = mock.Mock()
@@ -228,20 +245,24 @@ async def test_async_logger(aiohttp_raw_server: Any, aiohttp_client: Any):
     assert msg == "/path/to: 200"
 
 
-async def test_contextvars_logger(aiohttp_server: Any, aiohttp_client: Any):
-    VAR = ContextVar("VAR")
+async def test_contextvars_logger(
+    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+) -> None:
+    VAR = ContextVar[str]("VAR")
 
-    async def handler(request):
+    async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
-    async def middleware(request, handler: Handler):
+    async def middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
         VAR.set("uuid")
         return await handler(request)
 
     msg = None
 
     class Logger(AbstractAccessLogger):
-        def log(self, request, response, time):
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
             nonlocal msg
             msg = f"contextvars: {VAR.get()}"
 
@@ -254,8 +275,8 @@ async def test_contextvars_logger(aiohttp_server: Any, aiohttp_client: Any):
     assert msg == "contextvars: uuid"
 
 
-def test_logger_does_nothing_when_disabled(caplog: pytest.LogCaptureFixture) -> None:
-    """Test that the logger does nothing when the log level is disabled."""
+def test_access_logger_feeds_logger(caplog: pytest.LogCaptureFixture) -> None:
+    """Test that the logger still works."""
     mock_logger = logging.getLogger("test.aiohttp.log")
     mock_logger.setLevel(logging.INFO)
     access_logger = AccessLogger(mock_logger, "%b")
@@ -263,3 +284,33 @@ def test_logger_does_nothing_when_disabled(caplog: pytest.LogCaptureFixture) -> 
         mock.Mock(name="mock_request"), mock.Mock(name="mock_response"), 42
     )
     assert "mock_response" in caplog.text
+
+
+async def test_logger_does_not_log_when_not_enabled(
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test logger does nothing when not enabled."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    class Logger(AbstractAccessLogger):
+
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
+            self.logger.critical("This should not be logged")  # pragma: no cover
+
+        @property
+        def enabled(self) -> bool:
+            return False
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, access_log_class=Logger)
+    client = await aiohttp_client(server)
+    resp = await client.get("/")
+    assert 200 == resp.status
+    assert "This should not be logged" not in caplog.text

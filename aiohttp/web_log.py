@@ -121,9 +121,6 @@ class AccessLogger(AbstractAccessLogger):
     def _format_i(
         key: str, request: BaseRequest, response: StreamResponse, time: float
     ) -> str:
-        if request is None:
-            return "(no headers)"
-
         # suboptimal, make istr(key) once
         return request.headers.get(key, "-")
 
@@ -136,8 +133,6 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_a(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        if request is None:
-            return "-"
         ip = request.remote
         return ip if ip is not None else "-"
 
@@ -154,8 +149,6 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_r(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        if request is None:
-            return "-"
         return "{} {} HTTP/{}.{}".format(
             request.method,
             request.path_qs,
@@ -188,10 +181,13 @@ class AccessLogger(AbstractAccessLogger):
     ) -> Iterable[Tuple[str, Callable[[BaseRequest, StreamResponse, float], str]]]:
         return [(key, method(request, response, time)) for key, method in self._methods]
 
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        # Avoid formatting the log line if it will not be emitted.
+        return self.logger.isEnabledFor(logging.INFO)
+
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
-        if not self.logger.isEnabledFor(logging.INFO):
-            # Avoid formatting the log line if it will not be emitted.
-            return
         try:
             fmt_info = self._format_line(request, response, time)
 

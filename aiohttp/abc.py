@@ -1,4 +1,6 @@
 import logging
+import socket
+import zlib
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel
@@ -13,6 +15,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    TypedDict,
 )
 
 from multidict import CIMultiDict
@@ -20,7 +23,7 @@ from yarl import URL
 
 from .typedefs import LooseCookies
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
     from .web_exceptions import HTTPException
     from .web_request import BaseRequest, Request
@@ -56,6 +59,9 @@ class AbstractRouter(ABC):
 
 
 class AbstractMatchInfo(ABC):
+
+    __slots__ = ()
+
     @property  # pragma: no branch
     @abstractmethod
     def handler(self) -> Callable[[Request], Awaitable[StreamResponse]]:
@@ -117,11 +123,35 @@ class AbstractView(ABC):
         """Execute the view handler."""
 
 
+class ResolveResult(TypedDict):
+    """Resolve result.
+
+    This is the result returned from an AbstractResolver's
+    resolve method.
+
+    :param hostname: The hostname that was provided.
+    :param host: The IP address that was resolved.
+    :param port: The port that was resolved.
+    :param family: The address family that was resolved.
+    :param proto: The protocol that was resolved.
+    :param flags: The flags that were resolved.
+    """
+
+    hostname: str
+    host: str
+    port: int
+    family: int
+    proto: int
+    flags: int
+
+
 class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, host: str, port: int, family: int) -> List[Dict[str, Any]]:
+    async def resolve(
+        self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
+    ) -> List[ResolveResult]:
         """Return IP address for given hostname"""
 
     @abstractmethod
@@ -129,7 +159,7 @@ class AbstractResolver(ABC):
         """Release resolver"""
 
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     IterableBase = Iterable[Morsel[str]]
 else:
     IterableBase = Iterable
@@ -178,7 +208,9 @@ class AbstractStreamWriter(ABC):
         """Flush the write buffer."""
 
     @abstractmethod
-    def enable_compression(self, encoding: str = "deflate") -> None:
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
+    ) -> None:
         """Enable HTTP body compression"""
 
     @abstractmethod
@@ -195,6 +227,8 @@ class AbstractStreamWriter(ABC):
 class AbstractAccessLogger(ABC):
     """Abstract writer to access log."""
 
+    __slots__ = ("logger", "log_format")
+
     def __init__(self, logger: logging.Logger, log_format: str) -> None:
         self.logger = logger
         self.log_format = log_format
@@ -203,12 +237,24 @@ class AbstractAccessLogger(ABC):
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
         """Emit log to logger."""
 
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        return True
+
 
 class AbstractAsyncAccessLogger(ABC):
     """Abstract asynchronous writer to access log."""
+
+    __slots__ = ()
 
     @abstractmethod
     async def log(
         self, request: BaseRequest, response: StreamResponse, request_start: float
     ) -> None:
         """Emit log to logger."""
+
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        return True

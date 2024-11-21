@@ -123,10 +123,11 @@ async def main(loop):
         base = await bench(t, writes[0], c)
         for w in writes[1:]:
             await bench("", w, c, base)
-    with open("bench.md", "w") as f:
-        for line in res:
-            f.write("| {} |\n".format(" | ".join(line)))
+    return res
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(main(loop))
+results = loop.run_until_complete(main(loop))
+with open("bench.md", "w") as f:
+    for line in results:
+        f.write("| {} |\n".format(" | ".join(line)))

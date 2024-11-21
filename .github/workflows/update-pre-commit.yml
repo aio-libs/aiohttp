@@ -8,24 +8,23 @@ jobs:
     if: github.repository_owner == 'aiohttp'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: 3.9
     - name: Install dependencies
-      uses: py-actions/py-dependency-install@v3
-      with:
-        path: requirements/lint.txt
+      run: >-
+        pip install -r requirements/lint.in -c requirements/lint.txt
     - name: Run pre-commit autoupdate
       run: pre-commit autoupdate
     - id: generate_token
-      uses: tibdex/github-app-token@v1.5
+      uses: tibdex/github-app-token@v2.1
       with:
         app_id: ${{ secrets.BOT_APP_ID }}
         private_key: ${{ secrets.BOT_PRIVATE_KEY }}
     - name: Create Pull Request
-      uses: peter-evans/create-pull-request@v4.0.4
+      uses: peter-evans/create-pull-request@v7
       with:
         token: ${{ steps.generate_token.outputs.token }}
         branch: update/pre-commit-autoupdate
@@ -34,4 +33,4 @@ jobs:
         body: |
           Update versions of tools in pre-commit
           configs to latest version
-        labels: dependencies backport-3.7 backport-3.8
+        labels: dependencies backport-3.10 backport-3.11

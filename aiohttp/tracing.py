@@ -1,16 +1,14 @@
-import dataclasses
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Awaitable, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Awaitable, Generic, Protocol, TypeVar, overload
 
 from aiosignal import Signal
 from multidict import CIMultiDict
 from yarl import URL
 
 from .client_reqrep import ClientResponse
+from .helpers import frozen_dataclass_decorator
 
-if TYPE_CHECKING:  # pragma: no cover
-    from typing_extensions import Protocol
-
+if TYPE_CHECKING:
     from .client import ClientSession
 
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
@@ -21,8 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
             __client_session: ClientSession,
             __trace_config_ctx: SimpleNamespace,
             __params: _ParamT_contra,
-        ) -> Awaitable[None]:
-            ...
+        ) -> Awaitable[None]: ...
 
 
 __all__ = (
@@ -45,16 +42,26 @@ __all__ = (
     "TraceRequestHeadersSentParams",
 )
 
+_T = TypeVar("_T", covariant=True)
 
-class TraceConfig:
+
+class _Factory(Protocol[_T]):
+    def __call__(self, **kwargs: Any) -> _T: ...
+
+
+class TraceConfig(Generic[_T]):
     """First-class used to trace requests launched via ClientSession objects."""
 
+    @overload
+    def __init__(self: "TraceConfig[SimpleNamespace]") -> None: ...
+    @overload
+    def __init__(self, trace_config_ctx_factory: _Factory[_T]) -> None: ...
     def __init__(
-        self, trace_config_ctx_factory: Type[SimpleNamespace] = SimpleNamespace
+        self, trace_config_ctx_factory: _Factory[Any] = SimpleNamespace
     ) -> None:
-        self._on_request_start: Signal[
-            _SignalCallback[TraceRequestStartParams]
-        ] = Signal(self)
+        self._on_request_start: Signal[_SignalCallback[TraceRequestStartParams]] = (
+            Signal(self)
+        )
         self._on_request_chunk_sent: Signal[
             _SignalCallback[TraceRequestChunkSentParams]
         ] = Signal(self)
@@ -91,21 +98,19 @@ class TraceConfig:
         self._on_dns_resolvehost_end: Signal[
             _SignalCallback[TraceDnsResolveHostEndParams]
         ] = Signal(self)
-        self._on_dns_cache_hit: Signal[
-            _SignalCallback[TraceDnsCacheHitParams]
-        ] = Signal(self)
-        self._on_dns_cache_miss: Signal[
-            _SignalCallback[TraceDnsCacheMissParams]
-        ] = Signal(self)
+        self._on_dns_cache_hit: Signal[_SignalCallback[TraceDnsCacheHitParams]] = (
+            Signal(self)
+        )
+        self._on_dns_cache_miss: Signal[_SignalCallback[TraceDnsCacheMissParams]] = (
+            Signal(self)
+        )
         self._on_request_headers_sent: Signal[
             _SignalCallback[TraceRequestHeadersSentParams]
         ] = Signal(self)
 
-        self._trace_config_ctx_factory = trace_config_ctx_factory
+        self._trace_config_ctx_factory: _Factory[_T] = trace_config_ctx_factory
 
-    def trace_config_ctx(
-        self, trace_request_ctx: Optional[SimpleNamespace] = None
-    ) -> SimpleNamespace:
+    def trace_config_ctx(self, trace_request_ctx: Any = None) -> _T:
         """Return a new trace_config_ctx instance"""
         return self._trace_config_ctx_factory(trace_request_ctx=trace_request_ctx)
 
@@ -216,7 +221,7 @@ class TraceConfig:
         return self._on_request_headers_sent
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestStartParams:
     """Parameters sent by the `on_request_start` signal"""
 
@@ -225,7 +230,7 @@ class TraceRequestStartParams:
     headers: "CIMultiDict[str]"
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestChunkSentParams:
     """Parameters sent by the `on_request_chunk_sent` signal"""
 
@@ -234,7 +239,7 @@ class TraceRequestChunkSentParams:
     chunk: bytes
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceResponseChunkReceivedParams:
     """Parameters sent by the `on_response_chunk_received` signal"""
 
@@ -243,7 +248,7 @@ class TraceResponseChunkReceivedParams:
     chunk: bytes
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestEndParams:
     """Parameters sent by the `on_request_end` signal"""
 
@@ -253,7 +258,7 @@ class TraceRequestEndParams:
     response: ClientResponse
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestExceptionParams:
     """Parameters sent by the `on_request_exception` signal"""
 
@@ -263,7 +268,7 @@ class TraceRequestExceptionParams:
     exception: BaseException
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestRedirectParams:
     """Parameters sent by the `on_request_redirect` signal"""
 
@@ -273,60 +278,60 @@ class TraceRequestRedirectParams:
     response: ClientResponse
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionQueuedStartParams:
     """Parameters sent by the `on_connection_queued_start` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionQueuedEndParams:
     """Parameters sent by the `on_connection_queued_end` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionCreateStartParams:
     """Parameters sent by the `on_connection_create_start` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionCreateEndParams:
     """Parameters sent by the `on_connection_create_end` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceConnectionReuseconnParams:
     """Parameters sent by the `on_connection_reuseconn` signal"""
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceDnsResolveHostStartParams:
     """Parameters sent by the `on_dns_resolvehost_start` signal"""
 
     host: str
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceDnsResolveHostEndParams:
     """Parameters sent by the `on_dns_resolvehost_end` signal"""
 
     host: str
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceDnsCacheHitParams:
     """Parameters sent by the `on_dns_cache_hit` signal"""
 
     host: str
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceDnsCacheMissParams:
     """Parameters sent by the `on_dns_cache_miss` signal"""
 
     host: str
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class TraceRequestHeadersSentParams:
     """Parameters sent by the `on_request_headers_sent` signal"""
 
@@ -345,8 +350,8 @@ class Trace:
     def __init__(
         self,
         session: "ClientSession",
-        trace_config: TraceConfig,
-        trace_config_ctx: SimpleNamespace,
+        trace_config: TraceConfig[object],
+        trace_config_ctx: Any,
     ) -> None:
         self._trace_config = trace_config
         self._trace_config_ctx = trace_config_ctx

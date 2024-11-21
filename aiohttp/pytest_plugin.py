@@ -2,11 +2,21 @@ import asyncio
 import contextlib
 import inspect
 import warnings
-from typing import Any, Awaitable, Callable, Dict, Generator, Optional, Type, Union
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterator,
+    Optional,
+    Protocol,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import pytest
-
-from aiohttp.web import Application
 
 from .test_utils import (
     BaseTestServer,
@@ -18,18 +28,50 @@ from .test_utils import (
     teardown_test_loop,
     unused_port as _unused_port,
 )
+from .web import Application, BaseRequest, Request
+from .web_protocol import _RequestHandler
 
 try:
     import uvloop
 except ImportError:  # pragma: no cover
-    uvloop = None
+    uvloop = None  # type: ignore[assignment]
 
-try:
-    import tokio
-except ImportError:  # pragma: no cover
-    tokio = None
+_Request = TypeVar("_Request", bound=BaseRequest)
 
-AiohttpClient = Callable[[Union[Application, BaseTestServer]], Awaitable[TestClient]]
+
+class AiohttpClient(Protocol):
+    @overload
+    async def __call__(
+        self,
+        __param: Application,
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> TestClient[Request, Application]: ...
+    @overload
+    async def __call__(
+        self,
+        __param: BaseTestServer[_Request],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> TestClient[_Request, None]: ...
+
+
+class AiohttpServer(Protocol):
+    def __call__(
+        self, app: Application, *, port: Optional[int] = None, **kwargs: Any
+    ) -> Awaitable[TestServer]: ...
+
+
+class AiohttpRawServer(Protocol):
+    def __call__(
+        self,
+        handler: _RequestHandler[BaseRequest],
+        *,
+        port: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Awaitable[RawTestServer]: ...
 
 
 def pytest_addoption(parser):  # type: ignore[no-untyped-def]
@@ -43,7 +85,7 @@ def pytest_addoption(parser):  # type: ignore[no-untyped-def]
         "--aiohttp-loop",
         action="store",
         default="pyloop",
-        help="run tests with specific loop: pyloop, uvloop, tokio or all",
+        help="run tests with specific loop: pyloop, uvloop or all",
     )
     parser.addoption(
         "--aiohttp-enable-loop-debug",
@@ -198,16 +240,14 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
         return
 
     loops = metafunc.config.option.aiohttp_loop
+    avail_factories: Dict[str, Type[asyncio.AbstractEventLoopPolicy]]
     avail_factories = {"pyloop": asyncio.DefaultEventLoopPolicy}
 
     if uvloop is not None:  # pragma: no cover
         avail_factories["uvloop"] = uvloop.EventLoopPolicy
 
-    if tokio is not None:  # pragma: no cover
-        avail_factories["tokio"] = tokio.EventLoopPolicy
-
     if loops == "all":
-        loops = "pyloop,uvloop?,tokio?"
+        loops = "pyloop,uvloop?"
 
     factories = {}  # type: ignore[var-annotated]
     for name in loops.split(","):
@@ -250,20 +290,22 @@ def proactor_loop():  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def aiohttp_unused_port():  # type: ignore[no-untyped-def]
+def aiohttp_unused_port() -> Callable[[], int]:
     """Return a port that is unused on the current host."""
     return _unused_port
 
 
 @pytest.fixture
-def aiohttp_server(loop):  # type: ignore[no-untyped-def]
+def aiohttp_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
     """Factory to create a TestServer instance, given an app.
 
     aiohttp_server(app, **kwargs)
     """
     servers = []
 
-    async def go(app, *, port=None, **kwargs):  # type: ignore[no-untyped-def]
+    async def go(
+        app: Application, *, port: Optional[int] = None, **kwargs: Any
+    ) -> TestServer:
         server = TestServer(app, port=port)
         await server.start_server(**kwargs)
         servers.append(server)
@@ -279,14 +321,19 @@ def aiohttp_server(loop):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def aiohttp_raw_server(loop):  # type: ignore[no-untyped-def]
+def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawServer]:
     """Factory to create a RawTestServer instance, given a web handler.
 
     aiohttp_raw_server(handler, **kwargs)
     """
     servers = []
 
-    async def go(handler, *, port=None, **kwargs):  # type: ignore[no-untyped-def]
+    async def go(
+        handler: _RequestHandler[BaseRequest],
+        *,
+        port: Optional[int] = None,
+        **kwargs: Any,
+    ) -> RawTestServer:
         server = RawTestServer(handler, port=port)
         await server.start_server(**kwargs)
         servers.append(server)
@@ -302,7 +349,7 @@ def aiohttp_raw_server(loop):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def aiohttp_client_cls() -> Type[TestClient]:
+def aiohttp_client_cls() -> Type[TestClient[Any, Any]]:
     """
     Client class to use in ``aiohttp_client`` factory.
 
@@ -330,8 +377,8 @@ def aiohttp_client_cls() -> Type[TestClient]:
 
 @pytest.fixture
 def aiohttp_client(
-    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient]
-) -> Generator[AiohttpClient, None, None]:
+    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient[Any, Any]]
+) -> Iterator[AiohttpClient]:
     """Factory to create a TestClient instance.
 
     aiohttp_client(app, **kwargs)
@@ -340,12 +387,26 @@ def aiohttp_client(
     """
     clients = []
 
+    @overload
     async def go(
-        __param: Union[Application, BaseTestServer],
+        __param: Application,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
-    ) -> TestClient:
+        **kwargs: Any,
+    ) -> TestClient[Request, Application]: ...
+    @overload
+    async def go(
+        __param: BaseTestServer[_Request],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> TestClient[_Request, None]: ...
+    async def go(
+        __param: Union[Application, BaseTestServer[Any]],
+        *,
+        server_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> TestClient[Any, Any]:
         if isinstance(__param, Application):
             server_kwargs = server_kwargs or {}
             server = TestServer(__param, **server_kwargs)

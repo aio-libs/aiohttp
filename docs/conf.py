@@ -17,6 +17,12 @@ import re
 from pathlib import Path
 
 PROJECT_ROOT_DIR = Path(__file__).parents[1].resolve()
+IS_RELEASE_ON_RTD = (
+    os.getenv("READTHEDOCS", "False") == "True"
+    and os.environ["READTHEDOCS_VERSION_TYPE"] == "tag"
+)
+if IS_RELEASE_ON_RTD:
+    tags.add("is_release")
 
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(
@@ -48,12 +54,11 @@ with open(_version_path, encoding="latin1") as fp:
 extensions = [
     # stdlib-party extensions:
     "sphinx.ext.extlinks",
+    "sphinx.ext.graphviz",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     # Third-party extensions:
-    "sphinxcontrib.asyncio",
-    "sphinxcontrib.blockdiag",
-    "sphinxcontrib.towncrier",  # provides `towncrier-draft-entries` directive
+    "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
 
@@ -69,6 +74,7 @@ intersphinx_mapping = {
     "pytest": ("http://docs.pytest.org/en/latest/", None),
     "python": ("http://docs.python.org/3", None),
     "multidict": ("https://multidict.readthedocs.io/en/stable/", None),
+    "propcache": ("https://propcache.aio-libs.org/en/stable", None),
     "yarl": ("https://yarl.readthedocs.io/en/stable/", None),
     "aiosignal": ("https://aiosignal.readthedocs.io/en/stable/", None),
     "aiohttpjinja2": ("https://aiohttp-jinja2.readthedocs.io/en/stable/", None),
@@ -76,7 +82,6 @@ intersphinx_mapping = {
     "aiohttpsession": ("https://aiohttp-session.readthedocs.io/en/stable/", None),
     "aiohttpdemos": ("https://aiohttp-demos.readthedocs.io/en/latest/", None),
     "aiojobs": ("https://aiojobs.readthedocs.io/en/stable/", None),
-    "asynctest": ("https://asynctest.readthedocs.io/en/latest/", None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -389,7 +394,8 @@ nitpick_ignore = [
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
     ("py:class", "aiohttp.ClientRequest"),  # undocumented
     ("py:class", "aiohttp.payload.Payload"),  # undocumented
-    ("py:class", "aiohttp.abc.AbstractResolver"),  # undocumented
+    ("py:class", "aiohttp.resolver.AsyncResolver"),  # undocumented
+    ("py:class", "aiohttp.resolver.ThreadedResolver"),  # undocumented
     ("py:func", "aiohttp.ws_connect"),  # undocumented
     ("py:meth", "start"),  # undocumented
     ("py:exc", "aiohttp.ClientHttpProxyError"),  # undocumented

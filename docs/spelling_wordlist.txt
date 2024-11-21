@@ -18,6 +18,7 @@ async
 asyncio
 asyncpg
 asynctest
+attrs
 auth
 autocalculated
 autodetection
@@ -35,13 +36,16 @@ backports
 BaseEventLoop
 basename
 BasicAuth
+behaviour
 BodyPartReader
 boolean
 botocore
 brotli
 Brotli
+brotlicffi
 brotlipy
 bugfix
+bugfixes
 Bugfixes
 builtin
 BytesIO
@@ -52,6 +56,7 @@ canonicalize
 cchardet
 cChardet
 ceil
+changelog
 Changelog
 chardet
 Chardet
@@ -63,6 +68,7 @@ CIMultiDict
 ClientSession
 cls
 cmd
+codebase
 codec
 Codings
 committer
@@ -87,7 +93,8 @@ Cythonize
 cythonized
 de
 deduplicate
-# de-facto:
+defs
+Dependabot
 deprecations
 DER
 dev
@@ -102,6 +109,7 @@ DNSResolver
 docstring
 docstrings
 DoS
+downstreams
 Dup
 elasticsearch
 encodings
@@ -180,7 +188,6 @@ middleware
 middlewares
 miltidict
 misbehaviors
-misformed
 Mixcloud
 Mongo
 msg
@@ -221,7 +228,7 @@ performant
 pickleable
 ping
 pipelining
-plugable
+pluggable
 plugin
 poller
 pong
@@ -242,6 +249,7 @@ pytest
 Pytest
 Quickstart
 quote’s
+rc
 readline
 readonly
 readpayload
@@ -283,11 +291,11 @@ shourtcuts
 skipuntil
 Skyscanner
 SocketSocketTransport
-softwares
 ssl
 SSLContext
 startup
 subapplication
+subclassed
 subclasses
 subdirectory
 submodules
@@ -312,6 +320,8 @@ Testsuite
 Tf
 timestamps
 TLS
+tmp
+tmpdir
 toolbar
 toplevel
 towncrier
@@ -320,6 +330,7 @@ tuples
 UI
 un
 unawaited
+undercounting
 unclosed
 unhandled
 unicode
@@ -328,6 +339,7 @@ Unittest
 unix
 unsets
 unstripped
+untyped
 uppercased
 upstr
 url
@@ -340,6 +352,7 @@ utils
 uvloop
 uWSGI
 vcvarsall
+vendored
 waituntil
 wakeup
 wakeups
@@ -352,8 +365,6 @@ wildcard
 Workflow
 ws
 wsgi
-WSMessage
-WSMsgType
 wss
 www
 xxx
