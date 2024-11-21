@@ -110,13 +110,6 @@ cdef str to_str(object s):
         return str(s)
 
 
-cdef void _safe_header(str string) except *:
-    if "\r" in string or "\n" in string:
-        raise ValueError(
-            "Newline or carriage return character detected in HTTP status message or "
-            "header. This is a potential security issue."
-        )
-
 
 def _serialize_headers(str status_line, headers):
     cdef Writer writer
@@ -140,8 +133,11 @@ def _serialize_headers(str status_line, headers):
             key_str = to_str(key)
             val_str = to_str(val)
 
-            _safe_header(key_str)
-            _safe_header(val_str)
+            if "\r" in key_str or "\n" in key_str or "\r" in val_str or "\n" in val_str:
+                raise ValueError(
+                    "Newline or carriage return character detected in HTTP status message or "
+                    "header. This is a potential security issue."
+                )
 
             if _write_str(&writer, key_str) < 0:
                 raise
