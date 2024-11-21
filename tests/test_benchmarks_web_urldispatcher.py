@@ -381,7 +381,7 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
 def test_resolve_gitapi(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
-    github_urls: list[str],
+    github_urls: List[str],
 ) -> None:
     """Resolve DynamicResource for simulated github API."""
 
