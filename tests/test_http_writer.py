@@ -279,9 +279,12 @@ async def test_write_payload_deflate_compression_chunked_connection_lost(
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
-    with pytest.raises(
-        ClientConnectionResetError, match="Cannot write to closing transport"
-    ), mock.patch.object(transport, "is_closing", return_value=True):
+    with (
+        pytest.raises(
+            ClientConnectionResetError, match="Cannot write to closing transport"
+        ),
+        mock.patch.object(transport, "is_closing", return_value=True),
+    ):
         await msg.write_eof(b"end")
 
 

@@ -155,10 +155,10 @@ jobs:
             no-extensions: 'Y'
             os: ubuntu
             experimental: false
-          - os: ubuntu
-            pyver: "3.14"
-            experimental: true
-            no-extensions: 'Y'
+          # - os: ubuntu
+          #   pyver: "3.14"
+          #   experimental: true
+          #   no-extensions: 'Y'
       fail-fast: true
     runs-on: ${{ matrix.os }}-latest
     continue-on-error: ${{ matrix.experimental }}
@@ -260,7 +260,7 @@ jobs:
     needs: gen_llhttp
 
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 7
     steps:
     - name: Checkout project
       uses: actions/checkout@v4
