@@ -6,7 +6,7 @@ import pathlib
 import random
 import string
 from pathlib import Path
-from typing import NoReturn, Optional, cast
+from typing import List, NoReturn, Optional, cast
 from unittest import mock
 
 import pytest
@@ -432,7 +432,7 @@ def test_resolve_gitapi(
 def test_resolve_gitapi_subapps(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
-    github_urls: list[str],
+    github_urls: List[str],
 ) -> None:
     """Resolve DynamicResource for simulated github API, grouped in subapps."""
 
@@ -503,7 +503,7 @@ def test_resolve_gitapi_subapps(
 def test_resolve_gitapi_root(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
-    github_urls: list[str],
+    github_urls: List[str],
 ) -> None:
     """Resolve the plain root for simulated github API."""
 
