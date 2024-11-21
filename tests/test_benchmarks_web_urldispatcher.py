@@ -6,9 +6,10 @@ import pathlib
 import random
 import string
 from pathlib import Path
-from typing import NoReturn, Optional
+from typing import List, NoReturn, Optional, cast
 from unittest import mock
 
+import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
@@ -16,6 +17,20 @@ from yarl import URL
 import aiohttp
 from aiohttp import web
 from aiohttp.http import HttpVersion, RawRequestMessage
+
+
+@pytest.fixture
+def github_urls() -> List[str]:
+    """GitHub api urls."""
+    # The fixture provides OpenAPI generated info for github.
+    # To update the local data file please run the following command:
+    # $ curl https://raw.githubusercontent.com/github/rest-api-description/refs/heads/main/descriptions/api.github.com/api.github.com.json | jq ".paths | keys" > github-urls.json
+
+    here = Path(__file__).parent
+    with (here / "github-urls.json").open() as f:
+        urls = json.load(f)
+
+    return cast(List[str], urls)
 
 
 def _mock_request(method: str, path: str) -> web.Request:
@@ -366,23 +381,15 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
 def test_resolve_gitapi(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
+    github_urls: List[str],
 ) -> None:
-    """Resolve DynamicResource for simulated github API.
-
-    The benchmark uses OpenAPI generated info for github.
-    To update the local data file please run the following command:
-    $ curl https://raw.githubusercontent.com/github/rest-api-description/refs/heads/main/descriptions/api.github.com/api.github.com.json | jq ".paths | keys" > github-urls.json
-    """
+    """Resolve DynamicResource for simulated github API."""
 
     async def handler(request: web.Request) -> NoReturn:
         assert False
 
-    here = Path(__file__).parent
-    with (here / "github-urls.json").open() as f:
-        urls = json.load(f)
-
     app = web.Application()
-    for url in urls:
+    for url in github_urls:
         app.router.add_get(url, handler)
     app.freeze()
     router = app.router
@@ -425,20 +432,12 @@ def test_resolve_gitapi(
 def test_resolve_gitapi_subapps(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
+    github_urls: List[str],
 ) -> None:
-    """Resolve DynamicResource for simulated github API, grouped in subapps.
-
-    The benchmark uses OpenAPI generated info for github.
-    To update the local data file please run the following command:
-    $ curl https://raw.githubusercontent.com/github/rest-api-description/refs/heads/main/descriptions/api.github.com/api.github.com.json | jq ".paths | keys" > github-urls.json
-    """
+    """Resolve DynamicResource for simulated github API, grouped in subapps."""
 
     async def handler(request: web.Request) -> NoReturn:
         assert False
-
-    here = Path(__file__).parent
-    with (here / "github-urls.json").open() as f:
-        urls = json.load(f)
 
     subapps = {
         "gists": web.Application(),
@@ -451,7 +450,7 @@ def test_resolve_gitapi_subapps(
     }
 
     app = web.Application()
-    for url in urls:
+    for url in github_urls:
         parts = url.split("/")
         subapp = subapps.get(parts[1])
         if subapp is not None:
@@ -495,6 +494,39 @@ def test_resolve_gitapi_subapps(
         ret.get_info()["formatter"]
         == "/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
     ), ret.get_info()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_url_dispatcher_benchmark())
+
+
+def test_resolve_gitapi_root(
+    loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
+    github_urls: List[str],
+) -> None:
+    """Resolve the plain root for simulated github API."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app = web.Application()
+    for url in github_urls:
+        app.router.add_get(url, handler)
+    app.freeze()
+    router = app.router
+
+    request = _mock_request(method="GET", path="/")
+
+    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+        ret = None
+        for i in range(250):
+            ret = await router.resolve(request)
+        return ret
+
+    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    assert ret is not None
+    assert ret.get_info()["path"] == "/", ret.get_info()
 
     @benchmark
     def _run() -> None:
