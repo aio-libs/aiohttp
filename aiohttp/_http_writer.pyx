@@ -100,10 +100,9 @@ cdef inline int _write_str(Writer* writer, str s):
 # --------------- _serialize_headers ----------------------
 
 cdef str to_str(object s):
-    typ = type(s)
-    if typ is str:
+    if type(s) is str:
         return <str>s
-    elif typ is _istr:
+    elif type(s) is _istr:
         return PyObject_Str(s)
     elif not isinstance(s, str):
         raise TypeError("Cannot serialize non-str key {!r}".format(s))
@@ -124,6 +123,8 @@ def _serialize_headers(str status_line, headers):
     cdef object key
     cdef object val
     cdef bytes ret
+    cdef str key_str
+    cdef str val_str
 
     _init_writer(&writer)
 
@@ -136,16 +137,19 @@ def _serialize_headers(str status_line, headers):
             raise
 
         for key, val in headers.items():
-            _safe_header(to_str(key))
-            _safe_header(to_str(val))
+            key_str = to_str(key)
+            val_str = to_str(val)
 
-            if _write_str(&writer, to_str(key)) < 0:
+            _safe_header(key_str)
+            _safe_header(val_str)
+
+            if _write_str(&writer, key_str) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:
                 raise
             if _write_byte(&writer, b' ') < 0:
                 raise
-            if _write_str(&writer, to_str(val)) < 0:
+            if _write_str(&writer, val_str) < 0:
                 raise
             if _write_byte(&writer, b'\r') < 0:
                 raise
