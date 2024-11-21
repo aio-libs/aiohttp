@@ -6,7 +6,7 @@ import pathlib
 import random
 import string
 from pathlib import Path
-from typing import NoReturn, Optional
+from typing import NoReturn, Optional, cast
 from unittest import mock
 
 import pytest
@@ -30,7 +30,7 @@ def github_urls() -> list[str]:
     with (here / "github-urls.json").open() as f:
         urls = json.load(f)
 
-    return urls
+    return cast(list[str], urls)
 
 
 def _mock_request(method: str, path: str) -> web.Request:
