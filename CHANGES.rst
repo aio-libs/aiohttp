@@ -10,6 +10,36 @@
 
 .. towncrier release notes start
 
+3.11.7 (2024-11-21)
+===================
+
+Bug fixes
+---------
+
+- Fixed the HTTP client not considering the connector's ``force_close`` value when setting the ``Connection`` header -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10003`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of serializing HTTP headers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10014`.
+
+
+
+
+----
+
+
 3.11.6 (2024-11-19)
 ===================
 
