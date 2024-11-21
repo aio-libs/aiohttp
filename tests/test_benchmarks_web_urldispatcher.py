@@ -20,7 +20,7 @@ from aiohttp.http import HttpVersion, RawRequestMessage
 
 
 @pytest.fixture
-def github_urls() -> list[str]:
+def github_urls() -> List[str]:
     """GitHub api urls."""
     # The fixture provides OpenAPI generated info for github.
     # To update the local data file please run the following command:
@@ -30,7 +30,7 @@ def github_urls() -> list[str]:
     with (here / "github-urls.json").open() as f:
         urls = json.load(f)
 
-    return cast(list[str], urls)
+    return cast(List[str], urls)
 
 
 def _mock_request(method: str, path: str) -> web.Request:
