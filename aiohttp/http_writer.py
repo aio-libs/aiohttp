@@ -41,8 +41,6 @@ class StreamWriter(AbstractStreamWriter):
 
     length: Optional[int] = None
     chunked: bool = False
-    buffer_size: int = 0
-    output_size: int = 0
     _eof: bool = False
     _compress: Optional[ZLibCompressor] = None
     _drain_waiter: Optional[asyncio.Future[None]] = None
