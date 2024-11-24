@@ -773,7 +773,6 @@ class ClientResponse(HeadersMixin):
     _released = False
     _in_context = False
 
-    # TODO: Fix session=None in tests (see ClientRequest.__init__).
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
     _timer: BaseTimerContext = TimerNoop()
 
