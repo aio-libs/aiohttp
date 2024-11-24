@@ -760,7 +760,9 @@ class ClientResponse(HeadersMixin):
     reason: Optional[str] = None  # Reason-Phrase
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
+    _body: Optional[bytes] = None
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _history: Tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection: Optional["Connection"] = None  # current connection
@@ -793,12 +795,9 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None) if url.raw_fragment else url
-        self._body: Optional[bytes] = None
         if writer is not None:
             self._writer = writer
         self._continue = continue100  # None by default
-        self._closed = True
-        self._history: Tuple[ClientResponse, ...] = ()
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
         self._cache: Dict[str, Any] = {}
