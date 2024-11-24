@@ -288,7 +288,7 @@ class ClientRequest:
         if data is not None or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-        self._traces = [] if traces is None else traces
+        self._traces = traces
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
@@ -789,7 +789,7 @@ class ClientResponse(HeadersMixin):
         continue100: Optional["asyncio.Future[bool]"],
         timer: Optional[BaseTimerContext],
         request_info: RequestInfo,
-        traces: List["Trace"],
+        traces: Optional[List["Trace"]],
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
     ) -> None:
