@@ -43,7 +43,6 @@ class StreamWriter(AbstractStreamWriter):
     chunked: bool = False
     _eof: bool = False
     _compress: Optional[ZLibCompressor] = None
-    _drain_waiter: Optional[asyncio.Future[None]] = None
 
     def __init__(
         self,
