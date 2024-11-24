@@ -764,6 +764,7 @@ class ClientResponse(HeadersMixin):
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
     _history: Tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
+    _traces: Optional[List["Trace"]] = None
 
     _connection: Optional["Connection"] = None  # current connection
     _source_traceback: Optional[traceback.StackSummary] = None
@@ -806,7 +807,8 @@ class ClientResponse(HeadersMixin):
         if timer is not None:
             self._timer = timer
         self._cache: Dict[str, Any] = {}
-        self._traces = traces
+        if traces:
+            self._traces = traces
         self._loop = loop
         # store a reference to session #1985
         self._session: Optional[ClientSession] = session
@@ -1127,10 +1129,11 @@ class ClientResponse(HeadersMixin):
         if self._body is None:
             try:
                 self._body = await self.content.read()
-                for trace in self._traces:
-                    await trace.send_response_chunk_received(
-                        self.method, self.url, self._body
-                    )
+                if traces := self._traces:
+                    for trace in traces:
+                        await trace.send_response_chunk_received(
+                            self.method, self.url, self._body
+                        )
             except BaseException:
                 self.close()
                 raise
