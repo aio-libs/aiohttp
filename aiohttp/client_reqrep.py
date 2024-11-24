@@ -794,7 +794,7 @@ class ClientResponse(HeadersMixin):
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
     ) -> None:
-        assert isinstance(url, URL)
+        assert type(url) is URL, f"url is a {url!r}, not a yarl.URL"
         super().__init__()
 
         self.method = method
