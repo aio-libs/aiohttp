@@ -38,6 +38,15 @@ _T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
 
 
 class StreamWriter(AbstractStreamWriter):
+
+    length: Optional[int] = None
+    chunked: bool = False
+    buffer_size: int = 0
+    output_size: int = 0
+    _eof: bool = False
+    _compress: Optional[ZLibCompressor] = None
+    _drain_waiter: Optional[asyncio.Future[None]] = None
+
     def __init__(
         self,
         protocol: BaseProtocol,
@@ -46,17 +55,7 @@ class StreamWriter(AbstractStreamWriter):
         on_headers_sent: _T_OnHeadersSent = None,
     ) -> None:
         self._protocol = protocol
-
         self.loop = loop
-        self.length = None
-        self.chunked = False
-        self.buffer_size = 0
-        self.output_size = 0
-
-        self._eof = False
-        self._compress: Optional[ZLibCompressor] = None
-        self._drain_waiter = None
-
         self._on_chunk_sent: _T_OnChunkSent = on_chunk_sent
         self._on_headers_sent: _T_OnHeadersSent = on_headers_sent
 
