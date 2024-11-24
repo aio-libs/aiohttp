@@ -288,7 +288,7 @@ class ClientRequest:
         if data is not None or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-        self._traces = traces
+        self._traces = [] if traces is None else traces
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
@@ -737,14 +737,12 @@ class ClientRequest:
             self.__writer = None
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
-        assert self._traces is not None
         for trace in self._traces:
             await trace.send_request_chunk_sent(method, url, chunk)
 
     async def _on_headers_request_sent(
         self, method: str, url: URL, headers: "CIMultiDict[str]"
     ) -> None:
-        assert self._traces is not None
         for trace in self._traces:
             await trace.send_request_headers(method, url, headers)
 
@@ -790,7 +788,7 @@ class ClientResponse(HeadersMixin):
         continue100: Optional["asyncio.Future[bool]"],
         timer: Optional[BaseTimerContext],
         request_info: RequestInfo,
-        traces: Optional[List["Trace"]],
+        traces: List["Trace"],
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
     ) -> None:
@@ -1131,11 +1129,10 @@ class ClientResponse(HeadersMixin):
         if self._body is None:
             try:
                 self._body = await self.content.read()
-                if self._traces is not None:
-                    for trace in self._traces:
-                        await trace.send_response_chunk_received(
-                            self.method, self.url, self._body
-                        )
+                for trace in self._traces:
+                    await trace.send_response_chunk_received(
+                        self.method, self.url, self._body
+                    )
             except BaseException:
                 self.close()
                 raise
