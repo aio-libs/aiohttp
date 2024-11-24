@@ -817,14 +817,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
 class Request(BaseRequest):
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-
-        # matchdict, route_name, handler
-        # or information about traversal lookup
-
-        # initialized after route resolving
-        self._match_info: Optional[UrlMappingMatchInfo] = None
+    _match_info: Optional[UrlMappingMatchInfo] = None
 
     def clone(
         self,
