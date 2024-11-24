@@ -127,6 +127,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         hdrs.METH_DELETE,
     }
 
+    _post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
+    _read_bytes: Optional[bytes] = None
+
     def __init__(
         self,
         message: RawRequestMessage,
@@ -172,8 +175,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                 self._cache["scheme"] = scheme
             if host is not None:
                 self._cache["host"] = host
-        self._post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
-        self._read_bytes: Optional[bytes] = None
 
         self._state = state
         self._task = task
