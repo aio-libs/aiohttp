@@ -775,6 +775,7 @@ class ClientResponse(HeadersMixin):
 
     # TODO: Fix session=None in tests (see ClientRequest.__init__).
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
+    _timer: BaseTimerContext = TimerNoop()
 
     __writer: Optional["asyncio.Task[None]"] = None
 
@@ -803,7 +804,8 @@ class ClientResponse(HeadersMixin):
             self._writer = writer
         self._continue = continue100  # None by default
         self._request_info = request_info
-        self._timer = timer if timer is not None else TimerNoop()
+        if timer is not None:
+            self._timer = timer
         self._cache: Dict[str, Any] = {}
         self._traces = traces
         self._loop = loop
