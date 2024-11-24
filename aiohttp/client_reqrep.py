@@ -764,7 +764,6 @@ class ClientResponse(HeadersMixin):
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
     _history: Tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
-    _traces: Optional[List["Trace"]] = None
 
     _connection: Optional["Connection"] = None  # current connection
     _continue: Optional["asyncio.Future[bool]"] = None
@@ -809,8 +808,7 @@ class ClientResponse(HeadersMixin):
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
         self._cache: Dict[str, Any] = {}
-        if traces:
-            self._traces = traces
+        self._traces = traces
         self._loop = loop
         # Save reference to _resolve_charset, so that get_encoding() will still
         # work after the response has finished reading the body.
