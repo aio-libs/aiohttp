@@ -764,6 +764,7 @@ class ClientResponse(HeadersMixin):
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection: Optional["Connection"] = None  # current connection
+    _cookies: Optional[SimpleCookie] = None
     _source_traceback: Optional[traceback.StackSummary] = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
@@ -789,7 +790,6 @@ class ClientResponse(HeadersMixin):
         super().__init__()
 
         self.method = method
-        self.cookies = SimpleCookie()
 
         self._real_url = url
         self._url = url.with_fragment(None) if url.raw_fragment else url
@@ -843,6 +843,16 @@ class ClientResponse(HeadersMixin):
             self.__writer = None
         else:
             writer.add_done_callback(self.__reset_writer)
+
+    @property
+    def cookies(self) -> SimpleCookie:
+        if self._cookies is None:
+            self._cookies = SimpleCookie()
+        return self._cookies
+
+    @cookies.setter
+    def cookies(self, cookies: SimpleCookie) -> None:
+        self._cookies = cookies
 
     @reify
     def url(self) -> URL:
@@ -1003,11 +1013,14 @@ class ClientResponse(HeadersMixin):
         self.content = payload
 
         # cookies
-        for hdr in self.headers.getall(hdrs.SET_COOKIE, ()):
-            try:
-                self.cookies.load(hdr)
-            except CookieError as exc:
-                client_logger.warning("Can not load response cookies: %s", exc)
+        if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
+            cookies = SimpleCookie()
+            for hdr in cookie_hdrs:
+                try:
+                    cookies.load(hdr)
+                except CookieError as exc:
+                    client_logger.warning("Can not load response cookies: %s", exc)
+            self._cookies = cookies
         return self
 
     def _response_eof(self) -> None:
