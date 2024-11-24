@@ -1179,6 +1179,25 @@ async def test_response_read_triggers_callback(
     )
 
 
+def test_response_cookies(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://python.org"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    cookies = response.cookies
+    # Ensure the same cookies object is returned each time
+    assert response.cookies is cookies
+
+
 def test_response_real_url(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
