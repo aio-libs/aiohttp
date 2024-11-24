@@ -812,6 +812,7 @@ class ClientResponse(HeadersMixin):
         self._session: Optional[ClientSession] = session
         # Save reference to _resolve_charset, so that get_encoding() will still
         # work after the response has finished reading the body.
+        # TODO: Fix session=None in tests (see ClientRequest.__init__).
         if session is not None:
             self._resolve_charset = session._resolve_charset
         if loop.get_debug():
