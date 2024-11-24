@@ -777,7 +777,6 @@ class ClientResponse(HeadersMixin):
     _in_context = False
 
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
-    _timer: BaseTimerContext = TimerNoop()
 
     __writer: Optional["asyncio.Task[None]"] = None
 
@@ -809,8 +808,7 @@ class ClientResponse(HeadersMixin):
         if continue100 is not None:
             self._continue = continue100
         self._request_info = request_info
-        if timer is not None:
-            self._timer = timer
+        self._timer = timer if timer is not None else TimerNoop()
         self._cache: Dict[str, Any] = {}
         if traces:
             self._traces = traces
