@@ -817,7 +817,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
 class Request(BaseRequest):
 
-    _match_info: Optional[UrlMappingMatchInfo] = None
+    _match_info: Optional["UrlMappingMatchInfo"] = None
 
     def clone(
         self,
