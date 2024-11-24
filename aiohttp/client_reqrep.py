@@ -795,6 +795,7 @@ class ClientResponse(HeadersMixin):
         session: "ClientSession",
     ) -> None:
         if type(url) is not URL:
+            # URL forbids subclasses, so a simple type check is enough.
             raise AssertionError(f"url is a {url!r}, not a yarl.URL")
         super().__init__()
 
