@@ -793,9 +793,8 @@ class ClientResponse(HeadersMixin):
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
     ) -> None:
-        if type(url) is not URL:
-            # URL forbids subclasses, so a simple type check is enough.
-            raise AssertionError(f"url is a {url!r}, not a yarl.URL")
+        # URL forbids subclasses, so a simple type check is enough.
+        assert type(url) is URL
         super().__init__()
 
         self.method = method
