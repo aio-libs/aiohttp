@@ -105,7 +105,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         reason: Optional[str] = None,
         headers: Optional[LooseHeaders] = None,
     ) -> None:
-        super().__init__()
         self._length_check = True
         self._body = None
         self._keep_alive: Optional[bool] = None

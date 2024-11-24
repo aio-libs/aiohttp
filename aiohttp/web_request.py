@@ -163,7 +163,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         host: Optional[str] = None,
         remote: Optional[str] = None,
     ) -> None:
-        super().__init__()
         if state is None:
             state = {}
         self._message = message
