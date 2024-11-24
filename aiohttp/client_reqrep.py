@@ -737,12 +737,14 @@ class ClientRequest:
             self.__writer = None
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
+        assert self._traces is not None
         for trace in self._traces:
             await trace.send_request_chunk_sent(method, url, chunk)
 
     async def _on_headers_request_sent(
         self, method: str, url: URL, headers: "CIMultiDict[str]"
     ) -> None:
+        assert self._traces is not None
         for trace in self._traces:
             await trace.send_request_headers(method, url, headers)
 
