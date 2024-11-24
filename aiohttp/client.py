@@ -744,7 +744,7 @@ class ClientSession:
                             raise
                         raise ClientOSError(*exc.args) from exc
 
-                    if cookies := resp.cookies:
+                    if cookies := resp._cookies:
                         self._cookie_jar.update_cookies(cookies, resp.url)
 
                     # redirects
