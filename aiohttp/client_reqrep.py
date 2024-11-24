@@ -760,16 +760,24 @@ class ClientResponse(HeadersMixin):
     reason: Optional[str] = None  # Reason-Phrase
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
+    _body: Optional[bytes] = None
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _history: Tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection: Optional["Connection"] = None  # current connection
+    _cookies: Optional[SimpleCookie] = None
+    _continue: Optional["asyncio.Future[bool]"] = None
     _source_traceback: Optional[traceback.StackSummary] = None
+    _session: Optional["ClientSession"] = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
     _in_context = False
+
+    _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
+
     __writer: Optional["asyncio.Task[None]"] = None
 
     def __init__(
@@ -785,35 +793,29 @@ class ClientResponse(HeadersMixin):
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
     ) -> None:
-        assert isinstance(url, URL)
+        # URL forbids subclasses, so a simple type check is enough.
+        assert type(url) is URL
         super().__init__()
 
         self.method = method
-        self.cookies = SimpleCookie()
 
         self._real_url = url
         self._url = url.with_fragment(None) if url.raw_fragment else url
-        self._body: Optional[bytes] = None
         if writer is not None:
             self._writer = writer
-        self._continue = continue100  # None by default
-        self._closed = True
-        self._history: Tuple[ClientResponse, ...] = ()
+        if continue100 is not None:
+            self._continue = continue100
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
         self._cache: Dict[str, Any] = {}
         self._traces = traces
         self._loop = loop
-        # store a reference to session #1985
-        self._session: Optional[ClientSession] = session
         # Save reference to _resolve_charset, so that get_encoding() will still
         # work after the response has finished reading the body.
-        if session is None:
-            # TODO: Fix session=None in tests (see ClientRequest.__init__).
-            self._resolve_charset: Callable[["ClientResponse", bytes], str] = (  # type: ignore[unreachable]
-                lambda *_: "utf-8"
-            )
-        else:
+        # TODO: Fix session=None in tests (see ClientRequest.__init__).
+        if session is not None:
+            # store a reference to session #1985
+            self._session = session
             self._resolve_charset = session._resolve_charset
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -843,6 +845,16 @@ class ClientResponse(HeadersMixin):
             self.__writer = None
         else:
             writer.add_done_callback(self.__reset_writer)
+
+    @property
+    def cookies(self) -> SimpleCookie:
+        if self._cookies is None:
+            self._cookies = SimpleCookie()
+        return self._cookies
+
+    @cookies.setter
+    def cookies(self, cookies: SimpleCookie) -> None:
+        self._cookies = cookies
 
     @reify
     def url(self) -> URL:
@@ -1003,11 +1015,14 @@ class ClientResponse(HeadersMixin):
         self.content = payload
 
         # cookies
-        for hdr in self.headers.getall(hdrs.SET_COOKIE, ()):
-            try:
-                self.cookies.load(hdr)
-            except CookieError as exc:
-                client_logger.warning("Can not load response cookies: %s", exc)
+        if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
+            cookies = SimpleCookie()
+            for hdr in cookie_hdrs:
+                try:
+                    cookies.load(hdr)
+                except CookieError as exc:
+                    client_logger.warning("Can not load response cookies: %s", exc)
+            self._cookies = cookies
         return self
 
     def _response_eof(self) -> None:

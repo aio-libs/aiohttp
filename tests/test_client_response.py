@@ -1013,6 +1013,24 @@ def test_content_disposition_no_header() -> None:
     assert response.content_disposition is None
 
 
+def test_default_encoding_is_utf8() -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://def-cl-resp.org"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=mock.Mock(),
+        session=None,  # type: ignore[arg-type]
+    )
+    response._headers = CIMultiDictProxy(CIMultiDict({}))
+    response._body = b""
+
+    assert response.get_encoding() == "utf-8"
+
+
 def test_response_request_info() -> None:
     url = URL("http://def-cl-resp.org")
     h = {"Content-Type": "application/json;charset=cp1251"}
@@ -1159,6 +1177,25 @@ async def test_response_read_triggers_callback(
     assert trace.send_response_chunk_received.call_args == mock.call(
         response_method, response_url, response_body
     )
+
+
+def test_response_cookies(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://python.org"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    cookies = response.cookies
+    # Ensure the same cookies object is returned each time
+    assert response.cookies is cookies
 
 
 def test_response_real_url(
