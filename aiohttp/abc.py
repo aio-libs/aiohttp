@@ -191,8 +191,8 @@ class AbstractCookieJar(Sized, IterableBase):
 class AbstractStreamWriter(ABC):
     """Abstract stream writer."""
 
-    buffer_size = 0
-    output_size = 0
+    buffer_size: int = 0
+    output_size: int = 0
     length: Optional[int] = 0
 
     @abstractmethod
