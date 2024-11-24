@@ -1,5 +1,6 @@
 # Tests for aiohttp/client.py
 
+import asyncio
 import gc
 import sys
 from typing import Callable
@@ -10,7 +11,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
-from aiohttp import http
+from aiohttp import ClientSession, http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
 from aiohttp.helpers import TimerNoop
 from aiohttp.test_utils import make_mocked_coro
@@ -1139,7 +1140,28 @@ async def test_response_read_triggers_callback(loop, session) -> None:
     )
 
 
-def test_response_real_url(loop, session) -> None:
+def test_response_cookies(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://python.org"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    cookies = response.cookies
+    # Ensure the same cookies object is returned each time
+    assert response.cookies is cookies
+
+
+def test_response_real_url(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
     url = URL("http://def-cl-resp.org/#urlfragment")
     response = ClientResponse(
         "get",
