@@ -719,15 +719,12 @@ def ceil_timeout(
 
 
 class HeadersMixin:
-    __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
+    """Mixin for handling headers."""
 
     _headers: MultiMapping[str]
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._content_type: Optional[str] = None
-        self._content_dict: Optional[Dict[str, str]] = None
-        self._stored_content_type: Union[str, None, _SENTINEL] = sentinel
+    _content_type: Optional[str] = None
+    _content_dict: Optional[Dict[str, str]] = None
+    _stored_content_type: Union[str, None, _SENTINEL] = sentinel
 
     def _parse_content_type(self, raw: Optional[str]) -> None:
         self._stored_content_type = raw
@@ -921,17 +918,9 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 
 
 class CookieMixin:
-    # The `_cookies` slots is not defined here because non-empty slots cannot
-    # be combined with an Exception base class, as is done in HTTPException.
-    # CookieMixin subclasses with slots should define the `_cookies`
-    # slot themselves.
-    __slots__ = ()
+    """Mixin for handling cookies."""
 
-    def __init__(self) -> None:
-        super().__init__()
-        # Mypy doesn't like that _cookies isn't in __slots__.
-        # See the comment on this class's __slots__ for why this is OK.
-        self._cookies: Optional[SimpleCookie] = None  # type: ignore[misc]
+    _cookies: Optional[SimpleCookie] = None
 
     @property
     def cookies(self) -> SimpleCookie:
