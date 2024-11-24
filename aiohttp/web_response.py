@@ -497,11 +497,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
 
 class Response(StreamResponse):
-    __slots__ = (
-        "_compressed_body",
-        "_zlib_executor_size",
-        "_zlib_executor",
-    )
 
     def __init__(
         self,

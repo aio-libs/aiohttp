@@ -64,33 +64,6 @@ class WebSocketReady:
 
 
 class WebSocketResponse(StreamResponse):
-    __slots__ = (
-        "_protocols",
-        "_ws_protocol",
-        "_writer",
-        "_reader",
-        "_closed",
-        "_closing",
-        "_conn_lost",
-        "_close_code",
-        "_loop",
-        "_waiting",
-        "_close_wait",
-        "_exception",
-        "_timeout",
-        "_receive_timeout",
-        "_autoclose",
-        "_autoping",
-        "_heartbeat",
-        "_heartbeat_when",
-        "_heartbeat_cb",
-        "_pong_heartbeat",
-        "_pong_response_cb",
-        "_compress",
-        "_max_msg_size",
-        "_ping_task",
-        "_writer_limit",
-    )
 
     def __init__(
         self,
