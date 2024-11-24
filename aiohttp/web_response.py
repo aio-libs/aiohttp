@@ -76,25 +76,6 @@ CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
 
 
 class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
-    __slots__ = (
-        "_length_check",
-        "_body",
-        "_keep_alive",
-        "_chunked",
-        "_compression",
-        "_compression_force",
-        "_compression_strategy",
-        "_req",
-        "_payload_writer",
-        "_eof_sent",
-        "_must_be_empty_body",
-        "_body_length",
-        "_state",
-        "_headers",
-        "_status",
-        "_reason",
-        "__weakref__",
-    )
 
     _body: Union[None, bytes, bytearray, Payload]
 
