@@ -992,7 +992,8 @@ class ClientResponse(HeadersMixin):
                         headers=exc.headers,
                     ) from exc
 
-                if message.code < 100 or message.code > 199 or message.code == 101:
+                code = message.code
+                if code < 100 or code > 199 or code == 101:
                     break
 
                 if self._continue is not None:
@@ -1002,14 +1003,10 @@ class ClientResponse(HeadersMixin):
         # payload eof handler
         payload.on_eof(self._response_eof)
 
-        # response status
-        self.version = message.version
-        self.status = message.code
-        self.reason = message.reason
-
-        # headers
-        self._headers = message.headers  # type is CIMultiDictProxy
-        self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
+        # unpack message
+        self.version, self.status, self.reason, self._headers, self._raw_headers, *_ = (
+            message
+        )
 
         # payload
         self.content = payload
