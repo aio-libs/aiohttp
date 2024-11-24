@@ -767,7 +767,9 @@ class ClientResponse(HeadersMixin):
     _traces: Optional[List["Trace"]] = None
 
     _connection: Optional["Connection"] = None  # current connection
+    _continue: Optional["asyncio.Future[bool]"] = None
     _source_traceback: Optional[traceback.StackSummary] = None
+    _session: Optional["ClientSession"] = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
@@ -802,7 +804,8 @@ class ClientResponse(HeadersMixin):
         self._url = url.with_fragment(None) if url.raw_fragment else url
         if writer is not None:
             self._writer = writer
-        self._continue = continue100  # None by default
+        if continue100 is not None:
+            self._continue = continue100
         self._request_info = request_info
         if timer is not None:
             self._timer = timer
@@ -810,12 +813,12 @@ class ClientResponse(HeadersMixin):
         if traces:
             self._traces = traces
         self._loop = loop
-        # store a reference to session #1985
-        self._session: Optional[ClientSession] = session
         # Save reference to _resolve_charset, so that get_encoding() will still
         # work after the response has finished reading the body.
         # TODO: Fix session=None in tests (see ClientRequest.__init__).
         if session is not None:
+            # store a reference to session #1985
+            self._session = session
             self._resolve_charset = session._resolve_charset
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
