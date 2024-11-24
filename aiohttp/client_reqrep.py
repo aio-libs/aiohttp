@@ -1156,9 +1156,7 @@ class ClientResponse(HeadersMixin):
             raise ClientConnectionError("Connection closed")
 
         if (
-            self._connection is None
-            or (protocol := self._connection.protocol) is None
-            or not protocol.upgraded
+            self._connection is not None and ((protocol := self._connection.protocol) is None or not protocol.upgraded)
         ):
             await self._wait_released()  # Underlying connection released
         return self._body
