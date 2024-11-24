@@ -39,7 +39,7 @@ _T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
 
 class StreamWriter(AbstractStreamWriter):
 
-    length: Optional[int] = None
+    length = None
     chunked: bool = False
     _eof: bool = False
     _compress: Optional[ZLibCompressor] = None
