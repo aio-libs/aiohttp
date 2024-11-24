@@ -772,6 +772,10 @@ class ClientResponse(HeadersMixin):
     _closed = True  # to allow __del__ for non-initialized properly response
     _released = False
     _in_context = False
+
+    # TODO: Fix session=None in tests (see ClientRequest.__init__).
+    _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
+
     __writer: Optional["asyncio.Task[None]"] = None
 
     def __init__(
@@ -807,12 +811,7 @@ class ClientResponse(HeadersMixin):
         self._session: Optional[ClientSession] = session
         # Save reference to _resolve_charset, so that get_encoding() will still
         # work after the response has finished reading the body.
-        if session is None:
-            # TODO: Fix session=None in tests (see ClientRequest.__init__).
-            self._resolve_charset: Callable[["ClientResponse", bytes], str] = (  # type: ignore[unreachable]
-                lambda *_: "utf-8"
-            )
-        else:
+        if session is not None:
             self._resolve_charset = session._resolve_charset
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
