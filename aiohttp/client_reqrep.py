@@ -1131,7 +1131,7 @@ class ClientResponse(HeadersMixin):
         if self._body is None:
             try:
                 self._body = await self.content.read()
-                if self._traces:
+                if self._traces is not None:
                     for trace in self._traces:
                         await trace.send_response_chunk_received(
                             self.method, self.url, self._body
