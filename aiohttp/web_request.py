@@ -816,7 +816,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
 
 class Request(BaseRequest):
-    __slots__ = ("_match_info",)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
