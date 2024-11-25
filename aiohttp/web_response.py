@@ -97,10 +97,20 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         status: int = 200,
         reason: Optional[str] = None,
         headers: Optional[LooseHeaders] = None,
+        _real_headers: Optional[CIMultiDict[str]] = None,
     ) -> None:
+        """Initialize a new stream response object.
+
+        _real_headers is an internal parameter used to pass a pre-populated
+        headers object. It is used by the `Response` class to avoid copying
+        the headers when creating a new response object. It is not intended
+        to be used by external code.
+        """
         self._state: Dict[str, Any] = {}
 
-        if headers is not None:
+        if _real_headers is not None:
+            self._headers = _real_headers
+        elif headers is not None:
             self._headers: CIMultiDict[str] = CIMultiDict(headers)
         else:
             self._headers = CIMultiDict()
@@ -556,7 +566,7 @@ class Response(StreamResponse):
                 content_type += "; charset=" + charset
             real_headers[hdrs.CONTENT_TYPE] = content_type
 
-        super().__init__(status=status, reason=reason, headers=real_headers)
+        super().__init__(status=status, reason=reason, _real_headers=real_headers)
 
         if text is not None:
             self.text = text
