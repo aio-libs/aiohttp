@@ -1,0 +1,1 @@
+Improved performance of constructing :class:`aiohttp.web.Response` with headers -- by :user:`bdraco`.
