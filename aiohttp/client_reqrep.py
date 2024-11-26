@@ -802,7 +802,6 @@ class ClientResponse(HeadersMixin):
     ) -> None:
         # URL forbids subclasses, so a simple type check is enough.
         assert type(url) is URL
-        super().__init__()
 
         self.method = method
 

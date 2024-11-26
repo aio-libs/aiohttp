@@ -96,7 +96,6 @@ class HTTPException(CookieMixin, Exception):
         text: Optional[str] = None,
         content_type: Optional[str] = None,
     ) -> None:
-        super().__init__()
         if reason is None:
             reason = self.default_reason
         elif "\n" in reason:
