@@ -61,8 +61,6 @@ def test_base_ctor() -> None:
 
     assert req.keep_alive
 
-    assert "__dict__" not in dir(req)
-
     assert req
 
 
@@ -108,8 +106,6 @@ def test_ctor() -> None:
     assert req.headers == headers
     assert req.raw_headers == ((b"FOO", b"bar"),)
     assert req.task is req._task
-
-    assert "__dict__" not in dir(req)
 
 
 def test_doubleslashes() -> None:

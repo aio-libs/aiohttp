@@ -76,28 +76,20 @@ CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
 
 
 class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
-    __slots__ = (
-        "_length_check",
-        "_body",
-        "_keep_alive",
-        "_chunked",
-        "_compression",
-        "_compression_force",
-        "_compression_strategy",
-        "_req",
-        "_payload_writer",
-        "_eof_sent",
-        "_must_be_empty_body",
-        "_body_length",
-        "_state",
-        "_headers",
-        "_status",
-        "_reason",
-        "_cookies",
-        "__weakref__",
-    )
 
     _body: Union[None, bytes, bytearray, Payload]
+    _length_check = True
+    _body = None
+    _keep_alive: Optional[bool] = None
+    _chunked: bool = False
+    _compression: bool = False
+    _compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
+    _compression_force: Optional[ContentCoding] = None
+    _req: Optional["BaseRequest"] = None
+    _payload_writer: Optional[AbstractStreamWriter] = None
+    _eof_sent: bool = False
+    _must_be_empty_body: Optional[bool] = None
+    _body_length = 0
 
     def __init__(
         self,
@@ -114,20 +106,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         the headers when creating a new response object. It is not intended
         to be used by external code.
         """
-        super().__init__()
-        self._length_check = True
-        self._body = None
-        self._keep_alive: Optional[bool] = None
-        self._chunked = False
-        self._compression = False
-        self._compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
-        self._compression_force: Optional[ContentCoding] = None
-
-        self._req: Optional[BaseRequest] = None
-        self._payload_writer: Optional[AbstractStreamWriter] = None
-        self._eof_sent = False
-        self._must_be_empty_body: Optional[bool] = None
-        self._body_length = 0
         self._state: Dict[str, Any] = {}
 
         if _real_headers is not None:
@@ -528,11 +506,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
 
 class Response(StreamResponse):
-    __slots__ = (
-        "_compressed_body",
-        "_zlib_executor_size",
-        "_zlib_executor",
-    )
+
+    _compressed_body: Optional[bytes] = None
 
     def __init__(
         self,
@@ -598,7 +573,6 @@ class Response(StreamResponse):
         else:
             self.body = body
 
-        self._compressed_body: Optional[bytes] = None
         self._zlib_executor_size = zlib_executor_size
         self._zlib_executor = zlib_executor
 
