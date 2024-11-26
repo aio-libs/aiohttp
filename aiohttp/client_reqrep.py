@@ -241,7 +241,7 @@ class ClientRequest:
         trust_env: bool = False,
         server_hostname: Optional[str] = None,
     ):
-        if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
+        if match := (not method.isalpha() and _CONTAINS_CONTROL_CHAR_RE.search(method)):
             raise ValueError(
                 f"Method cannot contain non-token characters {method!r} "
                 f"(found at least {match.group()!r})"
