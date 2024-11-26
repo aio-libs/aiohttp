@@ -687,6 +687,7 @@ async def test_content_type_skip_auto_header_bytes(
         skip_auto_headers={"Content-Type"},
         loop=loop,
     )
+    assert req.skip_auto_headers == CIMultiDict({"CONTENT-TYPE": None})
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
