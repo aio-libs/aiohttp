@@ -524,11 +524,10 @@ class ClientRequest:
 
         # enable chunked encoding if needed
         if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
-            size = body.size
-            if size is None:
-                self.chunked = True
-            else:
+            if (size := body.size) is not None:
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
+            else:
+                self.chunked = True
 
         # copy payload headers
         assert body.headers
