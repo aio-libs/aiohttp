@@ -271,6 +271,8 @@ class ClientRequest:
     __writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
+    _skip_auto_headers: Optional["CIMultiDict[None]"] = None
+
     # N.B.
     # Adding __del__ method with self._writer closing doesn't make sense
     # because _writer is instance method, thus it keeps a reference to self.
@@ -357,6 +359,10 @@ class ClientRequest:
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
+
+    @property
+    def skip_auto_headers(self) -> CIMultiDict[None]:
+        return self._skip_auto_headers or CIMultiDict()
 
     @property
     def _writer(self) -> Optional["asyncio.Task[None]"]:
@@ -469,20 +475,19 @@ class ClientRequest:
 
     def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
         if skip_auto_headers is not None:
-            self.skip_auto_headers = CIMultiDict(
+            self._skip_auto_headers = CIMultiDict(
                 (hdr, None) for hdr in sorted(skip_auto_headers)
             )
             used_headers = self.headers.copy()
-            used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+            used_headers.extend(self._skip_auto_headers)  # type: ignore[arg-type]
         else:
             # Fast path when there are no headers to skip
             # which is the most common case.
-            self.skip_auto_headers = CIMultiDict()
             used_headers = self.headers
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
-                self.headers.add(hdr, val)
+                self.headers[hdr] = val
 
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
@@ -584,21 +589,20 @@ class ClientRequest:
         self.body = body
 
         # enable chunked encoding if needed
-        if not self.chunked:
-            if hdrs.CONTENT_LENGTH not in self.headers:
-                size = body.size
-                if size is None:
-                    self.chunked = True
-                else:
-                    if hdrs.CONTENT_LENGTH not in self.headers:
-                        self.headers[hdrs.CONTENT_LENGTH] = str(size)
+        if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
+            if (size := body.size) is not None:
+                self.headers[hdrs.CONTENT_LENGTH] = str(size)
+            else:
+                self.chunked = True
 
         # copy payload headers
         assert body.headers
+        headers = self.headers
+        skip_headers = self._skip_auto_headers
         for key, value in body.headers.items():
-            if key in self.headers or key in self.skip_auto_headers:
+            if key in headers or (skip_headers is not None and key in skip_headers):
                 continue
-            self.headers[key] = value
+            headers[key] = value
 
     def update_expect_continue(self, expect: bool = False) -> None:
         if expect:
@@ -723,7 +727,10 @@ class ClientRequest:
         # set default content-type
         if (
             self.method in self.POST_METHODS
-            and hdrs.CONTENT_TYPE not in self.skip_auto_headers
+            and (
+                self._skip_auto_headers is None
+                or hdrs.CONTENT_TYPE not in self._skip_auto_headers
+            )
             and hdrs.CONTENT_TYPE not in self.headers
         ):
             self.headers[hdrs.CONTENT_TYPE] = "application/octet-stream"
