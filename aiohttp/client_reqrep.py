@@ -531,12 +531,12 @@ class ClientRequest:
 
         # copy payload headers
         assert body.headers
+        headers = self.headers
+        skip_headers = self.skip_auto_headers
         for key, value in body.headers.items():
-            if key in self.headers or (
-                self.skip_auto_headers is not None and key in self.skip_auto_headers
-            ):
+            if key in headers or (skip_headers is not None and key in skip_headers):
                 continue
-            self.headers[key] = value
+            headers[key] = value
 
     def update_expect_continue(self, expect: bool = False) -> None:
         if expect:
