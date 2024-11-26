@@ -145,8 +145,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         host: Optional[str] = None,
         remote: Optional[str] = None,
     ) -> None:
-        if state is None:
-            state = {}
         self._message = message
         self._protocol = protocol
         self._payload_writer = payload_writer
@@ -170,18 +168,18 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._cache["scheme"] = url.scheme
             self._rel_url = url.relative()
         else:
-            self._rel_url = message.url
+            self._rel_url = url
             if scheme is not None:
                 self._cache["scheme"] = scheme
             if host is not None:
                 self._cache["host"] = host
 
-        self._state = state
+        self._state = {} if state is None else state
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
 
-        transport = self._protocol.transport
+        transport = protocol.transport
         assert transport is not None
         self._transport_sslcontext = transport.get_extra_info("sslcontext")
         self._transport_peername = transport.get_extra_info("peername")
