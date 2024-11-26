@@ -76,9 +76,19 @@ CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
 
 class StreamResponse(BaseClass, HeadersMixin):
 
-    _length_check = True
-
     _body: Union[None, bytes, bytearray, Payload]
+    _length_check = True
+    _body = None
+    _keep_alive: Optional[bool] = None
+    _chunked: bool = False
+    _compression: bool = False
+    _compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
+    _compression_force: Optional[ContentCoding] = None
+    _req: Optional["BaseRequest"] = None
+    _payload_writer: Optional[AbstractStreamWriter] = None
+    _eof_sent: bool = False
+    _must_be_empty_body: Optional[bool] = None
+    _body_length = 0
 
     def __init__(
         self,
@@ -95,19 +105,6 @@ class StreamResponse(BaseClass, HeadersMixin):
         the headers when creating a new response object. It is not intended
         to be used by external code.
         """
-        self._body = None
-        self._keep_alive: Optional[bool] = None
-        self._chunked = False
-        self._compression = False
-        self._compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
-        self._compression_force: Optional[ContentCoding] = None
-        self._cookies: Optional[SimpleCookie] = None
-
-        self._req: Optional[BaseRequest] = None
-        self._payload_writer: Optional[AbstractStreamWriter] = None
-        self._eof_sent = False
-        self._must_be_empty_body: Optional[bool] = None
-        self._body_length = 0
         self._state: Dict[str, Any] = {}
 
         if _real_headers is not None:
@@ -613,6 +610,9 @@ class StreamResponse(BaseClass, HeadersMixin):
 
 
 class Response(StreamResponse):
+
+    _compressed_body: Optional[bytes] = None
+
     def __init__(
         self,
         *,
@@ -677,7 +677,6 @@ class Response(StreamResponse):
         else:
             self.body = body
 
-        self._compressed_body: Optional[bytes] = None
         self._zlib_executor_size = zlib_executor_size
         self._zlib_executor = zlib_executor
 
