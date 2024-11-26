@@ -527,7 +527,7 @@ class ClientRequest:
             size = body.size
             if size is None:
                 self.chunked = True
-            elif hdrs.CONTENT_LENGTH not in self.headers:
+            else:
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
 
         # copy payload headers
