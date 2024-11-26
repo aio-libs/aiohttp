@@ -89,6 +89,7 @@ class StreamResponse(BaseClass, HeadersMixin):
     _eof_sent: bool = False
     _must_be_empty_body: Optional[bool] = None
     _body_length = 0
+    _cookies: Optional[SimpleCookie] = None
 
     def __init__(
         self,
