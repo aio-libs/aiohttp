@@ -209,7 +209,7 @@ class ClientRequest:
     __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
-    skip_auto_headers: Optional["CIMultiDict[str]"] = None
+    skip_auto_headers: Optional["CIMultiDict[None]"] = None
 
     # N.B.
     # Adding __del__ method with self._writer closing doesn't make sense
