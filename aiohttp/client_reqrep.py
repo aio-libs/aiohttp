@@ -209,7 +209,7 @@ class ClientRequest:
     __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
-    skip_auto_headers: Optional["CIMultiDict[None]"] = None
+    _skip_auto_headers: Optional["CIMultiDict[None]"] = None
 
     # N.B.
     # Adding __del__ method with self._writer closing doesn't make sense
@@ -294,6 +294,10 @@ class ClientRequest:
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
+
+    @property
+    def skip_auto_headers(self) -> CIMultiDict[None]:
+        return self._skip_auto_headers or CIMultiDict()
 
     @property
     def _writer(self) -> Optional["asyncio.Task[None]"]:
@@ -406,11 +410,11 @@ class ClientRequest:
 
     def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
         if skip_auto_headers is not None:
-            self.skip_auto_headers = CIMultiDict(
+            self._skip_auto_headers = CIMultiDict(
                 (hdr, None) for hdr in sorted(skip_auto_headers)
             )
             used_headers = self.headers.copy()
-            used_headers.extend(self.skip_auto_headers)  # type: ignore[arg-type]
+            used_headers.extend(self._skip_auto_headers)  # type: ignore[arg-type]
         else:
             # Fast path when there are no headers to skip
             # which is the most common case.
@@ -532,7 +536,7 @@ class ClientRequest:
         # copy payload headers
         assert body.headers
         headers = self.headers
-        skip_headers = self.skip_auto_headers
+        skip_headers = self._skip_auto_headers
         for key, value in body.headers.items():
             if key in headers or (skip_headers is not None and key in skip_headers):
                 continue
@@ -665,8 +669,8 @@ class ClientRequest:
         if (
             self.method in self.POST_METHODS
             and (
-                self.skip_auto_headers is None
-                or hdrs.CONTENT_TYPE not in self.skip_auto_headers
+                self._skip_auto_headers is None
+                or hdrs.CONTENT_TYPE not in self._skip_auto_headers
             )
             and hdrs.CONTENT_TYPE not in self.headers
         ):
