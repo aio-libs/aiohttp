@@ -87,7 +87,7 @@ class FileResponse(StreamResponse):
 
     def _seek_and_read(self, fobj: IO[Any], offset: int, chunk_size: int) -> bytes:
         fobj.seek(offset)
-        return fobj.read(chunk_size)
+        return fobj.read(chunk_size)  # type: ignore[no-any-return]
 
     async def _sendfile_fallback(
         self, writer: AbstractStreamWriter, fobj: IO[Any], offset: int, count: int
