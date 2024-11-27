@@ -1,0 +1,3 @@
+Downgrade logging of ``BadStatusLine`` exceptions to debug level -- by :user:`bdraco`.
+
+``BadStatusLine`` exceptions are relatively common, especially when connected to the public internet, because browsers or other clients may try to speak SSL to a plaintext server or vice-versa. These exceptions can quickly fill the log with noise when nothing is wrong.
