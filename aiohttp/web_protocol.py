@@ -713,7 +713,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         Returns HTTP response with specific status code. Logs additional
         information. It always closes current connection.
         """
-        if isinstance(exc, BadHttpMethod):
+        if (
+            self._manager
+            and self._manager.requests_count == 1
+            and isinstance(exc, BadHttpMethod)
+        ):
             # BadHttpMethod is common when a client sends non-HTTP
             # or encrypted traffic to an HTTP port. This is expected
             # to happen when connected to the public internet so we log
