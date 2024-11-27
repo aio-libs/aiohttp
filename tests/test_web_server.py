@@ -75,7 +75,7 @@ async def test_raw_server_logs_invalid_request_with_loop_debug(
     aiohttp_client: AiohttpClient,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    exc = BadStatusLine(b"\x16\x03\x03\x01F\x01", "error")
+    exc = BadStatusLine(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
@@ -100,7 +100,7 @@ async def test_raw_server_logs_invalid_request_without_loop_debug(
     aiohttp_client: AiohttpClient,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    exc = BadStatusLine(b"\x16\x03\x03\x01F\x01", "error")
+    exc = BadStatusLine(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
