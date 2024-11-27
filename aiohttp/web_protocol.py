@@ -35,6 +35,7 @@ from .http import (
     RawRequestMessage,
     StreamWriter,
 )
+from .http_exceptions import BadHttpMethod
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .tcp_helpers import tcp_keepalive
@@ -712,7 +713,18 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         Returns HTTP response with specific status code. Logs additional
         information. It always closes current connection.
         """
-        self.log_exception("Error handling request", exc_info=exc)
+        if (
+            self._manager
+            and self._manager.requests_count == 1
+            and isinstance(exc, BadHttpMethod)
+        ):
+            # BadHttpMethod is common when a client sends non-HTTP
+            # or encrypted traffic to an HTTP port. This is expected
+            # to happen when connected to the public internet so we log
+            # it at the debug level as to not fill logs with noise.
+            self.logger.debug("Error handling request", exc_info=exc)
+        else:
+            self.log_exception("Error handling request", exc_info=exc)
 
         # some data already got sent, connection is broken
         if request.writer.output_size > 0:
