@@ -498,6 +498,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         task: "asyncio.Task[None]",
         _cls: Type[Request] = Request,
     ) -> Request:
+        if TYPE_CHECKING:
+            assert self._loop is not None
         return _cls(
             message,
             payload,
