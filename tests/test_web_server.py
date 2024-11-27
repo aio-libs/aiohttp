@@ -101,7 +101,7 @@ async def test_raw_server_logs_invalid_method_without_loop_debug(
     loop = asyncio.get_event_loop()
     loop.set_debug(False)
     logger = mock.Mock()
-    server = await aiohttp_raw_server(handler, logger=logger)
+    server = await aiohttp_raw_server(handler, logger=logger, debug=False)
     cli = await aiohttp_client(server)
     resp = await cli.get("/path/to")
     assert resp.status == 500
@@ -161,7 +161,7 @@ async def test_raw_server_logs_bad_status_line_as_exception(
     loop = asyncio.get_event_loop()
     loop.set_debug(False)
     logger = mock.Mock()
-    server = await aiohttp_raw_server(handler, logger=logger)
+    server = await aiohttp_raw_server(handler, logger=logger, debug=False)
     cli = await aiohttp_client(server)
     resp = await cli.get("/path/to")
     assert resp.status == 500
