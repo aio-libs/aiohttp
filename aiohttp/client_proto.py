@@ -258,7 +258,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         if not data:
             return
 
-        # custom payload parser
+        # custom payload parser - currently always WebSocketReader
         if self._payload_parser is not None:
             payload_eof, payload_tail = self._payload_parser.feed_data(data)
             if payload_eof:

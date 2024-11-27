@@ -75,6 +75,35 @@ async def test_uncompleted_message(loop: asyncio.AbstractEventLoop) -> None:
     assert dict(exc.message.headers) == {"Location": "http://python.org/"}
 
 
+async def test_multiple_responses_single_read(loop: asyncio.AbstractEventLoop) -> None:
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mock.Mock())
+    conn = mock.Mock(protocol=proto)
+    proto.set_response_params(read_until_eof=True)
+
+    proto.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab"
+        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd"
+        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nef"
+    )
+
+    expected = [b"ab", b"cd", b"ef"]
+    for payload in expected:
+        response = ClientResponse(
+            "get",
+            URL("http://def-cl-resp.org"),
+            writer=mock.Mock(),
+            continue100=None,
+            timer=TimerNoop(),
+            request_info=mock.Mock(),
+            traces=[],
+            loop=loop,
+            session=mock.Mock(),
+        )
+        await response.start(conn)
+        await response.read() == payload
+
+
 async def test_client_protocol_readuntil_eof(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
