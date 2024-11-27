@@ -123,6 +123,40 @@ async def test_multiple_responses_one_byte_at_a_time(
             await response.read() == payload
 
 
+async def test_unexpected_exception_during_data_received(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    proto = ResponseHandler(loop=loop)
+
+    class PatchableHttpResponseParser(http.HttpResponseParser):
+        """Subclass of HttpResponseParser to make it patchable."""
+
+    with mock.patch(
+        "aiohttp.client_proto.HttpResponseParser", PatchableHttpResponseParser
+    ):
+        proto.connection_made(mock.Mock())
+        conn = mock.Mock(protocol=proto)
+        proto.set_response_params(read_until_eof=True)
+        proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab")
+        response = ClientResponse(
+            "get",
+            URL("http://def-cl-resp.org"),
+            writer=mock.Mock(),
+            continue100=None,
+            timer=TimerNoop(),
+            request_info=mock.Mock(),
+            traces=[],
+            loop=loop,
+            session=mock.Mock(),
+        )
+        await response.start(conn)
+        await response.read() == b"ab"
+        with mock.patch.object(proto._parser, "feed_data", side_effect=ValueError):
+            proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd")
+
+    assert isinstance(proto.exception(), http.HttpProcessingError)
+
+
 async def test_client_protocol_readuntil_eof(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
