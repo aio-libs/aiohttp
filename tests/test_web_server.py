@@ -1,11 +1,14 @@
 import asyncio
 import socket
 from contextlib import suppress
+from typing import NoReturn
 from unittest import mock
 
 import pytest
 
 from aiohttp import client, web
+from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer
 
 
 async def test_simple_server(aiohttp_raw_server, aiohttp_client) -> None:
@@ -56,7 +59,125 @@ async def test_raw_server_not_http_exception(aiohttp_raw_server, aiohttp_client)
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_raw_server_handler_timeout(aiohttp_raw_server, aiohttp_client) -> None:
+async def test_raw_server_logs_invalid_method_with_loop_debug(
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise exc
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+
+    txt = await resp.text()
+    assert "Traceback (most recent call last):\n" in txt
+
+    # BadHttpMethod should be logged as debug
+    # on the first request since the client may
+    # be probing for TLS/SSL support which is
+    # expected to fail
+    logger.debug.assert_called_with("Error handling request", exc_info=exc)
+
+
+async def test_raw_server_logs_invalid_method_without_loop_debug(
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise exc
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(False)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger, debug=False)
+    cli = await aiohttp_client(server)
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+
+    txt = await resp.text()
+    assert "Traceback (most recent call last):\n" not in txt
+
+    # BadHttpMethod should be logged as debug
+    # on the first request since the client may
+    # be probing for TLS/SSL support which is
+    # expected to fail
+    logger.debug.assert_called_with("Error handling request", exc_info=exc)
+
+
+async def test_raw_server_logs_invalid_method_second_request(
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+    request_count = 0
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        nonlocal request_count
+        request_count += 1
+        if request_count == 2:
+            raise exc
+        return web.Response()
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(False)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)
+    resp = await cli.get("/path/to")
+    assert resp.status == 200
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+    # BadHttpMethod should be logged as an exception
+    # if its not the first request since we know
+    # that the client already was speaking HTTP
+    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+
+
+async def test_raw_server_logs_bad_status_line_as_exception(
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    exc = BadStatusLine(b"\x16\x03\x03\x01F\x01".decode(), "error")
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise exc
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(False)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger, debug=False)
+    cli = await aiohttp_client(server)
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+
+    txt = await resp.text()
+    assert "Traceback (most recent call last):\n" not in txt
+
+    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+
+
+async def test_raw_server_handler_timeout(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     exc = asyncio.TimeoutError("error")
 
     async def handler(request):
