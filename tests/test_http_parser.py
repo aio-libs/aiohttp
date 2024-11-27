@@ -992,15 +992,9 @@ def test_http_request_parser_not_http_protocol(
         parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
 
 
-@pytest.mark.parametrize(
-    "rfc9110_5_6_2_token_delim",
-    [bytes([i]) for i in rb'"(),/:;<=>?@[\]{}'],
-)
-def test_http_request_parser_bad_method(
-    parser: HttpRequestParser, rfc9110_5_6_2_token_delim: bytes
-) -> None:
+def test_http_request_parser_bad_method(parser: HttpRequestParser) -> None:
     with pytest.raises(http_exceptions.BadHttpMethod):
-        parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
+        parser.feed_data(b"\x16\x03\x03\x01F\x01")
 
 
 def test_http_request_parser_bad_version(parser: HttpRequestParser) -> None:
