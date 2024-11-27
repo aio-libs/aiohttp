@@ -10,6 +10,66 @@
 
 .. towncrier release notes start
 
+3.11.8 (2024-11-27)
+===================
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of creating :class:`aiohttp.ClientResponse` objects when there are no cookies -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10029`.
+
+
+
+- Improved performance of creating :class:`aiohttp.ClientResponse` objects -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10030`.
+
+
+
+- Improved performances of creating objects during the HTTP request lifecycle -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10037`.
+
+
+
+- Improved performance of constructing :class:`aiohttp.web.Response` with headers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10043`.
+
+
+
+- Improved performance of making requests when there are no auto headers to skip -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10049`.
+
+
+
+- Downgraded logging of invalid HTTP method exceptions on the first request to debug level -- by :user:`bdraco`.
+
+  HTTP requests starting with an invalid method are relatively common, especially when connected to the public internet, because browsers or other clients may try to speak SSL to a plain-text server or vice-versa. These exceptions can quickly fill the log with noise when nothing is wrong.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10055`.
+
+
+
+
+----
+
+
 3.11.7 (2024-11-21)
 ===================
 
