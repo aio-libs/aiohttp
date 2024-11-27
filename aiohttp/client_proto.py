@@ -260,13 +260,13 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         # custom payload parser - currently always WebSocketReader
         if self._payload_parser is not None:
-            payload_eof, payload_tail = self._payload_parser.feed_data(data)
-            if payload_eof:
+            eof, tail = self._payload_parser.feed_data(data)
+            if eof:
                 self._payload = None
                 self._payload_parser = None
 
-                if payload_tail:
-                    self.data_received(payload_tail)
+                if tail:
+                    self.data_received(tail)
             return
 
         if self._upgraded or self._parser is None:
