@@ -75,7 +75,23 @@ async def test_uncompleted_message(loop: asyncio.AbstractEventLoop) -> None:
     assert dict(exc.message.headers) == {"Location": "http://python.org/"}
 
 
-async def test_multiple_responses_single_read(loop: asyncio.AbstractEventLoop) -> None:
+async def test_data_received_after_close(loop: asyncio.AbstractEventLoop) -> None:
+    proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    proto.connection_made(transport)
+    proto.set_response_params(read_until_eof=True)
+    proto.close()
+    assert transport.close.called
+    transport.close.reset_mock()
+    proto.data_received(b"HTTP\r\n\r\n")
+    assert proto.should_close
+    assert not transport.close.called
+    assert isinstance(proto.exception(), http.HttpProcessingError)
+
+
+async def test_multiple_responses_one_byte_at_a_time(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     proto = ResponseHandler(loop=loop)
     proto.connection_made(mock.Mock())
     conn = mock.Mock(protocol=proto)
