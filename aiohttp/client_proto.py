@@ -260,13 +260,13 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         # custom payload parser
         if self._payload_parser is not None:
-            eof, tail = self._payload_parser.feed_data(data)
-            if eof:
+            payload_eof, payload_tail = self._payload_parser.feed_data(data)
+            if payload_eof:
                 self._payload = None
                 self._payload_parser = None
 
-                if tail:
-                    self.data_received(tail)
+                if payload_tail:
+                    self.data_received(payload_tail)
             return
 
         if self._upgraded or self._parser is None:
