@@ -72,7 +72,89 @@ async def test_uncompleted_message(loop) -> None:
     assert dict(exc.message.headers) == {"Location": "http://python.org/"}
 
 
-async def test_client_protocol_readuntil_eof(loop) -> None:
+async def test_data_received_after_close(loop: asyncio.AbstractEventLoop) -> None:
+    proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    proto.connection_made(transport)
+    proto.set_response_params(read_until_eof=True)
+    proto.close()
+    assert transport.close.called
+    transport.close.reset_mock()
+    proto.data_received(b"HTTP\r\n\r\n")
+    assert proto.should_close
+    assert not transport.close.called
+    assert isinstance(proto.exception(), http.HttpProcessingError)
+
+
+async def test_multiple_responses_one_byte_at_a_time(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mock.Mock())
+    conn = mock.Mock(protocol=proto)
+    proto.set_response_params(read_until_eof=True)
+
+    for _ in range(2):
+        messages = (
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab"
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd"
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nef"
+        )
+        for i in range(len(messages)):
+            proto.data_received(messages[i : i + 1])
+
+        expected = [b"ab", b"cd", b"ef"]
+        for payload in expected:
+            response = ClientResponse(
+                "get",
+                URL("http://def-cl-resp.org"),
+                writer=mock.Mock(),
+                continue100=None,
+                timer=TimerNoop(),
+                request_info=mock.Mock(),
+                traces=[],
+                loop=loop,
+                session=mock.Mock(),
+            )
+            await response.start(conn)
+            await response.read() == payload
+
+
+async def test_unexpected_exception_during_data_received(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    proto = ResponseHandler(loop=loop)
+
+    class PatchableHttpResponseParser(http.HttpResponseParser):
+        """Subclass of HttpResponseParser to make it patchable."""
+
+    with mock.patch(
+        "aiohttp.client_proto.HttpResponseParser", PatchableHttpResponseParser
+    ):
+        proto.connection_made(mock.Mock())
+        conn = mock.Mock(protocol=proto)
+        proto.set_response_params(read_until_eof=True)
+        proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab")
+        response = ClientResponse(
+            "get",
+            URL("http://def-cl-resp.org"),
+            writer=mock.Mock(),
+            continue100=None,
+            timer=TimerNoop(),
+            request_info=mock.Mock(),
+            traces=[],
+            loop=loop,
+            session=mock.Mock(),
+        )
+        await response.start(conn)
+        await response.read() == b"ab"
+        with mock.patch.object(proto._parser, "feed_data", side_effect=ValueError):
+            proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd")
+
+    assert isinstance(proto.exception(), http.HttpProcessingError)
+
+
+async def test_client_protocol_readuntil_eof(loop: asyncio.AbstractEventLoop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
