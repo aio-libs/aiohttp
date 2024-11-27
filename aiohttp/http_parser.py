@@ -574,9 +574,6 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             )
 
         # method
-        if not method.isalpha():
-            raise NotHttpProtocol(line)
-
         if not TOKENRE.fullmatch(method):
             raise BadHttpMethod(method)
 

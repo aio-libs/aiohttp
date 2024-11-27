@@ -985,6 +985,17 @@ def test_http_request_parser_two_slashes(parser: HttpRequestParser) -> None:
     "rfc9110_5_6_2_token_delim",
     [bytes([i]) for i in rb'"(),/:;<=>?@[\]{}'],
 )
+def test_http_request_parser_not_http_protocol(
+    parser: HttpRequestParser, rfc9110_5_6_2_token_delim: bytes
+) -> None:
+    with pytest.raises(http_exceptions.NotHttpProtocol):
+        parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
+
+
+@pytest.mark.parametrize(
+    "rfc9110_5_6_2_token_delim",
+    [bytes([i]) for i in rb'"(),/:;<=>?@[\]{}'],
+)
 def test_http_request_parser_bad_method(
     parser: HttpRequestParser, rfc9110_5_6_2_token_delim: bytes
 ) -> None:
