@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 from aiohttp import client, web
-from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
+from aiohttp.http_exceptions import BadStatusLine, NotHttpProtocol
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer
 
 
@@ -70,12 +70,12 @@ async def test_raw_server_not_http_exception(
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_raw_server_logs_invalid_method_with_loop_debug(
+async def test_raw_server_logs_non_http_protocol_with_loop_debug(
     aiohttp_raw_server: AiohttpRawServer,
     aiohttp_client: AiohttpClient,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+    exc = NotHttpProtocol(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
@@ -99,12 +99,12 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
     logger.debug.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_raw_server_logs_invalid_method_without_loop_debug(
+async def test_raw_server_logs_non_http_protocol_without_loop_debug(
     aiohttp_raw_server: AiohttpRawServer,
     aiohttp_client: AiohttpClient,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+    exc = NotHttpProtocol(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
@@ -128,12 +128,12 @@ async def test_raw_server_logs_invalid_method_without_loop_debug(
     logger.debug.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_raw_server_logs_invalid_method_second_request(
+async def test_raw_server_logs_non_http_protocol_second_request(
     aiohttp_raw_server: AiohttpRawServer,
     aiohttp_client: AiohttpClient,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+    exc = NotHttpProtocol(b"\x16\x03\x03\x01F\x01".decode(), "error")
     request_count = 0
 
     async def handler(request: web.BaseRequest) -> web.Response:

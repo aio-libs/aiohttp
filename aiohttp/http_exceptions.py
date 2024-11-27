@@ -104,5 +104,11 @@ class BadHttpMethod(BadStatusLine):
         super().__init__(line, error or f"Bad HTTP method in status line {line!r}")
 
 
+class NotHttpProtocol(BadStatusLine):
+
+    def __init__(self, line: str = "", error: Optional[str] = None) -> None:
+        super().__init__(line, error or f"Not HTTP protocol {line!r}")
+
+
 class InvalidURLError(BadHttpMessage):
     pass

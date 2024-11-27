@@ -29,6 +29,7 @@ from .http_exceptions import (
     InvalidHeader,
     InvalidURLError,
     LineTooLong,
+    NotHttpProtocol,
     PayloadEncodingError,
     TransferEncodingError,
 )
@@ -833,6 +834,8 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
                  cparser.HPE_INVALID_TRANSFER_ENCODING}:
         return BadHttpMessage(err_msg)
     elif errno == cparser.HPE_INVALID_METHOD:
+        if not data.partition(b" ")[0].isalpha():
+            return NotHttpProtocol(err_msg)
         return BadHttpMethod(error=err_msg)
     elif errno in {cparser.HPE_INVALID_STATUS,
                    cparser.HPE_INVALID_VERSION}:

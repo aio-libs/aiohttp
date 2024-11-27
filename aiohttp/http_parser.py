@@ -45,6 +45,7 @@ from .http_exceptions import (
     InvalidHeader,
     InvalidURLError,
     LineTooLong,
+    NotHttpProtocol,
     TransferEncodingError,
 )
 from .http_writer import HttpVersion, HttpVersion10
@@ -565,7 +566,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         try:
             method, path, version = line.split(" ", maxsplit=2)
         except ValueError:
-            raise BadHttpMethod(line) from None
+            raise NotHttpProtocol(line) from None
 
         if len(path) > self.max_line_size:
             raise LineTooLong(
@@ -573,6 +574,9 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             )
 
         # method
+        if not method.isalpha():
+            raise NotHttpProtocol(line)
+
         if not TOKENRE.fullmatch(method):
             raise BadHttpMethod(method)
 

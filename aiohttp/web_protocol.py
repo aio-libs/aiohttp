@@ -35,7 +35,7 @@ from .http import (
     RawRequestMessage,
     StreamWriter,
 )
-from .http_exceptions import BadHttpMethod
+from .http_exceptions import NotHttpProtocol
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .tcp_helpers import tcp_keepalive
@@ -716,9 +716,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         if (
             self._manager
             and self._manager.requests_count == 1
-            and isinstance(exc, BadHttpMethod)
+            and isinstance(exc, NotHttpProtocol)
         ):
-            # BadHttpMethod is common when a client sends non-HTTP
+            # NotHttpProtocol is common when a client sends non-HTTP
             # or encrypted traffic to an HTTP port. This is expected
             # to happen when connected to the public internet so we log
             # it at the debug level as to not fill logs with noise.
