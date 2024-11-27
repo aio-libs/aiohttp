@@ -319,8 +319,5 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             else:
                 self._drop_timeout()
 
-        if tail:
-            if upgraded:
-                self.data_received(tail)
-            else:
-                self._tail = tail
+        if upgraded and tail:
+            self.data_received(tail)
