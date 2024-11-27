@@ -92,6 +92,10 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
     txt = await resp.text()
     assert "Traceback (most recent call last):\n" in txt
 
+    # BadHttpMethod should be logged as an debug
+    # on the first request since the client may
+    # be probing for TLS/SSL support which is
+    # expected to fail
     logger.debug.assert_called_with("Error handling request", exc_info=exc)
 
 
@@ -117,6 +121,10 @@ async def test_raw_server_logs_invalid_method_without_loop_debug(
     txt = await resp.text()
     assert "Traceback (most recent call last):\n" not in txt
 
+    # BadHttpMethod should be logged as an debug
+    # on the first request since the client may
+    # be probing for TLS/SSL support which is
+    # expected to fail
     logger.debug.assert_called_with("Error handling request", exc_info=exc)
 
 
