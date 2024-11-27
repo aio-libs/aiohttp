@@ -258,7 +258,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         if not data:
             return
 
-        # custom payload parser
+        # custom payload parser - currently always WebSocketReader
         if self._payload_parser is not None:
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
@@ -268,57 +268,56 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                 if tail:
                     self.data_received(tail)
             return
-        else:
-            if self._upgraded or self._parser is None:
-                # i.e. websocket connection, websocket parser is not set yet
-                self._tail += data
+
+        if self._upgraded or self._parser is None:
+            # i.e. websocket connection, websocket parser is not set yet
+            self._tail += data
+            return
+
+        # parse http messages
+        try:
+            messages, upgraded, tail = self._parser.feed_data(data)
+        except BaseException as underlying_exc:
+            if self.transport is not None:
+                # connection.release() could be called BEFORE
+                # data_received(), the transport is already
+                # closed in this case
+                self.transport.close()
+            # should_close is True after the call
+            if isinstance(underlying_exc, HttpProcessingError):
+                exc = HttpProcessingError(
+                    code=underlying_exc.code,
+                    message=underlying_exc.message,
+                    headers=underlying_exc.headers,
+                )
             else:
-                # parse http messages
-                try:
-                    messages, upgraded, tail = self._parser.feed_data(data)
-                except BaseException as underlying_exc:
-                    if self.transport is not None:
-                        # connection.release() could be called BEFORE
-                        # data_received(), the transport is already
-                        # closed in this case
-                        self.transport.close()
-                    # should_close is True after the call
-                    if isinstance(underlying_exc, HttpProcessingError):
-                        exc = HttpProcessingError(
-                            code=underlying_exc.code,
-                            message=underlying_exc.message,
-                            headers=underlying_exc.headers,
-                        )
-                    else:
-                        exc = HttpProcessingError()
-                    self.set_exception(exc, underlying_exc)
-                    return
+                exc = HttpProcessingError()
+            self.set_exception(exc, underlying_exc)
+            return
 
-                self._upgraded = upgraded
+        self._upgraded = upgraded
 
-                payload: Optional[StreamReader] = None
-                for message, payload in messages:
-                    if message.should_close:
-                        self._should_close = True
+        payload: Optional[StreamReader] = None
+        for message, payload in messages:
+            if message.should_close:
+                self._should_close = True
 
-                    self._payload = payload
+            self._payload = payload
 
-                    if self._skip_payload or message.code in EMPTY_BODY_STATUS_CODES:
-                        self.feed_data((message, EMPTY_PAYLOAD))
-                    else:
-                        self.feed_data((message, payload))
-                if payload is not None:
-                    # new message(s) was processed
-                    # register timeout handler unsubscribing
-                    # either on end-of-stream or immediately for
-                    # EMPTY_PAYLOAD
-                    if payload is not EMPTY_PAYLOAD:
-                        payload.on_eof(self._drop_timeout)
-                    else:
-                        self._drop_timeout()
+            if self._skip_payload or message.code in EMPTY_BODY_STATUS_CODES:
+                self.feed_data((message, EMPTY_PAYLOAD))
+            else:
+                self.feed_data((message, payload))
 
-                if tail:
-                    if upgraded:
-                        self.data_received(tail)
-                    else:
-                        self._tail = tail
+        if payload is not None:
+            # new message(s) was processed
+            # register timeout handler unsubscribing
+            # either on end-of-stream or immediately for
+            # EMPTY_PAYLOAD
+            if payload is not EMPTY_PAYLOAD:
+                payload.on_eof(self._drop_timeout)
+            else:
+                self._drop_timeout()
+
+        if upgraded and tail:
+            self.data_received(tail)
