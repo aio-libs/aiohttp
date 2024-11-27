@@ -88,6 +88,10 @@ class FileResponse(StreamResponse):
         self._path = pathlib.Path(path)
         self._chunk_size = chunk_size
 
+    def _seek_and_read(self, fobj: IO[Any], offset: int, chunk_size: int) -> bytes:
+        fobj.seek(offset)
+        return fobj.read(chunk_size)  # type: ignore[no-any-return]
+
     async def _sendfile_fallback(
         self, writer: AbstractStreamWriter, fobj: IO[Any], offset: int, count: int
     ) -> AbstractStreamWriter:
@@ -96,10 +100,9 @@ class FileResponse(StreamResponse):
 
         chunk_size = self._chunk_size
         loop = asyncio.get_event_loop()
-
-        await loop.run_in_executor(None, fobj.seek, offset)
-
-        chunk = await loop.run_in_executor(None, fobj.read, chunk_size)
+        chunk = await loop.run_in_executor(
+            None, self._seek_and_read, fobj, offset, chunk_size
+        )
         while chunk:
             await writer.write(chunk)
             count = count - chunk_size
