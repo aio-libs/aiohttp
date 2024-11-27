@@ -965,7 +965,7 @@ def test_http_request_parser_two_slashes(parser) -> None:
 def test_http_request_parser_bad_method(
     parser, rfc9110_5_6_2_token_delim: bytes
 ) -> None:
-    with pytest.raises(http_exceptions.BadStatusLine):
+    with pytest.raises(http_exceptions.BadHttpMethod):
         parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
 
 
