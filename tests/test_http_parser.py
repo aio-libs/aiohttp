@@ -992,9 +992,23 @@ def test_http_request_parser_bad_method(
         parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
 
 
-def test_http_request_parser_not_http_protocol(parser: HttpRequestParser) -> None:
+@pytest.mark.parametrize(
+    "not_http_protocol_data",
+    [
+        b"\x16\x03\x03\x01F\x01",
+        b"\x16\x03\x01",
+        b"\x16\x03\x01\x02",
+        b"\x16",
+    ],
+)
+def test_http_request_parser_not_http_protocol(
+    parser: HttpRequestParser, not_http_protocol_data: bytes
+) -> None:
     with pytest.raises(http_exceptions.NotHttpProtocol):
-        parser.feed_data(b"\x16\x03\x03\x01F\x01\r\n\r\n")
+        # The \r\n\r\n is to ensure that the py parser gets to the
+        # point where it tries to parse the protocol as it differs
+        # from the C parser.
+        parser.feed_data(not_http_protocol_data + b"\r\n\r\n")
 
 
 def test_http_request_parser_bad_version(parser: HttpRequestParser) -> None:
