@@ -1,0 +1,1 @@
+Added a new ``NotHttpProtocol`` internal exception to better differentiate invalid HTTP methods and gibberish on the wire -- by :user:`bdraco`.
