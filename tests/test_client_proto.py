@@ -81,11 +81,13 @@ async def test_multiple_responses_single_read(loop: asyncio.AbstractEventLoop) -
     conn = mock.Mock(protocol=proto)
     proto.set_response_params(read_until_eof=True)
 
-    proto.data_received(
+    messages = (
         b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab"
         b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd"
         b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nef"
     )
+    for i in range(len(messages)):
+        proto.data_received(messages[i : i + 1])
 
     expected = [b"ab", b"cd", b"ef"]
     for payload in expected:
