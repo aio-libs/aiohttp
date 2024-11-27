@@ -38,6 +38,7 @@ from .helpers import (
 )
 from .http_exceptions import (
     BadHttpMessage,
+    BadHttpMethod,
     BadStatusLine,
     ContentEncodingError,
     ContentLengthError,
@@ -564,7 +565,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         try:
             method, path, version = line.split(" ", maxsplit=2)
         except ValueError:
-            raise BadStatusLine(line) from None
+            raise BadHttpMethod(line) from None
 
         if len(path) > self.max_line_size:
             raise LineTooLong(
@@ -573,7 +574,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
 
         # method
         if not TOKENRE.fullmatch(method):
-            raise BadStatusLine(method)
+            raise BadHttpMethod(method)
 
         # version
         match = VERSRE.fullmatch(version)

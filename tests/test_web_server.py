@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 from aiohttp import client, web
-from aiohttp.http_exceptions import BadStatusLine
+from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer
 
 
@@ -70,12 +70,12 @@ async def test_raw_server_not_http_exception(
     logger.exception.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_raw_server_logs_invalid_request_with_loop_debug(
+async def test_raw_server_logs_invalid_method_with_loop_debug(
     aiohttp_raw_server: AiohttpRawServer,
     aiohttp_client: AiohttpClient,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    exc = BadStatusLine(b"\x16\x03\x03\x01F\x01".decode(), "error")
+    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
@@ -95,7 +95,32 @@ async def test_raw_server_logs_invalid_request_with_loop_debug(
     logger.debug.assert_called_with("Error handling request", exc_info=exc)
 
 
-async def test_raw_server_logs_invalid_request_without_loop_debug(
+async def test_raw_server_logs_invalid_method_without_loop_debug(
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise exc
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(False)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+
+    txt = await resp.text()
+    assert "Traceback (most recent call last):\n" not in txt
+
+    logger.debug.assert_called_with("Error handling request", exc_info=exc)
+
+
+async def test_raw_server_logs_bad_status_line_as_exception(
     aiohttp_raw_server: AiohttpRawServer,
     aiohttp_client: AiohttpClient,
     loop: asyncio.AbstractEventLoop,
@@ -117,7 +142,7 @@ async def test_raw_server_logs_invalid_request_without_loop_debug(
     txt = await resp.text()
     assert "Traceback (most recent call last):\n" not in txt
 
-    logger.debug.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with("Error handling request", exc_info=exc)
 
 
 async def test_raw_server_handler_timeout(

@@ -23,6 +23,7 @@ from aiohttp.helpers import DEBUG, set_exception
 
 from .http_exceptions import (
     BadHttpMessage,
+    BadHttpMethod,
     BadStatusLine,
     ContentLengthError,
     InvalidHeader,
@@ -831,8 +832,9 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
                  cparser.HPE_INVALID_EOF_STATE,
                  cparser.HPE_INVALID_TRANSFER_ENCODING}:
         return BadHttpMessage(err_msg)
-    elif errno in {cparser.HPE_INVALID_STATUS,
-                   cparser.HPE_INVALID_METHOD,
+    elif errno == cparser.HPE_INVALID_METHOD:
+        return BadHttpMethod(error=err_msg)
+    elif errno in {cparser.HPE_INVALID_METHOD,
                    cparser.HPE_INVALID_VERSION}:
         return BadStatusLine(error=err_msg)
     elif errno == cparser.HPE_INVALID_URL:
