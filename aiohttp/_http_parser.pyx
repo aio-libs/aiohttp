@@ -834,7 +834,7 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
         return BadHttpMessage(err_msg)
     elif errno == cparser.HPE_INVALID_METHOD:
         return BadHttpMethod(error=err_msg)
-    elif errno in {cparser.HPE_INVALID_METHOD,
+    elif errno in {cparser.HPE_INVALID_STATUS,
                    cparser.HPE_INVALID_VERSION}:
         return BadStatusLine(error=err_msg)
     elif errno == cparser.HPE_INVALID_URL:
