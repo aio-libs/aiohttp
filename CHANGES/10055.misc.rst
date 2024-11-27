@@ -1,3 +1,0 @@
-Downgraded logging of invalid HTTP method exceptions on the first request to debug level -- by :user:`bdraco`.
-
-HTTP requests starting with an invalid method are relatively common, especially when connected to the public internet, because browsers or other clients may try to speak SSL to a plain-text server or vice-versa. These exceptions can quickly fill the log with noise when nothing is wrong.
