@@ -120,6 +120,37 @@ async def test_raw_server_logs_invalid_method_without_loop_debug(
     logger.debug.assert_called_with("Error handling request", exc_info=exc)
 
 
+async def test_raw_server_logs_invalid_method_second_request(
+    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_client: AiohttpClient,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+    request_count = 0
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        nonlocal request_count
+        request_count += 1
+        if request_count == 2:
+            raise exc
+        return web.Response()
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(False)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)
+    resp = await cli.get("/path/to")
+    assert resp.status == 200
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+    # BadHttpMethod should be logged as an exception
+    # if its not the first request since we know
+    # that the client already was speaking HTTP
+    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+
+
 async def test_raw_server_logs_bad_status_line_as_exception(
     aiohttp_raw_server: AiohttpRawServer,
     aiohttp_client: AiohttpClient,
