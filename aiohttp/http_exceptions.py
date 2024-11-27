@@ -97,5 +97,12 @@ class BadStatusLine(BadHttpMessage):
         self.line = line
 
 
+class BadHttpMethod(BadStatusLine):
+    """Invalid HTTP method in status line."""
+
+    def __init__(self, line: str = "", error: Optional[str] = None) -> None:
+        super().__init__(line, error or f"Bad HTTP method in status line {line!r}")
+
+
 class InvalidURLError(BadHttpMessage):
     pass
