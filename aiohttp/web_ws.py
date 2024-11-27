@@ -61,7 +61,22 @@ class WebSocketReady:
 
 class WebSocketResponse(StreamResponse):
 
-    _length_check = False
+    _length_check: bool = False
+    _ws_protocol: Optional[str] = None
+    _writer: Optional[WebSocketWriter] = None
+    _reader: Optional[WebSocketDataQueue] = None
+    _closed: bool = False
+    _closing: bool = False
+    _conn_lost: int = 0
+    _close_code: Optional[int] = None
+    _loop: Optional[asyncio.AbstractEventLoop] = None
+    _waiting: bool = False
+    _close_wait: Optional[asyncio.Future[None]] = None
+    _exception: Optional[BaseException] = None
+    _heartbeat_when: float = 0.0
+    _heartbeat_cb: Optional[asyncio.TimerHandle] = None
+    _pong_response_cb: Optional[asyncio.TimerHandle] = None
+    _ping_task: Optional[asyncio.Task[None]] = None
 
     def __init__(
         self,
@@ -78,30 +93,15 @@ class WebSocketResponse(StreamResponse):
     ) -> None:
         super().__init__(status=101)
         self._protocols = protocols
-        self._ws_protocol: Optional[str] = None
-        self._writer: Optional[WebSocketWriter] = None
-        self._reader: Optional[WebSocketDataQueue] = None
-        self._closed = False
-        self._closing = False
-        self._conn_lost = 0
-        self._close_code: Optional[int] = None
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._waiting: bool = False
-        self._close_wait: Optional[asyncio.Future[None]] = None
-        self._exception: Optional[BaseException] = None
         self._timeout = timeout
         self._receive_timeout = receive_timeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
-        self._heartbeat_when = 0.0
-        self._heartbeat_cb: Optional[asyncio.TimerHandle] = None
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
-        self._pong_response_cb: Optional[asyncio.TimerHandle] = None
         self._compress: Union[bool, int] = compress
         self._max_msg_size = max_msg_size
-        self._ping_task: Optional[asyncio.Task[None]] = None
         self._writer_limit = writer_limit
 
     def _cancel_heartbeat(self) -> None:
