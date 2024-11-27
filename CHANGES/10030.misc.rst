@@ -1,1 +1,0 @@
-Improved performance of creating :class:`aiohttp.ClientResponse` objects -- by :user:`bdraco`.
