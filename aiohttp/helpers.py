@@ -694,10 +694,11 @@ def ceil_timeout(
 
 
 class HeadersMixin:
+    """Mixin for handling headers."""
+
     ATTRS = frozenset(["_content_type", "_content_dict", "_stored_content_type"])
 
     _headers: MultiMapping[str]
-
     _content_type: Optional[str] = None
     _content_dict: Optional[Dict[str, str]] = None
     _stored_content_type: Union[str, None, _SENTINEL] = sentinel
