@@ -993,8 +993,8 @@ def test_http_request_parser_not_http_protocol(
 
 
 def test_http_request_parser_bad_method(parser: HttpRequestParser) -> None:
-    with pytest.raises(http_exceptions.BadHttpMethod):
-        parser.feed_data(b"\x16\x03\x03\x01F\x01")
+    with pytest.raises(http_exceptions.NotHttpProtocol):
+        parser.feed_data(b"\x16\x03\x03\x01F\x01\r\n\r\n")
 
 
 def test_http_request_parser_bad_version(parser: HttpRequestParser) -> None:
