@@ -97,29 +97,30 @@ async def test_multiple_responses_one_byte_at_a_time(
     conn = mock.Mock(protocol=proto)
     proto.set_response_params(read_until_eof=True)
 
-    messages = (
-        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab"
-        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd"
-        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nef"
-    )
-    for i in range(len(messages)):
-        proto.data_received(messages[i : i + 1])
-
-    expected = [b"ab", b"cd", b"ef"]
-    for payload in expected:
-        response = ClientResponse(
-            "get",
-            URL("http://def-cl-resp.org"),
-            writer=mock.Mock(),
-            continue100=None,
-            timer=TimerNoop(),
-            request_info=mock.Mock(),
-            traces=[],
-            loop=loop,
-            session=mock.Mock(),
+    for _ in range(2):
+        messages = (
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab"
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd"
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nef"
         )
-        await response.start(conn)
-        await response.read() == payload
+        for i in range(len(messages)):
+            proto.data_received(messages[i : i + 1])
+
+        expected = [b"ab", b"cd", b"ef"]
+        for payload in expected:
+            response = ClientResponse(
+                "get",
+                URL("http://def-cl-resp.org"),
+                writer=mock.Mock(),
+                continue100=None,
+                timer=TimerNoop(),
+                request_info=mock.Mock(),
+                traces=[],
+                loop=loop,
+                session=mock.Mock(),
+            )
+            await response.start(conn)
+            await response.read() == payload
 
 
 async def test_client_protocol_readuntil_eof(loop: asyncio.AbstractEventLoop) -> None:
