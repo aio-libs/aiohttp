@@ -175,12 +175,11 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     def enable_chunked_encoding(self) -> None:
         """Enables automatic chunked transfer encoding."""
-        self._chunked = True
-
         if hdrs.CONTENT_LENGTH in self._headers:
             raise RuntimeError(
                 "You can't enable chunked encoding when a content length is set"
             )
+        self._chunked = True
 
     def enable_compression(
         self,
@@ -388,8 +387,6 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             if not self._must_be_empty_body:
                 writer.enable_chunking()
                 headers[hdrs.TRANSFER_ENCODING] = "chunked"
-            if hdrs.CONTENT_LENGTH in headers:
-                del headers[hdrs.CONTENT_LENGTH]
         elif self._length_check:  # Disabled for WebSockets
             writer.length = self.content_length
             if writer.length is None:
