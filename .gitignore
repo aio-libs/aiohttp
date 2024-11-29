@@ -35,6 +35,8 @@
 .tox
 .vimrc
 .vscode
+aiohttp/_client_reqrep.c
+aiohttp/_client_reqrep.html
 aiohttp/_find_header.c
 aiohttp/_headers.html
 aiohttp/_headers.pxi

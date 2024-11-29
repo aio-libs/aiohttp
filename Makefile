@@ -157,6 +157,7 @@ clean:
 	@rm -f aiohttp/*.so
 	@rm -f aiohttp/*.pyd
 	@rm -f aiohttp/*.html
+	@rm -f aiohttp/_client_reqrep.c
 	@rm -f aiohttp/_frozenlist.c
 	@rm -f aiohttp/_find_header.c
 	@rm -f aiohttp/_http_parser.c
