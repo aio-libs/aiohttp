@@ -387,16 +387,24 @@ cdef class HttpParser:
 
             self._has_value = False
             self._raw_headers.append((self._raw_name, self._raw_value))
+            self._raw_name = b""
+            self._raw_value = b""
 
     cdef _on_header_field(self, char* at, size_t length):
         if self._has_value:
             self._process_header()
 
-        self._raw_name = at[:length]
+        if not self._raw_name:
+            self._raw_name += at[:length]
+        else:
+            self._raw_name = at[:length]
         self._name = find_header(at, length, self._raw_name)
 
     cdef _on_header_value(self, char* at, size_t length):
-        self._raw_value = at[:length]
+        if self._raw_value:
+            self._raw_value += at[:length]
+        else:
+            self._raw_value = at[:length]
         self._has_value = True
 
     cdef _on_headers_complete(self):
