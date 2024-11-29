@@ -1241,11 +1241,6 @@ class ClientResponse(HeadersMixin):
 
 ConnectionKeyPy = ConnectionKey
 
-if not NO_EXTENSIONS:
-    from ._client_reqrep import ConnectionKey  # type: ignore[import-not-found,no-redef]
-
-    ConnectionKeyC = ConnectionKey
-
 try:
     if not NO_EXTENSIONS:
         from ._client_reqrep import (  # type: ignore[import-not-found,no-redef]
