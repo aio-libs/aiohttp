@@ -97,11 +97,8 @@ cdef inline str http_method_str(int i):
     else:
         return "<unknown>"
 
-cdef inline object find_header(bytes raw_header):
-    cdef Py_ssize_t size
-    cdef char *buf
+cdef inline object find_header(char* buf, Py_ssize_t size, bytes raw_header):
     cdef int idx
-    PyBytes_AsStringAndSize(raw_header, &buf, &size)
     idx = _find_header.find_header(buf, size)
     if idx == -1:
         return raw_header.decode('utf-8', 'surrogateescape')
@@ -277,8 +274,9 @@ cdef class HttpParser:
         cparser.llhttp_t* _cparser
         cparser.llhttp_settings_t* _csettings
 
-        bytearray _raw_name
-        bytearray _raw_value
+        bytes _raw_name
+        object _name
+        bytes _raw_value
         bint      _has_value
 
         object _protocol
@@ -350,8 +348,9 @@ cdef class HttpParser:
         self._payload_exception = payload_exception
         self._messages = []
 
-        self._raw_name = bytearray()
-        self._raw_value = bytearray()
+        self._raw_name = b""
+        self._name = None
+        self._raw_value = b""
         self._has_value = False
 
         self._max_line_size = max_line_size
@@ -379,41 +378,25 @@ cdef class HttpParser:
 
     cdef _process_header(self):
         if self._raw_name:
-            raw_name = bytes(self._raw_name)
-            raw_value = bytes(self._raw_value)
+            value = self._raw_value.decode('utf-8', 'surrogateescape')
 
-            name = find_header(raw_name)
-            value = raw_value.decode('utf-8', 'surrogateescape')
+            self._headers.add(self._name, value)
 
-            self._headers.add(name, value)
-
-            if name is CONTENT_ENCODING:
+            if self._name is CONTENT_ENCODING:
                 self._content_encoding = value
 
-            PyByteArray_Resize(self._raw_name, 0)
-            PyByteArray_Resize(self._raw_value, 0)
             self._has_value = False
-            self._raw_headers.append((raw_name, raw_value))
+            self._raw_headers.append((self._raw_name, self._raw_value))
 
     cdef _on_header_field(self, char* at, size_t length):
-        cdef Py_ssize_t size
-        cdef char *buf
         if self._has_value:
             self._process_header()
 
-        size = PyByteArray_Size(self._raw_name)
-        PyByteArray_Resize(self._raw_name, size + length)
-        buf = PyByteArray_AsString(self._raw_name)
-        memcpy(buf + size, at, length)
+        self._raw_name = at[:length]
+        self._name = find_header(at, length, self._raw_name)
 
     cdef _on_header_value(self, char* at, size_t length):
-        cdef Py_ssize_t size
-        cdef char *buf
-
-        size = PyByteArray_Size(self._raw_value)
-        PyByteArray_Resize(self._raw_value, size + length)
-        buf = PyByteArray_AsString(self._raw_value)
-        memcpy(buf + size, at, length)
+        self._raw_value = at[:length]
         self._has_value = True
 
     cdef _on_headers_complete(self):
