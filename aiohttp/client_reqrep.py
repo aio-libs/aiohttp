@@ -43,6 +43,7 @@ from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
     _SENTINEL,
+    NO_EXTENSIONS,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -1239,3 +1240,16 @@ class ClientResponse(HeadersMixin):
         # if state is broken
         self.release()
         await self.wait_for_close()
+
+
+RawResponseMessagePy = ConnectionKey
+
+try:
+    if not NO_EXTENSIONS:
+        from ._client_repreq import (  # type: ignore[import-not-found,no-redef]
+            ConnectionKey,
+        )
+
+        ConnectionKeyC = ConnectionKey
+except ImportError:  # pragma: no cover
+    pass
