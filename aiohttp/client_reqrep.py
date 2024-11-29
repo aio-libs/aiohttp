@@ -1242,7 +1242,7 @@ class ClientResponse(HeadersMixin):
         await self.wait_for_close()
 
 
-RawResponseMessagePy = ConnectionKey
+ConnectionKeyPy = ConnectionKey
 
 try:
     if not NO_EXTENSIONS:
