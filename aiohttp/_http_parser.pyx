@@ -394,7 +394,7 @@ cdef class HttpParser:
         if self._has_value:
             self._process_header()
 
-        if not self._raw_name:
+        if self._raw_name:
             self._raw_name += at[:length]
         else:
             self._raw_name = at[:length]
