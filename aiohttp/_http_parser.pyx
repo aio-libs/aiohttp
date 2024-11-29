@@ -294,7 +294,7 @@ cdef class HttpParser:
         bytearray   _buf
         str     _path
         str     _reason
-        object  _headers
+        list    _headers
         list    _raw_headers
         bint    _upgraded
         list    _messages
@@ -380,7 +380,7 @@ cdef class HttpParser:
         if self._raw_name:
             value = self._raw_value.decode('utf-8', 'surrogateescape')
 
-            self._headers.add(self._name, value)
+            self._headers.append((self._name, value))
 
             if self._name is CONTENT_ENCODING:
                 self._content_encoding = value
@@ -415,7 +415,7 @@ cdef class HttpParser:
         chunked = self._cparser.flags & cparser.F_CHUNKED
 
         raw_headers = tuple(self._raw_headers)
-        headers = CIMultiDictProxy(self._headers)
+        headers = CIMultiDictProxy(CIMultiDict(self._headers))
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             allowed = upgrade and headers.get("upgrade", "").lower() in ALLOWED_UPGRADES
