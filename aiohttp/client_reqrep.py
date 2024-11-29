@@ -325,17 +325,14 @@ class ClientRequest:
         else:
             h = None
         url = self.url
-        return tuple.__new__(
-            ConnectionKey,
-            (
-                url.raw_host or "",
-                url.port,
-                url.scheme in _SSL_SCHEMES,
-                self._ssl,
-                self.proxy,
-                self.proxy_auth,
-                h,
-            ),
+        return ConnectionKey(
+            url.raw_host or "",
+            url.port,
+            url.scheme in _SSL_SCHEMES,
+            self._ssl,
+            self.proxy,
+            self.proxy_auth,
+            h,
         )
 
     @property
@@ -1246,7 +1243,7 @@ ConnectionKeyPy = ConnectionKey
 
 try:
     if not NO_EXTENSIONS:
-        from ._client_repreq import (  # type: ignore[import-not-found,no-redef]
+        from ._client_reqrep import (  # type: ignore[import-not-found,no-redef]
             ConnectionKey,
         )
 
