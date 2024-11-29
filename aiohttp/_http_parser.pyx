@@ -97,8 +97,11 @@ cdef inline str http_method_str(int i):
     else:
         return "<unknown>"
 
-cdef inline object find_header(char* buf, Py_ssize_t size, bytes raw_header):
+cdef inline object find_header(bytes raw_header):
+    cdef Py_ssize_t size
+    cdef char *buf
     cdef int idx
+    PyBytes_AsStringAndSize(raw_header, &buf, &size)
     idx = _find_header.find_header(buf, size)
     if idx == -1:
         return raw_header.decode('utf-8', 'surrogateescape')
@@ -349,7 +352,6 @@ cdef class HttpParser:
         self._messages = []
 
         self._raw_name = EMPTY_BYTES
-        self._name = None
         self._raw_value = EMPTY_BYTES
         self._has_value = False
 
@@ -377,12 +379,14 @@ cdef class HttpParser:
         self._limit = limit
 
     cdef _process_header(self):
-        if self._raw_name:
+        cdef str value
+        if self._raw_name is not EMPTY_BYTES:
+            name = find_header(self._raw_name)
             value = self._raw_value.decode('utf-8', 'surrogateescape')
 
-            self._headers.append((self._name, value))
+            self._headers.append((name, value))
 
-            if self._name is CONTENT_ENCODING:
+            if name is CONTENT_ENCODING:
                 self._content_encoding = value
 
             self._has_value = False
@@ -398,7 +402,6 @@ cdef class HttpParser:
             self._raw_name = at[:length]
         else:
             self._raw_name += at[:length]
-        self._name = find_header(at, length, self._raw_name)
 
     cdef _on_header_value(self, char* at, size_t length):
         if self._raw_value is EMPTY_BYTES:
