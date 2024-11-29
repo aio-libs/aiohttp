@@ -71,7 +71,7 @@ cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
-
+cdef bytes EMPTY_BYTES = b""
 
 cdef inline object extend(object buf, const char* at, size_t length):
     cdef Py_ssize_t s
@@ -348,9 +348,9 @@ cdef class HttpParser:
         self._payload_exception = payload_exception
         self._messages = []
 
-        self._raw_name = b""
+        self._raw_name = EMPTY_BYTES
         self._name = None
-        self._raw_value = b""
+        self._raw_value = EMPTY_BYTES
         self._has_value = False
 
         self._max_line_size = max_line_size
@@ -387,24 +387,24 @@ cdef class HttpParser:
 
             self._has_value = False
             self._raw_headers.append((self._raw_name, self._raw_value))
-            self._raw_name = b""
-            self._raw_value = b""
+            self._raw_name = EMPTY_BYTES
+            self._raw_value = EMPTY_BYTES
 
     cdef _on_header_field(self, char* at, size_t length):
         if self._has_value:
             self._process_header()
 
-        if self._raw_name:
-            self._raw_name += at[:length]
-        else:
+        if self._raw_name is EMPTY_BYTES:
             self._raw_name = at[:length]
+        else:
+            self._raw_name += at[:length]
         self._name = find_header(at, length, self._raw_name)
 
     cdef _on_header_value(self, char* at, size_t length):
-        if self._raw_value:
-            self._raw_value += at[:length]
-        else:
+        if self._raw_value is EMPTY_BYTES:
             self._raw_value = at[:length]
+        else:
+            self._raw_value += at[:length]
         self._has_value = True
 
     cdef _on_headers_complete(self):
