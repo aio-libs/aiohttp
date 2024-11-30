@@ -78,8 +78,6 @@ class ChunkTupleAsyncStreamIterator:
 
 class AsyncStreamReaderMixin:
 
-    __slots__ = ()
-
     def __aiter__(self) -> AsyncStreamIterator[bytes]:
         return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
 
@@ -114,25 +112,16 @@ class StreamReader(AsyncStreamReaderMixin):
 
     """
 
-    __slots__ = (
-        "_protocol",
-        "_low_water",
-        "_high_water",
-        "_loop",
-        "_size",
-        "_cursor",
-        "_http_chunk_splits",
-        "_buffer",
-        "_buffer_offset",
-        "_eof",
-        "_waiter",
-        "_eof_waiter",
-        "_exception",
-        "_timer",
-        "_eof_callbacks",
-        "_eof_counter",
-        "total_bytes",
-    )
+    _size: int = 0
+    _cursor: int = 0
+    _http_chunk_splits: Optional[List[int]] = None
+    _buffer_offset: int = 0
+    _eof: bool = False
+    _waiter: Optional[asyncio.Future[None]] = None
+    _eof_waiter: Optional[asyncio.Future[None]] = None
+    _exception: Optional[Union[Type[BaseException], BaseException]] = None
+    _eof_counter: int = 0
+    total_bytes: int = 0
 
     def __init__(
         self,
@@ -146,19 +135,9 @@ class StreamReader(AsyncStreamReaderMixin):
         self._low_water = limit
         self._high_water = limit * 2
         self._loop = loop
-        self._size = 0
-        self._cursor = 0
-        self._http_chunk_splits: Optional[List[int]] = None
         self._buffer: Deque[bytes] = collections.deque()
-        self._buffer_offset = 0
-        self._eof = False
-        self._waiter: Optional[asyncio.Future[None]] = None
-        self._eof_waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Optional[Union[Type[BaseException], BaseException]] = None
         self._timer = TimerNoop() if timer is None else timer
         self._eof_callbacks: List[Callable[[], None]] = []
-        self._eof_counter = 0
-        self.total_bytes = 0
 
     def __repr__(self) -> str:
         info = [self.__class__.__name__]
@@ -532,10 +511,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 
-    __slots__ = ("_read_eof_chunk",)
-
-    def __init__(self) -> None:
-        self._read_eof_chunk = False
+    _read_eof_chunk: bool = False
 
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
@@ -602,11 +578,12 @@ EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
 class DataQueue(Generic[_T]):
     """DataQueue is a general-purpose blocking queue with one reader."""
 
+    _eof: bool = False
+    _waiter: Optional[asyncio.Future[None]] = None
+    _exception: Union[Type[BaseException], BaseException, None] = None
+
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._eof = False
-        self._waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Union[Type[BaseException], BaseException, None] = None
         self._buffer: Deque[_T] = collections.deque()
 
     def __len__(self) -> int:
