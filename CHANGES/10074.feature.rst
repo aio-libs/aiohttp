@@ -1,0 +1,2 @@
+Supported absolute url to override base url.
+-- by :user:`vivodi`.
