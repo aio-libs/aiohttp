@@ -212,6 +212,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     ):
         super().__init__(loop)
 
+        # _request_count is the number of request processed by the handler
+        # A new handler is created for each connection, so it is the number
+        # of requests processed by the connection.
         self._request_count = 0
         self._keepalive = False
         self._current_request: Optional[_Request] = None
