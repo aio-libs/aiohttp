@@ -513,6 +513,9 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 
     _read_eof_chunk: bool = False
 
+    def __init__(self) -> None:
+        """A StreamReader that is always at EOF."""
+
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
 
