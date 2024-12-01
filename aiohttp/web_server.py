@@ -76,6 +76,8 @@ class Server(Generic[_Request]):
         self._loop = asyncio.get_running_loop()
         self._connections: Dict[RequestHandler[_Request], asyncio.Transport] = {}
         self._kwargs = kwargs
+        # requests_count is the number of requests being processed by the server
+        # for the lifetime of the server.
         self.requests_count = 0
         self.request_handler = handler
         self.request_factory = request_factory or self._make_request  # type: ignore[assignment]
