@@ -77,10 +77,11 @@ The client session supports the context manager protocol for self closing.
         await session.request("GET", "/bar")
         # request for http://example.com/bar
 
-        await session.request("GET", "http://foo.com/bar")
-        # request for http://foo.com/bar
-
       .. versionadded:: 3.8
+
+      .. versionchanged:: 3.12
+
+         Added support for overriding the base URL with an absolute one in client sessions.
 
    :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
