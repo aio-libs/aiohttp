@@ -77,6 +77,9 @@ The client session supports the context manager protocol for self closing.
         await session.request("GET", "/bar")
         # request for http://example.com/bar
 
+        await session.request("GET", "http://foo.com/bar")
+        # request for http://foo.com/bar
+
       .. versionadded:: 3.8
 
    :param aiohttp.BaseConnector connector: BaseConnector
