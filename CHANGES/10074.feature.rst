@@ -1,2 +1,2 @@
-Supported absolute url to override base url.
+Added support for overriding the base URL with an absolute one in client sessions
 -- by :user:`vivodi`.
