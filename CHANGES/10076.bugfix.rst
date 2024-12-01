@@ -1,1 +1,0 @@
-Fixed invalid method logging unexpected being logged at exception level on subsequent connections -- by :user:`bdraco`.
