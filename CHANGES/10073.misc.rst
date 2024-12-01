@@ -1,0 +1,1 @@
+Improved performance of parsing headers when using the C parser -- by :user:`bdraco`.
