@@ -10,6 +10,36 @@
 
 .. towncrier release notes start
 
+3.11.9 (2024-12-01)
+===================
+
+Bug fixes
+---------
+
+- Fixed invalid method logging unexpected being logged at exception level on subsequent connections -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10055`, :issue:`10076`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of parsing headers when using the C parser -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10073`.
+
+
+
+
+----
+
+
 3.11.8 (2024-11-27)
 ===================
 
