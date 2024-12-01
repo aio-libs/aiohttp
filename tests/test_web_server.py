@@ -86,6 +86,20 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
     # be probing for TLS/SSL support which is
     # expected to fail
     logger.debug.assert_called_with("Error handling request", exc_info=exc)
+    logger.debug.reset_mock()
+
+    # Now make another connection to the server
+    # to make sure that the exception is logged
+    # at debug on a second fresh connection
+    cli2 = await aiohttp_client(server)
+    resp = await cli2.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+    # BadHttpMethod should be logged as debug
+    # on the first request since the client may
+    # be probing for TLS/SSL support which is
+    # expected to fail
+    logger.debug.assert_called_with("Error handling request", exc_info=exc)
 
 
 async def test_raw_server_logs_invalid_method_without_loop_debug(
