@@ -1157,7 +1157,7 @@ async def test_requote_redirect_url_default_disable() -> None:
             "http://foo.com",
             URL("http://foo.com"),
             id="base_url=URL('http://example.com/test1/') url='http://foo.com'",
-        )
+        ),
     ],
 )
 async def test_build_url_returns_expected_url(
