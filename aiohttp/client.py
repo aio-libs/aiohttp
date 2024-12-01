@@ -414,10 +414,8 @@ class ClientSession:
 
     def _build_url(self, str_or_url: StrOrURL) -> URL:
         url = URL(str_or_url)
-        is_relative_path = self._base_url and not url.absolute
-        if is_relative_path:
+        if self._base_url and not url.absolute:
             return self._base_url.join(url)
-
         return url
 
     async def _request(
