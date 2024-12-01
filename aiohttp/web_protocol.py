@@ -192,6 +192,7 @@ class RequestHandler(BaseProtocol):
     ):
         super().__init__(loop)
 
+        # _request_count is the number of requests processed with the same connection.
         self._request_count = 0
         self._keepalive = False
         self._current_request: Optional[BaseRequest] = None
@@ -688,11 +689,7 @@ class RequestHandler(BaseProtocol):
         Returns HTTP response with specific status code. Logs additional
         information. It always closes current connection.
         """
-        if (
-            self._manager
-            and self._manager.requests_count == 1
-            and isinstance(exc, BadHttpMethod)
-        ):
+        if self._request_count == 1 and isinstance(exc, BadHttpMethod):
             # BadHttpMethod is common when a client sends non-HTTP
             # or encrypted traffic to an HTTP port. This is expected
             # to happen when connected to the public internet so we log
