@@ -502,8 +502,9 @@ class StreamReader(AsyncStreamReaderMixin):
         else:
             data = self._buffer.popleft()
 
-        self._size -= len(data)
-        self._cursor += len(data)
+        data_len = len(data)
+        self._size -= data_len
+        self._cursor += data_len
 
         chunk_splits = self._http_chunk_splits
         # Prevent memory leak: drop useless chunk splits
