@@ -1086,6 +1086,24 @@ async def test_requote_redirect_setter() -> None:
             URL("http://example.com/test1/test2?q=foo#bar"),
             id="base_url=URL('http://example.com/test1/') url='test2?q=foo#bar'",
         ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "http://foo.com/bar",
+            URL("http://foo.com/bar"),
+            id="base_url=URL('http://example.com/test1/') url='http://foo.com/bar'",
+        ),
+        pytest.param(
+            URL("http://example.com"),
+            "http://foo.com/bar",
+            URL("http://foo.com/bar"),
+            id="base_url=URL('http://example.com') url='http://foo.com/bar'",
+        ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "http://foo.com",
+            URL("http://foo.com"),
+            id="base_url=URL('http://example.com/test1/') url='http://foo.com'",
+        ),
     ],
 )
 async def test_build_url_returns_expected_url(
