@@ -412,8 +412,8 @@ class ClientSession:
             """Perform HTTP request."""
             return _RequestContextManager(self._request(method, url, **kwargs))
 
-    def _build_url(self, str_or_url: StrOrURL) -> URL:
-        url = URL(str_or_url)
+    def _build_url(self, str_or_url: StrOrURL, **kwargs: Any) -> URL:
+        url = URL(str_or_url, encoded=kwargs.get("encode_url"))
         if self._base_url is None:
             return url
         else:
@@ -452,6 +452,7 @@ class ClientSession:
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_field_size: Optional[int] = None,
+        encode_url: Optional[bool] = False,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -482,7 +483,7 @@ class ClientSession:
         headers = self._prepare_headers(headers)
 
         try:
-            url = self._build_url(str_or_url)
+            url = self._build_url(str_or_url, encode_url=encode_url)
         except ValueError as e:
             raise InvalidUrlClientError(str_or_url) from e
 
