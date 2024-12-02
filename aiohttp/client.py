@@ -1474,7 +1474,7 @@ def request(
             read_bufsize=read_bufsize,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
-            ssl=ssl
+            ssl=ssl,
         ),
         session,
     )
