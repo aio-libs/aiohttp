@@ -79,6 +79,10 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.8
 
+      .. versionchanged:: 3.12
+
+         Added support for overriding the base URL with an absolute one in client sessions.
+
    :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
 
