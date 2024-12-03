@@ -9,12 +9,12 @@ from aiohttp import web
 from aiohttp.pytest_plugin import AiohttpClient
 
 
-def test_simple_web_response(
+def test_simple_web_file_response(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark creating 100 simple web.Response."""
+    """Benchmark creating 100 simple web.FileResponse."""
     response_count = 100
     filepath = pathlib.Path(__file__).parent / "sample.txt"
 
