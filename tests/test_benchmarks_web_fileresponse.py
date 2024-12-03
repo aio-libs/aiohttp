@@ -1,4 +1,4 @@
-"""codspeed benchmarks for the web responses."""
+"""codspeed benchmarks for the web file responses."""
 
 import asyncio
 import pathlib
