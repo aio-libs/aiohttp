@@ -2,7 +2,7 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import Any, Generic, List, Optional, Set, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, List, Optional, Set, Type, TypeVar
 
 from yarl import URL
 
@@ -16,11 +16,13 @@ from .web_protocol import RequestHandler
 from .web_request import BaseRequest, Request
 from .web_server import Server
 
-try:
+if TYPE_CHECKING:
     from ssl import SSLContext
-except ImportError:
-    SSLContext = object  # type: ignore[misc,assignment]
-
+else:
+    try:
+        from ssl import SSLContext
+    except ImportError:
+        SSLContext = object
 
 __all__ = (
     "BaseSite",
