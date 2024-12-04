@@ -312,7 +312,7 @@ class FileResponse(StreamResponse):
                 #
                 # Will do the same below. Many servers ignore this and do not
                 # send a Content-Range header with HTTP 416
-                self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
+                self._headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
                 self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                 return await super().prepare(request)
 
@@ -348,7 +348,7 @@ class FileResponse(StreamResponse):
                     # suffix-byte-range-spec with a non-zero suffix-length,
                     # then the byte-range-set is satisfiable. Otherwise, the
                     # byte-range-set is unsatisfiable.
-                    self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
+                    self._headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
                     self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                     return await super().prepare(request)
 
@@ -360,7 +360,7 @@ class FileResponse(StreamResponse):
         # If the Content-Type header is not already set, guess it based on the
         # extension of the request path. The encoding returned by guess_type
         #  can be ignored since the map was cleared above.
-        if hdrs.CONTENT_TYPE not in self.headers:
+        if hdrs.CONTENT_TYPE not in self._headers:
             if sys.version_info >= (3, 13):
                 guesser = CONTENT_TYPES.guess_file_type
             else:
@@ -368,8 +368,8 @@ class FileResponse(StreamResponse):
             self.content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
 
         if file_encoding:
-            self.headers[hdrs.CONTENT_ENCODING] = file_encoding
-            self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
+            self._headers[hdrs.CONTENT_ENCODING] = file_encoding
+            self._headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
             # Disable compression if we are already sending
             # a compressed file since we don't want to double
             # compress.
@@ -379,12 +379,12 @@ class FileResponse(StreamResponse):
         self.last_modified = st.st_mtime  # type: ignore[assignment]
         self.content_length = count
 
-        self.headers[hdrs.ACCEPT_RANGES] = "bytes"
+        self._headers[hdrs.ACCEPT_RANGES] = "bytes"
 
         real_start = cast(int, start)
 
         if status == HTTPPartialContent.status_code:
-            self.headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
+            self._headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
                 real_start, real_start + count - 1, file_size
             )
 
