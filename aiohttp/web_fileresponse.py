@@ -234,17 +234,18 @@ class FileResponse(StreamResponse):
                 self.set_status(HTTPForbidden.status_code)
                 return await super().prepare(request)
 
-            await self._prepare_open_file(request, fobj, st, file_encoding)
+            return await self._prepare_open_file(request, fobj, st, file_encoding)
         finally:
-            # We do not await here because we do not want to wait
-            # for the executor to finish before returning the response
-            # so the connection can begin servicing another request
-            # as soon as possible.
-            close_future = loop.run_in_executor(None, fobj.close)
-            # Hold a strong reference to the future to prevent it from being
-            # garbage collected before it completes.
-            _CLOSE_FUTURES.add(close_future)
-            close_future.add_done_callback(_CLOSE_FUTURES.remove)
+            if fobj:
+                # We do not await here because we do not want to wait
+                # for the executor to finish before returning the response
+                # so the connection can begin servicing another request
+                # as soon as possible.
+                close_future = loop.run_in_executor(None, fobj.close)
+                # Hold a strong reference to the future to prevent it from being
+                # garbage collected before it completes.
+                _CLOSE_FUTURES.add(close_future)
+                close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
     async def _prepare_open_file(
         self,
