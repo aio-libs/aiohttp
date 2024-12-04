@@ -9,10 +9,12 @@ from .typedefs import StrOrURL
 
 if TYPE_CHECKING:
     import ssl
+
     SSLContext = ssl.SSLContext
 else:
     try:
         import ssl
+
         SSLContext = ssl.SSLContext
     except ImportError:
         ssl = SSLContext = None
