@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from contextlib import suppress
 from importlib import import_module
 from typing import (
+    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
@@ -267,10 +268,13 @@ __all__ = (
 )
 
 
-try:
+if TYPE_CHECKING:
     from ssl import SSLContext
-except ImportError:  # pragma: no cover
-    SSLContext = Any  # type: ignore[misc,assignment]
+else:
+    try:
+        from ssl import SSLContext
+    except ImportError:
+        SSLContext = object
 
 # Only display warning when using -Wdefault, -We, -X dev or similar.
 warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
