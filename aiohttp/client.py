@@ -1399,6 +1399,7 @@ def request(
     read_bufsize: Optional[int] = None,
     max_line_size: int = 8190,
     max_field_size: int = 8190,
+    **kwargs: Unpack[_RequestOptions],
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request.
 
@@ -1471,6 +1472,7 @@ def request(
             read_bufsize=read_bufsize,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
+            **kwargs
         ),
         session,
     )
