@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import sys
 from contextlib import suppress
 from mimetypes import MimeTypes
 from stat import S_ISREG
@@ -314,9 +315,11 @@ class FileResponse(StreamResponse):
         # extension of the request path. The encoding returned by guess_type
         #  can be ignored since the map was cleared above.
         if hdrs.CONTENT_TYPE not in self.headers:
-            self.content_type = (
-                CONTENT_TYPES.guess_file_type(self._path)[0] or FALLBACK_CONTENT_TYPE
-            )
+            if sys.version >= (3, 13):
+                guesser = CONTENT_TYPES.guess_file_type
+            else:
+                guesser = CONTENT_TYPES.guess_type
+            self.content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
 
         if file_encoding:
             self.headers[hdrs.CONTENT_ENCODING] = file_encoding
