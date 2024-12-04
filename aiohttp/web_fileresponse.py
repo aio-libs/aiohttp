@@ -184,7 +184,9 @@ class FileResponse(StreamResponse):
                 st = compressed_path.lstat()
                 if S_ISREG(st.st_mode):
                     fobj = compressed_path.open("rb")
-                    with suppress(OSError):
+                    with suppress(
+                        OSError
+                    ):  # fstat() may not be available on all platforms
                         # Once we open the file, we want the fstat() to ensure
                         # the file has not changed between the first stat()
                         # and the open().
@@ -196,7 +198,7 @@ class FileResponse(StreamResponse):
         if not S_ISREG(st.st_mode):
             return None, st, None
         fobj = file_path.open("rb")
-        with suppress(OSError):
+        with suppress(OSError):  # fstat() may not be available on all platforms
             # Once we open the file, we want the fstat() to ensure
             # the file has not changed between the first stat()
             # and the open().
