@@ -179,7 +179,7 @@ class FileResponse(StreamResponse):
 
     def _open_file_path_stat_encoding(
         self, accept_encoding: str
-    ) -> Tuple[io.BufferedReader, os.stat_result, Optional[str]]:
+    ) -> Tuple[Optional[io.BufferedReader], os.stat_result, Optional[str]]:
         """Return the io object, stat result, and encoding.
 
         If an uncompressed file is returned, the encoding is set to
@@ -203,15 +203,10 @@ class FileResponse(StreamResponse):
                     return fobj, st, file_encoding
 
         # Fallback to the uncompressed file
-        try:
-            fobj = file_path.open("rb")
-        except OSError as e:
-            if e.errno == 102:  # Operation not supported on socket
-                # This will also be checked in prepare() but we want
-                # to preserve backwards compatibility and handle
-                # as 403 Forbidden.
-                raise PermissionError("File is a socket")
-            raise
+        st = file_path.stat()
+        if not S_ISREG(st.st_mode):
+            return None, st, None
+        fobj = file_path.open("rb")
         st = _stat_open_file(file_path, fobj, None)
         return fobj, st, None
 
@@ -235,159 +230,11 @@ class FileResponse(StreamResponse):
 
         try:
             # Forbid special files like sockets, pipes, devices, etc.
-            if not S_ISREG(st.st_mode):
+            if not fobj or not S_ISREG(st.st_mode):
                 self.set_status(HTTPForbidden.status_code)
                 return await super().prepare(request)
 
-            etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
-            last_modified = st.st_mtime
-
-            # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
-            ifmatch = request.if_match
-            if ifmatch is not None and not self._etag_match(
-                etag_value, ifmatch, weak=False
-            ):
-                return await self._precondition_failed(request)
-
-            unmodsince = request.if_unmodified_since
-            if (
-                unmodsince is not None
-                and ifmatch is None
-                and st.st_mtime > unmodsince.timestamp()
-            ):
-                return await self._precondition_failed(request)
-
-            # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
-            ifnonematch = request.if_none_match
-            if ifnonematch is not None and self._etag_match(
-                etag_value, ifnonematch, weak=True
-            ):
-                return await self._not_modified(request, etag_value, last_modified)
-
-            modsince = request.if_modified_since
-            if (
-                modsince is not None
-                and ifnonematch is None
-                and st.st_mtime <= modsince.timestamp()
-            ):
-                return await self._not_modified(request, etag_value, last_modified)
-
-            status = self._status
-            file_size = st.st_size
-            count = file_size
-
-            start = None
-
-            ifrange = request.if_range
-            if ifrange is None or st.st_mtime <= ifrange.timestamp():
-                # If-Range header check:
-                # condition = cached date >= last modification date
-                # return 206 if True else 200.
-                # if False:
-                #   Range header would not be processed, return 200
-                # if True but Range header missing
-                #   return 200
-                try:
-                    rng = request.http_range
-                except ValueError:
-                    # https://tools.ietf.org/html/rfc7233:
-                    # A server generating a 416 (Range Not Satisfiable) response to
-                    # a byte-range request SHOULD send a Content-Range header field
-                    # with an unsatisfied-range value.
-                    # The complete-length in a 416 response indicates the current
-                    # length of the selected representation.
-                    #
-                    # Will do the same below. Many servers ignore this and do not
-                    # send a Content-Range header with HTTP 416
-                    self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
-                    self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
-                    return await super().prepare(request)
-
-                if TYPE_CHECKING:
-                    assert rng is not None
-                start = rng.start
-                end = rng.stop
-                # If a range request has been made, convert start, end slice
-                # notation into file pointer offset and count
-                if start is not None or end is not None:
-                    if start < 0 and end is None:  # return tail of file
-                        start += file_size
-                        if start < 0:
-                            # if Range:bytes=-1000 in request header but file size
-                            # is only 200, there would be trouble without this
-                            start = 0
-                        count = file_size - start
-                    else:
-                        # rfc7233:If the last-byte-pos value is
-                        # absent, or if the value is greater than or equal to
-                        # the current length of the representation data,
-                        # the byte range is interpreted as the remainder
-                        # of the representation (i.e., the server replaces the
-                        # value of last-byte-pos with a value that is one less than
-                        # the current length of the selected representation).
-                        count = (
-                            min(end if end is not None else file_size, file_size)
-                            - start
-                        )
-
-                    if start >= file_size:
-                        # HTTP 416 should be returned in this case.
-                        #
-                        # According to https://tools.ietf.org/html/rfc7233:
-                        # If a valid byte-range-set includes at least one
-                        # byte-range-spec with a first-byte-pos that is less than
-                        # the current length of the representation, or at least one
-                        # suffix-byte-range-spec with a non-zero suffix-length,
-                        # then the byte-range-set is satisfiable. Otherwise, the
-                        # byte-range-set is unsatisfiable.
-                        self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
-                        self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
-                        return await super().prepare(request)
-
-                    status = HTTPPartialContent.status_code
-                    # Even though you are sending the whole file, you should still
-                    # return a HTTP 206 for a Range request.
-                    self.set_status(status)
-
-            # If the Content-Type header is not already set, guess it based on the
-            # extension of the request path. The encoding returned by guess_type
-            #  can be ignored since the map was cleared above.
-            if hdrs.CONTENT_TYPE not in self.headers:
-                self.content_type = (
-                    CONTENT_TYPES.guess_type(self._path)[0] or FALLBACK_CONTENT_TYPE
-                )
-
-            if file_encoding:
-                self.headers[hdrs.CONTENT_ENCODING] = file_encoding
-                self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
-                # Disable compression if we are already sending
-                # a compressed file since we don't want to double
-                # compress.
-                self._compression = False
-
-            self.etag = etag_value  # type: ignore[assignment]
-            self.last_modified = st.st_mtime  # type: ignore[assignment]
-            self.content_length = count
-
-            self.headers[hdrs.ACCEPT_RANGES] = "bytes"
-
-            real_start = cast(int, start)
-
-            if status == HTTPPartialContent.status_code:
-                self.headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
-                    real_start, real_start + count - 1, file_size
-                )
-
-            # If we are sending 0 bytes calling sendfile() will throw a ValueError
-            if count == 0 or must_be_empty_body(request.method, self.status):
-                return await super().prepare(request)
-
-            if start:  # be aware that start could be None or int=0 here.
-                offset = start
-            else:
-                offset = 0
-
-            return await self._sendfile(request, fobj, offset, count)
+            await self._prepare_open_file(request, fobj, st, file_encoding)
         finally:
             # We do not await here because we do not want to wait
             # for the executor to finish before returning the response
@@ -398,3 +245,159 @@ class FileResponse(StreamResponse):
             # garbage collected before it completes.
             _CLOSE_FUTURES.add(close_future)
             close_future.add_done_callback(_CLOSE_FUTURES.remove)
+
+    async def _prepare_open_file(
+        self,
+        request: "BaseRequest",
+        fobj: io.BufferedReader,
+        st: os.stat_result,
+        file_encoding: Optional[str],
+    ) -> Optional[AbstractStreamWriter]:
+        etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
+        last_modified = st.st_mtime
+
+        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
+        ifmatch = request.if_match
+        if ifmatch is not None and not self._etag_match(
+            etag_value, ifmatch, weak=False
+        ):
+            return await self._precondition_failed(request)
+
+        unmodsince = request.if_unmodified_since
+        if (
+            unmodsince is not None
+            and ifmatch is None
+            and st.st_mtime > unmodsince.timestamp()
+        ):
+            return await self._precondition_failed(request)
+
+        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
+        ifnonematch = request.if_none_match
+        if ifnonematch is not None and self._etag_match(
+            etag_value, ifnonematch, weak=True
+        ):
+            return await self._not_modified(request, etag_value, last_modified)
+
+        modsince = request.if_modified_since
+        if (
+            modsince is not None
+            and ifnonematch is None
+            and st.st_mtime <= modsince.timestamp()
+        ):
+            return await self._not_modified(request, etag_value, last_modified)
+
+        status = self._status
+        file_size = st.st_size
+        count = file_size
+
+        start = None
+
+        ifrange = request.if_range
+        if ifrange is None or st.st_mtime <= ifrange.timestamp():
+            # If-Range header check:
+            # condition = cached date >= last modification date
+            # return 206 if True else 200.
+            # if False:
+            #   Range header would not be processed, return 200
+            # if True but Range header missing
+            #   return 200
+            try:
+                rng = request.http_range
+            except ValueError:
+                # https://tools.ietf.org/html/rfc7233:
+                # A server generating a 416 (Range Not Satisfiable) response to
+                # a byte-range request SHOULD send a Content-Range header field
+                # with an unsatisfied-range value.
+                # The complete-length in a 416 response indicates the current
+                # length of the selected representation.
+                #
+                # Will do the same below. Many servers ignore this and do not
+                # send a Content-Range header with HTTP 416
+                self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
+                self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
+                return await super().prepare(request)
+
+            if TYPE_CHECKING:
+                assert rng is not None
+            start = rng.start
+            end = rng.stop
+            # If a range request has been made, convert start, end slice
+            # notation into file pointer offset and count
+            if start is not None or end is not None:
+                if start < 0 and end is None:  # return tail of file
+                    start += file_size
+                    if start < 0:
+                        # if Range:bytes=-1000 in request header but file size
+                        # is only 200, there would be trouble without this
+                        start = 0
+                    count = file_size - start
+                else:
+                    # rfc7233:If the last-byte-pos value is
+                    # absent, or if the value is greater than or equal to
+                    # the current length of the representation data,
+                    # the byte range is interpreted as the remainder
+                    # of the representation (i.e., the server replaces the
+                    # value of last-byte-pos with a value that is one less than
+                    # the current length of the selected representation).
+                    count = (
+                        min(end if end is not None else file_size, file_size) - start
+                    )
+
+                if start >= file_size:
+                    # HTTP 416 should be returned in this case.
+                    #
+                    # According to https://tools.ietf.org/html/rfc7233:
+                    # If a valid byte-range-set includes at least one
+                    # byte-range-spec with a first-byte-pos that is less than
+                    # the current length of the representation, or at least one
+                    # suffix-byte-range-spec with a non-zero suffix-length,
+                    # then the byte-range-set is satisfiable. Otherwise, the
+                    # byte-range-set is unsatisfiable.
+                    self.headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
+                    self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
+                    return await super().prepare(request)
+
+                status = HTTPPartialContent.status_code
+                # Even though you are sending the whole file, you should still
+                # return a HTTP 206 for a Range request.
+                self.set_status(status)
+
+        # If the Content-Type header is not already set, guess it based on the
+        # extension of the request path. The encoding returned by guess_type
+        #  can be ignored since the map was cleared above.
+        if hdrs.CONTENT_TYPE not in self.headers:
+            self.content_type = (
+                CONTENT_TYPES.guess_type(self._path)[0] or FALLBACK_CONTENT_TYPE
+            )
+
+        if file_encoding:
+            self.headers[hdrs.CONTENT_ENCODING] = file_encoding
+            self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
+            # Disable compression if we are already sending
+            # a compressed file since we don't want to double
+            # compress.
+            self._compression = False
+
+        self.etag = etag_value  # type: ignore[assignment]
+        self.last_modified = st.st_mtime  # type: ignore[assignment]
+        self.content_length = count
+
+        self.headers[hdrs.ACCEPT_RANGES] = "bytes"
+
+        real_start = cast(int, start)
+
+        if status == HTTPPartialContent.status_code:
+            self.headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
+                real_start, real_start + count - 1, file_size
+            )
+
+        # If we are sending 0 bytes calling sendfile() will throw a ValueError
+        if count == 0 or must_be_empty_body(request.method, self.status):
+            return await super().prepare(request)
+
+        if start:  # be aware that start could be None or int=0 here.
+            offset = start
+        else:
+            offset = 0
+
+        return await self._sendfile(request, fobj, offset, count)
