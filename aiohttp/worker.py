@@ -19,10 +19,12 @@ from .web_log import AccessLogger
 
 if TYPE_CHECKING:
     import ssl
+
     SSLContext = ssl.SSLContext
 else:
     try:
         import ssl
+
         SSLContext = ssl.SSLContext
     except ImportError:
         ssl = None
