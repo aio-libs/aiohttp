@@ -74,21 +74,6 @@ for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
 _CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
 
 
-def _stat_open_file(
-    file_path: pathlib.Path, fobj: io.BufferedReader, st: Optional[os.stat_result]
-) -> os.stat_result:
-    """Return the stat result of the file or the fallback stat result.
-
-    Ideally we can use fstat() to get the stat result of the file object,
-    to ensure we are returning the correct length of the open file,
-    but it is not possible to get the file descriptor from the file object
-    on some operating systems, so we have to use the stat result of the file path.
-    """
-    with suppress(OSError):  # May not work on Windows
-        return os.stat(fobj.fileno())
-    return st or file_path.stat()
-
-
 class FileResponse(StreamResponse):
     """A response object can be used to send files."""
 
@@ -199,7 +184,11 @@ class FileResponse(StreamResponse):
                 st = compressed_path.lstat()
                 if S_ISREG(st.st_mode):
                     fobj = compressed_path.open("rb")
-                    st = _stat_open_file(compressed_path, fobj, st)
+                    with suppress(OSError):
+                        # Once we open the file, we want the fstat() to ensure
+                        # the file has not changed between the first stat()
+                        # and the open().
+                        st = os.stat(fobj.fileno())
                     return fobj, st, file_encoding
 
         # Fallback to the uncompressed file
@@ -207,7 +196,11 @@ class FileResponse(StreamResponse):
         if not S_ISREG(st.st_mode):
             return None, st, None
         fobj = file_path.open("rb")
-        st = _stat_open_file(file_path, fobj, None)
+        with suppress(OSError):
+            # Once we open the file, we want the fstat() to ensure
+            # the file has not changed between the first stat()
+            # and the open().
+            st = os.stat(fobj.fileno())
         return fobj, st, None
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
