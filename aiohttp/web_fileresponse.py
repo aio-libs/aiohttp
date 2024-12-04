@@ -315,7 +315,7 @@ class FileResponse(StreamResponse):
         # extension of the request path. The encoding returned by guess_type
         #  can be ignored since the map was cleared above.
         if hdrs.CONTENT_TYPE not in self.headers:
-            if sys.version >= (3, 13):
+            if sys.version_info >= (3, 13):
                 guesser = CONTENT_TYPES.guess_file_type
             else:
                 guesser = CONTENT_TYPES.guess_type
