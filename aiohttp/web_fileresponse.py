@@ -85,7 +85,7 @@ def _stat_open_file(
     on some operating systems, so we have to use the stat result of the file path.
     """
     with suppress(OSError):  # May not work on Windows
-        st = os.stat(fobj.fileno())
+        return os.stat(fobj.fileno())
     return st or file_path.stat()
 
 
@@ -203,7 +203,15 @@ class FileResponse(StreamResponse):
                     return fobj, st, file_encoding
 
         # Fallback to the uncompressed file
-        fobj = file_path.open("rb")
+        try:
+            fobj = file_path.open("rb")
+        except OSError as e:
+            if e.errno == 102:  # Operation not supported on socket
+                # This will also be checked in prepare() but we want
+                # to preserve backwards compatibility and give
+                # as 403 Forbidden.
+                raise PermissionError("File is a socket")
+            raise
         st = _stat_open_file(file_path, fobj, None)
         return fobj, st, None
 
