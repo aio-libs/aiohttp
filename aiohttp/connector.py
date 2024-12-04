@@ -63,12 +63,10 @@ from .resolver import DefaultResolver
 
 if TYPE_CHECKING:
     import ssl
-
     SSLContext = ssl.SSLContext
 else:
     try:
         import ssl
-
         SSLContext = ssl.SSLContext
     except ImportError:
         ssl = None
