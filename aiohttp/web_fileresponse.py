@@ -303,6 +303,8 @@ class FileResponse(StreamResponse):
             #   return 200
             try:
                 rng = request.http_range
+                start = rng.start
+                end = rng.stop
             except ValueError:
                 # https://tools.ietf.org/html/rfc7233:
                 # A server generating a 416 (Range Not Satisfiable) response to
@@ -317,10 +319,6 @@ class FileResponse(StreamResponse):
                 self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                 return await super().prepare(request)
 
-            if TYPE_CHECKING:
-                assert rng is not None
-            start = rng.start
-            end = rng.stop
             # If a range request has been made, convert start, end slice
             # notation into file pointer offset and count
             if start is not None or end is not None:
