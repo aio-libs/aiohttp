@@ -315,7 +315,7 @@ class FileResponse(StreamResponse):
         #  can be ignored since the map was cleared above.
         if hdrs.CONTENT_TYPE not in self.headers:
             self.content_type = (
-                CONTENT_TYPES.guess_type(self._path)[0] or FALLBACK_CONTENT_TYPE
+                CONTENT_TYPES.guess_file_type(self._path)[0] or FALLBACK_CONTENT_TYPE
             )
 
         if file_encoding:
