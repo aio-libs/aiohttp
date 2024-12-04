@@ -390,7 +390,9 @@ class FileResponse(StreamResponse):
             return await self._sendfile(request, fobj, offset, count)
         finally:
             # We do not await here because we do not want to wait
-            # for the executor to finish before returning the response.
+            # for the executor to finish before returning the response
+            # so the connection can begin servicing another request
+            # as soon as possible.
             close_future = loop.run_in_executor(None, fobj.close)
             # Hold a strong reference to the future to prevent it from being
             # garbage collected before it completes.
