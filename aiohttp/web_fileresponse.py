@@ -1,4 +1,5 @@
 import asyncio
+import io
 import os
 import pathlib
 import sys
@@ -16,6 +17,7 @@ from typing import (  # noqa
     Iterator,
     List,
     Optional,
+    Set,
     Tuple,
     Union,
     cast,
@@ -71,6 +73,9 @@ ADDITIONAL_CONTENT_TYPES = MappingProxyType(
 CONTENT_TYPES.encodings_map.clear()
 for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
     CONTENT_TYPES.add_type(content_type, extension)  # type: ignore[attr-defined]
+
+
+_CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
 
 
 class FileResponse(StreamResponse):
@@ -161,10 +166,10 @@ class FileResponse(StreamResponse):
         self.content_length = 0
         return await super().prepare(request)
 
-    def _get_file_path_stat_encoding(
+    def _open_file_path_stat_encoding(
         self, accept_encoding: str
-    ) -> Tuple[pathlib.Path, os.stat_result, Optional[str]]:
-        """Return the file path, stat result, and encoding.
+    ) -> Tuple[Optional[io.BufferedReader], os.stat_result, Optional[str]]:
+        """Return the io object, stat result, and encoding.
 
         If an uncompressed file is returned, the encoding is set to
         :py:data:`None`.
@@ -182,10 +187,27 @@ class FileResponse(StreamResponse):
                 # Do not follow symlinks and ignore any non-regular files.
                 st = compressed_path.lstat()
                 if S_ISREG(st.st_mode):
-                    return compressed_path, st, file_encoding
+                    fobj = compressed_path.open("rb")
+                    with suppress(OSError):
+                        # fstat() may not be available on all platforms
+                        # Once we open the file, we want the fstat() to ensure
+                        # the file has not changed between the first stat()
+                        # and the open().
+                        st = os.stat(fobj.fileno())
+                    return fobj, st, file_encoding
 
         # Fallback to the uncompressed file
-        return file_path, file_path.stat(), None
+        st = file_path.stat()
+        if not S_ISREG(st.st_mode):
+            return None, st, None
+        fobj = file_path.open("rb")
+        with suppress(OSError):
+            # fstat() may not be available on all platforms
+            # Once we open the file, we want the fstat() to ensure
+            # the file has not changed between the first stat()
+            # and the open().
+            st = os.stat(fobj.fileno())
+        return fobj, st, None
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         loop = asyncio.get_running_loop()
@@ -193,20 +215,44 @@ class FileResponse(StreamResponse):
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
         try:
-            file_path, st, file_encoding = await loop.run_in_executor(
-                None, self._get_file_path_stat_encoding, accept_encoding
+            fobj, st, file_encoding = await loop.run_in_executor(
+                None, self._open_file_path_stat_encoding, accept_encoding
             )
+        except PermissionError:
+            self.set_status(HTTPForbidden.status_code)
+            return await super().prepare(request)
         except OSError:
             # Most likely to be FileNotFoundError or OSError for circular
             # symlinks in python >= 3.13, so respond with 404.
             self.set_status(HTTPNotFound.status_code)
             return await super().prepare(request)
 
-        # Forbid special files like sockets, pipes, devices, etc.
-        if not S_ISREG(st.st_mode):
-            self.set_status(HTTPForbidden.status_code)
-            return await super().prepare(request)
+        try:
+            # Forbid special files like sockets, pipes, devices, etc.
+            if not fobj or not S_ISREG(st.st_mode):
+                self.set_status(HTTPForbidden.status_code)
+                return await super().prepare(request)
 
+            return await self._prepare_open_file(request, fobj, st, file_encoding)
+        finally:
+            if fobj:
+                # We do not await here because we do not want to wait
+                # for the executor to finish before returning the response
+                # so the connection can begin servicing another request
+                # as soon as possible.
+                close_future = loop.run_in_executor(None, fobj.close)
+                # Hold a strong reference to the future to prevent it from being
+                # garbage collected before it completes.
+                _CLOSE_FUTURES.add(close_future)
+                close_future.add_done_callback(_CLOSE_FUTURES.remove)
+
+    async def _prepare_open_file(
+        self,
+        request: "BaseRequest",
+        fobj: io.BufferedReader,
+        st: os.stat_result,
+        file_encoding: Optional[str],
+    ) -> Optional[AbstractStreamWriter]:
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
         last_modified = st.st_mtime
 
@@ -349,18 +395,9 @@ class FileResponse(StreamResponse):
         if count == 0 or must_be_empty_body(request.method, self.status):
             return await super().prepare(request)
 
-        try:
-            fobj = await loop.run_in_executor(None, file_path.open, "rb")
-        except PermissionError:
-            self.set_status(HTTPForbidden.status_code)
-            return await super().prepare(request)
-
         if start:  # be aware that start could be None or int=0 here.
             offset = start
         else:
             offset = 0
 
-        try:
-            return await self._sendfile(request, fobj, offset, count)
-        finally:
-            await asyncio.shield(loop.run_in_executor(None, fobj.close))
+        return await self._sendfile(request, fobj, offset, count)
