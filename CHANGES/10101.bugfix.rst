@@ -1,1 +1,1 @@
-Fixed race condition in :class:`aiohttp.web.FileResponse` that could result in an incorrect response if the file was replaced on the filesystem during ``prepare`` -- by :user:`bdraco`.
+Fixed race condition in :class:`aiohttp.web.FileResponse` that could have resulted in an incorrect response if the file was replaced on the filesystem during :meth:`aiohttp.web.FileResponse.prepare` -- by :user:`bdraco`.
