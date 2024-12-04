@@ -1,0 +1,1 @@
+Replaced deprecated call to :func:`mime_types.guess_type` with :func:`mime_types.guess_file_type` when using Python 3.13+ -- by :user:`bdraco`.
