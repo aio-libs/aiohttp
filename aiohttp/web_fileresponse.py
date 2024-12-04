@@ -303,6 +303,8 @@ class FileResponse(StreamResponse):
                     self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                     return await super().prepare(request)
 
+                if TYPE_CHECKING:
+                    assert rng is not None
                 start = rng.start
                 end = rng.stop
                 # If a range request has been made, convert start, end slice
