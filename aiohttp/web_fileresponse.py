@@ -208,7 +208,7 @@ class FileResponse(StreamResponse):
         except OSError as e:
             if e.errno == 102:  # Operation not supported on socket
                 # This will also be checked in prepare() but we want
-                # to preserve backwards compatibility and give
+                # to preserve backwards compatibility and handle
                 # as 403 Forbidden.
                 raise PermissionError("File is a socket")
             raise
