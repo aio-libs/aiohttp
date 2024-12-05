@@ -6,8 +6,7 @@ import pathlib
 from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 
-import aiohttp
-from aiohttp import web
+from aiohttp import ClientResponse, web
 from aiohttp.pytest_plugin import AiohttpClient
 
 
@@ -71,7 +70,7 @@ def test_simple_web_file_response_not_modified(
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark creating 100 simple web.FileResponse."""
+    """Benchmark web.FileResponse that return a 304."""
     response_count = 100
     filepath = pathlib.Path(__file__).parent / "sample.txt"
 
@@ -81,7 +80,7 @@ def test_simple_web_file_response_not_modified(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    async def make_last_modified_header() -> CIMultiDict:
+    async def make_last_modified_header() -> CIMultiDict[str]:
         client = await aiohttp_client(app)
         resp = await client.get("/")
         last_modified = resp.headers["Last-Modified"]
@@ -89,14 +88,14 @@ def test_simple_web_file_response_not_modified(
         return headers
 
     async def run_file_response_benchmark(
-        headers: CIMultiDict,
-    ) -> aiohttp.ClientResponse:
+        headers: CIMultiDict[str],
+    ) -> ClientResponse:
         client = await aiohttp_client(app)
         for _ in range(response_count):
             resp = await client.get("/", headers=headers)
 
         await client.close()
-        return resp
+        return resp  # type: ignore[possibly-undefined]
 
     headers = loop.run_until_complete(make_last_modified_header())
 
