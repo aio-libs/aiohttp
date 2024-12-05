@@ -304,7 +304,11 @@ def aiohttp_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
     servers = []
 
     async def go(
-        app: Application, *, host: str = "127.0.0.1", port: Optional[int] = None, **kwargs: Any
+        app: Application,
+        *,
+        host: str = "127.0.0.1",
+        port: Optional[int] = None,
+        **kwargs: Any,
     ) -> TestServer:
         server = TestServer(app, host=host, port=port)
         await server.start_server(**kwargs)
