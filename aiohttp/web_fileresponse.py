@@ -261,7 +261,7 @@ class FileResponse(StreamResponse):
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
         try:
-            response_state, fobj, st, file_encoding = await loop.run_in_executor(
+            response_result, fobj, st, file_encoding = await loop.run_in_executor(
                 None, self._make_response, request, accept_encoding
             )
         except PermissionError:
@@ -275,14 +275,14 @@ class FileResponse(StreamResponse):
 
         try:
             # Forbid special files like sockets, pipes, devices, etc.
-            if response_state is _FileResponseResult.NOT_ACCEPTABLE or not S_ISREG(
+            if response_result is _FileResponseResult.NOT_ACCEPTABLE or not S_ISREG(
                 st.st_mode
             ):
                 self.set_status(HTTPForbidden.status_code)
                 return await super().prepare(request)
 
             return await self._prepare_response(
-                request, response_state, fobj, st, file_encoding
+                request, response_result, fobj, st, file_encoding
             )
         finally:
             if fobj:
@@ -299,19 +299,19 @@ class FileResponse(StreamResponse):
     async def _prepare_response(
         self,
         request: "BaseRequest",
-        response_state: _FileResponseResult,
+        response_result: _FileResponseResult,
         fobj: Optional[io.BufferedReader],
         st: os.stat_result,
         file_encoding: Optional[str],
     ) -> Optional[AbstractStreamWriter]:
         # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
-        if response_state is _FileResponseResult.PRE_CONDITION_FAILED:
+        if response_result is _FileResponseResult.PRE_CONDITION_FAILED:
             return await self._precondition_failed(request)
 
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
         last_modified = st.st_mtime
 
-        if response_state is _FileResponseResult.NOT_MODIFIED:
+        if response_result is _FileResponseResult.NOT_MODIFIED:
             return await self._not_modified(request, etag_value, last_modified)
 
         assert fobj is not None
