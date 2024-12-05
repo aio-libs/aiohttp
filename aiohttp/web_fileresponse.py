@@ -273,52 +273,43 @@ class FileResponse(StreamResponse):
             self.set_status(HTTPNotFound.status_code)
             return await super().prepare(request)
 
-        try:
-            # Forbid special files like sockets, pipes, devices, etc.
-            if response_result is _FileResponseResult.NOT_ACCEPTABLE or not S_ISREG(
-                st.st_mode
-            ):
-                self.set_status(HTTPForbidden.status_code)
-                return await super().prepare(request)
+        # Forbid special files like sockets, pipes, devices, etc.
+        if response_result is _FileResponseResult.NOT_ACCEPTABLE:
+            self.set_status(HTTPForbidden.status_code)
+            return await super().prepare(request)
 
-            return await self._prepare_response(
-                request, response_result, fobj, st, file_encoding
-            )
-        finally:
-            if fobj:
-                # We do not await here because we do not want to wait
-                # for the executor to finish before returning the response
-                # so the connection can begin servicing another request
-                # as soon as possible.
-                close_future = loop.run_in_executor(None, fobj.close)
-                # Hold a strong reference to the future to prevent it from being
-                # garbage collected before it completes.
-                _CLOSE_FUTURES.add(close_future)
-                close_future.add_done_callback(_CLOSE_FUTURES.remove)
-
-    async def _prepare_response(
-        self,
-        request: "BaseRequest",
-        response_result: _FileResponseResult,
-        fobj: Optional[io.BufferedReader],
-        st: os.stat_result,
-        file_encoding: Optional[str],
-    ) -> Optional[AbstractStreamWriter]:
-        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
         if response_result is _FileResponseResult.PRE_CONDITION_FAILED:
             return await self._precondition_failed(request)
 
-        etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
-        last_modified = st.st_mtime
-
         if response_result is _FileResponseResult.NOT_MODIFIED:
+            etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
+            last_modified = st.st_mtime
             return await self._not_modified(request, etag_value, last_modified)
 
         assert fobj is not None
+        try:
+            return await self._prepare_open_file(request, fobj, st, file_encoding)
+        finally:
+            # We do not await here because we do not want to wait
+            # for the executor to finish before returning the response
+            # so the connection can begin servicing another request
+            # as soon as possible.
+            close_future = loop.run_in_executor(None, fobj.close)
+            # Hold a strong reference to the future to prevent it from being
+            # garbage collected before it completes.
+            _CLOSE_FUTURES.add(close_future)
+            close_future.add_done_callback(_CLOSE_FUTURES.remove)
+
+    async def _prepare_open_file(
+        self,
+        request: "BaseRequest",
+        fobj: io.BufferedReader,
+        st: os.stat_result,
+        file_encoding: Optional[str],
+    ) -> Optional[AbstractStreamWriter]:
         status = self._status
         file_size = st.st_size
         count = file_size
-
         start = None
 
         ifrange = request.if_range
@@ -407,8 +398,8 @@ class FileResponse(StreamResponse):
             # compress.
             self._compression = False
 
-        self.etag = etag_value  # type: ignore[assignment]
-        self.last_modified = last_modified  # type: ignore[assignment]
+        self.etag = f"{st.st_mtime_ns:x}-{st.st_size:x}"  # type: ignore[assignment]
+        self.last_modified = st.st_mtime  # type: ignore[assignment]
         self.content_length = count
 
         self._headers[hdrs.ACCEPT_RANGES] = "bytes"
