@@ -90,7 +90,7 @@ class StreamWriter(AbstractStreamWriter):
         transport = self._protocol.transport
         if transport is None or transport.is_closing():
             raise ClientConnectionResetError("Cannot write to closing transport")
-        transport.writelines(chunks)
+        transport.write(b"".join(chunks))
 
     async def write(
         self, chunk: bytes, *, drain: bool = True, LIMIT: int = 0x10000

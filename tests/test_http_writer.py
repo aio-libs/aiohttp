@@ -123,16 +123,15 @@ async def test_write_large_payload_deflate_compression_data_in_eof(
     assert transport.write.called  # type: ignore[attr-defined]
     chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
     transport.write.reset_mock()  # type: ignore[attr-defined]
-    assert not transport.writelines.called  # type: ignore[attr-defined]
 
     # This payload compresses to 20447 bytes
     payload = b"".join(
         [bytes((*range(0, i), *range(i, 0, -1))) for i in range(255) for _ in range(64)]
     )
     await msg.write_eof(payload)
-    assert not transport.write.called  # type: ignore[attr-defined]
-    assert transport.writelines.called  # type: ignore[attr-defined]
-    chunks.extend(transport.writelines.mock_calls[0][1][0])  # type: ignore[attr-defined]
+    chunks.extend([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
+
+    assert all(chunks)
     content = b"".join(chunks)
     assert zlib.decompress(content) == (b"data" * 4096) + payload
 
@@ -202,7 +201,7 @@ async def test_write_payload_deflate_compression_chunked(
     await msg.write(b"data")
     await msg.write_eof()
 
-    chunks = [b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
     assert all(chunks)
     content = b"".join(chunks)
     assert content == expected
@@ -238,7 +237,7 @@ async def test_write_payload_deflate_compression_chunked_data_in_eof(
     await msg.write(b"data")
     await msg.write_eof(b"end")
 
-    chunks = [b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
     assert all(chunks)
     content = b"".join(chunks)
     assert content == expected
@@ -257,16 +256,16 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
     # This payload compresses to 1111 bytes
     payload = b"".join([bytes((*range(0, i), *range(i, 0, -1))) for i in range(255)])
     await msg.write_eof(payload)
-    assert not transport.write.called  # type: ignore[attr-defined]
 
-    chunks = []
-    for write_lines_call in transport.writelines.mock_calls:  # type: ignore[attr-defined]
-        chunked_payload = list(write_lines_call[1][0])[1:]
-        chunked_payload.pop()
-        chunks.extend(chunked_payload)
+    compressed = []
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    chunked_body = b"".join(chunks)
+    split_body = chunked_body.split(b"\r\n")
+    while split_body:
+        if split_body.pop(0):
+            compressed.append(split_body.pop(0))
 
-    assert all(chunks)
-    content = b"".join(chunks)
+    content = b"".join(compressed)
     assert zlib.decompress(content) == (b"data" * 4096) + payload
 
 
