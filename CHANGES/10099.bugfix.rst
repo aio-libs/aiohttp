@@ -1,1 +1,1 @@
-Fixed unknown `SSLContext` symbol for type checkers
+Fixed type of ``SSLContext`` for some static type checkers (e.g. pyright).
