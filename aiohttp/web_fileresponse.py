@@ -250,9 +250,7 @@ class FileResponse(StreamResponse):
 
         # Fallback to the uncompressed file
         st = file_path.stat()
-        if not S_ISREG(st.st_mode):
-            return None, st, None
-        return file_path, st, None
+        return file_path if S_ISREG(st.st_mode) else None, st, None
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         loop = asyncio.get_running_loop()
@@ -307,12 +305,12 @@ class FileResponse(StreamResponse):
         file_encoding: Optional[str],
     ) -> Optional[AbstractStreamWriter]:
         status = self._status
-        file_size = st.st_size
-        count = file_size
-        start = None
+        file_size: int = st.st_size
+        file_mtime: float = st.st_mtime
+        count: int = file_size
+        start: Optional[int] = None
 
-        ifrange = request.if_range
-        if ifrange is None or st.st_mtime <= ifrange.timestamp():
+        if (ifrange := request.if_range) is None or file_mtime <= ifrange.timestamp():
             # If-Range header check:
             # condition = cached date >= last modification date
             # return 206 if True else 200.
@@ -323,7 +321,7 @@ class FileResponse(StreamResponse):
             try:
                 rng = request.http_range
                 start = rng.start
-                end = rng.stop
+                end: Optional[int] = rng.stop
             except ValueError:
                 # https://tools.ietf.org/html/rfc7233:
                 # A server generating a 416 (Range Not Satisfiable) response to
@@ -340,7 +338,7 @@ class FileResponse(StreamResponse):
 
             # If a range request has been made, convert start, end slice
             # notation into file pointer offset and count
-            if start is not None or end is not None:
+            if start is not None:
                 if start < 0 and end is None:  # return tail of file
                     start += file_size
                     if start < 0:
@@ -398,25 +396,23 @@ class FileResponse(StreamResponse):
             self._compression = False
 
         self.etag = f"{st.st_mtime_ns:x}-{st.st_size:x}"  # type: ignore[assignment]
-        self.last_modified = st.st_mtime  # type: ignore[assignment]
+        self.last_modified = file_mtime  # type: ignore[assignment]
         self.content_length = count
 
         self._headers[hdrs.ACCEPT_RANGES] = "bytes"
 
-        real_start = cast(int, start)
-
         if status == HTTPPartialContent.status_code:
+            real_start = start
+            assert real_start is not None
             self._headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
                 real_start, real_start + count - 1, file_size
             )
 
         # If we are sending 0 bytes calling sendfile() will throw a ValueError
-        if count == 0 or must_be_empty_body(request.method, self.status):
+        if count == 0 or must_be_empty_body(request.method, status):
             return await super().prepare(request)
 
-        if start:  # be aware that start could be None or int=0 here.
-            offset = start
-        else:
-            offset = 0
+        # be aware that start could be None or int=0 here.
+        offset = start or 0
 
         return await self._sendfile(request, fobj, offset, count)
