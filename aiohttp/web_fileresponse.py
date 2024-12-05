@@ -179,7 +179,7 @@ class FileResponse(StreamResponse):
     ) -> Tuple[
         _FileResponseResult, Optional[io.BufferedReader], os.stat_result, Optional[str]
     ]:
-        """Return the response state, io object, stat result, and encoding.
+        """Return the response result, io object, stat result, and encoding.
 
         If an uncompressed file is returned, the encoding is set to
         :py:data:`None`.
