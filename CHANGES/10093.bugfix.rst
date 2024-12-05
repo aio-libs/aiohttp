@@ -1,2 +1,2 @@
-Update :py:meth:`~aiohttp.ClientSession.request` to reuse the ``quote_cookie`` setting from :py:attr:`~aiohttp.ClientSession._cookie_jar` when processing cookies parameter.
+Update :py:meth:`~aiohttp.ClientSession.request` to reuse the ``quote_cookie`` setting from session cookie jar when processing cookies parameter.
 -- by :user:`Cycloctane`.
