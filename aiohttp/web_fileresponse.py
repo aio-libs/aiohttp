@@ -4,6 +4,7 @@ import os
 import pathlib
 import sys
 from contextlib import suppress
+from enum import Enum, auto
 from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
@@ -65,6 +66,16 @@ ADDITIONAL_CONTENT_TYPES = MappingProxyType(
         "application/x-xz": ".xz",
     }
 )
+
+
+class _FileResponseResult(Enum):
+    """The state of the file response."""
+
+    SEND_FILE = auto()  # Ie a regular file to send
+    NOT_ACCEPTABLE = auto()  # Ie a socket, or non-regular file
+    PRE_CONDITION_FAILED = auto()  # Ie If-Match or If-None-Match failed
+    NOT_MODIFIED = auto()  # 304 Not Modified
+
 
 # Add custom pairs and clear the encodings map so guess_type ignores them.
 CONTENT_TYPES.encodings_map.clear()
@@ -163,10 +174,12 @@ class FileResponse(StreamResponse):
         self.content_length = 0
         return await super().prepare(request)
 
-    def _open_file_path_stat_encoding(
-        self, accept_encoding: str
-    ) -> Tuple[Optional[io.BufferedReader], os.stat_result, Optional[str]]:
-        """Return the io object, stat result, and encoding.
+    def _make_response(
+        self, request: "BaseRequest", accept_encoding: str
+    ) -> Tuple[
+        _FileResponseResult, Optional[io.BufferedReader], os.stat_result, Optional[str]
+    ]:
+        """Return the response state, io object, stat result, and encoding.
 
         If an uncompressed file is returned, the encoding is set to
         :py:data:`None`.
@@ -174,6 +187,56 @@ class FileResponse(StreamResponse):
         This method should be called from a thread executor
         since it calls os.stat which may block.
         """
+        file_path, st, file_encoding = self._get_file_path_stat_encoding(
+            accept_encoding
+        )
+        if not file_path:
+            return _FileResponseResult.NOT_ACCEPTABLE, None, st, None
+
+        etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
+
+        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
+        ifmatch = request.if_match
+        if ifmatch is not None and not self._etag_match(
+            etag_value, ifmatch, weak=False
+        ):
+            return _FileResponseResult.PRE_CONDITION_FAILED, None, st, file_encoding
+
+        unmodsince = request.if_unmodified_since
+        if (
+            unmodsince is not None
+            and ifmatch is None
+            and st.st_mtime > unmodsince.timestamp()
+        ):
+            return _FileResponseResult.PRE_CONDITION_FAILED, None, st, file_encoding
+
+        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
+        ifnonematch = request.if_none_match
+        if ifnonematch is not None and self._etag_match(
+            etag_value, ifnonematch, weak=True
+        ):
+            return _FileResponseResult.NOT_MODIFIED, None, st, file_encoding
+
+        modsince = request.if_modified_since
+        if (
+            modsince is not None
+            and ifnonematch is None
+            and st.st_mtime <= modsince.timestamp()
+        ):
+            return _FileResponseResult.NOT_MODIFIED, None, st, file_encoding
+
+        fobj = file_path.open("rb")
+        with suppress(OSError):
+            # fstat() may not be available on all platforms
+            # Once we open the file, we want the fstat() to ensure
+            # the file has not changed between the first stat()
+            # and the open().
+            st = os.stat(fobj.fileno())
+        return _FileResponseResult.SEND_FILE, fobj, st, file_encoding
+
+    def _get_file_path_stat_encoding(
+        self, accept_encoding: str
+    ) -> Tuple[Optional[pathlib.Path], os.stat_result, Optional[str]]:
         file_path = self._path
         for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
             if file_encoding not in accept_encoding:
@@ -184,27 +247,13 @@ class FileResponse(StreamResponse):
                 # Do not follow symlinks and ignore any non-regular files.
                 st = compressed_path.lstat()
                 if S_ISREG(st.st_mode):
-                    fobj = compressed_path.open("rb")
-                    with suppress(OSError):
-                        # fstat() may not be available on all platforms
-                        # Once we open the file, we want the fstat() to ensure
-                        # the file has not changed between the first stat()
-                        # and the open().
-                        st = os.stat(fobj.fileno())
-                    return fobj, st, file_encoding
+                    return compressed_path, st, file_encoding
 
         # Fallback to the uncompressed file
         st = file_path.stat()
         if not S_ISREG(st.st_mode):
             return None, st, None
-        fobj = file_path.open("rb")
-        with suppress(OSError):
-            # fstat() may not be available on all platforms
-            # Once we open the file, we want the fstat() to ensure
-            # the file has not changed between the first stat()
-            # and the open().
-            st = os.stat(fobj.fileno())
-        return fobj, st, None
+        return file_path, st, None
 
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
         loop = asyncio.get_running_loop()
@@ -212,8 +261,8 @@ class FileResponse(StreamResponse):
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
         try:
-            fobj, st, file_encoding = await loop.run_in_executor(
-                None, self._open_file_path_stat_encoding, accept_encoding
+            response_state, fobj, st, file_encoding = await loop.run_in_executor(
+                None, self._make_response, request, accept_encoding
             )
         except PermissionError:
             self.set_status(HTTPForbidden.status_code)
@@ -226,11 +275,15 @@ class FileResponse(StreamResponse):
 
         try:
             # Forbid special files like sockets, pipes, devices, etc.
-            if not fobj or not S_ISREG(st.st_mode):
+            if response_state is _FileResponseResult.NOT_ACCEPTABLE or not S_ISREG(
+                st.st_mode
+            ):
                 self.set_status(HTTPForbidden.status_code)
                 return await super().prepare(request)
 
-            return await self._prepare_open_file(request, fobj, st, file_encoding)
+            return await self._prepare_response(
+                request, response_state, fobj, st, file_encoding
+            )
         finally:
             if fobj:
                 # We do not await here because we do not want to wait
@@ -243,46 +296,25 @@ class FileResponse(StreamResponse):
                 _CLOSE_FUTURES.add(close_future)
                 close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
-    async def _prepare_open_file(
+    async def _prepare_response(
         self,
         request: "BaseRequest",
-        fobj: io.BufferedReader,
+        response_state: _FileResponseResult,
+        fobj: Optional[io.BufferedReader],
         st: os.stat_result,
         file_encoding: Optional[str],
     ) -> Optional[AbstractStreamWriter]:
+        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
+        if response_state is _FileResponseResult.PRE_CONDITION_FAILED:
+            return await self._precondition_failed(request)
+
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
         last_modified = st.st_mtime
 
-        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
-        ifmatch = request.if_match
-        if ifmatch is not None and not self._etag_match(
-            etag_value, ifmatch, weak=False
-        ):
-            return await self._precondition_failed(request)
-
-        unmodsince = request.if_unmodified_since
-        if (
-            unmodsince is not None
-            and ifmatch is None
-            and st.st_mtime > unmodsince.timestamp()
-        ):
-            return await self._precondition_failed(request)
-
-        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
-        ifnonematch = request.if_none_match
-        if ifnonematch is not None and self._etag_match(
-            etag_value, ifnonematch, weak=True
-        ):
+        if response_state is _FileResponseResult.NOT_MODIFIED:
             return await self._not_modified(request, etag_value, last_modified)
 
-        modsince = request.if_modified_since
-        if (
-            modsince is not None
-            and ifnonematch is None
-            and st.st_mtime <= modsince.timestamp()
-        ):
-            return await self._not_modified(request, etag_value, last_modified)
-
+        assert fobj is not None
         status = self._status
         file_size = st.st_size
         count = file_size
@@ -376,7 +408,7 @@ class FileResponse(StreamResponse):
             self._compression = False
 
         self.etag = etag_value  # type: ignore[assignment]
-        self.last_modified = st.st_mtime  # type: ignore[assignment]
+        self.last_modified = last_modified  # type: ignore[assignment]
         self.content_length = count
 
         self._headers[hdrs.ACCEPT_RANGES] = "bytes"
