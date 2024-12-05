@@ -196,30 +196,26 @@ class FileResponse(StreamResponse):
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
 
         # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
-        ifmatch = request.if_match
-        if ifmatch is not None and not self._etag_match(
+        if (ifmatch := request.if_match) is not None and not self._etag_match(
             etag_value, ifmatch, weak=False
         ):
             return _FileResponseResult.PRE_CONDITION_FAILED, None, st, file_encoding
 
-        unmodsince = request.if_unmodified_since
         if (
-            unmodsince is not None
+            (unmodsince := request.if_unmodified_since) is not None
             and ifmatch is None
             and st.st_mtime > unmodsince.timestamp()
         ):
             return _FileResponseResult.PRE_CONDITION_FAILED, None, st, file_encoding
 
         # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
-        ifnonematch = request.if_none_match
-        if ifnonematch is not None and self._etag_match(
+        if (ifnonematch := request.if_none_match) is not None and self._etag_match(
             etag_value, ifnonematch, weak=True
         ):
             return _FileResponseResult.NOT_MODIFIED, None, st, file_encoding
 
-        modsince = request.if_modified_since
         if (
-            modsince is not None
+            (modsince := request.if_modified_since) is not None
             and ifnonematch is None
             and st.st_mtime <= modsince.timestamp()
         ):
