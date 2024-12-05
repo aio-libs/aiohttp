@@ -69,7 +69,7 @@ ADDITIONAL_CONTENT_TYPES = MappingProxyType(
 
 
 class _FileResponseResult(Enum):
-    """The state of the file response."""
+    """The result of the file response."""
 
     SEND_FILE = auto()  # Ie a regular file to send
     NOT_ACCEPTABLE = auto()  # Ie a socket, or non-regular file
