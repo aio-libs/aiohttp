@@ -10,6 +10,40 @@
 
 .. towncrier release notes start
 
+3.11.10 (2024-12-05)
+====================
+
+Bug fixes
+---------
+
+- Fixed race condition in :class:`aiohttp.web.FileResponse` that could have resulted in an incorrect response if the file was replaced on the file system during ``prepare`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10101`, :issue:`10113`.
+
+
+
+- Replaced deprecated call to :func:`mimetypes.guess_type` with :func:`mimetypes.guess_file_type` when using Python 3.13+ -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10102`.
+
+
+
+- Disabled zero copy writes in the ``StreamWriter`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10125`.
+
+
+
+
+----
+
+
 3.11.9 (2024-12-01)
 ===================
 
