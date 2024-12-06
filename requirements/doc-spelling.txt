@@ -6,7 +6,7 @@
 #
 aiohttp-theme==0.1.7
     # via -r requirements/doc.in
-alabaster==0.7.13
+alabaster==1.0.0
     # via sphinx
 babel==2.16.0
     # via sphinx
