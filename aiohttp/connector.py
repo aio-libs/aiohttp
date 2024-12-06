@@ -43,6 +43,7 @@ from .client_exceptions import (
     ClientConnectorError,
     ClientConnectorSSLError,
     ClientHttpProxyError,
+    ClientProxyClosedError,
     ClientProxyConnectionError,
     ServerFingerprintMismatch,
     UnixClientConnectorError,
@@ -1398,6 +1399,14 @@ class TCPConnector(BaseConnector):
                             resp.history,
                             status=resp.status,
                             message=message,
+                            headers=resp.headers,
+                        )
+                    elif resp.method == hdrs.METH_CONNECT and resp.closed:
+                        raise ClientProxyClosedError(
+                            proxy_resp.request_info,
+                            resp.history,
+                            status=resp.status,
+                            message="Proxy server is closed.",
                             headers=resp.headers,
                         )
                 except BaseException:
