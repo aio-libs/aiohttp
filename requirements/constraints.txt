@@ -237,7 +237,7 @@ sphinx==8.1.3
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==2.0.0
     # via sphinx
-sphinxcontrib-devhelp==1.0.2
+sphinxcontrib-devhelp==2.0.0
     # via sphinx
 sphinxcontrib-htmlhelp==2.0.1
     # via sphinx
