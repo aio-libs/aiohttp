@@ -22,7 +22,7 @@ else:
     try:
         from ssl import SSLContext
     except ImportError:  # pragma: no cover
-        SSLContext = object
+        SSLContext = object  # type: ignore[misc,assignment]
 
 __all__ = (
     "BaseSite",
