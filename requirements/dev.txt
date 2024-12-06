@@ -14,7 +14,7 @@ aiohttp-theme==0.1.7
     # via -r requirements/doc.in
 aiosignal==1.3.1
     # via -r requirements/runtime-deps.in
-alabaster==0.7.13
+alabaster==1.0.0
     # via sphinx
 annotated-types==0.7.0
     # via pydantic
@@ -210,21 +210,21 @@ slotscheck==0.19.1
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
     # via sphinx
-sphinx==7.1.2
+sphinx==8.1.3
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-sphinxcontrib-applehelp==1.0.4
+sphinxcontrib-applehelp==2.0.0
     # via sphinx
-sphinxcontrib-devhelp==1.0.2
+sphinxcontrib-devhelp==2.0.0
     # via sphinx
-sphinxcontrib-htmlhelp==2.0.1
+sphinxcontrib-htmlhelp==2.1.0
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
-sphinxcontrib-qthelp==1.0.3
+sphinxcontrib-qthelp==2.0.0
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.5
+sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
