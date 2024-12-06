@@ -1,6 +1,7 @@
 """Http related parsers and protocol."""
 
 import asyncio
+import sys
 import zlib
 from typing import (  # noqa
     Any,
@@ -22,6 +23,16 @@ from .compression_utils import ZLibCompressor
 from .helpers import NO_EXTENSIONS
 
 __all__ = ("StreamWriter", "HttpVersion", "HttpVersion10", "HttpVersion11")
+
+
+MIN_PAYLOAD_FOR_WRITELINES = 2048
+UNSAFE_WRITELINES = (3, 13, 0) <= sys.version_info < (3, 13, 2) or sys.version_info < (
+    3,
+    12,
+    9,
+)
+# writelines is not safe for use until 3.12.9 and 3.13.2
+# CVE-2024-12254: https://github.com/python/cpython/pull/127656
 
 
 class HttpVersion(NamedTuple):
@@ -90,7 +101,10 @@ class StreamWriter(AbstractStreamWriter):
         transport = self._protocol.transport
         if transport is None or transport.is_closing():
             raise ClientConnectionResetError("Cannot write to closing transport")
-        transport.write(b"".join(chunks))
+        if UNSAFE_WRITELINES or size < MIN_PAYLOAD_FOR_WRITELINES:
+            transport.write(b"".join(chunks))
+        else:
+            transport.writelines(chunks)
 
     async def write(
         self, chunk: bytes, *, drain: bool = True, LIMIT: int = 0x10000
