@@ -82,8 +82,8 @@ else:
         import ssl
         from ssl import SSLContext
     except ImportError:  # pragma: no cover
-        ssl = None
-        SSLContext = object
+        ssl = None  # type: ignore[assignment]
+        SSLContext = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
