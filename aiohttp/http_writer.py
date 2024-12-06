@@ -26,12 +26,13 @@ __all__ = ("StreamWriter", "HttpVersion", "HttpVersion10", "HttpVersion11")
 
 
 MIN_PAYLOAD_FOR_WRITELINES = 2048
-UNSAFE_WRITELINES = (3, 13, 0) <= sys.version_info < (3, 13, 2) or sys.version_info < (
-    3,
-    12,
-    9,
-)
-# writelines is not safe for use until 3.12.9 and 3.13.2
+IS_PY313_BEFORE_313_2 = (3, 13, 0) <= sys.version_info < (3, 13, 2)
+IS_BEFORE_312_9 = sys.version_info < (3, 12, 9)
+SKIP_WRITELINES = IS_PY313_BEFORE_313_2 or IS_BEFORE_312_9
+# writelines is not safe for use
+# on Python 3.12+ until 3.12.9
+# on Python 3.13+ until 3.13.2
+# and on older versions it not any faster than write
 # CVE-2024-12254: https://github.com/python/cpython/pull/127656
 
 
@@ -101,7 +102,7 @@ class StreamWriter(AbstractStreamWriter):
         transport = self._protocol.transport
         if transport is None or transport.is_closing():
             raise ClientConnectionResetError("Cannot write to closing transport")
-        if UNSAFE_WRITELINES or size < MIN_PAYLOAD_FOR_WRITELINES:
+        if SKIP_WRITELINES or size < MIN_PAYLOAD_FOR_WRITELINES:
             transport.write(b"".join(chunks))
         else:
             transport.writelines(chunks)

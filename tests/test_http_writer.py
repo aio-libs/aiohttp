@@ -15,7 +15,7 @@ from aiohttp.test_utils import make_mocked_coro
 
 @pytest.fixture
 def enable_writelines() -> Generator[None, None, None]:
-    with mock.patch("aiohttp.http_writer.UNSAFE_WRITELINES", False):
+    with mock.patch("aiohttp.http_writer.SKIP_WRITELINES", False):
         yield
 
 
