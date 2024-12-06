@@ -81,7 +81,7 @@ else:
     try:
         import ssl
         from ssl import SSLContext
-    except ImportError:
+    except ImportError:  # pragma: no cover
         ssl = None
         SSLContext = object
 
