@@ -1,0 +1,3 @@
+Restored support for zero copy writes when using Python 3.12 versions 3.12.9 and later or Python 3.13.2+ -- by :user:`bdraco`.
+
+Zero copy writes were previously disabled due to CVE-2024-12254 which is resolved in these Python versions.
