@@ -70,7 +70,7 @@ else:
         import ssl
 
         SSLContext = ssl.SSLContext
-    except ImportError:
+    except ImportError:  # pragma: no cover
         ssl = None
         SSLContext = object
 
