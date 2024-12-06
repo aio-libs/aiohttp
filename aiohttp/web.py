@@ -273,7 +273,7 @@ if TYPE_CHECKING:
 else:
     try:
         from ssl import SSLContext
-    except ImportError:
+    except ImportError:  # pragma: no cover
         SSLContext = object
 
 # Only display warning when using -Wdefault, -We, -X dev or similar.
