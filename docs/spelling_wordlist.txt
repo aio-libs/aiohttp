@@ -245,6 +245,7 @@ py
 pydantic
 pyenv
 pyflakes
+pyright
 pytest
 Pytest
 Quickstart
