@@ -50,13 +50,8 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: 3.13
-    - name: Cache PyPI
-      uses: actions/cache@v4.1.2
-      with:
-        key: pip-lint-${{ hashFiles('requirements/*.txt') }}
-        path: ~/.cache/pip
-        restore-keys: |
-            pip-lint-
+        cache: 'pip'
+        cache-dependency-path: 'requirements/*.txt'
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
@@ -173,18 +168,8 @@ jobs:
       with:
         allow-prereleases: true
         python-version: ${{ matrix.pyver }}
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
-      shell: bash
-    - name: Cache PyPI
-      uses: actions/cache@v4.1.2
-      with:
-        key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
-        path: ${{ steps.pip-cache.outputs.dir }}
-        restore-keys: |
-            pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-
+        cache: 'pip'
+        cache-dependency-path: 'requirements/*.txt'
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
