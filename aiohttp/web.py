@@ -274,7 +274,7 @@ else:
     try:
         from ssl import SSLContext
     except ImportError:  # pragma: no cover
-        SSLContext = object
+        SSLContext = object  # type: ignore[misc,assignment]
 
 # Only display warning when using -Wdefault, -We, -X dev or similar.
 warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
