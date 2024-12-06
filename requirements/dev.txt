@@ -210,7 +210,7 @@ sphinx==8.1.3
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-sphinxcontrib-applehelp==1.0.4
+sphinxcontrib-applehelp==2.0.0
     # via sphinx
 sphinxcontrib-devhelp==1.0.2
     # via sphinx
