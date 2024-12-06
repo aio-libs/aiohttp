@@ -16,7 +16,7 @@ else:
         import ssl
 
         SSLContext = ssl.SSLContext
-    except ImportError:
+    except ImportError:  # pragma: no cover
         ssl = SSLContext = None
 
 if TYPE_CHECKING:
