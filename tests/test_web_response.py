@@ -245,7 +245,7 @@ def test_last_modified_reset() -> None:
 def test_last_modified_invalid_type() -> None:
     resp = web.StreamResponse()
 
-    with pytest.raises(ValueError, match="Unsupported type for last_modified: object"):
+    with pytest.raises(TypeError, match="Unsupported type for last_modified: object"):
         resp.last_modified = object()  # type: ignore[assignment]
 
 
