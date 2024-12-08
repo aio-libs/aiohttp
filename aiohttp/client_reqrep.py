@@ -74,12 +74,16 @@ from .typedefs import (
     RawHeaders,
 )
 
-try:
+if TYPE_CHECKING:
     import ssl
     from ssl import SSLContext
-except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore[assignment]
-    SSLContext = object  # type: ignore[misc,assignment]
+else:
+    try:
+        import ssl
+        from ssl import SSLContext
+    except ImportError:  # pragma: no cover
+        ssl = None  # type: ignore[assignment]
+        SSLContext = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
