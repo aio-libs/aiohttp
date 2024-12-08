@@ -61,14 +61,18 @@ from .helpers import (
 )
 from .resolver import DefaultResolver
 
-try:
+if TYPE_CHECKING:
     import ssl
 
     SSLContext = ssl.SSLContext
-except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore[assignment]
-    SSLContext = object  # type: ignore[misc,assignment]
+else:
+    try:
+        import ssl
 
+        SSLContext = ssl.SSLContext
+    except ImportError:  # pragma: no cover
+        ssl = None  # type: ignore[assignment]
+        SSLContext = object  # type: ignore[misc,assignment]
 
 EMPTY_SCHEMA_SET = frozenset({""})
 HTTP_SCHEMA_SET = frozenset({"http", "https"})
