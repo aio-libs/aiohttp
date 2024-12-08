@@ -1,0 +1,1 @@
+Fixed type of ``SSLContext`` for some static type checkers (e.g. pyright).
