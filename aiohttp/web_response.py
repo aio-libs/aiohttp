@@ -268,7 +268,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         elif isinstance(value, str):
             self._headers[hdrs.LAST_MODIFIED] = value
         else:
-            msg = f"Unsupported type for last_modified: {type(value).__name__}"
+            msg = f"Unsupported type for last_modified: {type(value).__name__}"  # type: ignore[unreachable]
             raise ValueError(msg)
 
     @property
