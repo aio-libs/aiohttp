@@ -267,6 +267,9 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             )
         elif isinstance(value, str):
             self._headers[hdrs.LAST_MODIFIED] = value
+        else:
+            msg = f"Unsupported type for last_modified: {type(value).__name__}"
+            raise ValueError(msg)
 
     @property
     def etag(self) -> Optional[ETag]:
