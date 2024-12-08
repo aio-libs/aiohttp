@@ -1570,3 +1570,10 @@ def test_request_info_tuple_new() -> None:
         ).real_url
         is url
     )
+
+
+def test_hostname_err(make_request: _RequestMaker) -> None:
+    with pytest.raises(ValueError):
+        make_request("get", "http://python.org/", proxy="socks5://127.0.0.1:80")
+    with pytest.raises(ValueError):
+        make_request("get", "http://python.org/", proxy="socks5h://127.0.0.1:80")
