@@ -3,7 +3,7 @@ import signal
 import socket
 import warnings
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set
+from typing import TYPE_CHECKING, Any, List, Optional, Set
 
 from yarl import URL
 
@@ -11,11 +11,13 @@ from .typedefs import PathLike
 from .web_app import Application
 from .web_server import Server
 
-try:
+if TYPE_CHECKING:
     from ssl import SSLContext
-except ImportError:
-    SSLContext = object  # type: ignore[misc,assignment]
-
+else:
+    try:
+        from ssl import SSLContext
+    except ImportError:  # pragma: no cover
+        SSLContext = object  # type: ignore[misc,assignment]
 
 __all__ = (
     "BaseSite",
