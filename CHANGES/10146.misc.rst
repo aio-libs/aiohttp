@@ -1,0 +1,1 @@
+Setting :attr:`aiohttp.web.StreamResponse.last_modified` to an unsupported type will now raise :exc:`ValueError` instead of silently failing -- by :user:`bdraco`.
