@@ -696,7 +696,6 @@ async def test_cookie_jar_usage(
     assert resp_cookies["response"].value == "resp_value"
 
 
-@pytest.mark.xfail(reason="Reproducer for #9336")
 async def test_cookies_with_not_quoted_cookie_jar(
     aiohttp_server: AiohttpServer,
 ) -> None:
