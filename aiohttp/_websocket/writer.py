@@ -135,12 +135,16 @@ class WebSocketWriter:
             mask = PACK_RANDBITS(self.get_random_bits())
             message = bytearray(message)
             websocket_mask(mask, message)
-            self.transport.write(header + mask + message)
+            self.transport.writelines((header, mask, message))
             self._output_size += MASK_LEN
         elif msg_length > MSG_SIZE:
-            self.transport.write(header)
-            self.transport.write(message)
+            # For large messages, we use writelines to avoid copying the
+            # entire message into a new buffer. This is a performance
+            # optimization to avoid unnecessary memory allocations.
+            self.transport.writelines((header, message))
         else:
+            # If the message is small, its faster to copy it into a new
+            # buffer and send it all at once.
             self.transport.write(header + message)
 
         self._output_size += header_len + msg_length
