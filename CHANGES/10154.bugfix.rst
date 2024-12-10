@@ -1,1 +1,1 @@
-Updated ``StreamResponse.write`` annotation to also allow ``bytearray`` and ``memoryview`` as inputs.
+Updated :meth:`aiohttp.web.StreamResponse.write` annotation to also allow ``bytearray`` and ``memoryview`` as inputs -- by :user:`cdce8p`.
