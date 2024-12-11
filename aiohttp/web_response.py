@@ -537,7 +537,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         status_line = f"HTTP/{version[0]}.{version[1]} {self._status} {self._reason}"
         await writer.write_headers(status_line, self._headers)
 
-    async def write(self, data: bytes) -> None:
+    async def write(self, data: Union[bytes, bytearray, memoryview]) -> None:
         assert isinstance(
             data, (bytes, bytearray, memoryview)
         ), "data argument must be byte-ish (%r)" % type(data)
