@@ -1,0 +1,1 @@
+Updated :meth:`aiohttp.web.StreamResponse.write` annotation to also allow :class:`bytearray` and :class:`memoryview` as inputs -- by :user:`cdce8p`.
