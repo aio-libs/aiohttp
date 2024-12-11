@@ -632,6 +632,28 @@ async def test_ssl_client(
     assert txt == "Test message"
 
 
+async def test_ssl_client_alpn(
+        aiohttp_server: AiohttpServer,
+        aiohttp_client: AiohttpClient,
+        ssl_ctx: ssl.SSLContext,
+    ) -> None:
+
+    async def handler(request: web.Request) -> web.Response:
+        sslobj = request.transport.get_extra_info("ssl_object")
+        assert sslobj.selected_alpn_protocol() == "http/1.1"
+        return web.Response(text="Test message")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    ssl_ctx.set_alpn_protocols(["http/1.1"])
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+
+    connector = aiohttp.TCPConnector(ssl=False)
+    client = await aiohttp_client(server, connector=connector)
+    resp = await client.get("/")
+    assert resp.status == 200
+
+
 async def test_tcp_connector_fingerprint_ok(
     aiohttp_server: AiohttpServer,
     aiohttp_client: AiohttpClient,
