@@ -633,10 +633,10 @@ async def test_ssl_client(
 
 
 async def test_ssl_client_alpn(
-        aiohttp_server: AiohttpServer,
-        aiohttp_client: AiohttpClient,
-        ssl_ctx: ssl.SSLContext,
-    ) -> None:
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    ssl_ctx: ssl.SSLContext,
+) -> None:
 
     async def handler(request: web.Request) -> web.Response:
         sslobj = request.transport.get_extra_info("ssl_object")
