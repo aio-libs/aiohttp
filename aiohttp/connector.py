@@ -781,7 +781,7 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         sslcontext.verify_mode = ssl.CERT_NONE
         sslcontext.options |= ssl.OP_NO_COMPRESSION
         sslcontext.set_default_verify_paths()
-    sslcontext.set_alpn_protocols(["http/1.1"])
+    sslcontext.set_alpn_protocols(("http/1.1",))
     return sslcontext
 
 
