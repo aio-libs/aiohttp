@@ -17,6 +17,7 @@ from typing import (
     Optional,
     Tuple,
     TypedDict,
+    Union,
 )
 
 from multidict import CIMultiDict
@@ -200,7 +201,7 @@ class AbstractStreamWriter(ABC):
     length: Optional[int] = 0
 
     @abstractmethod
-    async def write(self, chunk: bytes) -> None:
+    async def write(self, chunk: Union[bytes, bytearray, memoryview]) -> None:
         """Write chunk into stream."""
 
     @abstractmethod
