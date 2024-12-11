@@ -6,6 +6,7 @@ import sys
 import weakref
 from math import ceil, modf
 from pathlib import Path
+from threading import Thread
 from typing import Dict, Iterator, Optional, Union
 from unittest import mock
 from urllib.request import getproxies_environment
@@ -403,9 +404,32 @@ async def test_timer_context_timeout_does_swallow_cancellation() -> None:
 
 
 def test_timer_context_no_task(loop: asyncio.AbstractEventLoop) -> None:
-    with pytest.raises(RuntimeError):
+    with pytest.raises(
+        RuntimeError, match="Timeout context manager should be used inside a task"
+    ):
         with helpers.TimerContext(loop):
             pass
+
+
+async def test_timer_context_wrong_event_loop() -> None:
+    loop = asyncio.get_running_loop()
+
+    async def use_timer(loop: asyncio.AbstractEventLoop = loop) -> None:
+        with pytest.raises(
+            RuntimeError,
+            match="Timeout context manager used in a task on a different event loop",
+        ):
+            with helpers.TimerContext(loop):
+                pass
+
+    other_loop = asyncio.new_event_loop()
+    thread = Thread(target=other_loop.run_forever)
+    thread.start()
+
+    asyncio.run_coroutine_threadsafe(use_timer(), other_loop).result(timeout=5)
+
+    other_loop.stop()
+    thread.join()
 
 
 async def test_weakref_handle(loop: asyncio.AbstractEventLoop) -> None:
