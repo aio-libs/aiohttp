@@ -639,6 +639,7 @@ async def test_ssl_client_alpn(
 ) -> None:
 
     async def handler(request: web.Request) -> web.Response:
+        assert request.transport is not None
         sslobj = request.transport.get_extra_info("ssl_object")
         return web.Response(text=sslobj.selected_alpn_protocol())
 
