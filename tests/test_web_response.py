@@ -255,6 +255,13 @@ def test_last_modified_reset() -> None:
     assert resp.last_modified is None
 
 
+def test_last_modified_invalid_type() -> None:
+    resp = StreamResponse()
+
+    with pytest.raises(TypeError, match="Unsupported type for last_modified: object"):
+        resp.last_modified = object()  # type: ignore[assignment]
+
+
 @pytest.mark.parametrize(
     ["header_val", "expected"],
     [
