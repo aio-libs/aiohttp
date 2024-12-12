@@ -1,0 +1,3 @@
+Enabled ALPN on default SSL contexts. This improves compatibility with some
+proxies which don't work without this extension.
+-- by :user:`Cycloctane`.
