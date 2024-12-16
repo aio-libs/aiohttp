@@ -1,0 +1,1 @@
+Changed the type informaiton of the Client.__aenter__() to return `Self`.
