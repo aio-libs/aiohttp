@@ -1,6 +1,7 @@
 - Contributors -
 ----------------
 A. Jesse Jiryu Davis
+Abdur Rehman Ali
 Adam Bannister
 Adam Cooper
 Adam Horacek
@@ -8,6 +9,7 @@ Adam Mills
 Adrian Krupa
 Adrián Chaves
 Ahmed Tahri
+Alan Bogarin
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
@@ -53,6 +55,7 @@ Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
 Austin Scola
+Bai Haoran
 Ben Bader
 Ben Greiner
 Ben Kallus
@@ -63,6 +66,7 @@ Boris Feld
 Borys Vorona
 Boyi Chen
 Brett Cannon
+Brett Higgins
 Brian Bouterse
 Brian C. Lane
 Brian Muller
@@ -77,6 +81,7 @@ Chih-Yuan Chen
 Chris AtLee
 Chris Laws
 Chris Moore
+Chris Shucksmith
 Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
@@ -133,6 +138,7 @@ Franek Magiera
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
+Gang Ji
 Gary Wilson Jr.
 Gennady Andreyev
 Georges Dubus
@@ -207,6 +213,7 @@ Kevin Samuel
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
@@ -222,11 +229,13 @@ Lubomir Gelo
 Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
+Lénárd Szolnoki
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
 Marc Mueller
 Marco Paolini
+Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
 Marko Kohtala
@@ -242,6 +251,7 @@ Matthieu Hauglustaine
 Matthieu Rigal
 Matvey Tingaev
 Meet Mangukiya
+Meshya
 Michael Ihnatenko
 Michał Górny
 Mikhail Burshteyn
@@ -279,9 +289,11 @@ Pawel Kowalski
 Pawel Miech
 Pepe Osca
 Philipp A.
+Pierre-Louis Peeters
 Pieter van Beek
 Qiao Han
 Rafael Viotti
+Rahul Nahata
 Raphael Bialon
 Raúl Cumplido
 Required Field
@@ -303,6 +315,7 @@ Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
+Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
@@ -363,6 +376,8 @@ William Grzybowski
 William S.
 Wilson Ong
 wouter bolsterlee
+Xavier Halloran
+Xi Rui
 Xiang Li
 Yang Zhou
 Yannick Koechlin

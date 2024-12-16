@@ -65,7 +65,7 @@ class RouteDef(AbstractRouteDef):
         info = []
         for name, value in sorted(self.kwargs.items()):
             info.append(f", {name}={value!r}")
-        return "<RouteDef {method} {path} -> {handler.__name__!r}" "{info}>".format(
+        return "<RouteDef {method} {path} -> {handler.__name__!r}{info}>".format(
             method=self.method, path=self.path, handler=self.handler, info="".join(info)
         )
 
@@ -89,7 +89,7 @@ class StaticDef(AbstractRouteDef):
         info = []
         for name, value in sorted(self.kwargs.items()):
             info.append(f", {name}={value!r}")
-        return "<StaticDef {prefix} -> {path}" "{info}>".format(
+        return "<StaticDef {prefix} -> {path}{info}>".format(
             prefix=self.prefix, path=self.path, info="".join(info)
         )
 

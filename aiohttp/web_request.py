@@ -1,10 +1,10 @@
 import asyncio
-import dataclasses
 import datetime
 import io
 import re
 import socket
 import string
+import sys
 import tempfile
 import types
 from http.cookies import SimpleCookie
@@ -19,7 +19,6 @@ from typing import (
     MutableMapping,
     Optional,
     Pattern,
-    Set,
     Tuple,
     Union,
     cast,
@@ -38,12 +37,12 @@ from .helpers import (
     ChainMapProxy,
     ETag,
     HeadersMixin,
+    frozen_dataclass_decorator,
     is_expected_content_type,
     parse_http_date,
     reify,
     sentinel,
     set_exception,
-    set_result,
 )
 from .http_parser import RawRequestMessage
 from .http_writer import HttpVersion
@@ -63,6 +62,11 @@ from .web_exceptions import (
 )
 from .web_response import StreamResponse
 
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    Self = Any
+
 __all__ = ("BaseRequest", "FileField", "Request")
 
 
@@ -72,13 +76,13 @@ if TYPE_CHECKING:
     from .web_urldispatcher import UrlMappingMatchInfo
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class FileField:
     name: str
     filename: str
     file: io.BufferedReader
     content_type: str
-    headers: "CIMultiDictProxy[str]"
+    headers: CIMultiDictProxy[str]
 
 
 _TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
@@ -123,33 +127,14 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         hdrs.METH_DELETE,
     }
 
-    __slots__ = (
-        "_message",
-        "_protocol",
-        "_payload_writer",
-        "_payload",
-        "_headers",
-        "_method",
-        "_version",
-        "_rel_url",
-        "_post",
-        "_read_bytes",
-        "_state",
-        "_cache",
-        "_task",
-        "_client_max_size",
-        "_loop",
-        "_transport_sslcontext",
-        "_transport_peername",
-        "_disconnection_waiters",
-        "__weakref__",
-    )
+    _post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
+    _read_bytes: Optional[bytes] = None
 
     def __init__(
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: "RequestHandler",
+        protocol: "RequestHandler[Self]",
         payload_writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
         loop: asyncio.AbstractEventLoop,
@@ -160,20 +145,21 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         host: Optional[str] = None,
         remote: Optional[str] = None,
     ) -> None:
-        super().__init__()
-        if state is None:
-            state = {}
         self._message = message
         self._protocol = protocol
         self._payload_writer = payload_writer
 
         self._payload = payload
-        self._headers = message.headers
+        self._headers: CIMultiDictProxy[str] = message.headers
         self._method = message.method
         self._version = message.version
         self._cache: Dict[str, Any] = {}
         url = message.url
-        if url.is_absolute():
+        if url.absolute:
+            if scheme is not None:
+                url = url.with_scheme(scheme)
+            if host is not None:
+                url = url.with_host(host)
             # absolute URL is given,
             # override auto-calculating url, host, and scheme
             # all other properties should be good
@@ -182,25 +168,22 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._cache["scheme"] = url.scheme
             self._rel_url = url.relative()
         else:
-            self._rel_url = message.url
-        self._post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
-        self._read_bytes: Optional[bytes] = None
+            self._rel_url = url
+            if scheme is not None:
+                self._cache["scheme"] = scheme
+            if host is not None:
+                self._cache["host"] = host
 
-        self._state = state
+        self._state = {} if state is None else state
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
-        self._disconnection_waiters: Set[asyncio.Future[None]] = set()
 
-        transport = self._protocol.transport
+        transport = protocol.transport
         assert transport is not None
         self._transport_sslcontext = transport.get_extra_info("sslcontext")
         self._transport_peername = transport.get_extra_info("peername")
 
-        if scheme is not None:
-            self._cache["scheme"] = scheme
-        if host is not None:
-            self._cache["host"] = host
         if remote is not None:
             self._cache["remote"] = remote
 
@@ -222,7 +205,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         will reuse the one from the current request object.
         """
         if self._read_bytes:
-            raise RuntimeError("Cannot clone request " "after reading its content")
+            raise RuntimeError("Cannot clone request after reading its content")
 
         dct: Dict[str, Any] = {}
         if method is not sentinel:
@@ -254,7 +237,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self.__class__(
             message,
             self._payload,
-            self._protocol,
+            self._protocol,  # type: ignore[arg-type]
             self._payload_writer,
             self._task,
             self._loop,
@@ -268,13 +251,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._task
 
     @property
-    def protocol(self) -> "RequestHandler":
+    def protocol(self) -> "RequestHandler[Self]":
         return self._protocol
 
     @property
     def transport(self) -> Optional[asyncio.Transport]:
-        if self._protocol is None:
-            return None
         return self._protocol.transport
 
     @property
@@ -415,6 +396,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         - overridden value by .clone(host=new_host) call.
         - HOST HTTP header
         - socket.getfqdn() value
+
+        For example, 'example.com' or 'localhost:8080'.
+
+        For historical reasons, the port number may be included.
         """
         host = self._message.headers.get(hdrs.HOST)
         if host is not None:
@@ -438,8 +423,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     @reify
     def url(self) -> URL:
-        url = URL.build(scheme=self.scheme, host=self.host)
-        return url.join(self._rel_url)
+        """The full URL of the request."""
+        # authority is used here because it may include the port number
+        # and we want yarl to parse it correctly
+        return URL.build(scheme=self.scheme, authority=self.host).join(self._rel_url)
 
     @reify
     def path(self) -> str:
@@ -470,7 +457,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     @reify
     def query(self) -> MultiDictProxy[str]:
         """A multidict with all the variables in the query string."""
-        return MultiDictProxy(self._rel_url.query)
+        return self._rel_url.query
 
     @reify
     def query_string(self) -> str:
@@ -481,7 +468,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> CIMultiDictProxy[str]:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
@@ -766,7 +753,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                             )
                 else:
                     raise ValueError(
-                        "To decode nested multipart you need " "to use custom reader",
+                        "To decode nested multipart you need to use custom reader",
                     )
 
                 field = await multipart.next()
@@ -788,11 +775,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     def get_extra_info(self, name: str, default: Any = None) -> Any:
         """Extra info from protocol transport"""
-        protocol = self._protocol
-        if protocol is None:
-            return default
-
-        transport = protocol.transport
+        transport = self._protocol.transport
         if transport is None:
             return default
 
@@ -817,13 +800,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     def _cancel(self, exc: BaseException) -> None:
         set_exception(self._payload, exc)
-        for fut in self._disconnection_waiters:
-            set_result(fut, None)
 
     def _finish(self) -> None:
-        for fut in self._disconnection_waiters:
-            fut.cancel()
-
         if self._post is None or self.content_type != "multipart/form-data":
             return
 
@@ -832,32 +810,13 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         # NOTE: instances of files sent within multipart request body
         # NOTE: via HTTP POST request.
         for file_name, file_field_object in self._post.items():
-            if not isinstance(file_field_object, FileField):
-                continue
-
-            file_field_object.file.close()
-
-    async def wait_for_disconnection(self) -> None:
-        loop = asyncio.get_event_loop()
-        fut: asyncio.Future[None] = loop.create_future()
-        self._disconnection_waiters.add(fut)
-        try:
-            await fut
-        finally:
-            self._disconnection_waiters.remove(fut)
+            if isinstance(file_field_object, FileField):
+                file_field_object.file.close()
 
 
 class Request(BaseRequest):
-    __slots__ = ("_match_info",)
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-
-        # matchdict, route_name, handler
-        # or information about traversal lookup
-
-        # initialized after route resolving
-        self._match_info: Optional[UrlMappingMatchInfo] = None
+    _match_info: Optional["UrlMappingMatchInfo"] = None
 
     def clone(
         self,
@@ -912,4 +871,5 @@ class Request(BaseRequest):
         if match_info is None:
             return
         for app in match_info._apps:
-            await app.on_response_prepare.send(self, response)
+            if on_response_prepare := app.on_response_prepare:
+                await on_response_prepare.send(self, response)

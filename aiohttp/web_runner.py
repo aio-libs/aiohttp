@@ -2,7 +2,7 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set, Type
+from typing import TYPE_CHECKING, Any, Generic, List, Optional, Set, Type, TypeVar
 
 from yarl import URL
 
@@ -13,14 +13,16 @@ from .typedefs import PathLike
 from .web_app import Application
 from .web_log import AccessLogger
 from .web_protocol import RequestHandler
-from .web_request import Request
+from .web_request import BaseRequest, Request
 from .web_server import Server
 
-try:
+if TYPE_CHECKING:
     from ssl import SSLContext
-except ImportError:
-    SSLContext = object  # type: ignore[misc,assignment]
-
+else:
+    try:
+        from ssl import SSLContext
+    except ImportError:  # pragma: no cover
+        SSLContext = object  # type: ignore[misc,assignment]
 
 __all__ = (
     "BaseSite",
@@ -33,6 +35,8 @@ __all__ = (
     "ServerRunner",
     "GracefulExit",
 )
+
+_Request = TypeVar("_Request", bound=BaseRequest)
 
 
 class GracefulExit(SystemExit):
@@ -48,7 +52,7 @@ class BaseSite(ABC):
 
     def __init__(
         self,
-        runner: "BaseRunner",
+        runner: "BaseRunner[Any]",
         *,
         ssl_context: Optional[SSLContext] = None,
         backlog: int = 128,
@@ -82,7 +86,7 @@ class TCPSite(BaseSite):
 
     def __init__(
         self,
-        runner: "BaseRunner",
+        runner: "BaseRunner[Any]",
         host: Optional[str] = None,
         port: Optional[int] = None,
         *,
@@ -106,7 +110,7 @@ class TCPSite(BaseSite):
     @property
     def name(self) -> str:
         scheme = "https" if self._ssl_context else "http"
-        host = "0.0.0.0" if self._host is None else self._host
+        host = "0.0.0.0" if not self._host else self._host
         return str(URL.build(scheme=scheme, host=host, port=self._port))
 
     async def start(self) -> None:
@@ -130,7 +134,7 @@ class UnixSite(BaseSite):
 
     def __init__(
         self,
-        runner: "BaseRunner",
+        runner: "BaseRunner[Any]",
         path: PathLike,
         *,
         ssl_context: Optional[SSLContext] = None,
@@ -164,13 +168,13 @@ class UnixSite(BaseSite):
 class NamedPipeSite(BaseSite):
     __slots__ = ("_path",)
 
-    def __init__(self, runner: "BaseRunner", path: str) -> None:
+    def __init__(self, runner: "BaseRunner[Any]", path: str) -> None:
         loop = asyncio.get_event_loop()
         if not isinstance(
             loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
         ):
             raise RuntimeError(
-                "Named Pipes only available in proactor" "loop under windows"
+                "Named Pipes only available in proactor loop under windows"
             )
         super().__init__(runner)
         self._path = path
@@ -195,7 +199,7 @@ class SockSite(BaseSite):
 
     def __init__(
         self,
-        runner: "BaseRunner",
+        runner: "BaseRunner[Any]",
         sock: socket.socket,
         *,
         ssl_context: Optional[SSLContext] = None,
@@ -229,7 +233,7 @@ class SockSite(BaseSite):
         )
 
 
-class BaseRunner(ABC):
+class BaseRunner(ABC, Generic[_Request]):
     __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
 
     def __init__(
@@ -241,12 +245,12 @@ class BaseRunner(ABC):
     ) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._server: Optional[Server] = None
+        self._server: Optional[Server[_Request]] = None
         self._sites: List[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
 
     @property
-    def server(self) -> Optional[Server]:
+    def server(self) -> Optional[Server[_Request]]:
         return self._server
 
     @property
@@ -310,7 +314,7 @@ class BaseRunner(ABC):
                 pass
 
     @abstractmethod
-    async def _make_server(self) -> Server:
+    async def _make_server(self) -> Server[_Request]:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -332,13 +336,17 @@ class BaseRunner(ABC):
         self._sites.remove(site)
 
 
-class ServerRunner(BaseRunner):
+class ServerRunner(BaseRunner[BaseRequest]):
     """Low-level web server runner"""
 
     __slots__ = ("_web_server",)
 
     def __init__(
-        self, web_server: Server, *, handle_signals: bool = False, **kwargs: Any
+        self,
+        web_server: Server[BaseRequest],
+        *,
+        handle_signals: bool = False,
+        **kwargs: Any,
     ) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         self._web_server = web_server
@@ -346,14 +354,14 @@ class ServerRunner(BaseRunner):
     async def shutdown(self) -> None:
         pass
 
-    async def _make_server(self) -> Server:
+    async def _make_server(self) -> Server[BaseRequest]:
         return self._web_server
 
     async def _cleanup_server(self) -> None:
         pass
 
 
-class AppRunner(BaseRunner):
+class AppRunner(BaseRunner[Request]):
     """Web Application runner"""
 
     __slots__ = ("_app",)
@@ -395,13 +403,13 @@ class AppRunner(BaseRunner):
     async def shutdown(self) -> None:
         await self._app.shutdown()
 
-    async def _make_server(self) -> Server:
+    async def _make_server(self) -> Server[Request]:
         self._app.on_startup.freeze()
         await self._app.startup()
         self._app.freeze()
 
         return Server(
-            self._app._handle,  # type: ignore[arg-type]
+            self._app._handle,
             request_factory=self._make_request,
             **self._kwargs,
         )
@@ -410,7 +418,7 @@ class AppRunner(BaseRunner):
         self,
         message: RawRequestMessage,
         payload: StreamReader,
-        protocol: RequestHandler,
+        protocol: RequestHandler[Request],
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
         _cls: Type[Request] = Request,

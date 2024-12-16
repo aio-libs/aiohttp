@@ -183,6 +183,10 @@ class TestHTTPOk:
         assert resp.reason == "Done"
         assert resp.status == 200
 
+    def test_multiline_reason(self) -> None:
+        with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
+            web.HTTPOk(reason="Bad\r\nInjected-header: foo")
+
     def test_pickle(self) -> None:
         resp = web.HTTPOk(
             headers={"X-Custom": "value"},
@@ -322,7 +326,7 @@ class TestHTTPRequestEntityTooLarge:
             reason="Too large",
         )
         assert resp.text == (
-            "Maximum request body size 100 exceeded, " "actual body size 123"
+            "Maximum request body size 100 exceeded, actual body size 123"
         )
         compare: Mapping[str, str] = {"X-Custom": "value", "Content-Type": "text/plain"}
         assert resp.headers == compare

@@ -17,6 +17,10 @@ Async http client/server framework
    :target: https://codecov.io/gh/aio-libs/aiohttp
    :alt: codecov.io status for master branch
 
+.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
+   :target: https://codspeed.io/aio-libs/aiohttp
+   :alt: Codspeed.io status for aiohttp
+
 .. image:: https://badge.fury.io/py/aiohttp.svg
    :target: https://pypi.org/project/aiohttp
    :alt: Latest PyPI package version
@@ -161,7 +165,6 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- async-timeout_
 - multidict_
 - yarl_
 - frozenlist_
@@ -172,7 +175,6 @@ Optionally you may install the aiodns_ library (highly recommended for sake of s
 .. _multidict: https://pypi.python.org/pypi/multidict
 .. _frozenlist: https://pypi.org/project/frozenlist/
 .. _yarl: https://pypi.python.org/pypi/yarl
-.. _async-timeout: https://pypi.python.org/pypi/async_timeout
 
 License
 =======

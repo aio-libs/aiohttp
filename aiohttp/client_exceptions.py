@@ -3,29 +3,37 @@
 import asyncio
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
-from .http_parser import RawResponseMessage
-from .typedefs import LooseHeaders, StrOrURL
+from multidict import MultiMapping
 
-try:
+from .typedefs import StrOrURL
+
+if TYPE_CHECKING:
     import ssl
 
     SSLContext = ssl.SSLContext
-except ImportError:  # pragma: no cover
-    ssl = SSLContext = None  # type: ignore[assignment]
+else:
+    try:
+        import ssl
 
+        SSLContext = ssl.SSLContext
+    except ImportError:  # pragma: no cover
+        ssl = SSLContext = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
+    from .http_parser import RawResponseMessage
 else:
-    RequestInfo = ClientResponse = ConnectionKey = None
+    RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = None
 
 __all__ = (
     "ClientError",
     "ClientConnectionError",
+    "ClientConnectionResetError",
     "ClientOSError",
     "ClientConnectorError",
     "ClientProxyConnectionError",
     "ClientSSLError",
+    "ClientConnectorDNSError",
     "ClientConnectorSSLError",
     "ClientConnectorCertificateError",
     "ConnectionTimeoutError",
@@ -45,6 +53,7 @@ __all__ = (
     "NonHttpUrlClientError",
     "InvalidUrlRedirectClientError",
     "NonHttpUrlRedirectClientError",
+    "WSMessageTypeError",
 )
 
 
@@ -69,7 +78,7 @@ class ClientResponseError(ClientError):
         *,
         status: Optional[int] = None,
         message: str = "",
-        headers: Optional[LooseHeaders] = None,
+        headers: Optional[MultiMapping[str]] = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
@@ -85,7 +94,7 @@ class ClientResponseError(ClientError):
         return "{}, message={!r}, url={!r}".format(
             self.status,
             self.message,
-            self.request_info.real_url,
+            str(self.request_info.real_url),
         )
 
     def __repr__(self) -> str:
@@ -122,6 +131,10 @@ class TooManyRedirects(ClientResponseError):
 
 class ClientConnectionError(ClientError):
     """Base class for client socket errors."""
+
+
+class ClientConnectionResetError(ClientConnectionError, ConnectionResetError):
+    """ConnectionResetError"""
 
 
 class ClientOSError(ClientConnectionError, OSError):
@@ -164,6 +177,14 @@ class ClientConnectorError(ClientOSError):
 
     # OSError.__reduce__ does too much black magick
     __reduce__ = BaseException.__reduce__
+
+
+class ClientConnectorDNSError(ClientConnectorError):
+    """DNS resolution failed during client connection.
+
+    Raised in :class:`aiohttp.connector.TCPConnector` if
+        DNS resolution fails.
+    """
 
 
 class ClientProxyConnectionError(ClientConnectorError):
@@ -315,7 +336,7 @@ if ssl is not None:
     ssl_errors = (ssl.SSLError,)
     ssl_error_bases = (ClientSSLError, ssl.SSLError)
 else:  # pragma: no cover
-    cert_errors = tuple()
+    cert_errors = tuple()  # type: ignore[unreachable]
     cert_errors_bases = (
         ClientSSLError,
         ValueError,
@@ -361,3 +382,7 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
             "[{0.certificate_error.__class__.__name__}: "
             "{0.certificate_error.args}]".format(self)
         )
+
+
+class WSMessageTypeError(TypeError):
+    """WebSocket message type is not valid."""

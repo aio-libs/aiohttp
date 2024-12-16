@@ -5,7 +5,7 @@ import pathlib
 import socket
 import sys
 from stat import S_IFIFO, S_IMODE
-from typing import Any, Generator, Optional
+from typing import Any, Generator, NoReturn, Optional
 
 import pytest
 import yarl
@@ -428,10 +428,10 @@ async def test_static_directory_with_mock_permission_error(
             raise PermissionError()
         return real_iterdir(self)
 
-    def mock_is_dir(self: pathlib.Path) -> bool:
+    def mock_is_dir(self: pathlib.Path, **kwargs: Any) -> bool:
         if my_dir.samefile(self.parent):
             raise PermissionError()
-        return real_is_dir(self)
+        return real_is_dir(self, **kwargs)
 
     monkeypatch.setattr("pathlib.Path.iterdir", mock_iterdir)
     monkeypatch.setattr("pathlib.Path.is_dir", mock_is_dir)
@@ -514,15 +514,48 @@ async def test_access_symlink_loop(
     assert r.status == 404
 
 
+async def test_access_compressed_file_as_symlink(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that compressed file variants as symlinks are ignored."""
+    private_file = tmp_path / "private.txt"
+    private_file.write_text("private info")
+    www_dir = tmp_path / "www"
+    www_dir.mkdir()
+    gz_link = www_dir / "file.txt.gz"
+    gz_link.symlink_to(f"../{private_file.name}")
+
+    app = web.Application()
+    app.router.add_static("/", www_dir)
+    client = await aiohttp_client(app)
+
+    # Symlink should be ignored; response reflects missing uncompressed file.
+    resp = await client.get(f"/{gz_link.stem}", auto_decompress=False)
+    assert resp.status == 404
+    resp.release()
+
+    # Again symlin is ignored, and then uncompressed is served.
+    txt_file = gz_link.with_suffix("")
+    txt_file.write_text("public data")
+    resp = await client.get(f"/{txt_file.name}")
+    assert resp.status == 200
+    assert resp.headers.get("Content-Encoding") is None
+    assert resp.content_type == "text/plain"
+    assert await resp.text() == "public data"
+    resp.release()
+    await client.close()
+
+
 async def test_access_special_resource(
-    tmp_path_factory: pytest.TempPathFactory, aiohttp_client: AiohttpClient
+    unix_sockname: str, aiohttp_client: AiohttpClient
 ) -> None:
     """Test access to non-regular files is forbidden using a UNIX domain socket."""
     if not getattr(socket, "AF_UNIX", None):
         pytest.skip("UNIX domain sockets not supported")
 
-    tmp_path = tmp_path_factory.mktemp("special")
-    my_special = tmp_path / "sock"
+    my_special = pathlib.Path(unix_sockname)
+    tmp_path = my_special.parent
+
     my_socket = socket.socket(socket.AF_UNIX)
     my_socket.bind(str(my_special))
     assert my_special.is_socket()
@@ -546,16 +579,17 @@ async def test_access_mock_special_resource(
     my_special.touch()
 
     real_result = my_special.stat()
-    real_stat = pathlib.Path.stat
+    real_stat = os.stat
 
-    def mock_stat(self: pathlib.Path) -> os.stat_result:
-        s = real_stat(self)
+    def mock_stat(path: Any, **kwargs: Any) -> os.stat_result:
+        s = real_stat(path, **kwargs)
         if os.path.samestat(s, real_result):
             mock_mode = S_IFIFO | S_IMODE(s.st_mode)
             s = os.stat_result([mock_mode] + list(s)[1:])
         return s
 
     monkeypatch.setattr("pathlib.Path.stat", mock_stat)
+    monkeypatch.setattr("os.stat", mock_stat)
 
     app = web.Application()
     app.router.add_static("/", str(tmp_path))
@@ -633,27 +667,28 @@ async def test_allow_head(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.head("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.get("/b")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.head("/b")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 @pytest.mark.parametrize(
     "path",
-    [
+    (
         "/a",
         "/{a}",
-    ],
+        "/{a:.*}",
+    ),
 )
 def test_reuse_last_added_resource(path: str) -> None:
     # Test that adding a route with the same name and path of the last added
@@ -703,15 +738,15 @@ async def test_add_view(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.post("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.put("/a")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 async def test_decorate_view(aiohttp_client: AiohttpClient) -> None:
@@ -732,15 +767,15 @@ async def test_decorate_view(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.post("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.put("/a")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 async def test_web_view(aiohttp_client: AiohttpClient) -> None:
@@ -759,15 +794,15 @@ async def test_web_view(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.post("/a")
     assert r.status == 200
-    await r.release()
+    r.release()
 
     r = await client.put("/a")
     assert r.status == 405
-    await r.release()
+    r.release()
 
 
 async def test_static_absolute_url(
@@ -803,18 +838,15 @@ async def test_for_issue_5250(
         assert (await resp.text()) == "success!"
 
 
-@pytest.mark.xfail(
-    raises=AssertionError,
-    reason="Regression in v3.7: https://github.com/aio-libs/aiohttp/issues/5621",
-)
 @pytest.mark.parametrize(
     ("route_definition", "urlencoded_path", "expected_http_resp_status"),
     (
         ("/467,802,24834/hello", "/467%2C802%2C24834/hello", 200),
         ("/{user_ids:([0-9]+)(,([0-9]+))*}/hello", "/467%2C802%2C24834/hello", 200),
+        ("/467,802,24834/hello", "/467,802,24834/hello", 200),
+        ("/{user_ids:([0-9]+)(,([0-9]+))*}/hello", "/467,802,24834/hello", 200),
         ("/1%2C3/hello", "/1%2C3/hello", 404),
     ),
-    ids=("urldecoded_route", "urldecoded_route_with_regex", "urlencoded_route"),
 )
 async def test_decoded_url_match(
     aiohttp_client: AiohttpClient,
@@ -830,9 +862,24 @@ async def test_decoded_url_match(
     app.router.add_get(route_definition, handler)
     client = await aiohttp_client(app)
 
-    r = await client.get(yarl.URL(urlencoded_path, encoded=True))
-    assert r.status == expected_http_resp_status
-    await r.release()
+    async with client.get(yarl.URL(urlencoded_path, encoded=True)) as resp:
+        assert resp.status == expected_http_resp_status
+
+
+async def test_decoded_raw_match_regex(aiohttp_client: AiohttpClient) -> None:
+    """Verify that raw_match only matches decoded url."""
+    app = web.Application()
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app.router.add_get("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get(
+        yarl.URL("/467%2C802%2C24834%2C24952%2C25362%2C40574/hello", encoded=True)
+    ) as resp:
+        assert resp.status == 404  # should only match decoded url
 
 
 async def test_order_is_preserved(aiohttp_client: AiohttpClient) -> None:
@@ -915,4 +962,28 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
 
     r = await client.get("///a")
     assert r.status == 200
-    await r.release()
+    r.release()
+
+
+async def test_route_with_regex(aiohttp_client: AiohttpClient) -> None:
+    """Test a route with a regex preceded by a fixed string."""
+    app = web.Application()
+
+    async def handler(request: web.Request) -> web.Response:
+        assert isinstance(request.match_info._route.resource, Resource)
+        return web.Response(text=request.match_info._route.resource.canonical)
+
+    app.router.add_get("/core/locations{tail:.*}", handler)
+    client = await aiohttp_client(app)
+
+    r = await client.get("/core/locations/tail/here")
+    assert r.status == 200
+    assert await r.text() == "/core/locations{tail}"
+
+    r = await client.get("/core/locations_tail_here")
+    assert r.status == 200
+    assert await r.text() == "/core/locations{tail}"
+
+    r = await client.get("/core/locations_tail;id=abcdef")
+    assert r.status == 200
+    assert await r.text() == "/core/locations{tail}"

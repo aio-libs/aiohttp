@@ -8,41 +8,42 @@ aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-aiohappyeyeballs==2.3.4
+aiohappyeyeballs==2.4.3
     # via -r requirements/runtime-deps.in
-aiohttp-theme==0.1.6
+aiohttp-theme==0.1.7
     # via -r requirements/doc.in
-aioredis==2.0.1
-    # via -r requirements/lint.in
 aiosignal==1.3.1
     # via -r requirements/runtime-deps.in
-alabaster==0.7.13
+alabaster==1.0.0
     # via sphinx
+annotated-types==0.7.0
+    # via pydantic
+apipkg==1.5
+    # via execnet
 async-timeout==4.0.3 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
-    #   aioredis
-babel==2.12.1
+    #   valkey
+babel==2.16.0
     # via sphinx
-blockdiag==3.0.0
-    # via sphinxcontrib-blockdiag
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==1.0.3
+build==1.2.2.post1
     # via pip-tools
-certifi==2023.7.22
+certifi==2024.8.30
     # via requests
-cffi==1.15.1
+cffi==1.17.1
     # via
     #   cryptography
     #   pycares
-cfgv==3.3.1
+    #   pytest-codspeed
+cfgv==3.4.0
     # via pre-commit
-charset-normalizer==3.2.0
+charset-normalizer==3.4.0
     # via requests
 cherry-picker==2.2.0
     # via -r requirements/dev.in
-click==8.1.6
+click==8.1.7
     # via
     #   cherry-picker
     #   pip-tools
@@ -50,109 +51,125 @@ click==8.1.6
     #   towncrier
     #   typer
     #   wait-for-it
-coverage==7.6.0
+coverage==7.6.1
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==41.0.3
+cryptography==43.0.3
     # via
     #   pyjwt
     #   trustme
-cython==3.0.10
+cython==3.0.11
     # via -r requirements/cython.in
-distlib==0.3.7
+distlib==0.3.9
     # via virtualenv
 docutils==0.20.1
     # via sphinx
-exceptiongroup==1.1.2
+exceptiongroup==1.2.2
     # via pytest
-filelock==3.12.2
-    # via virtualenv
+filelock==3.16.1
+    # via
+    #   pytest-codspeed
+    #   virtualenv
+execnet==2.1.1
+    # via pytest-xdist
 freezegun==1.5.1
-    # via -r requirements/test.in
-frozenlist==1.4.1
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
+frozenlist==1.5.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-funcparserlib==1.0.1
-    # via blockdiag
 gidgethub==5.3.0
     # via cherry-picker
-gunicorn==22.0.0
+gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.5.26
+identify==2.6.1
     # via pre-commit
-idna==3.4
+idna==3.6
     # via
     #   requests
     #   trustme
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==7.0.0
+importlib-metadata==8.5.0
     # via
     #   build
     #   sphinx
-importlib-resources==6.1.1
+importlib-resources==6.4.5
     # via towncrier
-incremental==22.10.0
+incremental==24.7.2
     # via towncrier
 iniconfig==2.0.0
     # via pytest
-jinja2==3.1.2
+jinja2==3.1.4
     # via
     #   sphinx
     #   towncrier
-markupsafe==2.1.3
+markdown-it-py==3.0.0
+    # via rich
+markupsafe==2.1.5
     # via jinja2
-multidict==6.0.5
+mdurl==0.1.2
+    # via markdown-it-py
+multidict==6.1.0
     # via
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.10.1 ; implementation_name == "cpython"
+mypy==1.13.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy
-nodeenv==1.8.0
+nodeenv==1.9.1
     # via pre-commit
-packaging==23.1
+packaging==24.1
     # via
     #   build
     #   gunicorn
     #   pytest
     #   sphinx
-pillow==9.5.0
-    # via
-    #   -c requirements/broken-projects.in
-    #   blockdiag
 pip-tools==7.4.1
     # via -r requirements/dev.in
-platformdirs==3.10.0
+platformdirs==4.3.6
     # via virtualenv
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
     # via -r requirements/lint.in
-proxy-py==2.4.4
-    # via -r requirements/test.in
-pycares==4.3.0
+propcache==0.2.0
+    # via
+    #   -r requirements/runtime-deps.in
+    #   yarl
+proxy-py==2.4.9
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
+py==1.11.0
+    # via pytest
+pycares==4.4.0
     # via aiodns
-pycparser==2.21
+pycparser==2.22
     # via cffi
-pydantic==1.10.12
+pydantic==2.9.2
     # via python-on-whales
+pydantic-core==2.23.4
+    # via pydantic
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
-pygments==2.15.1
-    # via sphinx
+pygments==2.18.0
+    # via
+    #   rich
+    #   sphinx
 pyjwt==2.8.0
     # via
     #   gidgethub
     #   pyjwt
-pyproject-hooks==1.0.0
+pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
@@ -160,71 +177,88 @@ pytest==8.1.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
+    #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+    #   pytest-xdist
+pytest-codspeed==3.0.0
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
     # via -r requirements/test.in
+pytest-xdist==3.6.1
+    # via -r requirements/test.txt
 python-dateutil==2.8.2
     # via freezegun
-python-on-whales==0.72.0
+python-on-whales==0.71.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytz==2023.3.post1
-    # via babel
-pyyaml==6.0.1
-    # via pre-commit
-re-assert==1.1.0
+pytest-cov==5.0.0
     # via -r requirements/test.in
-regex==2023.6.3
-    # via re-assert
-requests==2.31.0
+pytest-mock==3.14.0
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
+python-dateutil==2.9.0.post0
+    # via freezegun
+python-on-whales==0.73.0
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
+pytz==2024.2
+    # via babel
+pyyaml==6.0.2
+    # via pre-commit
+requests==2.32.3
     # via
     #   cherry-picker
     #   python-on-whales
     #   sphinx
+rich==13.9.3
+    # via typer
 setuptools-git==1.2
     # via -r requirements/test.in
+shellingham==1.5.4
+    # via typer
 six==1.16.0
     # via python-dateutil
-slotscheck==0.19.0
+slotscheck==0.19.1
     # via -r requirements/lint.in
 snowballstemmer==2.2.0
     # via sphinx
-sphinx==7.1.2
+sphinx==8.1.3
     # via
     #   -r requirements/doc.in
-    #   sphinxcontrib-blockdiag
     #   sphinxcontrib-spelling
     #   sphinxcontrib-towncrier
-sphinxcontrib-applehelp==1.0.4
+sphinxcontrib-applehelp==2.0.0
     # via sphinx
-sphinxcontrib-blockdiag==3.0.0
-    # via -r requirements/doc.in
-sphinxcontrib-devhelp==1.0.2
+sphinxcontrib-devhelp==2.0.0
     # via sphinx
-sphinxcontrib-htmlhelp==2.0.1
+sphinxcontrib-htmlhelp==2.1.0
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
-sphinxcontrib-qthelp==1.0.3
+sphinxcontrib-qthelp==2.0.0
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.5
+sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
 sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
-tomli==2.0.1
+tomli==2.0.2
     # via
     #   build
     #   cherry-picker
     #   coverage
+    #   incremental
     #   mypy
     #   pip-tools
-    #   pyproject-hooks
     #   pytest
     #   slotscheck
     #   towncrier
@@ -232,47 +266,51 @@ towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-tqdm==4.65.0
+tqdm==4.66.5
     # via python-on-whales
 trustme==1.1.0 ; platform_machine != "i686"
-    # via -r requirements/test.in
-typer==0.9.0
-    # via python-on-whales
-typing-extensions==4.10.0
     # via
-    #   aioredis
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
+typer==0.12.5
+    # via python-on-whales
+typing-extensions==4.12.2
+    # via
+    #   annotated-types
+    #   multidict
     #   mypy
     #   pydantic
+    #   pydantic-core
     #   python-on-whales
+    #   rich
     #   typer
 uritemplate==4.1.1
     # via gidgethub
-urllib3==2.0.4
+urllib3==2.2.3
     # via requests
-uvloop==0.19.0 ; platform_system != "Windows"
+uvloop==0.21.0 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-virtualenv==20.24.2
+valkey==6.0.2
+    # via -r requirements/lint.in
+virtualenv==20.27.0
     # via pre-commit
 wait-for-it==2.2.2
     # via -r requirements/test.in
-webcolors==1.13
-    # via blockdiag
-wheel==0.41.0
+wheel==0.44.0
     # via pip-tools
-yarl==1.9.4
+yarl==1.18.3
     # via -r requirements/runtime-deps.in
-zipp==3.17.0
+zipp==3.20.2
     # via
     #   importlib-metadata
     #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==23.2.1
+pip==24.3.1
     # via pip-tools
-setuptools==68.0.0
+setuptools==75.2.0
     # via
-    #   blockdiag
-    #   nodeenv
+    #   incremental
     #   pip-tools

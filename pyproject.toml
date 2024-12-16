@@ -82,3 +82,13 @@ skip = "pp*"
 [tool.codespell]
 skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
 ignore-words-list = 'te,assertIn'
+
+[tool.slotscheck]
+# TODO(3.13): Remove aiohttp.helpers once https://github.com/python/cpython/pull/106771
+# is available in all supported cpython versions
+exclude-modules = "(^aiohttp\\.helpers)"
+
+[tool.black]
+# TODO: Remove when project metadata is moved here.
+# Black can read the value from [project.requires-python].
+target-version = ["py39", "py310", "py311", "py312", "py313"]

@@ -1,6 +1,5 @@
 import asyncio
 import socket
-import sys
 from typing import Any, List, Tuple, Type, Union
 
 from .abc import AbstractResolver, ResolveResult
@@ -18,7 +17,7 @@ except ImportError:  # pragma: no cover
 
 
 _NUMERIC_SOCKET_FLAGS = socket.AI_NUMERICHOST | socket.AI_NUMERICSERV
-_SUPPORTS_SCOPE_ID = sys.version_info >= (3, 9, 0)
+_NAME_SOCKET_FLAGS = socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
 
 
 class ThreadedResolver(AbstractResolver):
@@ -49,12 +48,12 @@ class ThreadedResolver(AbstractResolver):
                     # IPv6 is not supported by Python build,
                     # or IPv6 is not enabled in the host
                     continue
-                if address[3] and _SUPPORTS_SCOPE_ID:
+                if address[3]:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
                     resolved_host, _port = await self._loop.getnameinfo(
-                        address, _NUMERIC_SOCKET_FLAGS
+                        address, _NAME_SOCKET_FLAGS
                     )
                     port = int(_port)
                 else:
@@ -101,19 +100,19 @@ class AsyncResolver(AbstractResolver):
             )
         except aiodns.error.DNSError as exc:
             msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
-            raise OSError(msg) from exc
+            raise OSError(None, msg) from exc
         hosts: List[ResolveResult] = []
         for node in resp.nodes:
             address: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]] = node.addr
             family = node.family
             if family == socket.AF_INET6:
-                if len(address) > 3 and address[3] and _SUPPORTS_SCOPE_ID:
+                if len(address) > 3 and address[3]:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                     # getnameinfo() unconditionally, but performance makes sense.
                     result = await self._resolver.getnameinfo(
                         (address[0].decode("ascii"), *address[1:]),
-                        _NUMERIC_SOCKET_FLAGS,
+                        _NAME_SOCKET_FLAGS,
                     )
                     resolved_host = result.node
                 else:
@@ -135,7 +134,7 @@ class AsyncResolver(AbstractResolver):
             )
 
         if not hosts:
-            raise OSError("DNS lookup failed")
+            raise OSError(None, "DNS lookup failed")
 
         return hosts
 

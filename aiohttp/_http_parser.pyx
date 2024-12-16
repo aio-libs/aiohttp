@@ -23,6 +23,7 @@ from aiohttp.helpers import DEBUG, set_exception
 
 from .http_exceptions import (
     BadHttpMessage,
+    BadHttpMethod,
     BadStatusLine,
     ContentLengthError,
     InvalidHeader,
@@ -47,6 +48,7 @@ include "_headers.pxi"
 
 from aiohttp cimport _find_header
 
+ALLOWED_UPGRADES = frozenset({"websocket"})
 DEF DEFAULT_FREELIST_SIZE = 250
 
 cdef extern from "Python.h":
@@ -69,7 +71,7 @@ cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
-
+cdef bytes EMPTY_BYTES = b""
 
 cdef inline object extend(object buf, const char* at, size_t length):
     cdef Py_ssize_t s
@@ -275,8 +277,9 @@ cdef class HttpParser:
         cparser.llhttp_t* _cparser
         cparser.llhttp_settings_t* _csettings
 
-        bytearray _raw_name
-        bytearray _raw_value
+        bytes _raw_name
+        object _name
+        bytes _raw_value
         bint      _has_value
 
         object _protocol
@@ -294,7 +297,7 @@ cdef class HttpParser:
         bytearray   _buf
         str     _path
         str     _reason
-        object  _headers
+        list    _headers
         list    _raw_headers
         bint    _upgraded
         list    _messages
@@ -348,8 +351,8 @@ cdef class HttpParser:
         self._payload_exception = payload_exception
         self._messages = []
 
-        self._raw_name = bytearray()
-        self._raw_value = bytearray()
+        self._raw_name = EMPTY_BYTES
+        self._raw_value = EMPTY_BYTES
         self._has_value = False
 
         self._max_line_size = max_line_size
@@ -376,57 +379,54 @@ cdef class HttpParser:
         self._limit = limit
 
     cdef _process_header(self):
-        if self._raw_name:
-            raw_name = bytes(self._raw_name)
-            raw_value = bytes(self._raw_value)
+        cdef str value
+        if self._raw_name is not EMPTY_BYTES:
+            name = find_header(self._raw_name)
+            value = self._raw_value.decode('utf-8', 'surrogateescape')
 
-            name = find_header(raw_name)
-            value = raw_value.decode('utf-8', 'surrogateescape')
-
-            self._headers.add(name, value)
+            self._headers.append((name, value))
 
             if name is CONTENT_ENCODING:
                 self._content_encoding = value
 
-            PyByteArray_Resize(self._raw_name, 0)
-            PyByteArray_Resize(self._raw_value, 0)
             self._has_value = False
-            self._raw_headers.append((raw_name, raw_value))
+            self._raw_headers.append((self._raw_name, self._raw_value))
+            self._raw_name = EMPTY_BYTES
+            self._raw_value = EMPTY_BYTES
 
     cdef _on_header_field(self, char* at, size_t length):
-        cdef Py_ssize_t size
-        cdef char *buf
         if self._has_value:
             self._process_header()
 
-        size = PyByteArray_Size(self._raw_name)
-        PyByteArray_Resize(self._raw_name, size + length)
-        buf = PyByteArray_AsString(self._raw_name)
-        memcpy(buf + size, at, length)
+        if self._raw_name is EMPTY_BYTES:
+            self._raw_name = at[:length]
+        else:
+            self._raw_name += at[:length]
 
     cdef _on_header_value(self, char* at, size_t length):
-        cdef Py_ssize_t size
-        cdef char *buf
-
-        size = PyByteArray_Size(self._raw_value)
-        PyByteArray_Resize(self._raw_value, size + length)
-        buf = PyByteArray_AsString(self._raw_value)
-        memcpy(buf + size, at, length)
+        if self._raw_value is EMPTY_BYTES:
+            self._raw_value = at[:length]
+        else:
+            self._raw_value += at[:length]
         self._has_value = True
 
     cdef _on_headers_complete(self):
         self._process_header()
 
-        method = http_method_str(self._cparser.method)
         should_close = not cparser.llhttp_should_keep_alive(self._cparser)
         upgrade = self._cparser.upgrade
         chunked = self._cparser.flags & cparser.F_CHUNKED
 
         raw_headers = tuple(self._raw_headers)
-        headers = CIMultiDictProxy(self._headers)
+        headers = CIMultiDictProxy(CIMultiDict(self._headers))
 
-        if upgrade or self._cparser.method == cparser.HTTP_CONNECT:
-            self._upgraded = True
+        if self._cparser.type == cparser.HTTP_REQUEST:
+            allowed = upgrade and headers.get("upgrade", "").lower() in ALLOWED_UPGRADES
+            if allowed or self._cparser.method == cparser.HTTP_CONNECT:
+                self._upgraded = True
+        else:
+            if upgrade and self._cparser.status_code == 101:
+                self._upgraded = True
 
         # do not support old websocket spec
         if SEC_WEBSOCKET_KEY1 in headers:
@@ -441,6 +441,7 @@ cdef class HttpParser:
                 encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
+            method = http_method_str(self._cparser.method)
             msg = _new_request_message(
                 method, self._path,
                 self.http_version(), headers, raw_headers,
@@ -565,7 +566,7 @@ cdef class HttpParser:
         if self._upgraded:
             return messages, True, data[nb:]
         else:
-            return messages, False, b''
+            return messages, False, b""
 
     def set_upgraded(self, val):
         self._upgraded = val
@@ -665,7 +666,7 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
 
     pyparser._started = True
-    pyparser._headers = CIMultiDict()
+    pyparser._headers = []
     pyparser._raw_headers = []
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
@@ -748,10 +749,7 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
         pyparser._last_error = exc
         return -1
     else:
-        if (
-            pyparser._cparser.upgrade or
-            pyparser._cparser.method == cparser.HTTP_CONNECT
-        ):
+        if pyparser._upgraded or pyparser._cparser.method == cparser.HTTP_CONNECT:
             return 2
         else:
             return 0
@@ -828,8 +826,9 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
                  cparser.HPE_INVALID_EOF_STATE,
                  cparser.HPE_INVALID_TRANSFER_ENCODING}:
         return BadHttpMessage(err_msg)
+    elif errno == cparser.HPE_INVALID_METHOD:
+        return BadHttpMethod(error=err_msg)
     elif errno in {cparser.HPE_INVALID_STATUS,
-                   cparser.HPE_INVALID_METHOD,
                    cparser.HPE_INVALID_VERSION}:
         return BadStatusLine(error=err_msg)
     elif errno == cparser.HPE_INVALID_URL:
