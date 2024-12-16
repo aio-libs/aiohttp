@@ -27,6 +27,7 @@ from typing import (
     Mapping,
     Optional,
     Set,
+    Self,
     Tuple,
     Type,
     TypedDict,
@@ -1290,7 +1291,7 @@ class ClientSession:
         """
         self._connector = None
 
-    async def __aenter__(self) -> "ClientSession":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
