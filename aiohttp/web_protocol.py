@@ -458,7 +458,7 @@ class RequestHandler(BaseProtocol):
         loop = self._loop
         now = loop.time()
         close_time = self._next_keepalive_close_time
-        if now <= close_time:
+        if now < close_time:
             # Keep alive close check fired too early, reschedule
             self._keepalive_handle = loop.call_at(close_time, self._process_keepalive)
             return
