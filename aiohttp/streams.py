@@ -220,6 +220,9 @@ class StreamReader(AsyncStreamReaderMixin):
             self._eof_waiter = None
             set_result(waiter, None)
 
+        if self._protocol._reading_paused:
+            self._protocol.resume_reading()
+
         for cb in self._eof_callbacks:
             try:
                 cb()
