@@ -172,6 +172,11 @@ ClearCookiePredicate = Callable[["Morsel[str]"], bool]
 class AbstractCookieJar(Sized, IterableBase):
     """Abstract Cookie Jar."""
 
+    @property
+    @abstractmethod
+    def quote_cookie(self) -> bool:
+        """Return True if cookies should be quoted."""
+
     @abstractmethod
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         """Clear all cookies if no predicate is passed."""
