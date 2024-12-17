@@ -656,7 +656,9 @@ class ClientSession:
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
                     if cookies is not None:
-                        tmp_cookie_jar = CookieJar()
+                        tmp_cookie_jar = CookieJar(
+                            quote_cookie=self._cookie_jar.quote_cookie
+                        )
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
                         if req_cookies:

@@ -807,6 +807,7 @@ class TestCookieJarSafe(TestCookieJarBase):
 async def test_dummy_cookie_jar() -> None:
     cookie = SimpleCookie("foo=bar; Domain=example.com;")
     dummy_jar = DummyCookieJar()
+    assert dummy_jar.quote_cookie is True
     assert len(dummy_jar) == 0
     dummy_jar.update_cookies(cookie)
     assert len(dummy_jar) == 0
