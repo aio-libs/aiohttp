@@ -176,6 +176,11 @@ class AbstractCookieJar(Sized, IterableBase):
     def __init__(self, *, loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         self._loop = loop or asyncio.get_running_loop()
 
+    @property
+    @abstractmethod
+    def quote_cookie(self) -> bool:
+        """Return True if cookies should be quoted."""
+
     @abstractmethod
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         """Clear all cookies if no predicate is passed."""
