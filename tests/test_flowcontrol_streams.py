@@ -110,12 +110,12 @@ class TestFlowControlStreamReader:
 
     async def test_resumed_on_eof(self, stream: streams.StreamReader) -> None:
         stream.feed_data(b"data")
-        assert stream._protocol.pause_reading.call_count == 1
-        assert stream._protocol.resume_reading.call_count == 0
+        assert stream._protocol.pause_reading.call_count == 1  # type: ignore[attr-defined]
+        assert stream._protocol.resume_reading.call_count == 0  # type: ignore[attr-defined]
         stream._protocol._reading_paused = True
 
         stream.feed_eof()
-        assert stream._protocol.resume_reading.call_count == 1
+        assert stream._protocol.resume_reading.call_count == 1  # type: ignore[attr-defined]
 
 
 async def test_stream_reader_eof_when_full() -> None:
