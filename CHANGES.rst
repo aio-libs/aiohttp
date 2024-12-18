@@ -16,7 +16,7 @@
 Bug fixes
 ---------
 
-- Update :py:meth:`~aiohttp.ClientSession.request` to reuse the ``quote_cookie`` setting from ``ClientSession._cookie_jar`` when processing cookies parameter.
+- Updated :py:meth:`~aiohttp.ClientSession.request` to reuse the ``quote_cookie`` setting from ``ClientSession._cookie_jar`` when processing cookies parameter.
   -- by :user:`Cycloctane`.
 
 
