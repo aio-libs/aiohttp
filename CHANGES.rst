@@ -10,6 +10,80 @@
 
 .. towncrier release notes start
 
+3.11.11 (2024-12-18)
+====================
+
+Bug fixes
+---------
+
+- Update :py:meth:`~aiohttp.ClientSession.request` to reuse the ``quote_cookie`` setting from ``ClientSession._cookie_jar`` when processing cookies parameter.
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10093`.
+
+
+
+- Fixed type of ``SSLContext`` for some static type checkers (e.g. pyright).
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10099`.
+
+
+
+- Updated :meth:`aiohttp.web.StreamResponse.write` annotation to also allow :class:`bytearray` and :class:`memoryview` as inputs -- by :user:`cdce8p`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10154`.
+
+
+
+- Fixed a hang where a connection previously used for a streaming
+  download could be returned to the pool in a paused state.
+  -- by :user:`javitonino`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10169`.
+
+
+
+
+Features
+--------
+
+- Enabled ALPN on default SSL contexts. This improves compatibility with some
+  proxies which don't work without this extension.
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10156`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Fixed an infinite loop that can occur when using aiohttp in combination
+  with `async-solipsism`_ -- by :user:`bmerry`.
+
+  .. _async-solipsism: https://github.com/bmerry/async-solipsism
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10149`.
+
+
+
+
+----
+
+
 3.11.10 (2024-12-05)
 ====================
 

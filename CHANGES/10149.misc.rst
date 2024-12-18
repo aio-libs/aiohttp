@@ -1,4 +1,0 @@
-Fixed an infinite loop that can occur when using aiohttp in combination
-with `async-solipsism`_ -- by :user:`bmerry`.
-
-.. _async-solipsism: https://github.com/bmerry/async-solipsism
