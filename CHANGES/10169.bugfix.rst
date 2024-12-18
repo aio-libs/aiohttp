@@ -1,3 +1,0 @@
-Fixed a hang where a connection previously used for a streaming
-download could be returned to the pool in a paused state.
--- by :user:`javitonino`.
