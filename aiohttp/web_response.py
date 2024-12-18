@@ -609,6 +609,9 @@ class StreamResponse(BaseClass, HeadersMixin):
     def __eq__(self, other: object) -> bool:
         return self is other
 
+    def __bool__(self) -> bool:
+        return True
+
 
 class Response(StreamResponse):
 
