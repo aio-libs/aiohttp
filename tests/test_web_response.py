@@ -93,6 +93,7 @@ def test_stream_response_eq() -> None:
 def test_stream_response_is_mutable_mapping() -> None:
     resp = web.StreamResponse()
     assert isinstance(resp, collections.abc.MutableMapping)
+    assert resp  # even when the MutableMapping is empty, response should always be True
     resp["key"] = "value"
     assert "value" == resp["key"]
 
