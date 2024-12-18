@@ -156,7 +156,7 @@ jobs:
             os: ubuntu
             experimental: false
           - os: ubuntu
-            pyver: "3.14.0-alpha.2"
+            pyver: "3.14"
             experimental: true
             no-extensions: 'Y'
       fail-fast: true
