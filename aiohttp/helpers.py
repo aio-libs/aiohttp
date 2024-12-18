@@ -658,7 +658,16 @@ class TimerContext(BaseTimerContext):
     def __enter__(self) -> BaseTimerContext:
         task = asyncio.current_task(loop=self._loop)
         if task is None:
-            raise RuntimeError("Timeout context manager should be used inside a task")
+            try:
+                asyncio.current_task()
+            except RuntimeError:
+                raise RuntimeError(
+                    "Timeout context manager should be used inside a task"
+                )
+            else:
+                raise RuntimeError(
+                    "Timeout context manager used in a task on a different event loop"
+                )
 
         if sys.version_info >= (3, 11):
             # Remember if the task was already cancelling
