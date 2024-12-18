@@ -287,6 +287,7 @@ def test_match_info() -> None:
 def test_request_is_mutable_mapping() -> None:
     req = make_mocked_request("GET", "/")
     assert isinstance(req, MutableMapping)
+    assert req  # even when the MutableMapping is empty, request should always be True
     req["key"] = "value"
     assert "value" == req["key"]
 

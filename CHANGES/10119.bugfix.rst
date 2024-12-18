@@ -1,0 +1,1 @@
+Response is now always True, instead of using MutableMapping behaviour (False when map is empty)
