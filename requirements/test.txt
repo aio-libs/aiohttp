@@ -16,7 +16,7 @@ async-timeout==4.0.3 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-certifi==2024.8.30
+certifi==2024.12.14
     # via requests
 cffi==1.17.1
     # via
@@ -80,8 +80,6 @@ propcache==0.2.0
     #   yarl
 proxy-py==2.4.9
     # via -r requirements/test.in
-py==1.11.0
-    # via pytest
 pycares==4.4.0
     # via aiodns
 pycparser==2.22
@@ -98,10 +96,9 @@ pytest==8.1.1
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
-pytest-codspeed==3.0.0
-    # via
-    #   -r requirements/test.in
     #   pytest-xdist
+pytest-codspeed==3.0.0
+    # via -r requirements/test.in
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
@@ -115,7 +112,9 @@ python-on-whales==0.73.0
 requests==2.32.3
     # via python-on-whales
 rich==13.9.3
-    # via typer
+    # via
+    #   pytest-codspeed
+    #   typer
 setuptools-git==1.2
     # via -r requirements/test.in
 shellingham==1.5.4
@@ -135,7 +134,6 @@ typer==0.12.5
     # via python-on-whales
 typing-extensions==4.12.2
     # via
-    #   annotated-types
     #   multidict
     #   mypy
     #   pydantic
