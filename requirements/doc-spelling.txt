@@ -22,17 +22,13 @@ idna==3.6
     # via requests
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==8.5.0
-    # via sphinx
-importlib-resources==6.4.5
-    # via towncrier
 incremental==24.7.2
     # via towncrier
 jinja2==3.1.4
     # via
     #   sphinx
     #   towncrier
-markupsafe==2.1.5
+markupsafe==3.0.2
     # via jinja2
 packaging==24.1
     # via sphinx
@@ -40,8 +36,6 @@ pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.18.0
     # via sphinx
-pytz==2024.2
-    # via babel
 requests==2.32.3
     # via sphinx
 snowballstemmer==2.2.0
@@ -70,6 +64,7 @@ sphinxcontrib-towncrier==0.4.0a0
 tomli==2.0.2
     # via
     #   incremental
+    #   sphinx
     #   towncrier
 towncrier==23.11.0
     # via
@@ -77,10 +72,6 @@ towncrier==23.11.0
     #   sphinxcontrib-towncrier
 urllib3==2.2.3
     # via requests
-zipp==3.20.2
-    # via
-    #   importlib-metadata
-    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==75.2.0
