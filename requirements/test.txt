@@ -18,19 +18,13 @@ attrs==24.2.0
     # via -r requirements/runtime-deps.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-certifi==2024.8.30
-    # via requests
 cffi==1.17.1
     # via
     #   cryptography
     #   pycares
     #   pytest-codspeed
-charset-normalizer==3.4.0
-    # via requests
 click==8.1.7
-    # via
-    #   typer
-    #   wait-for-it
+    # via wait-for-it
 coverage==7.6.1
     # via
     #   -r requirements/test.in
@@ -53,7 +47,6 @@ gunicorn==23.0.0
     # via -r requirements/base.in
 idna==3.4
     # via
-    #   requests
     #   trustme
     #   yarl
 iniconfig==2.0.0
@@ -109,22 +102,16 @@ pytest-xdist==3.6.1
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.73.0
+python-on-whales==0.74.0
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
 regex==2024.9.11
     # via re-assert
-requests==2.32.3
-    # via python-on-whales
 rich==13.9.3
-    # via
-    #   pytest-codspeed
-    #   typer
+    # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test.in
-shellingham==1.5.4
-    # via typer
 six==1.17.0
     # via python-dateutil
 tomli==2.2.1
@@ -132,12 +119,8 @@ tomli==2.2.1
     #   coverage
     #   mypy
     #   pytest
-tqdm==4.67.1
-    # via python-on-whales
 trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.in
-typer==0.12.5
-    # via python-on-whales
 typing-extensions==4.12.2
     # via
     #   multidict
@@ -146,9 +129,6 @@ typing-extensions==4.12.2
     #   pydantic-core
     #   python-on-whales
     #   rich
-    #   typer
-urllib3==2.2.3
-    # via requests
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 wait-for-it==2.2.2
