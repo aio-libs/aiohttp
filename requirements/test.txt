@@ -141,7 +141,7 @@ typing-extensions==4.12.2
     #   python-on-whales
     #   rich
     #   typer
-urllib3==2.2.3
+urllib3==2.3.0
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in

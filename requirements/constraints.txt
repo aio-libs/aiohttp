@@ -266,7 +266,7 @@ typing-extensions==4.12.2
     #   typer
 uritemplate==4.1.1
     # via gidgethub
-urllib3==2.2.3
+urllib3==2.3.0
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows"
     # via
