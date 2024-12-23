@@ -104,6 +104,7 @@ slotscheck==0.19.1
     # via -r requirements/lint.in
 tomli==2.0.2
     # via
+    #   -r requirements/lint.in
     #   mypy
     #   pytest
     #   slotscheck
