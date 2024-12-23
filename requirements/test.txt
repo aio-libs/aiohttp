@@ -132,7 +132,7 @@ tomli==2.0.2
     #   coverage
     #   mypy
     #   pytest
-tqdm==4.66.5
+tqdm==4.67.1
     # via python-on-whales
 trustme==1.1.0 ; platform_machine != "i686"
     # via -r requirements/test.in
