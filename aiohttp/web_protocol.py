@@ -583,7 +583,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 else:
                     task = loop.create_task(coro)
                 try:
-                    resp, reset = await task  # type: ignore[possibly-undefined]
+                    resp, reset = await task
                 except ConnectionError:
                     self.log_debug("Ignored premature client disconnection")
                     break
