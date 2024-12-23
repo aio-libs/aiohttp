@@ -111,7 +111,7 @@ python-on-whales==0.73.0
     # via -r requirements/test.in
 requests==2.32.3
     # via python-on-whales
-rich==13.9.3
+rich==13.9.4
     # via
     #   pytest-codspeed
     #   typer

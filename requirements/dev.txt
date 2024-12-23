@@ -191,7 +191,7 @@ requests==2.32.3
     #   cherry-picker
     #   python-on-whales
     #   sphinx
-rich==13.9.3
+rich==13.9.4
     # via
     #   pytest-codspeed
     #   typer
