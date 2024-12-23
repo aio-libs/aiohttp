@@ -91,7 +91,9 @@ pyyaml==6.0.2
 requests==2.32.3
     # via python-on-whales
 rich==13.9.3
-    # via typer
+    # via
+    #   pytest-codspeed
+    #   typer
 shellingham==1.5.4
     # via typer
 six==1.16.0
@@ -103,7 +105,7 @@ tomli==2.0.2
     #   mypy
     #   pytest
     #   slotscheck
-tqdm==4.66.5
+tqdm==4.67.1
     # via python-on-whales
 trustme==1.1.0
     # via -r requirements/lint.in
@@ -111,7 +113,6 @@ typer==0.12.5
     # via python-on-whales
 typing-extensions==4.12.2
     # via
-    #   annotated-types
     #   mypy
     #   pydantic
     #   pydantic-core
