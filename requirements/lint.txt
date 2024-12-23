@@ -10,8 +10,6 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==4.0.3
     # via valkey
-certifi==2024.8.30
-    # via requests
 cffi==1.17.1
     # via
     #   cryptography
@@ -19,12 +17,8 @@ cffi==1.17.1
     #   pytest-codspeed
 cfgv==3.4.0
     # via pre-commit
-charset-normalizer==3.4.0
-    # via requests
 click==8.1.7
-    # via
-    #   slotscheck
-    #   typer
+    # via slotscheck
 cryptography==43.0.3
     # via trustme
 distlib==0.3.9
@@ -40,9 +34,7 @@ freezegun==1.5.1
 identify==2.6.1
     # via pre-commit
 idna==3.7
-    # via
-    #   requests
-    #   trustme
+    # via trustme
 iniconfig==2.0.0
     # via pytest
 markdown-it-py==3.0.0
@@ -84,18 +76,12 @@ pytest-mock==3.14.0
     # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.73.0
+python-on-whales==0.74.0
     # via -r requirements/lint.in
 pyyaml==6.0.2
     # via pre-commit
-requests==2.32.3
-    # via python-on-whales
 rich==13.9.3
-    # via
-    #   pytest-codspeed
-    #   typer
-shellingham==1.5.4
-    # via typer
+    # via pytest-codspeed
 six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
@@ -105,12 +91,8 @@ tomli==2.0.2
     #   mypy
     #   pytest
     #   slotscheck
-tqdm==4.67.1
-    # via python-on-whales
 trustme==1.1.0
     # via -r requirements/lint.in
-typer==0.12.5
-    # via python-on-whales
 typing-extensions==4.12.2
     # via
     #   mypy
@@ -118,9 +100,6 @@ typing-extensions==4.12.2
     #   pydantic-core
     #   python-on-whales
     #   rich
-    #   typer
-urllib3==2.2.3
-    # via requests
 uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.0.2
