@@ -43,7 +43,7 @@ charset-normalizer==3.4.0
     # via requests
 cherry-picker==2.2.0
     # via -r requirements/dev.in
-click==8.1.7
+click==8.1.8
     # via
     #   cherry-picker
     #   pip-tools
