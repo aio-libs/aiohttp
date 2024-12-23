@@ -65,6 +65,8 @@ docutils==0.20.1
     # via sphinx
 exceptiongroup==1.2.2
     # via pytest
+execnet==2.1.1
+    # via pytest-xdist
 filelock==3.16.1
     # via
     #   pytest-codspeed
@@ -90,12 +92,6 @@ idna==3.4
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==8.5.0
-    # via
-    #   build
-    #   sphinx
-importlib-resources==6.4.5
-    # via towncrier
 incremental==24.7.2
     # via towncrier
 iniconfig==2.0.0
@@ -169,6 +165,7 @@ pytest==8.3.3
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+    #   pytest-xdist
 pytest-codspeed==3.0.0
     # via
     #   -r requirements/lint.in
@@ -179,14 +176,14 @@ pytest-mock==3.14.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
+pytest-xdist==3.6.1
+    # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.73.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytz==2024.2
-    # via babel
 pyyaml==6.0.2
     # via pre-commit
 re-assert==1.1.0
@@ -199,7 +196,9 @@ requests==2.32.3
     #   python-on-whales
     #   sphinx
 rich==13.9.3
-    # via typer
+    # via
+    #   pytest-codspeed
+    #   typer
 setuptools-git==1.2
     # via -r requirements/test.in
 shellingham==1.5.4
@@ -228,7 +227,7 @@ sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
-tomli==2.0.2
+tomli==2.2.1
     # via
     #   build
     #   cherry-picker
@@ -238,6 +237,7 @@ tomli==2.0.2
     #   pip-tools
     #   pytest
     #   slotscheck
+    #   sphinx
     #   towncrier
 towncrier==23.11.0
     # via
@@ -253,7 +253,6 @@ typer==0.12.5
     # via python-on-whales
 typing-extensions==4.12.2
     # via
-    #   annotated-types
     #   multidict
     #   mypy
     #   pydantic
@@ -279,10 +278,6 @@ wheel==0.44.0
     # via pip-tools
 yarl==1.18.3
     # via -r requirements/runtime-deps.in
-zipp==3.20.2
-    # via
-    #   importlib-metadata
-    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==24.3.1
