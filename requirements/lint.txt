@@ -10,7 +10,7 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==4.0.3
     # via valkey
-certifi==2024.8.30
+certifi==2024.12.14
     # via requests
 cffi==1.17.1
     # via
