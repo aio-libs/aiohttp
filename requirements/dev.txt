@@ -12,7 +12,7 @@ aiohappyeyeballs==2.4.3
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.7
     # via -r requirements/doc.in
-aiosignal==1.3.1
+aiosignal==1.3.2
     # via -r requirements/runtime-deps.in
 alabaster==1.0.0
     # via sphinx
