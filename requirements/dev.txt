@@ -193,7 +193,7 @@ requests==2.32.3
     # via
     #   cherry-picker
     #   sphinx
-rich==13.9.3
+rich==13.9.4
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test.in
