@@ -18,8 +18,6 @@ alabaster==1.0.0
     # via sphinx
 annotated-types==0.7.0
     # via pydantic
-apipkg==1.5
-    # via execnet
 async-timeout==4.0.3 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
@@ -67,12 +65,12 @@ docutils==0.20.1
     # via sphinx
 exceptiongroup==1.2.2
     # via pytest
+execnet==2.1.1
+    # via pytest-xdist
 filelock==3.16.1
     # via
     #   pytest-codspeed
     #   virtualenv
-execnet==2.1.1
-    # via pytest-xdist
 freezegun==1.5.1
     # via
     #   -r requirements/lint.in
@@ -94,12 +92,6 @@ idna==3.6
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==8.5.0
-    # via
-    #   build
-    #   sphinx
-importlib-resources==6.4.5
-    # via towncrier
 incremental==24.7.2
     # via towncrier
 iniconfig==2.0.0
@@ -149,8 +141,6 @@ proxy-py==2.4.9
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-py==1.11.0
-    # via pytest
 pycares==4.4.0
     # via aiodns
 pycparser==2.22
@@ -188,29 +178,17 @@ pytest-codspeed==3.0.0
 pytest-cov==5.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
-    # via -r requirements/test.in
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 pytest-xdist==3.6.1
-    # via -r requirements/test.txt
-python-dateutil==2.8.2
-    # via freezegun
-python-on-whales==0.71.0
-    # via
-    #   -r requirements/lint.in
-    #   -r requirements/test.in
-pytest-cov==5.0.0
     # via -r requirements/test.in
-pytest-mock==3.14.0
-    # via
-    #   -r requirements/lint.in
-    #   -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.73.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytz==2024.2
-    # via babel
 pyyaml==6.0.2
     # via pre-commit
 requests==2.32.3
@@ -219,12 +197,14 @@ requests==2.32.3
     #   python-on-whales
     #   sphinx
 rich==13.9.3
-    # via typer
+    # via
+    #   pytest-codspeed
+    #   typer
 setuptools-git==1.2
     # via -r requirements/test.in
 shellingham==1.5.4
     # via typer
-six==1.16.0
+six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
     # via -r requirements/lint.in
@@ -261,6 +241,7 @@ tomli==2.0.2
     #   pip-tools
     #   pytest
     #   slotscheck
+    #   sphinx
     #   towncrier
 towncrier==23.11.0
     # via
@@ -276,7 +257,6 @@ typer==0.12.5
     # via python-on-whales
 typing-extensions==4.12.2
     # via
-    #   annotated-types
     #   multidict
     #   mypy
     #   pydantic
@@ -302,10 +282,6 @@ wheel==0.44.0
     # via pip-tools
 yarl==1.18.3
     # via -r requirements/runtime-deps.in
-zipp==3.20.2
-    # via
-    #   importlib-metadata
-    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==24.3.1
