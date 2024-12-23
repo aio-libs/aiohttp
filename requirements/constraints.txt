@@ -18,7 +18,7 @@ alabaster==1.0.0
     # via sphinx
 annotated-types==0.7.0
     # via pydantic
-async-timeout==4.0.3 ; python_version < "3.11"
+async-timeout==5.0.1 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
     #   valkey
