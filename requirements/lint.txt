@@ -93,7 +93,9 @@ pyyaml==6.0.2
 requests==2.32.3
     # via python-on-whales
 rich==13.9.3
-    # via typer
+    # via
+    #   pytest-codspeed
+    #   typer
 shellingham==1.5.4
     # via typer
 six==1.16.0
@@ -113,14 +115,13 @@ typer==0.12.5
     # via python-on-whales
 typing-extensions==4.12.2
     # via
-    #   annotated-types
     #   mypy
     #   pydantic
     #   pydantic-core
     #   python-on-whales
     #   rich
     #   typer
-urllib3==2.2.3
+urllib3==2.3.0
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
