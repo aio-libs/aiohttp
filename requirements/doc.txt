@@ -30,7 +30,7 @@ jinja2==3.1.4
     #   towncrier
 markupsafe==3.0.2
     # via jinja2
-packaging==24.1
+packaging==24.2
     # via sphinx
 pygments==2.18.0
     # via sphinx
