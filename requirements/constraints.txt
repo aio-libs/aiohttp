@@ -120,7 +120,7 @@ mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.9.1
     # via pre-commit
-packaging==24.1
+packaging==24.2
     # via
     #   build
     #   gunicorn
