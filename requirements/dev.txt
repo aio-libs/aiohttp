@@ -49,7 +49,7 @@ click==8.1.8
     #   towncrier
     #   typer
     #   wait-for-it
-coverage==7.6.1
+coverage==7.6.9
     # via
     #   -r requirements/test.in
     #   pytest-cov
