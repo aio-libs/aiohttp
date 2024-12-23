@@ -199,7 +199,7 @@ setuptools-git==1.2
     # via -r requirements/test.in
 shellingham==1.5.4
     # via typer
-six==1.16.0
+six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
     # via -r requirements/lint.in

@@ -119,7 +119,7 @@ setuptools-git==1.2
     # via -r requirements/test.in
 shellingham==1.5.4
     # via typer
-six==1.16.0
+six==1.17.0
     # via python-dateutil
 tomli==2.0.2
     # via
