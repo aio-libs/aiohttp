@@ -35,8 +35,6 @@ exceptiongroup==1.2.2
     # via pytest
 execnet==2.1.1
     # via pytest-xdist
-filelock==3.16.1
-    # via pytest-codspeed
 freezegun==1.5.1
     # via -r requirements/test.in
 frozenlist==1.5.0
@@ -92,7 +90,7 @@ pytest==8.3.3
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==3.0.0
+pytest-codspeed==3.1.0
     # via -r requirements/test.in
 pytest-cov==5.0.0
     # via -r requirements/test.in
