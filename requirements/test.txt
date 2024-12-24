@@ -145,7 +145,7 @@ urllib3==2.3.0
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-wait-for-it==2.2.2
+wait-for-it==2.3.0
     # via -r requirements/test.in
 yarl==1.18.3
     # via -r requirements/runtime-deps.in
