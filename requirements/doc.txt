@@ -10,7 +10,7 @@ alabaster==1.0.0
     # via sphinx
 babel==2.16.0
     # via sphinx
-certifi==2024.8.30
+certifi==2024.12.14
     # via requests
 charset-normalizer==3.4.0
     # via requests
