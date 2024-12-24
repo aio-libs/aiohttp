@@ -450,6 +450,7 @@ class ClientSession:
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_field_size: Optional[int] = None,
+        middleware: Optional["Middleware"] = None,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -664,6 +665,8 @@ class ClientSession:
                         max_field_size=max_field_size,
                     )
 
+                    # TODO: pre-request middleware
+
                     try:
                         try:
                             resp = await req.send(conn)
@@ -768,6 +771,8 @@ class ClientSession:
                         params = {}
                         resp.release()
                         continue
+
+                    # TODO: post request middleware
 
                     break
 
