@@ -119,7 +119,7 @@ tomli==2.2.1
     #   coverage
     #   mypy
     #   pytest
-trustme==1.1.0 ; platform_machine != "i686"
+trustme==1.2.0 ; platform_machine != "i686"
     # via -r requirements/test.in
 typing-extensions==4.12.2
     # via

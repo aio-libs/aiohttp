@@ -91,7 +91,7 @@ tomli==2.2.1
     #   mypy
     #   pytest
     #   slotscheck
-trustme==1.1.0
+trustme==1.2.0
     # via -r requirements/lint.in
 typing-extensions==4.12.2
     # via
