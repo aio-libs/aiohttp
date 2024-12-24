@@ -109,7 +109,7 @@ tomli==2.2.1
     #   slotscheck
 tqdm==4.67.1
     # via python-on-whales
-trustme==1.1.0
+trustme==1.2.0
     # via -r requirements/lint.in
 typer==0.12.5
     # via python-on-whales
