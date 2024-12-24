@@ -26,9 +26,7 @@ distlib==0.3.9
 exceptiongroup==1.2.2
     # via pytest
 filelock==3.16.1
-    # via
-    #   pytest-codspeed
-    #   virtualenv
+    # via virtualenv
 freezegun==1.5.1
     # via -r requirements/lint.in
 identify==2.6.1
@@ -70,7 +68,7 @@ pytest==8.3.3
     #   -r requirements/lint.in
     #   pytest-codspeed
     #   pytest-mock
-pytest-codspeed==3.0.0
+pytest-codspeed==3.1.0
     # via -r requirements/lint.in
 pytest-mock==3.14.0
     # via -r requirements/lint.in
