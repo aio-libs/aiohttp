@@ -175,7 +175,7 @@ pytest-codspeed==3.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytest-cov==5.0.0
+pytest-cov==6.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
     # via
