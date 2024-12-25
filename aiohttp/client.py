@@ -683,7 +683,7 @@ class ClientSession:
                     except ClientError:
                         raise
                     except OSError as exc:
-                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                             raise
                         raise ClientOSError(*exc.args) from exc
 
