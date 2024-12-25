@@ -37,9 +37,9 @@ cffi==1.17.1
     #   pytest-codspeed
 cfgv==3.4.0
     # via pre-commit
-charset-normalizer==3.4.0
+charset-normalizer==3.4.1
     # via requests
-cherry-picker==2.2.0
+cherry-picker==2.4.0
     # via -r requirements/dev.in
 click==8.1.8
     # via
@@ -47,13 +47,12 @@ click==8.1.8
     #   pip-tools
     #   slotscheck
     #   towncrier
-    #   typer
     #   wait-for-it
 coverage==7.6.9
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==43.0.3
+cryptography==44.0.0
     # via
     #   pyjwt
     #   trustme
@@ -61,16 +60,14 @@ cython==3.0.11
     # via -r requirements/cython.in
 distlib==0.3.9
     # via virtualenv
-docutils==0.20.1
+docutils==0.21.2
     # via sphinx
 exceptiongroup==1.2.2
     # via pytest
 execnet==2.1.1
     # via pytest-xdist
 filelock==3.16.1
-    # via
-    #   pytest-codspeed
-    #   virtualenv
+    # via virtualenv
 freezegun==1.5.1
     # via
     #   -r requirements/lint.in
@@ -83,7 +80,7 @@ gidgethub==5.3.0
     # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.6.1
+identify==2.6.3
     # via pre-commit
 idna==3.6
     # via
@@ -111,7 +108,7 @@ multidict==6.1.0
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.13.0 ; implementation_name == "cpython"
+mypy==1.14.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -131,9 +128,9 @@ platformdirs==4.3.6
     # via virtualenv
 pluggy==1.5.0
     # via pytest
-pre-commit==3.5.0
+pre-commit==4.0.1
     # via -r requirements/lint.in
-propcache==0.2.0
+propcache==0.2.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -141,7 +138,7 @@ proxy-py==2.4.9
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pycares==4.4.0
+pycares==4.5.0
     # via aiodns
 pycparser==2.22
     # via cffi
@@ -171,11 +168,11 @@ pytest==8.1.1
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==3.0.0
+pytest-codspeed==3.1.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytest-cov==5.0.0
+pytest-cov==6.0.0
     # via -r requirements/test.in
 pytest-mock==3.14.0
     # via
@@ -185,7 +182,7 @@ pytest-xdist==3.6.1
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.73.0
+python-on-whales==0.74.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -194,17 +191,12 @@ pyyaml==6.0.2
 requests==2.32.3
     # via
     #   cherry-picker
-    #   python-on-whales
     #   sphinx
     #   sphinxcontrib-spelling
 rich==13.9.4
-    # via
-    #   pytest-codspeed
-    #   typer
+    # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test.in
-shellingham==1.5.4
-    # via typer
 six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
@@ -232,7 +224,7 @@ sphinxcontrib-spelling==8.0.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
-tomli==2.0.2
+tomli==2.2.1
     # via
     #   build
     #   cherry-picker
@@ -248,14 +240,10 @@ towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-tqdm==4.67.1
-    # via python-on-whales
-trustme==1.1.0 ; platform_machine != "i686"
+trustme==1.2.0 ; platform_machine != "i686"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-typer==0.12.5
-    # via python-on-whales
 typing-extensions==4.12.2
     # via
     #   multidict
@@ -264,7 +252,6 @@ typing-extensions==4.12.2
     #   pydantic-core
     #   python-on-whales
     #   rich
-    #   typer
 uritemplate==4.1.1
     # via gidgethub
 urllib3==2.3.0
@@ -277,9 +264,9 @@ valkey==6.0.2
     # via -r requirements/lint.in
 virtualenv==20.28.0
     # via pre-commit
-wait-for-it==2.2.2
+wait-for-it==2.3.0
     # via -r requirements/test.in
-wheel==0.44.0
+wheel==0.45.1
     # via pip-tools
 yarl==1.18.3
     # via -r requirements/runtime-deps.in
@@ -287,7 +274,7 @@ yarl==1.18.3
 # The following packages are considered to be unsafe in a requirements file:
 pip==24.3.1
     # via pip-tools
-setuptools==75.2.0
+setuptools==75.6.0
     # via
     #   incremental
     #   pip-tools

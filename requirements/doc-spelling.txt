@@ -12,11 +12,11 @@ babel==2.16.0
     # via sphinx
 certifi==2024.12.14
     # via requests
-charset-normalizer==3.4.0
+charset-normalizer==3.4.1
     # via requests
 click==8.1.8
     # via towncrier
-docutils==0.20.1
+docutils==0.21.2
     # via sphinx
 idna==3.6
     # via requests
@@ -63,7 +63,7 @@ sphinxcontrib-spelling==8.0.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
-tomli==2.0.2
+tomli==2.2.1
     # via
     #   incremental
     #   sphinx
@@ -76,5 +76,5 @@ urllib3==2.3.0
     # via requests
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==75.2.0
+setuptools==75.6.0
     # via incremental
