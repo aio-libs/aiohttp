@@ -47,7 +47,6 @@ click==8.1.8
     #   pip-tools
     #   slotscheck
     #   towncrier
-    #   typer
     #   wait-for-it
 coverage==7.6.9
     # via
@@ -178,7 +177,7 @@ pytest-xdist==3.6.1
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.73.0
+python-on-whales==0.74.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -187,16 +186,11 @@ pyyaml==6.0.2
 requests==2.32.3
     # via
     #   cherry-picker
-    #   python-on-whales
     #   sphinx
 rich==13.9.4
-    # via
-    #   pytest-codspeed
-    #   typer
+    # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test.in
-shellingham==1.5.4
-    # via typer
 six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
@@ -237,14 +231,10 @@ towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-tqdm==4.67.1
-    # via python-on-whales
 trustme==1.2.0 ; platform_machine != "i686"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-typer==0.12.5
-    # via python-on-whales
 typing-extensions==4.12.2
     # via
     #   multidict
@@ -253,7 +243,6 @@ typing-extensions==4.12.2
     #   pydantic-core
     #   python-on-whales
     #   rich
-    #   typer
 uritemplate==4.1.1
     # via gidgethub
 urllib3==2.3.0
