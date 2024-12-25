@@ -23,7 +23,7 @@ cffi==1.17.1
     #   cryptography
     #   pycares
     #   pytest-codspeed
-charset-normalizer==3.4.0
+charset-normalizer==3.4.1
     # via requests
 click==8.1.8
     # via
