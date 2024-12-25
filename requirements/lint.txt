@@ -59,7 +59,7 @@ platformdirs==4.3.6
     # via virtualenv
 pluggy==1.5.0
     # via pytest
-pre-commit==3.5.0
+pre-commit==4.0.1
     # via -r requirements/lint.in
 proxy-py==2.4.9
     # via -r requirements/lint.in
