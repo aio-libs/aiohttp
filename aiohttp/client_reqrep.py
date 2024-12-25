@@ -605,9 +605,7 @@ class ClientRequest:
 
             exc_is_not_timeout = (
                 underlying_exc.errno is not None
-                or not isinstance(  # type: ignore[unreachable]
-                    underlying_exc, asyncio.TimeoutError
-                )
+                or not isinstance(underlying_exc, asyncio.TimeoutError)
             )
             if exc_is_not_timeout:
                 reraised_exc = ClientOSError(
