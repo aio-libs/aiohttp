@@ -104,7 +104,7 @@ python-on-whales==0.74.0
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
-regex==2024.9.11
+regex==2024.11.6
     # via re-assert
 rich==13.9.4
     # via pytest-codspeed
