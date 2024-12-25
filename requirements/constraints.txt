@@ -41,7 +41,7 @@ cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.4.1
     # via requests
-cherry-picker==2.2.0
+cherry-picker==2.4.0
     # via -r requirements/dev.in
 click==8.1.8
     # via
