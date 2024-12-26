@@ -8,7 +8,7 @@ aiodns==3.2.0
     # via -r requirements/lint.in
 annotated-types==0.7.0
     # via pydantic
-async-timeout==4.0.3
+async-timeout==5.0.1
     # via valkey
 cffi==1.17.1
     # via
