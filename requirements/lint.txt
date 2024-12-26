@@ -63,7 +63,7 @@ pydantic-core==2.27.2
     # via pydantic
 pygments==2.18.0
     # via rich
-pytest==8.3.3
+pytest==8.3.4
     # via
     #   -r requirements/lint.in
     #   pytest-codspeed
