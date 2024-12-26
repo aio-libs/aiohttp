@@ -259,7 +259,7 @@ valkey==6.0.2
     # via -r requirements/lint.in
 virtualenv==20.28.0
     # via pre-commit
-wait-for-it==2.2.2
+wait-for-it==2.3.0
     # via -r requirements/test.in
 wheel==0.45.1
     # via pip-tools
