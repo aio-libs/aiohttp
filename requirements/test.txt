@@ -77,9 +77,9 @@ pycares==4.5.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.9.2
+pydantic==2.10.4
     # via python-on-whales
-pydantic-core==2.23.4
+pydantic-core==2.27.2
     # via pydantic
 pygments==2.18.0
     # via rich
