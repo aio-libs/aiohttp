@@ -1,0 +1,2 @@
+``MultipartForm.decode()`` must follow RFC1341 7.2.1 with a ``CRLF`` after the boundary
+-- by :user:`imnotjames`.
