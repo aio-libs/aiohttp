@@ -1209,7 +1209,7 @@ class CustomIO(io.IOBase):
         (BodyPartReader("x", CIMultiDictProxy(CIMultiDict()), mock.Mock()), None),
         (
             mpwriter,
-            "--x\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 4\r\n\r\ntest",
+            "--x\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 4\r\n\r\ntest",
         ),
     ),
 )
