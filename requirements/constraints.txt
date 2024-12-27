@@ -196,6 +196,7 @@ requests==2.32.3
     # via
     #   cherry-picker
     #   sphinx
+    #   sphinxcontrib-spelling
 rich==13.9.4
     # via pytest-codspeed
 setuptools-git==1.2
@@ -223,7 +224,7 @@ sphinxcontrib-qthelp==2.0.0
     # via sphinx
 sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
-sphinxcontrib-spelling==8.0.0 ; platform_system != "Windows"
+sphinxcontrib-spelling==8.0.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
