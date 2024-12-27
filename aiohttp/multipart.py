@@ -983,7 +983,7 @@ class MultipartWriter(Payload):
         return "".join(
             "--"
             + self.boundary
-            + "\n"
+            + "\r\n"
             + part._binary_headers.decode(encoding, errors)
             + part.decode()
             for part, _e, _te in self._parts
