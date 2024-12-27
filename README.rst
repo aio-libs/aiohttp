@@ -41,6 +41,10 @@ Async http client/server framework
    :target: https://matrix.to/#/%23aio-libs-space:matrix.org
    :alt: Matrix Space — #aio-libs-space:matrix.org
 
+.. image:: https://img.shields.io/badge/Gurubase-Ask%20aiohttp%20Guru-006BFF
+   :target: https://gurubase.io/g/aiohttp
+   :alt: Gurubase - Ask aiohttp Guru
+
 
 Key Features
 ============
