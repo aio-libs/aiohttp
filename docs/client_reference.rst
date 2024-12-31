@@ -436,11 +436,16 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
 
-      :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                   ``True`` by default (optional).
+      :param bool allow_redirects: Whether to process redirects or not.
+         When ``True``, redirects are followed (up to ``max_redirects`` times)
+         and logged into :attr:`ClientResponse.history` and ``trace_configs``.
+         When ``False``, the original response is returned.
+         ``True`` by default (optional).
 
       :param int max_redirects: Maximum number of redirects to follow.
-                                ``10`` by default.
+         :exc:`TooManyRedirects` is raised if the number is exceeded.
+         Ignored when ``allow_redirects=False``.
+         ``10`` by default.
 
       :param bool compress: Set to ``True`` if request has to be compressed
          with deflate encoding. If `compress` can not be combined
@@ -542,8 +547,11 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                   ``True`` by default (optional).
+      :param bool allow_redirects: Whether to process redirects or not.
+         When ``True``, redirects are followed and logged into
+         :attr:`ClientResponse.history`.
+         When ``False``, the original response is returned.
+         ``True`` by default (optional).
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -611,8 +619,11 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                   ``False`` by default (optional).
+      :param bool allow_redirects: Whether to process redirects or not.
+         When ``True``, redirects are followed and logged into
+         :attr:`ClientResponse.history``.
+         When ``False``, the original response is returned.
+         ``False`` by default (optional).
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -629,8 +640,11 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                   ``True`` by default (optional).
+      :param bool allow_redirects: Whether to process redirects or not.
+         When ``True``, redirects are followed and logged into
+         :attr:`ClientResponse.history`.
+         When ``False``, the original response is returned.
+         ``True`` by default (optional).
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -862,8 +876,11 @@ certification chaining.
    :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
                                   Authorization (optional)
 
-   :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                ``True`` by default (optional).
+   :param bool allow_redirects: Whether to process redirects or not.
+         When ``True``, redirects are followed (up to ``max_redirects`` times)
+         and logged into :attr:`ClientResponse.history` and ``trace_configs``.
+         When ``False``, the original response is returned.
+         ``True`` by default (optional).
 
    :param aiohttp.protocol.HttpVersion version: Request HTTP version (optional)
 
