@@ -424,11 +424,11 @@ jobs:
     - name: Upload wheels
       uses: actions/upload-artifact@v4
       with:
-        name: >-  
-          dist-${{ matrix.os }}-${{  
-            matrix.qemu  
-            && matrix.qemu  
-            || 'native'  
+        name: >-
+          dist-${{ matrix.os }}-${{
+            matrix.qemu
+            && matrix.qemu
+            || 'native'
           }}
         path: ./wheelhouse/*.whl
 
