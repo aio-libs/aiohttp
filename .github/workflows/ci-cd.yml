@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  merge_group:
   push:
     branches:
       - 'master'
@@ -420,15 +421,14 @@ jobs:
       uses: pypa/cibuildwheel@v2.22.0
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-    - if: ${{ matrix.qemu }}
       uses: actions/upload-artifact@v4
       with:
-        name: dist-${{ matrix.os }}-${{ matrix.qemu }}
-        path: ./wheelhouse/*.whl
-    - if: ${{ !matrix.qemu }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist-${{ matrix.os }}
+        name: >-  
+          dist-${{ matrix.os }}-${{  
+            matrix.qemu  
+            && matrix.qemu  
+            || 'native'  
+          }}
         path: ./wheelhouse/*.whl
 
   deploy:
@@ -449,11 +449,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Merge distribution artifacts
-      uses: actions/upload-artifact/merge@v4
-      with:
-        name: dist
-        pattern: dist-*
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
