@@ -621,7 +621,7 @@ The client session supports the context manager protocol for self closing.
 
       :param bool allow_redirects: Whether to process redirects or not.
          When ``True``, redirects are followed and logged into
-         :attr:`ClientResponse.history``.
+         :attr:`ClientResponse.history`.
          When ``False``, the original response is returned.
          ``False`` by default (optional).
 
