@@ -114,7 +114,7 @@ jobs:
       run: |
         make generate-llhttp
     - name: Upload llhttp generated files
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build
@@ -177,7 +177,7 @@ jobs:
         python -m pip install -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -264,7 +264,7 @@ jobs:
       run: |
         python -m pip install -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -325,7 +325,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -336,9 +336,9 @@ jobs:
       run: |
         python -m build --sdist
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: dist-sdist
         path: dist
 
   build-wheels:
@@ -388,7 +388,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -399,9 +399,15 @@ jobs:
       uses: pypa/cibuildwheel@v2.22.0
       env:
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-    - uses: actions/upload-artifact@v3
+    - name: Upload wheels
+      uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: >-
+          dist-${{ matrix.os }}-${{
+            matrix.qemu
+            && matrix.qemu
+            || 'native'
+          }}
         path: ./wheelhouse/*.whl
 
   deploy:
@@ -426,10 +432,10 @@ jobs:
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Download distributions
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: dist
         path: dist
+        pattern: dist-*
     - name: Collected dists
       run: |
         tree dist
