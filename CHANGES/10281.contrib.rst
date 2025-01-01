@@ -1,0 +1,1 @@
+The CI/CD workflow has been updated to use `upload-artifact` v4 and `download-artifact` v4 GitHub Actions -- by :user:`silamon`.
