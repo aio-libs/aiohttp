@@ -231,7 +231,7 @@ towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-trustme==1.2.0 ; platform_machine != "i686"
+trustme==1.2.1 ; platform_machine != "i686"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
