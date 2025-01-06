@@ -1392,7 +1392,7 @@ else:
         url: StrOrURL,
         version: HttpVersion = http.HttpVersion11,
         connector: Optional[BaseConnector] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> _SessionRequestContextManager:
         """Constructs and sends a request.
 
