@@ -1375,104 +1375,77 @@ class _SessionRequestContextManager:
         await self._session.close()
 
 
-def request(
-    method: str,
-    url: StrOrURL,
-    *,
-    params: Query = None,
-    data: Any = None,
-    json: Any = None,
-    headers: Optional[LooseHeaders] = None,
-    skip_auto_headers: Optional[Iterable[str]] = None,
-    auth: Optional[BasicAuth] = None,
-    allow_redirects: bool = True,
-    max_redirects: int = 10,
-    compress: Union[str, bool] = False,
-    chunked: Optional[bool] = None,
-    expect100: bool = False,
-    raise_for_status: Optional[bool] = None,
-    read_until_eof: bool = True,
-    proxy: Optional[StrOrURL] = None,
-    proxy_auth: Optional[BasicAuth] = None,
-    timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
-    cookies: Optional[LooseCookies] = None,
-    version: HttpVersion = http.HttpVersion11,
-    connector: Optional[BaseConnector] = None,
-    read_bufsize: Optional[int] = None,
-    max_line_size: int = 8190,
-    max_field_size: int = 8190,
-) -> _SessionRequestContextManager:
-    """Constructs and sends a request.
+if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
-    Returns response object.
-    method - HTTP method
-    url - request url
-    params - (optional) Dictionary or bytes to be sent in the query
-      string of the new request
-    data - (optional) Dictionary, bytes, or file-like object to
-      send in the body of the request
-    json - (optional) Any json compatible python object
-    headers - (optional) Dictionary of HTTP Headers to send with
-      the request
-    cookies - (optional) Dict object to send with the request
-    auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
-    auth - aiohttp.helpers.BasicAuth
-    allow_redirects - (optional) If set to False, do not follow
-      redirects
-    version - Request HTTP version.
-    compress - Set to True if request has to be compressed
-       with deflate encoding.
-    chunked - Set to chunk size for chunked transfer encoding.
-    expect100 - Expect 100-continue response from server.
-    connector - BaseConnector sub-class instance to support
-       connection pooling.
-    read_until_eof - Read response until eof if response
-       does not have Content-Length header.
-    loop - Optional event loop.
-    timeout - Optional ClientTimeout settings structure, 5min
-       total timeout by default.
-    Usage::
-      >>> import aiohttp
-      >>> async with aiohttp.request('GET', 'http://python.org/') as resp:
-      ...    print(resp)
-      ...    data = await resp.read()
-      <ClientResponse(https://www.python.org/) [200 OK]>
-    """
-    connector_owner = False
-    if connector is None:
-        connector_owner = True
-        connector = TCPConnector(force_close=True)
+    def request(
+        method: str,
+        url: StrOrURL,
+        *,
+        version: HttpVersion = http.HttpVersion11,
+        connector: Optional[BaseConnector] = None,
+        **kwargs: Unpack[_RequestOptions],
+    ) -> _SessionRequestContextManager: ...
 
-    session = ClientSession(
-        cookies=cookies,
-        version=version,
-        timeout=timeout,
-        connector=connector,
-        connector_owner=connector_owner,
-    )
+else:
 
-    return _SessionRequestContextManager(
-        session._request(
-            method,
-            url,
-            params=params,
-            data=data,
-            json=json,
-            headers=headers,
-            skip_auto_headers=skip_auto_headers,
-            auth=auth,
-            allow_redirects=allow_redirects,
-            max_redirects=max_redirects,
-            compress=compress,
-            chunked=chunked,
-            expect100=expect100,
-            raise_for_status=raise_for_status,
-            read_until_eof=read_until_eof,
-            proxy=proxy,
-            proxy_auth=proxy_auth,
-            read_bufsize=read_bufsize,
-            max_line_size=max_line_size,
-            max_field_size=max_field_size,
-        ),
-        session,
-    )
+    def request(
+        method: str,
+        url: StrOrURL,
+        *,
+        version: HttpVersion = http.HttpVersion11,
+        connector: Optional[BaseConnector] = None,
+        **kwargs: Any,
+    ) -> _SessionRequestContextManager:
+        """Constructs and sends a request.
+
+        Returns response object.
+        method - HTTP method
+        url - request url
+        params - (optional) Dictionary or bytes to be sent in the query
+        string of the new request
+        data - (optional) Dictionary, bytes, or file-like object to
+        send in the body of the request
+        json - (optional) Any json compatible python object
+        headers - (optional) Dictionary of HTTP Headers to send with
+        the request
+        cookies - (optional) Dict object to send with the request
+        auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
+        auth - aiohttp.helpers.BasicAuth
+        allow_redirects - (optional) If set to False, do not follow
+        redirects
+        version - Request HTTP version.
+        compress - Set to True if request has to be compressed
+        with deflate encoding.
+        chunked - Set to chunk size for chunked transfer encoding.
+        expect100 - Expect 100-continue response from server.
+        connector - BaseConnector sub-class instance to support
+        connection pooling.
+        read_until_eof - Read response until eof if response
+        does not have Content-Length header.
+        loop - Optional event loop.
+        timeout - Optional ClientTimeout settings structure, 5min
+        total timeout by default.
+        Usage::
+        >>> import aiohttp
+        >>> async with aiohttp.request('GET', 'http://python.org/') as resp:
+        ...    print(resp)
+        ...    data = await resp.read()
+        <ClientResponse(https://www.python.org/) [200 OK]>
+        """
+        connector_owner = False
+        if connector is None:
+            connector_owner = True
+            connector = TCPConnector(force_close=True)
+
+        session = ClientSession(
+            cookies=kwargs.pop("cookies", None),
+            version=version,
+            timeout=kwargs.pop("timeout", sentinel),
+            connector=connector,
+            connector_owner=connector_owner,
+        )
+
+        return _SessionRequestContextManager(
+            session._request(method, url, **kwargs),
+            session,
+        )
