@@ -3448,6 +3448,22 @@ async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:
     await server.close()
 
 
+async def test_aiohttp_request_ssl(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+
+    async with aiohttp.request("GET", server.make_url("/"), ssl=client_ssl_ctx) as resp:
+        assert resp.status == 200
+
+
 async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> None:
     # a test for backward compatibility with yield from syntax
     async def handler(request: web.Request) -> web.Response:
