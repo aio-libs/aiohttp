@@ -1,0 +1,2 @@
+Update :py:func:`~aiohttp.client.request` to make it use ``_RequestOptions`` kwargs.
+-- by :user:`Cycloctane`.
