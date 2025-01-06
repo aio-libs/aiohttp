@@ -1380,6 +1380,7 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
     def request(
         method: str,
         url: StrOrURL,
+        *,
         version: HttpVersion = http.HttpVersion11,
         connector: Optional[BaseConnector] = None,
         **kwargs: Unpack[_RequestOptions],
@@ -1390,6 +1391,7 @@ else:
     def request(
         method: str,
         url: StrOrURL,
+        *,
         version: HttpVersion = http.HttpVersion11,
         connector: Optional[BaseConnector] = None,
         **kwargs: Any,
