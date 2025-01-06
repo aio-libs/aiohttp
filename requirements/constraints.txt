@@ -148,7 +148,7 @@ pydantic-core==2.27.2
     # via pydantic
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
-pygments==2.18.0
+pygments==2.19.0
     # via
     #   rich
     #   sphinx
