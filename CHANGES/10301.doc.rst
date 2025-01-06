@@ -1,0 +1,1 @@
+Update :py:func:`~aiohttp.request` docs.
