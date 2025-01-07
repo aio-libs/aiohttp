@@ -81,7 +81,7 @@ pydantic==2.10.4
     # via python-on-whales
 pydantic-core==2.27.2
     # via pydantic
-pygments==2.19.0
+pygments==2.19.1
     # via rich
 pytest==8.3.4
     # via
