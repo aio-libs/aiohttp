@@ -306,3 +306,6 @@ ask to raise the status.
 
 - `aiohttp-asgi-connector <https://github.com/thearchitector/aiohttp-asgi-connector>`_
   An aiohttp connector for using a ``ClientSession`` to interface directly with separate ASGI applications.
+
+- `aiohttp-openmetrics <https://github.com/jelmer/aiohttp-openmetrics>`_
+  An aiohttp middleware for exposing Prometheus metrics.
