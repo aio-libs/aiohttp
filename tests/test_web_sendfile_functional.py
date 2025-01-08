@@ -1179,9 +1179,15 @@ async def test_a_ranged_request_serves_no_additional_bytes(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.get("/", headers={"Range": "bytes=20-40"})
-    assert resp.status == 206
-    body = await resp.read()
+    async with await client.get("/", headers={"Range": "bytes=20-40"}) as resp:
+        assert resp.status == 206
+        assert resp.headers["content-length"] == "21"
+        body = await resp.read()
+
+    async with await client.get("/", headers={"Range": "bytes=20-40"}) as resp:
+        assert resp.status == 206
+        assert resp.headers["content-length"] == "21"
+        body2 = await resp.read()
 
     # 21 bytes, because http range headers are including both fenceposts.
     assert len(body) == 21
@@ -1191,3 +1197,5 @@ async def test_a_ranged_request_serves_no_additional_bytes(
         f.seek(20)
         content = f.read(21)
         assert content == body
+
+    assert body == body2
