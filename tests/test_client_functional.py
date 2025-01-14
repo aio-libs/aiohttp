@@ -233,6 +233,11 @@ async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None
 
     assert cnt_conn_reuse == 2
 
+    resp5 = await client2.post("/", data=io.BytesIO(), headers={"Content-Length": "0"})
+    await resp5.read()
+
+    assert cnt_conn_reuse == 3
+
 
 async def test_keepalive_response_released(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
