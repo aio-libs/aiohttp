@@ -191,9 +191,6 @@ async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=b"")
 
-    app = web.Application()
-    app.router.add_route("POST", "/", handler)
-
     cnt_conn_reuse = 0
 
     async def on_reuseconn(session: object, ctx: object, params: object) -> None:
@@ -203,9 +200,12 @@ async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None
     trace_config1 = aiohttp.TraceConfig()
     trace_config1._on_connection_reuseconn.append(on_reuseconn)
 
+    app1 = web.Application()
+    app1.router.add_route("POST", "/", handler)
+
     connector1 = aiohttp.TCPConnector(limit=1)
     client1 = await aiohttp_client(
-        app, connector=connector1, trace_configs=[trace_config1]
+        app1, connector=connector1, trace_configs=[trace_config1]
     )
 
     resp1 = await client1.post("/", data=io.BytesIO(), headers={"Content-Length": "0"})
@@ -218,9 +218,12 @@ async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None
     trace_config2 = aiohttp.TraceConfig()
     trace_config2._on_connection_reuseconn.append(on_reuseconn)
 
+    app2 = web.Application()
+    app2.router.add_route("POST", "/", handler)
+
     connector2 = aiohttp.TCPConnector(limit=1)
     client2 = await aiohttp_client(
-        app, connector=connector2, trace_configs=[trace_config2]
+        app2, connector=connector2, trace_configs=[trace_config2]
     )
 
     resp3 = await client2.post("/", data=io.BytesIO(), headers={"Content-Length": "0"})
