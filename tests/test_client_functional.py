@@ -186,9 +186,9 @@ async def test_keepalive_after_empty_body_status_stream_response(
     assert cnt_conn_reuse == 1
 
 
-@pytest.mark.xfail(reason="second client is not reusing the connection")
 async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
+        await request.read()
         return web.Response(body=b"")
 
     cnt_conn_reuse = 0
@@ -208,9 +208,9 @@ async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None
         app1, connector=connector1, trace_configs=[trace_config1]
     )
 
-    resp1 = await client1.post("/", data=io.BytesIO(), headers={"Content-Length": "0"})
+    resp1 = await client1.post("/", data=io.BytesIO(b"1"))
     await resp1.read()
-    resp2 = await client1.post("/", data=io.BytesIO(), headers={"Content-Length": "0"})
+    resp2 = await client1.post("/", data=io.BytesIO(b"2"))
     await resp2.read()
 
     assert cnt_conn_reuse == 1
@@ -226,14 +226,14 @@ async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None
         app2, connector=connector2, trace_configs=[trace_config2]
     )
 
-    resp3 = await client2.post("/", data=io.BytesIO(), headers={"Content-Length": "0"})
+    resp3 = await client2.post("/", data=io.BytesIO(b"3"))
     await resp3.read()
-    resp4 = await client2.post("/", data=io.BytesIO(), headers={"Content-Length": "0"})
+    resp4 = await client2.post("/", data=io.BytesIO(b"4"))
     await resp4.read()
 
     assert cnt_conn_reuse == 2
 
-    resp5 = await client2.post("/", data=io.BytesIO(), headers={"Content-Length": "0"})
+    resp5 = await client2.post("/", data=io.BytesIO(b"5"))
     await resp5.read()
 
     assert cnt_conn_reuse == 3
