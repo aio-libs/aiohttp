@@ -186,9 +186,7 @@ async def test_keepalive_after_empty_body_status_stream_response(
     assert cnt_conn_reuse == 1
 
 
-pytest.mark.xfail(reason="Connection should be reused (#10325)")
-
-
+@pytest.mark.xfail(reason="Connection should be reused (#10325)")
 async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=await request.read())
