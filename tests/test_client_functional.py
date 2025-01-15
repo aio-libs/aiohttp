@@ -186,10 +186,10 @@ async def test_keepalive_after_empty_body_status_stream_response(
     assert cnt_conn_reuse == 1
 
 
+pytest.mark.xfail(reason="Connection should be reused (#10325)")
 async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        await request.read()
-        return web.Response(body=b"")
+        return web.Response(body=await request.read())
 
     cnt_conn_reuse = 0
 
@@ -209,9 +209,9 @@ async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None
     )
 
     resp1 = await client1.post("/", data=io.BytesIO(b"1"))
-    await resp1.read()
+    assert await resp1.read() == b"1"
     resp2 = await client1.post("/", data=io.BytesIO(b"2"))
-    await resp2.read()
+    assert await resp2.read() == b"2"
 
     assert cnt_conn_reuse == 1
 
@@ -227,14 +227,14 @@ async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None
     )
 
     resp3 = await client2.post("/", data=io.BytesIO(b"3"))
-    await resp3.read()
+    assert await resp3.read() == b"3"
     resp4 = await client2.post("/", data=io.BytesIO(b"4"))
-    await resp4.read()
+    assert await resp4.read() == b"4"
 
     assert cnt_conn_reuse == 2
 
     resp5 = await client2.post("/", data=io.BytesIO(b"5"))
-    await resp5.read()
+    assert await resp5.read() == b"5"
 
     assert cnt_conn_reuse == 3
 
