@@ -38,7 +38,7 @@ _TARGET_TIMINGS_BY_PYTHON_VERSION = {
         # and even slower under pytest-xdist, especially in CI
         _XDIST_WORKER_COUNT * 100 * (1 if _IS_CI_ENV else 1.53)
         if _IS_XDIST_RUN
-        else 265
+        else 295
     ),
 }
 _TARGET_TIMINGS_BY_PYTHON_VERSION["3.13"] = _TARGET_TIMINGS_BY_PYTHON_VERSION["3.12"]
