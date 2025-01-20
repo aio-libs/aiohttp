@@ -123,7 +123,6 @@ class StreamWriter(AbstractStreamWriter):
             if self.length >= chunk_len:
                 self.length = self.length - chunk_len
             else:
-                chunk = chunk[: self.length]
                 self.length = 0
                 if not chunk:
                     return
