@@ -100,7 +100,7 @@ pytest-xdist==3.6.1
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.74.0
+python-on-whales==0.75.1
     # via -r requirements/test.in
 re-assert==1.1.0
     # via -r requirements/test.in
