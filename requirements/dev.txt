@@ -89,8 +89,6 @@ idna==3.4
     #   yarl
 imagesize==1.4.1
     # via sphinx
-incremental==24.7.2
-    # via towncrier
 iniconfig==2.0.0
     # via pytest
 jinja2==3.1.5
@@ -228,14 +226,13 @@ tomli==2.2.1
     #   build
     #   cherry-picker
     #   coverage
-    #   incremental
     #   mypy
     #   pip-tools
     #   pytest
     #   slotscheck
     #   sphinx
     #   towncrier
-towncrier==23.11.0
+towncrier==24.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
@@ -274,6 +271,4 @@ yarl==1.18.3
 pip==24.3.1
     # via pip-tools
 setuptools==75.8.0
-    # via
-    #   incremental
-    #   pip-tools
+    # via pip-tools
