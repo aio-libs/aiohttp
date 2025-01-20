@@ -56,7 +56,9 @@ async def test_raw_server_not_http_exception(aiohttp_raw_server, aiohttp_client)
     assert txt.startswith("500 Internal Server Error")
     assert "Traceback" not in txt
 
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_logs_invalid_method_with_loop_debug(
@@ -85,7 +87,9 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
     # on the first request since the client may
     # be probing for TLS/SSL support which is
     # expected to fail
-    logger.debug.assert_called_with("Error handling request", exc_info=exc)
+    logger.debug.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
     logger.debug.reset_mock()
 
     # Now make another connection to the server
@@ -99,7 +103,9 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
     # on the first request since the client may
     # be probing for TLS/SSL support which is
     # expected to fail
-    logger.debug.assert_called_with("Error handling request", exc_info=exc)
+    logger.debug.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_logs_invalid_method_without_loop_debug(
@@ -128,7 +134,9 @@ async def test_raw_server_logs_invalid_method_without_loop_debug(
     # on the first request since the client may
     # be probing for TLS/SSL support which is
     # expected to fail
-    logger.debug.assert_called_with("Error handling request", exc_info=exc)
+    logger.debug.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_logs_invalid_method_second_request(
@@ -159,7 +167,9 @@ async def test_raw_server_logs_invalid_method_second_request(
     # BadHttpMethod should be logged as an exception
     # if its not the first request since we know
     # that the client already was speaking HTTP
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_logs_bad_status_line_as_exception(
@@ -184,7 +194,9 @@ async def test_raw_server_logs_bad_status_line_as_exception(
     txt = await resp.text()
     assert "Traceback (most recent call last):\n" not in txt
 
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_handler_timeout(
@@ -254,7 +266,9 @@ async def test_raw_server_not_http_exception_debug(aiohttp_raw_server, aiohttp_c
     txt = await resp.text()
     assert "Traceback (most recent call last):\n" in txt
 
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client):
@@ -278,7 +292,9 @@ async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client):
         "</body></html>\n"
     )
 
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_html_exception_debug(aiohttp_raw_server, aiohttp_client):
@@ -302,7 +318,9 @@ async def test_raw_server_html_exception_debug(aiohttp_raw_server, aiohttp_clien
         "<pre>Traceback (most recent call last):\n"
     )
 
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
