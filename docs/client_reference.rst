@@ -1597,6 +1597,13 @@ manually.
       May be ``None`` if server and client protocols are
       not overlapping.
 
+   .. attribute:: response
+
+      The :class:`ClientResponse <ClientResponse>` response object.
+      Can be used to get the response headers and cookies.
+
+      .. versionadded:: 4.0
+
    .. method:: get_extra_info(name, default=None)
 
       Reads optional extra information from the connection's transport.
