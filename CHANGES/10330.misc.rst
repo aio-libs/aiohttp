@@ -1,1 +1,1 @@
-Add riscv64 build to releases -- by :user:`eshattow`.
+Add `riscv64` build to releases -- by :user:`eshattow`.
