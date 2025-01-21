@@ -1,0 +1,1 @@
+Added 'riscv64' to spelling_wordlist.txt -- by :user:`eshattow`.
