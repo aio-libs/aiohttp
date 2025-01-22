@@ -1,1 +1,1 @@
-Add `riscv64` build to releases -- by :user:`eshattow`.
+Started publishing ``riscv64`` wheels -- by :user:`eshattow`.
