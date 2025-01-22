@@ -25,7 +25,7 @@ distlib==0.3.9
     # via virtualenv
 exceptiongroup==1.2.2
     # via pytest
-filelock==3.16.1
+filelock==3.17.0
     # via virtualenv
 freezegun==1.5.1
     # via -r requirements/lint.in
