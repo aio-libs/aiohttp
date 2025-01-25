@@ -880,6 +880,19 @@ class HttpPayloadParser:
                         chunk = chunk[len(SEP) :]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
                     else:
+                        length = len(chunk)
+                        if (
+                            self._lax
+                            and length
+                            or (
+                                not self._lax
+                                and (length and chunk[:1] != SEP[:1] or length > 1)
+                            )
+                        ):
+                            exc = TransferEncodingError("Missing CRLF at chunk end")
+                            set_exception(self.payload, exc)
+                            raise exc
+                        # Get the CRLF or the missing LF in the next chunk.
                         self._chunk_tail = chunk
                         return False, b""
 

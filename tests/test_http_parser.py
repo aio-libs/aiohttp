@@ -1761,6 +1761,69 @@ class TestParsePayload:
         assert out.is_eof()
         assert b"asdf" == b"".join(out._buffer)
 
+    async def test_parse_chunked_payload_split_CRLF(
+        self, protocol: BaseProtocol
+    ) -> None:
+        loop = asyncio.get_running_loop()
+        for lax, SEP in ((False, b"\r\n"), (True, b"\n")):
+            out = aiohttp.StreamReader(protocol, 2**16, loop=loop)
+            p = HttpPayloadParser(out, chunked=True, lax=lax)
+            p.feed_data(b"4\r\nasdf", SEP=SEP)
+            p.feed_data(b"\r\n0\r\n\r\n", SEP=SEP)
+
+            assert out.is_eof()
+            assert b"asdf" == b"".join(out._buffer)
+
+    async def test_parse_chunked_payload_split_CRLF2(
+        self, protocol: BaseProtocol
+    ) -> None:
+        loop = asyncio.get_running_loop()
+        for lax, SEP in ((False, b"\r\n"), (True, b"\n")):
+            out = aiohttp.StreamReader(protocol, 2**16, loop=loop)
+            p = HttpPayloadParser(out, chunked=True, lax=lax)
+            p.feed_data(b"4\r\nasdf\r", SEP=SEP)
+            p.feed_data(b"\n0\r\n\r\n", SEP=SEP)
+
+            assert out.is_eof()
+            assert b"asdf" == b"".join(out._buffer)
+
+    async def test_parse_chunked_payload_split_CRLF3(
+        self, protocol: BaseProtocol
+    ) -> None:
+        loop = asyncio.get_running_loop()
+        for lax, SEP in ((False, b"\r\n"), (True, b"\n")):
+            out = aiohttp.StreamReader(protocol, 2**16, loop=loop)
+            p = HttpPayloadParser(out, chunked=True, lax=lax)
+            with pytest.raises(http_exceptions.TransferEncodingError):
+                p.feed_data(b"4\r\nasdf", SEP=SEP)
+                p.feed_data(b"X\n0\r\n\r\n", SEP=SEP)
+            exc = out.exception()
+            assert isinstance(exc, http_exceptions.TransferEncodingError)
+            assert "Missing CRLF" in exc.args[0]
+
+    async def test_parse_chunked_payload_split_CRLF4(
+        self, protocol: BaseProtocol
+    ) -> None:
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(out, chunked=True)
+        with pytest.raises(http_exceptions.TransferEncodingError):
+            p.feed_data(b"4\r\nasdfX")
+            p.feed_data(b"\n0\r\n\r\n")
+        exc = out.exception()
+        assert isinstance(exc, http_exceptions.TransferEncodingError)
+        assert "Missing CRLF" in exc.args[0]
+
+    async def test_parse_chunked_payload_missing_CRLF(
+        self, protocol: BaseProtocol
+    ) -> None:
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(out, chunked=True)
+        with pytest.raises(http_exceptions.TransferEncodingError):
+            p.feed_data(b"4\r\nasdf\rX0\r\n\r\n")
+        exc = out.exception()
+        assert isinstance(exc, http_exceptions.TransferEncodingError)
+        assert "Missing CRLF" in exc.args[0]
+
     async def test_http_payload_parser_length(self, protocol: BaseProtocol) -> None:
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         p = HttpPayloadParser(out, length=2)
