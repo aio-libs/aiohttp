@@ -1768,8 +1768,8 @@ class TestParsePayload:
         for lax, SEP in ((False, b"\r\n"), (True, b"\n")):
             out = aiohttp.StreamReader(protocol, 2**16, loop=loop)
             p = HttpPayloadParser(out, chunked=True, lax=lax)
-            p.feed_data(b"4\r\nasdf", SEP=SEP)  # type: ignore
-            p.feed_data(b"\r\n0\r\n\r\n", SEP=SEP)  # type: ignore
+            p.feed_data(b"4\r\nasdf", SEP=SEP)  # type: ignore[arg-type]
+            p.feed_data(b"\r\n0\r\n\r\n", SEP=SEP)  # type: ignore[arg-type]
 
             assert out.is_eof()
             assert b"asdf" == b"".join(out._buffer)
@@ -1781,8 +1781,8 @@ class TestParsePayload:
         for lax, SEP in ((False, b"\r\n"), (True, b"\n")):
             out = aiohttp.StreamReader(protocol, 2**16, loop=loop)
             p = HttpPayloadParser(out, chunked=True, lax=lax)
-            p.feed_data(b"4\r\nasdf\r", SEP=SEP)  # type: ignore
-            p.feed_data(b"\n0\r\n\r\n", SEP=SEP)  # type: ignore
+            p.feed_data(b"4\r\nasdf\r", SEP=SEP)  # type: ignore[arg-type]
+            p.feed_data(b"\n0\r\n\r\n", SEP=SEP)  # type: ignore[arg-type]
 
             assert out.is_eof()
             assert b"asdf" == b"".join(out._buffer)
@@ -1795,8 +1795,8 @@ class TestParsePayload:
             out = aiohttp.StreamReader(protocol, 2**16, loop=loop)
             p = HttpPayloadParser(out, chunked=True, lax=lax)
             with pytest.raises(http_exceptions.TransferEncodingError):
-                p.feed_data(b"4\r\nasdf", SEP=SEP)  # type: ignore
-                p.feed_data(b"X\n0\r\n\r\n", SEP=SEP)  # type: ignore
+                p.feed_data(b"4\r\nasdf", SEP=SEP)  # type: ignore[arg-type]
+                p.feed_data(b"X\n0\r\n\r\n", SEP=SEP)  # type: ignore[arg-type]
             exc = out.exception()
             assert isinstance(exc, http_exceptions.TransferEncodingError)
             assert "Missing CRLF" in exc.args[0]
