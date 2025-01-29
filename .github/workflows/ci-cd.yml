@@ -356,6 +356,8 @@ jobs:
         - os: ubuntu
           qemu: ppc64le
         - os: ubuntu
+          qemu: riscv64
+        - os: ubuntu
           qemu: s390x
     steps:
     - name: Checkout
