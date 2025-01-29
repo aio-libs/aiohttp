@@ -1,0 +1,1 @@
+Moved static metadata from ``setup.cfg`` to ``pyproject.toml`` -- by :user:`cdce8p`.
