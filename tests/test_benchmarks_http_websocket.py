@@ -1,7 +1,7 @@
 """codspeed benchmarks for http websocket."""
 
 import asyncio
-from typing import Union
+from typing import Iterable, Union
 
 from pytest_codspeed import BenchmarkFixture
 
@@ -60,6 +60,9 @@ class MockTransport(asyncio.Transport):
         return False
 
     def write(self, data: Union[bytes, bytearray, memoryview]) -> None:
+        """Swallow writes."""
+
+    def writelines(self, data: Iterable[Union[bytes, bytearray, memoryview]]) -> None:
         """Swallow writes."""
 
 
