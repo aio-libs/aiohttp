@@ -22,8 +22,6 @@ idna==3.4
     # via requests
 imagesize==1.4.1
     # via sphinx
-incremental==24.7.2
-    # via towncrier
 jinja2==3.1.5
     # via
     #   sphinx
@@ -58,16 +56,11 @@ sphinxcontrib-towncrier==0.4.0a0
     # via -r requirements/doc.in
 tomli==2.2.1
     # via
-    #   incremental
     #   sphinx
     #   towncrier
-towncrier==23.11.0
+towncrier==24.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
 urllib3==2.3.0
     # via requests
-
-# The following packages are considered to be unsafe in a requirements file:
-setuptools==75.8.0
-    # via incremental
