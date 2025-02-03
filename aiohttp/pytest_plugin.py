@@ -274,7 +274,7 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
 def loop(
     loop_factory: Callable[[], asyncio.AbstractEventLoopPolicy],
     fast: bool,
-    loop_debug: bool
+    loop_debug: bool,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     """Return an instance of the event loop."""
     policy = loop_factory()
