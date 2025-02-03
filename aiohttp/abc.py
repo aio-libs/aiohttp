@@ -12,7 +12,6 @@ from typing import (
     Dict,
     Generator,
     Iterable,
-    Iterator,
     List,
     Optional,
     Tuple,
