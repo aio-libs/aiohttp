@@ -976,6 +976,19 @@ def test_cookies_mixin_path() -> None:
     )
 
 
+@pytest.mark.skipif(sys.version_info < (3, 14), reason="No partitioned support")
+def test_cookies_mixin_partitioned() -> None:
+    sut = CookieImplementation()
+
+    assert sut.cookies == {}
+
+    sut.set_cookie("name", "value", partitioned=False)
+    assert str(sut.cookies) == "Set-Cookie: name=value; Path=/"
+
+    sut.set_cookie("name", "value", partitioned=True)
+    assert str(sut.cookies) == "Set-Cookie: name=value; Partitioned; Path=/"
+
+
 def test_sutonse_cookie__issue_del_cookie() -> None:
     sut = CookieImplementation()
 
