@@ -164,10 +164,10 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     def __getitem__(self, index: int) -> AbstractRouteDef: ...
 
     @overload
-    def __getitem__(self, index: slice[int, int, int]) -> List[AbstractRouteDef]: ...
+    def __getitem__(self, index: "slice[int, int, int]") -> List[AbstractRouteDef]: ...
 
     def __getitem__(
-        self, index: Union[int, slice[int, int, int]]
+        self, index: Union[int, "slice[int, int, int]"]
     ) -> Union[AbstractRouteDef, List[AbstractRouteDef]]:
         return self._items[index]
 
