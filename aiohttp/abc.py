@@ -12,6 +12,7 @@ from typing import (
     Dict,
     Generator,
     Iterable,
+    Iterator,
     List,
     Optional,
     Tuple,
@@ -81,7 +82,7 @@ class AbstractMatchInfo(ABC):
         """HTTPException instance raised on router's resolving, or None"""
 
     @abstractmethod  # pragma: no branch
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> Dict[str, Any]:  # type: ignore[misc]
         """Return a dict with additional info useful for introspection"""
 
     @property  # pragma: no branch
@@ -120,7 +121,7 @@ class AbstractView(ABC):
         return self._request
 
     @abstractmethod
-    def __await__(self) -> Generator[Any, None, StreamResponse]:
+    def __await__(self) -> Generator[None, None, StreamResponse]:
         """Execute the view handler."""
 
 

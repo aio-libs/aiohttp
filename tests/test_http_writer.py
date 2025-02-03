@@ -19,7 +19,7 @@ def buf() -> bytearray:
 
 
 @pytest.fixture
-def transport(buf: bytearray) -> Any:
+def transport(buf: bytearray) -> Any:  # type: ignore[misc]
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
 
     def write(chunk: bytes) -> None:
@@ -36,7 +36,7 @@ def transport(buf: bytearray) -> Any:
 
 
 @pytest.fixture
-def protocol(loop: asyncio.AbstractEventLoop, transport: asyncio.Transport) -> Any:
+def protocol(loop: asyncio.AbstractEventLoop, transport: asyncio.Transport) -> Any:  # type: ignore[misc]
     return mock.create_autospec(
         BaseProtocol, spec_set=True, instance=True, transport=transport
     )

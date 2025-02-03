@@ -46,7 +46,7 @@ except ImportError:  # pragma: no cover
 
 
 @pytest.fixture
-def protocol() -> Any:
+def protocol() -> Any:  # type: ignore[misc]
     return mock.create_autospec(BaseProtocol, spec_set=True, instance=True)
 
 

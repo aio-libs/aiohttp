@@ -62,7 +62,7 @@ class BaseSite(ABC):
         self._runner = runner
         self._ssl_context = ssl_context
         self._backlog = backlog
-        self._server: Optional[asyncio.AbstractServer] = None
+        self._server: Optional[asyncio.Server] = None
 
     @property
     @abstractmethod
@@ -254,12 +254,12 @@ class BaseRunner(ABC, Generic[_Request]):
         return self._server
 
     @property
-    def addresses(self) -> List[Any]:
+    def addresses(self) -> List[Any]:  # type: ignore[misc]
         ret: List[Any] = []
         for site in self._sites:
             server = site._server
             if server is not None:
-                sockets = server.sockets  # type: ignore[attr-defined]
+                sockets = server.sockets
                 if sockets is not None:
                     for sock in sockets:
                         ret.append(sock.getsockname())

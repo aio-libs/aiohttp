@@ -55,7 +55,7 @@ _HandlerType = Union[Type[AbstractView], Handler]
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
-class RouteDef(AbstractRouteDef):
+class RouteDef(AbstractRouteDef):  # type: ignore[misc]
     method: str
     path: str
     handler: _HandlerType
@@ -80,7 +80,7 @@ class RouteDef(AbstractRouteDef):
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
-class StaticDef(AbstractRouteDef):
+class StaticDef(AbstractRouteDef):  # type: ignore[misc]
     prefix: str
     path: PathLike
     kwargs: Dict[str, Any]
@@ -164,9 +164,9 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     def __getitem__(self, index: int) -> AbstractRouteDef: ...
 
     @overload
-    def __getitem__(self, index: slice) -> List[AbstractRouteDef]: ...
+    def __getitem__(self, index: slice[int, int, int]) -> List[AbstractRouteDef]: ...
 
-    def __getitem__(self, index):  # type: ignore[no-untyped-def]
+    def __getitem__(self, index: Union[int, slice[int, int, int]]) -> Union[AbstractRouteDef, List[AbstractRouteDef]]:
         return self._items[index]
 
     def __iter__(self) -> Iterator[AbstractRouteDef]:

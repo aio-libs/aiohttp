@@ -53,26 +53,26 @@ from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 
 
-@pytest.fixture()
-def key() -> ConnectionKey:
+@pytest.fixture
+def key() -> ConnectionKey:  # type: ignore[misc]
     # Connection key
     return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
-def key2() -> ConnectionKey:
+def key2() -> ConnectionKey:  # type: ignore[misc]
     # Connection key
     return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
-def other_host_key2() -> ConnectionKey:
+def other_host_key2() -> ConnectionKey:  # type: ignore[misc]
     # Connection key
     return ConnectionKey("otherhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
-def ssl_key() -> ConnectionKey:
+def ssl_key() -> ConnectionKey:  # type: ignore[misc]
     # Connection key
     return ConnectionKey("localhost", 80, True, True, None, None, None)
 
@@ -221,7 +221,7 @@ async def test_del(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
 
 
 @pytest.mark.xfail
-async def test_del_with_scheduled_cleanup(
+async def test_del_with_scheduled_cleanup(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
     loop.set_debug(True)
@@ -251,7 +251,7 @@ async def test_del_with_scheduled_cleanup(
 @pytest.mark.skipif(
     sys.implementation.name != "cpython", reason="CPython GC is required for the test"
 )
-def test_del_with_closed_loop(
+def test_del_with_closed_loop(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
     async def make_conn() -> aiohttp.BaseConnector:
@@ -444,7 +444,7 @@ async def test_release(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> N
 
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
-async def test_release_ssl_transport(
+async def test_release_ssl_transport(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
 ) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
@@ -1924,7 +1924,7 @@ async def test_cleanup(key: ConnectionKey) -> None:
 
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
-async def test_cleanup_close_ssl_transport(
+async def test_cleanup_close_ssl_transport(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
 ) -> None:
     proto = create_mocked_conn(loop)
@@ -3788,7 +3788,7 @@ async def test_available_connections_with_limit_per_host(
 
 
 @pytest.mark.parametrize("limit_per_host", [0, 10])
-async def test_available_connections_without_limit_per_host(
+async def test_available_connections_without_limit_per_host(  # type: ignore[misc]
     key: ConnectionKey, other_host_key2: ConnectionKey, limit_per_host: int
 ) -> None:
     """Verify expected values based on active connections with higher host limit."""
