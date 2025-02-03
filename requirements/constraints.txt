@@ -24,7 +24,7 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   valkey
 attrs==25.1.0
     # via -r requirements/runtime-deps.in
-babel==2.16.0
+babel==2.17.0
     # via sphinx
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
