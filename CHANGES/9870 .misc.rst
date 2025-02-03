@@ -1,0 +1,2 @@
+Added support for the ``partitioned`` attribute in the ``set_cookie`` method.
+
