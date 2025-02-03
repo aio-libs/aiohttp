@@ -940,6 +940,7 @@ class CookieMixin:
         secure: Optional[bool] = None,
         httponly: Optional[bool] = None,
         samesite: Optional[str] = None,
+        partitioned: Optional[bool] = None,
     ) -> None:
         """Set or update response cookie.
 
@@ -973,6 +974,9 @@ class CookieMixin:
             c["httponly"] = httponly
         if samesite is not None:
             c["samesite"] = samesite
+
+        if partitioned is not None:
+            c["partitioned"] = partitioned
 
         if DEBUG:
             cookie_length = len(c.output(header="")[1:])
