@@ -214,8 +214,8 @@ def test_bad_header_name(
     (
         "Content-Length: -5",  # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
         "Content-Length: +256",
-        "Content-Length: \N{superscript one}",
-        "Content-Length: \N{mathematical double-struck digit one}",
+        "Content-Length: \N{SUPERSCRIPT ONE}",
+        "Content-Length: \N{MATHEMATICAL DOUBLE-STRUCK DIGIT ONE}",
         "Foo: abc\rdef",  # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
         "Bar: abc\ndef",
         "Baz: abc\x00def",
@@ -820,11 +820,11 @@ def test_http_request_bad_status_line(parser: HttpRequestParser) -> None:
 _num: Dict[bytes, str] = {
     # dangerous: accepted by Python int()
     # unicodedata.category("\U0001D7D9") == 'Nd'
-    "\N{mathematical double-struck digit one}".encode(): "utf8digit",
+    "\N{MATHEMATICAL DOUBLE-STRUCK DIGIT ONE}".encode(): "utf8digit",
     # only added for interop tests, refused by Python int()
     # unicodedata.category("\U000000B9") == 'No'
-    "\N{superscript one}".encode(): "utf8number",
-    "\N{superscript one}".encode("latin-1"): "latin1number",
+    "\N{SUPERSCRIPT ONE}".encode(): "utf8number",
+    "\N{SUPERSCRIPT ONE}".encode("latin-1"): "latin1number",
 }
 
 
@@ -839,7 +839,7 @@ def test_http_request_bad_status_line_number(
 
 def test_http_request_bad_status_line_separator(parser: HttpRequestParser) -> None:
     # single code point, old, multibyte NFKC, multibyte NFKD
-    utf8sep = "\N{arabic ligature sallallahou alayhe wasallam}".encode()
+    utf8sep = "\N{ARABIC LIGATURE SALLALLAHOU ALAYHE WASALLAM}".encode()
     text = b"GET /ligature HTTP/1" + utf8sep + b"1\r\n\r\n"
     with pytest.raises(http_exceptions.BadStatusLine):
         parser.feed_data(text)
@@ -913,7 +913,7 @@ def test_http_request_parser_utf8_request_line(parser: HttpRequestParser) -> Non
         b"GET /P\xc3\xbcnktchen\xa0\xef\xb7 HTTP/1.1\r\n" +
         # for easier grep: ASCII 0xA0 more commonly known as non-breaking space
         # note the leading and trailing spaces
-        "sTeP:  \N{latin small letter sharp s}nek\t\N{no-break space}  "
+        "sTeP:  \N{LATIN SMALL LETTER SHARP S}nek\t\N{NO-BREAK SPACE}  "
         "\r\n\r\n".encode()
     )
     msg = messages[0][0]
@@ -1673,7 +1673,7 @@ class TestParsePayload:
         p.feed_eof()
 
         assert out.is_eof()
-        assert [(bytearray(b"data"))] == list(out._buffer)
+        assert [bytearray(b"data")] == list(out._buffer)
 
     async def test_parse_length_payload_eof(self, protocol: BaseProtocol) -> None:
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
