@@ -754,10 +754,10 @@ and :ref:`aiohttp-web-signals` handlers::
 
             .. versionadded:: 3.7
 
-      :param bool partitioned: ``True`` if you want the cookie to be
-         partitioned. (optional)
+      :param bool partitioned: ``True`` to set a partitioned cookie.
+         Available in Python 3.14+. (optional)
 
-            .. versionadded:: 3.14
+            .. versionadded:: 3.12
 
    .. method:: del_cookie(name, *, path='/', domain=None)
 
