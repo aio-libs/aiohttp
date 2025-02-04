@@ -3,6 +3,7 @@ import datetime
 import gzip
 import io
 import json
+import sys
 import zlib
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterator, Optional
@@ -898,6 +899,19 @@ def test_response_cookies() -> None:
     resp.set_cookie("name", "value", domain="local.host")
     expected = "Set-Cookie: name=value; Domain=local.host; Path=/"
     assert str(resp.cookies) == expected
+
+
+@pytest.mark.skipif(sys.version_info < (3, 14), reason="No partitioned support")
+def test_response_cookie_partitioned() -> None:
+    resp = StreamResponse()
+
+    assert resp.cookies == {}
+
+    resp.set_cookie("name", "value", partitioned=False)
+    assert str(resp.cookies) == "Set-Cookie: name=value; Path=/"
+
+    resp.set_cookie("name", "value", partitioned=True)
+    assert str(resp.cookies) == "Set-Cookie: name=value; Partitioned; Path=/"
 
 
 def test_response_cookie_path() -> None:
