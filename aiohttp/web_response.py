@@ -233,6 +233,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         httponly: Optional[bool] = None,
         version: Optional[str] = None,
         samesite: Optional[str] = None,
+        partitioned: Optional[bool] = None,
     ) -> None:
         """Set or update response cookie.
 
@@ -268,6 +269,9 @@ class StreamResponse(BaseClass, HeadersMixin):
             c["version"] = version
         if samesite is not None:
             c["samesite"] = samesite
+
+        if partitioned is not None:
+            c["partitioned"] = partitioned
 
     def del_cookie(
         self,

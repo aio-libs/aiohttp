@@ -726,7 +726,7 @@ and :ref:`aiohttp-web-signals` handlers::
    .. method:: set_cookie(name, value, *, path='/', expires=None, \
                           domain=None, max_age=None, \
                           secure=None, httponly=None, version=None, \
-                          samesite=None)
+                          samesite=None, partitioned=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
       some additional properties like *max_age* in a single call.
@@ -778,6 +778,11 @@ and :ref:`aiohttp-web-signals` handlers::
          ``Lax`` or ``Strict``. (optional)
 
             .. versionadded:: 3.7
+
+      :param bool partitioned: ``True`` to set a partitioned cookie.
+         Available in Python 3.14+. (optional)
+
+            .. versionadded:: 3.12
 
       .. warning::
 
