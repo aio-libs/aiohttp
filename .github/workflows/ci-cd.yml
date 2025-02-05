@@ -477,6 +477,7 @@ jobs:
       with:
         path: dist
         pattern: dist-*
+        merge-multiple: true
     - name: Collected dists
       run: |
         tree dist
