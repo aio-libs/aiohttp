@@ -79,6 +79,14 @@ Packaging updates and notes for downstreams
 
 
 
+- Started building armv7l musllinux wheels -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10404`.
+
+
+
 
 Contributor-facing changes
 --------------------------
