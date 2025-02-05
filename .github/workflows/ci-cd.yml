@@ -365,31 +365,31 @@ jobs:
       contents: read # to fetch code (actions/checkout)
 
     name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }} ${{ matrix.musl }}
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}
     needs: pre-deploy
     strategy:
       matrix:
-        os: [ubuntu, windows, macos, "ubuntu-24.04-arm"]
+        os: ["ubuntu-latest", "windows-latest", "macos-latest", "ubuntu-24.04-arm"]
         qemu: ['']
         musl: [""]
         include:
           # Split ubuntu/musl jobs for the sake of speed-up
-        - os: ubuntu
+        - os: ubuntu-latest
           qemu: ppc64le
           musl: ""
-        - os: ubuntu
+        - os: ubuntu-latest
           qemu: s390x
           musl: ""
-        - os: ubuntu
+        - os: ubuntu-latest
           qemu: armv7l
           musl: musllinux
-        - os: ubuntu
+        - os: ubuntu-latest
           qemu: s390x
           musl: musllinux
-        - os: ubuntu
+        - os: ubuntu-latest
           qemu: s390x
           musl: musllinux
-        - os: ubuntu
+        - os: ubuntu-latest
           musl: musllinux
         - os: ubuntu-24.04-arm
           musl: musllinux
