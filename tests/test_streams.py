@@ -1141,6 +1141,7 @@ async def test_empty_stream_reader() -> None:
     with pytest.raises(asyncio.IncompleteReadError):
         await s.readexactly(10)
     assert s.read_nowait() == b""
+    assert s.total_bytes == 0
 
 
 async def test_empty_stream_reader_iter_chunks() -> None:
