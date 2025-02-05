@@ -1,1 +1,0 @@
-Restored the missing ``total_bytes`` attribute to ``EmptyStreamReader`` -- by :user:`bdraco`.

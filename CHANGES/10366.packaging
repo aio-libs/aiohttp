@@ -1,2 +1,0 @@
-Added missing files to the source distribution to fix ``Makefile`` targets.
-Added a ``cythonize-nodeps`` target to run Cython without invoking pip to install dependencies.
