@@ -70,14 +70,6 @@ Improved documentation
 Packaging updates and notes for downstreams
 -------------------------------------------
 
-- Started publishing ``riscv64`` wheels -- by :user:`eshattow`.
-
-
-  *Related issues and pull requests on GitHub:*
-  :issue:`10330`.
-
-
-
 - Added missing files to the source distribution to fix ``Makefile`` targets.
   Added a ``cythonize-nodeps`` target to run Cython without invoking pip to install dependencies.
 
