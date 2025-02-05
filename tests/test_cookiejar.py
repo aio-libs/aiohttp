@@ -1129,7 +1129,7 @@ def test_pickle_format(cookies_to_send: SimpleCookie) -> None:
     ],
 )
 async def test_treat_as_secure_origin_init(
-    url: Union[str, URL, List[str], List[URL]]
+    url: Union[str, URL, List[str], List[URL]],
 ) -> None:
     jar = CookieJar(unsafe=True, treat_as_secure_origin=url)
     assert jar._treat_as_secure_origin == frozenset({URL("http://127.0.0.1")})
