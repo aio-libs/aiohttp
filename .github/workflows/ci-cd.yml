@@ -359,7 +359,10 @@ jobs:
           qemu: s390x
           musl: ""
         - os: ubuntu
-          qemu: ppc64le
+          qemu: armv7l
+          musl: musllinux
+        - os: ubuntu
+          qemu: s390x
           musl: musllinux
         - os: ubuntu
           qemu: s390x
