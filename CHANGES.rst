@@ -16,7 +16,7 @@
 Bug fixes
 ---------
 
-- ``MultipartForm.decode()`` must follow RFC1341 7.2.1 with a ``CRLF`` after the boundary
+- ``MultipartForm.decode()`` now follows RFC1341 7.2.1 with a ``CRLF`` after the boundary
   -- by :user:`imnotjames`.
 
 
@@ -37,7 +37,7 @@ Bug fixes
 Features
 --------
 
-- Update :py:func:`~aiohttp.request` to make it accept ``_RequestOptions`` kwargs.
+- Updated :py:func:`~aiohttp.request` to make it accept ``_RequestOptions`` kwargs.
   -- by :user:`Cycloctane`.
 
 
