@@ -10,6 +10,113 @@
 
 .. towncrier release notes start
 
+3.11.12 (2025-02-05)
+====================
+
+Bug fixes
+---------
+
+- ``MultipartForm.decode()`` must follow RFC1341 7.2.1 with a ``CRLF`` after the boundary
+  -- by :user:`imnotjames`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10270`.
+
+
+
+- Restored the missing ``total_bytes`` attribute to ``EmptyStreamReader`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10387`.
+
+
+
+
+Features
+--------
+
+- Update :py:func:`~aiohttp.request` to make it accept ``_RequestOptions`` kwargs.
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10300`.
+
+
+
+- Improved logging of HTTP protocol errors to include the remote address -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10332`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Added ``aiohttp-openmetrics`` to list of third-party libraries -- by :user:`jelmer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10304`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Started publishing ``riscv64`` wheels -- by :user:`eshattow`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10330`.
+
+
+
+- Added missing files to the source distribution to fix ``Makefile`` targets.
+  Added a ``cythonize-nodeps`` target to run Cython without invoking pip to install dependencies.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10366`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- The CI/CD workflow has been updated to use `upload-artifact` v4 and `download-artifact` v4 GitHub Actions -- by :user:`silamon`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10281`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Restored support for zero copy writes when using Python 3.12 versions 3.12.9 and later or Python 3.13.2+ -- by :user:`bdraco`.
+
+  Zero copy writes were previously disabled due to :cve:`2024-12254` which is resolved in these Python versions.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10137`.
+
+
+
+
+----
+
+
 3.11.11 (2024-12-18)
 ====================
 

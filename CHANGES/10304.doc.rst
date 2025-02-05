@@ -1,1 +1,0 @@
-Added ``aiohttp-openmetrics`` to list of third-party libraries -- by :user:`jelmer`.
