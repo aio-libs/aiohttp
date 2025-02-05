@@ -342,7 +342,7 @@ jobs:
         path: dist
 
   build-wheels:
-    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
+    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }} ${{ matrix.musl }}
     runs-on: ${{ matrix.os }}-latest
     needs: pre-deploy
     strategy:
@@ -378,6 +378,10 @@ jobs:
       uses: docker/setup-qemu-action@v3
       with:
         platforms: all
+        # This should be temporary
+        # xref https://github.com/docker/setup-qemu-action/issues/188
+        # xref https://github.com/tonistiigi/binfmt/issues/215
+        image: tonistiigi/binfmt:qemu-v8.1.5
       id: qemu
     - name: Prepare emulation
       run: |
