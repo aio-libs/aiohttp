@@ -413,7 +413,7 @@ jobs:
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.22.0
       env:
-        CIBW_SKIP: ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
+        CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - name: Upload wheels
       uses: actions/upload-artifact@v4
