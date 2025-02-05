@@ -369,16 +369,27 @@ jobs:
     needs: pre-deploy
     strategy:
       matrix:
-        os: [ubuntu, windows, macos]
+        os: [ubuntu, windows, macos, "ubuntu-24.04-arm"]
         qemu: ['']
+        musl: [""]
         include:
-          # Split ubuntu job for the sake of speed-up
-        - os: ubuntu
-          qemu: aarch64
+          # Split ubuntu/musl jobs for the sake of speed-up
         - os: ubuntu
           qemu: ppc64le
+          musl: ""
         - os: ubuntu
           qemu: s390x
+          musl: ""
+        - os: ubuntu
+          qemu: ppc64le
+          musl: musllinux
+        - os: ubuntu
+          qemu: s390x
+          musl: musllinux
+        - os: ubuntu
+          musl: musllinux
+        - os: ubuntu-24.04-arm
+          musl: musllinux
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -420,12 +431,13 @@ jobs:
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.22.0
       env:
+        CIBW_SKIP: ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - name: Upload wheels
       uses: actions/upload-artifact@v4
       with:
         name: >-
-          dist-${{ matrix.os }}-${{
+          dist-${{ matrix.os }}-${{ matrix.musl }}-${{
             matrix.qemu
             && matrix.qemu
             || 'native'
