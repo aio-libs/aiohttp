@@ -831,6 +831,7 @@ class TestCookieJarSafe(TestCookieJarBase):
 async def test_dummy_cookie_jar() -> None:
     cookie = SimpleCookie("foo=bar; Domain=example.com;")
     dummy_jar = DummyCookieJar()
+    assert dummy_jar.quote_cookie is True
     assert len(dummy_jar) == 0
     dummy_jar.update_cookies(cookie)
     assert len(dummy_jar) == 0
@@ -1128,7 +1129,7 @@ def test_pickle_format(cookies_to_send: SimpleCookie) -> None:
     ],
 )
 async def test_treat_as_secure_origin_init(
-    url: Union[str, URL, List[str], List[URL]]
+    url: Union[str, URL, List[str], List[URL]],
 ) -> None:
     jar = CookieJar(unsafe=True, treat_as_secure_origin=url)
     assert jar._treat_as_secure_origin == frozenset({URL("http://127.0.0.1")})

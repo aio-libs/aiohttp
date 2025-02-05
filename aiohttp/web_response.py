@@ -267,6 +267,9 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             )
         elif isinstance(value, str):
             self._headers[hdrs.LAST_MODIFIED] = value
+        else:
+            msg = f"Unsupported type for last_modified: {type(value).__name__}"  # type: ignore[unreachable]
+            raise TypeError(msg)
 
     @property
     def etag(self) -> Optional[ETag]:
@@ -432,7 +435,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         status_line = f"HTTP/{version[0]}.{version[1]} {self._status} {self._reason}"
         await writer.write_headers(status_line, self._headers)
 
-    async def write(self, data: bytes) -> None:
+    async def write(self, data: Union[bytes, bytearray, memoryview]) -> None:
         assert isinstance(
             data, (bytes, bytearray, memoryview)
         ), "data argument must be byte-ish (%r)" % type(data)
@@ -500,6 +503,9 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     def __eq__(self, other: object) -> bool:
         return self is other
+
+    def __bool__(self) -> bool:
+        return True
 
 
 class Response(StreamResponse):

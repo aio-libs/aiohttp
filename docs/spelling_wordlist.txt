@@ -13,6 +13,7 @@ app
 app’s
 apps
 arg
+args
 Arsenic
 async
 asyncio
@@ -170,6 +171,7 @@ keepaliving
 kib
 KiB
 kwarg
+kwargs
 latin
 lifecycle
 linux
@@ -245,6 +247,7 @@ py
 pydantic
 pyenv
 pyflakes
+pyright
 pytest
 Pytest
 Quickstart

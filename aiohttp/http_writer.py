@@ -84,7 +84,7 @@ class StreamWriter(AbstractStreamWriter):
     ) -> None:
         self._compress = ZLibCompressor(encoding=encoding, strategy=strategy)
 
-    def _write(self, chunk: bytes) -> None:
+    def _write(self, chunk: Union[bytes, bytearray, memoryview]) -> None:
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
@@ -108,7 +108,11 @@ class StreamWriter(AbstractStreamWriter):
             transport.writelines(chunks)
 
     async def write(
-        self, chunk: bytes, *, drain: bool = True, LIMIT: int = 0x10000
+        self,
+        chunk: Union[bytes, bytearray, memoryview],
+        *,
+        drain: bool = True,
+        LIMIT: int = 0x10000,
     ) -> None:
         """Writes chunk of data to a stream.
 

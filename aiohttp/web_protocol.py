@@ -487,7 +487,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         loop = self._loop
         now = loop.time()
         close_time = self._next_keepalive_close_time
-        if now <= close_time:
+        if now < close_time:
             # Keep alive close check fired too early, reschedule
             self._keepalive_handle = loop.call_at(close_time, self._process_keepalive)
             return
@@ -719,9 +719,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             # or encrypted traffic to an HTTP port. This is expected
             # to happen when connected to the public internet so we log
             # it at the debug level as to not fill logs with noise.
-            self.logger.debug("Error handling request", exc_info=exc)
+            self.logger.debug(
+                "Error handling request from %s", request.remote, exc_info=exc
+            )
         else:
-            self.log_exception("Error handling request", exc_info=exc)
+            self.log_exception(
+                "Error handling request from %s", request.remote, exc_info=exc
+            )
 
         # some data already got sent, connection is broken
         if request.writer.output_size > 0:

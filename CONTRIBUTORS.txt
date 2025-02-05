@@ -9,6 +9,7 @@ Adam Mills
 Adrian Krupa
 Adrián Chaves
 Ahmed Tahri
+Alan Bogarin
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
@@ -174,10 +175,12 @@ Jaesung Lee
 Jake Davis
 Jakob Ackermann
 Jakub Wilk
+James Ward
 Jan Buchar
 Jan Gosmann
 Jarno Elonen
 Jashandeep Sohi
+Javier Torres
 Jean-Baptiste Estival
 Jens Steinhauser
 Jeonghun Lee
@@ -375,6 +378,7 @@ William S.
 Wilson Ong
 wouter bolsterlee
 Xavier Halloran
+Xi Rui
 Xiang Li
 Yang Zhou
 Yannick Koechlin

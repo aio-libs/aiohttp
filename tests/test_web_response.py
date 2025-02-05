@@ -93,6 +93,7 @@ def test_stream_response_eq() -> None:
 def test_stream_response_is_mutable_mapping() -> None:
     resp = web.StreamResponse()
     assert isinstance(resp, collections.abc.MutableMapping)
+    assert resp  # even when the MutableMapping is empty, response should always be True
     resp["key"] = "value"
     assert "value" == resp["key"]
 
@@ -240,6 +241,13 @@ def test_last_modified_reset() -> None:
     resp.last_modified = 0  # type: ignore[assignment]
     resp.last_modified = None
     assert resp.last_modified is None
+
+
+def test_last_modified_invalid_type() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(TypeError, match="Unsupported type for last_modified: object"):
+        resp.last_modified = object()  # type: ignore[assignment]
 
 
 @pytest.mark.parametrize(
@@ -1055,7 +1063,7 @@ class CustomIO(io.IOBase):
         (BodyPartReader(b"x", CIMultiDictProxy(CIMultiDict()), mock.Mock()), None),
         (
             mpwriter,
-            "--x\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 4\r\n\r\ntest",
+            "--x\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 4\r\n\r\ntest",
         ),
     ),
 )

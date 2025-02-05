@@ -118,6 +118,10 @@ class CookieJar(AbstractCookieJar):
         self._expire_heap: List[Tuple[float, Tuple[str, str, str]]] = []
         self._expirations: Dict[Tuple[str, str, str], float] = {}
 
+    @property
+    def quote_cookie(self) -> bool:
+        return self._quote_cookie
+
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
         with file_path.open(mode="wb") as f:
@@ -470,6 +474,10 @@ class DummyCookieJar(AbstractCookieJar):
 
     def __len__(self) -> int:
         return 0
+
+    @property
+    def quote_cookie(self) -> bool:
+        return True
 
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         pass

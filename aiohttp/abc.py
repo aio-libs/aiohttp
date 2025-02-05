@@ -16,6 +16,7 @@ from typing import (
     Optional,
     Tuple,
     TypedDict,
+    Union,
 )
 
 from multidict import CIMultiDict
@@ -171,6 +172,11 @@ ClearCookiePredicate = Callable[["Morsel[str]"], bool]
 class AbstractCookieJar(Sized, IterableBase):
     """Abstract Cookie Jar."""
 
+    @property
+    @abstractmethod
+    def quote_cookie(self) -> bool:
+        """Return True if cookies should be quoted."""
+
     @abstractmethod
     def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
         """Clear all cookies if no predicate is passed."""
@@ -196,7 +202,7 @@ class AbstractStreamWriter(ABC):
     length: Optional[int] = 0
 
     @abstractmethod
-    async def write(self, chunk: bytes) -> None:
+    async def write(self, chunk: Union[bytes, bytearray, memoryview]) -> None:
         """Write chunk into stream."""
 
     @abstractmethod

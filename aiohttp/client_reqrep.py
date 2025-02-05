@@ -74,12 +74,16 @@ from .typedefs import (
     RawHeaders,
 )
 
-try:
+if TYPE_CHECKING:
     import ssl
     from ssl import SSLContext
-except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore[assignment]
-    SSLContext = object  # type: ignore[misc,assignment]
+else:
+    try:
+        import ssl
+        from ssl import SSLContext
+    except ImportError:  # pragma: no cover
+        ssl = None  # type: ignore[assignment]
+        SSLContext = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -599,11 +603,8 @@ class ClientRequest:
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
-            exc_is_not_timeout = (
-                underlying_exc.errno is not None
-                or not isinstance(  # type: ignore[unreachable]
-                    underlying_exc, asyncio.TimeoutError
-                )
+            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
+                underlying_exc, asyncio.TimeoutError
             )
             if exc_is_not_timeout:
                 reraised_exc = ClientOSError(

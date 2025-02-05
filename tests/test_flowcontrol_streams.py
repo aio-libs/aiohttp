@@ -107,3 +107,25 @@ class TestFlowControlStreamReader:
         res = stream.read_nowait(5)
         assert res == b""
         assert stream._protocol.resume_reading.call_count == 1  # type: ignore[attr-defined]
+
+    async def test_resumed_on_eof(self, stream: streams.StreamReader) -> None:
+        stream.feed_data(b"data")
+        assert stream._protocol.pause_reading.call_count == 1  # type: ignore[attr-defined]
+        assert stream._protocol.resume_reading.call_count == 0  # type: ignore[attr-defined]
+        stream._protocol._reading_paused = True
+
+        stream.feed_eof()
+        assert stream._protocol.resume_reading.call_count == 1  # type: ignore[attr-defined]
+
+
+async def test_stream_reader_eof_when_full() -> None:
+    loop = asyncio.get_event_loop()
+    protocol = BaseProtocol(loop=loop)
+    protocol.transport = asyncio.Transport()
+    stream = streams.StreamReader(protocol, 1024, loop=loop)
+
+    data_len = stream._high_water + 1
+    stream.feed_data(b"0" * data_len)
+    assert protocol._reading_paused
+    stream.feed_eof()
+    assert not protocol._reading_paused

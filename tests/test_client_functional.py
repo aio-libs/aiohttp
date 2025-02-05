@@ -632,6 +632,30 @@ async def test_ssl_client(
     assert txt == "Test message"
 
 
+async def test_ssl_client_alpn(
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    ssl_ctx: ssl.SSLContext,
+) -> None:
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.transport is not None
+        sslobj = request.transport.get_extra_info("ssl_object")
+        return web.Response(text=sslobj.selected_alpn_protocol())
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    ssl_ctx.set_alpn_protocols(("http/1.1",))
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+
+    connector = aiohttp.TCPConnector(ssl=False)
+    client = await aiohttp_client(server, connector=connector)
+    resp = await client.get("/")
+    assert resp.status == 200
+    txt = await resp.text()
+    assert txt == "http/1.1"
+
+
 async def test_tcp_connector_fingerprint_ok(
     aiohttp_server: AiohttpServer,
     aiohttp_client: AiohttpClient,
@@ -3422,6 +3446,22 @@ async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:
 
     await not_an_awaitable._coro  # coroutine 'ClientSession._request' was never awaited
     await server.close()
+
+
+async def test_aiohttp_request_ssl(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+
+    async with aiohttp.request("GET", server.make_url("/"), ssl=client_ssl_ctx) as resp:
+        assert resp.status == 200
 
 
 async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> None:

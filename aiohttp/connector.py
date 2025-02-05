@@ -61,14 +61,18 @@ from .helpers import (
 )
 from .resolver import DefaultResolver
 
-try:
+if TYPE_CHECKING:
     import ssl
 
     SSLContext = ssl.SSLContext
-except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore[assignment]
-    SSLContext = object  # type: ignore[misc,assignment]
+else:
+    try:
+        import ssl
 
+        SSLContext = ssl.SSLContext
+    except ImportError:  # pragma: no cover
+        ssl = None  # type: ignore[assignment]
+        SSLContext = object  # type: ignore[misc,assignment]
 
 EMPTY_SCHEMA_SET = frozenset({""})
 HTTP_SCHEMA_SET = frozenset({"http", "https"})
@@ -768,14 +772,16 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         # No ssl support
         return None  # type: ignore[unreachable]
     if verified:
-        return ssl.create_default_context()
-    sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    sslcontext.options |= ssl.OP_NO_SSLv2
-    sslcontext.options |= ssl.OP_NO_SSLv3
-    sslcontext.check_hostname = False
-    sslcontext.verify_mode = ssl.CERT_NONE
-    sslcontext.options |= ssl.OP_NO_COMPRESSION
-    sslcontext.set_default_verify_paths()
+        sslcontext = ssl.create_default_context()
+    else:
+        sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        sslcontext.options |= ssl.OP_NO_SSLv2
+        sslcontext.options |= ssl.OP_NO_SSLv3
+        sslcontext.check_hostname = False
+        sslcontext.verify_mode = ssl.CERT_NONE
+        sslcontext.options |= ssl.OP_NO_COMPRESSION
+        sslcontext.set_default_verify_paths()
+    sslcontext.set_alpn_protocols(("http/1.1",))
     return sslcontext
 
 
@@ -1112,7 +1118,7 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise client_error(req.connection_key, exc) from exc
 
@@ -1201,7 +1207,7 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise client_error(req.connection_key, exc) from exc
         except TypeError as type_err:
@@ -1272,7 +1278,7 @@ class TCPConnector(BaseConnector):
             #  across all connections.
             hosts = await self._resolve_host(host, port, traces=traces)
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
@@ -1466,7 +1472,7 @@ class UnixConnector(BaseConnector):
                     self._factory, self._path
                 )
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
@@ -1535,7 +1541,7 @@ class NamedPipeConnector(BaseConnector):
                 # other option is to manually set transport like
                 # `proto.transport = trans`
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise ClientConnectorError(req.connection_key, exc) from exc
 
