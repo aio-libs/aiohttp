@@ -378,16 +378,16 @@ jobs:
           qemu: ppc64le
           musl: ""
         - os: ubuntu-latest
+          qemu: ppc64le
+          musl: musllinux
+        - os: ubuntu-latest
           qemu: s390x
           musl: ""
         - os: ubuntu-latest
+          qemu: s390x
+          musl: musllinux
+        - os: ubuntu-latest
           qemu: armv7l
-          musl: musllinux
-        - os: ubuntu-latest
-          qemu: s390x
-          musl: musllinux
-        - os: ubuntu-latest
-          qemu: s390x
           musl: musllinux
         - os: ubuntu-latest
           musl: musllinux
