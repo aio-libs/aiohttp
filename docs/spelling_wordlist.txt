@@ -14,6 +14,7 @@ app’s
 apps
 arg
 args
+armv
 Arsenic
 async
 asyncio
@@ -201,6 +202,7 @@ multidicts
 Multidicts
 multipart
 Multipart
+musllinux
 mypy
 Nagle
 Nagle’s
