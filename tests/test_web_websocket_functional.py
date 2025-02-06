@@ -841,6 +841,7 @@ async def test_heartbeat_failure_ends_receive(
     assert ws.close_code == WSCloseCode.ABNORMAL_CLOSURE
     assert ws_server_close_code == WSCloseCode.ABNORMAL_CLOSURE
     assert isinstance(ws_server_exception, asyncio.TimeoutError)
+    assert str(ws_server_exception) == "No PONG received after 0.025 seconds"
     await ws.close()
 
 
