@@ -3448,6 +3448,22 @@ async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:
     await server.close()
 
 
+async def test_aiohttp_request_ssl(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+
+    async with aiohttp.request("GET", server.make_url("/"), ssl=client_ssl_ctx) as resp:
+        assert resp.status == 200
+
+
 async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> None:
     # a test for backward compatibility with yield from syntax
     async def handler(request: web.Request) -> web.Response:
@@ -3459,20 +3475,6 @@ async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> N
     client = await aiohttp_client(app)
     async with client.get("/") as resp:
         assert resp.status == 200
-
-
-async def test_close_context_manager(aiohttp_client: AiohttpClient) -> None:
-    # a test for backward compatibility with yield from syntax
-    async def handler(request: web.Request) -> NoReturn:
-        assert False
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-
-    client = await aiohttp_client(app)
-    ctx = client.get("/")
-    ctx.close()
-    assert not ctx._coro.cr_running
 
 
 async def test_session_auth(aiohttp_client: AiohttpClient) -> None:

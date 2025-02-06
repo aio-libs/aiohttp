@@ -540,6 +540,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 
     def __init__(self) -> None:
         self._read_eof_chunk = False
+        self.total_bytes = 0
 
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__

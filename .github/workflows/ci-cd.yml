@@ -127,7 +127,7 @@ jobs:
       run: |
         make generate-llhttp
     - name: Upload llhttp generated files
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build
@@ -193,7 +193,7 @@ jobs:
         python -m pip install -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -266,11 +266,11 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Setup Python 3.13
+    - name: Setup Python 3.13.2
       id: python-install
       uses: actions/setup-python@v5
       with:
-        python-version: 3.13
+        python-version: 3.13.2
         cache: pip
         cache-dependency-path: requirements/*.txt
     - name: Update pip, wheel, setuptools, build, twine
@@ -280,7 +280,7 @@ jobs:
       run: |
         python -m pip install -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -344,7 +344,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -355,30 +355,44 @@ jobs:
       run: |
         python -m build --sdist
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: dist-sdist
         path: dist
 
   build-wheels:
     permissions:
       contents: read # to fetch code (actions/checkout)
 
-    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }}
-    runs-on: ${{ matrix.os }}-latest
+    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }} ${{ matrix.musl }}
+    runs-on: ${{ matrix.os }}
     needs: pre-deploy
     strategy:
       matrix:
-        os: [ubuntu, windows, macos]
+        os: ["ubuntu-latest", "windows-latest", "macos-latest", "ubuntu-24.04-arm"]
         qemu: ['']
+        musl: [""]
         include:
-          # Split ubuntu job for the sake of speed-up
-        - os: ubuntu
-          qemu: aarch64
-        - os: ubuntu
+          # Split ubuntu/musl jobs for the sake of speed-up
+        - os: ubuntu-latest
           qemu: ppc64le
-        - os: ubuntu
+          musl: ""
+        - os: ubuntu-latest
+          qemu: ppc64le
+          musl: musllinux
+        - os: ubuntu-latest
           qemu: s390x
+          musl: ""
+        - os: ubuntu-latest
+          qemu: s390x
+          musl: musllinux
+        - os: ubuntu-latest
+          qemu: armv7l
+          musl: musllinux
+        - os: ubuntu-latest
+          musl: musllinux
+        - os: ubuntu-24.04-arm
+          musl: musllinux
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -389,6 +403,10 @@ jobs:
       uses: docker/setup-qemu-action@v3
       with:
         platforms: all
+        # This should be temporary
+        # xref https://github.com/docker/setup-qemu-action/issues/188
+        # xref https://github.com/tonistiigi/binfmt/issues/215
+        image: tonistiigi/binfmt:qemu-v8.1.5
       id: qemu
     - name: Prepare emulation
       run: |
@@ -410,7 +428,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -420,10 +438,17 @@ jobs:
     - name: Build wheels
       uses: pypa/cibuildwheel@v2.22.0
       env:
+        CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-    - uses: actions/upload-artifact@v3
+    - name: Upload wheels
+      uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: >-
+          dist-${{ matrix.os }}-${{ matrix.musl }}-${{
+            matrix.qemu
+            && matrix.qemu
+            || 'native'
+          }}
         path: ./wheelhouse/*.whl
 
   deploy:
@@ -448,10 +473,11 @@ jobs:
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Download distributions
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: dist
         path: dist
+        pattern: dist-*
+        merge-multiple: true
     - name: Collected dists
       run: |
         tree dist

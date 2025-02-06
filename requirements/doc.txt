@@ -8,9 +8,9 @@ aiohttp-theme==0.1.7
     # via -r requirements/doc.in
 alabaster==1.0.0
     # via sphinx
-babel==2.16.0
+babel==2.17.0
     # via sphinx
-certifi==2024.12.14
+certifi==2025.1.31
     # via requests
 charset-normalizer==3.4.1
     # via requests
@@ -32,7 +32,7 @@ markupsafe==3.0.2
     # via jinja2
 packaging==24.2
     # via sphinx
-pygments==2.18.0
+pygments==2.19.1
     # via sphinx
 requests==2.32.3
     # via sphinx
@@ -69,5 +69,5 @@ urllib3==2.3.0
     # via requests
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==75.6.0
+setuptools==75.8.0
     # via incremental

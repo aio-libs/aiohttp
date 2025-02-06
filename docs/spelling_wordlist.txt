@@ -13,6 +13,8 @@ app
 app’s
 apps
 arg
+args
+armv
 Arsenic
 async
 asyncio
@@ -170,6 +172,7 @@ keepaliving
 kib
 KiB
 kwarg
+kwargs
 latin
 lifecycle
 linux
@@ -199,6 +202,7 @@ multidicts
 Multidicts
 multipart
 Multipart
+musllinux
 mypy
 Nagle
 Nagle’s
