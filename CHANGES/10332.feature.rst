@@ -1,1 +1,0 @@
-Improved logging of HTTP protocol errors to include the remote address -- by :user:`bdraco`.
