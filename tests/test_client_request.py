@@ -782,7 +782,7 @@ async def test_pass_falsy_data_file(
     loop: asyncio.AbstractEventLoop, tmp_path: pathlib.Path
 ) -> None:
     testfile = (tmp_path / "tmpfile").open("w+b")
-    testfile.write(b"data")
+    await asyncio.to_thread(testfile.write, b"data")
     testfile.seek(0)
     skip = frozenset([hdrs.CONTENT_TYPE])
     req = ClientRequest(
@@ -971,10 +971,11 @@ async def test_chunked_transfer_encoding(
 
 async def test_file_upload_not_chunked(loop: asyncio.AbstractEventLoop) -> None:
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    file_stat = await asyncio.to_thread(file_path.stat)
     with file_path.open("rb") as f:
         req = ClientRequest("post", URL("http://python.org/"), data=f, loop=loop)
         assert not req.chunked
-        assert req.headers["CONTENT-LENGTH"] == str(file_path.stat().st_size)
+        assert req.headers["CONTENT-LENGTH"] == str(file_stat.st_size)
         await req.close()
 
 
@@ -996,10 +997,11 @@ async def test_precompressed_data_stays_intact(loop: asyncio.AbstractEventLoop) 
 
 async def test_file_upload_not_chunked_seek(loop: asyncio.AbstractEventLoop) -> None:
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
+    file_stat = await asyncio.to_thread(file_path.stat)
     with file_path.open("rb") as f:
         f.seek(100)
         req = ClientRequest("post", URL("http://python.org/"), data=f, loop=loop)
-        assert req.headers["CONTENT-LENGTH"] == str(file_path.stat().st_size - 100)
+        assert req.headers["CONTENT-LENGTH"] == str(file_stat.st_size - 100)
         await req.close()
 
 

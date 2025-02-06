@@ -63,21 +63,26 @@ async def test_access_root_of_static_handler(
     # Try to access the root of static file server, and make
     # sure that correct HTTP statuses are returned depending if we directory
     # index should be shown or not.
-    my_file = tmp_path / "my_file"
-    my_dir = tmp_path / "my_dir"
-    my_dir.mkdir()
-    my_file_in_dir = my_dir / "my_file_in_dir"
+    def write_files() -> None:
+        my_file = tmp_path / "my_file"
+        my_dir = tmp_path / "my_dir"
+        my_dir.mkdir()
+        my_file_in_dir = my_dir / "my_file_in_dir"
 
-    with my_file.open("w") as fw:
-        fw.write("hello")
+        with my_file.open("w") as fw:
+            fw.write("hello")
 
-    with my_file_in_dir.open("w") as fw:
-        fw.write("world")
+        with my_file_in_dir.open("w") as fw:
+            fw.write("world")
+
+    await asyncio.to_thread(write_files)
 
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static(prefix, str(tmp_path), show_index=show_index)
+    await asyncio.to_thread(
+        app.router.add_static, prefix, str(tmp_path), show_index=show_index
+    )
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
@@ -183,20 +188,25 @@ async def test_follow_symlink(
     # Tests the access to a symlink, in static folder
     data = "hello world"
 
-    my_dir_path = tmp_path / "my_dir"
-    my_dir_path.mkdir()
+    def write_files() -> None:
+        my_dir_path = tmp_path / "my_dir"
+        my_dir_path.mkdir()
 
-    my_file_path = my_dir_path / "my_file_in_dir"
-    with my_file_path.open("w") as fw:
-        fw.write(data)
+        my_file_path = my_dir_path / "my_file_in_dir"
+        with my_file_path.open("w") as fw:
+            fw.write(data)
 
-    my_symlink_path = tmp_path / "my_symlink"
-    pathlib.Path(str(my_symlink_path)).symlink_to(str(my_dir_path), True)
+        my_symlink_path = tmp_path / "my_symlink"
+        pathlib.Path(str(my_symlink_path)).symlink_to(str(my_dir_path), True)
+
+    await asyncio.to_thread(write_files)
 
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static("/", str(tmp_path), follow_symlinks=True)
+    await asyncio.to_thread(
+        app.router.add_static, "/", str(tmp_path), follow_symlinks=True
+    )
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
@@ -212,15 +222,17 @@ async def test_follow_symlink_directory_traversal(
     data = "private"
 
     private_file = tmp_path / "private_file"
-    private_file.write_text(data)
+    await asyncio.to_thread(private_file.write_text, data)
 
     safe_path = tmp_path / "safe_dir"
-    safe_path.mkdir()
+    await asyncio.to_thread(safe_path.mkdir)
 
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static("/", str(safe_path), follow_symlinks=True)
+    await asyncio.to_thread(
+        app.router.add_static, "/", str(safe_path), follow_symlinks=True
+    )
     client = await aiohttp_client(app)
 
     await client.start_server()
@@ -250,29 +262,30 @@ async def test_follow_symlink_directory_traversal_after_normalization(
     # |           |-- my_symlink -> symlink_target_dir
     #
     secret_path = tmp_path / "secret_dir"
-    secret_path.mkdir()
-
     # This file is below the symlink target and should not be reachable
     private_file = secret_path / "private_file"
-    private_file.write_text("private")
-
     symlink_target_path = secret_path / "symlink_target_dir"
-    symlink_target_path.mkdir()
-
     sandbox_path = symlink_target_path / "sandbox_dir"
-    sandbox_path.mkdir()
-
     # This file should be reachable via the symlink
     symlink_target_file = symlink_target_path / "symlink_target_file"
-    symlink_target_file.write_text("readable")
-
     my_symlink_path = sandbox_path / "my_symlink"
-    pathlib.Path(str(my_symlink_path)).symlink_to(str(symlink_target_path), True)
+
+    def write_files() -> None:
+        secret_path.mkdir()
+        private_file.write_text("private")
+        symlink_target_path.mkdir()
+        sandbox_path.mkdir()
+        symlink_target_file.write_text("readable")
+        pathlib.Path(str(my_symlink_path)).symlink_to(str(symlink_target_path), True)
+
+    await asyncio.to_thread(write_files)
 
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static("/", str(sandbox_path), follow_symlinks=True)
+    await asyncio.to_thread(
+        app.router.add_static, "/", str(sandbox_path), follow_symlinks=True
+    )
     client = await aiohttp_client(app)
 
     await client.start_server()
@@ -314,17 +327,16 @@ async def test_access_to_the_file_with_spaces(
 
     my_dir_path = tmp_path / dir_name
     if my_dir_path != tmp_path:
-        my_dir_path.mkdir()
+        await asyncio.to_thread(my_dir_path.mkdir)
 
     my_file_path = my_dir_path / filename
-    with my_file_path.open("w") as fw:
-        fw.write(data)
+    await asyncio.to_thread(my_file_path.write_text, data)
 
     app = web.Application()
 
     url = "/" + str(pathlib.Path(dir_name, filename))
 
-    app.router.add_static("/", str(tmp_path))
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path))
     client = await aiohttp_client(app)
 
     r = await client.get(url)
@@ -341,7 +353,7 @@ async def test_access_non_existing_resource(
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static("/", str(tmp_path), show_index=True)
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path), show_index=True)
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
@@ -398,11 +410,11 @@ async def test_static_directory_without_read_permission(
 ) -> None:
     """Test static directory without read permission receives forbidden response."""
     my_dir = tmp_path / "my_dir"
-    my_dir.mkdir()
+    await asyncio.to_thread(my_dir.mkdir)
     my_dir.chmod(0o000)
 
     app = web.Application()
-    app.router.add_static("/", str(tmp_path), show_index=True)
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path), show_index=True)
     client = await aiohttp_client(app)
 
     r = await client.get(f"/{my_dir.name}/{file_request}")
@@ -418,7 +430,7 @@ async def test_static_directory_with_mock_permission_error(
 ) -> None:
     """Test static directory with mock permission errors receives forbidden response."""
     my_dir = tmp_path / "my_dir"
-    my_dir.mkdir()
+    await asyncio.to_thread(my_dir.mkdir)
 
     real_iterdir = pathlib.Path.iterdir
     real_is_dir = pathlib.Path.is_dir
@@ -437,7 +449,7 @@ async def test_static_directory_with_mock_permission_error(
     monkeypatch.setattr("pathlib.Path.is_dir", mock_is_dir)
 
     app = web.Application()
-    app.router.add_static("/", str(tmp_path), show_index=True)
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path), show_index=True)
     client = await aiohttp_client(app)
 
     r = await client.get("/")
@@ -454,11 +466,11 @@ async def test_static_file_without_read_permission(
 ) -> None:
     """Test static file without read permission receives forbidden response."""
     my_file = tmp_path / "my_file.txt"
-    my_file.write_text("secret")
+    await asyncio.to_thread(my_file.write_text, "secret")
     my_file.chmod(0o000)
 
     app = web.Application()
-    app.router.add_static("/", str(tmp_path))
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path))
     client = await aiohttp_client(app)
 
     r = await client.get(f"/{my_file.name}")
@@ -472,9 +484,9 @@ async def test_static_file_with_mock_permission_error(
 ) -> None:
     """Test static file with mock permission errors receives forbidden response."""
     my_file = tmp_path / "my_file.txt"
-    my_file.write_text("secret")
+    await asyncio.to_thread(my_file.write_text, "secret")
     my_readable = tmp_path / "my_readable.txt"
-    my_readable.write_text("info")
+    await asyncio.to_thread(my_readable.write_text, "info")
 
     real_open = pathlib.Path.open
 
@@ -486,7 +498,7 @@ async def test_static_file_with_mock_permission_error(
     monkeypatch.setattr("pathlib.Path.open", mock_open)
 
     app = web.Application()
-    app.router.add_static("/", str(tmp_path))
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path))
     client = await aiohttp_client(app)
 
     # Test the mock only applies to my_file, then test the permission error.
@@ -501,12 +513,14 @@ async def test_access_symlink_loop(
 ) -> None:
     # Tests the access to a looped symlink, which could not be resolved.
     my_dir_path = tmp_path / "my_symlink"
-    pathlib.Path(str(my_dir_path)).symlink_to(str(my_dir_path), True)
+    await asyncio.to_thread(
+        pathlib.Path(str(my_dir_path)).symlink_to, str(my_dir_path), True
+    )
 
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static("/", str(tmp_path), show_index=True)
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path), show_index=True)
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
@@ -519,14 +533,18 @@ async def test_access_compressed_file_as_symlink(
 ) -> None:
     """Test that compressed file variants as symlinks are ignored."""
     private_file = tmp_path / "private.txt"
-    private_file.write_text("private info")
     www_dir = tmp_path / "www"
-    www_dir.mkdir()
     gz_link = www_dir / "file.txt.gz"
-    gz_link.symlink_to(f"../{private_file.name}")
+
+    def write_files() -> None:
+        private_file.write_text("private info")
+        www_dir.mkdir()
+        gz_link.symlink_to(f"../{private_file.name}")
+
+    await asyncio.to_thread(write_files)
 
     app = web.Application()
-    app.router.add_static("/", www_dir)
+    await asyncio.to_thread(app.router.add_static, "/", www_dir)
     client = await aiohttp_client(app)
 
     # Symlink should be ignored; response reflects missing uncompressed file.
@@ -536,7 +554,7 @@ async def test_access_compressed_file_as_symlink(
 
     # Again symlin is ignored, and then uncompressed is served.
     txt_file = gz_link.with_suffix("")
-    txt_file.write_text("public data")
+    await asyncio.to_thread(txt_file.write_text, "public data")
     resp = await client.get(f"/{txt_file.name}")
     assert resp.status == 200
     assert resp.headers.get("Content-Encoding") is None
@@ -558,10 +576,10 @@ async def test_access_special_resource(
 
     my_socket = socket.socket(socket.AF_UNIX)
     my_socket.bind(str(my_special))
-    assert my_special.is_socket()
+    assert await asyncio.to_thread(my_special.is_socket)
 
     app = web.Application()
-    app.router.add_static("/", str(tmp_path))
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path))
 
     client = await aiohttp_client(app)
     r = await client.get(f"/{my_special.name}")
@@ -578,7 +596,7 @@ async def test_access_mock_special_resource(
     my_special = tmp_path / "my_special"
     my_special.touch()
 
-    real_result = my_special.stat()
+    real_result = await asyncio.to_thread(my_special.stat)
     real_stat = os.stat
 
     def mock_stat(path: Any, **kwargs: Any) -> os.stat_result:
@@ -592,7 +610,7 @@ async def test_access_mock_special_resource(
     monkeypatch.setattr("os.stat", mock_stat)
 
     app = web.Application()
-    app.router.add_static("/", str(tmp_path))
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path))
     client = await aiohttp_client(app)
 
     r = await client.get(f"/{my_special.name}")
@@ -619,11 +637,10 @@ async def test_static_head(
 ) -> None:
     # Test HEAD on static route
     my_file_path = tmp_path / "test.txt"
-    with my_file_path.open("wb") as fw:
-        fw.write(b"should_not_see_this\n")
+    await asyncio.to_thread(my_file_path.write_bytes, b"should_not_see_this\n")
 
     app = web.Application()
-    app.router.add_static("/", str(tmp_path))
+    await asyncio.to_thread(app.router.add_static, "/", str(tmp_path))
     client = await aiohttp_client(app)
 
     r = await client.head("/test.txt")
@@ -813,11 +830,13 @@ async def test_static_absolute_url(
     # where the static dir is totally different
     app = web.Application()
     file_path = tmp_path / "file.txt"
-    file_path.write_text("sample text", "ascii")
+    await asyncio.to_thread(file_path.write_text, "sample text", "ascii")
     here = pathlib.Path(__file__).parent
-    app.router.add_static("/static", here)
+    await asyncio.to_thread(app.router.add_static, "/static", here)
     client = await aiohttp_client(app)
-    resp = await client.get("/static/" + str(file_path.resolve()))
+    resp = await client.get(
+        "/static/" + str(await asyncio.to_thread(file_path.resolve))
+    )
     assert resp.status == 403
 
 
@@ -825,7 +844,7 @@ async def test_for_issue_5250(
     aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
 ) -> None:
     app = web.Application()
-    app.router.add_static("/foo", tmp_path)
+    await asyncio.to_thread(app.router.add_static, "/foo", tmp_path)
 
     async def get_foobar(request: web.Request) -> web.Response:
         return web.Response(body="success!")

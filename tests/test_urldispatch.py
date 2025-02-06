@@ -517,7 +517,9 @@ def test_dynamic_not_match(router: web.UrlDispatcher) -> None:
 
 
 async def test_static_not_match(router: web.UrlDispatcher) -> None:
-    router.add_static("/pre", pathlib.Path(aiohttp.__file__).parent, name="name")
+    await asyncio.to_thread(
+        router.add_static, "/pre", pathlib.Path(aiohttp.__file__).parent, name="name"
+    )
     resource = router["name"]
     ret = await resource.resolve(make_mocked_request("GET", "/another/path"))
     assert (None, set()) == ret
@@ -530,8 +532,8 @@ async def test_add_static_access_resources(router: web.UrlDispatcher) -> None:
     continues to work.
     """
     # https://github.com/aio-libs/aiohttp-cors/blob/38c6c17bffc805e46baccd7be1b4fd8c69d95dc3/aiohttp_cors/urldispatcher_router_adapter.py#L187
-    resource = router.add_static(
-        "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
+    resource = await asyncio.to_thread(
+        router.add_static, "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
     )
     resource._routes[hdrs.METH_OPTIONS] = resource._routes[hdrs.METH_GET]
     resource._allowed_methods.add(hdrs.METH_OPTIONS)
@@ -544,8 +546,8 @@ async def test_add_static_access_resources(router: web.UrlDispatcher) -> None:
 
 async def test_add_static_set_options_route(router: web.UrlDispatcher) -> None:
     """Ensure set_options_route works as expected."""
-    resource = router.add_static(
-        "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
+    resource = await asyncio.to_thread(
+        router.add_static, "/st", pathlib.Path(aiohttp.__file__).parent, name="static"
     )
 
     async def handler(request: web.Request) -> NoReturn:
@@ -1064,13 +1066,17 @@ def test_static_route_points_to_file(router: web.UrlDispatcher) -> None:
 
 
 async def test_404_for_static_resource(router: web.UrlDispatcher) -> None:
-    resource = router.add_static("/st", pathlib.Path(aiohttp.__file__).parent)
+    resource = await asyncio.to_thread(
+        router.add_static, "/st", pathlib.Path(aiohttp.__file__).parent
+    )
     ret = await resource.resolve(make_mocked_request("GET", "/unknown/path"))
     assert (None, set()) == ret
 
 
 async def test_405_for_resource_adapter(router: web.UrlDispatcher) -> None:
-    resource = router.add_static("/st", pathlib.Path(aiohttp.__file__).parent)
+    resource = await asyncio.to_thread(
+        router.add_static, "/st", pathlib.Path(aiohttp.__file__).parent
+    )
     ret = await resource.resolve(make_mocked_request("POST", "/st/abc.py"))
     assert (None, {"HEAD", "GET"}) == ret
 

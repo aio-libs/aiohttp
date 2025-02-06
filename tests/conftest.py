@@ -12,6 +12,7 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
+from blockbuster import blockbuster_ctx
 
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.http import WS_KEY
@@ -31,6 +32,25 @@ pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
 
 IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
+
+
+@pytest.fixture(autouse=True)
+def blockbuster() -> Iterator[None]:
+    with blockbuster_ctx("aiohttp") as bb:
+        bb.functions["io.TextIOWrapper.read"].can_block_in(
+            "aiohttp/client_reqrep.py", "update_auth"
+        )
+        bb.functions["os.stat"].can_block_in("aiohttp/client_reqrep.py", "update_auth")
+        bb.functions["os.stat"].can_block_in(
+            "asyncio/unix_events.py", "create_unix_server"
+        )
+        bb.functions["os.sendfile"].can_block_in(
+            "asyncio/unix_events.py", "_sock_sendfile_native_impl"
+        )
+        bb.functions["os.read"].can_block_in(
+            "asyncio/base_events.py", "subprocess_shell"
+        )
+        yield
 
 
 @pytest.fixture
