@@ -926,6 +926,7 @@ async def test_heartbeat_no_pong_concurrent_receive(
         assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
         assert msg.type is WSMsgType.ERROR
         assert isinstance(msg.data, ServerTimeoutError)
+        assert str(msg.data) == "No PONG received after 0.05 seconds"
 
 
 async def test_close_websocket_while_ping_inflight(
