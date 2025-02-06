@@ -163,7 +163,9 @@ class ClientWebSocketResponse:
         self._ping_task = None
 
     def _pong_not_received(self) -> None:
-        self._handle_ping_pong_exception(ServerTimeoutError())
+        self._handle_ping_pong_exception(
+            ServerTimeoutError(f"No PONG received after {self._pong_heartbeat} seconds")
+        )
 
     def _handle_ping_pong_exception(self, exc: BaseException) -> None:
         """Handle exceptions raised during ping/pong processing."""

@@ -182,7 +182,11 @@ class WebSocketResponse(StreamResponse):
 
     def _pong_not_received(self) -> None:
         if self._req is not None and self._req.transport is not None:
-            self._handle_ping_pong_exception(asyncio.TimeoutError())
+            self._handle_ping_pong_exception(
+                asyncio.TimeoutError(
+                    f"No PONG received after {self._pong_heartbeat} seconds"
+                )
+            )
 
     def _handle_ping_pong_exception(self, exc: BaseException) -> None:
         """Handle exceptions raised during ping/pong processing."""
