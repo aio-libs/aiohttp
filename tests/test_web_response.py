@@ -1,3 +1,4 @@
+import asyncio
 import collections.abc
 import datetime
 import gzip
@@ -511,7 +512,8 @@ async def test_change_content_threaded_compression_enabled_explicit() -> None:
     req = make_request("GET", "/")
     body_thread_size = 1024
     body = b"answer" * body_thread_size
-    with ThreadPoolExecutor(1) as executor:
+    executor = ThreadPoolExecutor(1)
+    try:
         resp = web.Response(
             body=body, zlib_executor_size=body_thread_size, zlib_executor=executor
         )
@@ -520,6 +522,8 @@ async def test_change_content_threaded_compression_enabled_explicit() -> None:
         await resp.prepare(req)
         assert resp._compressed_body is not None
         assert gzip.decompress(resp._compressed_body) == body
+    finally:
+        await asyncio.to_thread(executor.shutdown)
 
 
 async def test_change_content_length_if_compression_enabled() -> None:

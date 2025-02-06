@@ -51,6 +51,11 @@ def fname(here: pathlib.Path) -> pathlib.Path:
     return here / "conftest.py"
 
 
+@pytest.fixture
+async def file_content(fname: pathlib.Path) -> bytes:
+    return await asyncio.to_thread(fname.read_bytes)
+
+
 def new_dummy_form() -> FormData:
     form = FormData()
     form.add_field("name", b"123")
@@ -414,7 +419,7 @@ async def test_post_single_file(aiohttp_client: AiohttpClient) -> None:
         assert ["data.unknown_mime_type"] == list(data.keys())
         for fs in data.values():
             assert isinstance(fs, aiohttp.web_request.FileField)
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -441,9 +446,9 @@ async def test_files_upload_with_same_key(aiohttp_client: AiohttpClient) -> None
             assert isinstance(_file, aiohttp.web_request.FileField)
             assert not _file.file.closed
             if _file.filename == "test1.jpeg":
-                assert _file.file.read() == b"binary data 1"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 1"
             if _file.filename == "test2.jpeg":
-                assert _file.file.read() == b"binary data 2"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 2"
             file_names.add(_file.filename)
             _file.file.close()
         assert len(files) == 2
@@ -483,7 +488,7 @@ async def test_post_files(aiohttp_client: AiohttpClient) -> None:
         assert ["data.unknown_mime_type", "conftest.py"] == list(data.keys())
         for fs in data.values():
             assert isinstance(fs, aiohttp.web_request.FileField)
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -755,14 +760,13 @@ async def test_http10_keep_alive_with_headers(aiohttp_client: AiohttpClient) -> 
 async def test_upload_file(aiohttp_client: AiohttpClient) -> None:
     here = pathlib.Path(__file__).parent
     fname = here / "aiohttp.png"
-    with fname.open("rb") as f:
-        data = f.read()
+    data = await asyncio.to_thread(fname.read_bytes)
 
     async def handler(request: web.Request) -> web.Response:
         form = await request.post()
         form_file = form["file"]
         assert isinstance(form_file, aiohttp.web_request.FileField)
-        raw_data = form_file.file.read()
+        raw_data = await asyncio.to_thread(form_file.file.read)
         form_file.file.close()
         assert data == raw_data
         return web.Response()
@@ -780,14 +784,13 @@ async def test_upload_file(aiohttp_client: AiohttpClient) -> None:
 async def test_upload_file_object(aiohttp_client: AiohttpClient) -> None:
     here = pathlib.Path(__file__).parent
     fname = here / "aiohttp.png"
-    with fname.open("rb") as f:
-        data = f.read()
+    data = await asyncio.to_thread(fname.read_bytes)
 
     async def handler(request: web.Request) -> web.Response:
         form = await request.post()
         form_file = form["file"]
         assert isinstance(form_file, aiohttp.web_request.FileField)
-        raw_data = form_file.file.read()
+        raw_data = await asyncio.to_thread(form_file.file.read)
         form_file.file.close()
         assert data == raw_data
         return web.Response()
@@ -905,19 +908,16 @@ async def test_get_with_empty_arg_with_equal(aiohttp_client: AiohttpClient) -> N
 
 
 async def test_response_with_async_gen(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path
+    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
 ) -> None:
-    with fname.open("rb") as f:
-        data = f.read()
-
-    data_size = len(data)
+    data_size = len(file_content)
 
     async def stream(f_name: pathlib.Path) -> AsyncIterator[bytes]:
         with f_name.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Length": str(data_size)}
@@ -930,26 +930,23 @@ async def test_response_with_async_gen(
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    assert resp_data == data
+    assert resp_data == file_content
     assert resp.headers.get("Content-Length") == str(len(resp_data))
 
     resp.release()
 
 
 async def test_response_with_async_gen_no_params(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path
+    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
 ) -> None:
-    with fname.open("rb") as f:
-        data = f.read()
-
-    data_size = len(data)
+    data_size = len(file_content)
 
     async def stream() -> AsyncIterator[bytes]:
         with fname.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Length": str(data_size)}
@@ -962,19 +959,16 @@ async def test_response_with_async_gen_no_params(
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    assert resp_data == data
+    assert resp_data == file_content
     assert resp.headers.get("Content-Length") == str(len(resp_data))
 
     resp.release()
 
 
 async def test_response_with_file(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path
+    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
 ) -> None:
     outer_file_descriptor = None
-
-    with fname.open("rb") as f:
-        data = f.read()
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal outer_file_descriptor
@@ -989,7 +983,7 @@ async def test_response_with_file(
     assert 200 == resp.status
     resp_data = await resp.read()
     expected_content_disposition = 'attachment; filename="conftest.py"'
-    assert resp_data == data
+    assert resp_data == file_content
     assert resp.headers.get("Content-Type") in (
         "application/octet-stream",
         "text/x-python",
@@ -1005,12 +999,9 @@ async def test_response_with_file(
 
 
 async def test_response_with_file_ctype(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path
+    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
 ) -> None:
     outer_file_descriptor = None
-
-    with fname.open("rb") as f:
-        data = f.read()
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal outer_file_descriptor
@@ -1028,7 +1019,7 @@ async def test_response_with_file_ctype(
     assert 200 == resp.status
     resp_data = await resp.read()
     expected_content_disposition = 'attachment; filename="conftest.py"'
-    assert resp_data == data
+    assert resp_data == file_content
     assert resp.headers.get("Content-Type") == "text/binary"
     assert resp.headers.get("Content-Length") == str(len(resp_data))
     assert resp.headers.get("Content-Disposition") == expected_content_disposition
@@ -1040,12 +1031,9 @@ async def test_response_with_file_ctype(
 
 
 async def test_response_with_payload_disp(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path
+    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
 ) -> None:
     outer_file_descriptor = None
-
-    with fname.open("rb") as f:
-        data = f.read()
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal outer_file_descriptor
@@ -1061,7 +1049,7 @@ async def test_response_with_payload_disp(
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    assert resp_data == data
+    assert resp_data == file_content
     assert resp.headers.get("Content-Type") == "text/binary"
     assert resp.headers.get("Content-Length") == str(len(resp_data))
     assert resp.headers.get("Content-Disposition") == 'inline; filename="test.txt"'
@@ -1313,7 +1301,7 @@ async def test_subapp_reverse_static_url(aiohttp_client: AiohttpClient) -> None:
     subapp = web.Application()
     subapp.router.add_get("/to", handler)
     here = pathlib.Path(__file__).parent
-    subapp.router.add_static("/static", here, name="name")
+    await asyncio.to_thread(subapp.router.add_static, "/static", here, name="name")
     app.add_subapp("/path", subapp)
 
     client = await aiohttp_client(app)
@@ -1324,8 +1312,8 @@ async def test_subapp_reverse_static_url(aiohttp_client: AiohttpClient) -> None:
 
     resp.release()
 
-    with (here / fname).open("rb") as f:
-        assert body == f.read()
+    file_content = await asyncio.to_thread((here / fname).read_bytes)
+    assert body == file_content
 
 
 async def test_subapp_app(aiohttp_client: AiohttpClient) -> None:
@@ -1809,7 +1797,7 @@ async def test_response_with_bodypart_named(
     client = await aiohttp_client(app)
 
     f = tmp_path / "foobar.txt"
-    f.write_text("test", encoding="utf8")
+    await asyncio.to_thread(f.write_text, "test", encoding="utf8")
     with f.open("rb") as fd:
         data = {"file": fd}
         resp = await client.post("/", data=data)
