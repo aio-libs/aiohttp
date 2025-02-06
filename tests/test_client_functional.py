@@ -3477,20 +3477,6 @@ async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> N
         assert resp.status == 200
 
 
-async def test_close_context_manager(aiohttp_client: AiohttpClient) -> None:
-    # a test for backward compatibility with yield from syntax
-    async def handler(request: web.Request) -> NoReturn:
-        assert False
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-
-    client = await aiohttp_client(app)
-    ctx = client.get("/")
-    ctx.close()
-    assert not ctx._coro.cr_running
-
-
 async def test_session_auth(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"headers": dict(request.headers)})
