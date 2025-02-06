@@ -560,7 +560,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
                 for app in match_info.apps[::-1]:
                     for m, new_style in app._middlewares_handlers:  # type: ignore[union-attr]
                         if new_style:
-                            handler = update_wrapper(partial(m, handler=handler), handler)
+                            handler = update_wrapper(
+                                partial(m, handler=handler), handler
+                            )
                         else:
                             handler = await m(app, handler)  # type: ignore[arg-type,assignment]
 
