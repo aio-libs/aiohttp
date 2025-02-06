@@ -20,6 +20,12 @@ def enable_writelines() -> Generator[None, None, None]:
 
 
 @pytest.fixture
+def disable_writelines() -> Generator[None, None, None]:
+    with mock.patch("aiohttp.http_writer.SKIP_WRITELINES", True):
+        yield
+
+
+@pytest.fixture
 def force_writelines_small_payloads() -> Generator[None, None, None]:
     with mock.patch("aiohttp.http_writer.MIN_PAYLOAD_FOR_WRITELINES", 1):
         yield
@@ -104,6 +110,7 @@ async def test_write_payload_length(protocol, transport, loop) -> None:
     assert b"da" == content.split(b"\r\n\r\n", 1)[-1]
 
 
+@pytest.mark.usefixtures("disable_writelines")
 async def test_write_large_payload_deflate_compression_data_in_eof(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
