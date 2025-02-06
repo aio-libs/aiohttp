@@ -83,7 +83,7 @@ class _FileResponseResult(Enum):
 # Add custom pairs and clear the encodings map so guess_type ignores them.
 CONTENT_TYPES.encodings_map.clear()
 for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
-    CONTENT_TYPES.add_type(content_type, extension)  # type: ignore[attr-defined]
+    CONTENT_TYPES.add_type(content_type, extension)
 
 
 _CLOSE_FUTURES: Set[asyncio.Future[None]] = set()

@@ -345,7 +345,7 @@ async def _run_app(
 
     try:
         if host is not None:
-            if isinstance(host, (str, bytes, bytearray, memoryview)):
+            if isinstance(host, str):
                 sites.append(
                     TCPSite(
                         runner,
