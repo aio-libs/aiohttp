@@ -404,7 +404,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 if not block:
                     break
                 blocks.append(block)
-            return b"".join(blocks)
+            return blocks[0] if len(blocks) == 1 else b"".join(blocks)
 
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
