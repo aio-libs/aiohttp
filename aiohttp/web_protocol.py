@@ -583,13 +583,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 else:
                     task = loop.create_task(coro)
                 try:
-                    resp, reset = await task  # type: ignore[possibly-undefined]
+                    resp, reset = await task
                 except ConnectionError:
                     self.log_debug("Ignored premature client disconnection")
                     break
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
-                del task  # type: ignore[possibly-undefined]
+                del task
                 # https://github.com/python/mypy/issues/14309
                 if reset:  # type: ignore[possibly-undefined]
                     self.log_debug("Ignored premature client disconnection 2")
