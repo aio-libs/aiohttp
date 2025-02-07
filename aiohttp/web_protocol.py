@@ -638,6 +638,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             except Exception as exc:
                 self.log_exception("Unhandled exception", exc_info=exc)
                 self.force_close()
+            except BaseException:
+                self.force_close()
+                raise
             else:
                 if self._keepalive and not self._close:
                     # start keep-alive timer
