@@ -1,2 +1,2 @@
-Avoid break statement inside the finally block in :py:meth:`~aiohttp.web.RequestHandler.start`
+Avoid break statement inside the finally block in :py:class:`~aiohttp.web.RequestHandler`
 -- by :user:`Cycloctane`.
