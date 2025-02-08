@@ -36,20 +36,11 @@ IS_LINUX = sys.platform.startswith("linux")
 
 @pytest.fixture(autouse=True)
 def blockbuster() -> Iterator[None]:
-    with blockbuster_ctx("aiohttp") as bb:
+    with blockbuster_ctx("aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]) as bb:
         bb.functions["io.TextIOWrapper.read"].can_block_in(
             "aiohttp/client_reqrep.py", "update_auth"
         )
         bb.functions["os.stat"].can_block_in("aiohttp/client_reqrep.py", "update_auth")
-        bb.functions["os.stat"].can_block_in(
-            "asyncio/unix_events.py", "create_unix_server"
-        )
-        bb.functions["os.sendfile"].can_block_in(
-            "asyncio/unix_events.py", "_sock_sendfile_native_impl"
-        )
-        bb.functions["os.read"].can_block_in(
-            "asyncio/base_events.py", "subprocess_shell"
-        )
         yield
 
 

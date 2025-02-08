@@ -797,7 +797,8 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
         auth.login,
         auth.password,
     )
-    await asyncio.to_thread(netrc_file.write_text, netrc_file_data)
+    with netrc_file.open("w") as f:
+        f.write(netrc_file_data)
     mocker.patch.dict(
         os.environ, {"http_proxy": str(proxy.url), "NETRC": str(netrc_file)}
     )
@@ -824,7 +825,8 @@ async def test_proxy_from_env_http_without_auth_from_netrc(
         auth.login,
         auth.password,
     )
-    await asyncio.to_thread(netrc_file.write_text, netrc_file_data)
+    with netrc_file.open("w") as f:
+        f.write(netrc_file_data)
     mocker.patch.dict(
         os.environ, {"http_proxy": str(proxy.url), "NETRC": str(netrc_file)}
     )
@@ -848,7 +850,8 @@ async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
     invalid_data = f"machine 127.0.0.1 {auth.login} pass {auth.password}"
-    await asyncio.to_thread(netrc_file.write_text, invalid_data)
+    with netrc_file.open("w") as f:
+        f.write(invalid_data)
 
     mocker.patch.dict(
         os.environ, {"http_proxy": str(proxy.url), "NETRC": str(netrc_file)}

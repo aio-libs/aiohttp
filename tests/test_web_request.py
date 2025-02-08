@@ -668,7 +668,7 @@ async def test_multipart_formdata_file(protocol: BaseProtocol) -> None:
     )
     result = await req.post()
     assert hasattr(result["a_file"], "file")
-    content = await asyncio.to_thread(result["a_file"].file.read)
+    content = result["a_file"].file.read()
     assert content == b"\ff"
 
     req._finish()
