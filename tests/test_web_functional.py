@@ -760,7 +760,8 @@ async def test_http10_keep_alive_with_headers(aiohttp_client: AiohttpClient) -> 
 async def test_upload_file(aiohttp_client: AiohttpClient) -> None:
     here = pathlib.Path(__file__).parent
     fname = here / "aiohttp.png"
-    data = await asyncio.to_thread(fname.read_bytes)
+    with fname.open("rb") as f:
+        data = f.read()
 
     async def handler(request: web.Request) -> web.Response:
         form = await request.post()
@@ -784,7 +785,8 @@ async def test_upload_file(aiohttp_client: AiohttpClient) -> None:
 async def test_upload_file_object(aiohttp_client: AiohttpClient) -> None:
     here = pathlib.Path(__file__).parent
     fname = here / "aiohttp.png"
-    data = await asyncio.to_thread(fname.read_bytes)
+    with fname.open("rb") as f:
+        data = f.read()
 
     async def handler(request: web.Request) -> web.Response:
         form = await request.post()
@@ -908,9 +910,12 @@ async def test_get_with_empty_arg_with_equal(aiohttp_client: AiohttpClient) -> N
 
 
 async def test_response_with_async_gen(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
-    data_size = len(file_content)
+    with fname.open("rb") as f:
+        data = f.read()
+
+    data_size = len(data)
 
     async def stream(f_name: pathlib.Path) -> AsyncIterator[bytes]:
         with f_name.open("rb") as f:
@@ -930,7 +935,7 @@ async def test_response_with_async_gen(
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    assert resp_data == file_content
+    assert resp_data == data
     assert resp.headers.get("Content-Length") == str(len(resp_data))
 
     resp.release()
@@ -1312,8 +1317,8 @@ async def test_subapp_reverse_static_url(aiohttp_client: AiohttpClient) -> None:
 
     resp.release()
 
-    file_content = await asyncio.to_thread((here / fname).read_bytes)
-    assert body == file_content
+    with (here / fname).open("rb") as f:
+        assert body == f.read()
 
 
 async def test_subapp_app(aiohttp_client: AiohttpClient) -> None:
@@ -1797,7 +1802,7 @@ async def test_response_with_bodypart_named(
     client = await aiohttp_client(app)
 
     f = tmp_path / "foobar.txt"
-    await asyncio.to_thread(f.write_text, "test", encoding="utf8")
+    f.write_text("test", encoding="utf8")
     with f.open("rb") as fd:
         data = {"file": fd}
         resp = await client.post("/", data=data)

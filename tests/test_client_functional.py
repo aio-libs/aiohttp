@@ -3019,8 +3019,7 @@ async def test_creds_in_auth_and_redirect_url(
 def create_server_for_url_and_handler(
     aiohttp_server: AiohttpServer, tls_certificate_authority: trustme.CA
 ) -> Callable[[URL, Handler], Awaitable[TestServer]]:
-
-    async def create(url: URL, srv: Handler) -> TestServer:
+    def create(url: URL, srv: Handler) -> Awaitable[TestServer]:
         app = web.Application()
         app.router.add_route("GET", url.path, srv)
 
@@ -3030,9 +3029,9 @@ def create_server_for_url_and_handler(
                 url.host, "localhost", "127.0.0.1"
             )
             ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            await asyncio.to_thread(cert.configure_cert, ssl_ctx)
-            return await aiohttp_server(app, ssl=ssl_ctx)
-        return await aiohttp_server(app)
+            cert.configure_cert(ssl_ctx)
+            return aiohttp_server(app, ssl=ssl_ctx)
+        return aiohttp_server(app)
 
     return create
 
@@ -4152,9 +4151,7 @@ async def test_rejected_upload(
 
     file_size_bytes = 1024 * 1024
     file_path = tmp_path / "uploaded.txt"
-    await asyncio.to_thread(
-        file_path.write_text, "0" * file_size_bytes, encoding="utf8"
-    )
+    file_path.write_text("0" * file_size_bytes, encoding="utf8")
 
     with open(file_path, "rb") as file:
         data = {"file": file}

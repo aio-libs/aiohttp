@@ -241,8 +241,9 @@ async def test_static_file_with_content_type(
     resp = await client.get("/")
     assert resp.status == 200
     body = await resp.read()
-    content = await asyncio.to_thread(filepath.read_bytes)
-    assert content == body
+    with filepath.open("rb") as f:
+        content = f.read()
+        assert content == body
     assert resp.headers["Content-Type"] == "image/jpeg"
     assert resp.headers.get("Content-Encoding") is None
     resp.close()
@@ -269,7 +270,7 @@ async def test_static_file_custom_content_type(
     assert resp.status == 200
     assert resp.headers.get("Content-Encoding") is None
     assert resp.headers["Content-Type"] == "application/pdf"
-    assert await resp.read() == await asyncio.to_thread(hello_txt.read_bytes)
+    assert await resp.read() == hello_txt.read_bytes()
     resp.close()
     resp.release()
     await client.close()
@@ -369,7 +370,7 @@ async def test_static_file_with_content_encoding(
     assert resp.status == 200
     assert resp.headers.get("Content-Encoding") is None
     assert resp.headers["Content-Type"] == expect_type
-    assert await resp.read() == await asyncio.to_thread(hello_txt.read_bytes)
+    assert await resp.read() == hello_txt.read_bytes()
     resp.close()
 
     resp.release()
@@ -631,7 +632,7 @@ async def test_static_file_directory_traversal_attack(
     dirname = pathlib.Path(__file__).parent
     relpath = "../README.rst"
     full_path = dirname / relpath
-    assert await asyncio.to_thread(full_path.is_file)
+    assert full_path.is_file()
 
     app = web.Application()
     await asyncio.to_thread(app.router.add_static, "/static", dirname)
@@ -646,7 +647,7 @@ async def test_static_file_directory_traversal_attack(
     assert 404 == resp.status
     resp.release()
 
-    url_abspath = "/static/" + str(await asyncio.to_thread(full_path.resolve))
+    url_abspath = "/static/" + str(full_path.resolve())
     resp = await client.get(url_abspath)
     assert 403 == resp.status
     resp.release()
@@ -662,12 +663,12 @@ async def test_static_file_huge(
     # fill 20MB file
     with file_path.open("wb") as f:
         for i in range(1024 * 20):
-            await asyncio.to_thread(f.write, (chr(i % 64 + 0x20) * 1024).encode())
+            f.write((chr(i % 64 + 0x20) * 1024).encode())
 
-    file_st = await asyncio.to_thread(file_path.stat)
+    file_st = file_path.stat()
 
     app = web.Application()
-    await asyncio.to_thread(app.router.add_static, "/static", str(tmp_path))
+    app.router.add_static("/static", str(tmp_path))
     client = await aiohttp_client(app)
 
     resp = await client.get("/static/" + file_path.name)
@@ -682,7 +683,7 @@ async def test_static_file_huge(
     cnt = 0
     while off < file_st.st_size:
         chunk = await resp.content.readany()
-        expected = await asyncio.to_thread(f2.read, len(chunk))
+        expected = f2.read(len(chunk))
         assert chunk == expected
         off += len(chunk)
         cnt += 1
@@ -697,7 +698,7 @@ async def test_static_file_range(
 ) -> None:
     filepath = pathlib.Path(__file__).parent / "sample.txt"
 
-    filesize = (await asyncio.to_thread(filepath.stat)).st_size
+    filesize = filepath.stat().st_size
 
     async def handler(request: web.Request) -> web.FileResponse:
         return sender(filepath, chunk_size=16)
@@ -706,7 +707,8 @@ async def test_static_file_range(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    content = await asyncio.to_thread(filepath.read_bytes)
+    with filepath.open("rb") as f:
+        content = f.read()
 
     # Ensure the whole file requested in parts is correct
     responses = await asyncio.gather(
@@ -764,20 +766,25 @@ async def test_static_file_range_end_bigger_than_size(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    content = await asyncio.to_thread(filepath.read_bytes)
+    with filepath.open("rb") as f:
+        content = f.read()
 
-    # Ensure the whole file requested in parts is correct
-    response = await client.get("/", headers={"Range": "bytes=54000-55000"})
+        # Ensure the whole file requested in parts is correct
+        response = await client.get("/", headers={"Range": "bytes=54000-55000"})
 
-    assert response.status == 206, "failed 'bytes=54000-55000': %s" % response.reason
-    assert (
-        response.headers["Content-Range"] == "bytes 54000-54996/54997"
-    ), "failed: Content-Range Error"
+        assert response.status == 206, (
+            "failed 'bytes=54000-55000': %s" % response.reason
+        )
+        assert (
+            response.headers["Content-Range"] == "bytes 54000-54996/54997"
+        ), "failed: Content-Range Error"
 
-    body = await response.read()
-    assert len(body) == 997, "failed 'bytes=54000-55000', received %d bytes" % len(body)
+        body = await response.read()
+        assert len(body) == 997, "failed 'bytes=54000-55000', received %d bytes" % len(
+            body
+        )
 
-    assert content[54000:] == body
+        assert content[54000:] == body
 
     response.release()
     await client.close()
@@ -818,7 +825,8 @@ async def test_static_file_range_tail(
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    content = await asyncio.to_thread(filepath.read_bytes)
+    with filepath.open("rb") as f:
+        content = f.read()
 
     # Ensure the tail of the file is correct
     resp = await client.get("/", headers={"Range": "bytes=-500"})
@@ -1088,7 +1096,7 @@ async def test_static_file_huge_cancel(
     # fill 100MB file
     with file_path.open("wb") as f:
         for i in range(1024 * 20):
-            await asyncio.to_thread(f.write, (chr(i % 64 + 0x20) * 1024).encode())
+            f.write((chr(i % 64 + 0x20) * 1024).encode())
 
     task = None
 
@@ -1133,7 +1141,7 @@ async def test_static_file_huge_error(
     # fill 20MB file
     with file_path.open("wb") as f:
         f.seek(20 * 1024 * 1024)
-        await asyncio.to_thread(f.write, b"1")
+        f.write(b"1")
 
     async def handler(request: web.Request) -> web.FileResponse:
         # reduce send buffer size

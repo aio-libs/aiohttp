@@ -10,6 +10,8 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
+blockbuster==1.5.15
+    # via -r requirements/lint.in
 cffi==1.17.1
     # via
     #   cryptography
@@ -27,6 +29,8 @@ exceptiongroup==1.2.2
     # via pytest
 filelock==3.17.0
     # via virtualenv
+forbiddenfruit==0.1.4
+    # via blockbuster
 freezegun==1.5.1
     # via -r requirements/lint.in
 identify==2.6.7
