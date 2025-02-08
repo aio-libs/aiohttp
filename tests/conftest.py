@@ -36,11 +36,13 @@ IS_LINUX = sys.platform.startswith("linux")
 
 @pytest.fixture(autouse=True)
 def blockbuster() -> Iterator[None]:
-    with blockbuster_ctx("aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]) as bb:
-        bb.functions["io.TextIOWrapper.read"].can_block_in(
-            "aiohttp/client_reqrep.py", "update_auth"
-        )
-        bb.functions["os.stat"].can_block_in("aiohttp/client_reqrep.py", "update_auth")
+    with blockbuster_ctx(
+        "aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]
+    ) as bb:
+        # TODO: Fix blocking call in ClientRequest's constructor.
+        # https://github.com/aio-libs/aiohttp/issues/10435
+        for func in ["io.TextIOWrapper.read", "os.stat"]:
+            bb.functions[func].can_block_in("aiohttp/client_reqrep.py", "update_auth")
         yield
 
 
