@@ -29,7 +29,7 @@ filelock==3.17.0
     # via virtualenv
 freezegun==1.5.1
     # via -r requirements/lint.in
-identify==2.6.6
+identify==2.6.7
     # via pre-commit
 idna==3.7
     # via trustme
