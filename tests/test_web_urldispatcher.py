@@ -166,7 +166,9 @@ async def test_access_root_of_static_handler_xss(
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static(prefix, str(tmp_path), show_index=show_index)
+    await asyncio.to_thread(
+        app.router.add_static, prefix, str(tmp_path), show_index=show_index
+    )
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
