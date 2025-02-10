@@ -641,22 +641,22 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             except BaseException:
                 self.force_close()
                 raise
-            else:
-                if self._keepalive and not self._close:
-                    # start keep-alive timer
-                    if keepalive_timeout is not None:
-                        now = loop.time()
-                        close_time = now + keepalive_timeout
-                        self._next_keepalive_close_time = close_time
-                        if self._keepalive_handle is None:
-                            self._keepalive_handle = loop.call_at(
-                                close_time, self._process_keepalive
-                            )
-                else:
-                    break
             finally:
                 if self.transport is None and resp is not None:
                     self.log_debug("Ignored premature client disconnection.")
+
+            if self._keepalive and not self._close and not self._force_close:
+                # start keep-alive timer
+                if keepalive_timeout is not None:
+                    now = loop.time()
+                    close_time = now + keepalive_timeout
+                    self._next_keepalive_close_time = close_time
+                    if self._keepalive_handle is None:
+                        self._keepalive_handle = loop.call_at(
+                            close_time, self._process_keepalive
+                        )
+            else:
+                break
 
         # remove handler, close transport if no handlers left
         if not self._force_close:
