@@ -373,7 +373,7 @@ def test_add_static_path_resolution(router: web.UrlDispatcher) -> None:
     """Test that static paths are expanded and absolute."""
     res = router.add_static("/", "~/..")
     directory = str(res.get_info()["directory"])
-    assert directory == str(pathlib.Path.home().parent)
+    assert directory == str(pathlib.Path.home().resolve(strict=True).parent)
 
 
 def test_add_static(router: web.UrlDispatcher) -> None:
