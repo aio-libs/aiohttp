@@ -668,7 +668,7 @@ async def test_static_file_huge(
     file_st = file_path.stat()
 
     app = web.Application()
-    app.router.add_static("/static", str(tmp_path))
+    await asyncio.to_thread(app.router.add_static, "/static", str(tmp_path))
     client = await aiohttp_client(app)
 
     resp = await client.get("/static/" + file_path.name)
