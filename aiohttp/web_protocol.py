@@ -647,8 +647,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
             if self._keepalive and not self._close and not self._force_close:
                 # start keep-alive timer
-                now = loop.time()
-                close_time = now + keepalive_timeout
+                close_time = loop.time() + keepalive_timeout
                 self._next_keepalive_close_time = close_time
                 if self._keepalive_handle is None:
                     self._keepalive_handle = loop.call_at(
