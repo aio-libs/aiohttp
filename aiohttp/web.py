@@ -503,7 +503,7 @@ def run_app(
     try:
         asyncio.set_event_loop(loop)
         loop.run_until_complete(main_task)
-    except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
+    except (GracefulExit, KeyboardInterrupt):
         pass
     finally:
         try:

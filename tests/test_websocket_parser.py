@@ -1,6 +1,5 @@
 import asyncio
 import pickle
-import random
 import struct
 import zlib
 from typing import Union
@@ -9,13 +8,7 @@ from unittest import mock
 import pytest
 
 from aiohttp._websocket import helpers as _websocket_helpers
-from aiohttp._websocket.helpers import (
-    PACK_CLOSE_CODE,
-    PACK_LEN1,
-    PACK_LEN2,
-    PACK_LEN3,
-    websocket_mask,
-)
+from aiohttp._websocket.helpers import PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
@@ -49,7 +42,6 @@ def build_frame(
         if message.endswith(WS_DEFLATE_TRAILING):
             message = message[:-4]
     msg_length = len(message)
-    mask_bit = 0
 
     if is_fin:
         header_first_byte = 0x80 | opcode
@@ -60,11 +52,10 @@ def build_frame(
         header_first_byte |= 0x40
 
     if msg_length < 126:
-        header = PACK_LEN1(header_first_byte, msg_length | mask_bit)
-    elif msg_length < (1 << 16):
-        header = PACK_LEN2(header_first_byte, 126 | mask_bit, msg_length)
+        header = PACK_LEN1(header_first_byte, msg_length)
     else:
-        header = PACK_LEN3(header_first_byte, 127 | mask_bit, msg_length)
+        assert msg_length < (1 << 16)
+        header = PACK_LEN2(header_first_byte, 126, msg_length)
 
     if noheader:
         return message
