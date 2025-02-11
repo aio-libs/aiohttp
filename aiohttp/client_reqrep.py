@@ -962,7 +962,8 @@ class ClientResponse(HeadersMixin):
 
             for param in params:
                 match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
-                assert match is not None
+                if match is None:  # Malformed param
+                    continue
                 key, _, value, _ = match.groups()
 
                 link.add(key, value)
