@@ -1,6 +1,5 @@
 import asyncio
 import pickle
-import random
 import struct
 import zlib
 from typing import Union
@@ -9,13 +8,7 @@ from unittest import mock
 import pytest
 
 from aiohttp._websocket import helpers as _websocket_helpers
-from aiohttp._websocket.helpers import (
-    PACK_CLOSE_CODE,
-    PACK_LEN1,
-    PACK_LEN2,
-    PACK_LEN3,
-    websocket_mask,
-)
+from aiohttp._websocket.helpers import PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
