@@ -33,7 +33,7 @@ from .web_protocol import _RequestHandler
 
 try:
     import uvloop
-except ImportError:  # pragma: no cover
+except ImportError:
     uvloop = None  # type: ignore[assignment]
 
 _Request = TypeVar("_Request", bound=BaseRequest)
@@ -243,7 +243,7 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
     avail_factories: Dict[str, Type[asyncio.AbstractEventLoopPolicy]]
     avail_factories = {"pyloop": asyncio.DefaultEventLoopPolicy}
 
-    if uvloop is not None:  # pragma: no cover
+    if uvloop is not None:
         avail_factories["uvloop"] = uvloop.EventLoopPolicy
 
     if loops == "all":
@@ -253,7 +253,7 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
     for name in loops.split(","):
         required = not name.endswith("?")
         name = name.strip(" ?")
-        if name not in avail_factories:  # pragma: no cover
+        if name not in avail_factories:
             if required:
                 raise ValueError(
                     "Unknown loop '%s', available loops: %s"
@@ -274,7 +274,7 @@ def loop(loop_factory, fast, loop_debug):  # type: ignore[no-untyped-def]
     asyncio.set_event_loop_policy(policy)
     with loop_context(fast=fast) as _loop:
         if loop_debug:
-            _loop.set_debug(True)  # pragma: no cover
+            _loop.set_debug(True)
         asyncio.set_event_loop(_loop)
         yield _loop
 

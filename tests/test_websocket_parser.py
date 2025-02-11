@@ -50,7 +50,7 @@ def build_frame(
         if message.endswith(WS_DEFLATE_TRAILING):
             message = message[:-4]
     msg_length = len(message)
-    if use_mask:  # pragma: no cover
+    if use_mask:
         mask_bit = 0x80
     else:
         mask_bit = 0
@@ -65,12 +65,12 @@ def build_frame(
 
     if msg_length < 126:
         header = PACK_LEN1(header_first_byte, msg_length | mask_bit)
-    elif msg_length < (1 << 16):  # pragma: no cover
+    elif msg_length < (1 << 16):
         header = PACK_LEN2(header_first_byte, 126 | mask_bit, msg_length)
     else:
         header = PACK_LEN3(header_first_byte, 127 | mask_bit, msg_length)
 
-    if use_mask:  # pragma: no cover
+    if use_mask:
         maski = random.randrange(0, 0xFFFFFFFF)
         mask = maski.to_bytes(4, "big")
         message = bytearray(message)

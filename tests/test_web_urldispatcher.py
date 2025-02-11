@@ -380,7 +380,7 @@ async def test_handler_metadata_persistence() -> None:
 
     async def async_handler(request: web.Request) -> web.Response:
         """Doc"""
-        return web.Response()  # pragma: no cover
+        assert False
 
     app.router.add_get("/async", async_handler)
 
@@ -696,7 +696,7 @@ def test_reuse_last_added_resource(path: str) -> None:
     app = web.Application()
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()  # pragma: no cover
+        assert False
 
     app.router.add_get(path, handler, name="a")
     app.router.add_post(path, handler, name="a")
@@ -708,7 +708,7 @@ def test_resource_raw_match() -> None:
     app = web.Application()
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()  # pragma: no cover
+        assert False
 
     route = app.router.add_get("/a", handler, name="a")
     assert route.resource is not None

@@ -11,7 +11,7 @@ try:
     import aiodns
 
     aiodns_default = hasattr(aiodns.DNSResolver, "getaddrinfo")
-except ImportError:  # pragma: no cover
+except ImportError:
     aiodns = None  # type: ignore[assignment]
     aiodns_default = False
 

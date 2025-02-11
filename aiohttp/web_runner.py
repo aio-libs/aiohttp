@@ -67,7 +67,7 @@ class BaseSite(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        pass  # pragma: no cover
+        """Return the name of the site (e.g. a URL)."""
 
     @abstractmethod
     async def start(self) -> None:
@@ -276,7 +276,7 @@ class BaseRunner(ABC, Generic[_Request]):
             try:
                 loop.add_signal_handler(signal.SIGINT, _raise_graceful_exit)
                 loop.add_signal_handler(signal.SIGTERM, _raise_graceful_exit)
-            except NotImplementedError:  # pragma: no cover
+            except NotImplementedError:
                 # add_signal_handler is not implemented on Windows
                 pass
 
@@ -309,17 +309,17 @@ class BaseRunner(ABC, Generic[_Request]):
             try:
                 loop.remove_signal_handler(signal.SIGINT)
                 loop.remove_signal_handler(signal.SIGTERM)
-            except NotImplementedError:  # pragma: no cover
+            except NotImplementedError:
                 # remove_signal_handler is not implemented on Windows
                 pass
 
     @abstractmethod
     async def _make_server(self) -> Server[_Request]:
-        pass  # pragma: no cover
+        """Return a new server for the runner to serve requests."""
 
     @abstractmethod
     async def _cleanup_server(self) -> None:
-        pass  # pragma: no cover
+        """Run any cleanup steps after the server is shutdown."""
 
     def _reg_site(self, site: BaseSite) -> None:
         if site in self._sites:

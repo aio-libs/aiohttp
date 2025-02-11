@@ -953,9 +953,7 @@ class ClientResponse(HeadersMixin):
 
         for val in re.split(r",(?=\s*<)", links_str):
             match = re.match(r"\s*<(.*)>(.*)", val)
-            if match is None:  # pragma: no cover
-                # the check exists to suppress mypy error
-                continue
+            assert match is not None
             url, params_str = match.groups()
             params = params_str.split(";")[1:]
 
@@ -963,9 +961,7 @@ class ClientResponse(HeadersMixin):
 
             for param in params:
                 match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
-                if match is None:  # pragma: no cover
-                    # the check exists to suppress mypy error
-                    continue
+                assert match is not None
                 key, _, value, _ = match.groups()
 
                 link.add(key, value)
