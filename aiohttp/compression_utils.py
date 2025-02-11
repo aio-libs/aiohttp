@@ -10,7 +10,7 @@ try:
         import brotli
 
     HAS_BROTLI = True
-except ImportError:  # pragma: no cover
+except ImportError:
     HAS_BROTLI = False
 
 MAX_SYNC_CHUNK_SIZE = 1024
