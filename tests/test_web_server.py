@@ -248,11 +248,11 @@ async def test_raw_server_do_not_swallow_exceptions(
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
 
-async def test_raw_server_do_not_swallow_base_exceptions(
+async def test_raw_server_does_not_swallow_base_exceptions(
     aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     class UnexpectedException(BaseException):
-        pass
+        """Dummy base exception."""
 
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise UnexpectedException()
