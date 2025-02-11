@@ -37,7 +37,6 @@ class PatchableWebSocketReader(WebSocketReader):
 def build_frame(
     message: bytes,
     opcode: int,
-    use_mask: bool = False,
     noheader: bool = False,
     is_fin: bool = True,
     compress: bool = False,
@@ -50,10 +49,7 @@ def build_frame(
         if message.endswith(WS_DEFLATE_TRAILING):
             message = message[:-4]
     msg_length = len(message)
-    if use_mask:  # pragma: no cover
-        mask_bit = 0x80
-    else:
-        mask_bit = 0
+    mask_bit = 0
 
     if is_fin:
         header_first_byte = 0x80 | opcode
@@ -65,25 +61,15 @@ def build_frame(
 
     if msg_length < 126:
         header = PACK_LEN1(header_first_byte, msg_length | mask_bit)
-    elif msg_length < (1 << 16):  # pragma: no cover
+    elif msg_length < (1 << 16):
         header = PACK_LEN2(header_first_byte, 126 | mask_bit, msg_length)
     else:
         header = PACK_LEN3(header_first_byte, 127 | mask_bit, msg_length)
 
-    if use_mask:  # pragma: no cover
-        maski = random.randrange(0, 0xFFFFFFFF)
-        mask = maski.to_bytes(4, "big")
-        message = bytearray(message)
-        websocket_mask(mask, message)
-        if noheader:
-            return message
-        else:
-            return header + mask + message
+    if noheader:
+        return message
     else:
-        if noheader:
-            return message
-        else:
-            return header + message
+        return header + message
 
 
 def build_close_frame(

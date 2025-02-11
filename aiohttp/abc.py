@@ -202,7 +202,7 @@ class AbstractStreamWriter(ABC):
     length: Optional[int] = 0
 
     @abstractmethod
-    async def write(self, chunk: Union[bytes, bytearray, memoryview]) -> None:
+    async def write(self, chunk: Union[bytes, bytearray, memoryview[int], memoryview[bytes]]) -> None:
         """Write chunk into stream."""
 
     @abstractmethod

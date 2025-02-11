@@ -1,7 +1,15 @@
 import asyncio
+import sys
 import zlib
 from concurrent.futures import Executor
 from typing import Optional, cast
+
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer
+else:
+    from typing import Union
+
+    Buffer = Union[bytes, bytearray, memoryview[int], memoryview[bytes]]
 
 try:
     try:
@@ -66,10 +74,10 @@ class ZLibCompressor(ZlibBaseHandler):
             )
         self._compress_lock = asyncio.Lock()
 
-    def compress_sync(self, data: bytes) -> bytes:
+    def compress_sync(self, data: Buffer) -> bytes:
         return self._compressor.compress(data)
 
-    async def compress(self, data: bytes) -> bytes:
+    async def compress(self, data: Buffer) -> bytes:
         """Compress the data and returned the compressed bytes.
 
         Note that flush() must be called after the last call to compress()
@@ -111,10 +119,10 @@ class ZLibDecompressor(ZlibBaseHandler):
         )
         self._decompressor = zlib.decompressobj(wbits=self._mode)
 
-    def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
+    def decompress_sync(self, data: Buffer, max_length: int = 0) -> bytes:
         return self._decompressor.decompress(data, max_length)
 
-    async def decompress(self, data: bytes, max_length: int = 0) -> bytes:
+    async def decompress(self, data: Buffer, max_length: int = 0) -> bytes:
         """Decompress the data and return the decompressed bytes.
 
         If the data size is large than the max_sync_chunk_size, the decompression
@@ -162,7 +170,7 @@ class BrotliDecompressor:
             )
         self._obj = brotli.Decompressor()
 
-    def decompress_sync(self, data: bytes) -> bytes:
+    def decompress_sync(self, data: Buffer) -> bytes:
         if hasattr(self._obj, "decompress"):
             return cast(bytes, self._obj.decompress(data))
         return cast(bytes, self._obj.process(data))

@@ -435,7 +435,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         status_line = f"HTTP/{version[0]}.{version[1]} {self._status} {self._reason}"
         await writer.write_headers(status_line, self._headers)
 
-    async def write(self, data: Union[bytes, bytearray, memoryview]) -> None:
+    async def write(self, data: Union[bytes, bytearray, memoryview[int], memoryview[bytes]]) -> None:
         assert isinstance(
             data, (bytes, bytearray, memoryview)
         ), "data argument must be byte-ish (%r)" % type(data)
@@ -580,7 +580,7 @@ class Response(StreamResponse):
         self._zlib_executor = zlib_executor
 
     @property
-    def body(self) -> Optional[Union[bytes, Payload]]:
+    def body(self) -> Optional[Union[bytes, bytearray, Payload]]:
         return self._body
 
     @body.setter
@@ -654,7 +654,7 @@ class Response(StreamResponse):
         if self._eof_sent:
             return
         if self._compressed_body is None:
-            body: Optional[Union[bytes, Payload]] = self._body
+            body: Optional[Union[bytes, bytearray, Payload]] = self._body
         else:
             body = self._compressed_body
         assert not data, f"data arg is not supported, got {data!r}"
