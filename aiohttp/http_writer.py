@@ -47,7 +47,7 @@ HttpVersion11 = HttpVersion(1, 1)
 
 _T_OnChunkSent = Optional[
     Callable[
-        [Union[bytes, bytearray, memoryview[int], memoryview[bytes]]], Awaitable[None]
+        [Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]], Awaitable[None]
     ]
 ]
 _T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
@@ -89,7 +89,7 @@ class StreamWriter(AbstractStreamWriter):
         self._compress = ZLibCompressor(encoding=encoding, strategy=strategy)
 
     def _write(
-        self, chunk: Union[bytes, bytearray, memoryview[int], memoryview[bytes]]
+        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
     ) -> None:
         size = len(chunk)
         self.buffer_size += size
@@ -101,7 +101,7 @@ class StreamWriter(AbstractStreamWriter):
 
     def _writelines(
         self,
-        chunks: Iterable[Union[bytes, bytearray, memoryview[int], memoryview[bytes]]],
+        chunks: Iterable[Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]],
     ) -> None:
         size = 0
         for chunk in chunks:
@@ -118,7 +118,7 @@ class StreamWriter(AbstractStreamWriter):
 
     async def write(
         self,
-        chunk: Union[bytes, bytearray, memoryview[int], memoryview[bytes]],
+        chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"],
         *,
         drain: bool = True,
         LIMIT: int = 0x10000,

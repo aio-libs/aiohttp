@@ -9,7 +9,7 @@ if sys.version_info >= (3, 12):
 else:
     from typing import Union
 
-    Buffer = Union[bytes, bytearray, memoryview[int], memoryview[bytes]]
+    Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
 
 try:
     try:

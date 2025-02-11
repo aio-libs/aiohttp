@@ -436,7 +436,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         await writer.write_headers(status_line, self._headers)
 
     async def write(
-        self, data: Union[bytes, bytearray, memoryview[int], memoryview[bytes]]
+        self, data: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
     ) -> None:
         assert isinstance(
             data, (bytes, bytearray, memoryview)

@@ -607,7 +607,7 @@ class WebSocketResponse(StreamResponse):
         return loads(data)
 
     async def write(
-        self, data: Union[bytes, bytearray, memoryview[int], memoryview[bytes]]
+        self, data: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
     ) -> None:
         raise RuntimeError("Cannot call .write() for websocket")
 
