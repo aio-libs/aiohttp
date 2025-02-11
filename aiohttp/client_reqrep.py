@@ -953,7 +953,8 @@ class ClientResponse(HeadersMixin):
 
         for val in re.split(r",(?=\s*<)", links_str):
             match = re.match(r"\s*<(.*)>(.*)", val)
-            assert match is not None
+            if match is None:  # Malformed link
+                continue
             url, params_str = match.groups()
             params = params_str.split(";")[1:]
 
