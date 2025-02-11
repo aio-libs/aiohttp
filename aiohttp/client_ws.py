@@ -214,6 +214,10 @@ class ClientWebSocketResponse:
     def client_notakeover(self) -> bool:
         return self._client_notakeover
 
+    @property
+    def response(self) -> ClientResponse:
+        return self._response
+
     def get_extra_info(self, name: str, default: Any = None) -> Any:
         """extra info from connection transport"""
         conn = self._response.connection

@@ -1,0 +1,2 @@
+Added ``response`` attribute to the :py:class:`~aiohttp.ClientWebSocketResponse` class. It allows users to have access to response headers and cookies of a websocket request
+-- by :user:`leszekhanusz`.

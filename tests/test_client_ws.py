@@ -47,6 +47,9 @@ async def test_ws_connect(
     assert res.protocol == "chat"
     assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
 
+    # Checking new response attribute
+    assert res.response.headers == resp.headers
+
 
 async def test_ws_connect_read_timeout_is_reset_to_inf(
     ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
