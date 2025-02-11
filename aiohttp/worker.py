@@ -38,7 +38,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
-    def __init__(self, *args: Any, **kw: Any) -> None:  # pragma: no cover
+    def __init__(self, *args: Any, **kw: Any) -> None:
         super().__init__(*args, **kw)
 
         self._task: Optional[asyncio.Task[None]] = None

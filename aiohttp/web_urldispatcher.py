@@ -275,7 +275,7 @@ class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
 
     @current_app.setter
     def current_app(self, app: "Application") -> None:
-        if DEBUG:  # pragma: no cover
+        if DEBUG:
             if app not in self._apps:
                 raise RuntimeError(
                     "Expected one of the following apps {!r}, got {!r}".format(
@@ -368,7 +368,7 @@ class Resource(AbstractResource):
 
     @abc.abstractmethod
     def _match(self, path: str) -> Optional[Dict[str, str]]:
-        pass  # pragma: no cover
+        """Return dict of path values if path matches this resource, otherwise None."""
 
     def __len__(self) -> int:
         return len(self._routes)

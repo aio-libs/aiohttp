@@ -52,7 +52,7 @@ def _websocket_mask_python(mask: bytes, data: bytearray) -> None:
         data[3::4] = data[3::4].translate(d)
 
 
-if TYPE_CHECKING or NO_EXTENSIONS:  # pragma: no cover
+if TYPE_CHECKING or NO_EXTENSIONS:
     websocket_mask = _websocket_mask_python
 else:
     try:

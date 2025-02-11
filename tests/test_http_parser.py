@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+from contextlib import suppress
 from typing import Any, Dict, Iterable, List, Type
 from unittest import mock
 from urllib.parse import quote
@@ -36,13 +37,11 @@ except ImportError:
 REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
 
-try:
+with suppress(ImportError):
     from aiohttp.http_parser import HttpRequestParserC, HttpResponseParserC
 
     REQUEST_PARSERS.append(HttpRequestParserC)
     RESPONSE_PARSERS.append(HttpResponseParserC)
-except ImportError:  # pragma: no cover
-    pass
 
 
 @pytest.fixture
