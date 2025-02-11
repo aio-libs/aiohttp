@@ -43,6 +43,10 @@ def blockbuster() -> Iterator[None]:
         # https://github.com/aio-libs/aiohttp/issues/10435
         for func in ["io.TextIOWrapper.read", "os.stat"]:
             bb.functions[func].can_block_in("aiohttp/client_reqrep.py", "update_auth")
+        for func in ["os.readlink", "os.stat", "os.path.samestat"]:
+            bb.functions[func].can_block_in(
+                "aiohttp/web_urldispatcher.py", "add_static"
+            )
         yield
 
 
