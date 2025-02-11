@@ -257,7 +257,7 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.0.2
     # via -r requirements/lint.in
-virtualenv==20.29.1
+virtualenv==20.29.2
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test.in
@@ -267,7 +267,7 @@ yarl==1.18.3
     # via -r requirements/runtime-deps.in
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==25.0
+pip==25.0.1
     # via pip-tools
 setuptools==75.8.0
     # via
