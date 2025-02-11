@@ -656,7 +656,7 @@ class Response(StreamResponse):
         if self._eof_sent:
             return
         if self._compressed_body is None:
-            body: Optional[Union[bytes, bytearray, Payload]] = self._body
+            body = self._body
         else:
             body = self._compressed_body
         assert not data, f"data arg is not supported, got {data!r}"
