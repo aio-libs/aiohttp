@@ -51,11 +51,6 @@ def fname(here: pathlib.Path) -> pathlib.Path:
     return here / "conftest.py"
 
 
-@pytest.fixture
-async def file_content(fname: pathlib.Path) -> bytes:
-    return await asyncio.to_thread(fname.read_bytes)
-
-
 def new_dummy_form() -> FormData:
     form = FormData()
     form.add_field("name", b"123")
@@ -942,9 +937,12 @@ async def test_response_with_async_gen(
 
 
 async def test_response_with_async_gen_no_params(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
-    data_size = len(file_content)
+    with fname.open("rb") as f:
+        data = f.read()
+
+    data_size = len(data)
 
     async def stream() -> AsyncIterator[bytes]:
         with fname.open("rb") as f:
@@ -964,16 +962,19 @@ async def test_response_with_async_gen_no_params(
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    assert resp_data == file_content
+    assert resp_data == data
     assert resp.headers.get("Content-Length") == str(len(resp_data))
 
     resp.release()
 
 
 async def test_response_with_file(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
     outer_file_descriptor = None
+
+    with fname.open("rb") as f:
+        data = f.read()
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal outer_file_descriptor
@@ -988,7 +989,7 @@ async def test_response_with_file(
     assert 200 == resp.status
     resp_data = await resp.read()
     expected_content_disposition = 'attachment; filename="conftest.py"'
-    assert resp_data == file_content
+    assert resp_data == data
     assert resp.headers.get("Content-Type") in (
         "application/octet-stream",
         "text/x-python",
@@ -1004,9 +1005,12 @@ async def test_response_with_file(
 
 
 async def test_response_with_file_ctype(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
     outer_file_descriptor = None
+
+    with fname.open("rb") as f:
+        data = f.read()
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal outer_file_descriptor
@@ -1024,7 +1028,7 @@ async def test_response_with_file_ctype(
     assert 200 == resp.status
     resp_data = await resp.read()
     expected_content_disposition = 'attachment; filename="conftest.py"'
-    assert resp_data == file_content
+    assert resp_data == data
     assert resp.headers.get("Content-Type") == "text/binary"
     assert resp.headers.get("Content-Length") == str(len(resp_data))
     assert resp.headers.get("Content-Disposition") == expected_content_disposition
@@ -1036,9 +1040,12 @@ async def test_response_with_file_ctype(
 
 
 async def test_response_with_payload_disp(
-    aiohttp_client: AiohttpClient, fname: pathlib.Path, file_content: bytes
+    aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
     outer_file_descriptor = None
+
+    with fname.open("rb") as f:
+        data = f.read()
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal outer_file_descriptor
@@ -1054,7 +1061,7 @@ async def test_response_with_payload_disp(
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    assert resp_data == file_content
+    assert resp_data == data
     assert resp.headers.get("Content-Type") == "text/binary"
     assert resp.headers.get("Content-Length") == str(len(resp_data))
     assert resp.headers.get("Content-Disposition") == 'inline; filename="test.txt"'
@@ -1306,7 +1313,7 @@ async def test_subapp_reverse_static_url(aiohttp_client: AiohttpClient) -> None:
     subapp = web.Application()
     subapp.router.add_get("/to", handler)
     here = pathlib.Path(__file__).parent
-    await asyncio.to_thread(subapp.router.add_static, "/static", here, name="name")
+    subapp.router.add_static("/static", here, name="name")
     app.add_subapp("/path", subapp)
 
     client = await aiohttp_client(app)

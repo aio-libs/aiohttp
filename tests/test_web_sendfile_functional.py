@@ -609,7 +609,7 @@ async def test_static_file_ssl(
     dirname = pathlib.Path(__file__).parent
     filename = "data.unknown_mime_type"
     app = web.Application()
-    await asyncio.to_thread(app.router.add_static, "/static", dirname)
+    app.router.add_static("/static", dirname)
     server = await aiohttp_server(app, ssl=ssl_ctx)
     conn = aiohttp.TCPConnector(ssl=client_ssl_ctx)
     client = await aiohttp_client(server, connector=conn)
@@ -635,7 +635,7 @@ async def test_static_file_directory_traversal_attack(
     assert full_path.is_file()
 
     app = web.Application()
-    await asyncio.to_thread(app.router.add_static, "/static", dirname)
+    app.router.add_static("/static", dirname)
     client = await aiohttp_client(app)
 
     resp = await client.get("/static/" + relpath)
@@ -668,7 +668,7 @@ async def test_static_file_huge(
     file_st = file_path.stat()
 
     app = web.Application()
-    await asyncio.to_thread(app.router.add_static, "/static", str(tmp_path))
+    app.router.add_static("/static", str(tmp_path))
     client = await aiohttp_client(app)
 
     resp = await client.get("/static/" + file_path.name)
