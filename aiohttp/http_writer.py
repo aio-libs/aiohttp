@@ -47,7 +47,8 @@ HttpVersion11 = HttpVersion(1, 1)
 
 _T_OnChunkSent = Optional[
     Callable[
-        [Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]], Awaitable[None]
+        [Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]],
+        Awaitable[None],
     ]
 ]
 _T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
@@ -101,7 +102,9 @@ class StreamWriter(AbstractStreamWriter):
 
     def _writelines(
         self,
-        chunks: Iterable[Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]],
+        chunks: Iterable[
+            Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        ],
     ) -> None:
         size = 0
         for chunk in chunks:
