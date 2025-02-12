@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from ..helpers import NO_EXTENSIONS
 
-if TYPE_CHECKING or NO_EXTENSIONS:  # pragma: no cover
+if TYPE_CHECKING or NO_EXTENSIONS:
     from .reader_py import (
         WebSocketDataQueue as WebSocketDataQueuePython,
         WebSocketReader as WebSocketReaderPython,

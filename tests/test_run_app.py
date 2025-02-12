@@ -1050,7 +1050,7 @@ class TestShutdown:
         async def test() -> None:
             await asyncio.sleep(0.5)
             async with ClientSession() as sess:
-                for _ in range(5):  # pragma: no cover
+                for _ in range(5):  # Retry for flaky tests  # pragma: no cover
                     try:
                         with pytest.raises(asyncio.TimeoutError):
                             async with sess.get(
