@@ -186,6 +186,59 @@ async def test_keepalive_after_empty_body_status_stream_response(
     assert cnt_conn_reuse == 1
 
 
+@pytest.mark.xfail(reason="Connection should be reused (#10325)")
+async def test_keepalive_post_empty_bytes(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=await request.read())
+
+    cnt_conn_reuse = 0
+
+    async def on_reuseconn(session: object, ctx: object, params: object) -> None:
+        nonlocal cnt_conn_reuse
+        cnt_conn_reuse += 1
+
+    trace_config1 = aiohttp.TraceConfig()
+    trace_config1._on_connection_reuseconn.append(on_reuseconn)
+
+    app1 = web.Application()
+    app1.router.add_route("POST", "/", handler)
+
+    connector1 = aiohttp.TCPConnector(limit=1)
+    client1 = await aiohttp_client(
+        app1, connector=connector1, trace_configs=[trace_config1]
+    )
+
+    resp1 = await client1.post("/", data=io.BytesIO(b"1"))
+    assert await resp1.read() == b"1"
+    resp2 = await client1.post("/", data=io.BytesIO(b"2"))
+    assert await resp2.read() == b"2"
+
+    assert cnt_conn_reuse == 1
+
+    trace_config2 = aiohttp.TraceConfig()
+    trace_config2._on_connection_reuseconn.append(on_reuseconn)
+
+    app2 = web.Application()
+    app2.router.add_route("POST", "/", handler)
+
+    connector2 = aiohttp.TCPConnector(limit=1)
+    client2 = await aiohttp_client(
+        app2, connector=connector2, trace_configs=[trace_config2]
+    )
+
+    resp3 = await client2.post("/", data=io.BytesIO(b"3"))
+    assert await resp3.read() == b"3"
+    resp4 = await client2.post("/", data=io.BytesIO(b"4"))
+    assert await resp4.read() == b"4"
+
+    assert cnt_conn_reuse == 2
+
+    resp5 = await client2.post("/", data=io.BytesIO(b"5"))
+    assert await resp5.read() == b"5"
+
+    assert cnt_conn_reuse == 3
+
+
 async def test_keepalive_response_released(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()
