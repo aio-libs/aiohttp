@@ -1,4 +1,5 @@
 aiodns
+blockbuster
 freezegun
 mypy; implementation_name == "cpython"
 pre-commit

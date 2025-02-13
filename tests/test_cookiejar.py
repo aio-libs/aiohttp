@@ -185,7 +185,7 @@ async def test_constructor_with_expired(
     assert jar_cookies != expected_cookies
 
 
-async def test_save_load(
+def test_save_load(
     tmp_path: Path,
     loop: asyncio.AbstractEventLoop,
     cookies_to_send: SimpleCookie,
