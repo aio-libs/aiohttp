@@ -949,7 +949,7 @@ class View(AbstractView):
             self._raise_allowed_methods()
         return await method()
 
-    def __await__(self) -> Generator[Any, None, StreamResponse]:
+    def __await__(self) -> Generator[None, None, StreamResponse]:
         return self._iter().__await__()
 
     def _raise_allowed_methods(self) -> NoReturn:

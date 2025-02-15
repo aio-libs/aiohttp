@@ -442,7 +442,7 @@ mixed_bindings_test_params = [test[1:] for test in mixed_bindings_tests]
     mixed_bindings_test_params,
     ids=mixed_bindings_test_ids,
 )
-def test_run_app_mixed_bindings(
+def test_run_app_mixed_bindings(  # type: ignore[misc]
     run_app_kwargs: Dict[str, Any],
     expected_server_calls: List[mock._Call],
     expected_unix_server_calls: List[mock._Call],

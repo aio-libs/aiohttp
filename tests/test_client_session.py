@@ -62,7 +62,7 @@ def connector(
 
 
 @pytest.fixture
-def create_session(
+def create_session(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
 ) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
@@ -78,7 +78,7 @@ def create_session(
 
 
 @pytest.fixture
-def session(
+def session(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
     loop: asyncio.AbstractEventLoop,
 ) -> ClientSession:
@@ -531,7 +531,7 @@ async def test_close_conn_on_error(
 
 
 @pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss"])
-async def test_ws_connect_allowed_protocols(
+async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
     create_mocked_conn: Callable[[], ResponseHandler],
     protocol: str,
@@ -593,7 +593,7 @@ async def test_ws_connect_allowed_protocols(
 
 
 @pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss", "unix"])
-async def test_ws_connect_unix_socket_allowed_protocols(
+async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
     create_mocked_conn: Callable[[], ResponseHandler],
     protocol: str,
@@ -1159,7 +1159,7 @@ async def test_requote_redirect_url_default_disable() -> None:
         ),
     ],
 )
-async def test_build_url_returns_expected_url(
+async def test_build_url_returns_expected_url(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
     base_url: Union[URL, str, None],
     url: Union[URL, str],

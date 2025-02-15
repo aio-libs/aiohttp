@@ -149,7 +149,7 @@ class BaseTestServer(ABC, Generic[_Request]):
         await site.start()
         server = site._server
         assert server is not None
-        sockets = server.sockets  # type: ignore[attr-defined]
+        sockets = server.sockets
         assert sockets is not None
         self.port = sockets[0].getsockname()[1]
         if not self.scheme:
@@ -157,8 +157,9 @@ class BaseTestServer(ABC, Generic[_Request]):
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod
-    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:
+    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:  # type: ignore[misc]
         """Return a new runner for the server."""
+        # TODO(PY311): Use Unpack to specify Server kwargs.
 
     def make_url(self, path: StrOrURL) -> URL:
         assert self._root is not None
@@ -232,6 +233,7 @@ class TestServer(BaseTestServer[Request]):
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(self, **kwargs: Any) -> AppRunner:
+        # TODO(PY311): Use Unpack to specify Server kwargs.
         return AppRunner(self.app, **kwargs)
 
 
@@ -249,6 +251,7 @@ class RawTestServer(BaseTestServer[BaseRequest]):
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(self, **kwargs: Any) -> ServerRunner:
+        # TODO(PY311): Use Unpack to specify Server kwargs.
         srv = Server(self._handler, **kwargs)
         return ServerRunner(srv, **kwargs)
 
@@ -264,7 +267,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
     __test__ = False
 
     @overload
-    def __init__(
+    def __init__(  # type: ignore[misc]
         self: "TestClient[Request, Application]",
         server: TestServer,
         *,
@@ -272,7 +275,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         **kwargs: Any,
     ) -> None: ...
     @overload
-    def __init__(
+    def __init__(  # type: ignore[misc]
         self: "TestClient[_Request, None]",
         server: BaseTestServer[_Request],
         *,
@@ -286,6 +289,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         cookie_jar: Optional[AbstractCookieJar] = None,
         **kwargs: Any,
     ) -> None:
+        # TODO(PY311): Use Unpack to specify ClientSession kwargs.
         if not isinstance(server, BaseTestServer):
             raise TypeError(
                 "server must be TestServer instance, found type: %r" % type(server)
