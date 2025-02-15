@@ -1,6 +1,5 @@
 import abc
 import dataclasses
-import os  # noqa
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -48,7 +47,7 @@ __all__ = (
 class AbstractRouteDef(abc.ABC):
     @abc.abstractmethod
     def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
-        pass  # pragma: no cover
+        """Register itself into the given router."""
 
 
 _HandlerType = Union[Type[AbstractView], Handler]

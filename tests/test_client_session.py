@@ -98,21 +98,21 @@ def params() -> _Params:
 
 
 async def test_close_coro(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session()
     await session.close()
 
 
 async def test_init_headers_simple_dict(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     assert sorted(session.headers.items()) == ([("h1", "header1"), ("h2", "header2")])
 
 
 async def test_init_headers_list_of_tuples(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(
         headers=[("h1", "header1"), ("h2", "header2"), ("h3", "header3")]
@@ -123,7 +123,7 @@ async def test_init_headers_list_of_tuples(
 
 
 async def test_init_headers_MultiDict(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(
         headers=MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
@@ -134,7 +134,7 @@ async def test_init_headers_MultiDict(
 
 
 async def test_init_headers_list_of_tuples_with_duplicates(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(
         headers=[("h1", "header11"), ("h2", "header21"), ("h1", "header12")]
@@ -145,7 +145,7 @@ async def test_init_headers_list_of_tuples_with_duplicates(
 
 
 async def test_init_cookies_with_simple_dict(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(cookies={"c1": "cookie1", "c2": "cookie2"})
     cookies = session.cookie_jar.filter_cookies(URL())
@@ -155,7 +155,7 @@ async def test_init_cookies_with_simple_dict(
 
 
 async def test_init_cookies_with_list_of_tuples(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(cookies=[("c1", "cookie1"), ("c2", "cookie2")])
 
@@ -166,7 +166,7 @@ async def test_init_cookies_with_list_of_tuples(
 
 
 async def test_merge_headers(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     # Check incoming simple dict
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
@@ -177,7 +177,7 @@ async def test_merge_headers(
 
 
 async def test_merge_headers_with_multi_dict(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers(MultiDict([("h1", "h1")]))
@@ -186,7 +186,7 @@ async def test_merge_headers_with_multi_dict(
 
 
 async def test_merge_headers_with_list_of_tuples(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers([("h1", "h1")])
@@ -1049,7 +1049,7 @@ async def test_client_session_timeout_default_args(
 
 
 async def test_client_session_timeout_zero(
-    create_mocked_conn: Callable[[], ResponseHandler]
+    create_mocked_conn: Callable[[], ResponseHandler],
 ) -> None:
     async def create_connection(
         req: object, traces: object, timeout: object

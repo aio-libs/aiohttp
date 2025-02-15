@@ -670,7 +670,6 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     ) -> Tuple[List[Tuple[RawResponseMessage, StreamReader]], bool, bytes]:
         if SEP is None:
             SEP = b"\r\n" if DEBUG else b"\n"
-            assert SEP is not None
         return super().feed_data(data, SEP, *args, **kwargs)
 
     def parse_message(self, lines: List[bytes]) -> RawResponseMessage:
@@ -933,7 +932,7 @@ class DeflateBuffer:
 
         self.decompressor: Union[BrotliDecompressor, ZLibDecompressor]
         if encoding == "br":
-            if not HAS_BROTLI:  # pragma: no cover
+            if not HAS_BROTLI:
                 raise ContentEncodingError(
                     "Can not decode content-encoding: brotli (br). "
                     "Please install `Brotli`"
@@ -1004,7 +1003,7 @@ HttpResponseParserPy = HttpResponseParser
 RawRequestMessagePy = RawRequestMessage
 RawResponseMessagePy = RawResponseMessage
 
-try:
+with suppress(ImportError):
     if not NO_EXTENSIONS:
         from ._http_parser import (  # type: ignore[import-not-found,no-redef]
             HttpRequestParser,
@@ -1017,5 +1016,3 @@ try:
         HttpResponseParserC = HttpResponseParser
         RawRequestMessageC = RawRequestMessage
         RawResponseMessageC = RawResponseMessage
-except ImportError:  # pragma: no cover
-    pass

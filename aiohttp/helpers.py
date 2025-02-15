@@ -214,7 +214,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     else:
         try:
             home_dir = Path.home()
-        except RuntimeError as e:  # pragma: no cover
+        except RuntimeError as e:
             # if pathlib can't resolve home, it may raise a RuntimeError
             client_logger.debug(
                 "Could not resolve home directory when "
@@ -776,7 +776,7 @@ class ErrorableProtocol(Protocol):
         self,
         exc: Union[Type[BaseException], BaseException],
         exc_cause: BaseException = ...,
-    ) -> None: ...  # pragma: no cover
+    ) -> None: ...
 
 
 def set_exception(

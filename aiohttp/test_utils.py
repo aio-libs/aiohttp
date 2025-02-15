@@ -156,10 +156,10 @@ class BaseTestServer(ABC, Generic[_Request]):
             self.scheme = "https" if self._ssl else "http"
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
-    @abstractmethod  # pragma: no cover
+    @abstractmethod
     async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:  # type: ignore[misc]
+        """Return a new runner for the server."""
         # TODO(PY311): Use Unpack to specify Server kwargs.
-        pass
 
     def make_url(self, path: StrOrURL) -> URL:
         assert self._root is not None

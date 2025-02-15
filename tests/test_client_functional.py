@@ -2895,7 +2895,7 @@ async def test_request_raise_for_status_enabled(aiohttp_server: AiohttpServer) -
 
     with pytest.raises(aiohttp.ClientResponseError):
         async with aiohttp.request("GET", url, raise_for_status=True):
-            assert False, "never executed"  # pragma: no cover
+            assert False
 
 
 async def test_session_raise_for_status_coro(aiohttp_client: AiohttpClient) -> None:
@@ -3414,7 +3414,7 @@ async def test_aiohttp_request_ctx_manager_close_sess_on_error(
 async def test_aiohttp_request_ctx_manager_not_found() -> None:
     with pytest.raises(aiohttp.ClientConnectionError):
         async with aiohttp.request("GET", "http://wrong-dns-name.com"):
-            assert False, "never executed"  # pragma: no cover
+            assert False
 
 
 async def test_raising_client_connector_dns_error_on_dns_failure() -> None:
@@ -3475,20 +3475,6 @@ async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> N
     client = await aiohttp_client(app)
     async with client.get("/") as resp:
         assert resp.status == 200
-
-
-async def test_close_context_manager(aiohttp_client: AiohttpClient) -> None:
-    # a test for backward compatibility with yield from syntax
-    async def handler(request: web.Request) -> NoReturn:
-        assert False
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-
-    client = await aiohttp_client(app)
-    ctx = client.get("/")
-    ctx.close()
-    assert not ctx._coro.cr_running
 
 
 async def test_session_auth(aiohttp_client: AiohttpClient) -> None:

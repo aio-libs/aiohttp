@@ -2,7 +2,7 @@
 import array
 import asyncio
 import zlib
-from typing import Any, Iterable
+from typing import Any, Generator, Iterable
 from unittest import mock
 
 import pytest
@@ -11,6 +11,24 @@ from multidict import CIMultiDict
 from aiohttp import ClientConnectionResetError, http
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.test_utils import make_mocked_coro
+
+
+@pytest.fixture
+def enable_writelines() -> Generator[None, None, None]:
+    with mock.patch("aiohttp.http_writer.SKIP_WRITELINES", False):
+        yield
+
+
+@pytest.fixture
+def disable_writelines() -> Generator[None, None, None]:
+    with mock.patch("aiohttp.http_writer.SKIP_WRITELINES", True):
+        yield
+
+
+@pytest.fixture
+def force_writelines_small_payloads() -> Generator[None, None, None]:
+    with mock.patch("aiohttp.http_writer.MIN_PAYLOAD_FOR_WRITELINES", 1):
+        yield
 
 
 @pytest.fixture
@@ -111,6 +129,7 @@ async def test_write_payload_length(
     assert b"da" == content.split(b"\r\n\r\n", 1)[-1]
 
 
+@pytest.mark.usefixtures("disable_writelines")
 async def test_write_large_payload_deflate_compression_data_in_eof(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -132,6 +151,33 @@ async def test_write_large_payload_deflate_compression_data_in_eof(
     chunks.extend([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
 
     assert all(chunks)
+    content = b"".join(chunks)
+    assert zlib.decompress(content) == (b"data" * 4096) + payload
+
+
+@pytest.mark.usefixtures("enable_writelines")
+async def test_write_large_payload_deflate_compression_data_in_eof_writelines(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+
+    await msg.write(b"data" * 4096)
+    assert transport.write.called  # type: ignore[attr-defined]
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    transport.write.reset_mock()  # type: ignore[attr-defined]
+    assert not transport.writelines.called  # type: ignore[attr-defined]
+
+    # This payload compresses to 20447 bytes
+    payload = b"".join(
+        [bytes((*range(0, i), *range(i, 0, -1))) for i in range(255) for _ in range(64)]
+    )
+    await msg.write_eof(payload)
+    assert not transport.write.called  # type: ignore[attr-defined]
+    assert transport.writelines.called  # type: ignore[attr-defined]
+    chunks.extend(transport.writelines.mock_calls[0][1][0])  # type: ignore[attr-defined]
     content = b"".join(chunks)
     assert zlib.decompress(content) == (b"data" * 4096) + payload
 
@@ -207,6 +253,26 @@ async def test_write_payload_deflate_compression_chunked(
     assert content == expected
 
 
+@pytest.mark.usefixtures("enable_writelines")
+@pytest.mark.usefixtures("force_writelines_small_payloads")
+async def test_write_payload_deflate_compression_chunked_writelines(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    expected = b"2\r\nx\x9c\r\na\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n0\r\n\r\n"
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    await msg.write_eof()
+
+    chunks = [b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert content == expected
+
+
 async def test_write_payload_deflate_and_chunked(
     buf: bytearray,
     protocol: BaseProtocol,
@@ -243,6 +309,26 @@ async def test_write_payload_deflate_compression_chunked_data_in_eof(
     assert content == expected
 
 
+@pytest.mark.usefixtures("enable_writelines")
+@pytest.mark.usefixtures("force_writelines_small_payloads")
+async def test_write_payload_deflate_compression_chunked_data_in_eof_writelines(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    expected = b"2\r\nx\x9c\r\nd\r\nKI,IL\xcdK\x01\x00\x0b@\x02\xd2\r\n0\r\n\r\n"
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    await msg.write_eof(b"end")
+
+    chunks = [b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert content == expected
+
+
 async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -266,6 +352,34 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
             compressed.append(split_body.pop(0))
 
     content = b"".join(compressed)
+    assert zlib.decompress(content) == (b"data" * 4096) + payload
+
+
+@pytest.mark.usefixtures("enable_writelines")
+@pytest.mark.usefixtures("force_writelines_small_payloads")
+async def test_write_large_payload_deflate_compression_chunked_data_in_eof_writelines(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+
+    await msg.write(b"data" * 4096)
+    # This payload compresses to 1111 bytes
+    payload = b"".join([bytes((*range(0, i), *range(i, 0, -1))) for i in range(255)])
+    await msg.write_eof(payload)
+    assert not transport.write.called  # type: ignore[attr-defined]
+
+    chunks = []
+    for write_lines_call in transport.writelines.mock_calls:  # type: ignore[attr-defined]
+        chunked_payload = list(write_lines_call[1][0])[1:]
+        chunked_payload.pop()
+        chunks.extend(chunked_payload)
+
+    assert all(chunks)
+    content = b"".join(chunks)
     assert zlib.decompress(content) == (b"data" * 4096) + payload
 
 
