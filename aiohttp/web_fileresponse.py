@@ -105,12 +105,12 @@ class FileResponse(StreamResponse):
             self._path = pathlib.Path(path)
         self._chunk_size = chunk_size
 
-    def _seek_and_read(self, fobj: IO[Any], offset: int, chunk_size: int) -> bytes:
+    def _seek_and_read(self, fobj: IO[bytes], offset: int, chunk_size: int) -> bytes:
         fobj.seek(offset)
         return fobj.read(chunk_size)  # type: ignore[no-any-return]
 
     async def _sendfile_fallback(
-        self, writer: AbstractStreamWriter, fobj: IO[Any], offset: int, count: int
+        self, writer: AbstractStreamWriter, fobj: IO[bytes], offset: int, count: int
     ) -> AbstractStreamWriter:
         # To keep memory usage low,fobj is transferred in chunks
         # controlled by the constructor's chunk_size argument.
@@ -131,7 +131,7 @@ class FileResponse(StreamResponse):
         return writer
 
     async def _sendfile(
-        self, request: "BaseRequest", fobj: IO[Any], offset: int, count: int
+        self, request: "BaseRequest", fobj: IO[bytes], offset: int, count: int
     ) -> AbstractStreamWriter:
         writer = await super().prepare(request)
         assert writer is not None
