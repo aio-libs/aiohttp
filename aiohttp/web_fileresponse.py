@@ -97,6 +97,7 @@ class FileResponse(StreamResponse):
         headers: Optional[LooseHeaders] = None,
     ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
+        # either set self._io or self._path
         if isinstance(path, io.BufferedReader):
             self._io = path
             self._path = None
@@ -193,6 +194,10 @@ class FileResponse(StreamResponse):
         file_path, st, file_encoding = self._get_file_path_stat_encoding(
             accept_encoding
         )
+        # file_path is None if the path is not a regular file
+        # it is also None if self._io is used instead of self._path
+        if file_path is None and self._io is None:
+            return _FileResponseResult.NOT_ACCEPTABLE, None, st, None
 
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
 
@@ -222,10 +227,9 @@ class FileResponse(StreamResponse):
         ):
             return _FileResponseResult.NOT_MODIFIED, None, st, file_encoding
 
+        # if file_path is None at this stage, self._io is set or NOT_ACCEPTABLE
+        # would have been returned earlier
         if file_path is None:
-            if self._io is None:
-                return _FileResponseResult.NOT_ACCEPTABLE, None, st, None
-
             return _FileResponseResult.SEND_FILE, self._io, st, file_encoding
 
         fobj = file_path.open("rb")
@@ -240,6 +244,7 @@ class FileResponse(StreamResponse):
     def _get_file_path_stat_encoding(
         self, accept_encoding: str
     ) -> Tuple[Optional[pathlib.Path], os.stat_result, Optional[str]]:
+        # self._io used instead of self._path
         if self._path is None:
             assert self._io is not None
             return None, os.stat(self._io.fileno()), None
@@ -396,6 +401,8 @@ class FileResponse(StreamResponse):
                     guesser = CONTENT_TYPES.guess_type
                 self.content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
             else:
+                # content-type cannot be determined if self._io is used
+                # instead of self._path
                 self.content_type = FALLBACK_CONTENT_TYPE
 
         if file_encoding:
