@@ -90,15 +90,19 @@ class FileResponse(StreamResponse):
 
     def __init__(
         self,
-        path: PathLike,
+        path: PathLike | io.BufferedReader,
         chunk_size: int = 256 * 1024,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: Optional[LooseHeaders] = None,
+        headers: Optional[LooseHeaders] = None
     ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
-
-        self._path = pathlib.Path(path)
+        if isinstance(path, io.BufferedReader):
+            self._io = path
+            self._path = None
+        else:
+            self._io = None
+            self._path = pathlib.Path(path)
         self._chunk_size = chunk_size
 
     def _seek_and_read(self, fobj: IO[Any], offset: int, chunk_size: int) -> bytes:
@@ -189,8 +193,6 @@ class FileResponse(StreamResponse):
         file_path, st, file_encoding = self._get_file_path_stat_encoding(
             accept_encoding
         )
-        if not file_path:
-            return _FileResponseResult.NOT_ACCEPTABLE, None, st, None
 
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
 
@@ -220,6 +222,12 @@ class FileResponse(StreamResponse):
         ):
             return _FileResponseResult.NOT_MODIFIED, None, st, file_encoding
 
+        if file_path is None:
+            if self._io is None:
+                return _FileResponseResult.NOT_ACCEPTABLE, None, st, None
+
+            return _FileResponseResult.SEND_FILE, self._io, st, file_encoding
+
         fobj = file_path.open("rb")
         with suppress(OSError):
             # fstat() may not be available on all platforms
@@ -232,6 +240,10 @@ class FileResponse(StreamResponse):
     def _get_file_path_stat_encoding(
         self, accept_encoding: str
     ) -> Tuple[Optional[pathlib.Path], os.stat_result, Optional[str]]:
+        if self._path is None:
+            assert self._io is not None
+            return None, os.stat(self._io.fileno()), None
+
         file_path = self._path
         for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
             if file_encoding not in accept_encoding:
@@ -377,11 +389,14 @@ class FileResponse(StreamResponse):
         # extension of the request path. The encoding returned by guess_type
         #  can be ignored since the map was cleared above.
         if hdrs.CONTENT_TYPE not in self._headers:
-            if sys.version_info >= (3, 13):
-                guesser = CONTENT_TYPES.guess_file_type
+            if self._path is not None:
+                if sys.version_info >= (3, 13):
+                    guesser = CONTENT_TYPES.guess_file_type
+                else:
+                    guesser = CONTENT_TYPES.guess_type
+                self.content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
             else:
-                guesser = CONTENT_TYPES.guess_type
-            self.content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
+                self.content_type = FALLBACK_CONTENT_TYPE
 
         if file_encoding:
             self._headers[hdrs.CONTENT_ENCODING] = file_encoding
