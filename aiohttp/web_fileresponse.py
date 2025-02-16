@@ -94,7 +94,7 @@ class FileResponse(StreamResponse):
         chunk_size: int = 256 * 1024,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: Optional[LooseHeaders] = None
+        headers: Optional[LooseHeaders] = None,
     ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
         if isinstance(path, io.BufferedReader):
