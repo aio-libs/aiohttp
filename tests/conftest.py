@@ -222,6 +222,7 @@ def start_connection() -> Iterator[mock.Mock]:
         "aiohttp.connector.aiohappyeyeballs.start_connection",
         autospec=True,
         spec_set=True,
+        return_value=mock.create_autospec(socket.socket, spec_set=True, instance=True),
     ) as start_connection_mock:
         yield start_connection_mock
 
