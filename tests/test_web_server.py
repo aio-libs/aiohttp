@@ -233,6 +233,24 @@ async def test_raw_server_do_not_swallow_exceptions(aiohttp_raw_server, aiohttp_
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
 
+async def test_raw_server_does_not_swallow_base_exceptions(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    class UnexpectedException(BaseException):
+        """Dummy base exception."""
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise UnexpectedException()
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+    server = await aiohttp_raw_server(handler)
+    cli = await aiohttp_client(server)
+
+    with pytest.raises(client.ServerDisconnectedError):
+        await cli.get("/path/to", timeout=client.ClientTimeout(10))
+
+
 async def test_raw_server_cancelled_in_write_eof(aiohttp_raw_server, aiohttp_client):
     async def handler(request):
         resp = web.Response(text=str(request.rel_url))
