@@ -652,17 +652,19 @@ async def test_tcp_connector_closes_socket_on_error(
     req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
 
     conn = aiohttp.TCPConnector()
-    with mock.patch.object(
-        conn._loop,
-        "create_connection",
-        autospec=True,
-        spec_set=True,
-        side_effect=ValueError,
+    with (
+        mock.patch.object(
+            conn._loop,
+            "create_connection",
+            autospec=True,
+            spec_set=True,
+            side_effect=ValueError,
+        ),
+        pytest.raises(ValueError),
     ):
-        with pytest.raises(ValueError):
-            await conn.connect(req, [], ClientTimeout())
+        await conn.connect(req, [], ClientTimeout())
 
-        assert start_connection.return_value.close.called
+    assert start_connection.return_value.close.called
 
     await conn.close()
 
