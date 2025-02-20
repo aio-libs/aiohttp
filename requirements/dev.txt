@@ -137,7 +137,7 @@ propcache==0.2.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-proxy-py==2.4.9
+proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
