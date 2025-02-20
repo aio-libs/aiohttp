@@ -200,7 +200,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         sys.exit(1)
 
     @staticmethod
-    def _create_ssl_context(cfg: Any) -> "SSLContext":
+    def _create_ssl_context(cfg: Any) -> "SSLContext":  # type: ignore[misc]
         """Creates SSLContext instance for usage in asyncio.create_server.
 
         See ssl.SSLSocket.__init__ for more details.
