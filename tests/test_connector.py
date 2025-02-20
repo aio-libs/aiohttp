@@ -617,6 +617,29 @@ async def test_tcp_connector_certificate_error(
     await conn.close()
 
 
+async def test_tcp_connector_closes_socket_on_error(
+    loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
+) -> None:
+    req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
+
+    conn = aiohttp.TCPConnector()
+    with (
+        mock.patch.object(
+            conn._loop,
+            "create_connection",
+            autospec=True,
+            spec_set=True,
+            side_effect=ValueError,
+        ),
+        pytest.raises(ValueError),
+    ):
+        await conn.connect(req, [], ClientTimeout())
+
+    assert start_connection.return_value.close.called
+
+    await conn.close()
+
+
 async def test_tcp_connector_server_hostname_default(
     loop: Any, start_connection: mock.AsyncMock
 ) -> None:

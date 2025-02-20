@@ -207,6 +207,7 @@ class TestProxy(unittest.TestCase):
         "aiohttp.connector.aiohappyeyeballs.start_connection",
         autospec=True,
         spec_set=True,
+        return_value=mock.create_autospec(socket.socket, spec_set=True, instance=True),
     )
     def test_proxy_connection_error(self, start_connection: Any) -> None:
         async def make_conn():
