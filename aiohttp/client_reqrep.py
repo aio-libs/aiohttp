@@ -322,7 +322,7 @@ class ClientRequest:
         return self._ssl
 
     @property
-    def connection_key(self) -> ConnectionKey:
+    def connection_key(self) -> ConnectionKey:  # type: ignore[misc]
         if proxy_headers := self.proxy_headers:
             h: Optional[int] = hash(tuple(proxy_headers.items()))
         else:

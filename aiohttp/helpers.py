@@ -145,7 +145,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         return super().__new__(cls, login, password, encoding)
 
     @classmethod
-    def decode(cls, auth_header: str, encoding: str = "latin1") -> "BasicAuth":
+    def decode(cls, auth_header: str, encoding: str = "latin1") -> "BasicAuth":  # type: ignore[misc]
         """Create a BasicAuth object from an Authorization HTTP header."""
         try:
             auth_type, encoded_credentials = auth_header.split(" ", 1)
@@ -174,7 +174,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         return cls(username, password, encoding=encoding)
 
     @classmethod
-    def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:
+    def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:  # type: ignore[misc]
         """Create BasicAuth from url."""
         if not isinstance(url, URL):
             raise TypeError("url should be yarl.URL instance")
@@ -245,7 +245,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
 
 
 @frozen_dataclass_decorator
-class ProxyInfo:
+class ProxyInfo:  # type: ignore[misc]
     proxy: URL
     proxy_auth: Optional[BasicAuth]
 
@@ -870,7 +870,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
     def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any: ...
+    def __getitem__(self, key: str) -> Any: ...  # type: ignore[misc]
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
@@ -887,7 +887,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
     def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any: ...
+    def get(self, key: str, default: Any = ...) -> Any: ...  # type: ignore[misc]
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         try:
