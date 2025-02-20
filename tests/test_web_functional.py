@@ -414,7 +414,7 @@ async def test_post_single_file(aiohttp_client: AiohttpClient) -> None:
         assert ["data.unknown_mime_type"] == list(data.keys())
         for fs in data.values():
             assert isinstance(fs, aiohttp.web_request.FileField)
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -441,9 +441,9 @@ async def test_files_upload_with_same_key(aiohttp_client: AiohttpClient) -> None
             assert isinstance(_file, aiohttp.web_request.FileField)
             assert not _file.file.closed
             if _file.filename == "test1.jpeg":
-                assert _file.file.read() == b"binary data 1"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 1"
             if _file.filename == "test2.jpeg":
-                assert _file.file.read() == b"binary data 2"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 2"
             file_names.add(_file.filename)
             _file.file.close()
         assert len(files) == 2
@@ -483,7 +483,7 @@ async def test_post_files(aiohttp_client: AiohttpClient) -> None:
         assert ["data.unknown_mime_type", "conftest.py"] == list(data.keys())
         for fs in data.values():
             assert isinstance(fs, aiohttp.web_request.FileField)
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -762,7 +762,7 @@ async def test_upload_file(aiohttp_client: AiohttpClient) -> None:
         form = await request.post()
         form_file = form["file"]
         assert isinstance(form_file, aiohttp.web_request.FileField)
-        raw_data = form_file.file.read()
+        raw_data = await asyncio.to_thread(form_file.file.read)
         form_file.file.close()
         assert data == raw_data
         return web.Response()
@@ -787,7 +787,7 @@ async def test_upload_file_object(aiohttp_client: AiohttpClient) -> None:
         form = await request.post()
         form_file = form["file"]
         assert isinstance(form_file, aiohttp.web_request.FileField)
-        raw_data = form_file.file.read()
+        raw_data = await asyncio.to_thread(form_file.file.read)
         form_file.file.close()
         assert data == raw_data
         return web.Response()
@@ -914,10 +914,10 @@ async def test_response_with_async_gen(
 
     async def stream(f_name: pathlib.Path) -> AsyncIterator[bytes]:
         with f_name.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Length": str(data_size)}
@@ -946,10 +946,10 @@ async def test_response_with_async_gen_no_params(
 
     async def stream() -> AsyncIterator[bytes]:
         with fname.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Length": str(data_size)}
