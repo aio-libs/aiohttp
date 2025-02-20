@@ -57,7 +57,7 @@ pluggy==1.5.0
     # via pytest
 pre-commit==4.1.0
     # via -r requirements/lint.in
-proxy-py==2.4.9
+proxy-py==2.4.10
     # via -r requirements/lint.in
 pycares==4.5.0
     # via aiodns
