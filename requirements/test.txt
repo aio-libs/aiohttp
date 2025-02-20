@@ -85,7 +85,7 @@ pydantic-core==2.27.2
     # via pydantic
 pygments==2.19.1
     # via rich
-pytest==8.1.1
+pytest==8.3.4
     # via
     #   -r requirements/test.in
     #   pytest-codspeed
