@@ -1128,7 +1128,8 @@ is controlled by *force_close* constructor's parameter).
                  resolver=None, keepalive_timeout=sentinel, \
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
-                 happy_eyeballs_delay=0.25, interleave=None, loop=None)
+                 happy_eyeballs_delay=0.25, interleave=None, loop=None, \
+                 tcp_sockopts=[])
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1248,6 +1249,12 @@ is controlled by *force_close* constructor's parameter).
       ``1`` if it is.
 
         .. versionadded:: 3.10
+
+   :param list tcp_sockopts: options applied to the socket when a connection is
+      created. This should be a list of 3-tuples, each a (level, optname, value).
+      Each tuple is deconstructed and passed verbatim to `<socket>.setsockopt`.
+
+        .. versionadded:: 3.12
 
    .. attribute:: family
 
