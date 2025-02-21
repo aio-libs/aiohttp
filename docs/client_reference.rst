@@ -1251,8 +1251,8 @@ is controlled by *force_close* constructor's parameter).
         .. versionadded:: 3.10
 
    :param list tcp_sockopts: options applied to the socket when a connection is
-      created. This should be a list of 3-tuples, each a (level, optname, value).
-      Each tuple is deconstructed and passed verbatim to `<socket>.setsockopt`.
+      created. This should be a list of 3-tuples, each a ``(level, optname, value)``.
+      Each tuple is deconstructed and passed verbatim to ``<socket>.setsockopt``.
 
         .. versionadded:: 3.12
 
