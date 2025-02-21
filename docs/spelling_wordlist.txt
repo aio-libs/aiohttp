@@ -219,7 +219,6 @@ nowait
 OAuth
 Online
 optimizations
-optname
 os
 outcoming
 Overridable
@@ -297,7 +296,6 @@ shourtcuts
 skipuntil
 Skyscanner
 SocketSocketTransport
-sockopts
 ssl
 SSLContext
 startup
