@@ -3581,6 +3581,29 @@ def test_connector_multiple_event_loop() -> None:
     assert raw_response_list == [True, True]
 
 
+async def test_tcp_connector_setsockopts(
+    loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
+) -> None:
+    """Check that sockopts get passed to socket"""
+    conn = aiohttp.TCPConnector(
+        tcp_sockopts=[(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 2)]
+    )
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            start_connection.return_value = s
+            create_connection.return_value = mock.Mock(), mock.Mock()
+
+            req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
+
+            with closing(await conn.connect(req, [], ClientTimeout())):
+                assert s.getsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT) == 2
+
+    await conn.close()
+
+
 def test_default_ssl_context_creation_without_ssl() -> None:
     """Verify _make_ssl_context does not raise when ssl is not available."""
     with mock.patch.object(connector_module, "ssl", None):

@@ -461,6 +461,21 @@ If your HTTP server uses UNIX domain sockets you can use
   session = aiohttp.ClientSession(connector=conn)
 
 
+Setting socket options
+^^^^^^^^^^^^^^^^^^^^^^
+
+Socket options passed to the :class:`~aiohttp.TCPConnector` will be passed
+to the underlying socket when creating a connection. For example, we may
+want to change the conditions under which we consider a connection dead.
+The following would change that to 9*7200 = 18 hours::
+
+  import socket
+
+  conn = aiohttp.TCPConnector(tcp_sockopts=[(socket.SOL_SOCKET,  socket.SO_KEEPALIVE,  True),
+                                            (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE,  7200),
+                                            (socket.IPPROTO_TCP, socket.TCP_KEEPCNT,      9) ])
+
+
 Named pipes in Windows
 ^^^^^^^^^^^^^^^^^^^^^^
 
