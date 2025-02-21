@@ -10,7 +10,7 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
-blockbuster==1.5.21
+blockbuster==1.5.22
     # via -r requirements/lint.in
 cffi==1.17.1
     # via
