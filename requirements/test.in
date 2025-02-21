@@ -1,5 +1,6 @@
 -r base.in
 
+blockbuster
 coverage
 freezegun
 mypy; implementation_name == "cpython"
