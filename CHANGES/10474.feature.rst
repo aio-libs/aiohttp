@@ -1,0 +1,2 @@
+Added ``tcp_sockopts`` to ``TCPConnector`` to allow specifying custom socket options
+-- by :user:`TimMenninger`.
