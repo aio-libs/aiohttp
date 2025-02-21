@@ -60,7 +60,6 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             bb.functions[func].can_block_in(
                 "aiohttp/web_urldispatcher.py", "add_static"
             )
-        bb.functions["os.getcwd"].can_block_in("coverage/control.py", "_should_trace")
         yield
 
 
