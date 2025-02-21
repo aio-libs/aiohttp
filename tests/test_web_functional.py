@@ -403,7 +403,7 @@ async def test_post_single_file(aiohttp_client) -> None:
         data = await request.post()
         assert ["data.unknown_mime_type"] == list(data.keys())
         for fs in data.values():
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -429,9 +429,9 @@ async def test_files_upload_with_same_key(aiohttp_client) -> None:
         for _file in files:
             assert not _file.file.closed
             if _file.filename == "test1.jpeg":
-                assert _file.file.read() == b"binary data 1"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 1"
             if _file.filename == "test2.jpeg":
-                assert _file.file.read() == b"binary data 2"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 2"
             file_names.add(_file.filename)
             _file.file.close()
         assert len(files) == 2
@@ -471,7 +471,7 @@ async def test_post_files(aiohttp_client) -> None:
         data = await request.post()
         assert ["data.unknown_mime_type", "conftest.py"] == list(data.keys())
         for fs in data.values():
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -757,7 +757,7 @@ async def test_upload_file(aiohttp_client) -> None:
 
     async def handler(request):
         form = await request.post()
-        raw_data = form["file"].file.read()
+        raw_data = await asyncio.to_thread(form["file"].file.read)
         form["file"].file.close()
         assert data == raw_data
         return web.Response()
@@ -780,7 +780,7 @@ async def test_upload_file_object(aiohttp_client) -> None:
 
     async def handler(request):
         form = await request.post()
-        raw_data = form["file"].file.read()
+        raw_data = await asyncio.to_thread(form["file"].file.read)
         form["file"].file.close()
         assert data == raw_data
         return web.Response()
@@ -906,10 +906,10 @@ async def test_response_with_async_gen(aiohttp_client, fname) -> None:
 
     async def stream(f_name):
         with f_name.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request):
         headers = {"Content-Length": str(data_size)}
@@ -940,10 +940,10 @@ async def test_response_with_streamer(aiohttp_client, fname) -> None:
         @aiohttp.streamer
         async def stream(writer, f_name):
             with f_name.open("rb") as f:
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
                 while data:
                     await writer.write(data)
-                    data = f.read(100)
+                    data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request):
         headers = {"Content-Length": str(data_size)}
@@ -969,10 +969,10 @@ async def test_response_with_async_gen_no_params(aiohttp_client, fname) -> None:
 
     async def stream():
         with fname.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request):
         headers = {"Content-Length": str(data_size)}
@@ -1003,10 +1003,10 @@ async def test_response_with_streamer_no_params(aiohttp_client, fname) -> None:
         @aiohttp.streamer
         async def stream(writer):
             with fname.open("rb") as f:
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
                 while data:
                     await writer.write(data)
-                    data = f.read(100)
+                    data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request):
         headers = {"Content-Length": str(data_size)}
