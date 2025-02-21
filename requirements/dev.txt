@@ -26,6 +26,10 @@ attrs==25.1.0
     # via -r requirements/runtime-deps.in
 babel==2.17.0
     # via sphinx
+blockbuster==1.5.22
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 build==1.2.2.post1
@@ -68,6 +72,8 @@ execnet==2.1.1
     # via pytest-xdist
 filelock==3.17.0
     # via virtualenv
+forbiddenfruit==0.1.4
+    # via blockbuster
 freezegun==1.5.1
     # via
     #   -r requirements/lint.in
@@ -129,7 +135,7 @@ pluggy==1.5.0
     # via pytest
 pre-commit==4.1.0
     # via -r requirements/lint.in
-propcache==0.2.1
+propcache==0.3.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
