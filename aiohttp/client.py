@@ -664,11 +664,14 @@ class ClientSession:
                         if req_cookies:
                             all_cookies.load(req_cookies)
 
+                    proxy_: Optional[URL] = None
                     if proxy is not None:
-                        proxy = URL(proxy)
+                        proxy_ = URL(proxy)
                     elif self._trust_env:
                         with suppress(LookupError):
-                            proxy, proxy_auth = get_env_proxy_for_url(url)
+                            proxy_, proxy_auth = await asyncio.to_thread(
+                                get_env_proxy_for_url, url
+                            )
 
                     req = self._request_class(
                         method,
@@ -685,7 +688,7 @@ class ClientSession:
                         expect100=expect100,
                         loop=self._loop,
                         response_class=self._response_class,
-                        proxy=proxy,
+                        proxy=proxy_,
                         proxy_auth=proxy_auth,
                         timer=timer,
                         session=self,
