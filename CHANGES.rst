@@ -10,6 +10,59 @@
 
 .. towncrier release notes start
 
+3.11.13 (2025-02-24)
+====================
+
+Bug fixes
+---------
+
+- Avoid break statement inside the finally block in :py:class:`~aiohttp.web.RequestHandler`
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10434`.
+
+
+
+- Changed connection creation to explicitly close sockets if an exception is raised in the event loop's ``create_connection`` method -- by :user:`top-oai`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10464`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Fixed test ``test_write_large_payload_deflate_compression_data_in_eof_writelines`` failing with Python 3.12.9+ or 3.13.2+ -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10423`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added human-readable error messages to the exceptions for WebSocket disconnects due to PONG not being received -- by :user:`bdraco`.
+
+  Previously, the error messages were empty strings, which made it hard to determine what went wrong.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10422`.
+
+
+
+
+----
+
+
 3.11.12 (2025-02-05)
 ====================
 
