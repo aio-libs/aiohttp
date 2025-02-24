@@ -194,5 +194,5 @@ install-dev: .develop
 
 .PHONY: sync-direct-runtime-deps
 sync-direct-runtime-deps:
-	@echo Updating 'requirements/runtime-deps.in' from 'setup.cfg'... >&2
+	@echo Updating 'requirements/runtime-deps.in' from 'pyproject.toml'... >&2
 	@python requirements/sync-direct-runtime-deps.py
