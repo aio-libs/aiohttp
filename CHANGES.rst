@@ -16,7 +16,7 @@
 Bug fixes
 ---------
 
-- Avoid break statement inside the finally block in :py:class:`~aiohttp.web.RequestHandler`
+- Removed a break statement inside the finally block in :py:class:`~aiohttp.web.RequestHandler`
   -- by :user:`Cycloctane`.
 
 
