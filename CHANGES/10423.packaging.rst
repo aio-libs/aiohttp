@@ -1,1 +1,0 @@
-Fixed test ``test_write_large_payload_deflate_compression_data_in_eof_writelines`` failing with Python 3.12.9+ or 3.13.2+ -- by :user:`bdraco`.
