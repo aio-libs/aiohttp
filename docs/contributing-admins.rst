@@ -49,7 +49,8 @@ first merge into the newer release branch (e.g. 3.8 into 3.9) and then to master
 
 Back on the original release branch, bump the version number and append ``.dev0`` in ``__init__.py``.
 
-Post the release announcement to social media.
+Post the release announcement to social media:
+ - BlueSky: https://bsky.app/profile/aiohttp.org and re-post to https://bsky.app/profile/aio-libs.org
 
 If doing a minor release:
 
