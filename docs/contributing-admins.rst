@@ -51,6 +51,7 @@ Back on the original release branch, bump the version number and append ``.dev0`
 
 Post the release announcement to social media:
  - BlueSky: https://bsky.app/profile/aiohttp.org and re-post to https://bsky.app/profile/aio-libs.org
+ - Mastodon: https://fosstodon.org/@aio_libs
 
 If doing a minor release:
 
