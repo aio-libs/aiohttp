@@ -14,7 +14,7 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
-blockbuster==1.5.21
+blockbuster==1.5.23
     # via -r requirements/test.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
@@ -69,7 +69,7 @@ packaging==24.2
     #   pytest
 pluggy==1.5.0
     # via pytest
-propcache==0.2.1
+propcache==0.3.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
