@@ -284,7 +284,7 @@ yarl==1.18.3
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.0.1
     # via pip-tools
-setuptools==75.8.1
+setuptools==75.8.2
     # via
     #   incremental
     #   pip-tools
