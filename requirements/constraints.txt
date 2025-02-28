@@ -232,7 +232,7 @@ sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
 sphinxcontrib-spelling==8.0.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
-sphinxcontrib-towncrier==0.4.0a0
+sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
 stamina==24.3.0
     # via cherry-picker
