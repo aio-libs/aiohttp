@@ -507,7 +507,7 @@ async def test_post_data_with_bytesio_file(aiohttp_client: AiohttpClient) -> Non
         assert ["file"] == list(post_data.keys())
         file_field = post_data["file"]
         assert isinstance(file_field, web.FileField)
-        assert data == file_field.file.read()
+        assert data == await asyncio.to_thread(file_field.file.read)
         return web.Response()
 
     app = web.Application()
@@ -1633,16 +1633,16 @@ async def test_POST_DATA_DEFLATE(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_POST_FILES(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
+    content1 = fname.read_bytes()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert isinstance(data["some"], web.FileField)
         assert data["some"].filename == fname.name
-        with fname.open("rb") as f:
-            content1 = f.read()
-        content2 = data["some"].file.read()
-        assert content1 == content2
+        content2 = await asyncio.to_thread(data["some"].file.read)
+        assert content2 == content1
         assert isinstance(data["test"], web.FileField)
-        assert data["test"].file.read() == b"data"
+        assert await asyncio.to_thread(data["test"].file.read) == b"data"
         assert isinstance(data["some"], web.FileField)
         data["some"].file.close()
         data["test"].file.close()
@@ -1662,15 +1662,15 @@ async def test_POST_FILES(aiohttp_client: AiohttpClient, fname: pathlib.Path) ->
 async def test_POST_FILES_DEFLATE(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    content1 = fname.read_bytes()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert isinstance(data["some"], web.FileField)
         assert data["some"].filename == fname.name
-        with fname.open("rb") as f:
-            content1 = f.read()
-        content2 = data["some"].file.read()
+        content2 = await asyncio.to_thread(data["some"].file.read)
         data["some"].file.close()
-        assert content1 == content2
+        assert content2 == content1
         return web.Response()
 
     app = web.Application()
@@ -1722,12 +1722,12 @@ async def test_POST_bytes_too_large(aiohttp_client: AiohttpClient) -> None:
 async def test_POST_FILES_STR(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    content1 = fname.read_bytes().decode()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
-        with fname.open("rb") as f:
-            content1 = f.read().decode()
         content2 = data["some"]
-        assert content1 == content2
+        assert content2 == content1
         return web.Response()
 
     app = web.Application()
@@ -1742,11 +1742,11 @@ async def test_POST_FILES_STR(
 async def test_POST_FILES_STR_SIMPLE(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    content = fname.read_bytes()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.read()
-        with fname.open("rb") as f:
-            content = f.read()
-        assert content == data
+        assert data == content
         return web.Response()
 
     app = web.Application()
@@ -1761,13 +1761,13 @@ async def test_POST_FILES_STR_SIMPLE(
 async def test_POST_FILES_LIST(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    content = fname.read_bytes()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert isinstance(data["some"], web.FileField)
         assert fname.name == data["some"].filename
-        with fname.open("rb") as f:
-            content = f.read()
-        assert content == data["some"].file.read()
+        assert await asyncio.to_thread(data["some"].file.read) == content
         data["some"].file.close()
         return web.Response()
 
@@ -1783,14 +1783,14 @@ async def test_POST_FILES_LIST(
 async def test_POST_FILES_CT(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    content = fname.read_bytes()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert isinstance(data["some"], web.FileField)
         assert fname.name == data["some"].filename
         assert "text/plain" == data["some"].content_type
-        with fname.open("rb") as f:
-            content = f.read()
-        assert content == data["some"].file.read()
+        assert await asyncio.to_thread(data["some"].file.read) == content
         data["some"].file.close()
         return web.Response()
 
@@ -1808,11 +1808,11 @@ async def test_POST_FILES_CT(
 async def test_POST_FILES_SINGLE(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    content = fname.read_bytes().decode()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.text()
-        with fname.open("rb") as f:
-            content = f.read().decode()
-            assert content == data
+        assert data == content
         # if system cannot determine 'text/x-python' MIME type
         # then use 'application/octet-stream' default
         assert request.content_type in [
@@ -1836,11 +1836,11 @@ async def test_POST_FILES_SINGLE(
 async def test_POST_FILES_SINGLE_content_disposition(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    content = fname.read_bytes().decode()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.text()
-        with fname.open("rb") as f:
-            content = f.read().decode()
-            assert content == data
+        assert data == content
         # if system cannot determine 'application/pgp-keys' MIME type
         # then use 'application/octet-stream' default
         assert request.content_type in [
@@ -1868,11 +1868,11 @@ async def test_POST_FILES_SINGLE_content_disposition(
 async def test_POST_FILES_SINGLE_BINARY(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    content = fname.read_bytes()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.read()
-        with fname.open("rb") as f:
-            content = f.read()
-        assert content == data
+        assert data == content
         # if system cannot determine 'application/pgp-keys' MIME type
         # then use 'application/octet-stream' default
         assert request.content_type in [
@@ -1896,7 +1896,7 @@ async def test_POST_FILES_IO(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert isinstance(data["unknown"], web.FileField)
-        assert b"data" == data["unknown"].file.read()
+        assert b"data" == await asyncio.to_thread(data["unknown"].file.read)
         assert data["unknown"].content_type == "application/octet-stream"
         assert data["unknown"].filename == "unknown"
         data["unknown"].file.close()
@@ -1918,7 +1918,7 @@ async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: AiohttpClient) -> None:
         assert isinstance(data["unknown"], web.FileField)
         assert data["unknown"].content_type == "application/octet-stream"
         assert data["unknown"].filename == "unknown"
-        assert data["unknown"].file.read() == b"data"
+        assert await asyncio.to_thread(data["unknown"].file.read) == b"data"
         data["unknown"].file.close()
         assert data.getall("q") == ["t1", "t2"]
 
@@ -1939,6 +1939,8 @@ async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client: AiohttpClient) -> None:
 async def test_POST_FILES_WITH_DATA(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    content = fname.read_bytes()
+
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
         assert data["test"] == "true"
@@ -1949,9 +1951,8 @@ async def test_POST_FILES_WITH_DATA(
             "application/octet-stream",
         ]
         assert data["some"].filename == fname.name
-        with fname.open("rb") as f:
-            assert data["some"].file.read() == f.read()
-            data["some"].file.close()
+        assert await asyncio.to_thread(data["some"].file.read) == content
+        data["some"].file.close()
 
         return web.Response()
 
@@ -1967,13 +1968,13 @@ async def test_POST_FILES_WITH_DATA(
 async def test_POST_STREAM_DATA(
     aiohttp_client: AiohttpClient, fname: pathlib.Path
 ) -> None:
+    expected = fname.read_bytes()
+
     async def handler(request: web.Request) -> web.Response:
         assert request.content_type == "application/octet-stream"
         content = await request.read()
-        with fname.open("rb") as f:
-            expected = f.read()
-            assert request.content_length == len(expected)
-            assert content == expected
+        assert request.content_length == len(expected)
+        assert content == expected
 
         return web.Response()
 
@@ -1986,10 +1987,10 @@ async def test_POST_STREAM_DATA(
 
     async def gen(fname: pathlib.Path) -> AsyncIterator[bytes]:
         with fname.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async with client.post(
         "/", data=gen(fname), headers={"Content-Length": str(data_size)}

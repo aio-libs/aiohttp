@@ -12,6 +12,7 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
+from blockbuster import blockbuster_ctx
 
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.http import WS_KEY
@@ -31,6 +32,35 @@ pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
 
 IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
+
+
+@pytest.fixture(autouse=True)
+def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
+    # No blockbuster for benchmark tests.
+    node = request.node.parent
+    while node:
+        if node.name.startswith("test_benchmarks"):
+            yield
+            return
+        node = node.parent
+    with blockbuster_ctx(
+        "aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]
+    ) as bb:
+        # TODO: Fix blocking call in ClientRequest's constructor.
+        # https://github.com/aio-libs/aiohttp/issues/10435
+        for func in ["io.TextIOWrapper.read", "os.stat"]:
+            bb.functions[func].can_block_in("aiohttp/client_reqrep.py", "update_auth")
+        for func in [
+            "os.getcwd",
+            "os.readlink",
+            "os.stat",
+            "os.path.abspath",
+            "os.path.samestat",
+        ]:
+            bb.functions[func].can_block_in(
+                "aiohttp/web_urldispatcher.py", "add_static"
+            )
+        yield
 
 
 @pytest.fixture
@@ -222,6 +252,7 @@ def start_connection() -> Iterator[mock.Mock]:
         "aiohttp.connector.aiohappyeyeballs.start_connection",
         autospec=True,
         spec_set=True,
+        return_value=mock.create_autospec(socket.socket, spec_set=True, instance=True),
     ) as start_connection_mock:
         yield start_connection_mock
 

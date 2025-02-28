@@ -20,6 +20,7 @@ from typing import (
     DefaultDict,
     Deque,
     Dict,
+    Iterable,
     Iterator,
     List,
     Literal,
@@ -60,6 +61,11 @@ from .helpers import (
     set_result,
 )
 from .resolver import DefaultResolver
+
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer
+else:
+    Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
 
 if TYPE_CHECKING:
     import ssl
@@ -820,6 +826,8 @@ class TCPConnector(BaseConnector):
                            the happy eyeballs algorithm, set to None.
     interleave - “First Address Family Count” as defined in RFC 8305
     loop - Optional event loop.
+    tcp_sockopts - List of tuples of sockopts applied to underlying
+                   socket
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
@@ -841,6 +849,7 @@ class TCPConnector(BaseConnector):
         timeout_ceil_threshold: float = 5,
         happy_eyeballs_delay: Optional[float] = 0.25,
         interleave: Optional[int] = None,
+        tcp_sockopts: Iterable[Tuple[int, int, Union[int, Buffer]]] = [],
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -871,6 +880,7 @@ class TCPConnector(BaseConnector):
         self._happy_eyeballs_delay = happy_eyeballs_delay
         self._interleave = interleave
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
+        self._tcp_sockopts = tcp_sockopts
 
     def _close_immediately(self) -> List[Awaitable[object]]:
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
@@ -1101,6 +1111,7 @@ class TCPConnector(BaseConnector):
         client_error: Type[Exception] = ClientConnectorError,
         **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
+        sock: Union[socket.socket, None] = None
         try:
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
@@ -1112,7 +1123,13 @@ class TCPConnector(BaseConnector):
                     interleave=self._interleave,
                     loop=self._loop,
                 )
-                return await self._loop.create_connection(*args, **kwargs, sock=sock)
+                for sockopt in self._tcp_sockopts:
+                    sock.setsockopt(*sockopt)
+                connection = await self._loop.create_connection(
+                    *args, **kwargs, sock=sock
+                )
+                sock = None
+                return connection
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1121,6 +1138,12 @@ class TCPConnector(BaseConnector):
             if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise client_error(req.connection_key, exc) from exc
+        finally:
+            if sock is not None:
+                # Will be hit if an exception is thrown before the event loop takes the socket.
+                # In that case, proactively close the socket to guard against event loop leaks.
+                # For example, see https://github.com/MagicStack/uvloop/issues/653.
+                sock.close()
 
     def _warn_about_tls_in_tls(
         self,

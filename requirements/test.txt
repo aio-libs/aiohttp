@@ -6,7 +6,7 @@
 #
 aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via -r requirements/runtime-deps.in
-aiohappyeyeballs==2.4.4
+aiohappyeyeballs==2.4.6
     # via -r requirements/runtime-deps.in
 aiosignal==1.3.2
     # via -r requirements/runtime-deps.in
@@ -14,6 +14,8 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
+blockbuster==1.5.23
+    # via -r requirements/test.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 cffi==1.17.1
@@ -23,16 +25,18 @@ cffi==1.17.1
     #   pytest-codspeed
 click==8.1.8
     # via wait-for-it
-coverage==7.6.10
+coverage==7.6.12
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==44.0.0
+cryptography==44.0.1
     # via trustme
 exceptiongroup==1.2.2
     # via pytest
 execnet==2.1.1
     # via pytest-xdist
+forbiddenfruit==0.1.4
+    # via blockbuster
 freezegun==1.5.1
     # via -r requirements/test.in
 frozenlist==1.5.0
@@ -65,11 +69,11 @@ packaging==24.2
     #   pytest
 pluggy==1.5.0
     # via pytest
-propcache==0.2.1
+propcache==0.3.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-proxy-py==2.4.9
+proxy-py==2.4.10
     # via -r requirements/test.in
 pycares==4.5.0
     # via aiodns

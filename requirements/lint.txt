@@ -10,6 +10,8 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
+blockbuster==1.5.23
+    # via -r requirements/lint.in
 cffi==1.17.1
     # via
     #   cryptography
@@ -19,7 +21,7 @@ cfgv==3.4.0
     # via pre-commit
 click==8.1.8
     # via slotscheck
-cryptography==44.0.0
+cryptography==44.0.1
     # via trustme
 distlib==0.3.9
     # via virtualenv
@@ -27,9 +29,11 @@ exceptiongroup==1.2.2
     # via pytest
 filelock==3.17.0
     # via virtualenv
+forbiddenfruit==0.1.4
+    # via blockbuster
 freezegun==1.5.1
     # via -r requirements/lint.in
-identify==2.6.7
+identify==2.6.8
     # via pre-commit
 idna==3.7
     # via trustme
@@ -53,7 +57,7 @@ pluggy==1.5.0
     # via pytest
 pre-commit==4.1.0
     # via -r requirements/lint.in
-proxy-py==2.4.9
+proxy-py==2.4.10
     # via -r requirements/lint.in
 pycares==4.5.0
     # via aiodns
@@ -102,7 +106,7 @@ typing-extensions==4.12.2
     #   rich
 uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
-valkey==6.0.2
+valkey==6.1.0
     # via -r requirements/lint.in
 virtualenv==20.29.2
     # via pre-commit

@@ -8,7 +8,7 @@ aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-aiohappyeyeballs==2.4.4
+aiohappyeyeballs==2.4.6
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.7
     # via -r requirements/doc.in
@@ -24,6 +24,10 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   valkey
 babel==2.17.0
     # via sphinx
+blockbuster==1.5.23
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 build==1.2.2.post1
@@ -48,11 +52,11 @@ click==8.1.8
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.6.10
+coverage==7.6.12
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==44.0.0
+cryptography==44.0.1
     # via
     #   pyjwt
     #   trustme
@@ -68,6 +72,8 @@ execnet==2.1.1
     # via pytest-xdist
 filelock==3.17.0
     # via virtualenv
+forbiddenfruit==0.1.4
+    # via blockbuster
 freezegun==1.5.1
     # via
     #   -r requirements/lint.in
@@ -80,7 +86,7 @@ gidgethub==5.3.0
     # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.6.7
+identify==2.6.8
     # via pre-commit
 idna==3.6
     # via
@@ -130,11 +136,11 @@ pluggy==1.5.0
     # via pytest
 pre-commit==4.1.0
     # via -r requirements/lint.in
-propcache==0.2.1
+propcache==0.3.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-proxy-py==2.4.9
+proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -222,7 +228,7 @@ sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
 sphinxcontrib-spelling==8.0.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
-sphinxcontrib-towncrier==0.4.0a0
+sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
 stamina==24.3.0
     # via cherry-picker
@@ -264,7 +270,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-valkey==6.0.2
+valkey==6.1.0
     # via -r requirements/lint.in
 virtualenv==20.29.2
     # via pre-commit
@@ -278,7 +284,7 @@ yarl==1.18.3
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.0.1
     # via pip-tools
-setuptools==75.8.0
+setuptools==75.8.2
     # via
     #   incremental
     #   pip-tools

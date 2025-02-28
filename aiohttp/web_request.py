@@ -563,7 +563,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return MappingProxyType({key: val.value for key, val in parsed.items()})
 
     @reify
-    def http_range(self) -> slice:
+    def http_range(self) -> "slice[int, int, int]":
         """The content of Range HTTP header.
 
         Return a slice instance.

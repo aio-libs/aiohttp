@@ -41,7 +41,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_connect(
+    def test_connect(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         req = ClientRequest(
@@ -104,7 +104,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_proxy_headers(
+    def test_proxy_headers(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         req = ClientRequest(
@@ -167,7 +167,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_proxy_auth(self, start_connection: mock.Mock) -> None:
+    def test_proxy_auth(self, start_connection: mock.Mock) -> None:  # type: ignore[misc]
         with self.assertRaises(ValueError) as ctx:
             ClientRequest(
                 "GET",
@@ -186,7 +186,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_proxy_dns_error(self, start_connection: mock.Mock) -> None:
+    def test_proxy_dns_error(self, start_connection: mock.Mock) -> None:  # type: ignore[misc]
         async def make_conn() -> aiohttp.TCPConnector:
             return aiohttp.TCPConnector()
 
@@ -216,8 +216,9 @@ class TestProxy(unittest.TestCase):
         "aiohttp.connector.aiohappyeyeballs.start_connection",
         autospec=True,
         spec_set=True,
+        return_value=mock.create_autospec(socket.socket, spec_set=True, instance=True),
     )
-    def test_proxy_connection_error(self, start_connection: mock.Mock) -> None:
+    def test_proxy_connection_error(self, start_connection: mock.Mock) -> None:  # type: ignore[misc]
         async def make_conn() -> aiohttp.TCPConnector:
             return aiohttp.TCPConnector()
 
@@ -257,7 +258,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_proxy_server_hostname_default(
+    def test_proxy_server_hostname_default(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -338,7 +339,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_proxy_server_hostname_override(
+    def test_proxy_server_hostname_override(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -423,7 +424,7 @@ class TestProxy(unittest.TestCase):
         spec_set=True,
     )
     @pytest.mark.usefixtures("enable_cleanup_closed")
-    def test_https_connect_fingerprint_mismatch(
+    def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         async def make_conn() -> aiohttp.TCPConnector:
@@ -531,7 +532,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_https_connect(
+    def test_https_connect(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -613,7 +614,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_https_connect_certificate_error(
+    def test_https_connect_certificate_error(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -690,7 +691,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_https_connect_ssl_error(
+    def test_https_connect_ssl_error(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -765,7 +766,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_https_connect_http_proxy_error(
+    def test_https_connect_http_proxy_error(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -841,7 +842,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_https_connect_resp_start_error(
+    def test_https_connect_resp_start_error(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -911,7 +912,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_request_port(
+    def test_request_port(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -977,7 +978,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_https_connect_pass_ssl_context(
+    def test_https_connect_pass_ssl_context(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(
@@ -1067,7 +1068,7 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
-    def test_https_auth(
+    def test_https_auth(  # type: ignore[misc]
         self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         proxy_req = ClientRequest(

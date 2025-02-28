@@ -607,11 +607,14 @@ class ClientSession:
                         if req_cookies:
                             all_cookies.load(req_cookies)
 
+                    proxy_: Optional[URL] = None
                     if proxy is not None:
-                        proxy = URL(proxy)
+                        proxy_ = URL(proxy)
                     elif self._trust_env:
                         with suppress(LookupError):
-                            proxy, proxy_auth = get_env_proxy_for_url(url)
+                            proxy_, proxy_auth = await asyncio.to_thread(
+                                get_env_proxy_for_url, url
+                            )
 
                     req = self._request_class(
                         method,
@@ -628,7 +631,7 @@ class ClientSession:
                         expect100=expect100,
                         loop=self._loop,
                         response_class=self._response_class,
-                        proxy=proxy,
+                        proxy=proxy_,
                         proxy_auth=proxy_auth,
                         timer=timer,
                         session=self,
@@ -1244,7 +1247,7 @@ class ClientSession:
         return self._skip_auto_headers
 
     @property
-    def auth(self) -> Optional[BasicAuth]:
+    def auth(self) -> Optional[BasicAuth]:  # type: ignore[misc]
         """An object that represents HTTP Basic Authorization"""
         return self._default_auth
 
@@ -1281,7 +1284,7 @@ class ClientSession:
         return self._trust_env
 
     @property
-    def trace_configs(self) -> List[TraceConfig[Any]]:
+    def trace_configs(self) -> List[TraceConfig[Any]]:  # type: ignore[misc]
         """A list of TraceConfig instances used for client tracing"""
         return self._trace_configs
 
