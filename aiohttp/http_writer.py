@@ -45,7 +45,12 @@ HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
 
-_T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
+_T_OnChunkSent = Optional[
+    Callable[
+        [Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]],
+        Awaitable[None],
+    ]
+]
 _T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
 
 
@@ -84,16 +89,23 @@ class StreamWriter(AbstractStreamWriter):
     ) -> None:
         self._compress = ZLibCompressor(encoding=encoding, strategy=strategy)
 
-    def _write(self, chunk: Union[bytes, bytearray, memoryview]) -> None:
+    def _write(
+        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+    ) -> None:
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
         transport = self._protocol.transport
         if transport is None or transport.is_closing():
             raise ClientConnectionResetError("Cannot write to closing transport")
-        transport.write(chunk)
+        transport.write(chunk)  # type: ignore[arg-type]
 
-    def _writelines(self, chunks: Iterable[bytes]) -> None:
+    def _writelines(
+        self,
+        chunks: Iterable[
+            Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        ],
+    ) -> None:
         size = 0
         for chunk in chunks:
             size += len(chunk)
@@ -105,11 +117,11 @@ class StreamWriter(AbstractStreamWriter):
         if SKIP_WRITELINES or size < MIN_PAYLOAD_FOR_WRITELINES:
             transport.write(b"".join(chunks))
         else:
-            transport.writelines(chunks)
+            transport.writelines(chunks)  # type: ignore[arg-type]
 
     async def write(
         self,
-        chunk: Union[bytes, bytearray, memoryview],
+        chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"],
         *,
         drain: bool = True,
         LIMIT: int = 0x10000,

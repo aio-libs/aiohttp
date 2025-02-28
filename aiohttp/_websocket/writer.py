@@ -133,9 +133,9 @@ class WebSocketWriter:
         # when aiohttp is acting as a client. Servers do not use a mask.
         if use_mask:
             mask = PACK_RANDBITS(self.get_random_bits())
-            message = bytearray(message)
-            websocket_mask(mask, message)
-            self.transport.write(header + mask + message)
+            message_arr = bytearray(message)
+            websocket_mask(mask, message_arr)
+            self.transport.write(header + mask + message_arr)
             self._output_size += MASK_LEN
         elif msg_length > MSG_SIZE:
             self.transport.write(header)

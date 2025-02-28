@@ -309,11 +309,11 @@ class WebSocketReader:
                 self.queue.feed_data(msg)
             elif opcode == OP_CODE_PING:
                 self.queue.feed_data(
-                    WSMessagePing(data=payload, size=len(payload), extra="")
+                    WSMessagePing(data=bytes(payload), size=len(payload), extra="")
                 )
             elif opcode == OP_CODE_PONG:
                 self.queue.feed_data(
-                    WSMessagePong(data=payload, size=len(payload), extra="")
+                    WSMessagePong(data=bytes(payload), size=len(payload), extra="")
                 )
             else:
                 raise WebSocketError(
