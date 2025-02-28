@@ -51,7 +51,7 @@ jobs:
       with:
         python-version: 3.11
     - name: Cache PyPI
-      uses: actions/cache@v4.2.1
+      uses: actions/cache@v4.2.2
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -112,7 +112,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v4.2.1
+      uses: actions/cache@v4.2.2
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
@@ -179,7 +179,7 @@ jobs:
         echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
       shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v4.2.1
+      uses: actions/cache@v4.2.2
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
