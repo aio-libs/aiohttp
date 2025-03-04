@@ -31,7 +31,7 @@ coverage==7.6.12
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==44.0.1
+cryptography==44.0.2
     # via trustme
 exceptiongroup==1.2.2
     # via pytest
