@@ -3683,6 +3683,61 @@ async def test_connector_throttle_trace_race(loop: asyncio.AbstractEventLoop) ->
     await connector.close()
 
 
+async def test_connector_resolve_in_case_of_trace_cache_miss_exception(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    token: ResolveResult = {
+        "hostname": "localhost",
+        "host": "127.0.0.1",
+        "port": 80,
+        "family": socket.AF_INET,
+        "proto": 0,
+        "flags": socket.AI_NUMERICHOST,
+    }
+
+    request_count = 0
+
+    class DummyTracer(Trace):
+        def __init__(self) -> None:
+            """Dummy"""
+
+        async def send_dns_cache_hit(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        async def send_dns_resolvehost_start(
+            self, *args: object, **kwargs: object
+        ) -> None:
+            pass
+
+        async def send_dns_resolvehost_end(
+            self, *args: object, **kwargs: object
+        ) -> None:
+            pass
+
+        async def send_dns_cache_miss(self, *args: object, **kwargs: object) -> None:
+            nonlocal request_count
+            request_count += 1
+            if request_count <= 1:
+                raise Exception("first attempt")
+
+    async def resolve_response():
+        await asyncio.sleep(0)
+        return [token]
+
+    with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
+        m_resolver().resolve.return_value = resolve_response()
+
+        connector = TCPConnector()
+        traces = [DummyTracer()]
+
+        with pytest.raises(Exception):
+            await connector._resolve_host("", 0, traces)
+
+        await connector._resolve_host("", 0, traces) == [token]
+
+    await connector.close()
+
+
 async def test_connector_does_not_remove_needed_waiters(
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
