@@ -3702,17 +3702,17 @@ async def test_connector_resolve_in_case_of_trace_cache_miss_exception(
             """Dummy"""
 
         async def send_dns_cache_hit(self, *args: object, **kwargs: object) -> None:
-            pass
+            """Dummy send_dns_cache_hit"""
 
         async def send_dns_resolvehost_start(
             self, *args: object, **kwargs: object
         ) -> None:
-            pass
+            """Dummy send_dns_resolvehost_start"""
 
         async def send_dns_resolvehost_end(
             self, *args: object, **kwargs: object
         ) -> None:
-            pass
+            """Dummy send_dns_resolvehost_end"""
 
         async def send_dns_cache_miss(self, *args: object, **kwargs: object) -> None:
             nonlocal request_count
