@@ -3720,7 +3720,7 @@ async def test_connector_resolve_in_case_of_trace_cache_miss_exception(
             if request_count <= 1:
                 raise Exception("first attempt")
 
-    async def resolve_response():
+    async def resolve_response() -> List[ResolveResult]:
         await asyncio.sleep(0)
         return [token]
 
