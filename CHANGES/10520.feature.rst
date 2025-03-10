@@ -1,0 +1,2 @@
+Added ``socket_factory`` to ``TCPConnector`` to allow specifying custom socket options
+-- by :user:`TimMenninger`.
