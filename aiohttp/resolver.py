@@ -18,7 +18,9 @@ except ImportError:
 
 _NUMERIC_SOCKET_FLAGS = socket.AI_NUMERICHOST | socket.AI_NUMERICSERV
 _NAME_SOCKET_FLAGS = socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
-
+_AI_ADDRCONFIG = socket.AI_ADDRCONFIG
+if hasattr(socket, "AI_MASK"):
+    _AI_ADDRCONFIG &= socket.AI_MASK
 
 class ThreadedResolver(AbstractResolver):
     """Threaded resolver.
@@ -38,7 +40,7 @@ class ThreadedResolver(AbstractResolver):
             port,
             type=socket.SOCK_STREAM,
             family=family,
-            flags=socket.AI_ADDRCONFIG,
+            flags=_AI_ADDRCONFIG,
         )
 
         hosts: List[ResolveResult] = []
@@ -96,7 +98,7 @@ class AsyncResolver(AbstractResolver):
                 port=port,
                 type=socket.SOCK_STREAM,
                 family=family,
-                flags=socket.AI_ADDRCONFIG,
+                flags=_AI_ADDRCONFIG,
             )
         except aiodns.error.DNSError as exc:
             msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
