@@ -22,6 +22,7 @@ _AI_ADDRCONFIG = socket.AI_ADDRCONFIG
 if hasattr(socket, "AI_MASK"):
     _AI_ADDRCONFIG &= socket.AI_MASK
 
+
 class ThreadedResolver(AbstractResolver):
     """Threaded resolver.
 
