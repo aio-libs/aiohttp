@@ -192,10 +192,10 @@ class WebSocketResponse(StreamResponse):
                 loop.create_task(self._pong_not_received_coro())
             else:
                 self._handle_ping_pong_exception(
-                        asyncio.TimeoutError(
-                            f"No PONG received after {self._pong_heartbeat} seconds"
-                        )
+                    asyncio.TimeoutError(
+                        f"No PONG received after {self._pong_heartbeat} seconds"
                     )
+                )
 
     async def _pong_not_received_coro(self):
         """Coroutine to check for pending PONG when no PONG was received after self._pong_heartbeat seconds"""
@@ -206,9 +206,11 @@ class WebSocketResponse(StreamResponse):
                 msg = await reader.read()
             self._reset_heartbeat()
             if msg.type is not WSMsgType.PONG:
-                ws_logger.warning(f"Received {msg} while waiting for PONG. It seems like you haven't called `receive` within {self._pong_heartbeat} seconds.")
+                ws_logger.warning(
+                    f"Received {msg} while waiting for PONG. It seems like you haven't called `receive` within {self._pong_heartbeat} seconds."
+                )
             return
-        except asyncio.TimeoutError:    # We still did not receive a PONG
+        except asyncio.TimeoutError:  # We still did not receive a PONG
             pass
         except Exception as exc:
             self._exception = exc
