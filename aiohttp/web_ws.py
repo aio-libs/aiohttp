@@ -197,7 +197,7 @@ class WebSocketResponse(StreamResponse):
                     )
                 )
 
-    async def _pong_not_received_coro(self):
+    async def _pong_not_received_coro(self) -> None:
         """Coroutine to check for pending PONG when no PONG was received after self._pong_heartbeat seconds"""
         reader = self._reader
         assert reader is not None
