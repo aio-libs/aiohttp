@@ -195,7 +195,9 @@ class WebSocketResponse(StreamResponse):
                 )
                 if not pong_not_received_task.done():
                     self._pong_not_received_task = pong_not_received_task
-                    pong_not_received_task.add_done_callback(self._pong_not_received_done)
+                    pong_not_received_task.add_done_callback(
+                        self._pong_not_received_done
+                    )
                 else:
                     self._pong_not_received_done(pong_not_received_task)
             else:
@@ -236,7 +238,7 @@ class WebSocketResponse(StreamResponse):
         if not task.cancelled() and (exc := task.exception()):
             self._handle_ping_pong_exception(exc)
         self._pong_not_received_task = None
-    
+
     def _handle_ping_pong_exception(self, exc: BaseException) -> None:
         """Handle exceptions raised during ping/pong processing."""
         if self._closed:
