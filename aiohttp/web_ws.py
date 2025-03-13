@@ -189,7 +189,9 @@ class WebSocketResponse(StreamResponse):
         if self._req is not None and self._req.transport is not None:
             loop = self._loop
             if loop is not None:
-                pong_not_received_task = loop.create_task(self._pong_not_received_coro())
+                pong_not_received_task = loop.create_task(
+                    self._pong_not_received_coro()
+                )
             else:
                 self._handle_ping_pong_exception(
                     asyncio.TimeoutError(
