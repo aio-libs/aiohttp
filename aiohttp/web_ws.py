@@ -210,8 +210,11 @@ class WebSocketResponse(StreamResponse):
             return
         except asyncio.TimeoutError:    # We still did not receive a PONG
             pass
-        except:    # If any exception happens we also did not receive a PONG
-            pass
+        except Exception as exc:
+            self._exception = exc
+            self._set_closing(WSCloseCode.ABNORMAL_CLOSURE)
+            await self.close()
+            return
         self._handle_ping_pong_exception(
             asyncio.TimeoutError(
                 f"No PONG received after {self._pong_heartbeat} seconds"
