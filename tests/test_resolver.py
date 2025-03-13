@@ -26,11 +26,17 @@ from aiohttp.resolver import (
 
 try:
     import aiodns
+    import pycares
 
-    getaddrinfo = hasattr(aiodns.DNSResolver, "getaddrinfo")
-except ImportError:
+    # Only use aiodns if it has the getaddrinfo method and the
+    # underlying pycares library can locate DNS servers.
+    has_working_aiodns = hasattr(aiodns.DNSResolver, "getaddrinfo") and bool(
+        pycares.Channel().servers
+    )
+except Exception:  # may raise ImportError or AresError
     aiodns = None  # type: ignore[assignment]
-    getaddrinfo = False
+    has_working_aiodns = False
+
 
 _AddrInfo4 = List[
     Tuple[socket.AddressFamily, None, socket.SocketKind, None, Tuple[str, int]]
@@ -138,7 +144,7 @@ def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Tuple[str, int]]]:
     return fake
 
 
-@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.skipif(not has_working_aiodns, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_positive_ipv4_lookup(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -158,7 +164,7 @@ async def test_async_resolver_positive_ipv4_lookup(
         )
 
 
-@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.skipif(not has_working_aiodns, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_positive_link_local_ipv6_lookup(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -182,7 +188,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup(
         mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
 
 
-@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.skipif(not has_working_aiodns, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_multiple_replies(loop: asyncio.AbstractEventLoop) -> None:
     with patch("aiodns.DNSResolver") as mock:
         ips = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
@@ -193,7 +199,7 @@ async def test_async_resolver_multiple_replies(loop: asyncio.AbstractEventLoop) 
         assert len(ipaddrs) > 3, "Expecting multiple addresses"
 
 
-@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.skipif(not has_working_aiodns, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_negative_lookup(loop: asyncio.AbstractEventLoop) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.side_effect = aiodns.error.DNSError()
@@ -202,7 +208,7 @@ async def test_async_resolver_negative_lookup(loop: asyncio.AbstractEventLoop) -
             await resolver.resolve("doesnotexist.bla")
 
 
-@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.skipif(not has_working_aiodns, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_no_hosts_in_getaddrinfo(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -327,7 +333,7 @@ async def test_default_loop_for_threaded_resolver(
     assert resolver._loop is loop
 
 
-@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.skipif(not has_working_aiodns, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_ipv6_positive_lookup(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -345,7 +351,7 @@ async def test_async_resolver_ipv6_positive_lookup(
         )
 
 
-@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.skipif(not has_working_aiodns, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_error_messages_passed(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -359,7 +365,7 @@ async def test_async_resolver_error_messages_passed(
         assert excinfo.value.strerror == "Test error message"
 
 
-@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.skipif(not has_working_aiodns, reason="aiodns >=3.2.0 required")
 async def test_async_resolver_error_messages_passed_no_hosts(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -381,11 +387,16 @@ async def test_async_resolver_aiodns_not_present(
         AsyncResolver()
 
 
-@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.skipif(not has_working_aiodns, reason="aiodns >=3.2.0 required")
 def test_aio_dns_is_default() -> None:
     assert DefaultResolver is AsyncResolver
 
 
-@pytest.mark.skipif(getaddrinfo, reason="aiodns <3.2.0 required")
+@pytest.mark.skipif(has_working_aiodns, reason="aiodns <3.2.0 required")
 def test_threaded_resolver_is_default() -> None:
     assert DefaultResolver is ThreadedResolver
+
+
+@pytest.mark.skipif(DefaultResolver is AsyncResolver, reason="aiodns required")
+def test_aiodns_has_working_nameserver_when_default() -> None:
+    assert pycares.Channel().servers

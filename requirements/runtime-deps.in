@@ -9,4 +9,5 @@ brotlicffi; platform_python_implementation != 'CPython'
 frozenlist >= 1.1.1
 multidict >=4.5, < 7.0
 propcache >= 0.2.0
+pycares >= 4.0.0; sys_platform=="linux" or sys_platform=="darwin"
 yarl >= 1.17.0, < 2.0
