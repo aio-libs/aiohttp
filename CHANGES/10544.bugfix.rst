@@ -1,1 +1,1 @@
-Check for PONG before closing connection for missing PONG
+Check for PONG before closing connection for missing PONG -- by :user:`mstegmaier`.
