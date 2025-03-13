@@ -234,7 +234,7 @@ class WebSocketResponse(StreamResponse):
         )
 
     def _pong_not_received_done(self, task: "asyncio.Task[None]") -> None:
-        """Callback for wehn the pong not received task completes."""
+        """Callback for when the pong not received task completes."""
         if not task.cancelled() and (exc := task.exception()):
             self._handle_ping_pong_exception(exc)
         self._pong_not_received_task = None
