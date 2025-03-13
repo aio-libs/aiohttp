@@ -222,7 +222,9 @@ class WebSocketResponse(StreamResponse):
             return
         except asyncio.TimeoutError:  # We still did not receive a PONG
             pass
-        except AssertionError:  # In the test, an AssertionError seems to occur before the timeout
+        except (
+            AssertionError
+        ):  # In the test, an AssertionError seems to occur before the timeout
             pass
         except Exception as exc:
             self._exception = exc
