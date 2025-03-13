@@ -6,6 +6,7 @@ from .abc import AbstractResolver, ResolveResult
 
 __all__ = ("ThreadedResolver", "AsyncResolver", "DefaultResolver")
 
+
 try:
     import aiodns
     import pycares
@@ -18,6 +19,7 @@ try:
 except Exception:  # may raise ImportError or AresError
     aiodns = None  # type: ignore[assignment]
     aiodns_default = False
+
 
 _NUMERIC_SOCKET_FLAGS = socket.AI_NUMERICHOST | socket.AI_NUMERICSERV
 _NAME_SOCKET_FLAGS = socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
@@ -146,5 +148,4 @@ class AsyncResolver(AbstractResolver):
 
 
 _DefaultType = Type[Union[AsyncResolver, ThreadedResolver]]
-
 DefaultResolver: _DefaultType = AsyncResolver if aiodns_default else ThreadedResolver
