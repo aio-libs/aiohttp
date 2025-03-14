@@ -189,7 +189,7 @@ class WebSocketResponse(StreamResponse):
         """Callback for when no PONG was received after self._pong_heartbeat seconds"""
         if self._req is not None and self._req.transport is not None:
             loop = self._loop
-            if loop is not None:
+            if loop is not None and not self._waiting:    # If self._waiting is set we already are in the receive loop and would have read the PONG if one was there
                 pong_not_received_task = loop.create_task(
                     self._pong_not_received_coro()
                 )
@@ -221,10 +221,6 @@ class WebSocketResponse(StreamResponse):
                 )
             return
         except asyncio.TimeoutError:  # We still did not receive a PONG
-            pass
-        except (
-            AssertionError
-        ):  # In the test, an AssertionError seems to occur before the timeout
             pass
         except Exception as exc:
             self._exception = exc
