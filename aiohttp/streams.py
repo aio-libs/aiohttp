@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import io
 import warnings
 from typing import (
     Awaitable,
@@ -399,12 +400,13 @@ class StreamReader(AsyncStreamReaderMixin):
             # deadlock if the subprocess sends more than self.limit
             # bytes.  So just call self.readany() until EOF.
             blocks = []
+            buffer = io.BytesIO()
             while True:
                 block = await self.readany()
                 if not block:
                     break
-                blocks.append(block)
-            return b"".join(blocks)
+                buffer.write(block)
+            return buffer.getvalue()
 
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
@@ -464,16 +466,16 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        blocks: List[bytes] = []
+        buffer = io.BytesIO()
         while n > 0:
             block = await self.read(n)
             if not block:
-                partial = b"".join(blocks)
+                partial = buffer.getvalue()
                 raise asyncio.IncompleteReadError(partial, len(partial) + n)
-            blocks.append(block)
+            buffer.write(block)
             n -= len(block)
 
-        return b"".join(blocks)
+        return buffer.getvalue()
 
     def read_nowait(self, n: int = -1) -> bytes:
         # default was changed to be consistent with .read(-1)
@@ -523,15 +525,16 @@ class StreamReader(AsyncStreamReaderMixin):
         self._timer.assert_timeout()
 
         chunks = []
+        buffer = io.BytesIO()
         while self._buffer:
             chunk = self._read_nowait_chunk(n)
-            chunks.append(chunk)
+            buffer.write(chunk)
             if n != -1:
                 n -= len(chunk)
                 if n == 0:
                     break
 
-        return b"".join(chunks) if chunks else b""
+        return buffer.getvalue()
 
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
