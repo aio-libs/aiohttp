@@ -8,7 +8,7 @@ aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-aiohappyeyeballs==2.5.0
+aiohappyeyeballs==2.6.1
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.7
     # via -r requirements/doc.in
