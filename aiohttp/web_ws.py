@@ -189,7 +189,9 @@ class WebSocketResponse(StreamResponse):
         """Callback for when no PONG was received after self._pong_heartbeat seconds"""
         if self._req is not None and self._req.transport is not None:
             loop = self._loop
-            if loop is not None and not self._waiting:    # If self._waiting is set we already are in the receive loop and would have read the PONG if one was there
+            if (
+                loop is not None and not self._waiting
+            ):  # If self._waiting is set we already are in the receive loop and would have read the PONG if one was there
                 pong_not_received_task = loop.create_task(
                     self._pong_not_received_coro()
                 )
