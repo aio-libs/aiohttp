@@ -53,6 +53,7 @@ with open(_version_path, encoding="latin1") as fp:
 # ones.
 extensions = [
     # stdlib-party extensions:
+    "sphinx.ext.autodoc",
     "sphinx.ext.extlinks",
     "sphinx.ext.graphviz",
     "sphinx.ext.intersphinx",
@@ -82,6 +83,7 @@ intersphinx_mapping = {
     "aiohttpsession": ("https://aiohttp-session.readthedocs.io/en/stable/", None),
     "aiohttpdemos": ("https://aiohttp-demos.readthedocs.io/en/latest/", None),
     "aiojobs": ("https://aiojobs.readthedocs.io/en/stable/", None),
+    "aiohappyeyeballs": ("https://aiohappyeyeballs.readthedocs.io/en/stable/", None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -425,6 +427,7 @@ nitpick_ignore = [
     ("py:class", "cgi.FieldStorage"),  # undocumented
     ("py:meth", "aiohttp.web.UrlDispatcher.register_resource"),  # undocumented
     ("py:func", "aiohttp_debugtoolbar.setup"),  # undocumented
+    ("py:class", "socket.SocketKind"),  # undocumented
 ]
 
 # -- Options for towncrier_draft extension -----------------------------------

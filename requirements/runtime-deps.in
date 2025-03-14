@@ -1,7 +1,7 @@
 # Extracted from `setup.cfg` via `make sync-direct-runtime-deps`
 
 aiodns >= 3.2.0; sys_platform=="linux" or sys_platform=="darwin"
-aiohappyeyeballs >= 2.3.0
+aiohappyeyeballs >= 2.5.0
 aiosignal >= 1.1.2
 async-timeout >= 4.0, < 6.0 ; python_version < "3.11"
 Brotli; platform_python_implementation == 'CPython'
