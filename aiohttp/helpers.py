@@ -372,6 +372,9 @@ def parse_content_type(raw: str) -> Tuple[str, Dict[str, str]]:
     """Parse Content-Type header.
 
     Returns a tuple of the parsed content type and a dictionary of parameters.
+
+    Callers should be careful to make a copy of the returned dictionary if
+    they need to modify it, as the dictionary is shared between calls.
     """
     msg = HeaderParser().parsestr(f"Content-Type: {raw}")
     content_type = msg.get_content_type()
