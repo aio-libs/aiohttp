@@ -746,7 +746,11 @@ class HeadersMixin:
             self._content_type = "application/octet-stream"
             self._content_dict = {}
         else:
-            self._content_type, self._content_dict = parse_content_type(raw)
+            content_type, content_dict = parse_content_type(raw)
+            self._content_type = content_type
+            # _content_dict is mutable, so we need to copy it
+            # to avoid pollution of the original dict
+            self._content_dict = content_dict.copy()
 
     @property
     def content_type(self) -> str:
