@@ -24,7 +24,7 @@ from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
 from pathlib import Path
-from types import TracebackType
+from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -368,19 +368,17 @@ def parse_mimetype(mimetype: str) -> MimeType:
 
 
 @functools.lru_cache(maxsize=56)
-def parse_content_type(raw: str) -> Tuple[str, Dict[str, str]]:
+def parse_content_type(raw: str) -> Tuple[str, MappingProxyType[str, str]]:
     """Parse Content-Type header.
 
-    Returns a tuple of the parsed content type and a dictionary of parameters.
-
-    Callers should be careful to make a copy of the returned dictionary if
-    they need to modify it, as the dictionary is shared between calls.
+    Returns a tuple of the parsed content type and a
+    MappingProxyType of parameters.
     """
     msg = HeaderParser().parsestr(f"Content-Type: {raw}")
     content_type = msg.get_content_type()
     params = msg.get_params(())
     content_dict = dict(params[1:])  # First element is content type again
-    return content_type, content_dict
+    return content_type, MappingProxyType(content_dict)
 
 
 def guess_filename(obj: Any, default: Optional[str] = None) -> Optional[str]:
@@ -749,11 +747,10 @@ class HeadersMixin:
             self._content_type = "application/octet-stream"
             self._content_dict = {}
         else:
-            content_type, content_dict = parse_content_type(raw)
+            content_type, content_mapping_proxy = parse_content_type(raw)
             self._content_type = content_type
-            # _content_dict is mutable, so we need to copy it
-            # to avoid pollution of the original dict
-            self._content_dict = content_dict.copy()
+            # _content_dict needs to be mutable so we can update it
+            self._content_dict = content_mapping_proxy.copy()
 
     @property
     def content_type(self) -> str:
