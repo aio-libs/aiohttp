@@ -1,1 +1,1 @@
-The connector now raises :exc:`aiohttp.ClientConnectionError` instead of :exc:`OSError` when failing to explicitly close the socket after ``loop.create_connection`` fails -- by :user:`bdraco`.
+The connector now raises :exc:`aiohttp.ClientConnectionError` instead of :exc:`OSError` when failing to explicitly close the socket after :py:func:`asyncio.loop.create_connection` fails -- by :user:`bdraco`.
