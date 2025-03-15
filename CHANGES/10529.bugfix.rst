@@ -1,2 +1,2 @@
-Fixed an issue where dns queries were delayed indefinitely when an exception occurred in a ``tracer.send_dns_cache_miss``
+Fixed an issue where dns queries were delayed indefinitely when an exception occurred in a ``trace.send_dns_cache_miss``
 -- by :user:`logioniz`.
