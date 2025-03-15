@@ -22,7 +22,7 @@ async-timeout==5.0.1 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
     #   valkey
-attrs==25.2.0
+attrs==25.3.0
     # via -r requirements/runtime-deps.in
 babel==2.17.0
     # via sphinx
