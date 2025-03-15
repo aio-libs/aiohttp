@@ -1,0 +1,1 @@
+Improved performance of parsing content types by adding a cache in the same manner currently done with mime types -- by :user:`bdraco`.
