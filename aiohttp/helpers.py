@@ -367,6 +367,19 @@ def parse_mimetype(mimetype: str) -> MimeType:
     )
 
 
+@functools.lru_cache(maxsize=56)
+def parse_content_type(raw: str) -> Tuple[str, Dict[str, str]]:
+    """Parse Content-Type header.
+
+    Returns a tuple of the parsed content type and a dictionary of parameters.
+    """
+    msg = HeaderParser().parsestr(f"Content-Type: {raw}")
+    content_type = msg.get_content_type()
+    params = msg.get_params(())
+    content_dict = dict(params[1:])  # First element is content type again
+    return content_type, content_dict
+
+
 def guess_filename(obj: Any, default: Optional[str] = None) -> Optional[str]:
     name = getattr(obj, "name", None)
     if name and isinstance(name, str) and name[0] != "<" and name[-1] != ">":
@@ -733,10 +746,7 @@ class HeadersMixin:
             self._content_type = "application/octet-stream"
             self._content_dict = {}
         else:
-            msg = HeaderParser().parsestr("Content-Type: " + raw)
-            self._content_type = msg.get_content_type()
-            params = msg.get_params(())
-            self._content_dict = dict(params[1:])  # First element is content type again
+            self._content_type, self._content_dict = parse_content_type(raw)
 
     @property
     def content_type(self) -> str:
