@@ -47,6 +47,10 @@ from .client import (
     WSServerHandshakeError,
     request,
 )
+from .connector import (
+    AddrInfoType as AddrInfoType,
+    SocketFactoryType as SocketFactoryType,
+)
 from .cookiejar import CookieJar as CookieJar, DummyCookieJar as DummyCookieJar
 from .formdata import FormData as FormData
 from .helpers import BasicAuth, ChainMapProxy, ETag
@@ -126,6 +130,7 @@ if TYPE_CHECKING:
 __all__: Tuple[str, ...] = (
     "hdrs",
     # client
+    "AddrInfoType",
     "BaseConnector",
     "ClientConnectionError",
     "ClientConnectionResetError",
@@ -161,6 +166,7 @@ __all__: Tuple[str, ...] = (
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
     "ServerTimeoutError",
+    "SocketFactoryType",
     "SocketTimeoutError",
     "TCPConnector",
     "TooManyRedirects",
