@@ -1023,7 +1023,6 @@ class TCPConnector(BaseConnector):
                 for trace in traces:
                     await trace.send_dns_cache_miss(host)
 
-            if traces:
                 for trace in traces:
                     await trace.send_dns_resolvehost_start(host)
 
