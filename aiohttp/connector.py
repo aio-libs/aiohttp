@@ -1025,11 +1025,11 @@ class TCPConnector(BaseConnector):
         This method must be run in a task and shielded from cancellation
         to avoid cancelling the underlying lookup.
         """
-        if traces:
-            for trace in traces:
-                await trace.send_dns_cache_miss(host)
         try:
             if traces:
+                for trace in traces:
+                    await trace.send_dns_cache_miss(host)
+
                 for trace in traces:
                     await trace.send_dns_resolvehost_start(host)
 
