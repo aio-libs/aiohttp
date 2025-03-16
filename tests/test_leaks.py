@@ -23,3 +23,20 @@ def test_client_response_does_not_leak_on_server_disconnected_error() -> None:
         stdout=subprocess.PIPE,
     ) as proc:
         assert proc.wait() == 0, "ClientResponse leaked"
+
+
+@pytest.mark.skipif(IS_PYPY, reason="gc.DEBUG_LEAK not available on PyPy")
+def test_request_does_not_leak_when_request_handler_raises() -> None:
+    """Test that the Request object is collected when the handler raises.
+
+    https://github.com/aio-libs/aiohttp/issues/10548
+    """
+    leak_test_script = pathlib.Path(__file__).parent.joinpath(
+        "isolated", "check_for_request_leak.py"
+    )
+
+    with subprocess.Popen(
+        [sys.executable, "-u", str(leak_test_script)],
+        stdout=subprocess.PIPE,
+    ) as proc:
+        assert proc.wait() == 0, "Request leaked"
