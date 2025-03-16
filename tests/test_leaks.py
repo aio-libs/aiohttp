@@ -40,3 +40,20 @@ def test_request_does_not_leak_when_request_handler_raises() -> None:
         stdout=subprocess.PIPE,
     ) as proc:
         assert proc.wait() == 0, "Request leaked"
+
+
+@pytest.mark.skipif(IS_PYPY, reason="gc.DEBUG_LEAK not available on PyPy")
+def test_system_route_does_not_leak() -> None:
+    """Test that the SystemRoute object is collected on MatchInfoError
+
+    https://github.com/aio-libs/aiohttp/issues/10548
+    """
+    leak_test_script = pathlib.Path(__file__).parent.joinpath(
+        "isolated", "check_for_system_route_leak.py"
+    )
+
+    with subprocess.Popen(
+        [sys.executable, "-u", str(leak_test_script)],
+        stdout=subprocess.PIPE,
+    ) as proc:
+        assert proc.wait() == 0, "SystemRoute leaked"
