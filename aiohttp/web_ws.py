@@ -252,7 +252,8 @@ class WebSocketResponse(StreamResponse):
             else:
                 # No overlap found: Return no protocol as per spec
                 ws_logger.warning(
-                    "Client protocols %r don’t overlap server-known ones %r",
+                    "%s: Client protocols %r don’t overlap server-known ones %r",
+                    request.remote,
                     req_protocols,
                     self._protocols,
                 )
