@@ -640,6 +640,33 @@ async def test_tcp_connector_closes_socket_on_error(
     await conn.close()
 
 
+async def test_tcp_connector_closes_socket_on_error_results_in_another_error(
+    loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
+) -> None:
+    """Test that when error occurs while closing the socket."""
+    req = ClientRequest("GET", URL("https://127.0.0.1:443"), loop=loop)
+    start_connection.return_value.close.side_effect = OSError(
+        1, "error from closing socket"
+    )
+
+    conn = aiohttp.TCPConnector()
+    with (
+        mock.patch.object(
+            conn._loop,
+            "create_connection",
+            autospec=True,
+            spec_set=True,
+            side_effect=ValueError,
+        ),
+        pytest.raises(aiohttp.ClientConnectionError, match="error from closing socket"),
+    ):
+        await conn.connect(req, [], ClientTimeout())
+
+    assert start_connection.return_value.close.called
+
+    await conn.close()
+
+
 async def test_tcp_connector_server_hostname_default(
     loop: Any, start_connection: mock.AsyncMock
 ) -> None:
