@@ -1138,6 +1138,34 @@ is controlled by *force_close* constructor's parameter).
       overridden in subclasses.
 
 
+.. autodata:: AddrInfoType
+
+.. note::
+
+   Refer to :py:data:`aiohappyeyeballs.AddrInfoType` for more info.
+
+.. warning::
+
+   Be sure to use ``aiohttp.AddrInfoType`` rather than
+   ``aiohappyeyeballs.AddrInfoType`` to avoid import breakage, as
+   it is likely to be removed from ``aiohappyeyeballs`` in the
+   future.
+
+
+.. autodata:: SocketFactoryType
+
+.. note::
+
+   Refer to :py:data:`aiohappyeyeballs.SocketFactoryType` for more info.
+
+.. warning::
+
+   Be sure to use ``aiohttp.SocketFactoryType`` rather than
+   ``aiohappyeyeballs.SocketFactoryType`` to avoid import breakage,
+   as it is likely to be removed from ``aiohappyeyeballs`` in the
+   future.
+
+
 .. class:: TCPConnector(*, ssl=True, verify_ssl=True, fingerprint=None, \
                  use_dns_cache=True, ttl_dns_cache=10, \
                  family=0, ssl_context=None, local_addr=None, \
@@ -1145,7 +1173,7 @@ is controlled by *force_close* constructor's parameter).
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
                  happy_eyeballs_delay=0.25, interleave=None, loop=None, \
-                 tcp_sockopts=[])
+                 socket_factory=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1266,9 +1294,9 @@ is controlled by *force_close* constructor's parameter).
 
         .. versionadded:: 3.10
 
-   :param list tcp_sockopts: options applied to the socket when a connection is
-      created. This should be a list of 3-tuples, each a ``(level, optname, value)``.
-      Each tuple is deconstructed and passed verbatim to ``<socket>.setsockopt``.
+   :param :py:data:``SocketFactoryType`` socket_factory: This function takes an
+      :py:data:``AddrInfoType`` and is used in lieu of ``socket.socket()`` when
+      creating TCP connections.
 
         .. versionadded:: 3.12
 

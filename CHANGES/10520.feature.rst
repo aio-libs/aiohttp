@@ -1,0 +1,2 @@
+Added ``socket_factory`` to :py:class:`aiohttp.TCPConnector` to allow specifying custom socket options
+-- by :user:`TimMenninger`.
