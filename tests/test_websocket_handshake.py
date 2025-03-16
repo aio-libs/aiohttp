@@ -174,7 +174,7 @@ async def test_handshake_protocol_unsupported(caplog) -> None:
 
     assert (
         caplog.records[-1].msg
-        == "Client protocols %r don’t overlap server-known ones %r"
+        == "%s: Client protocols %r don’t overlap server-known ones %r"
     )
     assert ws.ws_protocol is None
 
