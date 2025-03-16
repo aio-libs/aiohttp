@@ -22,7 +22,4 @@ def test_client_response_does_not_leak_on_server_disconnected_error() -> None:
         [sys.executable, "-u", str(leak_test_script)],
         stdout=subprocess.PIPE,
     ) as proc:
-        buff: list[str] = []
-        for line in proc.stdout:  # type: ignore[union-attr]
-            buff.append(line.decode("utf-8"))
-        assert proc.wait() == 0, "".join(buff)
+        assert proc.wait() == 0, "ClientResponse leaked"
