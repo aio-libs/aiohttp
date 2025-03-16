@@ -1,6 +1,7 @@
 import asyncio
 import gc
 import sys
+from typing import NoReturn
 
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import get_unused_port_socket
@@ -11,7 +12,7 @@ gc.set_debug(gc.DEBUG_LEAK)
 async def main() -> None:
     app = web.Application()
 
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         await request.json()
 
     app.router.add_route("GET", "/json", handler)
