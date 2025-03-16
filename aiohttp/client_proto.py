@@ -64,6 +64,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         self._should_close = True
 
     def close(self) -> None:
+        self._exception = None  # Break cyclic references
         transport = self.transport
         if transport is not None:
             transport.close()

@@ -93,6 +93,7 @@ class WebSocketDataQueue:
     def feed_eof(self) -> None:
         self._eof = True
         self._release_waiter()
+        self._exception = None  # Break cyclic references
 
     def feed_data(self, data: "WSMessage", size: "int_") -> None:
         self._size += size
