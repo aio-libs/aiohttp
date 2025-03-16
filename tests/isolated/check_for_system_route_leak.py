@@ -14,6 +14,7 @@ async def main() -> None:
 
     async def handler(request: web.Request) -> NoReturn:
         """Handler will never be called."""
+        assert False
 
     app.router.add_route("POST", "/json", handler)
     sock = get_unused_port_socket("127.0.0.1")
