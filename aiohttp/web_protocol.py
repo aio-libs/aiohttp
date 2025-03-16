@@ -520,8 +520,6 @@ class RequestHandler(BaseProtocol):
         keep_alive(True) specified.
         """
         loop = self._loop
-        handler = asyncio.current_task(loop)
-        assert handler is not None
         manager = self._manager
         assert manager is not None
         keepalive_timeout = self._keepalive_timeout
@@ -551,7 +549,16 @@ class RequestHandler(BaseProtocol):
             else:
                 request_handler = self._request_handler
 
-            request = self._request_factory(message, payload, self, writer, handler)
+            # Important don't hold a reference to the current task
+            # as on traceback it will prevent the task from being
+            # collected and will cause a memory leak.
+            request = self._request_factory(
+                message,
+                payload,
+                self,
+                writer,
+                self._task_handler or asyncio.current_task(loop),  # type: ignore[arg-type]
+            )
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, request_handler)
@@ -617,6 +624,7 @@ class RequestHandler(BaseProtocol):
                 self.force_close()
                 raise
             finally:
+                request._task = None  # type: ignore[assignment] # Break reference cycle in case of exception
                 if self.transport is None and resp is not None:
                     self.log_debug("Ignored premature client disconnection.")
 
