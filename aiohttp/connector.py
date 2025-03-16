@@ -1150,7 +1150,10 @@ class TCPConnector(BaseConnector):
                 # Will be hit if an exception is thrown before the event loop takes the socket.
                 # In that case, proactively close the socket to guard against event loop leaks.
                 # For example, see https://github.com/MagicStack/uvloop/issues/653.
-                sock.close()
+                try:
+                    sock.close()
+                except OSError as exc:
+                    raise client_error(req.connection_key, exc) from exc
 
     async def _wrap_existing_connection(
         self,
