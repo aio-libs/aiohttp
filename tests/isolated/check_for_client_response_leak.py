@@ -3,8 +3,7 @@ import contextlib
 import gc
 import sys
 
-import aiohttp
-from aiohttp import web
+from aiohttp import ClientError, ClientSession, web
 from aiohttp.test_utils import get_unused_port_socket
 
 gc.set_debug(gc.DEBUG_LEAK)
@@ -28,11 +27,11 @@ async def main() -> None:
     site = web.SockSite(runner, sock)
     await site.start()
 
-    session = aiohttp.ClientSession()
+    session = ClientSession()
 
     async def fetch_stream(url: str) -> None:
         """Fetch a stream and read a few bytes from it."""
-        with contextlib.suppress(aiohttp.ClientError):
+        with contextlib.suppress(ClientError):
             response = await session.get(url)
             while True:
                 await response.content.readexactly(6)
