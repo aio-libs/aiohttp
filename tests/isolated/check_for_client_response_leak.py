@@ -10,7 +10,7 @@ from aiohttp.test_utils import get_unused_port_socket
 gc.set_debug(gc.DEBUG_LEAK)
 
 
-async def main():
+async def main() -> None:
     app = web.Application()
 
     async def stream_handler(request: web.Request) -> web.Response:
