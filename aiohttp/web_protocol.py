@@ -580,7 +580,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 payload,
                 self,
                 writer,
-                self._task_handler or asyncio.current_task(loop),
+                self._task_handler or asyncio.current_task(loop),  # type: ignore[arg-type]
             )
             try:
                 # a new task is used for copy context vars (#3406)
@@ -649,7 +649,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 self.force_close()
                 raise
             finally:
-                request._task = None  # Break reference cycle in case of exception
+                request._task = None  # type: ignore[assignment] # Break reference cycle in case of exception
                 if self.transport is None and resp is not None:
                     self.log_debug("Ignored premature client disconnection.")
 
