@@ -1,0 +1,1 @@
+Fixed DNS resolution on platforms that don't support `AI_ADDRCONFIG`
