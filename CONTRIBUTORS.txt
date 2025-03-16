@@ -31,6 +31,7 @@ Alexandru Mihai
 Alexey Firsov
 Alexey Nikitin
 Alexey Popravka
+Alexey Stavrov
 Alexey Stepanov
 Amin Etesamian
 Amit Tulshyan
