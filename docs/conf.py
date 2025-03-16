@@ -421,6 +421,7 @@ nitpick_ignore = [
     ("py:attr", "body"),  # undocumented
     ("py:class", "socket.socket"),  # undocumented
     ("py:class", "socket.AddressFamily"),  # undocumented
+    ("py:class", "socket.SocketKind"),  # undocumented
     ("py:obj", "logging.DEBUG"),  # undocumented
     ("py:class", "aiohttp.abc.AbstractAsyncAccessLogger"),  # undocumented
     ("py:meth", "aiohttp.web.Response.write_eof"),  # undocumented
@@ -428,7 +429,6 @@ nitpick_ignore = [
     ("py:class", "cgi.FieldStorage"),  # undocumented
     ("py:meth", "aiohttp.web.UrlDispatcher.register_resource"),  # undocumented
     ("py:func", "aiohttp_debugtoolbar.setup"),  # undocumented
-<<<<<<< HEAD
     ("py:exc", "HTTPInternalServerError"),  # undocumented
     ("py:exc", "HTTPForbidden"),  # undocumented
     ("py:exc", "HTTPExpectationFailed"),  # undocumented
@@ -444,9 +444,6 @@ nitpick_ignore = [
     ("py:exc", "HTTPMethodNotAllowed"),  # undocumented
     ("py:class", "HTTPMethodNotAllowed"),  # undocumented
     ("py:class", "HTTPUnavailableForLegalReasons"),  # undocumented
-=======
-    ("py:class", "socket.SocketKind"),  # undocumented
->>>>>>> 3b9bb1cd5 (Replace tcp_sockopts with socket_factory (#10534))
 ]
 
 # -- Options for towncrier_draft extension -----------------------------------

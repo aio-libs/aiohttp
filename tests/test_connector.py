@@ -10,7 +10,17 @@ import uuid
 from collections import defaultdict, deque
 from concurrent import futures
 from contextlib import closing, suppress
-from typing import Any, DefaultDict, Deque, List, Literal, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    DefaultDict,
+    Deque,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+)
 from unittest import mock
 
 import pytest
