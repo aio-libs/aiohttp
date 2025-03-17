@@ -1,1 +1,0 @@
-Fixed DNS resolution on platforms that don't support ``socket.AI_ADDRCONFIG`` -- by :user:`maxbachmann`.
