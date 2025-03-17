@@ -1361,6 +1361,19 @@ def test_parse_payload_response_without_body(
     assert payload.is_eof()
 
 
+def test_parse_payload_response_with_invalid_body(
+    loop: asyncio.AbstractEventLoop,
+    protocol: BaseProtocol,
+    response_cls: Type[HttpResponseParser],
+) -> None:
+    parser = response_cls(protocol, loop, 2**16, response_with_body=False)
+    text = (b"HTTP/1.1 200 Ok\r\nTransfer-Encoding: chunked\r\n\r\n"
+            b"7\r\nchunked\r\n0\r\n\r\n")
+    msg, payload = parser.feed_data(text)[0][0]
+
+    assert payload.is_eof()
+
+
 def test_parse_length_payload(response: HttpResponseParser) -> None:
     text = b"HTTP/1.1 200 Ok\r\ncontent-length: 4\r\n\r\n"
     msg, payload = response.feed_data(text)[0][0]
