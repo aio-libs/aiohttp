@@ -1,1 +1,0 @@
-Break cyclic references when there is an exception handling a request -- by :user:`bdraco`.
