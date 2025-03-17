@@ -1367,8 +1367,10 @@ def test_parse_payload_response_with_invalid_body(
     response_cls: Type[HttpResponseParser],
 ) -> None:
     parser = response_cls(protocol, loop, 2**16, response_with_body=False)
-    text = (b"HTTP/1.1 200 Ok\r\nTransfer-Encoding: chunked\r\n\r\n"
-            b"7\r\nchunked\r\n0\r\n\r\n")
+    text = (
+        b"HTTP/1.1 200 Ok\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b"7\r\nchunked\r\n0\r\n\r\n"
+    )
     msg, payload = parser.feed_data(text)[0][0]
 
     assert payload.is_eof()
