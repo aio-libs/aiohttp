@@ -1,1 +1,0 @@
-The connector now raises :exc:`aiohttp.ClientConnectionError` instead of :exc:`OSError` when failing to explicitly close the socket after :py:meth:`asyncio.loop.create_connection` fails -- by :user:`bdraco`.
