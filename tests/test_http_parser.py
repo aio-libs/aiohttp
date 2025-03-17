@@ -1371,9 +1371,8 @@ def test_parse_payload_response_with_invalid_body(
         b"HTTP/1.1 200 Ok\r\nTransfer-Encoding: chunked\r\n\r\n"
         b"7\r\nchunked\r\n0\r\n\r\n"
     )
-    msg, payload = parser.feed_data(text)[0][0]
-
-    assert payload.is_eof()
+    with pytest.raises(http_exceptions.BadHttpMessage, match="status line"):
+        msg, payload = parser.feed_data(text)[0][0]
 
 
 def test_parse_length_payload(response: HttpResponseParser) -> None:
