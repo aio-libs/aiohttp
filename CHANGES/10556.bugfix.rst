@@ -1,3 +1,0 @@
-Break cyclic references at connection close when there was a traceback -- by :user:`bdraco`.
-
-Special thanks to :user:`availov` for reporting the issue.

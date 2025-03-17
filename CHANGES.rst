@@ -10,6 +10,83 @@
 
 .. towncrier release notes start
 
+3.11.14 (2025-03-16)
+====================
+
+Bug fixes
+---------
+
+- Fixed an issue where dns queries were delayed indefinitely when an exception occurred in a ``trace.send_dns_cache_miss``
+  -- by :user:`logioniz`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10529`.
+
+
+
+- Fixed DNS resolution on platforms that don't support ``socket.AI_ADDRCONFIG`` -- by :user:`maxbachmann`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10542`.
+
+
+
+- The connector now raises :exc:`aiohttp.ClientConnectionError` instead of :exc:`OSError` when failing to explicitly close the socket after :py:meth:`asyncio.loop.create_connection` fails -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10551`.
+
+
+
+- Break cyclic references at connection close when there was a traceback -- by :user:`bdraco`.
+
+  Special thanks to :user:`availov` for reporting the issue.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10556`.
+
+
+
+- Break cyclic references when there is an exception handling a request -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10569`.
+
+
+
+
+Features
+--------
+
+- Improved logging on non-overlapping WebSocket client protocols to include the remote address -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10564`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of parsing content types by adding a cache in the same manner currently done with mime types -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10552`.
+
+
+
+
+----
+
+
 3.11.13 (2025-02-24)
 ====================
 
