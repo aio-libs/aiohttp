@@ -1372,7 +1372,7 @@ def test_parse_payload_response_with_invalid_body(
         b"7\r\nchunked\r\n0\r\n\r\n"
     )
     with pytest.raises(http_exceptions.BadHttpMessage, match="status line"):
-        msg, payload = parser.feed_data(text)[0][0]
+        parser.feed_data(text)[0][0]
 
 
 def test_parse_length_payload(response: HttpResponseParser) -> None:
