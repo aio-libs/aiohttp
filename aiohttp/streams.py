@@ -399,7 +399,6 @@ class StreamReader(AsyncStreamReaderMixin):
             # collect everything in self._buffer, but that would
             # deadlock if the subprocess sends more than self.limit
             # bytes.  So just call self.readany() until EOF.
-            blocks = []
             buffer = io.BytesIO()
             while True:
                 block = await self.readany()
@@ -524,7 +523,6 @@ class StreamReader(AsyncStreamReaderMixin):
         """Read not more than n bytes, or whole buffer if n == -1"""
         self._timer.assert_timeout()
 
-        chunks = []
         buffer = io.BytesIO()
         while self._buffer:
             chunk = self._read_nowait_chunk(n)
