@@ -24,7 +24,7 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   valkey
 babel==2.17.0
     # via sphinx
-blockbuster==1.5.23
+blockbuster==1.5.24
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
