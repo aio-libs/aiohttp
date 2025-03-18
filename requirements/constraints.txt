@@ -26,7 +26,7 @@ attrs==25.3.0
     # via -r requirements/runtime-deps.in
 babel==2.17.0
     # via sphinx
-blockbuster==1.5.23
+blockbuster==1.5.24
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
