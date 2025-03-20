@@ -2,11 +2,17 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, Generator, List
+from typing import TYPE_CHECKING, Any, Dict, Generator, List
 
 import pytest
 from pytest import TempPathFactory
-from python_on_whales import DockerException, docker
+
+if TYPE_CHECKING:
+    from python_on_whales import DockerException, docker
+else:
+    python_on_whales = pytest.importorskip("python_on_whales")
+    DockerException = python_on_whales.DockerException
+    docker = python_on_whales.docker
 
 
 @pytest.fixture(scope="session")
