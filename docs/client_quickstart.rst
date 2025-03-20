@@ -93,7 +93,7 @@ Passing Parameters In URLs
 You often want to send some sort of data in the URL's query string. If
 you were constructing the URL by hand, this data would be given as key/value
 pairs in the URL after a question mark, e.g. ``httpbin.org/get?key=val``.
-Requests allows you to provide these arguments as a :class:`dict`, using the
+aiohttp allows you to provide these arguments as a :class:`dict`, using the
 ``params`` keyword argument. As an example, if you wanted to pass
 ``key1=value1`` and ``key2=value2`` to ``httpbin.org/get``, you would use the
 following code::
