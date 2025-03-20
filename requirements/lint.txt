@@ -37,7 +37,7 @@ identify==2.6.9
     # via pre-commit
 idna==3.7
     # via trustme
-iniconfig==2.0.0
+iniconfig==2.1.0
     # via pytest
 markdown-it-py==3.0.0
     # via rich

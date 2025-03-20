@@ -49,7 +49,7 @@ idna==3.6
     # via
     #   trustme
     #   yarl
-iniconfig==2.0.0
+iniconfig==2.1.0
     # via pytest
 markdown-it-py==3.0.0
     # via rich
