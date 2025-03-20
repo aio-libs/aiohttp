@@ -2,11 +2,15 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, Generator, List
+from typing import TYPE_CHECKING, Any, Dict, Generator, List
 
 import pytest
-import python_on_whales
 from pytest import TempPathFactory
+
+if TYPE_CHECKING:
+    import python_on_whales
+else:
+    python_on_whales = pytest.importorskip("python_on_whales")
 
 
 @pytest.fixture(scope="session")
