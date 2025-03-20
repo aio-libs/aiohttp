@@ -99,7 +99,7 @@ imagesize==1.4.1
     # via sphinx
 incremental==24.7.2
     # via towncrier
-iniconfig==2.0.0
+iniconfig==2.1.0
     # via pytest
 jinja2==3.1.6
     # via
