@@ -453,11 +453,14 @@ cdef class HttpParser:
                 upgrade, chunked)
 
         if (
-            ULLONG_MAX > self._cparser.content_length > 0 or chunked or
-            self._cparser.method == cparser.HTTP_CONNECT or
-            (self._cparser.status_code >= 199 and
-             self._cparser.content_length == 0 and
-             self._read_until_eof)
+            self._response_with_body
+            and (
+                 ULLONG_MAX > self._cparser.content_length > 0 or chunked or
+                 self._cparser.method == cparser.HTTP_CONNECT or
+                 (self._cparser.status_code >= 199 and
+                  self._cparser.content_length == 0 and
+                  self._read_until_eof)
+            )
         ):
             payload = StreamReader(
                 self._protocol, timer=self._timer, loop=self._loop,
@@ -468,9 +471,6 @@ cdef class HttpParser:
         self._payload = payload
         if encoding is not None and self._auto_decompress:
             self._payload = DeflateBuffer(payload, encoding)
-
-        if not self._response_with_body:
-            payload = EMPTY_PAYLOAD
 
         self._messages.append((msg, payload))
 
