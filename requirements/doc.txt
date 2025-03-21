@@ -5,7 +5,7 @@
 #    pip-compile --allow-unsafe --output-file=requirements/doc.txt --resolver=backtracking --strip-extras requirements/doc.in
 #
 aiohttp-theme==0.1.7
-    # via -r requirements/doc.in
+    # via -r doc.in
 alabaster==1.0.0
     # via sphinx
 babel==2.17.0
@@ -18,7 +18,7 @@ click==8.1.8
     # via towncrier
 docutils==0.21.2
     # via sphinx
-idna==3.6
+idna==3.7
     # via requests
 imagesize==1.4.1
     # via sphinx
@@ -40,7 +40,7 @@ snowballstemmer==2.2.0
     # via sphinx
 sphinx==8.1.3
     # via
-    #   -r requirements/doc.in
+    #   -r doc.in
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==2.0.0
     # via sphinx
@@ -55,7 +55,7 @@ sphinxcontrib-qthelp==2.0.0
 sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
 sphinxcontrib-towncrier==0.5.0a0
-    # via -r requirements/doc.in
+    # via -r doc.in
 tomli==2.2.1
     # via
     #   incremental
@@ -63,7 +63,7 @@ tomli==2.2.1
     #   towncrier
 towncrier==23.11.0
     # via
-    #   -r requirements/doc.in
+    #   -r doc.in
     #   sphinxcontrib-towncrier
 urllib3==2.3.0
     # via requests
