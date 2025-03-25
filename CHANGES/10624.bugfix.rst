@@ -1,0 +1,1 @@
+Workaround a race in ``loop.sock_connect`` where the socket writer was not removed before the function returned if it was cancelled which could have resulted in attempting to reuse a file descriptor -- by :user:`bdraco`.
