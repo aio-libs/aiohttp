@@ -1151,9 +1151,18 @@ class TCPConnector(BaseConnector):
                 # In that case, proactively close the socket to guard against event loop leaks.
                 # For example, see https://github.com/MagicStack/uvloop/issues/653.
                 try:
-                    sock.close()
+                    await asyncio.shield(self._cleanup_socket(sock))
                 except OSError as exc:
                     raise client_error(req.connection_key, exc) from exc
+
+    async def _cleanup_socket(self, sock: socket.socket) -> None:
+        # Flush out any `call_soon`s by calling `asyncio.sleep(0)`
+        # that may have been scheduled to cleanup sock_connect.
+        # This is necessary to ensure that the writer is removed
+        # before the socket is closed.
+        # https://github.com/python/cpython/issues/131728
+        await asyncio.sleep(0)
+        sock.close()
 
     def _warn_about_tls_in_tls(
         self,
