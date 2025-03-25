@@ -1,1 +1,1 @@
-Worked around a race in ``loop.sock_connect`` where the socket writer was not removed before the function returned if it was canceled, which could have resulted in attempting to reuse a file descriptor -- by :user:`bdraco`.
+Worked around a race in :py:meth:`asyncio.loop.sock_connect` where the socket writer was not removed before the function returned if it was canceled, which could have resulted in attempting to reuse a file descriptor -- by :user:`bdraco`.
