@@ -470,6 +470,7 @@ class WebSocketReader:
                 self._frame_payload_len = 0
                 self._state = READ_HEADER
 
+        # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
         self._tail = buf_cstr[start_pos:buf_length] if start_pos < buf_length else b""
 
         return frames
