@@ -97,8 +97,18 @@ cdef inline int _write_str(Writer* writer, str s):
             return -1
 
 
-cdef inline int _write_str_raise_nlcr(Writer* writer, str s):
+cdef inline int _write_or_raise_nlcr(Writer* writer, object in_str):
     cdef Py_UCS4 ch
+    cdef str s
+    if type(in_str) is str:
+        s = <str>in_str
+    if type(in_str) is _istr:
+        s = PyObject_Str(in_str)
+    elif not isinstance(in_str, str):
+        raise TypeError("Cannot serialize non-str key {!r}".format(in_str))
+    else:
+        s = str(in_str)
+
     for ch in s:
         if ch == 0x0D or ch == 0x0A:
             raise ValueError(
@@ -110,18 +120,6 @@ cdef inline int _write_str_raise_nlcr(Writer* writer, str s):
 
 
 # --------------- _serialize_headers ----------------------
-
-cdef inline str to_str(object s):
-    if type(s) is str:
-        return <str>s
-    if type(s) is _istr:
-        return PyObject_Str(s)
-    elif not isinstance(s, str):
-        raise TypeError("Cannot serialize non-str key {!r}".format(s))
-    else:
-        return str(s)
-
-
 
 def _serialize_headers(str status_line, headers):
     cdef Writer writer
@@ -142,13 +140,13 @@ def _serialize_headers(str status_line, headers):
             raise
 
         for key, val in headers.items():
-            if _write_str_raise_nlcr(&writer, to_str(key)) < 0:
+            if _write_or_raise_nlcr(&writer, key) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:
                 raise
             if _write_byte(&writer, b' ') < 0:
                 raise
-            if _write_str_raise_nlcr(&writer, to_str(val)) < 0:
+            if _write_or_raise_nlcr(&writer, val) < 0:
                 raise
             if _write_byte(&writer, b'\r') < 0:
                 raise
