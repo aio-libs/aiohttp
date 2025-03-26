@@ -5,13 +5,13 @@
 #    pip-compile --allow-unsafe --output-file=requirements/lint.txt --strip-extras requirements/lint.in
 #
 aiodns==3.2.0
-    # via -r requirements/lint.in
+    # via -r lint.in
 annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
 blockbuster==1.5.24
-    # via -r requirements/lint.in
+    # via -r lint.in
 cffi==1.17.1
     # via
     #   cryptography
@@ -32,7 +32,7 @@ filelock==3.18.0
 forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.1
-    # via -r requirements/lint.in
+    # via -r lint.in
 identify==2.6.9
     # via pre-commit
 idna==3.7
@@ -44,7 +44,7 @@ markdown-it-py==3.0.0
 mdurl==0.1.2
     # via markdown-it-py
 mypy==1.15.0 ; implementation_name == "cpython"
-    # via -r requirements/lint.in
+    # via -r lint.in
 mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.9.1
@@ -56,9 +56,9 @@ platformdirs==4.3.7
 pluggy==1.5.0
     # via pytest
 pre-commit==4.2.0
-    # via -r requirements/lint.in
+    # via -r lint.in
 proxy-py==2.4.10
-    # via -r requirements/lint.in
+    # via -r lint.in
 pycares==4.5.0
     # via aiodns
 pycparser==2.22
@@ -71,17 +71,17 @@ pygments==2.19.1
     # via rich
 pytest==8.1.1
     # via
-    #   -r requirements/lint.in
+    #   -r lint.in
     #   pytest-codspeed
     #   pytest-mock
 pytest-codspeed==3.2.0
-    # via -r requirements/lint.in
+    # via -r lint.in
 pytest-mock==3.14.0
-    # via -r requirements/lint.in
+    # via -r lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.75.1
-    # via -r requirements/lint.in
+    # via -r lint.in
 pyyaml==6.0.2
     # via pre-commit
 rich==13.9.4
@@ -89,14 +89,14 @@ rich==13.9.4
 six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
-    # via -r requirements/lint.in
+    # via -r lint.in
 tomli==2.2.1
     # via
     #   mypy
     #   pytest
     #   slotscheck
 trustme==1.2.1
-    # via -r requirements/lint.in
+    # via -r lint.in
 typing-extensions==4.12.2
     # via
     #   mypy
@@ -105,8 +105,8 @@ typing-extensions==4.12.2
     #   python-on-whales
     #   rich
 uvloop==0.21.0 ; platform_system != "Windows"
-    # via -r requirements/lint.in
+    # via -r lint.in
 valkey==6.1.0
-    # via -r requirements/lint.in
+    # via -r lint.in
 virtualenv==20.29.3
     # via pre-commit
