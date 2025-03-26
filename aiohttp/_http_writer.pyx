@@ -102,7 +102,7 @@ cdef inline int _write_or_raise_nlcr(Writer* writer, object in_str):
     cdef str s
     if type(in_str) is str:
         s = <str>in_str
-    if type(in_str) is _istr:
+    elif type(in_str) is _istr:
         s = PyObject_Str(in_str)
     elif not isinstance(in_str, str):
         raise TypeError("Cannot serialize non-str key {!r}".format(in_str))
