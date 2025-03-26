@@ -112,9 +112,7 @@ cdef inline int _write_str_raise_nlcr(Writer* writer, str s):
 # --------------- _serialize_headers ----------------------
 
 cdef str to_str(object s):
-    if type(s) is str:
-        return <str>s
-    elif type(s) is _istr:
+    if type(s) is _istr:
         return PyObject_Str(s)
     elif not isinstance(s, str):
         raise TypeError("Cannot serialize non-str key {!r}".format(s))
@@ -142,16 +140,19 @@ def _serialize_headers(str status_line, headers):
             raise
 
         for key, val in headers.items():
-            key_str = to_str(key)
-            val_str = to_str(val)
-
-            if _write_str_raise_nlcr(&writer, key_str) < 0:
+            if _write_str_raise_nlcr(
+                &writer,
+                <str>key if type(key) is str else to_str(key)
+            ) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:
                 raise
             if _write_byte(&writer, b' ') < 0:
                 raise
-            if _write_str_raise_nlcr(&writer, val_str) < 0:
+            if _write_str_raise_nlcr(
+                &writer,
+                <str>val if type(val) is str else to_str(val)
+            ) < 0:
                 raise
             if _write_byte(&writer, b'\r') < 0:
                 raise
