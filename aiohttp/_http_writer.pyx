@@ -97,6 +97,18 @@ cdef inline int _write_str(Writer* writer, str s):
             return -1
 
 
+cdef inline int _write_str_raise_nlcr(Writer* writer, str s):
+    cdef Py_UCS4 ch
+    for ch in s:
+        if ch == 0x0D or ch == 0x0A:
+            raise ValueError(
+                "Newline or carriage return character detected in HTTP status message or "
+                "header. This is a potential security issue."
+            )
+        if _write_utf8(writer, ch) < 0:
+            return -1
+
+
 # --------------- _serialize_headers ----------------------
 
 cdef str to_str(object s):
@@ -133,19 +145,13 @@ def _serialize_headers(str status_line, headers):
             key_str = to_str(key)
             val_str = to_str(val)
 
-            if "\r" in key_str or "\n" in key_str or "\r" in val_str or "\n" in val_str:
-                raise ValueError(
-                    "Newline or carriage return character detected in HTTP status message or "
-                    "header. This is a potential security issue."
-                )
-
-            if _write_str(&writer, key_str) < 0:
+            if _write_str_raise_nlcr(&writer, key_str) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:
                 raise
             if _write_byte(&writer, b' ') < 0:
                 raise
-            if _write_str(&writer, val_str) < 0:
+            if _write_str_raise_nlcr(&writer, val_str) < 0:
                 raise
             if _write_byte(&writer, b'\r') < 0:
                 raise
