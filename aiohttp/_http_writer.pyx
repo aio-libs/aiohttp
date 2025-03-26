@@ -125,7 +125,6 @@ def _serialize_headers(str status_line, headers):
     cdef Writer writer
     cdef object key
     cdef object val
-    cdef bytes ret
 
     _init_writer(&writer)
 
