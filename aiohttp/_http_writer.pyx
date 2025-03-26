@@ -112,8 +112,8 @@ cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
     for ch in out_str:
         if ch == 0x0D or ch == 0x0A:
             raise ValueError(
-                "Newline or carriage return character detected in HTTP status message or "
-                "header. This is a potential security issue."
+                "Newline or carriage return detected in headers. "
+                "Potential header injection attack."
             )
         if _write_utf8(writer, ch) < 0:
             return -1

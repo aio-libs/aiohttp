@@ -625,8 +625,8 @@ def test_serialize_headers_raises_on_new_line_or_carriage_return(char: str) -> N
     with pytest.raises(
         ValueError,
         match=(
-            "Newline or carriage return character detected in HTTP status message or "
-            "header. This is a potential security issue."
+            "Newline or carriage return detected in headers. "
+            "Potential header injection attack."
         ),
     ):
         _serialize_headers(status_line, headers)
