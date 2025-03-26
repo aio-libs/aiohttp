@@ -97,7 +97,7 @@ cdef inline int _write_str(Writer* writer, str s):
             return -1
 
 
-cdef inline int _write_or_raise_nlcr(Writer* writer, object s):
+cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
     cdef Py_UCS4 ch
     cdef str out_str
     if type(s) is str:
@@ -137,13 +137,13 @@ def _serialize_headers(str status_line, headers):
             raise
 
         for key, val in headers.items():
-            if _write_or_raise_nlcr(&writer, key) < 0:
+            if _write_str_raise_on_nlcr(&writer, key) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:
                 raise
             if _write_byte(&writer, b' ') < 0:
                 raise
-            if _write_or_raise_nlcr(&writer, val) < 0:
+            if _write_str_raise_on_nlcr(&writer, val) < 0:
                 raise
             if _write_byte(&writer, b'\r') < 0:
                 raise
