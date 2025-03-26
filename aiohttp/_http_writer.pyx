@@ -97,19 +97,19 @@ cdef inline int _write_str(Writer* writer, str s):
             return -1
 
 
-cdef inline int _write_or_raise_nlcr(Writer* writer, object in_str):
+cdef inline int _write_or_raise_nlcr(Writer* writer, object s):
     cdef Py_UCS4 ch
-    cdef str s
-    if type(in_str) is str:
-        s = <str>in_str
-    elif type(in_str) is _istr:
-        s = PyObject_Str(in_str)
-    elif not isinstance(in_str, str):
-        raise TypeError("Cannot serialize non-str key {!r}".format(in_str))
+    cdef str out_str
+    if type(s) is str:
+        out_str = <str>s
+    elif type(s) is _istr:
+        out_str = PyObject_Str(s)
+    elif not isinstance(s, str):
+        raise TypeError("Cannot serialize non-str key {!r}".format(s))
     else:
-        s = str(in_str)
+        out_str = str(s)
 
-    for ch in s:
+    for ch in out_str:
         if ch == 0x0D or ch == 0x0A:
             raise ValueError(
                 "Newline or carriage return character detected in HTTP status message or "
