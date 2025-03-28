@@ -38,6 +38,7 @@ from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.client_exceptions import (
     ClientResponseError,
     InvalidURL,
+    InvalidUrlAuthClientError,
     InvalidUrlClientError,
     InvalidUrlRedirectClientError,
     NonHttpUrlClientError,
@@ -2685,6 +2686,13 @@ INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN = (
     ("http:///example.com", "http:///example.com"),
 )
 
+INVALID_URL_WITH_ERROR_MESSAGE_BAD_AUTH = (
+    (
+        "http://badchar username@example.com",
+        "http://example.com - 'latin-?1' codec can't encode",
+    ),
+)
+
 NON_HTTP_URL_WITH_ERROR_MESSAGE = (
     ("call:+380123456789", r"call:\+380123456789"),
     ("skype:handle", "skype:handle"),
@@ -2705,6 +2713,10 @@ NON_HTTP_URL_WITH_ERROR_MESSAGE = (
         *(
             (url, message, InvalidUrlClientError)
             for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
+        ),
+        *(
+            (url, message, InvalidUrlAuthClientError)
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_BAD_AUTH
         ),
         *(
             (url, message, NonHttpUrlClientError)

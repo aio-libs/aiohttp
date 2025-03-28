@@ -35,7 +35,9 @@ from .client_exceptions import (
     ClientOSError,
     ClientResponseError,
     ContentTypeError,
+    InvalidAuthClientError,
     InvalidURL,
+    InvalidUrlAuthClientError,
     ServerFingerprintMismatch,
 )
 from .compression_utils import HAS_BROTLI
@@ -497,7 +499,11 @@ class ClientRequest:
     def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
+            auth_from_url = True
             auth = self.auth
+        else:
+            auth_from_url = False
+
         if auth is None and trust_env and self.url.host is not None:
             netrc_obj = netrc_from_env()
             with contextlib.suppress(LookupError):
@@ -508,7 +514,13 @@ class ClientRequest:
         if not isinstance(auth, helpers.BasicAuth):
             raise TypeError("BasicAuth() tuple is required instead")
 
-        self.headers[hdrs.AUTHORIZATION] = auth.encode()
+        try:
+            self.headers[hdrs.AUTHORIZATION] = auth.encode()
+        except UnicodeEncodeError as e:
+            auth_err_exc_cls = (
+                InvalidUrlAuthClientError if auth_from_url else InvalidAuthClientError
+            )
+            raise auth_err_exc_cls(self.url, str(e)) from e
 
     def update_body_from_data(self, body: Any) -> None:
         if body is None:
