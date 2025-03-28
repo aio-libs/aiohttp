@@ -36,7 +36,7 @@ from .http_websocket import _INTERNAL_RECEIVE_TYPES, WSMessageError
 from .log import ws_logger
 from .streams import EofStream
 from .typedefs import JSONDecoder, JSONEncoder
-from .web_exceptions import HTTPBadRequest, HTTPException
+from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
@@ -226,6 +226,9 @@ class WebSocketResponse(StreamResponse):
         self, request: BaseRequest
     ) -> Tuple["CIMultiDict[str]", Optional[str], int, bool]:
         headers = request.headers
+        if request.method != hdrs.METH_GET:
+            raise HTTPMethodNotAllowed(request.method, {hdrs.METH_GET})
+
         if "websocket" != headers.get(hdrs.UPGRADE, "").lower().strip():
             raise HTTPBadRequest(
                 text=(

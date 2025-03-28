@@ -40,11 +40,39 @@ def gen_ws_headers(
     return hdrs, key
 
 
+async def test_not_get() -> None:
+    ws = web.WebSocketResponse()
+    req = make_mocked_request("POST", "/")
+    with pytest.raises(web.HTTPMethodNotAllowed):
+        await ws.prepare(req)
+
+
+async def test_inappropriate_method() -> None:
+    ws = web.WebSocketResponse()
+    req = make_mocked_request(
+        "HEAD",
+        "/",
+        headers=[
+            ("Upgrade", "websocket"),
+            # expect refusal; not a 1xx status (or two)
+            ("Expect", "100-continue"),
+            ("Expect", "100-continue"),
+        ],
+    )
+    with pytest.raises(web.HTTPMethodNotAllowed) as ctx:
+        await ws.prepare(req)
+    assert ctx.value.method == "HEAD"
+    assert ctx.value.allowed_methods == {"GET"}
+    assert ctx.value.status == 405
+
+
 async def test_no_upgrade() -> None:
     ws = web.WebSocketResponse()
     req = make_mocked_request("GET", "/")
-    with pytest.raises(web.HTTPBadRequest):
+    with pytest.raises(web.HTTPBadRequest) as ctx:
         await ws.prepare(req)
+    assert ctx.value.text and "UPGRADE" in ctx.value.text
+    assert ctx.value.status == 400
 
 
 async def test_no_connection() -> None:
@@ -52,8 +80,10 @@ async def test_no_connection() -> None:
     req = make_mocked_request(
         "GET", "/", headers={"Upgrade": "websocket", "Connection": "keep-alive"}
     )
-    with pytest.raises(web.HTTPBadRequest):
+    with pytest.raises(web.HTTPBadRequest) as ctx:
         await ws.prepare(req)
+    assert ctx.value.text and "CONNECTION" in ctx.value.text
+    assert ctx.value.status == 400
 
 
 async def test_protocol_version_unset() -> None:
@@ -61,8 +91,10 @@ async def test_protocol_version_unset() -> None:
     req = make_mocked_request(
         "GET", "/", headers={"Upgrade": "websocket", "Connection": "upgrade"}
     )
-    with pytest.raises(web.HTTPBadRequest):
+    with pytest.raises(web.HTTPBadRequest) as ctx:
         await ws.prepare(req)
+    assert ctx.value.text and "version" in ctx.value.text
+    assert ctx.value.status == 400
 
 
 async def test_protocol_version_not_supported() -> None:
@@ -76,8 +108,10 @@ async def test_protocol_version_not_supported() -> None:
             "Sec-Websocket-Version": "1",
         },
     )
-    with pytest.raises(web.HTTPBadRequest):
+    with pytest.raises(web.HTTPBadRequest) as ctx:
         await ws.prepare(req)
+    assert ctx.value.text and "version" in ctx.value.text
+    assert ctx.value.status == 400
 
 
 async def test_protocol_key_not_present() -> None:
@@ -91,8 +125,10 @@ async def test_protocol_key_not_present() -> None:
             "Sec-Websocket-Version": "13",
         },
     )
-    with pytest.raises(web.HTTPBadRequest):
+    with pytest.raises(web.HTTPBadRequest) as ctx:
         await ws.prepare(req)
+    assert ctx.value.text and "Handshake" in ctx.value.text
+    assert ctx.value.status == 400
 
 
 async def test_protocol_key_invalid() -> None:
@@ -107,8 +143,10 @@ async def test_protocol_key_invalid() -> None:
             "Sec-Websocket-Key": "123",
         },
     )
-    with pytest.raises(web.HTTPBadRequest):
+    with pytest.raises(web.HTTPBadRequest) as ctx:
         await ws.prepare(req)
+    assert ctx.value.text and "Handshake" in ctx.value.text
+    assert ctx.value.status == 400
 
 
 async def test_protocol_key_bad_size() -> None:
@@ -125,8 +163,10 @@ async def test_protocol_key_bad_size() -> None:
             "Sec-Websocket-Key": val,
         },
     )
-    with pytest.raises(web.HTTPBadRequest):
+    with pytest.raises(web.HTTPBadRequest) as ctx:
         await ws.prepare(req)
+    assert ctx.value.text and "Handshake" in ctx.value.text
+    assert ctx.value.status == 400
 
 
 async def test_handshake_ok() -> None:
