@@ -80,7 +80,7 @@ pytest-mock==3.14.0
     # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.75.1
+python-on-whales==0.76.1
     # via -r requirements/lint.in
 pyyaml==6.0.2
     # via pre-commit
