@@ -465,8 +465,8 @@ Custom socket creation
 ^^^^^^^^^^^^^^^^^^^^^^
 
 If the default socket is insufficient for your use case, pass an optional
-`socket_factory` to the :class:`~aiohttp.TCPConnector`, which implements
-`SocketFactoryType`. This will be used to create all sockets for the
+``socket_factory`` to the :class:`~aiohttp.TCPConnector`, which implements
+:class:`SocketFactoryType`. This will be used to create all sockets for the
 lifetime of the class object. For example, we may want to change the
 conditions under which we consider a connection dead. The following would
 make all sockets respect 9*7200 = 18 hours::

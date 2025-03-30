@@ -84,7 +84,7 @@ intersphinx_mapping = {
     "aiohttpsession": ("https://aiohttp-session.readthedocs.io/en/stable/", None),
     "aiohttpdemos": ("https://aiohttp-demos.readthedocs.io/en/latest/", None),
     "aiojobs": ("https://aiojobs.readthedocs.io/en/stable/", None),
-    "aiohappyeyeballs": ("https://aiohappyeyeballs.readthedocs.io/en/stable/", None),
+    "aiohappyeyeballs": ("https://aiohappyeyeballs.readthedocs.io/en/latest/", None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -420,6 +420,7 @@ nitpick_ignore = [
     ("py:class", "aiohttp.web.MatchedSubAppResource"),  # undocumented
     ("py:attr", "body"),  # undocumented
     ("py:class", "socket.socket"),  # undocumented
+    ("py:func", "socket.socket"),  # undocumented
     ("py:class", "socket.AddressFamily"),  # undocumented
     ("py:obj", "logging.DEBUG"),  # undocumented
     ("py:class", "aiohttp.abc.AbstractAsyncAccessLogger"),  # undocumented
