@@ -180,8 +180,8 @@ class AbstractRoute(abc.ABC):
         if expect_handler is None:
             expect_handler = _default_expect_handler
 
-        assert asyncio.iscoroutinefunction(
-            expect_handler
+        assert inspect.iscoroutinefunction(expect_handler) or (
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(expect_handler)
         ), f"Coroutine is expected, got {expect_handler!r}"
 
         method = method.upper()
@@ -189,7 +189,9 @@ class AbstractRoute(abc.ABC):
             raise ValueError(f"{method} is not allowed HTTP method")
 
         assert callable(handler), handler
-        if asyncio.iscoroutinefunction(handler):
+        if inspect.iscoroutinefunction(handler) or (
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(handler)
+        ):
             pass
         elif inspect.isgeneratorfunction(handler):
             warnings.warn(
