@@ -97,27 +97,34 @@ cdef inline int _write_str(Writer* writer, str s):
             return -1
 
 
-# --------------- _serialize_headers ----------------------
-
-cdef str to_str(object s):
+cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
+    cdef Py_UCS4 ch
+    cdef str out_str
     if type(s) is str:
-        return <str>s
+        out_str = <str>s
     elif type(s) is _istr:
-        return PyObject_Str(s)
+        out_str = PyObject_Str(s)
     elif not isinstance(s, str):
         raise TypeError("Cannot serialize non-str key {!r}".format(s))
     else:
-        return str(s)
+        out_str = str(s)
+
+    for ch in out_str:
+        if ch == 0x0D or ch == 0x0A:
+            raise ValueError(
+                "Newline or carriage return detected in headers. "
+                "Potential header injection attack."
+            )
+        if _write_utf8(writer, ch) < 0:
+            return -1
 
 
+# --------------- _serialize_headers ----------------------
 
 def _serialize_headers(str status_line, headers):
     cdef Writer writer
     cdef object key
     cdef object val
-    cdef bytes ret
-    cdef str key_str
-    cdef str val_str
 
     _init_writer(&writer)
 
@@ -130,22 +137,13 @@ def _serialize_headers(str status_line, headers):
             raise
 
         for key, val in headers.items():
-            key_str = to_str(key)
-            val_str = to_str(val)
-
-            if "\r" in key_str or "\n" in key_str or "\r" in val_str or "\n" in val_str:
-                raise ValueError(
-                    "Newline or carriage return character detected in HTTP status message or "
-                    "header. This is a potential security issue."
-                )
-
-            if _write_str(&writer, key_str) < 0:
+            if _write_str_raise_on_nlcr(&writer, key) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:
                 raise
             if _write_byte(&writer, b' ') < 0:
                 raise
-            if _write_str(&writer, val_str) < 0:
+            if _write_str_raise_on_nlcr(&writer, val) < 0:
                 raise
             if _write_byte(&writer, b'\r') < 0:
                 raise
