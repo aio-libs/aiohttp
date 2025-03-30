@@ -1,6 +1,7 @@
 """Async gunicorn worker for aiohttp.web"""
 
 import asyncio
+import inspect
 import os
 import re
 import signal
@@ -68,7 +69,9 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         runner = None
         if isinstance(self.wsgi, Application):
             app = self.wsgi
-        elif asyncio.iscoroutinefunction(self.wsgi):
+        elif inspect.iscoroutinefunction(self.wsgi) or (
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(self.wsgi)
+        ):
             wsgi = await self.wsgi()
             if isinstance(wsgi, web.AppRunner):
                 runner = wsgi

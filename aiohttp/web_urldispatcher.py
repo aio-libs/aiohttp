@@ -4,6 +4,7 @@ import base64
 import functools
 import hashlib
 import html
+import inspect
 import keyword
 import os
 import re
@@ -174,15 +175,17 @@ class AbstractRoute(abc.ABC):
         if expect_handler is None:
             expect_handler = _default_expect_handler
 
-        assert asyncio.iscoroutinefunction(
-            expect_handler
+        assert inspect.iscoroutinefunction(expect_handler) or (
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(expect_handler)
         ), f"Coroutine is expected, got {expect_handler!r}"
 
         method = method.upper()
         if not HTTP_METHOD_RE.match(method):
             raise ValueError(f"{method} is not allowed HTTP method")
 
-        if asyncio.iscoroutinefunction(handler):
+        if inspect.iscoroutinefunction(handler) or (
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(handler)
+        ):
             pass
         elif isinstance(handler, type) and issubclass(handler, AbstractView):
             pass
