@@ -93,6 +93,7 @@ cdef class WebSocketReader:
         chunk_size="unsigned int",
         chunk_len="unsigned int",
         buf_length="unsigned int",
+        buf_cstr="const unsigned char *",
         first_byte="unsigned char",
         second_byte="unsigned char",
         end_pos="unsigned int",
