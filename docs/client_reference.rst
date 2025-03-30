@@ -1122,9 +1122,7 @@ is controlled by *force_close* constructor's parameter).
       overridden in subclasses.
 
 
-.. autodata:: AddrInfoType
-
-.. note::
+.. py:class:: AddrInfoType
 
    Refer to :py:data:`aiohappyeyeballs.AddrInfoType` for more info.
 
@@ -1132,13 +1130,11 @@ is controlled by *force_close* constructor's parameter).
 
    Be sure to use ``aiohttp.AddrInfoType`` rather than
    ``aiohappyeyeballs.AddrInfoType`` to avoid import breakage, as
-   it is likely to be removed from ``aiohappyeyeballs`` in the
+   it is likely to be removed from :mod:`aiohappyeyeballs` in the
    future.
 
 
-.. autodata:: SocketFactoryType
-
-.. note::
+.. py:class:: SocketFactoryType
 
    Refer to :py:data:`aiohappyeyeballs.SocketFactoryType` for more info.
 
@@ -1146,7 +1142,7 @@ is controlled by *force_close* constructor's parameter).
 
    Be sure to use ``aiohttp.SocketFactoryType`` rather than
    ``aiohappyeyeballs.SocketFactoryType`` to avoid import breakage,
-   as it is likely to be removed from ``aiohappyeyeballs`` in the
+   as it is likely to be removed from :mod:`aiohappyeyeballs` in the
    future.
 
 
@@ -1278,9 +1274,9 @@ is controlled by *force_close* constructor's parameter).
 
         .. versionadded:: 3.10
 
-   :param :py:data:``SocketFactoryType`` socket_factory: This function takes an
-      :py:data:``AddrInfoType`` and is used in lieu of ``socket.socket()`` when
-      creating TCP connections.
+   :param SocketFactoryType socket_factory: This function takes an
+      :py:data:`AddrInfoType` and is used in lieu of
+      :py:func:`socket.socket` when creating TCP connections.
 
         .. versionadded:: 3.12
 
