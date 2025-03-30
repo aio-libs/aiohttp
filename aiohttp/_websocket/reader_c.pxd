@@ -86,6 +86,7 @@ cdef class WebSocketReader:
     @cython.locals(
         is_continuation=bint,
         fin=bint,
+        frame=tuple,
         has_partial=bint,
         payload_merged=bytes,
         opcode="unsigned int",
