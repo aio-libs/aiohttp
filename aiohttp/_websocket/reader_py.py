@@ -325,14 +325,15 @@ class WebSocketReader:
 
         start_pos: int = 0
         buf_length = len(buf)
+        buf_cstr = buf
 
         while True:
             # read header
             if self._state == READ_HEADER:
                 if buf_length - start_pos < 2:
                     break
-                first_byte = buf[start_pos]
-                second_byte = buf[start_pos + 1]
+                first_byte = buf_cstr[start_pos]
+                second_byte = buf_cstr[start_pos + 1]
                 start_pos += 2
 
                 fin = (first_byte >> 7) & 1
@@ -397,14 +398,14 @@ class WebSocketReader:
                 if length_flag == 126:
                     if buf_length - start_pos < 2:
                         break
-                    first_byte = buf[start_pos]
-                    second_byte = buf[start_pos + 1]
+                    first_byte = buf_cstr[start_pos]
+                    second_byte = buf_cstr[start_pos + 1]
                     start_pos += 2
                     self._payload_length = first_byte << 8 | second_byte
                 elif length_flag > 126:
                     if buf_length - start_pos < 8:
                         break
-                    data = buf[start_pos : start_pos + 8]
+                    data = buf_cstr[start_pos : start_pos + 8]
                     start_pos += 8
                     self._payload_length = UNPACK_LEN3(data)[0]
                 else:
@@ -416,7 +417,7 @@ class WebSocketReader:
             if self._state == READ_PAYLOAD_MASK:
                 if buf_length - start_pos < 4:
                     break
-                self._frame_mask = buf[start_pos : start_pos + 4]
+                self._frame_mask = buf_cstr[start_pos : start_pos + 4]
                 start_pos += 4
                 self._state = READ_PAYLOAD
 
@@ -432,10 +433,10 @@ class WebSocketReader:
                 if self._frame_payload_len:
                     if type(self._frame_payload) is not bytearray:
                         self._frame_payload = bytearray(self._frame_payload)
-                    self._frame_payload += buf[start_pos:end_pos]
+                    self._frame_payload += buf_cstr[start_pos:end_pos]
                 else:
                     # Fast path for the first frame
-                    self._frame_payload = buf[start_pos:end_pos]
+                    self._frame_payload = buf_cstr[start_pos:end_pos]
 
                 self._frame_payload_len += end_pos - start_pos
                 start_pos = end_pos
@@ -461,6 +462,7 @@ class WebSocketReader:
                 self._frame_payload_len = 0
                 self._state = READ_HEADER
 
-        self._tail = buf[start_pos:] if start_pos < buf_length else b""
+        # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
+        self._tail = buf_cstr[start_pos:buf_length] if start_pos < buf_length else b""
 
         return frames
