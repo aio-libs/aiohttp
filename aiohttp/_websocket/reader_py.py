@@ -199,9 +199,8 @@ class WebSocketReader:
                     if self._max_msg_size and len(self._partial) >= self._max_msg_size:
                         raise WebSocketError(
                             WSCloseCode.MESSAGE_TOO_BIG,
-                            "Message size {} exceeds limit {}".format(
-                                len(self._partial), self._max_msg_size
-                            ),
+                            f"Message size {len(self._partial)} "
+                            f"exceeds limit {self._max_msg_size}",
                         )
                     continue
 
@@ -220,7 +219,7 @@ class WebSocketReader:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
                         "The opcode in non-fin frame is expected "
-                        "to be zero, got {!r}".format(opcode),
+                        f"to be zero, got {opcode!r}",
                     )
 
                 assembled_payload: Union[bytes, bytearray]
@@ -233,9 +232,8 @@ class WebSocketReader:
                 if self._max_msg_size and len(assembled_payload) >= self._max_msg_size:
                     raise WebSocketError(
                         WSCloseCode.MESSAGE_TOO_BIG,
-                        "Message size {} exceeds limit {}".format(
-                            len(assembled_payload), self._max_msg_size
-                        ),
+                        f"Message size {len(assembled_payload)} "
+                        f"exceeds limit {self._max_msg_size}",
                     )
 
                 # Decompress process must to be done after all packets
@@ -252,9 +250,8 @@ class WebSocketReader:
                         left = len(self._decompressobj.unconsumed_tail)
                         raise WebSocketError(
                             WSCloseCode.MESSAGE_TOO_BIG,
-                            "Decompressed message size {} exceeds limit {}".format(
-                                self._max_msg_size + left, self._max_msg_size
-                            ),
+                            f"Decompressed message size {self._max_msg_size + left}"
+                            f" exceeds limit {self._max_msg_size}",
                         )
                 elif type(assembled_payload) is bytes:
                     payload_merged = assembled_payload
