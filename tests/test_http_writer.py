@@ -8,8 +8,9 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import ClientConnectionResetError, http
+from aiohttp import ClientConnectionResetError, hdrs, http
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.http_writer import _serialize_headers
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -534,3 +535,29 @@ async def test_set_eof_after_write_headers(
     msg.set_eof()
     await msg.write_eof()
     assert not transport.write.called
+
+
+@pytest.mark.parametrize(
+    "char",
+    [
+        "\n",
+        "\r",
+    ],
+)
+def test_serialize_headers_raises_on_new_line_or_carriage_return(char: str) -> None:
+    """Verify serialize_headers raises on cr or nl in the headers."""
+    status_line = "HTTP/1.1 200 OK"
+    headers = CIMultiDict(
+        {
+            hdrs.CONTENT_TYPE: f"text/plain{char}",
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Newline or carriage return detected in headers. "
+            "Potential header injection attack."
+        ),
+    ):
+        _serialize_headers(status_line, headers)
