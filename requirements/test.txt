@@ -55,7 +55,7 @@ markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.2.0
+multidict==6.3.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
