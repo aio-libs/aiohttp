@@ -82,7 +82,7 @@ python-on-whales==0.76.1
     # via -r requirements/lint.in
 pyyaml==6.0.2
     # via pre-commit
-rich==13.9.4
+rich==14.0.0
     # via pytest-codspeed
 six==1.17.0
     # via python-dateutil

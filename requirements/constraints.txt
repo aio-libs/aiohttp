@@ -203,7 +203,7 @@ requests==2.32.3
     #   cherry-picker
     #   sphinx
     #   sphinxcontrib-spelling
-rich==13.9.4
+rich==14.0.0
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test.in
