@@ -148,9 +148,9 @@ pycares==4.5.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.10.6
+pydantic==2.11.1
     # via python-on-whales
-pydantic-core==2.27.2
+pydantic-core==2.33.0
     # via pydantic
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
@@ -266,6 +266,9 @@ typing-extensions==4.12.2
     #   pydantic-core
     #   python-on-whales
     #   rich
+    #   typing-inspection
+typing-inspection==0.4.0
+    # via pydantic
 uritemplate==4.1.1
     # via gidgethub
 urllib3==2.3.0
