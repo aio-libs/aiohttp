@@ -346,3 +346,131 @@ def test_one_hundred_json_post_requests(
     @benchmark
     def _run() -> None:
         loop.run_until_complete(run_client_benchmark())
+
+
+def test_ten_streamed_responses_iter_any(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 10 streamed responses using iter_any."""
+    message_count = 10
+    data = b"x" * 65536  # 64 KiB chunk size
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        for _ in range(10):
+            await resp.write(data)
+        return resp
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        for _ in range(message_count):
+            resp = await client.get("/")
+            async for _ in resp.content.iter_any():
+                pass
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
+def test_ten_streamed_responses_iter_chunked_4096(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 10 streamed responses using iter_chunked 4096."""
+    message_count = 10
+    data = b"x" * 65536  # 64 KiB chunk size, 4096 iter_chunked
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        for _ in range(10):
+            await resp.write(data)
+        return resp
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        for _ in range(message_count):
+            resp = await client.get("/")
+            async for _ in resp.content.iter_chunked(4096):
+                pass
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
+def test_ten_streamed_responses_iter_chunked_65536(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 10 streamed responses using iter_chunked 65536."""
+    message_count = 10
+    data = b"x" * 65536  # 64 KiB chunk size, 64 KiB iter_chunked
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        for _ in range(10):
+            await resp.write(data)
+        return resp
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        for _ in range(message_count):
+            resp = await client.get("/")
+            async for _ in resp.content.iter_chunked(65536):
+                pass
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
+def test_ten_streamed_responses_iter_chunks(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 10 streamed responses using iter_chunks."""
+    message_count = 10
+    data = b"x" * 65536  # 64 KiB chunk size
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        for _ in range(10):
+            await resp.write(data)
+        return resp
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        for _ in range(message_count):
+            resp = await client.get("/")
+            async for _ in resp.content.iter_chunks():
+                pass
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
