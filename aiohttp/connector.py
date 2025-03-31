@@ -1119,6 +1119,7 @@ class TCPConnector(BaseConnector):
         client_error: Type[Exception] = ClientConnectorError,
         **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
+        connection: Optional[Tuple[asyncio.Transport, ResponseHandler]] = None
         sock: Union[socket.socket, None] = None
         try:
             async with ceil_timeout(
@@ -1147,13 +1148,16 @@ class TCPConnector(BaseConnector):
             raise client_error(req.connection_key, exc) from exc
         finally:
             if sock is not None:
-                # Will be hit if an exception is thrown before the event loop takes the socket.
-                # In that case, proactively close the socket to guard against event loop leaks.
-                # For example, see https://github.com/MagicStack/uvloop/issues/653.
-                try:
-                    sock.close()
-                except OSError as exc:
-                    raise client_error(req.connection_key, exc) from exc
+                if connection is not None:
+                    connection[0].close()
+                else:
+                    # Will be hit if an exception is thrown before the event loop takes the socket.
+                    # In that case, proactively close the socket to guard against event loop leaks.
+                    # For example, see https://github.com/MagicStack/uvloop/issues/653.
+                    try:
+                        sock.close()
+                    except OSError as exc:
+                        raise client_error(req.connection_key, exc) from exc
 
     def _warn_about_tls_in_tls(
         self,
