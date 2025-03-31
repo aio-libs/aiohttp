@@ -61,9 +61,9 @@ pycares==4.5.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.10.6
+pydantic==2.11.1
     # via python-on-whales
-pydantic-core==2.27.2
+pydantic-core==2.33.0
     # via pydantic
 pygments==2.19.1
     # via rich
@@ -102,6 +102,9 @@ typing-extensions==4.12.2
     #   pydantic-core
     #   python-on-whales
     #   rich
+    #   typing-inspection
+typing-inspection==0.4.0
+    # via pydantic
 uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.0
