@@ -1,4 +1,4 @@
-__version__ = "3.11.15.dev0"
+__version__ = "3.11.15"
 
 from typing import TYPE_CHECKING, Tuple
 
