@@ -1,0 +1,3 @@
+Reverted explicitly close sockets if an exception is raised -- by :user:`bdraco`.
+
+This change originally appeared in aiohttp 3.11.13
