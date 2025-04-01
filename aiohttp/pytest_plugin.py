@@ -98,7 +98,7 @@ def pytest_fixture_setup(fixturedef):  # type: ignore[no-untyped-def]
     if inspect.isasyncgenfunction(func):
         # async generator fixture
         is_async_gen = True
-    elif asyncio.iscoroutinefunction(func):
+    elif inspect.iscoroutinefunction(func):
         # regular async fixture
         is_async_gen = False
     else:
@@ -200,14 +200,14 @@ def _passthrough_loop_context(loop, fast=False):  # type: ignore[no-untyped-def]
 
 def pytest_pycollect_makeitem(collector, name, obj):  # type: ignore[no-untyped-def]
     """Fix pytest collecting for coroutines."""
-    if collector.funcnamefilter(name) and asyncio.iscoroutinefunction(obj):
+    if collector.funcnamefilter(name) and inspect.iscoroutinefunction(obj):
         return list(collector._genfunctions(name, obj))
 
 
 def pytest_pyfunc_call(pyfuncitem):  # type: ignore[no-untyped-def]
     """Run coroutines in an event loop instead of a normal function call."""
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
-    if asyncio.iscoroutinefunction(pyfuncitem.function):
+    if inspect.iscoroutinefunction(pyfuncitem.function):
         existing_loop = pyfuncitem.funcargs.get(
             "proactor_loop"
         ) or pyfuncitem.funcargs.get("loop", None)
