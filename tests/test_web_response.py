@@ -1393,7 +1393,6 @@ async def test_passing_cimultidict_to_web_response_not_mutated(
     req = make_request("GET", "/")
     headers = loose_header_type({})
     resp = web.Response(body=b"answer", headers=headers)
-    resp.enable_compression(web.ContentCoding.identity)
     await resp.prepare(req)
     assert resp.content_length == 6
     assert not headers
