@@ -11,7 +11,7 @@ from unittest import mock
 
 import aiosignal
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
@@ -1501,3 +1501,15 @@ class TestJSONResponse:
     def test_content_type_is_overrideable(self) -> None:
         resp = json_response({"foo": 42}, content_type="application/vnd.json+api")
         assert "application/vnd.json+api" == resp.content_type
+
+
+@pytest.mark.parametrize("loose_header_type", (MultiDict, CIMultiDict, dict))
+async def test_passing_cimultidict_to_web_response_not_mutated(
+    loose_header_type: type,
+) -> None:
+    req = make_request("GET", "/")
+    headers = loose_header_type({})
+    resp = Response(body=b"answer", headers=headers)
+    await resp.prepare(req)
+    assert resp.content_length == 6
+    assert not headers
