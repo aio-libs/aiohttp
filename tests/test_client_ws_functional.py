@@ -363,7 +363,6 @@ async def test_concurrent_close(aiohttp_client: AiohttpClient) -> None:
     client_ws: Optional[aiohttp.ClientWebSocketResponse] = None
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
-        nonlocal client_ws
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
@@ -960,7 +959,7 @@ async def test_close_websocket_while_ping_inflight(
         message: bytes, opcode: int, compress: Optional[int] = None
     ) -> None:
         assert opcode == WSMsgType.PING
-        nonlocal cancelled, ping_started
+        nonlocal cancelled
         ping_started.set_result(None)
         try:
             await asyncio.sleep(1)
