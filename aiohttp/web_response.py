@@ -629,10 +629,8 @@ class Response(StreamResponse):
 
         if headers is None:
             real_headers: CIMultiDict[str] = CIMultiDict()
-        elif not isinstance(headers, CIMultiDict):
-            real_headers = CIMultiDict(headers)
         else:
-            real_headers = headers  # = cast('CIMultiDict[str]', headers)
+            real_headers = CIMultiDict(headers)
 
         if content_type is not None and "charset" in content_type:
             raise ValueError("charset must not be in content_type argument")
