@@ -12,7 +12,7 @@ from unittest import mock
 
 import aiosignal
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
 from aiohttp.abc import AbstractStreamWriter
@@ -1384,3 +1384,15 @@ async def test_warn_large_cookie(buf: bytearray, writer: AbstractStreamWriter) -
     assert match is not None
     cookie = match.group(1)
     assert len(cookie) == 4097
+
+
+@pytest.mark.parametrize("loose_header_type", (MultiDict, CIMultiDict, dict))
+async def test_passing_cimultidict_to_web_response_not_mutated(
+    loose_header_type: type,
+) -> None:
+    req = make_request("GET", "/")
+    headers = loose_header_type({})
+    resp = web.Response(body=b"answer", headers=headers)
+    await resp.prepare(req)
+    assert resp.content_length == 6
+    assert not headers
