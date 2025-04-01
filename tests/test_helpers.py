@@ -351,7 +351,6 @@ async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     ctx = helpers.TimerContext(loop)
 
     async def task_with_timeout() -> None:
-        nonlocal ctx
         new_task = asyncio.current_task()
         assert new_task is not None
         with pytest.raises(asyncio.TimeoutError):
