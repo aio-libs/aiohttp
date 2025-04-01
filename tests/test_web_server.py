@@ -384,7 +384,6 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
     port = sock.getsockname()[1]
 
     async def on_request(request: web.Request) -> web.Response:
-        nonlocal event
         try:
             await asyncio.sleep(10)
         except asyncio.CancelledError:
@@ -427,7 +426,7 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
     started = False
 
     async def on_request(request: web.Request) -> web.Response:
-        nonlocal done_event, started, timeout_event
+        nonlocal started
         started = True
         await asyncio.wait_for(timeout_event.wait(), timeout=5)
         done_event.set()
