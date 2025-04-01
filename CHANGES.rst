@@ -10,6 +10,46 @@
 
 .. towncrier release notes start
 
+3.11.15 (2025-03-31)
+====================
+
+Bug fixes
+---------
+
+- Reverted explicitly closing sockets if an exception is raised during ``create_connection`` -- by :user:`bdraco`.
+
+  This change originally appeared in aiohttp 3.11.13
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10464`, :issue:`10617`, :issue:`10656`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of WebSocket buffer handling -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10601`.
+
+
+
+- Improved performance of serializing headers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10625`.
+
+
+
+
+----
+
+
 3.11.14 (2025-03-16)
 ====================
 
