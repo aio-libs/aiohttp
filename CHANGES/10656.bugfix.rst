@@ -1,3 +1,0 @@
-Reverted explicitly closing sockets if an exception is raised during ``create_connection`` -- by :user:`bdraco`.
-
-This change originally appeared in aiohttp 3.11.13
