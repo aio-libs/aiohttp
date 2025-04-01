@@ -1108,7 +1108,6 @@ class TCPConnector(BaseConnector):
         client_error: Type[Exception] = ClientConnectorError,
         **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
-        sock: Union[socket.socket, None] = None
         try:
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
@@ -1120,11 +1119,7 @@ class TCPConnector(BaseConnector):
                     interleave=self._interleave,
                     loop=self._loop,
                 )
-                connection = await self._loop.create_connection(
-                    *args, **kwargs, sock=sock
-                )
-                sock = None
-                return connection
+                return await self._loop.create_connection(*args, **kwargs, sock=sock)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1133,15 +1128,6 @@ class TCPConnector(BaseConnector):
             if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise client_error(req.connection_key, exc) from exc
-        finally:
-            if sock is not None:
-                # Will be hit if an exception is thrown before the event loop takes the socket.
-                # In that case, proactively close the socket to guard against event loop leaks.
-                # For example, see https://github.com/MagicStack/uvloop/issues/653.
-                try:
-                    sock.close()
-                except OSError as exc:
-                    raise client_error(req.connection_key, exc) from exc
 
     async def _wrap_existing_connection(
         self,
