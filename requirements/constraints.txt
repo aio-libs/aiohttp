@@ -232,7 +232,7 @@ sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
 stamina==25.1.0
     # via cherry-picker
-tenacity==9.0.0
+tenacity==9.1.2
     # via stamina
 tomli==2.2.1
     # via
