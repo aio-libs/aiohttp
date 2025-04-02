@@ -10,6 +10,33 @@
 
 .. towncrier release notes start
 
+3.11.16 (2025-04-01)
+====================
+
+Bug fixes
+---------
+
+- Replaced deprecated ``asyncio.iscoroutinefunction`` with its counterpart from ``inspect``
+  -- by :user:`layday`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10634`.
+
+
+
+- Fixed :class:`multidict.CIMultiDict` being mutated when passed to :class:`aiohttp.web.Response` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10672`.
+
+
+
+
+----
+
+
 3.11.15 (2025-03-31)
 ====================
 

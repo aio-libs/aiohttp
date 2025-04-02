@@ -1,2 +1,0 @@
-Replaced deprecated ``asyncio.iscoroutinefunction`` with its counterpart from ``inspect``
--- by :user:`layday`.
