@@ -1,1 +1,0 @@
-Fixed :class:`multidict.CIMultiDict` being mutated when passed to :class:`aiohttp.web.Response` -- by :user:`bdraco`.
