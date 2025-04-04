@@ -407,11 +407,9 @@ class ClientRequest:
             )
 
         if headers:
-            for key, value in (  # type: ignore[misc]
-                headers.items()
-                if isinstance(headers, (dict, MultiDictProxy, MultiDict))
-                else headers
-            ):
+            if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
+                headers = headers.items()
+            for key, value in headers:  # type: ignore[misc]
                 # A special case for Host header
                 if key in hdrs.HOST_ALL:
                     self.headers[key] = value
