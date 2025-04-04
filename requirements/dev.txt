@@ -109,7 +109,7 @@ markupsafe==3.0.2
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.3.1
+multidict==6.3.2
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
