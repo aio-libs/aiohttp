@@ -40,7 +40,7 @@ pycares==4.5.0
     # via aiodns
 pycparser==2.22
     # via cffi
-typing-extensions==4.12.2
+typing-extensions==4.13.1
     # via multidict
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
