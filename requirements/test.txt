@@ -123,7 +123,7 @@ tomli==2.2.1
     #   pytest
 trustme==1.2.1 ; platform_machine != "i686"
     # via -r requirements/test.in
-typing-extensions==4.12.2
+typing-extensions==4.13.1
     # via
     #   multidict
     #   mypy
