@@ -283,8 +283,7 @@ class ClientRequest:
 
         self.update_version(version)
         self.update_host(url)
-        self.update_headers(headers)
-        self.update_auto_headers(skip_auto_headers)
+        self.update_headers(headers, skip_auto_headers)
         self.update_cookies(cookies)
         self.update_content_encoding(data, compress)
         self.update_auth(auth, trust_env)
@@ -387,42 +386,51 @@ class ClientRequest:
                 ) from None
         self.version = version
 
-    def update_headers(self, headers: Optional[LooseHeaders]) -> None:
+    def update_headers(
+        self,
+        headers: Optional[LooseHeaders],
+        skip_auto_headers: Optional[Iterable[str]],
+    ) -> None:
         """Update request headers."""
         self.headers: CIMultiDict[str] = CIMultiDict()
+        used_headers: Optional[CIMultiDict[Any]] = None
 
         # Build the host header
         host = self.url.host_port_subcomponent
-
         # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
-        assert host is not None
+        if TYPE_CHECKING:
+            assert host is not None
         self.headers[hdrs.HOST] = host
 
-        if not headers:
-            return
-
-        if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-            headers = headers.items()
-
-        for key, value in headers:  # type: ignore[misc]
-            # A special case for Host header
-            if key in hdrs.HOST_ALL:
-                self.headers[key] = value
-            else:
-                self.headers.add(key, value)
-
-    def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
         if skip_auto_headers is not None:
             self._skip_auto_headers = CIMultiDict(
                 (hdr, None) for hdr in sorted(skip_auto_headers)
             )
-            used_headers = self.headers.copy()
-            used_headers.extend(self._skip_auto_headers)  # type: ignore[arg-type]
-        else:
-            # Fast path when there are no headers to skip
-            # which is the most common case.
-            used_headers = self.headers
+            used_headers = self._skip_auto_headers
+
+        if headers:
+            for key, value in (
+                headers.items()
+                if isinstance(headers, (dict, MultiDictProxy, MultiDict))
+                else headers
+            ):
+                # A special case for Host header
+                if key in hdrs.HOST_ALL:
+                    self.headers[key] = value
+                else:
+                    self.headers.add(key, value)
+
+            if self._skip_auto_headers is not None:
+                used_headers = self.headers.copy()
+                used_headers.extend(self._skip_auto_headers)
+            else:
+                used_headers = self.headers
+
+        if used_headers is None:
+            self.headers.extend(self.DEFAULT_HEADERS)
+            self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
+            return
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
