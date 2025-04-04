@@ -429,14 +429,12 @@ class ClientRequest:
 
         if used_headers is None:
             self.headers.extend(self.DEFAULT_HEADERS)
-            self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
-            return
+        else:
+            for hdr, val in self.DEFAULT_HEADERS.items():
+                if hdr not in used_headers:
+                    self.headers[hdr] = val
 
-        for hdr, val in self.DEFAULT_HEADERS.items():
-            if hdr not in used_headers:
-                self.headers[hdr] = val
-
-        if hdrs.USER_AGENT not in used_headers:
+        if used_headers is None or hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
 
     def update_cookies(self, cookies: Optional[LooseCookies]) -> None:
