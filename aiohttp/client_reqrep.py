@@ -395,7 +395,6 @@ class ClientRequest:
         self.headers: CIMultiDict[str] = CIMultiDict()
         used_headers: Optional[CIMultiDict[Any]] = None
 
-        # Build the host header
         host = self.url.host_port_subcomponent
         # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
