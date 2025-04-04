@@ -404,10 +404,9 @@ class ClientRequest:
         self.headers[hdrs.HOST] = host
 
         if skip_auto_headers is not None:
-            self._skip_auto_headers = CIMultiDict(
+            used_headers = self._skip_auto_headers = CIMultiDict(
                 (hdr, None) for hdr in sorted(skip_auto_headers)
             )
-            used_headers = self._skip_auto_headers
 
         if headers:
             for key, value in (  # type: ignore[misc]
