@@ -378,6 +378,11 @@ def test_invalid_url(make_request: _RequestMaker) -> None:
         make_request("get", "hiwpefhipowhefopw")
 
 
+def test_invalid_auth(make_request: _RequestMaker) -> None:
+    with pytest.raises(aiohttp.InvalidUrlAuthClientError):
+        make_request("get", "http://badchar username@example.com")
+
+
 def test_no_path(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org")
     assert "/" == req.url.path
