@@ -410,7 +410,7 @@ class ClientRequest:
             used_headers = self._skip_auto_headers
 
         if headers:
-            for key, value in (
+            for key, value in (  # type: ignore[misc]
                 headers.items()
                 if isinstance(headers, (dict, MultiDictProxy, MultiDict))
                 else headers
@@ -423,7 +423,7 @@ class ClientRequest:
 
             if self._skip_auto_headers is not None:
                 used_headers = self.headers.copy()
-                used_headers.extend(self._skip_auto_headers)
+                used_headers.extend(self._skip_auto_headers)  # type: ignore[arg-type]
             else:
                 used_headers = self.headers
 
