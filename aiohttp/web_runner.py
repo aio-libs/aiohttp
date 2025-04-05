@@ -113,6 +113,11 @@ class TCPSite(BaseSite):
         host = "0.0.0.0" if not self._host else self._host
         return str(URL.build(scheme=scheme, host=host, port=self._port))
 
+    @property
+    def port(self) -> int:
+        """Return the port number the server is bound to, useful for the dynamically allocated port (0)."""
+        return self._port
+
     async def start(self) -> None:
         await super().start()
         loop = asyncio.get_event_loop()
@@ -127,6 +132,10 @@ class TCPSite(BaseSite):
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
         )
+        if self._port == 0:
+            # Port 0 means bind to any port, so we need to set the attribute
+            # to the port the server was actually bound to.
+            self._port = self._server.sockets[0].getsockname()[1]
 
 
 class UnixSite(BaseSite):

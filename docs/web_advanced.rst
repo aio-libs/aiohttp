@@ -1181,6 +1181,28 @@ the middleware might use :meth:`BaseRequest.clone`.
    for modifying *scheme*, *host* and *remote* attributes according
    to ``Forwarded`` and ``X-Forwarded-*`` HTTP headers.
 
+Deploying with a dynamic port
+-----------------------------
+
+When deploying aiohttp in a zeroconf environment, it may be useful
+to have the server bind to a dynamic port. This can be done by
+using the ``0`` port number. This will cause the OS to assign a
+free port to the server. The assigned port can be retrieved
+using the :attr:`TCPSite.port` property after the server has started.
+
+For example::
+
+    app = web.Application()
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, 'localhost', 0)
+    await site.start()
+
+    print(f"Server started on port {site.port}")
+    while True:
+        await asyncio.sleep(3600)  # sleep forever
+
+
 Swagger support
 ---------------
 
