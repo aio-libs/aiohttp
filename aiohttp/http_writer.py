@@ -2,7 +2,6 @@
 
 import asyncio
 import sys
-import zlib
 from typing import (  # noqa
     Any,
     Awaitable,
@@ -85,7 +84,7 @@ class StreamWriter(AbstractStreamWriter):
         self.chunked = True
 
     def enable_compression(
-        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
+        self, encoding: str = "deflate", strategy: Optional[int] = None
     ) -> None:
         self._compress = ZLibCompressor(encoding=encoding, strategy=strategy)
 

@@ -3,7 +3,6 @@ import bz2
 import gzip
 import pathlib
 import socket
-import zlib
 from typing import Iterable, Iterator, NoReturn, Optional, Protocol, Tuple
 from unittest import mock
 
@@ -12,6 +11,7 @@ from _pytest.fixtures import SubRequest
 
 import aiohttp
 from aiohttp import web
+from aiohttp.compression_utils import ZLibBackend
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
 
@@ -313,6 +313,7 @@ async def test_static_file_custom_content_type_compress(
     [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
 )
 @pytest.mark.parametrize("forced_compression", [None, web.ContentCoding.gzip])
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_static_file_with_encoding_and_enable_compression(
     hello_txt: pathlib.Path,
     aiohttp_client: AiohttpClient,
@@ -1062,8 +1063,10 @@ async def test_static_file_if_range_invalid_date(
     await client.close()
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_static_file_compression(
-    aiohttp_client: AiohttpClient, sender: _Sender
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
 ) -> None:
     filepath = pathlib.Path(__file__).parent / "data.unknown_mime_type"
 
@@ -1078,7 +1081,7 @@ async def test_static_file_compression(
 
     resp = await client.get("/")
     assert resp.status == 200
-    zcomp = zlib.compressobj(wbits=zlib.MAX_WBITS)
+    zcomp = ZLibBackend.compressobj(wbits=ZLibBackend.MAX_WBITS)
     expected_body = zcomp.compress(b"file content\n") + zcomp.flush()
     assert expected_body == await resp.read()
     assert "application/octet-stream" == resp.headers["Content-Type"]

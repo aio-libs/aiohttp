@@ -127,6 +127,7 @@ async def test_send_compress_text_per_message(
         (32, lambda count: 64 + count if count % 2 else count),
     ),
 )
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_concurrent_messages(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
