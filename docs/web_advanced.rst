@@ -1184,7 +1184,7 @@ the middleware might use :meth:`BaseRequest.clone`.
 Deploying with a dynamic port
 -----------------------------
 
-When deploying aiohttp in a zeroconf environment, it may be useful
+When deploying aiohttp with zero-configuration networking, it may be useful
 to have the server bind to a dynamic port. This can be done by
 using the ``0`` port number. This will cause the OS to assign a
 free port to the server. The assigned port can be retrieved
