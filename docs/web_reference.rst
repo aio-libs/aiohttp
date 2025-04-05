@@ -2788,6 +2788,17 @@ application on specific TCP or Unix socket, e.g.::
                            this flag when being created. This option is not
                            supported on Windows.
 
+   .. attribute:: port
+
+      The port number the server is bound to. This is useful when the port
+      number is not known in advance, such as when constructing with
+      port 0 to request an ephemeral port or when not supplying the port
+      to the constructor.
+      This attribute is read-only and should not be modified.
+      This attribute is only guaranteed to be correct after the server has
+      been started.
+
+
 .. class:: UnixSite(runner, path, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
                    backlog=128)

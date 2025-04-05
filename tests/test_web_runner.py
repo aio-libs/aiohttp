@@ -256,7 +256,19 @@ async def test_tcpsite_empty_str_host(make_runner: _RunnerMaker) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner, host="")
+    assert site.port == 8080
     assert site.name == "http://0.0.0.0:8080"
+
+
+async def test_tcpsite_ephemeral_port(make_runner: _RunnerMaker) -> None:
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, port=0)
+
+    await site.start()
+    assert site.port != 0
+    assert site.name.startswith("http://0.0.0.0:")
+    await site.stop()
 
 
 def test_run_after_asyncio_run() -> None:
