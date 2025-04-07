@@ -59,7 +59,7 @@ pre-commit==4.2.0
     # via -r requirements/lint.in
 proxy-py==2.4.10
     # via -r requirements/lint.in
-pycares==4.5.0
+pycares==4.6.0
     # via aiodns
 pycparser==2.22
     # via cffi
