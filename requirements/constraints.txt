@@ -149,7 +149,7 @@ pycares==4.6.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.11.2
+pydantic==2.11.3
     # via python-on-whales
 pydantic-core==2.33.1
     # via pydantic
