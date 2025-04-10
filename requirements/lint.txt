@@ -59,13 +59,13 @@ pre-commit==4.2.0
     # via -r requirements/lint.in
 proxy-py==2.4.10
     # via -r requirements/lint.in
-pycares==4.5.0
+pycares==4.6.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.11.1
+pydantic==2.11.3
     # via python-on-whales
-pydantic-core==2.33.0
+pydantic-core==2.33.1
     # via pydantic
 pygments==2.19.1
     # via rich
@@ -97,7 +97,7 @@ tomli==2.2.1
     #   slotscheck
 trustme==1.2.1
     # via -r requirements/lint.in
-typing-extensions==4.12.2
+typing-extensions==4.13.1
     # via
     #   mypy
     #   pydantic

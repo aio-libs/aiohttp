@@ -55,7 +55,7 @@ markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.3.1
+multidict==6.4.2
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -75,13 +75,13 @@ propcache==0.3.1
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test.in
-pycares==4.5.0
+pycares==4.6.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.11.1
+pydantic==2.11.3
     # via python-on-whales
-pydantic-core==2.33.0
+pydantic-core==2.33.1
     # via pydantic
 pygments==2.19.1
     # via rich
@@ -94,7 +94,7 @@ pytest==8.1.1
     #   pytest-xdist
 pytest-codspeed==3.2.0
     # via -r requirements/test.in
-pytest-cov==6.1.0
+pytest-cov==6.1.1
     # via -r requirements/test.in
 pytest-mock==3.14.0
     # via -r requirements/test.in
@@ -117,7 +117,7 @@ tomli==2.2.1
     #   pytest
 trustme==1.2.1 ; platform_machine != "i686"
     # via -r requirements/test.in
-typing-extensions==4.12.2
+typing-extensions==4.13.1
     # via
     #   multidict
     #   mypy
@@ -132,5 +132,5 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     # via -r requirements/base.in
 wait-for-it==2.3.0
     # via -r requirements/test.in
-yarl==1.18.3
+yarl==1.19.0
     # via -r requirements/runtime-deps.in
