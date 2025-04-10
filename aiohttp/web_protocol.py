@@ -279,7 +279,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._close = False
         self._force_close = False
         self._request_in_progress = False
-        self._cache = {}
+        self._cache: dict[str, Any] = {}
 
     def __repr__(self) -> str:
         return "<{} {}>".format(
@@ -297,7 +297,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         )
 
     @under_cached_property
-    def peername(self) -> Optional[Union[Tuple[str, int, int, int], Tuple[str, int]]]:
+    def peername(
+        self,
+    ) -> Optional[Union[str, Tuple[str, int, int, int], Tuple[str, int]]]:
         """Return peername if available."""
         return (
             None
