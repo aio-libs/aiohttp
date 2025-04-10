@@ -470,9 +470,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self.transport = None
 
     async def log_access(
-        self, request: BaseRequest, response: StreamResponse, request_start: float
+        self,
+        request: BaseRequest,
+        response: StreamResponse,
+        request_start: Optional[float],
     ) -> None:
-        if self._logging_enabled:
+        if self._logging_enabled and self.access_logger is not None:
             await self.access_logger.log(request, response, request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
