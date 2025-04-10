@@ -97,7 +97,7 @@ tomli==2.2.1
     #   slotscheck
 trustme==1.2.1
     # via -r requirements/lint.in
-typing-extensions==4.13.1
+typing-extensions==4.13.2
     # via
     #   mypy
     #   pydantic

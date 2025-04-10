@@ -6,5 +6,5 @@
 #
 multidict==6.4.2
     # via -r requirements/multidict.in
-typing-extensions==4.13.1
+typing-extensions==4.13.2
     # via multidict
