@@ -352,7 +352,7 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   .. attribute:: trace_config
+   .. attribute:: trace_configs
 
       A list of :class:`TraceConfig` instances used for client
       tracing.  ``None`` (default) is used for request tracing

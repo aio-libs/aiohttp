@@ -107,7 +107,7 @@ markupsafe==3.0.2
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.3.2
+multidict==6.4.3
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -142,11 +142,11 @@ proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pycares==4.5.0
+pycares==4.6.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.11.2
+pydantic==2.11.3
     # via python-on-whales
 pydantic-core==2.33.1
     # via pydantic
@@ -174,7 +174,7 @@ pytest-codspeed==3.2.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytest-cov==6.1.0
+pytest-cov==6.1.1
     # via -r requirements/test.in
 pytest-mock==3.14.0
     # via
@@ -246,7 +246,7 @@ trustme==1.2.1 ; platform_machine != "i686"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-typing-extensions==4.13.1
+typing-extensions==4.13.2
     # via
     #   multidict
     #   mypy
@@ -259,7 +259,7 @@ typing-inspection==0.4.0
     # via pydantic
 uritemplate==4.1.1
     # via gidgethub
-urllib3==2.3.0
+urllib3==2.4.0
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via
@@ -273,7 +273,7 @@ wait-for-it==2.3.0
     # via -r requirements/test.in
 wheel==0.46.0
     # via pip-tools
-yarl==1.18.3
+yarl==1.19.0
     # via -r requirements/runtime-deps.in
 
 # The following packages are considered to be unsafe in a requirements file:
