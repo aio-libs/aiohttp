@@ -2,6 +2,7 @@
 
 import asyncio
 
+import pytest
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import hdrs, web
@@ -178,6 +179,7 @@ def test_one_hundred_get_requests_iter_chunks_on_512kib_chunked_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_get_request_with_251308_compressed_chunked_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
