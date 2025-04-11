@@ -26,24 +26,7 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP",
 ]
 requires-python = ">=3.9"
-dependencies = [
-  "aiohappyeyeballs >= 2.5.0",
-  "aiosignal >= 1.1.2",
-  "async-timeout >= 4.0, < 6.0 ; python_version < '3.11'",
-  "frozenlist >= 1.1.1",
-  "multidict >=4.5, < 7.0",
-  "propcache >= 0.2.0",
-  "yarl >= 1.17.0, < 2.0",
-]
-dynamic = ["version"]
-
-[project.optional-dependencies]
-speedups = [
-  # required c-ares (aiodns' backend) will not build on windows
-  "aiodns >= 3.2.0; sys_platform=='linux' or sys_platform=='darwin'",
-  "Brotli; platform_python_implementation == 'CPython'",
-  "brotlicffi; platform_python_implementation != 'CPython'",
-]
+dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.urls]
 "Homepage"           = "https://github.com/aio-libs/aiohttp"
