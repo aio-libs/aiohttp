@@ -259,7 +259,7 @@ typing-inspection==0.4.0
     # via pydantic
 uritemplate==4.1.1
     # via gidgethub
-urllib3==2.3.0
+urllib3==2.4.0
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via

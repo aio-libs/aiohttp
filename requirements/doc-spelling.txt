@@ -72,7 +72,7 @@ towncrier==23.11.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-urllib3==2.3.0
+urllib3==2.4.0
     # via requests
 
 # The following packages are considered to be unsafe in a requirements file:
