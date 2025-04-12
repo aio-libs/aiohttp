@@ -6,7 +6,6 @@ import json
 import math
 import time
 import warnings
-import zlib
 from concurrent.futures import Executor
 from http import HTTPStatus
 from typing import (
@@ -83,7 +82,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
     _keep_alive: Optional[bool] = None
     _chunked: bool = False
     _compression: bool = False
-    _compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
+    _compression_strategy: Optional[int] = None
     _compression_force: Optional[ContentCoding] = None
     _req: Optional["BaseRequest"] = None
     _payload_writer: Optional[AbstractStreamWriter] = None
@@ -184,7 +183,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
     def enable_compression(
         self,
         force: Optional[ContentCoding] = None,
-        strategy: int = zlib.Z_DEFAULT_STRATEGY,
+        strategy: Optional[int] = None,
     ) -> None:
         """Enables response compression encoding."""
         self._compression = True
