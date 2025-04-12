@@ -4,8 +4,22 @@ import json
 import pathlib
 import socket
 import sys
+<<<<<<< HEAD
 import zlib
 from typing import Any, NoReturn, Optional
+=======
+from typing import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    NoReturn,
+    Optional,
+    Tuple,
+)
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 from unittest import mock
 
 import pytest
@@ -22,6 +36,11 @@ from aiohttp import (
     multipart,
     web,
 )
+<<<<<<< HEAD
+=======
+from aiohttp.abc import AbstractResolver, ResolveResult
+from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import make_mocked_coro
@@ -1134,20 +1153,37 @@ async def test_response_with_payload_stringio(aiohttp_client, fname) -> None:
     await resp.release()
 
 
-@pytest.mark.parametrize(
-    "compressor,encoding",
-    [
-        (zlib.compressobj(wbits=16 + zlib.MAX_WBITS), "gzip"),
-        (zlib.compressobj(wbits=zlib.MAX_WBITS), "deflate"),
-        # Actually, wrong compression format, but
-        # should be supported for some legacy cases.
-        (zlib.compressobj(wbits=-zlib.MAX_WBITS), "deflate"),
-    ],
-)
+@pytest.fixture(params=["gzip", "deflate", "deflate-raw"])
+def compressor_case(
+    request: pytest.FixtureRequest,
+    parametrize_zlib_backend: None,
+) -> Generator[Tuple[ZLibCompressObjProtocol, str], None, None]:
+    encoding: str = request.param
+    max_wbits: int = ZLibBackend.MAX_WBITS
+
+    encoding_to_wbits: Dict[str, int] = {
+        "deflate": max_wbits,
+        "deflate-raw": -max_wbits,
+        "gzip": 16 + max_wbits,
+    }
+
+    compressor = ZLibBackend.compressobj(wbits=encoding_to_wbits[encoding])
+    yield (compressor, "deflate" if encoding.startswith("deflate") else encoding)
+
+
 async def test_response_with_precompressed_body(
+<<<<<<< HEAD
     aiohttp_client, compressor, encoding
 ) -> None:
     async def handler(request):
+=======
+    aiohttp_client: AiohttpClient,
+    compressor_case: Tuple[ZLibCompressObjProtocol, str],
+) -> None:
+    compressor, encoding = compressor_case
+
+    async def handler(request: web.Request) -> web.Response:
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
         headers = {"Content-Encoding": encoding}
         data = compressor.compress(b"mydata") + compressor.flush()
         return web.Response(body=data, headers=headers)
@@ -2189,6 +2225,7 @@ async def test_read_bufsize(aiohttp_client) -> None:
 @pytest.mark.parametrize(
     "auto_decompress,len_of", [(True, "uncompressed"), (False, "compressed")]
 )
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_auto_decompress(
     aiohttp_client,
     auto_decompress,
@@ -2203,7 +2240,7 @@ async def test_auto_decompress(
 
     client = await aiohttp_client(app)
     uncompressed = b"dataaaaaaaaaaaaaaaaaaaaaaaaa"
-    compressor = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+    compressor = ZLibBackend.compressobj(wbits=16 + ZLibBackend.MAX_WBITS)
     compressed = compressor.compress(uncompressed) + compressor.flush()
     assert len(compressed) != len(uncompressed)
     headers = {"content-encoding": "gzip"}

@@ -1,6 +1,7 @@
 aiodns
 blockbuster
 freezegun
+isal
 mypy; implementation_name == "cpython"
 pre-commit
 pytest
@@ -11,3 +12,4 @@ slotscheck
 trustme
 uvloop; platform_system != "Windows"
 valkey
+zlib_ng

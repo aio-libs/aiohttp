@@ -2,8 +2,7 @@ import asyncio
 import pickle
 import random
 import struct
-import zlib
-from typing import Union
+from typing import Optional, Union
 from unittest import mock
 
 import pytest
@@ -20,8 +19,21 @@ from aiohttp._websocket.helpers import (
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
+<<<<<<< HEAD
 from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
 from aiohttp.http_websocket import WebSocketReader
+=======
+from aiohttp.compression_utils import ZLibBackend, ZLibBackendWrapper
+from aiohttp.http import WebSocketError, WSCloseCode, WSMsgType
+from aiohttp.http_websocket import (
+    WebSocketReader,
+    WSMessageBinary,
+    WSMessageClose,
+    WSMessagePing,
+    WSMessagePong,
+    WSMessageText,
+)
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 
 
 class PatchableWebSocketReader(WebSocketReader):
@@ -29,13 +41,24 @@ class PatchableWebSocketReader(WebSocketReader):
 
 
 def build_frame(
+<<<<<<< HEAD
     message, opcode, use_mask=False, noheader=False, is_fin=True, compress=False
 ):
+=======
+    message: bytes,
+    opcode: int,
+    noheader: bool = False,
+    is_fin: bool = True,
+    ZLibBackend: Optional[ZLibBackendWrapper] = None,
+) -> bytes:
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
     # Send a frame over the websocket with message as its payload.
-    if compress:
-        compressobj = zlib.compressobj(wbits=-9)
+    compress = False
+    if ZLibBackend:
+        compress = True
+        compressobj = ZLibBackend.compressobj(wbits=-9)
         message = compressobj.compress(message)
-        message = message + compressobj.flush(zlib.Z_SYNC_FLUSH)
+        message = message + compressobj.flush(ZLibBackend.Z_SYNC_FLUSH)
         if message.endswith(WS_DEFLATE_TRAILING):
             message = message[:-4]
     msg_length = len(message)
@@ -572,9 +595,14 @@ def test_msg_too_large_not_fin(out) -> None:
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
 
 
+<<<<<<< HEAD
 def test_compressed_msg_too_large(out) -> None:
+=======
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_compressed_msg_too_large(out: WebSocketDataQueue) -> None:
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
     parser = WebSocketReader(out, 256, compress=True)
-    data = build_frame(b"aaa" * 256, WSMsgType.TEXT, compress=True)
+    data = build_frame(b"aaa" * 256, WSMsgType.TEXT, ZLibBackend=ZLibBackend)
     with pytest.raises(WebSocketError) as ctx:
         parser._feed_data(data)
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG

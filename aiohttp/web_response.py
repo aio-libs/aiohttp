@@ -6,7 +6,6 @@ import json
 import math
 import time
 import warnings
-import zlib
 from concurrent.futures import Executor
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -82,7 +81,7 @@ class StreamResponse(BaseClass, HeadersMixin):
     _keep_alive: Optional[bool] = None
     _chunked: bool = False
     _compression: bool = False
-    _compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
+    _compression_strategy: Optional[int] = None
     _compression_force: Optional[ContentCoding] = None
     _req: Optional["BaseRequest"] = None
     _payload_writer: Optional[AbstractStreamWriter] = None
@@ -191,8 +190,13 @@ class StreamResponse(BaseClass, HeadersMixin):
 
     def enable_compression(
         self,
+<<<<<<< HEAD
         force: Optional[Union[bool, ContentCoding]] = None,
         strategy: int = zlib.Z_DEFAULT_STRATEGY,
+=======
+        force: Optional[ContentCoding] = None,
+        strategy: Optional[int] = None,
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
     ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.

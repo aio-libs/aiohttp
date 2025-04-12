@@ -47,12 +47,19 @@ from .client import (
     WSServerHandshakeError,
     request,
 )
+<<<<<<< HEAD
 from .connector import (
     AddrInfoType as AddrInfoType,
     SocketFactoryType as SocketFactoryType,
 )
 from .cookiejar import CookieJar as CookieJar, DummyCookieJar as DummyCookieJar
 from .formdata import FormData as FormData
+=======
+from .compression_utils import set_zlib_backend
+from .connector import AddrInfoType, SocketFactoryType
+from .cookiejar import CookieJar, DummyCookieJar
+from .formdata import FormData
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 from .helpers import BasicAuth, ChainMapProxy, ETag
 from .http import (
     HttpVersion as HttpVersion,
@@ -183,6 +190,7 @@ __all__: Tuple[str, ...] = (
     "BasicAuth",
     "ChainMapProxy",
     "ETag",
+    "set_zlib_backend",
     # http
     "HttpVersion",
     "HttpVersion10",

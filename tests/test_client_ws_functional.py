@@ -953,6 +953,7 @@ async def test_close_websocket_while_ping_inflight(
     assert cancelled is True
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_send_recv_compress(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -978,8 +979,14 @@ async def test_send_recv_compress(aiohttp_client: AiohttpClient) -> None:
     assert resp.get_extra_info("socket") is None
 
 
+<<<<<<< HEAD
 async def test_send_recv_compress_wbits(aiohttp_client) -> None:
     async def handler(request):
+=======
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_send_recv_compress_wbits(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 

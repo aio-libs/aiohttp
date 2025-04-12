@@ -3,14 +3,24 @@ import bz2
 import gzip
 import pathlib
 import socket
+<<<<<<< HEAD
 import zlib
 from typing import Any, Iterable, Optional
+=======
+from typing import Iterable, Iterator, NoReturn, Optional, Protocol, Tuple
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 from unittest import mock
 
 import pytest
 
 import aiohttp
 from aiohttp import web
+<<<<<<< HEAD
+=======
+from aiohttp.compression_utils import ZLibBackend
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
+from aiohttp.typedefs import PathLike
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 
 try:
     import brotlicffi as brotli
@@ -300,6 +310,7 @@ async def test_static_file_custom_content_type_compress(
     [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
 )
 @pytest.mark.parametrize("forced_compression", [None, web.ContentCoding.gzip])
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_static_file_with_encoding_and_enable_compression(
     hello_txt: pathlib.Path,
     aiohttp_client: Any,
@@ -1047,7 +1058,15 @@ async def test_static_file_if_range_invalid_date(
     await client.close()
 
 
+<<<<<<< HEAD
 async def test_static_file_compression(aiohttp_client, sender) -> None:
+=======
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_static_file_compression(
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+) -> None:
+>>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
     filepath = pathlib.Path(__file__).parent / "data.unknown_mime_type"
 
     async def handler(request):
@@ -1061,7 +1080,7 @@ async def test_static_file_compression(aiohttp_client, sender) -> None:
 
     resp = await client.get("/")
     assert resp.status == 200
-    zcomp = zlib.compressobj(wbits=zlib.MAX_WBITS)
+    zcomp = ZLibBackend.compressobj(wbits=ZLibBackend.MAX_WBITS)
     expected_body = zcomp.compress(b"file content\n") + zcomp.flush()
     assert expected_body == await resp.read()
     assert "application/octet-stream" == resp.headers["Content-Type"]
