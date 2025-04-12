@@ -2071,7 +2071,10 @@ async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
     assert expect_called
 
 
-async def test_encoding_deflate(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_deflate(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(text="text")
         resp.enable_chunked_encoding()
@@ -2089,7 +2092,10 @@ async def test_encoding_deflate(aiohttp_client: AiohttpClient) -> None:
     resp.close()
 
 
-async def test_encoding_deflate_nochunk(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_deflate_nochunk(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(text="text")
         resp.enable_compression(web.ContentCoding.deflate)
@@ -2106,7 +2112,10 @@ async def test_encoding_deflate_nochunk(aiohttp_client: AiohttpClient) -> None:
     resp.close()
 
 
-async def test_encoding_gzip(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_gzip(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(text="text")
         resp.enable_chunked_encoding()
@@ -2124,7 +2133,10 @@ async def test_encoding_gzip(aiohttp_client: AiohttpClient) -> None:
     resp.close()
 
 
-async def test_encoding_gzip_write_by_chunks(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_gzip_write_by_chunks(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()
         resp.enable_compression(web.ContentCoding.gzip)
@@ -2144,7 +2156,10 @@ async def test_encoding_gzip_write_by_chunks(aiohttp_client: AiohttpClient) -> N
     resp.close()
 
 
-async def test_encoding_gzip_nochunk(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_gzip_nochunk(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(text="text")
         resp.enable_compression(web.ContentCoding.gzip)

@@ -243,15 +243,23 @@ class WebSocketReader:
                         self._decompressobj = ZLibDecompressor(
                             suppress_deflate_header=True
                         )
+                    # XXX: It's possible that the zlib backend (isal is known to
+                    # do this, maybe others too?) will return max_length bytes,
+                    # but internally buffer more data such that the payload is
+                    # >max_length, so we return one extra byte and if we're able
+                    # to do that, then the message is too big.
                     payload_merged = self._decompressobj.decompress_sync(
-                        assembled_payload + WS_DEFLATE_TRAILING, self._max_msg_size
+                        assembled_payload + WS_DEFLATE_TRAILING,
+                        (
+                            self._max_msg_size + 1
+                            if self._max_msg_size
+                            else self._max_msg_size
+                        ),
                     )
-                    if self._decompressobj.unconsumed_tail:
-                        left = len(self._decompressobj.unconsumed_tail)
+                    if self._max_msg_size and len(payload_merged) > self._max_msg_size:
                         raise WebSocketError(
                             WSCloseCode.MESSAGE_TOO_BIG,
-                            f"Decompressed message size {self._max_msg_size + left}"
-                            f" exceeds limit {self._max_msg_size}",
+                            f"Decompressed message exceeds size limit {self._max_msg_size}",
                         )
                 elif type(assembled_payload) is bytes:
                     payload_merged = assembled_payload

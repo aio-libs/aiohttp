@@ -1,6 +1,5 @@
 import logging
 import socket
-import zlib
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel
@@ -217,7 +216,7 @@ class AbstractStreamWriter(ABC):
 
     @abstractmethod
     def enable_compression(
-        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
+        self, encoding: str = "deflate", strategy: Optional[int] = None
     ) -> None:
         """Enable HTTP body compression"""
 
