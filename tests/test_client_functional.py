@@ -2040,16 +2040,9 @@ async def test_expect_continue(aiohttp_client) -> None:
     assert expect_called
 
 
-<<<<<<< HEAD
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_encoding_deflate(aiohttp_client) -> None:
     async def handler(request):
-=======
-@pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_encoding_deflate(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    async def handler(request: web.Request) -> web.Response:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
         resp = web.Response(text="text")
         resp.enable_chunked_encoding()
         resp.enable_compression(web.ContentCoding.deflate)
@@ -2066,16 +2059,9 @@ async def test_encoding_deflate(
     resp.close()
 
 
-<<<<<<< HEAD
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_encoding_deflate_nochunk(aiohttp_client) -> None:
     async def handler(request):
-=======
-@pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_encoding_deflate_nochunk(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    async def handler(request: web.Request) -> web.Response:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
         resp = web.Response(text="text")
         resp.enable_compression(web.ContentCoding.deflate)
         return resp
@@ -2091,16 +2077,9 @@ async def test_encoding_deflate_nochunk(
     resp.close()
 
 
-<<<<<<< HEAD
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_encoding_gzip(aiohttp_client) -> None:
     async def handler(request):
-=======
-@pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_encoding_gzip(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    async def handler(request: web.Request) -> web.Response:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
         resp = web.Response(text="text")
         resp.enable_chunked_encoding()
         resp.enable_compression(web.ContentCoding.gzip)
@@ -2117,16 +2096,9 @@ async def test_encoding_gzip(
     resp.close()
 
 
-<<<<<<< HEAD
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_encoding_gzip_write_by_chunks(aiohttp_client) -> None:
     async def handler(request):
-=======
-@pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_encoding_gzip_write_by_chunks(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    async def handler(request: web.Request) -> web.StreamResponse:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
         resp = web.StreamResponse()
         resp.enable_compression(web.ContentCoding.gzip)
         await resp.prepare(request)
@@ -2145,16 +2117,9 @@ async def test_encoding_gzip_write_by_chunks(
     resp.close()
 
 
-<<<<<<< HEAD
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_encoding_gzip_nochunk(aiohttp_client) -> None:
     async def handler(request):
-=======
-@pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_encoding_gzip_nochunk(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    async def handler(request: web.Request) -> web.Response:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
         resp = web.Response(text="text")
         resp.enable_compression(web.ContentCoding.gzip)
         return resp

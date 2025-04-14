@@ -190,13 +190,8 @@ class StreamResponse(BaseClass, HeadersMixin):
 
     def enable_compression(
         self,
-<<<<<<< HEAD
         force: Optional[Union[bool, ContentCoding]] = None,
-        strategy: int = zlib.Z_DEFAULT_STRATEGY,
-=======
-        force: Optional[ContentCoding] = None,
         strategy: Optional[int] = None,
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
     ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.

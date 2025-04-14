@@ -4,22 +4,7 @@ import json
 import pathlib
 import socket
 import sys
-<<<<<<< HEAD
-import zlib
-from typing import Any, NoReturn, Optional
-=======
-from typing import (
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    NoReturn,
-    Optional,
-    Tuple,
-)
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+from typing import Any, Dict, Generator, NoReturn, Optional, Tuple
 from unittest import mock
 
 import pytest
@@ -36,11 +21,7 @@ from aiohttp import (
     multipart,
     web,
 )
-<<<<<<< HEAD
-=======
-from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import make_mocked_coro
@@ -1172,18 +1153,12 @@ def compressor_case(
 
 
 async def test_response_with_precompressed_body(
-<<<<<<< HEAD
-    aiohttp_client, compressor, encoding
-) -> None:
-    async def handler(request):
-=======
     aiohttp_client: AiohttpClient,
     compressor_case: Tuple[ZLibCompressObjProtocol, str],
 ) -> None:
     compressor, encoding = compressor_case
 
-    async def handler(request: web.Request) -> web.Response:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+    async def handler(request):
         headers = {"Content-Encoding": encoding}
         data = compressor.compress(b"mydata") + compressor.flush()
         return web.Response(body=data, headers=headers)

@@ -2,11 +2,7 @@
 import array
 import asyncio
 import zlib
-<<<<<<< HEAD
-from typing import Generator, Iterable
-=======
-from typing import Any, Generator, Iterable, Union
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+from typing import Generator, Iterable, Union
 from unittest import mock
 
 import pytest
@@ -66,9 +62,6 @@ def protocol(loop, transport):
     return protocol
 
 
-<<<<<<< HEAD
-def test_payloadwriter_properties(transport, protocol, loop) -> None:
-=======
 def decompress(data: bytes) -> bytes:
     d = ZLibBackend.decompressobj()
     return d.decompress(data)
@@ -89,12 +82,7 @@ def decode_chunked(chunked: Union[bytes, bytearray]) -> bytes:
     return out
 
 
-def test_payloadwriter_properties(
-    transport: asyncio.Transport,
-    protocol: BaseProtocol,
-    loop: asyncio.AbstractEventLoop,
-) -> None:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+def test_payloadwriter_properties(transport, protocol, loop) -> None:
     writer = http.StreamWriter(protocol, loop)
     assert writer.protocol == protocol
     assert writer.transport == transport
@@ -306,16 +294,8 @@ async def test_write_payload_chunked_filter_multiple_chunks(
     )
 
 
-<<<<<<< HEAD
-async def test_write_payload_deflate_compression(protocol, transport, loop) -> None:
-=======
 @pytest.mark.internal  # Used for performance benchmarking
-async def test_write_payload_deflate_compression(
-    protocol: BaseProtocol,
-    transport: asyncio.Transport,
-    loop: asyncio.AbstractEventLoop,
-) -> None:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+async def test_write_payload_deflate_compression(protocol, transport, loop) -> None:
     COMPRESSED = b"x\x9cKI,I\x04\x00\x04\x00\x01\x9b"
     write = transport.write = mock.Mock()
     msg = http.StreamWriter(protocol, loop)

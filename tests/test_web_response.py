@@ -3,13 +3,7 @@ import datetime
 import gzip
 import io
 import json
-<<<<<<< HEAD
 import sys
-import zlib
-=======
-import re
-import weakref
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterator, Optional
 from unittest import mock
@@ -494,12 +488,8 @@ async def test_force_compression_deflate() -> None:
     assert resp.compression
 
     msg = await resp.prepare(req)
-<<<<<<< HEAD
-    msg.enable_compression.assert_called_with("deflate", zlib.Z_DEFAULT_STRATEGY)
-=======
     assert msg is not None
-    msg.enable_compression.assert_called_with("deflate", None)  # type: ignore[attr-defined]
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+    msg.enable_compression.assert_called_with("deflate", None)
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
@@ -532,12 +522,8 @@ async def test_force_compression_no_accept_deflate() -> None:
     assert resp.compression
 
     msg = await resp.prepare(req)
-<<<<<<< HEAD
-    msg.enable_compression.assert_called_with("deflate", zlib.Z_DEFAULT_STRATEGY)
-=======
     assert msg is not None
-    msg.enable_compression.assert_called_with("deflate", None)  # type: ignore[attr-defined]
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+    msg.enable_compression.assert_called_with("deflate", None)
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
@@ -552,12 +538,8 @@ async def test_force_compression_gzip() -> None:
     assert resp.compression
 
     msg = await resp.prepare(req)
-<<<<<<< HEAD
-    msg.enable_compression.assert_called_with("gzip", zlib.Z_DEFAULT_STRATEGY)
-=======
     assert msg is not None
-    msg.enable_compression.assert_called_with("gzip", None)  # type: ignore[attr-defined]
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+    msg.enable_compression.assert_called_with("gzip", None)
     assert "gzip" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
@@ -570,12 +552,8 @@ async def test_force_compression_no_accept_gzip() -> None:
     assert resp.compression
 
     msg = await resp.prepare(req)
-<<<<<<< HEAD
-    msg.enable_compression.assert_called_with("gzip", zlib.Z_DEFAULT_STRATEGY)
-=======
     assert msg is not None
-    msg.enable_compression.assert_called_with("gzip", None)  # type: ignore[attr-defined]
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+    msg.enable_compression.assert_called_with("gzip", None)
     assert "gzip" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 

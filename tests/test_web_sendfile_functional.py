@@ -3,24 +3,14 @@ import bz2
 import gzip
 import pathlib
 import socket
-<<<<<<< HEAD
-import zlib
 from typing import Any, Iterable, Optional
-=======
-from typing import Iterable, Iterator, NoReturn, Optional, Protocol, Tuple
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 from unittest import mock
 
 import pytest
 
 import aiohttp
 from aiohttp import web
-<<<<<<< HEAD
-=======
 from aiohttp.compression_utils import ZLibBackend
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.typedefs import PathLike
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 
 try:
     import brotlicffi as brotli
@@ -1058,15 +1048,8 @@ async def test_static_file_if_range_invalid_date(
     await client.close()
 
 
-<<<<<<< HEAD
-async def test_static_file_compression(aiohttp_client, sender) -> None:
-=======
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_static_file_compression(
-    aiohttp_client: AiohttpClient,
-    sender: _Sender,
-) -> None:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+async def test_static_file_compression(aiohttp_client, sender) -> None:
     filepath = pathlib.Path(__file__).parent / "data.unknown_mime_type"
 
     async def handler(request):

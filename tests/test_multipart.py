@@ -3,12 +3,6 @@ import io
 import json
 import pathlib
 import sys
-<<<<<<< HEAD
-import zlib
-=======
-from types import TracebackType
-from typing import Dict, Optional, Tuple, Type
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
 from unittest import mock
 
 import pytest
@@ -1196,16 +1190,8 @@ async def test_writer_write_no_parts(buf, stream, writer) -> None:
     assert b"--:--\r\n" == bytes(buf)
 
 
-<<<<<<< HEAD
-async def test_writer_serialize_with_content_encoding_gzip(buf, stream, writer):
-=======
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_writer_serialize_with_content_encoding_gzip(
-    buf: bytearray,
-    stream: Stream,
-    writer: aiohttp.MultipartWriter,
-) -> None:
->>>>>>> ceeca6a9b (Add support for switching the zlib implementation (#10700))
+async def test_writer_serialize_with_content_encoding_gzip(buf, stream, writer):
     writer.append("Time to Relax!", {CONTENT_ENCODING: "gzip"})
     await writer.write(stream)
     headers, message = bytes(buf).split(b"\r\n\r\n", 1)
