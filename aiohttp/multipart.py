@@ -5,7 +5,6 @@ import re
 import sys
 import uuid
 import warnings
-import zlib
 from collections import deque
 from types import TracebackType
 from typing import (
@@ -1028,7 +1027,7 @@ class MultipartPayloadWriter:
             self._encoding = "quoted-printable"
 
     def enable_compression(
-        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
+        self, encoding: str = "deflate", strategy: Optional[int] = None
     ) -> None:
         self._compress = ZLibCompressor(
             encoding=encoding,

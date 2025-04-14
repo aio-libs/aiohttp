@@ -3,13 +3,13 @@ import io
 import json
 import pathlib
 import sys
-import zlib
 from unittest import mock
 
 import pytest
 
 import aiohttp
 from aiohttp import payload
+from aiohttp.compression_utils import ZLibBackend
 from aiohttp.hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
@@ -1190,6 +1190,7 @@ async def test_writer_write_no_parts(buf, stream, writer) -> None:
     assert b"--:--\r\n" == bytes(buf)
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_writer_serialize_with_content_encoding_gzip(buf, stream, writer):
     writer.append("Time to Relax!", {CONTENT_ENCODING: "gzip"})
     await writer.write(stream)
@@ -1200,7 +1201,7 @@ async def test_writer_serialize_with_content_encoding_gzip(buf, stream, writer):
         b"Content-Encoding: gzip" == headers
     )
 
-    decompressor = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
+    decompressor = ZLibBackend.decompressobj(wbits=16 + ZLibBackend.MAX_WBITS)
     data = decompressor.decompress(message.split(b"\r\n")[0])
     data += decompressor.flush()
     assert b"Time to Relax!" == data

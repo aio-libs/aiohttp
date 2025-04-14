@@ -53,6 +53,8 @@ idna==3.4
     #   yarl
 iniconfig==2.1.0
     # via pytest
+isal==1.7.2
+    # via -r requirements/test.in
 markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
@@ -140,3 +142,5 @@ wait-for-it==2.3.0
     # via -r requirements/test.in
 yarl==1.19.0
     # via -r requirements/runtime-deps.in
+zlib_ng==0.5.1
+    # via -r requirements/test.in

@@ -2,7 +2,6 @@ import asyncio
 import pickle
 import random
 import struct
-import zlib
 from typing import Union
 from unittest import mock
 
@@ -20,6 +19,7 @@ from aiohttp._websocket.helpers import (
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.compression_utils import ZLibBackend
 from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
 from aiohttp.http_websocket import WebSocketReader
 
@@ -29,13 +29,15 @@ class PatchableWebSocketReader(WebSocketReader):
 
 
 def build_frame(
-    message, opcode, use_mask=False, noheader=False, is_fin=True, compress=False
+    message, opcode, use_mask=False, noheader=False, is_fin=True, ZLibBackend=None
 ):
     # Send a frame over the websocket with message as its payload.
-    if compress:
-        compressobj = zlib.compressobj(wbits=-9)
+    compress = False
+    if ZLibBackend:
+        compress = True
+        compressobj = ZLibBackend.compressobj(wbits=-9)
         message = compressobj.compress(message)
-        message = message + compressobj.flush(zlib.Z_SYNC_FLUSH)
+        message = message + compressobj.flush(ZLibBackend.Z_SYNC_FLUSH)
         if message.endswith(WS_DEFLATE_TRAILING):
             message = message[:-4]
     msg_length = len(message)
@@ -545,6 +547,7 @@ def test_parse_compress_error_frame(parser) -> None:
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_parse_no_compress_frame_single(
     loop: asyncio.AbstractEventLoop, out: WebSocketDataQueue
 ) -> None:
@@ -574,7 +577,7 @@ def test_msg_too_large_not_fin(out) -> None:
 
 def test_compressed_msg_too_large(out) -> None:
     parser = WebSocketReader(out, 256, compress=True)
-    data = build_frame(b"aaa" * 256, WSMsgType.TEXT, compress=True)
+    data = build_frame(b"aaa" * 256, WSMsgType.TEXT, ZLibBackend=ZLibBackend)
     with pytest.raises(WebSocketError) as ctx:
         parser._feed_data(data)
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG

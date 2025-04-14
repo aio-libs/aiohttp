@@ -99,6 +99,8 @@ incremental==24.7.2
     # via towncrier
 iniconfig==2.1.0
     # via pytest
+isal==1.7.2
+    # via -r requirements/test.in
 jinja2==3.1.6
     # via
     #   sphinx
@@ -278,6 +280,8 @@ wheel==0.45.1
     # via pip-tools
 yarl==1.19.0
     # via -r requirements/runtime-deps.in
+zlib_ng==0.5.1
+    # via -r requirements/test.in
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.0.1

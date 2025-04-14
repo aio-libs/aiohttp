@@ -39,6 +39,8 @@ idna==3.7
     # via trustme
 iniconfig==2.1.0
     # via pytest
+isal==1.7.2
+    # via -r requirements/lint.in
 markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
@@ -111,3 +113,5 @@ valkey==6.1.0
     # via -r requirements/lint.in
 virtualenv==20.30.0
     # via pre-commit
+zlib-ng==0.5.1
+    # via -r requirements/lint.in

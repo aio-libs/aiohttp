@@ -3,6 +3,7 @@
 blockbuster
 coverage
 freezegun
+isal
 mypy; implementation_name == "cpython"
 proxy.py >= 2.4.4rc5
 pytest
@@ -15,3 +16,4 @@ re-assert
 setuptools-git
 trustme; platform_machine != "i686"  # no 32-bit wheels
 wait-for-it
+zlib_ng
