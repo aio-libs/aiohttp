@@ -4,6 +4,7 @@ import os
 import socket
 import ssl
 import sys
+import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -11,10 +12,13 @@ from typing import Any, Generator
 from unittest import mock
 from uuid import uuid4
 
+import isal.isal_zlib
 import pytest
+import zlib_ng.zlib_ng
 from blockbuster import blockbuster_ctx
 
 from aiohttp.client_proto import ResponseHandler
+from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
 from aiohttp.test_utils import get_unused_port_socket, loop_context
 
@@ -295,3 +299,15 @@ def unused_port_socket() -> Generator[socket.socket, None, None]:
         yield s
     finally:
         s.close()
+
+
+@pytest.fixture(params=[zlib, zlib_ng.zlib_ng, isal.isal_zlib])
+def parametrize_zlib_backend(
+    request: pytest.FixtureRequest,
+) -> Generator[None, None, None]:
+    original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
+    set_zlib_backend(request.param)
+
+    yield
+
+    set_zlib_backend(original_backend)

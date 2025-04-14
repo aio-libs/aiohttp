@@ -4,7 +4,6 @@ import io
 import pathlib
 import sys
 import urllib.parse
-import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any, Callable, Dict, Iterable, Optional
 from unittest import mock
@@ -23,6 +22,7 @@ from aiohttp.client_reqrep import (
     _gen_default_accept_encoding,
     _merge_ssl_params,
 )
+from aiohttp.compression_utils import ZLibBackend
 from aiohttp.http import HttpVersion10, HttpVersion11
 from aiohttp.test_utils import make_mocked_coro
 
@@ -800,6 +800,7 @@ async def test_bytes_data(loop, conn) -> None:
         resp.close()
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_content_encoding(loop, conn) -> None:
     req = ClientRequest(
         "post", URL("http://python.org/"), data="foo", compress="deflate", loop=loop
@@ -826,6 +827,7 @@ async def test_content_encoding_dont_set_headers_if_no_body(loop, conn) -> None:
     resp.close()
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_content_encoding_header(loop, conn) -> None:
     req = ClientRequest(
         "post",
@@ -925,8 +927,9 @@ async def test_file_upload_not_chunked(loop) -> None:
         await req.close()
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_precompressed_data_stays_intact(loop) -> None:
-    data = zlib.compress(b"foobar")
+    data = ZLibBackend.compress(b"foobar")
     req = ClientRequest(
         "post",
         URL("http://python.org/"),
