@@ -50,7 +50,7 @@ from .client import (
 from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
 from .formdata import FormData
-from .helpers import BasicAuth, ChainMapProxy, ETag
+from .helpers import BasicAuth, ChainMapProxy, DigestAuth, ETag
 from .http import (
     HttpVersion,
     HttpVersion10,
@@ -164,6 +164,7 @@ __all__: Tuple[str, ...] = (
     # helpers
     "BasicAuth",
     "ChainMapProxy",
+    "DigestAuth",
     "ETag",
     # http
     "HttpVersion",

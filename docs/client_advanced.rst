@@ -67,6 +67,8 @@ argument. An instance of :class:`BasicAuth` can be passed in like this::
     async with ClientSession(auth=auth) as session:
         ...
 
+Similarly for :class:`DigestAuth`.
+
 Note that if the request is redirected and the redirect URL contains
 credentials, those credentials will supersede any previously set credentials.
 In other words, if ``http://user@example.com`` redirects to

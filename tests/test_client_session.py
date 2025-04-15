@@ -31,6 +31,7 @@ from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ConnectionKey
 from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
 from aiohttp.cookiejar import CookieJar
+from aiohttp.helpers import DigestAuth
 from aiohttp.http import RawResponseMessage
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import make_mocked_coro
@@ -453,6 +454,38 @@ async def test_borrow_connector_loop(
 ) -> None:
     async with ClientSession(connector=connector) as session:
         assert session._loop is loop
+
+
+async def test_retry_on_401(
+    create_session: Callable[..., Awaitable[ClientSession]],
+    create_mocked_conn: Callable[[], ResponseHandler],
+) -> None:
+    resp = mock.create_autospec(aiohttp.ClientResponse)
+    resp.status = 401
+    resp.url = URL("http://example.com")
+    resp.cookies = SimpleCookie()
+    resp.headers = {"www-authenticate": "Digest realm=foo nonce=abcd, algorithm=SHA512"}
+    resp.start = mock.AsyncMock()
+
+    req = mock.Mock()
+    req_factory = mock.Mock(return_value=req)
+    req.send = mock.AsyncMock(return_value=resp)
+    session = await create_session(
+        request_class=req_factory, auth=DigestAuth("user", "pw")
+    )
+
+    async def create_connection(
+        req: object, traces: object, timeout: object
+    ) -> ResponseHandler:
+        # return self.transport, self.protocol
+        return create_mocked_conn()
+
+    with mock.patch.object(session._connector, "_create_connection", create_connection):
+        with mock.patch.object(
+            session._connector, "_release", autospec=True, spec_set=True
+        ):
+            await session.request("get", "http://example.com")
+            assert req.send.call_count == 2
 
 
 async def test_reraise_os_error(

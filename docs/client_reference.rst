@@ -106,13 +106,13 @@ The client session supports the context manager protocol for self closing.
 
       Iterable of :class:`str` or :class:`~multidict.istr` (optional)
 
-   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional). It will be included
-                                  with any request. However, if the
-                                  ``_base_url`` parameter is set, the request
-                                  URL's origin must match the base URL's origin;
-                                  otherwise, the default auth will not be
-                                  included.
+   :param aiohttp.AuthBase auth: an object that represents HTTP Authorization
+                                 (optional). It will be included
+                                 with any request. However, if the
+                                 ``_base_url`` parameter is set, the request
+                                 URL's origin must match the base URL's origin;
+                                 otherwise, the default auth will not be
+                                 included.
 
    :param collections.abc.Callable json_serialize: Json *serializer* callable.
 
@@ -306,7 +306,7 @@ The client session supports the context manager protocol for self closing.
 
       An object that represents HTTP Basic Authorization.
 
-      :class:`~aiohttp.BasicAuth` (optional)
+      :class:`~aiohttp.AuthBase` (optional)
 
       .. versionadded:: 3.7
 
@@ -433,8 +433,8 @@ The client session supports the context manager protocol for self closing.
          Iterable of :class:`str` or :class:`~multidict.istr`
          (optional)
 
-      :param aiohttp.BasicAuth auth: an object that represents HTTP
-                                     Basic Authorization (optional)
+      :param aiohttp.AuthBase auth: an object that represents HTTP
+                                    Authorization (optional)
 
       :param bool allow_redirects: Whether to process redirects or not.
          When ``True``, redirects are followed (up to ``max_redirects`` times)
@@ -475,8 +475,8 @@ The client session supports the context manager protocol for self closing.
 
       :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
-      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
+      :param aiohttp.AuthBase proxy_auth: an object that represents proxy HTTP
+                                          Authorization (optional)
 
       :param int timeout: override the session's timeout.
 
@@ -698,8 +698,8 @@ The client session supports the context manager protocol for self closing.
                       (``10.0`` seconds for the websocket to close).
                       ``None`` means no timeout will be used.
 
-      :param aiohttp.BasicAuth auth: an object that represents HTTP
-                                     Basic Authorization (optional)
+      :param aiohttp.AuthBase auth: an object that represents HTTP
+                                    Authorization (optional)
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False
@@ -737,8 +737,8 @@ The client session supports the context manager protocol for self closing.
 
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
-      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
+      :param aiohttp.AuthBase proxy_auth: an object that represents proxy HTTP
+                                          Authorization (optional)
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
@@ -903,8 +903,8 @@ certification chaining.
       Iterable of :class:`str` or :class:`~multidict.istr`
       (optional)
 
-   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional)
+   :param aiohttp.AuthBase auth: an object that represents HTTP
+                                 Authorization (optional)
 
    :param bool allow_redirects: Whether to process redirects or not.
       When ``True``, redirects are followed (up to ``max_redirects`` times)
@@ -947,8 +947,8 @@ certification chaining.
 
    :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
-   :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                        Basic Authorization (optional)
+   :param aiohttp.AuthBase proxy_auth: an object that represents proxy HTTP
+                                       Authorization (optional)
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout, 30 seconds socket connect timeout by default.
@@ -1971,6 +1971,34 @@ Utilities
       .. versionadded:: 3.2
 
 
+.. class:: AuthBase(login, password)
+
+   Abstract base class for HTTP authentication helpers.
+
+   :param str login: Username used for authentication.
+   :param str password: Password used for authentication.
+
+   :raises ValueError: If login or password is None or login contains a colon.
+
+   .. method:: encode(method, url, body) -> str
+
+      :param str method: HTTP method (e.g., GET, POST).
+      :param ~yarl.URL url: Full request URL.
+      :param body: Optional request body (used for `auth-int` qop).
+
+      :return: A complete `Authorization` header.
+
+      Abstract method to generate the `Authorization` header.
+
+   .. method:: authenticate(resp: ClientResponse) -> bool
+
+      :param ClientResponse response: The HTTP response to inspect.
+
+      :return: ``True`` if a retry is required to complete authentication.
+
+      Abstract method to handle 401 responses and extract challenges.
+
+
 .. class:: BasicAuth(login, password='', encoding='latin1')
 
    HTTP basic authentication helper.
@@ -2010,116 +2038,51 @@ Utilities
 
       :return: encoded authentication data, :class:`str`.
 
+   .. method:: authenticate(resp)
 
-DigestAuth
-^^^^^^^^^^
+      :param ClientResponse resp: Unused
 
-.. class:: DigestAuth(login, password', session)
+      :return: Always returns ``False`` because no request resending is required with basic authorization.
 
-   HTTP digest authentication helper. Unlike :class:`DigestAuth`, this helper
-   CANNOT be passed to the *auth* parameter of a :meth:`ClientSession.request`.
+      .. versionadded:: 3.12
+
+
+.. class:: DigestAuth(login, password)
+
+   HTTP digest authentication helper.
 
    :param str login: login
    :param str password: password
-   :param `ClientSession` session: underlying session that will use digest auth
-   :param dict previous: dict containing previous auth data. ``None`` by
-                         default (optional).
 
-   .. comethod:: request(method, url, *, params=None, data=None, \
-                               json=None,\
-                               headers=None, cookies=None, auth=None, \
-                               allow_redirects=True, max_redirects=10, \
-                               encoding='utf-8', \
-                               version=HttpVersion(major=1, minor=1), \
-                               compress=None, chunked=None, expect100=False, \
-                               connector=None, loop=None,\
-                               read_until_eof=True)
-      :coroutine:
+   This class builds digest authentication headers, supporting both `auth` and
+   `auth-int` qop modes, and a variety of hashing algorithms.
 
-      Perform an asynchronous HTTP request. Return a response object
-      (:class:`ClientResponse` or derived from).
+   .. versionadded:: 3.12
 
-      :param str method: HTTP method
+   .. method:: encode(method, url, body) -> str
 
-      :param url: Requested URL, :class:`str` or :class:`~yarl.URL`
+      Generates the `Authorization: Digest ...` header using stored challenge data.
 
-      :param dict params: Parameters to be sent in the query
-                          string of the new request (optional)
+      :param str method: HTTP method (e.g., GET, POST).
+      :param ~yarl.URL url: Full request URL.
+      :param body: Optional request body (used for `auth-int` qop).
 
-      :param dict|bytes|file data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :return: A complete `Authorization` header.
 
-      :param json: Any json compatible python object (optional). *json* and *data*
-                   parameters could not be used at the same time.
+      :raises ClientError: If the challenge is missing required fields or contains unsupported qop values.
 
-      :param dict headers: HTTP Headers to send with the request (optional)
+      .. versionadded:: 3.12
 
-      :param dict cookies: Cookies to send with the request (optional)
+   .. method:: authenticate(response) -> bool
 
-      :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                     Authorization (optional)
+      Parses the `WWW-Authenticate` header from a 401 response and stores the challenge
+      in thread-local state.
 
-      :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                   ``True`` by default (optional).
+      :param ClientResponse response: The HTTP response to inspect.
 
-      :param aiohttp.protocol.HttpVersion version: Request HTTP version (optional)
+      :return: ``True`` if a retry is required to complete authentication.
 
-      :param bool compress: Set to ``True`` if request has to be compressed
-                            with deflate encoding.
-                            ``False`` instructs aiohttp to not compress data.
-                            ``None`` by default (optional).
-
-      :param int chunked: Enables chunked transfer encoding.
-                          ``None`` by default (optional).
-
-      :param bool expect100: Expect 100-continue response from server.
-                             ``False`` by default (optional).
-
-      :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
-         instance to support connection pooling.
-
-      :param bool read_until_eof: Read response until EOF if response
-                                  does not have Content-Length header.
-                                  ``True`` by default (optional).
-
-      :param loop: :ref:`event loop<asyncio-event-loop>`
-                   used for processing HTTP requests.
-                   If param is ``None``, :func:`asyncio.get_event_loop`
-                   is used for getting default event loop.
-
-                   .. deprecated:: 2.0
-
-      :rtype: :class:`client response <ClientResponse>`
-
-   Usage::
-
-      import aiohttp
-      import asyncio
-
-      async def fetch(client):
-          auth = aiohttp.DigestAuth('usr', 'psswd', client)
-          resp = await auth.request('GET', 'http://httpbin.org/digest-auth/auth/usr/psswd/MD5/never')
-          assert resp.status == 200
-          # If you don't reuse the DigestAuth object you can store this data
-          # and pass it as the last argument the next time you instantiate a
-          # DigestAuth object. For example,
-          # aiohttp.DigestAuth('usr', 'psswd', client, previous). This will
-          # save a second request being launched to re-authenticate.
-          previous = {
-              'nonce_count': auth.nonce_count,
-              'last_nonce': auth.last_nonce,
-              'challenge': auth.challenge,
-          }
-
-          return await resp.text()
-
-      async def main():
-          async with aiohttp.ClientSession() as client:
-              text = await fetch(client)
-              print(text)
-
-      loop = asyncio.get_event_loop()
-      loop.run_until_complete(main())
+      .. versionadded:: 3.12
 
 
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])

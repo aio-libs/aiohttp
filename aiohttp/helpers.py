@@ -15,10 +15,11 @@ import os
 import platform
 import re
 import sys
+import threading
 import time
 import warnings
 import weakref
-from collections import namedtuple
+from abc import ABC, abstractmethod
 from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
@@ -32,6 +33,7 @@ from typing import (
     Callable,
     ContextManager,
     Dict,
+    Final,
     Generic,
     Iterable,
     Iterator,
@@ -41,6 +43,7 @@ from typing import (
     Protocol,
     Tuple,
     Type,
+    TypedDict,
     TypeVar,
     Union,
     final,
@@ -65,6 +68,8 @@ else:
 
 if TYPE_CHECKING:
     from dataclasses import dataclass as frozen_dataclass_decorator
+
+    from .client import ClientResponse
 elif sys.version_info < (3, 10):
     frozen_dataclass_decorator = functools.partial(dataclasses.dataclass, frozen=True)
 else:
@@ -73,12 +78,14 @@ else:
     )
 
 __all__ = (
+    "AuthBase",
     "BasicAuth",
     "ChainMapProxy",
     "ETag",
     "frozen_dataclass_decorator",
     "reify",
     "DigestAuth",
+    "DigestFunctions",
 )
 
 PY_310 = sys.version_info >= (3, 10)
@@ -135,12 +142,14 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 
 
-class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
-    """Http basic authentication helper."""
+class AuthBase(ABC):
+    """Abstract base class for HTTP auth helpers."""
 
-    def __new__(
-        cls, login: str, password: str = "", encoding: str = "latin1"
-    ) -> "BasicAuth":
+    def __init__(
+        self,
+        login: str = "",
+        password: str = "",
+    ) -> None:
         if login is None:
             raise ValueError("None is not allowed as login value")
 
@@ -148,12 +157,39 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
             raise ValueError("None is not allowed as password value")
 
         if ":" in login:
-            raise ValueError('A ":" is not allowed in login (RFC 1945#section-11.1)')
+            raise ValueError('A ":" is not allowed in username (RFC 1945#section-11.1)')
 
-        return super().__new__(cls, login, password, encoding)
+        self.login: Final = login
+        self.password: Final = password
+
+    @abstractmethod
+    def encode(self, method: str, url: URL, body: Any) -> str:  # type: ignore[misc]
+        pass
+
+    @abstractmethod
+    def authenticate(self, resp: "ClientResponse") -> bool:
+        pass
+
+
+class BasicAuth(AuthBase):
+    """Http basic authentication helper."""
+
+    def __init__(
+        self, login: str = "", password: str = "", encoding: str = "latin1"
+    ) -> None:
+        super().__init__(login, password)
+        self.encoding = encoding
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, BasicAuth)
+            and self.login == other.login
+            and self.password == other.password
+            and self.encoding == other.encoding
+        )
 
     @classmethod
-    def decode(cls, auth_header: str, encoding: str = "latin1") -> "BasicAuth":  # type: ignore[misc]
+    def decode(cls, auth_header: str, encoding: str = "latin1") -> "BasicAuth":
         """Create a BasicAuth object from an Authorization HTTP header."""
         try:
             auth_type, encoded_credentials = auth_header.split(" ", 1)
@@ -179,10 +215,10 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         except ValueError:
             raise ValueError("Invalid credentials.")
 
-        return cls(username, password, encoding=encoding)
+        return cls(username, password, encoding)
 
     @classmethod
-    def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:  # type: ignore[misc]
+    def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:
         """Create BasicAuth from url."""
         if not isinstance(url, URL):
             raise TypeError("url should be yarl.URL instance")
@@ -190,12 +226,18 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         # to already have these values parsed from the netloc in the cache.
         if url.raw_user is None and url.raw_password is None:
             return None
-        return cls(url.user or "", url.password or "", encoding=encoding)
+        return cls(url.user or "", url.password or "", encoding)
 
-    def encode(self) -> str:
+    def encode(
+        self, unused_method: str = "", unused_url: URL = URL(""), body: Any = None
+    ) -> str:
         """Encode credentials."""
         creds = (f"{self.login}:{self.password}").encode(self.encoding)
-        return "Basic %s" % base64.b64encode(creds).decode(self.encoding)
+        return f"Basic {base64.b64encode(creds).decode(self.encoding)}"
+
+    def authenticate(self, resp: "ClientResponse") -> bool:
+        """Always returns false because request need not be resent for BasicAuth"""
+        return False
 
 
 def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
@@ -253,9 +295,9 @@ def netrc_from_env() -> Optional[netrc.netrc]:
 
 
 @frozen_dataclass_decorator
-class ProxyInfo:  # type: ignore[misc]
+class ProxyInfo:
     proxy: URL
-    proxy_auth: Optional[BasicAuth]
+    proxy_auth: Optional[AuthBase]
 
 
 def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAuth:
@@ -287,115 +329,171 @@ def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAu
     return BasicAuth(username, password)
 
 
-def parse_pair(pair):
-    key, value = pair.split("=", 1)
-
-    # If it has a trailing comma, remove it.
-    if value[-1] == ",":
-        value = value[:-1]
-
-    # If it is quoted, then remove them.
-    if value[0] == value[-1] == '"':
-        value = value[1:-1]
-
-    return key, value
+DigestFunctions: Dict[str, Callable[[bytes], "hashlib._Hash"]] = {
+    "MD5": hashlib.md5,
+    "MD5-SESS": hashlib.md5,
+    "SHA": hashlib.sha1,
+    "SHA256": hashlib.sha256,
+    "SHA512": hashlib.sha512,
+}
 
 
-def parse_key_value_list(header):
-    return {
-        key: value
-        for key, value in [parse_pair(header_pair) for header_pair in header.split(" ")]
-    }
+class DigestAuthChallenge(TypedDict, total=False):
+    realm: str
+    nonce: str
+    qop: str
+    algorithm: str
+    opaque: str
+    ...
 
 
-class DigestAuth:
+class DigestAuthContext(threading.local):
+    """Thread-local storage for DigestAuth"""
+
+    init: bool
+    last_nonce: str
+    nonce_count: int
+    challenge: DigestAuthChallenge
+    handled_401: bool
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.init = False
+
+    def init_thread(self) -> None:
+        if self.init:
+            return
+        self.init = True
+        self.last_nonce = ""
+        self.nonce_count = 0
+        self.challenge = {}
+        self.handled_401 = False
+
+
+def parse_header_pairs(header: str) -> Dict[str, str]:
+    """Parses header pairs in the www-authenticate header value"""
+    # RFC 7616 accepts header key/values that look like
+    #   key1="value1", key2=value2, key3="some value, with, commas"
+    #
+    # This regex attempts to parse that out
+    pattern = re.compile(
+        r'(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
+        # |    |  | | |  |    |      |    |  ||     |
+        # +----|--|-|-|--|----|------|----|--||-----|--> alphanumeric key
+        #      +--|-|-|--|----|------|----|--||-----|--> maybe whitespace
+        #         | | |  |    |      |    |  ||     |
+        #         +-|-|--|----|------|----|--||-----|--> = (delimiter)
+        #           +-|--|----|------|----|--||-----|--> maybe whitespace
+        #             |  |    |      |    |  ||     |
+        #             +--|----|------|----|--||-----|--> group quoted or unquoted
+        #                |    |      |    |  ||     |
+        #                +----|------|----|--||-----|--> if quoted...
+        #                     +------|----|--||-----|--> anything but " or \
+        #                            +----|--||-----|--> escaped characters allowed
+        #                                 +--||-----|--> or can be empty string
+        #                                    ||     |
+        #                                    +|-----|--> if unquoted...
+        #                                     +-----|--> anything but , or <space>
+        #                                           +--> at least one char req'd
+    )
+
+    header_pairs = {}
+    for key, quoted_val, unquoted_val in pattern.findall(header):
+        val = quoted_val if quoted_val else unquoted_val
+        if val:
+            val = val.replace('\\"', '"')  # unescape any escaped quotes
+        header_pairs[key] = val
+
+    return header_pairs
+
+
+class DigestAuth(AuthBase):
     """
     HTTP digest authentication helper.
 
     The work here is based off of
     https://github.com/requests/requests/blob/v2.18.4/requests/auth.py.
+
+    Please also refer to RFC7616.
     """
 
-    def __init__(self, username, password, session, previous=None):
-        if previous is None:
-            previous = {}
+    def __init__(
+        self,
+        login: str,
+        password: str,
+    ) -> None:
+        super().__init__(login, password)
+        self.ctx = DigestAuthContext()
 
-        self.username = username
-        self.password = password
-        self.last_nonce = previous.get("last_nonce", "")
-        self.nonce_count = previous.get("nonce_count", 0)
-        self.challenge = previous.get("challenge")
-        self.args = {}
-        self.session = session
+    def encode(self, method: str, url: URL, body: Any) -> str:
+        """Build digest header"""
+        self.ctx.init_thread()
 
-    async def request(self, method, url, *, headers=None, **kwargs):
-        if headers is None:
-            headers = {}
-
-        # Save the args so we can re-run the request
-        self.args = {"method": method, "url": url, "headers": headers, "kwargs": kwargs}
-
-        if self.challenge:
-            headers[hdrs.AUTHORIZATION] = self._build_digest_header(method.upper(), url)
-
-        response = await self.session.request(method, url, headers=headers, **kwargs)
-
-        # Only try performing digest authentication if the response status is
-        # from 400 to 500.
-        if 400 <= response.status < 500:
-            return await self._handle_401(response)
-
-        return response
-
-    def _build_digest_header(self, method, url):
-        """
-        Build digest header
-
-        :rtype: str
-        """
-        realm = self.challenge["realm"]
-        nonce = self.challenge["nonce"]
-        qop = self.challenge.get("qop")
-        algorithm = self.challenge.get("algorithm", "MD5").upper()
-        opaque = self.challenge.get("opaque")
-
-        if qop and not (qop == "auth" or "auth" in qop.split(",")):
-            raise client_exceptions.ClientError("Unsupported qop value: %s" % qop)
-
-        # lambdas assume digest modules are imported at the top level
-        if algorithm == "MD5" or algorithm == "MD5-SESS":
-            hash_fn = hashlib.md5
-        elif algorithm == "SHA":
-            hash_fn = hashlib.sha1
-        else:
+        if not self.ctx.handled_401:
             return ""
 
-        def H(x):
+        if "realm" not in self.ctx.challenge:
+            raise client_exceptions.ClientError("Challenge is missing realm")
+
+        if "nonce" not in self.ctx.challenge:
+            raise client_exceptions.ClientError("Challenge is missing nonce")
+
+        realm: str = self.ctx.challenge.get("realm", "")
+        nonce: str = self.ctx.challenge.get("nonce", "")
+        qop_raw: str = self.ctx.challenge.get("qop", "")
+        algorithm: str = self.ctx.challenge.get("algorithm", "MD5").upper()
+        opaque: str = self.ctx.challenge.get("opaque", "")
+
+        qop: str = ""
+        if qop_raw:
+            qop_list = [q.strip() for q in qop_raw.split(",") if q.strip()]
+            valid_qops = {"auth", "auth-int"}.intersection(qop_list)
+            if not valid_qops:
+                raise client_exceptions.ClientError(
+                    f"Unsupported qop value(s): {qop_raw}"
+                )
+
+            qop = "auth-int" if "auth-int" in valid_qops else "auth"
+
+        if algorithm not in DigestFunctions:
+            return ""
+        hash_fn: Final = DigestFunctions[algorithm]
+
+        def H(x: str) -> str:
             return hash_fn(x.encode()).hexdigest()
 
-        def KD(s, d):
+        def KD(s: str, d: str) -> str:
             return H(f"{s}:{d}")
 
         path = URL(url).path_qs
-        A1 = f"{self.username}:{realm}:{self.password}"
-        A2 = f"{method}:{path}"
+        A1 = f"{self.login}:{realm}:{self.password}"
+        A2 = f"{method.upper()}:{path}"
+        if qop == "auth-int":
+            if isinstance(body, bytes):
+                entity_str = body.decode("utf-8", errors="replace")
+            elif isinstance(body, str):
+                entity_str = body
+            else:
+                entity_str = ""
+            entity_hash = H(entity_str)
+            A2 = f"{A2}:{entity_hash}"
 
         HA1 = H(A1)
         HA2 = H(A2)
 
-        if nonce == self.last_nonce:
-            self.nonce_count += 1
+        if nonce == self.ctx.last_nonce:
+            self.ctx.nonce_count += 1
         else:
-            self.nonce_count = 1
+            self.ctx.nonce_count = 1
 
-        self.last_nonce = nonce
+        self.ctx.last_nonce = nonce
 
-        ncvalue = "%08x" % self.nonce_count
+        ncvalue = f"{self.ctx.nonce_count:08x}"
 
         # cnonce is just a random string generated by the client.
         cnonce_data = "".join(
             [
-                str(self.nonce_count),
+                str(self.ctx.nonce_count),
                 nonce,
                 time.ctime(),
                 os.urandom(8).decode(errors="ignore"),
@@ -406,51 +504,69 @@ class DigestAuth:
         if algorithm == "MD5-SESS":
             HA1 = H(f"{HA1}:{nonce}:{cnonce}")
 
-        # This assumes qop was validated to be 'auth' above. If 'auth-int'
-        # support is added this will need to change.
         if qop:
-            noncebit = ":".join([nonce, ncvalue, cnonce, "auth", HA2])
+            noncebit = ":".join([nonce, ncvalue, cnonce, qop, HA2])
             response_digest = KD(HA1, noncebit)
         else:
             response_digest = KD(HA1, f"{nonce}:{HA2}")
 
-        base = ", ".join(
-            [
-                'username="%s"' % self.username,
-                'realm="%s"' % realm,
-                'nonce="%s"' % nonce,
-                'uri="%s"' % path,
-                'response="%s"' % response_digest,
-                'algorithm="%s"' % algorithm,
-            ]
-        )
+        pairs = [
+            f'username="{self.login}"',
+            f'realm="{realm}"',
+            f'nonce="{nonce}"',
+            f'uri="{path}"',
+            f'response="{response_digest}"',
+            f'algorithm="{algorithm}"',
+        ]
         if opaque:
-            base += ', opaque="%s"' % opaque
+            pairs.append(f'opaque="{opaque}"')
         if qop:
-            base += f', qop="auth", nc={ncvalue}, cnonce="{cnonce}"'
+            pairs.append(f'qop="{qop}"')
+            pairs.append(f"nc={ncvalue}")
+            pairs.append(f'cnonce="{cnonce}"')
 
-        return "Digest %s" % base
+        self.ctx.handled_401 = False
 
-    async def _handle_401(self, response):
+        return f"Digest {', '.join(pairs)}"
+
+    def authenticate(self, response: "ClientResponse") -> bool:
         """
         Takes the given response and tries digest-auth, if needed.
 
-        :rtype: ClientResponse
+        Returns true if the original request must be resent.
         """
+        # Effective recursion guard
+        self.ctx.init_thread()
+        if self.ctx.handled_401:
+            return False
+
+        if response.status != 401:
+            self.ctx.handled_401 = False
+            return False
+
         auth_header = response.headers.get("www-authenticate", "")
 
         parts = auth_header.split(" ", 1)
-        if "digest" == parts[0].lower() and len(parts) > 1:
-            self.challenge = parse_key_value_list(parts[1])
+        if "digest" == parts[0].lower() and len(parts) > 1 and not self.ctx.handled_401:
+            self.ctx.handled_401 = True
 
-            return await self.request(
-                self.args["method"],
-                self.args["url"],
-                headers=self.args["headers"],
-                **self.args["kwargs"],
-            )
+            header_pairs = parse_header_pairs(parts[1])
 
-        return response
+            self.ctx.challenge = {}
+            if "realm" in header_pairs and header_pairs["realm"]:
+                self.ctx.challenge["realm"] = header_pairs["realm"]
+            if "nonce" in header_pairs and header_pairs["nonce"]:
+                self.ctx.challenge["nonce"] = header_pairs["nonce"]
+            if "qop" in header_pairs and header_pairs["qop"]:
+                self.ctx.challenge["qop"] = header_pairs["qop"]
+            if "algorithm" in header_pairs and header_pairs["algorithm"]:
+                self.ctx.challenge["algorithm"] = header_pairs["algorithm"]
+            if "opaque" in header_pairs and header_pairs["opaque"]:
+                self.ctx.challenge["opaque"] = header_pairs["opaque"]
+
+            return True
+
+        return False
 
 
 def proxies_from_env() -> Dict[str, ProxyInfo]:
@@ -479,7 +595,7 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
+def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[AuthBase]]:
     """Get a permitted proxy for the given URL from the env."""
     if url.host is not None and proxy_bypass(url.host):
         raise LookupError(f"Proxying is disallowed for `{url.host!r}`")

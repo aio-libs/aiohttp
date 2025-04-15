@@ -95,7 +95,7 @@ from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     EMPTY_BODY_METHODS,
-    BasicAuth,
+    AuthBase,
     TimeoutHandle,
     frozen_dataclass_decorator,
     get_env_proxy_for_url,
@@ -174,7 +174,7 @@ class _RequestOptions(TypedDict, total=False):
     cookies: Union[LooseCookies, None]
     headers: Union[LooseHeaders, None]
     skip_auto_headers: Union[Iterable[str], None]
-    auth: Union[BasicAuth, None]
+    auth: Union[AuthBase, None]
     allow_redirects: bool
     max_redirects: int
     compress: Union[str, bool]
@@ -183,7 +183,7 @@ class _RequestOptions(TypedDict, total=False):
     raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]
     read_until_eof: bool
     proxy: Union[StrOrURL, None]
-    proxy_auth: Union[BasicAuth, None]
+    proxy_auth: Union[AuthBase, None]
     timeout: "Union[ClientTimeout, _SENTINEL, None]"
     ssl: Union[SSLContext, bool, Fingerprint]
     server_hostname: Union[str, None]
@@ -270,9 +270,9 @@ class ClientSession:
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
+        proxy_auth: Optional[AuthBase] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[BasicAuth] = None,
+        auth: Optional[AuthBase] = None,
         json_serialize: JSONEncoder = json.dumps,
         request_class: Type[ClientRequest] = ClientRequest,
         response_class: Type[ClientResponse] = ClientResponse,
@@ -429,7 +429,7 @@ class ClientSession:
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[BasicAuth] = None,
+        auth: Optional[AuthBase] = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
         compress: Union[str, bool] = False,
@@ -440,7 +440,7 @@ class ClientSession:
         ] = None,
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
+        proxy_auth: Optional[AuthBase] = None,
         timeout: Union[ClientTimeout, _SENTINEL, None] = sentinel,
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
@@ -672,6 +672,13 @@ class ClientSession:
                             resp = await req.send(conn)
                             try:
                                 await resp.start(conn)
+                                # Try performing digest authentication. It returns
+                                # True if we need to resend the request, as
+                                # DigestAuth is a bit of a handshake. This is
+                                # a no-op for BasicAuth. If it
+                                if auth is not None and auth.authenticate(resp):
+                                    resp.close()
+                                    continue
                             except BaseException:
                                 resp.close()
                                 raise
@@ -824,12 +831,12 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: Optional[float] = None,
-        auth: Optional[BasicAuth] = None,
+        auth: Optional[AuthBase] = None,
         origin: Optional[str] = None,
         params: Query = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
+        proxy_auth: Optional[AuthBase] = None,
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
@@ -872,12 +879,12 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: Optional[float] = None,
-        auth: Optional[BasicAuth] = None,
+        auth: Optional[AuthBase] = None,
         origin: Optional[str] = None,
         params: Query = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
+        proxy_auth: Optional[AuthBase] = None,
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
@@ -1247,7 +1254,7 @@ class ClientSession:
         return self._skip_auto_headers
 
     @property
-    def auth(self) -> Optional[BasicAuth]:  # type: ignore[misc]
+    def auth(self) -> Optional[AuthBase]:
         """An object that represents HTTP Basic Authorization"""
         return self._default_auth
 
@@ -1412,8 +1419,7 @@ else:
         headers - (optional) Dictionary of HTTP Headers to send with
         the request
         cookies - (optional) Dict object to send with the request
-        auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
-        auth - aiohttp.helpers.BasicAuth
+        auth - (optional) something implementing AuthBase for authentication
         allow_redirects - (optional) If set to False, do not follow
         redirects
         version - Request HTTP version.

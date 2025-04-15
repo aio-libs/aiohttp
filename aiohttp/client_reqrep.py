@@ -43,8 +43,10 @@ from .formdata import FormData
 from .hdrs import CONTENT_TYPE
 from .helpers import (
     _SENTINEL,
+    AuthBase,
     BaseTimerContext,
     BasicAuth,
+    DigestAuth,
     HeadersMixin,
     TimerNoop,
     basicauth_from_netrc,
@@ -186,7 +188,7 @@ class ConnectionKey(NamedTuple):
     is_ssl: bool
     ssl: Union[SSLContext, bool, Fingerprint]
     proxy: Optional[URL]
-    proxy_auth: Optional[BasicAuth]
+    proxy_auth: Optional[AuthBase]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
 
 
@@ -230,7 +232,7 @@ class ClientRequest:
         skip_auto_headers: Optional[Iterable[str]] = None,
         data: Any = None,
         cookies: Optional[LooseCookies] = None,
-        auth: Optional[BasicAuth] = None,
+        auth: Optional[AuthBase] = None,
         version: http.HttpVersion = http.HttpVersion11,
         compress: Union[str, bool] = False,
         chunked: Optional[bool] = None,
@@ -238,7 +240,7 @@ class ClientRequest:
         loop: asyncio.AbstractEventLoop,
         response_class: Optional[Type["ClientResponse"]] = None,
         proxy: Optional[URL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
+        proxy_auth: Optional[AuthBase] = None,
         timer: Optional[BaseTimerContext] = None,
         session: Optional["ClientSession"] = None,
         ssl: Union[SSLContext, bool, Fingerprint] = True,
@@ -287,12 +289,12 @@ class ClientRequest:
         self.update_auto_headers(skip_auto_headers)
         self.update_cookies(cookies)
         self.update_content_encoding(data, compress)
-        self.update_auth(auth, trust_env)
         self.update_proxy(proxy, proxy_auth, proxy_headers)
 
         self.update_body_from_data(data)
         if data is not None or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
+        self.update_auth(auth, trust_env)  # Must be after we set the body
         self.update_expect_continue(expect100)
         self._traces = [] if traces is None else traces
 
@@ -322,7 +324,7 @@ class ClientRequest:
         return self._ssl
 
     @property
-    def connection_key(self) -> ConnectionKey:  # type: ignore[misc]
+    def connection_key(self) -> ConnectionKey:
         if proxy_headers := self.proxy_headers:
             h: Optional[int] = hash(tuple(proxy_headers.items()))
         else:
@@ -370,7 +372,7 @@ class ClientRequest:
 
         # basic auth info
         if url.raw_user or url.raw_password:
-            self.auth = helpers.BasicAuth(url.user or "", url.password or "")
+            self.auth = BasicAuth(url.user or "", url.password or "")
 
     def update_version(self, version: Union[http.HttpVersion, str]) -> None:
         """Convert request version to two elements tuple.
@@ -494,7 +496,7 @@ class ClientRequest:
             if hdrs.CONTENT_LENGTH not in self.headers:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
-    def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
+    def update_auth(self, auth: Optional[AuthBase], trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
@@ -505,10 +507,12 @@ class ClientRequest:
         if auth is None:
             return
 
-        if not isinstance(auth, helpers.BasicAuth):
-            raise TypeError("BasicAuth() tuple is required instead")
+        if not isinstance(auth, BasicAuth) and not isinstance(auth, DigestAuth):
+            raise TypeError("BasicAuth() or DigestAuth() is required instead")
 
-        self.headers[hdrs.AUTHORIZATION] = auth.encode()
+        authorization_hdr = auth.encode(self.method, self.url, self.body)
+        if authorization_hdr:
+            self.headers[hdrs.AUTHORIZATION] = authorization_hdr
 
     def update_body_from_data(self, body: Any) -> None:
         if body is None:
@@ -561,7 +565,7 @@ class ClientRequest:
     def update_proxy(
         self,
         proxy: Optional[URL],
-        proxy_auth: Optional[BasicAuth],
+        proxy_auth: Optional[AuthBase],
         proxy_headers: Optional[LooseHeaders],
     ) -> None:
         self.proxy = proxy
@@ -570,7 +574,7 @@ class ClientRequest:
             self.proxy_headers = None
             return
 
-        if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
+        if proxy_auth and not isinstance(proxy_auth, BasicAuth):
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
         self.proxy_auth = proxy_auth
 
