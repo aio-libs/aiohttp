@@ -96,6 +96,7 @@ from .helpers import (
     _SENTINEL,
     EMPTY_BODY_METHODS,
     AuthBase,
+    BasicAuth,
     TimeoutHandle,
     frozen_dataclass_decorator,
     get_env_proxy_for_url,
@@ -183,7 +184,7 @@ class _RequestOptions(TypedDict, total=False):
     raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]
     read_until_eof: bool
     proxy: Union[StrOrURL, None]
-    proxy_auth: Union[AuthBase, None]
+    proxy_auth: Union[BasicAuth, None]
     timeout: "Union[ClientTimeout, _SENTINEL, None]"
     ssl: Union[SSLContext, bool, Fingerprint]
     server_hostname: Union[str, None]
@@ -270,7 +271,7 @@ class ClientSession:
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[AuthBase] = None,
+        proxy_auth: Optional[BasicAuth] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
         auth: Optional[AuthBase] = None,
         json_serialize: JSONEncoder = json.dumps,
@@ -440,7 +441,7 @@ class ClientSession:
         ] = None,
         read_until_eof: bool = True,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[AuthBase] = None,
+        proxy_auth: Optional[BasicAuth] = None,
         timeout: Union[ClientTimeout, _SENTINEL, None] = sentinel,
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
@@ -836,7 +837,7 @@ class ClientSession:
         params: Query = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[AuthBase] = None,
+        proxy_auth: Optional[BasicAuth] = None,
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,
@@ -884,7 +885,7 @@ class ClientSession:
         params: Query = None,
         headers: Optional[LooseHeaders] = None,
         proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[AuthBase] = None,
+        proxy_auth: Optional[BasicAuth] = None,
         ssl: Union[SSLContext, bool, Fingerprint] = True,
         server_hostname: Optional[str] = None,
         proxy_headers: Optional[LooseHeaders] = None,

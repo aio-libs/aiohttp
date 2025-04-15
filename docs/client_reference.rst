@@ -475,8 +475,8 @@ The client session supports the context manager protocol for self closing.
 
       :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
-      :param aiohttp.AuthBase proxy_auth: an object that represents proxy HTTP
-                                          Authorization (optional)
+      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
+                                           Basic Authorization (optional)
 
       :param int timeout: override the session's timeout.
 
@@ -737,8 +737,8 @@ The client session supports the context manager protocol for self closing.
 
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
-      :param aiohttp.AuthBase proxy_auth: an object that represents proxy HTTP
-                                          Authorization (optional)
+      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
+                                           Basic Authorization (optional)
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
@@ -947,8 +947,8 @@ certification chaining.
 
    :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
-   :param aiohttp.AuthBase proxy_auth: an object that represents proxy HTTP
-                                       Authorization (optional)
+   :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
+                                        Basic Authorization (optional)
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout, 30 seconds socket connect timeout by default.

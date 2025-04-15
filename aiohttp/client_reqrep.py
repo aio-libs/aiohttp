@@ -188,7 +188,7 @@ class ConnectionKey(NamedTuple):
     is_ssl: bool
     ssl: Union[SSLContext, bool, Fingerprint]
     proxy: Optional[URL]
-    proxy_auth: Optional[AuthBase]
+    proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
 
 
@@ -240,7 +240,7 @@ class ClientRequest:
         loop: asyncio.AbstractEventLoop,
         response_class: Optional[Type["ClientResponse"]] = None,
         proxy: Optional[URL] = None,
-        proxy_auth: Optional[AuthBase] = None,
+        proxy_auth: Optional[BasicAuth] = None,
         timer: Optional[BaseTimerContext] = None,
         session: Optional["ClientSession"] = None,
         ssl: Union[SSLContext, bool, Fingerprint] = True,
@@ -565,7 +565,7 @@ class ClientRequest:
     def update_proxy(
         self,
         proxy: Optional[URL],
-        proxy_auth: Optional[AuthBase],
+        proxy_auth: Optional[BasicAuth],
         proxy_headers: Optional[LooseHeaders],
     ) -> None:
         self.proxy = proxy

@@ -297,7 +297,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
 @frozen_dataclass_decorator
 class ProxyInfo:
     proxy: URL
-    proxy_auth: Optional[AuthBase]
+    proxy_auth: Optional[BasicAuth]
 
 
 def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAuth:
@@ -595,7 +595,7 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[AuthBase]]:
+def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
     """Get a permitted proxy for the given URL from the env."""
     if url.host is not None and proxy_bypass(url.host):
         raise LookupError(f"Proxying is disallowed for `{url.host!r}`")
