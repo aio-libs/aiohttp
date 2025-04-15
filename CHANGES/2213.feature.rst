@@ -1,1 +1,1 @@
-Added a digest authentication helper class.
+10725.feature.rst
