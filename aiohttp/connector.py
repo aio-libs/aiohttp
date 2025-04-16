@@ -1150,11 +1150,13 @@ class TCPConnector(BaseConnector):
         if req.request_info.url.scheme != "https":
             return
 
-        asyncio_supports_tls_in_tls = getattr(
-            underlying_transport,
-            "_start_tls_compatible",
-            False,
-        )
+        # Check if uvloop is being used, which supports TLS in TLS,
+        # otherwise assume that asyncio's native transport is being used.
+        if type(underlying_transport).__module__.startswith("uvloop"):
+            return
+
+        # Support in asyncio was added in Python 3.11 (bpo-44011)
+        asyncio_supports_tls_in_tls = sys.version_info >= (3, 11)
 
         if asyncio_supports_tls_in_tls:
             return
