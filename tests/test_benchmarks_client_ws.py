@@ -50,7 +50,7 @@ def test_one_thousand_round_trip_websocket_binary_messages(
 ) -> None:
     """Benchmark round trip of 1000 WebSocket binary messages."""
     message_count = 1000
-    raw_message = "x" * msg_size
+    raw_message = b"x" * msg_size
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
