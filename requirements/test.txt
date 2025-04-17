@@ -79,7 +79,7 @@ propcache==0.3.1
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test.in
-pycares==4.5.0
+pycares==4.6.0
     # via aiodns
 pycparser==2.22
     # via cffi
