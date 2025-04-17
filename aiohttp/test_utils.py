@@ -675,10 +675,10 @@ def make_mocked_request(
     if protocol is None:
         protocol = mock.Mock()
         protocol.transport = transport
-        protocol.peername = mock.PropertyMock(
+        type(protocol).peername = mock.PropertyMock(
             return_value=transport.get_extra_info("peername")
         )
-        protocol.ssl_context = mock.PropertyMock(return_value=sslcontext)
+        type(protocol).ssl_context = mock.PropertyMock(return_value=sslcontext)
 
     if writer is None:
         writer = mock.Mock()
