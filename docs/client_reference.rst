@@ -352,7 +352,7 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   .. attribute:: trace_config
+   .. attribute:: trace_configs
 
       A list of :class:`TraceConfig` instances used for client
       tracing.  ``None`` (default) is used for request tracing
@@ -2144,6 +2144,30 @@ Utilities
       await session.get(url, ssl=aiohttp.Fingerprint(digest))
 
    .. versionadded:: 3.0
+
+.. function:: set_zlib_backend(lib)
+
+   Sets the compression backend for zlib-based operations.
+
+   This function allows you to override the default zlib backend
+   used internally by passing a module that implements the standard
+   compression interface.
+
+   The module should implement at minimum the exact interface offered by the
+   latest version of zlib.
+
+   :param types.ModuleType lib: A module that implements the zlib-compatible compression API.
+
+   Example usage::
+
+      import zlib_ng.zlib_ng as zng
+      import aiohttp
+
+      aiohttp.set_zlib_backend(zng)
+
+   .. note:: aiohttp has been tested internally with :mod:`zlib`, :mod:`zlib_ng.zlib_ng`, and :mod:`isal.isal_zlib`.
+
+   .. versionadded:: 3.12
 
 FormData
 ^^^^^^^^
