@@ -2,6 +2,7 @@
 
 import asyncio
 
+import pytest
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
@@ -40,19 +41,22 @@ def test_one_thousand_round_trip_websocket_text_messages(
         loop.run_until_complete(run_websocket_benchmark())
 
 
+@pytest.mark.parametrize("msg_size", [6, MSG_SIZE * 4], ids=["small", "large"])
 def test_one_thousand_round_trip_websocket_binary_messages(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
+    msg_size: int,
 ) -> None:
     """Benchmark round trip of 1000 WebSocket binary messages."""
     message_count = 1000
+    raw_message = b"x" * msg_size
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         for _ in range(message_count):
-            await ws.send_bytes(b"answer")
+            await ws.send_bytes(raw_message)
         await ws.close()
         return ws
 
