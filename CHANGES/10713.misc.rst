@@ -1,1 +1,1 @@
-Optimized web server performance when access logging is disabled -- by :user:`bdraco`.
+Optimized web server performance when access logging is disabled by reducing time syscalls -- by :user:`bdraco`.
