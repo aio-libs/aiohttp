@@ -255,3 +255,29 @@ async def test_logger_does_not_log_when_not_enabled(
     resp = await client.get("/")
     assert 200 == resp.status
     assert "This should not be logged" not in caplog.text
+
+
+async def test_logger_set_to_none(
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test logger does nothing when access_log is set to None."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    class Logger(AbstractAccessLogger):
+
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
+            self.logger.critical("This should not be logged")  # pragma: no cover
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, access_log=None, access_log_class=Logger)
+    client = await aiohttp_client(server)
+    resp = await client.get("/")
+    assert 200 == resp.status
+    assert "This should not be logged" not in caplog.text

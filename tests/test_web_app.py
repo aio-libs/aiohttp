@@ -144,6 +144,20 @@ async def test_app_make_handler_access_log_class(mocker) -> None:
     )
 
 
+async def test_app_make_handler_no_access_log_class(mocker) -> None:
+    srv = mocker.patch("aiohttp.web_app.Server")
+    app = web.Application(handler_args={"access_log": None})
+    app._make_handler(access_log=None)
+    srv.assert_called_with(
+        app._handle,
+        request_factory=app._make_request,
+        loop=asyncio.get_event_loop(),
+        access_log=None,
+        debug=mock.ANY,
+        access_log_class=mock.ANY,
+    )
+
+
 async def test_app_make_handler_raises_deprecation_warning() -> None:
     app = web.Application()
 

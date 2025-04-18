@@ -170,6 +170,7 @@ class RequestHandler(BaseProtocol):
         "_current_request",
         "_timeout_ceil_threshold",
         "_request_in_progress",
+        "_logging_enabled",
         "_cache",
     )
 
@@ -244,8 +245,10 @@ class RequestHandler(BaseProtocol):
             self.access_logger: Optional[AbstractAccessLogger] = access_log_class(
                 access_log, access_log_format
             )
+            self._logging_enabled = self.access_logger.enabled
         else:
             self.access_logger = None
+            self._logging_enabled = False
 
         self._close = False
         self._force_close = False
@@ -463,9 +466,11 @@ class RequestHandler(BaseProtocol):
             self.transport = None
 
     def log_access(
-        self, request: BaseRequest, response: StreamResponse, time: float
+        self, request: BaseRequest, response: StreamResponse, time: Optional[float]
     ) -> None:
         if self.access_logger is not None and self.access_logger.enabled:
+            if TYPE_CHECKING:
+                assert time is not None
             self.access_logger.log(request, response, self._loop.time() - time)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
@@ -495,7 +500,7 @@ class RequestHandler(BaseProtocol):
     async def _handle_request(
         self,
         request: BaseRequest,
-        start_time: float,
+        start_time: Optional[float],
         request_handler: Callable[[BaseRequest], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
         self._request_in_progress = True
@@ -563,7 +568,9 @@ class RequestHandler(BaseProtocol):
 
             message, payload = self._messages.popleft()
 
-            start = loop.time()
+            # time is only fetched if logging is enabled as otherwise
+            # its thrown away and never used.
+            start = loop.time() if self._logging_enabled else None
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
@@ -671,7 +678,7 @@ class RequestHandler(BaseProtocol):
                 self.transport.close()
 
     async def finish_response(
-        self, request: BaseRequest, resp: StreamResponse, start_time: float
+        self, request: BaseRequest, resp: StreamResponse, start_time: Optional[float]
     ) -> Tuple[StreamResponse, bool]:
         """Prepare the response and write_eof, then log access.
 
