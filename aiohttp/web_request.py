@@ -198,10 +198,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         self._client_max_size = client_max_size
         self._loop = loop
 
-        transport = protocol.transport
-        assert transport is not None
-        self._transport_sslcontext = transport.get_extra_info("sslcontext")
-        self._transport_peername = transport.get_extra_info("peername")
+        self._transport_sslcontext = protocol.ssl_context
+        self._transport_peername = protocol.peername
 
         if remote is not None:
             self._cache["remote"] = remote
