@@ -28,13 +28,13 @@ class PatchableWebSocketReader(WebSocketReader):
 
     def parse_frame(self, data: bytes) -> list[tuple[int, int, bytes, bool]]:
         # This method is overridden to allow for patching in tests.
-        frames: list[tuple[int, int, bytes, bool]] = []
+        frames: list[tuple[int, int, bytes, int]] = []
 
         def _handle_frame(
-            fin: bool,
+            fin: int,
             opcode: int,
             payload: Union[bytes, bytearray],
-            compressed: bool,
+            compressed: int,
         ) -> None:
             # This method is overridden to allow for patching in tests.
             frames.append((fin, opcode, payload, compressed))
