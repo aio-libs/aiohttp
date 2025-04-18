@@ -36,6 +36,7 @@ WS_MSG_TYPE_BINARY = WSMsgType.BINARY
 WS_MSG_TYPE_TEXT = WSMsgType.TEXT
 
 # WSMsgType values unpacked so they can by cythonized to ints
+OP_CODE_NOT_SET = -1
 OP_CODE_CONTINUATION = WSMsgType.CONTINUATION.value
 OP_CODE_TEXT = WSMsgType.TEXT.value
 OP_CODE_BINARY = WSMsgType.BINARY.value
@@ -45,6 +46,10 @@ OP_CODE_PONG = WSMsgType.PONG.value
 
 EMPTY_FRAME_ERROR = (True, b"")
 EMPTY_FRAME = (False, b"")
+
+COMPRESSED_NOT_SET = -1
+COMPRESSED_FALSE = 0
+COMPRESSED_TRUE = 1
 
 TUPLE_NEW = tuple.__new__
 
@@ -141,9 +146,9 @@ class WebSocketReader:
         self._partial = bytearray()
         self._state = READ_HEADER
 
-        self._opcode: int = -1
+        self._opcode: int = OP_CODE_NOT_SET
         self._frame_fin = False
-        self._frame_opcode: int = -1
+        self._frame_opcode: int = OP_CODE_NOT_SET
         self._frame_payload: Union[bytes, bytearray] = b""
         self._frame_payload_len = 0
 
@@ -152,7 +157,7 @@ class WebSocketReader:
         self._frame_mask: Optional[bytes] = None
         self._payload_length = 0
         self._payload_length_flag = 0
-        self._compressed: int = -1
+        self._compressed: int = COMPRESSED_NOT_SET
         self._decompressobj: Optional[ZLibDecompressor] = None
         self._compress = compress
 
@@ -185,7 +190,7 @@ class WebSocketReader:
         fin: bool,
         opcode: Union[int],  # Union is intentional so Cython will convert to C int
         payload: Union[bytes, bytearray],
-        compressed: bool,
+        compressed: Union[int],  # Union is intentional so Cython will convert to C int
     ) -> None:
         msg: WSMessage
         if opcode in {OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION}:
@@ -204,14 +209,14 @@ class WebSocketReader:
                 return
 
             has_partial = bool(self._partial)
-            if opcode != OP_CODE_CONTINUATION:
-                if self._opcode == -1:
+            if opcode == OP_CODE_CONTINUATION:
+                if self._opcode == OP_CODE_NOT_SET:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
                         "Continuation frame for non started message",
                     )
                 opcode = self._opcode
-                self._opcode = -1
+                self._opcode = OP_CODE_NOT_SET
             # previous frame was non finished
             # we should get continuation opcode
             elif has_partial:
@@ -382,8 +387,8 @@ class WebSocketReader:
                 # Set compress status if last package is FIN
                 # OR set compress status if this is first fragment
                 # Raise error if not first fragment with rsv1 = 0x1
-                if self._frame_fin or self._compressed == -1:
-                    self._compressed = 1 if rsv1 else 0
+                if self._frame_fin or self._compressed == COMPRESSED_NOT_SET:
+                    self._compressed = COMPRESSED_TRUE if rsv1 else COMPRESSED_FALSE
                 elif rsv1:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,

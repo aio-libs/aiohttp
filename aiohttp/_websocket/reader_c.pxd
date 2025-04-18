@@ -8,12 +8,17 @@ cdef unsigned int READ_PAYLOAD_LENGTH
 cdef unsigned int READ_PAYLOAD_MASK
 cdef unsigned int READ_PAYLOAD
 
+cdef int OP_CODE_NOT_SET
 cdef int OP_CODE_CONTINUATION
 cdef int OP_CODE_TEXT
 cdef int OP_CODE_BINARY
 cdef int OP_CODE_CLOSE
 cdef int OP_CODE_PING
 cdef int OP_CODE_PONG
+
+cdef int COMPRESSED_NOT_SET
+cdef int COMPRESSED_FALSE
+cdef int COMPRESSED_TRUE
 
 cdef object UNPACK_LEN3
 cdef object UNPACK_CLOSE_CODE
@@ -89,7 +94,7 @@ cdef class WebSocketReader:
         has_partial=bint,
         payload_merged=bytes,
     )
-    cpdef void _handle_frame(self, bint fin, int opcode, object payload, bint compressed) except *
+    cpdef void _handle_frame(self, bint fin, int opcode, object payload, int compressed) except *
 
     @cython.locals(
         start_pos="unsigned int",
