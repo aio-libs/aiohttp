@@ -243,19 +243,19 @@ def test_ping_frame(
     parser: PatchableWebSocketReader,
     data: Union[bytes, bytearray, memoryview],
 ) -> None:
-    parser._handle_frame(True, WSMsgType.PING, b"data", False)
+    parser._handle_frame(1, WSMsgType.PING, b"data", 0)
     res = out._buffer[0]
     assert res == WSMessagePing(data=b"data", size=4, extra="")
 
 
 def test_pong_frame(out: WebSocketDataQueue, parser: PatchableWebSocketReader) -> None:
-    parser._handle_frame(True, WSMsgType.PONG, b"data", False)
+    parser._handle_frame(1, WSMsgType.PONG, b"data", 0)
     res = out._buffer[0]
     assert res == WSMessagePong(data=b"data", size=4, extra="")
 
 
 def test_close_frame(out: WebSocketDataQueue, parser: PatchableWebSocketReader) -> None:
-    parser._handle_frame(True, WSMsgType.CLOSE, b"", False)
+    parser._handle_frame(1, WSMsgType.CLOSE, b"", 0)
     res = out._buffer[0]
     assert res == WSMessageClose(data=0, size=0, extra="")
 
@@ -263,7 +263,7 @@ def test_close_frame(out: WebSocketDataQueue, parser: PatchableWebSocketReader) 
 def test_close_frame_info(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
-    parser._handle_frame(True, WSMsgType.CLOSE, b"0112345", False)
+    parser._handle_frame(1, WSMsgType.CLOSE, b"0112345", 0)
     res = out._buffer[0]
     assert res == WSMessageClose(data=12337, size=7, extra="12345")
 
@@ -272,7 +272,7 @@ def test_close_frame_invalid(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
     with pytest.raises(WebSocketError) as ctx:
-        parser._handle_frame(True, WSMsgType.CLOSE, b"1", False)
+        parser._handle_frame(1, WSMsgType.CLOSE, b"1", 0)
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
@@ -300,7 +300,7 @@ def test_unknown_frame(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
     with pytest.raises(WebSocketError):
-        parser._handle_frame(True, WSMsgType.CONTINUATION, b"", False)
+        parser._handle_frame(1, WSMsgType.CONTINUATION, b"", 0)
 
 
 def test_simple_text(out: WebSocketDataQueue, parser: PatchableWebSocketReader) -> None:
@@ -355,47 +355,40 @@ def test_continuation(
 def test_continuation_with_ping(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
-    with mock.patch.object(parser, "parse_frame", autospec=True) as m:
-        m.return_value = [
-            (0, WSMsgType.TEXT, b"line1", False),
-            (0, WSMsgType.PING, b"", False),
-            (1, WSMsgType.CONTINUATION, b"line2", False),
-        ]
+    data1 = build_frame(b"line1", WSMsgType.TEXT, is_fin=False)
+    parser._feed_data(data1)
 
-        data1 = build_frame(b"line1", WSMsgType.TEXT, is_fin=False)
-        parser._feed_data(data1)
+    data2 = build_frame(b"", WSMsgType.PING)
+    parser._feed_data(data2)
 
-        data2 = build_frame(b"", WSMsgType.PING)
-        parser._feed_data(data2)
+    data3 = build_frame(b"line2", WSMsgType.CONTINUATION)
+    parser._feed_data(data3)
 
-        data3 = build_frame(b"line2", WSMsgType.CONTINUATION)
-        parser._feed_data(data3)
-
-        res = out._buffer[0]
-        assert res == WSMessagePing(data=b"", size=0, extra="")
-        res = out._buffer[1]
-        assert res == WSMessageText(data="line1line2", size=10, extra="")
+    res = out._buffer[0]
+    assert res == WSMessagePing(data=b"", size=0, extra="")
+    res = out._buffer[1]
+    assert res == WSMessageText(data="line1line2", size=10, extra="")
 
 
 def test_continuation_err(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
-    parser._handle_frame(False, WSMsgType.TEXT, b"line1", False)
+    parser._handle_frame(0, WSMsgType.TEXT, b"line1", 0)
     with pytest.raises(WebSocketError):
-        parser._handle_frame(True, WSMsgType.TEXT, b"line2", False)
+        parser._handle_frame(1, WSMsgType.TEXT, b"line2", 0)
 
 
 def test_continuation_with_close(
     out: WebSocketDataQueue, parser: WebSocketReader
 ) -> None:
-    parser._handle_frame(False, WSMsgType.TEXT, b"line1", False)
+    parser._handle_frame(0, WSMsgType.TEXT, b"line1", 0)
     parser._handle_frame(
         0,
         WSMsgType.CLOSE,
         build_close_frame(1002, b"test", noheader=True),
         False,
     )
-    parser._handle_frame(True, WSMsgType.CONTINUATION, b"line2", False)
+    parser._handle_frame(1, WSMsgType.CONTINUATION, b"line2", 0)
     res = out._buffer[0]
     assert res == WSMessageClose(data=1002, size=6, extra="test")
     res = out._buffer[1]
@@ -405,47 +398,47 @@ def test_continuation_with_close(
 def test_continuation_with_close_unicode_err(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
-    parser._handle_frame(False, WSMsgType.TEXT, b"line1", False)
+    parser._handle_frame(False, WSMsgType.TEXT, b"line1", 0)
     with pytest.raises(WebSocketError) as ctx:
         parser._handle_frame(
             0,
             WSMsgType.CLOSE,
             build_close_frame(1000, b"\xf4\x90\x80\x80", noheader=True),
-            False,
+            0,
         )
-    parser._handle_frame(True, WSMsgType.CONTINUATION, b"line2", False)
+    parser._handle_frame(1, WSMsgType.CONTINUATION, b"line2", 0)
     assert ctx.value.code == WSCloseCode.INVALID_TEXT
 
 
 def test_continuation_with_close_bad_code(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
-    parser._handle_frame(False, WSMsgType.TEXT, b"line1", False)
+    parser._handle_frame(0, WSMsgType.TEXT, b"line1", 0)
     with pytest.raises(WebSocketError) as ctx:
 
         parser._handle_frame(
-            0, WSMsgType.CLOSE, build_close_frame(1, b"test", noheader=True), False
+            0, WSMsgType.CLOSE, build_close_frame(1, b"test", noheader=True), 0
         )
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
-    parser._handle_frame(True, WSMsgType.CONTINUATION, b"line2", False)
+    parser._handle_frame(1, WSMsgType.CONTINUATION, b"line2", 0)
 
 
 def test_continuation_with_close_bad_payload(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
-    parser._handle_frame(False, WSMsgType.TEXT, b"line1", False)
+    parser._handle_frame(0, WSMsgType.TEXT, b"line1", 0)
     with pytest.raises(WebSocketError) as ctx:
-        parser._handle_frame(False, WSMsgType.CLOSE, b"1", False)
+        parser._handle_frame(0, WSMsgType.CLOSE, b"1", 0)
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
-    parser._handle_frame(True, WSMsgType.CONTINUATION, b"line2", False)
+    parser._handle_frame(1, WSMsgType.CONTINUATION, b"line2", 0)
 
 
 def test_continuation_with_close_empty(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
-    parser._handle_frame(False, WSMsgType.TEXT, b"line1", False)
-    parser._handle_frame(False, WSMsgType.CLOSE, b"", False)
-    parser._handle_frame(True, WSMsgType.CONTINUATION, b"line2", False)
+    parser._handle_frame(0, WSMsgType.TEXT, b"line1", 0)
+    parser._handle_frame(0, WSMsgType.CLOSE, b"", 0)
+    parser._handle_frame(1, WSMsgType.CONTINUATION, b"line2", 0)
 
     res = out._buffer[0]
     assert res == WSMessageClose(data=0, size=0, extra="")
@@ -590,7 +583,7 @@ def test_flow_control_binary(
 ) -> None:
     large_payload = b"b" * (1 + 16 * 2)
     large_payload_size = len(large_payload)
-    parser_low_limit._handle_frame(True, WSMsgType.BINARY, large_payload, False)
+    parser_low_limit._handle_frame(1, WSMsgType.BINARY, large_payload, 0)
     res = out_low_limit._buffer[0]
     assert res == WSMessageBinary(data=large_payload, size=large_payload_size, extra="")
     assert protocol._reading_paused is True
@@ -604,7 +597,7 @@ def test_flow_control_multi_byte_text(
     large_payload_text = "𒀁" * (1 + 16 * 2)
     large_payload = large_payload_text.encode("utf-8")
     large_payload_size = len(large_payload)
-    parser_low_limit._handle_frame(True, WSMsgType.TEXT, large_payload, False)
+    parser_low_limit._handle_frame(1, WSMsgType.TEXT, large_payload, 0)
     res = out_low_limit._buffer[0]
     assert res == WSMessageText(
         data=large_payload_text, size=large_payload_size, extra=""
