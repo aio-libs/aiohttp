@@ -730,6 +730,10 @@ def make_mocked_request(
     if protocol is sentinel:
         protocol = mock.Mock()
         protocol.transport = transport
+        type(protocol).peername = mock.PropertyMock(
+            return_value=transport.get_extra_info("peername")
+        )
+        type(protocol).ssl_context = mock.PropertyMock(return_value=sslcontext)
 
     if writer is sentinel:
         writer = mock.Mock()
