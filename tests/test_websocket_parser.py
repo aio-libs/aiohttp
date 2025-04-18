@@ -26,9 +26,11 @@ from aiohttp.http_websocket import (
 class PatchableWebSocketReader(WebSocketReader):
     """WebSocketReader subclass that allows for patching parse_frame."""
 
-    def parse_frame(self, data: bytes) -> list[tuple[int, int, bytes, bool]]:
+    def parse_frame(
+        self, data: bytes
+    ) -> list[tuple[int, int, Union[bytes, bytearray], bool]]:
         # This method is overridden to allow for patching in tests.
-        frames: list[tuple[int, int, bytes, int]] = []
+        frames: list[tuple[int, int, Union[bytes, bytearray], int]] = []
 
         def _handle_frame(
             fin: int,
