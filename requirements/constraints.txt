@@ -116,7 +116,7 @@ markupsafe==2.1.5
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.1.0
+multidict==6.4.3
     # via
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
