@@ -585,7 +585,7 @@ def test_flow_control_binary(
 ) -> None:
     large_payload = b"b" * (1 + 16 * 2)
     large_payload_size = len(large_payload)
-    parser_low_limit._handle_frame(1, WSMsgType.BINARY, large_payload, 0)
+    parser_low_limit._handle_frame(True, WSMsgType.BINARY, large_payload, 0)
     res = out_low_limit._buffer[0]
     assert res == WSMessageBinary(data=large_payload, size=large_payload_size, extra="")
     assert protocol._reading_paused is True
@@ -599,7 +599,7 @@ def test_flow_control_multi_byte_text(
     large_payload_text = "𒀁" * (1 + 16 * 2)
     large_payload = large_payload_text.encode("utf-8")
     large_payload_size = len(large_payload)
-    parser_low_limit._handle_frame(1, WSMsgType.TEXT, large_payload, 0)
+    parser_low_limit._handle_frame(True, WSMsgType.TEXT, large_payload, 0)
     res = out_low_limit._buffer[0]
     assert res == WSMessageText(
         data=large_payload_text, size=large_payload_size, extra=""
