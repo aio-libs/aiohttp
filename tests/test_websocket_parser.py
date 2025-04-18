@@ -419,7 +419,7 @@ def test_continuation_with_close_bad_code(
     with pytest.raises(WebSocketError) as ctx:
 
         parser._handle_frame(
-            0, WSMsgType.CLOSE, build_close_frame(1, b"test", noheader=True), 0
+            False, WSMsgType.CLOSE, build_close_frame(1, b"test", noheader=True), 0
         )
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
     parser._handle_frame(True, WSMsgType.CONTINUATION, b"line2", 0)
@@ -527,7 +527,7 @@ def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
-def test_parse_no_compress_frame_single(out: PatchableWebSocketReader) -> None:
+def test_parse_no_compress_frame_single(out: WebSocketDataQueue) -> None:
     parser_no_compress = PatchableWebSocketReader(out, 0, compress=False)
     with pytest.raises(WebSocketError) as ctx:
         parser_no_compress.parse_frame(struct.pack("!BB", 0b11000001, 0b00000001))
@@ -536,7 +536,7 @@ def test_parse_no_compress_frame_single(out: PatchableWebSocketReader) -> None:
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
-def test_msg_too_large(out: PatchableWebSocketReader) -> None:
+def test_msg_too_large(out: WebSocketDataQueue) -> None:
     parser = WebSocketReader(out, 256, compress=False)
     data = build_frame(b"text" * 256, WSMsgType.TEXT)
     with pytest.raises(WebSocketError) as ctx:
@@ -544,7 +544,7 @@ def test_msg_too_large(out: PatchableWebSocketReader) -> None:
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
 
 
-def test_msg_too_large_not_fin(out: PatchableWebSocketReader) -> None:
+def test_msg_too_large_not_fin(out: WebSocketDataQueue) -> None:
     parser = WebSocketReader(out, 256, compress=False)
     data = build_frame(b"text" * 256, WSMsgType.TEXT, is_fin=False)
     with pytest.raises(WebSocketError) as ctx:
@@ -553,7 +553,7 @@ def test_msg_too_large_not_fin(out: PatchableWebSocketReader) -> None:
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-def test_compressed_msg_too_large(out: PatchableWebSocketReader) -> None:
+def test_compressed_msg_too_large(out: WebSocketDataQueue) -> None:
     parser = WebSocketReader(out, 256, compress=True)
     data = build_frame(b"aaa" * 256, WSMsgType.TEXT, ZLibBackend=ZLibBackend)
     with pytest.raises(WebSocketError) as ctx:
