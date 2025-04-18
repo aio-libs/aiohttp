@@ -24,6 +24,7 @@ from typing import (
 )
 
 import yarl
+from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
@@ -47,6 +48,8 @@ from .web_response import Response, StreamResponse
 __all__ = ("RequestHandler", "RequestPayloadError", "PayloadAccessError")
 
 if TYPE_CHECKING:
+    import ssl
+
     from .web_server import Server
 
 
@@ -189,6 +192,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_current_request",
         "_timeout_ceil_threshold",
         "_request_in_progress",
+        "_cache",
     )
 
     def __init__(
@@ -275,11 +279,32 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._close = False
         self._force_close = False
         self._request_in_progress = False
+        self._cache: dict[str, Any] = {}
 
     def __repr__(self) -> str:
         return "<{} {}>".format(
             self.__class__.__name__,
             "connected" if self.transport is not None else "disconnected",
+        )
+
+    @under_cached_property
+    def ssl_context(self) -> Optional["ssl.SSLContext"]:
+        """Return SSLContext if available."""
+        return (
+            None
+            if self.transport is None
+            else self.transport.get_extra_info("sslcontext")
+        )
+
+    @under_cached_property
+    def peername(
+        self,
+    ) -> Optional[Union[str, Tuple[str, int, int, int], Tuple[str, int]]]:
+        """Return peername if available."""
+        return (
+            None
+            if self.transport is None
+            else self.transport.get_extra_info("peername")
         )
 
     @property
