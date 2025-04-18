@@ -16,7 +16,7 @@ brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 cffi==1.17.1
     # via pycares
-frozenlist==1.5.0
+frozenlist==1.6.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
