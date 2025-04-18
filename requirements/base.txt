@@ -16,7 +16,7 @@ brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 cffi==1.17.1
     # via pycares
-frozenlist==1.5.0
+frozenlist==1.6.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
@@ -42,5 +42,5 @@ typing-extensions==4.13.2
     # via multidict
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-yarl==1.19.0
+yarl==1.20.0
     # via -r requirements/runtime-deps.in
