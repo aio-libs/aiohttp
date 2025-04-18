@@ -323,9 +323,10 @@ class WebSocketReader:
             self.queue.feed_data(
                 WSMessagePong(data=bytes(payload), size=len(payload), extra="")
             )
-        raise WebSocketError(
-            WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
-        )
+        else:
+            raise WebSocketError(
+                WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
+            )
 
     def _feed_data(self, data: bytes) -> None:
         """Return the next frame from the socket."""
