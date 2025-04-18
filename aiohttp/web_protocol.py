@@ -192,6 +192,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_current_request",
         "_timeout_ceil_threshold",
         "_request_in_progress",
+        "_logging_enabled",
         "_cache",
     )
 
@@ -273,8 +274,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     access_logger,
                     self._loop,
                 )
+            self._logging_enabled = self.access_logger.enabled
         else:
             self.access_logger = None
+            self._logging_enabled = False
 
         self._close = False
         self._force_close = False
@@ -492,9 +495,14 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self.transport = None
 
     async def log_access(
-        self, request: BaseRequest, response: StreamResponse, request_start: float
+        self,
+        request: BaseRequest,
+        response: StreamResponse,
+        request_start: Optional[float],
     ) -> None:
-        if self.access_logger is not None and self.access_logger.enabled:
+        if self._logging_enabled and self.access_logger is not None:
+            if TYPE_CHECKING:
+                assert request_start is not None
             await self.access_logger.log(request, response, request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
@@ -524,7 +532,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     async def _handle_request(
         self,
         request: _Request,
-        start_time: float,
+        start_time: Optional[float],
         request_handler: Callable[[_Request], Awaitable[StreamResponse]],
     ) -> Tuple[StreamResponse, bool]:
         self._request_in_progress = True
@@ -586,7 +594,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
             message, payload = self._messages.popleft()
 
-            start = loop.time()
+            # time is only fetched if logging is enabled as otherwise
+            # its thrown away and never used.
+            start = loop.time() if self._logging_enabled else None
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
@@ -696,7 +706,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 self.transport.close()
 
     async def finish_response(
-        self, request: BaseRequest, resp: StreamResponse, start_time: float
+        self, request: BaseRequest, resp: StreamResponse, start_time: Optional[float]
     ) -> Tuple[StreamResponse, bool]:
         """Prepare the response and write_eof, then log access.
 
