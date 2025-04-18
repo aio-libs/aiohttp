@@ -3,7 +3,7 @@
 import asyncio
 import builtins
 from collections import deque
-from typing import Deque, Final, List, Optional, Set, Tuple, Type, Union
+from typing import Deque, Final, Optional, Set, Tuple, Type, Union
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
@@ -141,9 +141,9 @@ class WebSocketReader:
         self._partial = bytearray()
         self._state = READ_HEADER
 
-        self._opcode: Optional[int] = None
+        self._opcode: int = -1
         self._frame_fin = False
-        self._frame_opcode: Optional[int] = None
+        self._frame_opcode: int = -1
         self._frame_payload: Union[bytes, bytearray] = b""
         self._frame_payload_len = 0
 
@@ -152,7 +152,7 @@ class WebSocketReader:
         self._frame_mask: Optional[bytes] = None
         self._payload_length = 0
         self._payload_length_flag = 0
-        self._compressed: Optional[bool] = None
+        self._compressed: int = -1
         self._decompressobj: Optional[ZLibDecompressor] = None
         self._compress = compress
 
@@ -180,173 +180,164 @@ class WebSocketReader:
 
         return EMPTY_FRAME
 
-    def _feed_data(self, data: bytes) -> None:
+    def _handle_frame(
+        self,
+        fin: bool,
+        opcode: Union[int],  # Union is intentional so Cython will convert to C int
+        payload: Union[bytes, bytearray],
+        compressed: bool,
+    ) -> None:
         msg: WSMessage
-        for frame in self.parse_frame(data):
-            fin = frame[0]
-            opcode = frame[1]
-            payload = frame[2]
-            compressed = frame[3]
-
-            is_continuation = opcode == OP_CODE_CONTINUATION
-            if opcode == OP_CODE_TEXT or opcode == OP_CODE_BINARY or is_continuation:
-                # load text/binary
-                if not fin:
-                    # got partial frame payload
-                    if not is_continuation:
-                        self._opcode = opcode
-                    self._partial += payload
-                    if self._max_msg_size and len(self._partial) >= self._max_msg_size:
-                        raise WebSocketError(
-                            WSCloseCode.MESSAGE_TOO_BIG,
-                            f"Message size {len(self._partial)} "
-                            f"exceeds limit {self._max_msg_size}",
-                        )
-                    continue
-
-                has_partial = bool(self._partial)
-                if is_continuation:
-                    if self._opcode is None:
-                        raise WebSocketError(
-                            WSCloseCode.PROTOCOL_ERROR,
-                            "Continuation frame for non started message",
-                        )
-                    opcode = self._opcode
-                    self._opcode = None
-                # previous frame was non finished
-                # we should get continuation opcode
-                elif has_partial:
-                    raise WebSocketError(
-                        WSCloseCode.PROTOCOL_ERROR,
-                        "The opcode in non-fin frame is expected "
-                        f"to be zero, got {opcode!r}",
-                    )
-
-                assembled_payload: Union[bytes, bytearray]
-                if has_partial:
-                    assembled_payload = self._partial + payload
-                    self._partial.clear()
-                else:
-                    assembled_payload = payload
-
-                if self._max_msg_size and len(assembled_payload) >= self._max_msg_size:
+        if opcode in {OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION}:
+            # load text/binary
+            if not fin:
+                # got partial frame payload
+                if opcode != OP_CODE_CONTINUATION:
+                    self._opcode = opcode
+                self._partial += payload
+                if self._max_msg_size and len(self._partial) >= self._max_msg_size:
                     raise WebSocketError(
                         WSCloseCode.MESSAGE_TOO_BIG,
-                        f"Message size {len(assembled_payload)} "
+                        f"Message size {len(self._partial)} "
                         f"exceeds limit {self._max_msg_size}",
                     )
+                return
 
-                # Decompress process must to be done after all packets
-                # received.
-                if compressed:
-                    if not self._decompressobj:
-                        self._decompressobj = ZLibDecompressor(
-                            suppress_deflate_header=True
-                        )
-                    # XXX: It's possible that the zlib backend (isal is known to
-                    # do this, maybe others too?) will return max_length bytes,
-                    # but internally buffer more data such that the payload is
-                    # >max_length, so we return one extra byte and if we're able
-                    # to do that, then the message is too big.
-                    payload_merged = self._decompressobj.decompress_sync(
-                        assembled_payload + WS_DEFLATE_TRAILING,
-                        (
-                            self._max_msg_size + 1
-                            if self._max_msg_size
-                            else self._max_msg_size
-                        ),
-                    )
-                    if self._max_msg_size and len(payload_merged) > self._max_msg_size:
-                        raise WebSocketError(
-                            WSCloseCode.MESSAGE_TOO_BIG,
-                            f"Decompressed message exceeds size limit {self._max_msg_size}",
-                        )
-                elif type(assembled_payload) is bytes:
-                    payload_merged = assembled_payload
-                else:
-                    payload_merged = bytes(assembled_payload)
-
-                size = len(payload_merged)
-                if opcode == OP_CODE_TEXT:
-                    try:
-                        text = payload_merged.decode("utf-8")
-                    except UnicodeDecodeError as exc:
-                        raise WebSocketError(
-                            WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
-                        ) from exc
-
-                    # XXX: The Text and Binary messages here can be a performance
-                    # bottleneck, so we use tuple.__new__ to improve performance.
-                    # This is not type safe, but many tests should fail in
-                    # test_client_ws_functional.py if this is wrong.
-                    msg = TUPLE_NEW(WSMessageText, (text, size, "", WS_MSG_TYPE_TEXT))
-                else:
-                    msg = TUPLE_NEW(
-                        WSMessageBinary, (payload_merged, size, "", WS_MSG_TYPE_BINARY)
-                    )
-
-                self.queue.feed_data(msg)
-            elif opcode == OP_CODE_CLOSE:
-                payload_len = len(payload)
-                if payload_len >= 2:
-                    close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
-                    if close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES:
-                        raise WebSocketError(
-                            WSCloseCode.PROTOCOL_ERROR,
-                            f"Invalid close code: {close_code}",
-                        )
-                    try:
-                        close_message = payload[2:].decode("utf-8")
-                    except UnicodeDecodeError as exc:
-                        raise WebSocketError(
-                            WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
-                        ) from exc
-                    msg = WSMessageClose(
-                        data=close_code, size=payload_len, extra=close_message
-                    )
-                elif payload:
+            has_partial = bool(self._partial)
+            if opcode != OP_CODE_CONTINUATION:
+                if self._opcode == -1:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
-                        f"Invalid close frame: {fin} {opcode} {payload!r}",
+                        "Continuation frame for non started message",
                     )
-                else:
-                    msg = WSMessageClose(data=0, size=payload_len, extra="")
-
-                self.queue.feed_data(msg)
-            elif opcode == OP_CODE_PING:
-                self.queue.feed_data(
-                    WSMessagePing(data=bytes(payload), size=len(payload), extra="")
+                opcode = self._opcode
+                self._opcode = -1
+            # previous frame was non finished
+            # we should get continuation opcode
+            elif has_partial:
+                raise WebSocketError(
+                    WSCloseCode.PROTOCOL_ERROR,
+                    "The opcode in non-fin frame is expected "
+                    f"to be zero, got {opcode!r}",
                 )
-            elif opcode == OP_CODE_PONG:
-                self.queue.feed_data(
-                    WSMessagePong(data=bytes(payload), size=len(payload), extra="")
+
+            assembled_payload: Union[bytes, bytearray]
+            if has_partial:
+                assembled_payload = self._partial + payload
+                self._partial.clear()
+            else:
+                assembled_payload = payload
+
+            if self._max_msg_size and len(assembled_payload) >= self._max_msg_size:
+                raise WebSocketError(
+                    WSCloseCode.MESSAGE_TOO_BIG,
+                    f"Message size {len(assembled_payload)} "
+                    f"exceeds limit {self._max_msg_size}",
+                )
+
+            # Decompress process must to be done after all packets
+            # received.
+            if compressed:
+                if not self._decompressobj:
+                    self._decompressobj = ZLibDecompressor(suppress_deflate_header=True)
+                # XXX: It's possible that the zlib backend (isal is known to
+                # do this, maybe others too?) will return max_length bytes,
+                # but internally buffer more data such that the payload is
+                # >max_length, so we return one extra byte and if we're able
+                # to do that, then the message is too big.
+                payload_merged = self._decompressobj.decompress_sync(
+                    assembled_payload + WS_DEFLATE_TRAILING,
+                    (
+                        self._max_msg_size + 1
+                        if self._max_msg_size
+                        else self._max_msg_size
+                    ),
+                )
+                if self._max_msg_size and len(payload_merged) > self._max_msg_size:
+                    raise WebSocketError(
+                        WSCloseCode.MESSAGE_TOO_BIG,
+                        f"Decompressed message exceeds size limit {self._max_msg_size}",
+                    )
+            elif type(assembled_payload) is bytes:
+                payload_merged = assembled_payload
+            else:
+                payload_merged = bytes(assembled_payload)
+
+            size = len(payload_merged)
+            if opcode == OP_CODE_TEXT:
+                try:
+                    text = payload_merged.decode("utf-8")
+                except UnicodeDecodeError as exc:
+                    raise WebSocketError(
+                        WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
+                    ) from exc
+
+                # XXX: The Text and Binary messages here can be a performance
+                # bottleneck, so we use tuple.__new__ to improve performance.
+                # This is not type safe, but many tests should fail in
+                # test_client_ws_functional.py if this is wrong.
+                msg = TUPLE_NEW(WSMessageText, (text, size, "", WS_MSG_TYPE_TEXT))
+            else:
+                msg = TUPLE_NEW(
+                    WSMessageBinary, (payload_merged, size, "", WS_MSG_TYPE_BINARY)
+                )
+
+            self.queue.feed_data(msg)
+        elif opcode == OP_CODE_CLOSE:
+            payload_len = len(payload)
+            if payload_len >= 2:
+                close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
+                if close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES:
+                    raise WebSocketError(
+                        WSCloseCode.PROTOCOL_ERROR,
+                        f"Invalid close code: {close_code}",
+                    )
+                try:
+                    close_message = payload[2:].decode("utf-8")
+                except UnicodeDecodeError as exc:
+                    raise WebSocketError(
+                        WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
+                    ) from exc
+                msg = WSMessageClose(
+                    data=close_code, size=payload_len, extra=close_message
+                )
+            elif payload:
+                raise WebSocketError(
+                    WSCloseCode.PROTOCOL_ERROR,
+                    f"Invalid close frame: {fin} {opcode} {payload!r}",
                 )
             else:
-                raise WebSocketError(
-                    WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
-                )
+                msg = WSMessageClose(data=0, size=payload_len, extra="")
 
-    def parse_frame(
-        self, buf: bytes
-    ) -> List[Tuple[bool, Optional[int], Union[bytes, bytearray], Optional[bool]]]:
+            self.queue.feed_data(msg)
+        elif opcode == OP_CODE_PING:
+            self.queue.feed_data(
+                WSMessagePing(data=bytes(payload), size=len(payload), extra="")
+            )
+        elif opcode == OP_CODE_PONG:
+            self.queue.feed_data(
+                WSMessagePong(data=bytes(payload), size=len(payload), extra="")
+            )
+        raise WebSocketError(
+            WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"
+        )
+
+    def _feed_data(self, data: bytes) -> None:
         """Return the next frame from the socket."""
-        frames: List[
-            Tuple[bool, Optional[int], Union[bytes, bytearray], Optional[bool]]
-        ] = []
         if self._tail:
-            buf, self._tail = self._tail + buf, b""
+            data, self._tail = self._tail + data, b""
 
         start_pos: int = 0
-        buf_length = len(buf)
-        buf_cstr = buf
+        data_length = len(data)
+        data_cstr = data
 
         while True:
             # read header
             if self._state == READ_HEADER:
-                if buf_length - start_pos < 2:
+                if data_length - start_pos < 2:
                     break
-                first_byte = buf_cstr[start_pos]
-                second_byte = buf_cstr[start_pos + 1]
+                first_byte = data_cstr[start_pos]
+                second_byte = data_cstr[start_pos + 1]
                 start_pos += 2
 
                 fin = (first_byte >> 7) & 1
@@ -391,8 +382,8 @@ class WebSocketReader:
                 # Set compress status if last package is FIN
                 # OR set compress status if this is first fragment
                 # Raise error if not first fragment with rsv1 = 0x1
-                if self._frame_fin or self._compressed is None:
-                    self._compressed = True if rsv1 else False
+                if self._frame_fin or self._compressed == -1:
+                    self._compressed = 1 if rsv1 else 0
                 elif rsv1:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
@@ -409,16 +400,16 @@ class WebSocketReader:
             if self._state == READ_PAYLOAD_LENGTH:
                 length_flag = self._payload_length_flag
                 if length_flag == 126:
-                    if buf_length - start_pos < 2:
+                    if data_length - start_pos < 2:
                         break
-                    first_byte = buf_cstr[start_pos]
-                    second_byte = buf_cstr[start_pos + 1]
+                    first_byte = data_cstr[start_pos]
+                    second_byte = data_cstr[start_pos + 1]
                     start_pos += 2
                     self._payload_length = first_byte << 8 | second_byte
                 elif length_flag > 126:
-                    if buf_length - start_pos < 8:
+                    if data_length - start_pos < 8:
                         break
-                    data = buf_cstr[start_pos : start_pos + 8]
+                    data = data_cstr[start_pos : start_pos + 8]
                     start_pos += 8
                     self._payload_length = UNPACK_LEN3(data)[0]
                 else:
@@ -428,16 +419,16 @@ class WebSocketReader:
 
             # read payload mask
             if self._state == READ_PAYLOAD_MASK:
-                if buf_length - start_pos < 4:
+                if data_length - start_pos < 4:
                     break
-                self._frame_mask = buf_cstr[start_pos : start_pos + 4]
+                self._frame_mask = data_cstr[start_pos : start_pos + 4]
                 start_pos += 4
                 self._state = READ_PAYLOAD
 
             if self._state == READ_PAYLOAD:
-                chunk_len = buf_length - start_pos
+                chunk_len = data_length - start_pos
                 if self._payload_length >= chunk_len:
-                    end_pos = buf_length
+                    end_pos = data_length
                     self._payload_length -= chunk_len
                 else:
                     end_pos = start_pos + self._payload_length
@@ -446,10 +437,10 @@ class WebSocketReader:
                 if self._frame_payload_len:
                     if type(self._frame_payload) is not bytearray:
                         self._frame_payload = bytearray(self._frame_payload)
-                    self._frame_payload += buf_cstr[start_pos:end_pos]
+                    self._frame_payload += data_cstr[start_pos:end_pos]
                 else:
                     # Fast path for the first frame
-                    self._frame_payload = buf_cstr[start_pos:end_pos]
+                    self._frame_payload = data_cstr[start_pos:end_pos]
 
                 self._frame_payload_len += end_pos - start_pos
                 start_pos = end_pos
@@ -463,19 +454,17 @@ class WebSocketReader:
                         self._frame_payload = bytearray(self._frame_payload)
                     websocket_mask(self._frame_mask, self._frame_payload)
 
-                frames.append(
-                    (
-                        self._frame_fin,
-                        self._frame_opcode,
-                        self._frame_payload,
-                        self._compressed,
-                    )
+                self._handle_frame(
+                    self._frame_fin,
+                    self._frame_opcode,
+                    self._frame_payload,
+                    self._compressed,
                 )
                 self._frame_payload = b""
                 self._frame_payload_len = 0
                 self._state = READ_HEADER
 
         # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
-        self._tail = buf_cstr[start_pos:buf_length] if start_pos < buf_length else b""
-
-        return frames
+        self._tail = (
+            data_cstr[start_pos:data_length] if start_pos < data_length else b""
+        )
