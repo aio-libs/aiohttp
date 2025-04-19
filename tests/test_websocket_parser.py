@@ -333,6 +333,7 @@ def test_simple_binary(
 def test_one_byte_at_a_time(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
+    """Send one byte at a time to the parser."""
     data = build_frame(b"binary", WSMsgType.BINARY)
     for i in range(len(data)):
         parser._feed_data(data[i : i + 1])
