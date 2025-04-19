@@ -74,7 +74,7 @@ cdef class WebSocketReader:
     cdef int _opcode
     cdef bint _frame_fin
     cdef int _frame_opcode
-    cdef list _frame_payloads
+    cdef list _f_fragments
     cdef Py_ssize_t _frame_payload_len
 
     cdef bytes _tail

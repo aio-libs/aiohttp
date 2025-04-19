@@ -151,7 +151,7 @@ class WebSocketReader:
         self._opcode: int = OP_CODE_NOT_SET
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
-        self._frame_payloads: list[bytes] = []
+        self._f_fragments: list[bytes] = []
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
@@ -449,22 +449,22 @@ class WebSocketReader:
                 if self._payload_length != 0:
                     # If we don't have a complete payload, we need to save the
                     # data for the next call to feed_data.
-                    self._frame_payloads.append(data_cstr[f_start_pos:f_end_pos])
+                    self._f_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     break
 
                 f_payload: Union[bytes, bytearray]
                 if had_existing_payload:
                     # We have to merge the payloads if we have a fragmented message
-                    self._frame_payloads.append(data_cstr[f_start_pos:f_end_pos])
+                    self._f_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     if self._has_mask:
                         assert self._frame_mask is not None
                         f_payload_bytearray = bytearray()
-                        f_payload_bytearray.join(self._frame_payloads)
+                        f_payload_bytearray.join(self._f_fragments)
                         websocket_mask(self._frame_mask, f_payload_bytearray)
                         f_payload = f_payload_bytearray
                     else:
-                        f_payload = b"".join(self._frame_payloads)
-                    self._frame_payloads.clear()
+                        f_payload = b"".join(self._f_fragments)
+                    self._f_fragments.clear()
                 elif self._has_mask:
                     assert self._frame_mask is not None
                     f_payload_bytearray = data_cstr[f_start_pos:f_end_pos]  # type: ignore[assignment]
