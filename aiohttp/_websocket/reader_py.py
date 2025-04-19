@@ -417,9 +417,8 @@ class WebSocketReader:
                 elif length_flag > 126:
                     if data_length - start_pos < 8:
                         break
-                    data = data_cstr[start_pos : start_pos + 8]
+                    self._payload_length = UNPACK_LEN3(data, start_pos)[0]
                     start_pos += 8
-                    self._payload_length = UNPACK_LEN3(data)[0]
                 else:
                     self._payload_length = length_flag
 
