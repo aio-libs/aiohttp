@@ -352,7 +352,7 @@ def test_one_byte_at_a_time(
     for i in range(len(data)):
         parser._feed_data(data[i : i + 1])
     res = out._buffer[0]
-    assert res == WSMessageBinary(data=b"binary", size=6, extra="")
+    assert res == ((WSMsgType.BINARY, b"binary", ""), 6)
 
 
 def test_fragmentation_header(
