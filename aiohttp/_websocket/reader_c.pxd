@@ -8,12 +8,17 @@ cdef unsigned int READ_PAYLOAD_LENGTH
 cdef unsigned int READ_PAYLOAD_MASK
 cdef unsigned int READ_PAYLOAD
 
-cdef unsigned int OP_CODE_CONTINUATION
-cdef unsigned int OP_CODE_TEXT
-cdef unsigned int OP_CODE_BINARY
-cdef unsigned int OP_CODE_CLOSE
-cdef unsigned int OP_CODE_PING
-cdef unsigned int OP_CODE_PONG
+cdef int OP_CODE_NOT_SET
+cdef int OP_CODE_CONTINUATION
+cdef int OP_CODE_TEXT
+cdef int OP_CODE_BINARY
+cdef int OP_CODE_CLOSE
+cdef int OP_CODE_PING
+cdef int OP_CODE_PONG
+
+cdef int COMPRESSED_NOT_SET
+cdef int COMPRESSED_FALSE
+cdef int COMPRESSED_TRUE
 
 cdef object UNPACK_LEN3
 cdef object UNPACK_CLOSE_CODE
@@ -60,9 +65,9 @@ cdef class WebSocketReader:
     cdef bytearray _partial
     cdef unsigned int _state
 
-    cdef object _opcode
-    cdef object _frame_fin
-    cdef object _frame_opcode
+    cdef int _opcode
+    cdef bint _frame_fin
+    cdef int _frame_opcode
     cdef object _frame_payload
     cdef unsigned long long _frame_payload_len
 
@@ -71,7 +76,7 @@ cdef class WebSocketReader:
     cdef bytes _frame_mask
     cdef unsigned long long _payload_length
     cdef unsigned int _payload_length_flag
-    cdef object _compressed
+    cdef int _compressed
     cdef object _decompressobj
     cdef bint _compress
 
@@ -82,22 +87,21 @@ cdef class WebSocketReader:
         fin=bint,
         has_partial=bint,
         payload_merged=bytes,
-        opcode="unsigned int",
     )
-    cpdef void _feed_data(self, bytes data)
+    cpdef void _handle_frame(self, bint fin, int opcode, object payload, int compressed) except *
 
     @cython.locals(
         start_pos="unsigned int",
-        buf_len="unsigned int",
+        data_len="unsigned int",
         length="unsigned int",
         chunk_size="unsigned int",
         chunk_len="unsigned int",
-        buf_length="unsigned int",
-        buf_cstr="const unsigned char *",
+        data_length="unsigned int",
+        data_cstr="const unsigned char *",
         first_byte="unsigned char",
         second_byte="unsigned char",
         end_pos="unsigned int",
         has_mask=bint,
         fin=bint,
     )
-    cpdef list parse_frame(self, bytes buf)
+    cpdef void _feed_data(self, bytes data) except *
