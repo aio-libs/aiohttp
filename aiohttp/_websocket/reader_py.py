@@ -190,13 +190,11 @@ class WebSocketReader:
     def _handle_frame(
         self,
         fin: bool,
-        opcode: Union[
-            int, cython_int
-        ],  # Union intentional: Cython pxd converts to C int
+        opcode: Union[int, cython_int],  # Union intended: Cython pxd converts to C int
         payload: Union[bytes, bytearray],
         compressed: Union[
             int, cython_int
-        ],  # Union intentional: Cython pxd converts to C int
+        ],  # Union intended: Cython pxd converts to C int
     ) -> None:
         msg: WSMessage
         if opcode in {OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION}:
