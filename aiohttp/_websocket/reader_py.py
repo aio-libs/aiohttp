@@ -454,7 +454,7 @@ class WebSocketReader:
 
                 payload: Union[bytes, bytearray]
                 if had_fragments:
-                    # We have to merge the payloads if we have a fragmented message
+                    # We have to join the frame fragments get the payload
                     self._frame_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     if self._has_mask:
                         assert self._frame_mask is not None
