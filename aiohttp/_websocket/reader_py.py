@@ -157,8 +157,8 @@ class WebSocketReader:
         self._tail: bytes = b""
         self._has_mask = False
         self._frame_mask: Optional[bytes] = None
-        self._payload_length = 0
-        self._payload_length_flag = 0
+        self._remaing_payload_len = 0
+        self._remaing_payload_len_flag = 0
         self._compressed: int = COMPRESSED_NOT_SET
         self._decompressobj: Optional[ZLibDecompressor] = None
         self._compress = compress
@@ -401,26 +401,26 @@ class WebSocketReader:
                 self._frame_fin = bool(fin)
                 self._frame_opcode = opcode
                 self._has_mask = bool(has_mask)
-                self._payload_length_flag = length
+                self._remaing_payload_len_flag = length
                 self._state = READ_PAYLOAD_LENGTH
 
             # read payload length
             if self._state == READ_PAYLOAD_LENGTH:
-                length_flag = self._payload_length_flag
+                length_flag = self._remaing_payload_len_flag
                 if length_flag == 126:
                     if data_len - start_pos < 2:
                         break
                     first_byte = data_cstr[start_pos]
                     second_byte = data_cstr[start_pos + 1]
                     start_pos += 2
-                    self._payload_length = first_byte << 8 | second_byte
+                    self._remaing_payload_len = first_byte << 8 | second_byte
                 elif length_flag > 126:
                     if data_len - start_pos < 8:
                         break
-                    self._payload_length = UNPACK_LEN3(data, start_pos)[0]
+                    self._remaing_payload_len = UNPACK_LEN3(data, start_pos)[0]
                     start_pos += 8
                 else:
-                    self._payload_length = length_flag
+                    self._remaing_payload_len = length_flag
 
                 self._state = READ_PAYLOAD_MASK if self._has_mask else READ_PAYLOAD
 
@@ -434,19 +434,19 @@ class WebSocketReader:
 
             if self._state == READ_PAYLOAD:
                 chunk_len = data_len - start_pos
-                if self._payload_length >= chunk_len:
+                if self._remaing_payload_len >= chunk_len:
                     f_end_pos = data_len
-                    self._payload_length -= chunk_len
+                    self._remaing_payload_len -= chunk_len
                 else:
-                    f_end_pos = start_pos + self._payload_length
-                    self._payload_length = 0
+                    f_end_pos = start_pos + self._remaing_payload_len
+                    self._remaing_payload_len = 0
 
                 had_fragments = self._frame_payload_len
                 self._frame_payload_len += f_end_pos - start_pos
                 f_start_pos = start_pos
                 start_pos = f_end_pos
 
-                if self._payload_length != 0:
+                if self._remaing_payload_len != 0:
                     # If we don't have a complete payload, we need to save the
                     # data for the next call to feed_data.
                     self._frame_fragments.append(data_cstr[f_start_pos:f_end_pos])
