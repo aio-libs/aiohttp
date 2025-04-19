@@ -447,39 +447,39 @@ class WebSocketReader:
                 start_pos = f_end_pos
 
                 if self._frame_bytes_left != 0:
-                    # If we don't have a complete payload, we need to save the
+                    # If we don't have a complete frame, we need to save the
                     # data for the next call to feed_data.
                     self._frame_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     break
 
-                payload: Union[bytes, bytearray]
+                frame: Union[bytes, bytearray]
                 if had_fragments:
-                    # We have to join the frame fragments get the payload
+                    # We have to join the frame fragments get the frame
                     self._frame_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     if self._has_mask:
                         assert self._frame_mask is not None
-                        payload_bytearray = bytearray()
-                        payload_bytearray.join(self._frame_fragments)
-                        websocket_mask(self._frame_mask, payload_bytearray)
-                        payload = payload_bytearray
+                        frame_bytearray = bytearray()
+                        frame_bytearray.join(self._frame_fragments)
+                        websocket_mask(self._frame_mask, frame_bytearray)
+                        frame = frame_bytearray
                     else:
-                        payload = b"".join(self._frame_fragments)
+                        frame = b"".join(self._frame_fragments)
                     self._frame_fragments.clear()
                 elif self._has_mask:
                     assert self._frame_mask is not None
-                    payload_bytearray = data_cstr[f_start_pos:f_end_pos]  # type: ignore[assignment]
-                    if type(payload_bytearray) is not bytearray:  # pragma: no branch
+                    frame_bytearray = data_cstr[f_start_pos:f_end_pos]  # type: ignore[assignment]
+                    if type(frame_bytearray) is not bytearray:  # pragma: no branch
                         # Cython will do the conversion for us
                         # but we need to do it for Python and we
                         # will always get here in Python
-                        payload_bytearray = bytearray(payload_bytearray)
-                    websocket_mask(self._frame_mask, payload_bytearray)
-                    payload = payload_bytearray
+                        frame_bytearray = bytearray(frame_bytearray)
+                    websocket_mask(self._frame_mask, frame_bytearray)
+                    frame = frame_bytearray
                 else:
-                    payload = data_cstr[f_start_pos:f_end_pos]
+                    frame = data_cstr[f_start_pos:f_end_pos]
 
                 self._handle_frame(
-                    self._frame_fin, self._frame_opcode, payload, self._compressed
+                    self._frame_fin, self._frame_opcode, frame, self._compressed
                 )
                 self._frame_payload_len = 0
                 self._state = READ_HEADER
