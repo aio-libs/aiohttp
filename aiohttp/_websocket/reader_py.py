@@ -53,6 +53,8 @@ COMPRESSED_TRUE = 1
 
 TUPLE_NEW = tuple.__new__
 
+cython_int = int  # Typed to int in Python, but cython with use a signed int in the pxd
+
 
 class WebSocketDataQueue:
     """WebSocketDataQueue resumes and pauses an underlying stream.
@@ -188,9 +190,13 @@ class WebSocketReader:
     def _handle_frame(
         self,
         fin: bool,
-        opcode: Union[int],  # Union is intentional so Cython will convert to C int
+        opcode: Union[
+            int, cython_int
+        ],  # Union intentional: Cython pxd converts to C int
         payload: Union[bytes, bytearray],
-        compressed: Union[int],  # Union is intentional so Cython will convert to C int
+        compressed: Union[
+            int, cython_int
+        ],  # Union intentional: Cython pxd converts to C int
     ) -> None:
         msg: WSMessage
         if opcode in {OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION}:
