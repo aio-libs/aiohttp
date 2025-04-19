@@ -2,8 +2,9 @@
 
 import asyncio
 import builtins
+import sys
 from collections import deque
-from typing import Deque, Final, Optional, Set, Tuple, Type, Union
+from typing import Callable, Deque, Final, Optional, Set, Tuple, Type, Union
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
@@ -22,6 +23,12 @@ from .models import (
     WSMessageText,
     WSMsgType,
 )
+
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer
+else:
+    Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+
 
 ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
 
@@ -160,7 +167,7 @@ class WebSocketReader:
         self._payload_bytes_to_read = 0
         self._payload_len_flag = 0
         self._compressed: int = COMPRESSED_NOT_SET
-        self._decompressobj: Optional[ZLibDecompressor] = None
+        self._decompress_sync: Optional[Callable[[Buffer, int], bytes]] = None
         self._compress = compress
 
     def feed_eof(self) -> None:
@@ -245,21 +252,23 @@ class WebSocketReader:
             # Decompress process must to be done after all packets
             # received.
             if compressed:
-                if not self._decompressobj:
-                    self._decompressobj = ZLibDecompressor(suppress_deflate_header=True)
+                if self._decompress_sync is None:
+                    self._decompress_sync = ZLibDecompressor(
+                        suppress_deflate_header=True
+                    ).decompress_sync
                 # XXX: It's possible that the zlib backend (isal is known to
                 # do this, maybe others too?) will return max_length bytes,
                 # but internally buffer more data such that the payload is
                 # >max_length, so we return one extra byte and if we're able
                 # to do that, then the message is too big.
-                payload_merged = self._decompressobj.decompress_sync(
-                    assembled_payload + WS_DEFLATE_TRAILING,
-                    (
-                        self._max_msg_size + 1
-                        if self._max_msg_size
-                        else self._max_msg_size
-                    ),
+                max_size = (
+                    self._max_msg_size + 1 if self._max_msg_size else self._max_msg_size
                 )
+                payload_merged = self._decompress_sync(assembled_payload, max_size)
+                if payload_flushed := self._decompress_sync(
+                    WS_DEFLATE_TRAILING, max_size
+                ):
+                    payload_merged += payload_flushed
                 if self._max_msg_size and len(payload_merged) > self._max_msg_size:
                     raise WebSocketError(
                         WSCloseCode.MESSAGE_TOO_BIG,

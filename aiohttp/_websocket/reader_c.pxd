@@ -41,6 +41,9 @@ cdef set MESSAGE_TYPES_WITH_CONTENT
 cdef tuple EMPTY_FRAME
 cdef tuple EMPTY_FRAME_ERROR
 
+cdef bytes WS_DEFLATE_TRAILING
+
+
 cdef class WebSocketDataQueue:
 
     cdef unsigned int _size
@@ -83,7 +86,7 @@ cdef class WebSocketReader:
     cdef Py_ssize_t _payload_bytes_to_read
     cdef unsigned int _payload_len_flag
     cdef int _compressed
-    cdef object _decompressobj
+    cdef object _decompress_sync
     cdef bint _compress
 
     cpdef tuple feed_data(self, object data)
@@ -92,7 +95,9 @@ cdef class WebSocketReader:
         is_continuation=bint,
         fin=bint,
         has_partial=bint,
+        max_size=object,
         payload_merged=bytes,
+        payload_flushed=bytes,
     )
     cpdef void _handle_frame(self, bint fin, int opcode, object payload, int compressed) except *
 
