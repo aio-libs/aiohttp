@@ -74,7 +74,7 @@ cdef class WebSocketReader:
     cdef int _opcode
     cdef bint _frame_fin
     cdef int _frame_opcode
-    cdef list _f_fragments
+    cdef list _frame_fragments
     cdef Py_ssize_t _frame_payload_len
 
     cdef bytes _tail
@@ -110,7 +110,7 @@ cdef class WebSocketReader:
         f_end_pos=Py_ssize_t,
         has_mask=bint,
         fin=bint,
-        had_existing_payload=Py_ssize_t,
-        f_payload_bytearray=bytearray,
+        had_fragments=Py_ssize_t,
+        payload_bytearray=bytearray,
     )
     cpdef void _feed_data(self, bytes data) except *
