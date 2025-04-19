@@ -107,7 +107,6 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
         loop.run_until_complete(run_websocket_benchmark())
 
 
-@pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_client_send_large_websocket_compressed_messages(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
@@ -140,7 +139,6 @@ def test_client_send_large_websocket_compressed_messages(
         loop.run_until_complete(run_websocket_benchmark())
 
 
-@pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_client_receive_large_websocket_compressed_messages(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
