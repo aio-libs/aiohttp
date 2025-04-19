@@ -158,7 +158,7 @@ class WebSocketReader:
         self._has_mask = False
         self._frame_mask: Optional[bytes] = None
         self._remaing_payload_len = 0
-        self._remaing_payload_len_flag = 0
+        self._payload_len_flag = 0
         self._compressed: int = COMPRESSED_NOT_SET
         self._decompressobj: Optional[ZLibDecompressor] = None
         self._compress = compress
@@ -401,12 +401,12 @@ class WebSocketReader:
                 self._frame_fin = bool(fin)
                 self._frame_opcode = opcode
                 self._has_mask = bool(has_mask)
-                self._remaing_payload_len_flag = length
+                self._payload_len_flag = length
                 self._state = READ_PAYLOAD_LENGTH
 
             # read payload length
             if self._state == READ_PAYLOAD_LENGTH:
-                length_flag = self._remaing_payload_len_flag
+                length_flag = self._payload_len_flag
                 if length_flag == 126:
                     if data_len - start_pos < 2:
                         break

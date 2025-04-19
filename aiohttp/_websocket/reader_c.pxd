@@ -81,7 +81,7 @@ cdef class WebSocketReader:
     cdef bint _has_mask
     cdef bytes _frame_mask
     cdef Py_ssize_t _remaing_payload_len
-    cdef unsigned int _remaing_payload_len_flag
+    cdef unsigned int _payload_len_flag
     cdef int _compressed
     cdef object _decompressobj
     cdef bint _compress
