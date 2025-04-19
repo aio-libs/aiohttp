@@ -105,3 +105,69 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
     @benchmark
     def _run() -> None:
         loop.run_until_complete(run_websocket_benchmark())
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_client_send_large_websocket_compressed_messages(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark send of compressed WebSocket binary messages."""
+    message_count = 10
+    raw_message = b"x" * 2**19  # 512 KiB
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        for _ in range(message_count):
+            await ws.receive()
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_websocket_benchmark() -> None:
+        client = await aiohttp_client(app)
+        resp = await client.ws_connect("/", compress=15)
+        for _ in range(message_count):
+            await resp.send_bytes(raw_message)
+        await resp.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_websocket_benchmark())
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_client_receive_large_websocket_compressed_messages(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark receive of compressed WebSocket binary messages."""
+    message_count = 10
+    raw_message = b"x" * 2**19  # 512 KiB
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        for _ in range(message_count):
+            await ws.send_bytes(raw_message)
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_websocket_benchmark() -> None:
+        client = await aiohttp_client(app)
+        resp = await client.ws_connect("/", compress=15)
+        for _ in range(message_count):
+            await resp.receive()
+        await resp.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_websocket_benchmark())
