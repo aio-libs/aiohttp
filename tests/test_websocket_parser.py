@@ -344,6 +344,17 @@ def test_simple_binary(
     assert res == ((WSMsgType.BINARY, b"binary", ""), 6)
 
 
+def test_one_byte_at_a_time(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    """Send one byte at a time to the parser."""
+    data = build_frame(b"binary", WSMsgType.BINARY)
+    for i in range(len(data)):
+        parser._feed_data(data[i : i + 1])
+    res = out._buffer[0]
+    assert res == WSMessageBinary(data=b"binary", size=6, extra="")
+
+
 def test_fragmentation_header(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
