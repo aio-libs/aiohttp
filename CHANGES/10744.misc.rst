@@ -1,1 +1,0 @@
-Improved performance of the WebSocket reader with large messages -- by :user:`bdraco`.
