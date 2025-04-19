@@ -10,6 +10,48 @@
 
 .. towncrier release notes start
 
+3.11.17 (2025-04-19)
+====================
+
+Miscellaneous internal changes
+------------------------------
+
+- Optimized web server performance when access logging is disabled by reducing time syscalls -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10713`.
+
+
+
+- Improved web server performance when connection can be reused -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10714`.
+
+
+
+- Improved performance of the WebSocket reader -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10740`.
+
+
+
+- Improved performance of the WebSocket reader with large messages -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10744`.
+
+
+
+
+----
+
+
 3.11.16 (2025-04-01)
 ====================
 
