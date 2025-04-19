@@ -336,13 +336,13 @@ class WebSocketReader:
             data, self._tail = self._tail + data, b""
 
         start_pos: int = 0
-        data_length = len(data)
+        data_len = len(data)
         data_cstr = data
 
         while True:
             # read header
             if self._state == READ_HEADER:
-                if data_length - start_pos < 2:
+                if data_len - start_pos < 2:
                     break
                 first_byte = data_cstr[start_pos]
                 second_byte = data_cstr[start_pos + 1]
@@ -408,14 +408,14 @@ class WebSocketReader:
             if self._state == READ_PAYLOAD_LENGTH:
                 length_flag = self._payload_length_flag
                 if length_flag == 126:
-                    if data_length - start_pos < 2:
+                    if data_len - start_pos < 2:
                         break
                     first_byte = data_cstr[start_pos]
                     second_byte = data_cstr[start_pos + 1]
                     start_pos += 2
                     self._payload_length = first_byte << 8 | second_byte
                 elif length_flag > 126:
-                    if data_length - start_pos < 8:
+                    if data_len - start_pos < 8:
                         break
                     self._payload_length = UNPACK_LEN3(data, start_pos)[0]
                     start_pos += 8
@@ -426,16 +426,16 @@ class WebSocketReader:
 
             # read payload mask
             if self._state == READ_PAYLOAD_MASK:
-                if data_length - start_pos < 4:
+                if data_len - start_pos < 4:
                     break
                 self._frame_mask = data_cstr[start_pos : start_pos + 4]
                 start_pos += 4
                 self._state = READ_PAYLOAD
 
             if self._state == READ_PAYLOAD:
-                chunk_len = data_length - start_pos
+                chunk_len = data_len - start_pos
                 if self._payload_length >= chunk_len:
-                    f_end_pos = data_length
+                    f_end_pos = data_len
                     self._payload_length -= chunk_len
                 else:
                     f_end_pos = start_pos + self._payload_length
@@ -485,6 +485,4 @@ class WebSocketReader:
                 self._state = READ_HEADER
 
         # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
-        self._tail = (
-            data_cstr[start_pos:data_length] if start_pos < data_length else b""
-        )
+        self._tail = data_cstr[start_pos:data_len] if start_pos < data_len else b""

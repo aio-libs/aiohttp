@@ -102,7 +102,7 @@ cdef class WebSocketReader:
         length=Py_ssize_t,
         chunk_size=Py_ssize_t,
         chunk_len=Py_ssize_t,
-        data_length=Py_ssize_t,
+        data_len=Py_ssize_t,
         data_cstr="const unsigned char *",
         first_byte="unsigned char",
         second_byte="unsigned char",
