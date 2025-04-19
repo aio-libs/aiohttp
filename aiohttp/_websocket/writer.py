@@ -91,14 +91,15 @@ class WebSocketWriter:
                     self._compressobj = self._make_compress_obj(self.compress)
                 compressobj = self._compressobj
 
-            message = (
-                await compressobj.compress(message)
-                + compressobj.flush(
-                    ZLibBackend.Z_FULL_FLUSH
-                    if self.notakeover
-                    else ZLibBackend.Z_SYNC_FLUSH
-                )
-            ).removesuffix(WS_DEFLATE_TRAILING)
+            message = await compressobj.compress(message)
+            if trailer := compressobj.flush(
+                ZLibBackend.Z_FULL_FLUSH
+                if self.notakeover
+                else ZLibBackend.Z_SYNC_FLUSH
+            ):
+                message += trailer
+            if message.endswith(WS_DEFLATE_TRAILING):
+                message = message.removesuffix(WS_DEFLATE_TRAILING)
             # Its critical that we do not return control to the event
             # loop until we have finished sending all the compressed
             # data. Otherwise we could end up mixing compressed frames
