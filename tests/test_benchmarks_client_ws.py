@@ -107,14 +107,15 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
         loop.run_until_complete(run_websocket_benchmark())
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_large_round_trip_websocket_compressed_messages(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark round trip of compressed WebSocket binary messages."""
-    message_count = 100
-    raw_message = b"x" * MSG_SIZE * 4
+    message_count = 10
+    raw_message = b"x" * 2**19  # 512 KiB
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
