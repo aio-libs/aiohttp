@@ -97,7 +97,10 @@ class WebSocketWriter:
                 if self.notakeover
                 else ZLibBackend.Z_SYNC_FLUSH
             ):
-                message += trailer
+                if message:
+                    message += trailer
+                else:
+                    message = trailer
             if message.endswith(WS_DEFLATE_TRAILING):
                 message = message.removesuffix(WS_DEFLATE_TRAILING)
             # Its critical that we do not return control to the event
