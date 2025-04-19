@@ -144,14 +144,14 @@ class WebSocketReader:
         self._opcode: int = OP_CODE_NOT_SET
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
-        self._frame_payload: Union[bytes, bytearray] = b""
+        self._payload_fragments: list[bytes] = []
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
         self._has_mask = False
         self._frame_mask: Optional[bytes] = None
-        self._payload_length = 0
-        self._payload_length_flag = 0
+        self._payload_bytes_to_read = 0
+        self._payload_len_flag = 0
         self._compressed: int = COMPRESSED_NOT_SET
         self._decompressobj: Optional[ZLibDecompressor] = None
         self._compress = compress
@@ -317,13 +317,13 @@ class WebSocketReader:
             data, self._tail = self._tail + data, b""
 
         start_pos: int = 0
-        data_length = len(data)
+        data_len = len(data)
         data_cstr = data
 
         while True:
             # read header
             if self._state == READ_HEADER:
-                if data_length - start_pos < 2:
+                if data_len - start_pos < 2:
                     break
                 first_byte = data_cstr[start_pos]
                 second_byte = data_cstr[start_pos + 1]
@@ -382,77 +382,88 @@ class WebSocketReader:
                 self._frame_fin = bool(fin)
                 self._frame_opcode = opcode
                 self._has_mask = bool(has_mask)
-                self._payload_length_flag = length
+                self._payload_len_flag = length
                 self._state = READ_PAYLOAD_LENGTH
 
             # read payload length
             if self._state == READ_PAYLOAD_LENGTH:
-                length_flag = self._payload_length_flag
-                if length_flag == 126:
-                    if data_length - start_pos < 2:
+                len_flag = self._payload_len_flag
+                if len_flag == 126:
+                    if data_len - start_pos < 2:
                         break
                     first_byte = data_cstr[start_pos]
                     second_byte = data_cstr[start_pos + 1]
                     start_pos += 2
-                    self._payload_length = first_byte << 8 | second_byte
-                elif length_flag > 126:
-                    if data_length - start_pos < 8:
+                    self._payload_bytes_to_read = first_byte << 8 | second_byte
+                elif len_flag > 126:
+                    if data_len - start_pos < 8:
                         break
-                    self._payload_length = UNPACK_LEN3(data, start_pos)[0]
+                    self._payload_bytes_to_read = UNPACK_LEN3(data, start_pos)[0]
                     start_pos += 8
                 else:
-                    self._payload_length = length_flag
+                    self._payload_bytes_to_read = len_flag
 
                 self._state = READ_PAYLOAD_MASK if self._has_mask else READ_PAYLOAD
 
             # read payload mask
             if self._state == READ_PAYLOAD_MASK:
-                if data_length - start_pos < 4:
+                if data_len - start_pos < 4:
                     break
                 self._frame_mask = data_cstr[start_pos : start_pos + 4]
                 start_pos += 4
                 self._state = READ_PAYLOAD
 
             if self._state == READ_PAYLOAD:
-                chunk_len = data_length - start_pos
-                if self._payload_length >= chunk_len:
-                    end_pos = data_length
-                    self._payload_length -= chunk_len
+                chunk_len = data_len - start_pos
+                if self._payload_bytes_to_read >= chunk_len:
+                    f_end_pos = data_len
+                    self._payload_bytes_to_read -= chunk_len
                 else:
-                    end_pos = start_pos + self._payload_length
-                    self._payload_length = 0
+                    f_end_pos = start_pos + self._payload_bytes_to_read
+                    self._payload_bytes_to_read = 0
 
-                if self._frame_payload_len:
-                    if type(self._frame_payload) is not bytearray:
-                        self._frame_payload = bytearray(self._frame_payload)
-                    self._frame_payload += data_cstr[start_pos:end_pos]
-                else:
-                    # Fast path for the first frame
-                    self._frame_payload = data_cstr[start_pos:end_pos]
+                had_fragments = self._frame_payload_len
+                self._frame_payload_len += f_end_pos - start_pos
+                f_start_pos = start_pos
+                start_pos = f_end_pos
 
-                self._frame_payload_len += end_pos - start_pos
-                start_pos = end_pos
-
-                if self._payload_length != 0:
+                if self._payload_bytes_to_read != 0:
+                    # If we don't have a complete frame, we need to save the
+                    # data for the next call to feed_data.
+                    self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     break
 
-                if self._has_mask:
+                payload: Union[bytes, bytearray]
+                if had_fragments:
+                    # We have to join the payload fragments get the payload
+                    self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
+                    if self._has_mask:
+                        assert self._frame_mask is not None
+                        payload_bytearray = bytearray()
+                        payload_bytearray.join(self._payload_fragments)
+                        websocket_mask(self._frame_mask, payload_bytearray)
+                        payload = payload_bytearray
+                    else:
+                        payload = b"".join(self._payload_fragments)
+                    self._payload_fragments.clear()
+                elif self._has_mask:
                     assert self._frame_mask is not None
-                    if type(self._frame_payload) is not bytearray:
-                        self._frame_payload = bytearray(self._frame_payload)
-                    websocket_mask(self._frame_mask, self._frame_payload)
+                    payload_bytearray = data_cstr[f_start_pos:f_end_pos]  # type: ignore[assignment]
+                    if type(payload_bytearray) is not bytearray:  # pragma: no branch
+                        # Cython will do the conversion for us
+                        # but we need to do it for Python and we
+                        # will always get here in Python
+                        payload_bytearray = bytearray(payload_bytearray)
+                    websocket_mask(self._frame_mask, payload_bytearray)
+                    payload = payload_bytearray
+                else:
+                    payload = data_cstr[f_start_pos:f_end_pos]
 
                 self._handle_frame(
-                    self._frame_fin,
-                    self._frame_opcode,
-                    self._frame_payload,
-                    self._compressed,
+                    self._frame_fin, self._frame_opcode, payload, self._compressed
                 )
-                self._frame_payload = b""
                 self._frame_payload_len = 0
                 self._state = READ_HEADER
 
         # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
-        self._tail = (
-            data_cstr[start_pos:data_length] if start_pos < data_length else b""
-        )
+        self._tail = data_cstr[start_pos:data_len] if start_pos < data_len else b""
