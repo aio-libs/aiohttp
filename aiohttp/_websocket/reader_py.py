@@ -151,7 +151,7 @@ class WebSocketReader:
         self._opcode: int = OP_CODE_NOT_SET
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
-        self._frame_payload: Union[bytes, bytearray] = b""
+        self._frame_payloads: list[bytes] = []
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
@@ -435,39 +435,51 @@ class WebSocketReader:
             if self._state == READ_PAYLOAD:
                 chunk_len = data_length - start_pos
                 if self._payload_length >= chunk_len:
-                    end_pos = data_length
+                    f_end_pos = data_length
                     self._payload_length -= chunk_len
                 else:
-                    end_pos = start_pos + self._payload_length
+                    f_end_pos = start_pos + self._payload_length
                     self._payload_length = 0
 
-                if self._frame_payload_len:
-                    if type(self._frame_payload) is not bytearray:
-                        self._frame_payload = bytearray(self._frame_payload)
-                    self._frame_payload += data_cstr[start_pos:end_pos]
-                else:
-                    # Fast path for the first frame
-                    self._frame_payload = data_cstr[start_pos:end_pos]
-
-                self._frame_payload_len += end_pos - start_pos
-                start_pos = end_pos
+                had_existing_payload = self._frame_payload_len
+                self._frame_payload_len += f_end_pos - start_pos
+                f_start_pos = start_pos
+                start_pos = f_end_pos
 
                 if self._payload_length != 0:
+                    # If we don't have a complete payload, we need to save the
+                    # data for the next call to feed_data.
+                    self._frame_payloads.append(data_cstr[f_start_pos:f_end_pos])
                     break
 
-                if self._has_mask:
+                f_payload: Union[bytes, bytearray]
+                if had_existing_payload:
+                    # We have to merge the payloads if we have a fragmented message
+                    self._frame_payloads.append(data_cstr[f_start_pos:f_end_pos])
+                    if self._has_mask:
+                        assert self._frame_mask is not None
+                        f_payload_bytearray = bytearray()
+                        f_payload_bytearray.join(self._frame_payloads)
+                        websocket_mask(self._frame_mask, f_payload_bytearray)
+                        f_payload = f_payload_bytearray
+                    else:
+                        f_payload = b"".join(self._frame_payloads)
+                    self._frame_payloads.clear()
+                elif self._has_mask:
                     assert self._frame_mask is not None
-                    if type(self._frame_payload) is not bytearray:
-                        self._frame_payload = bytearray(self._frame_payload)
-                    websocket_mask(self._frame_mask, self._frame_payload)
+                    f_payload_bytearray = data_cstr[f_start_pos:f_end_pos]  # type: ignore[assignment]
+                    if type(f_payload_bytearray) is not bytearray:
+                        # Cython will do the conversion for us
+                        # but we need to do it for Python
+                        f_payload_bytearray = bytearray(f_payload_bytearray)
+                    websocket_mask(self._frame_mask, f_payload_bytearray)
+                    f_payload = f_payload_bytearray
+                else:
+                    f_payload = data_cstr[f_start_pos:f_end_pos]
 
                 self._handle_frame(
-                    self._frame_fin,
-                    self._frame_opcode,
-                    self._frame_payload,
-                    self._compressed,
+                    self._frame_fin, self._frame_opcode, f_payload, self._compressed
                 )
-                self._frame_payload = b""
                 self._frame_payload_len = 0
                 self._state = READ_HEADER
 

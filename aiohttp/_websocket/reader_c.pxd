@@ -74,13 +74,13 @@ cdef class WebSocketReader:
     cdef int _opcode
     cdef bint _frame_fin
     cdef int _frame_opcode
-    cdef object _frame_payload
-    cdef unsigned long long _frame_payload_len
+    cdef list _frame_payloads
+    cdef Py_ssize_t _frame_payload_len
 
     cdef bytes _tail
     cdef bint _has_mask
     cdef bytes _frame_mask
-    cdef unsigned long long _payload_length
+    cdef Py_ssize_t _payload_length
     cdef unsigned int _payload_length_flag
     cdef int _compressed
     cdef object _decompressobj
@@ -97,17 +97,20 @@ cdef class WebSocketReader:
     cpdef void _handle_frame(self, bint fin, int opcode, object payload, int compressed) except *
 
     @cython.locals(
-        start_pos="unsigned int",
-        data_len="unsigned int",
-        length="unsigned int",
-        chunk_size="unsigned int",
-        chunk_len="unsigned int",
-        data_length="unsigned int",
+        start_pos=Py_ssize_t,
+        data_len=Py_ssize_t,
+        length=Py_ssize_t,
+        chunk_size=Py_ssize_t,
+        chunk_len=Py_ssize_t,
+        data_length=Py_ssize_t,
         data_cstr="const unsigned char *",
         first_byte="unsigned char",
         second_byte="unsigned char",
-        end_pos="unsigned int",
+        f_start_pos=Py_ssize_t,
+        f_end_pos=Py_ssize_t,
         has_mask=bint,
         fin=bint,
+        had_existing_payload=Py_ssize_t,
+        f_payload_bytearray=bytearray,
     )
     cpdef void _feed_data(self, bytes data) except *
