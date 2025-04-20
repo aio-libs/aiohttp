@@ -8,7 +8,7 @@ import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Generator
+from typing import Any, Generator, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -39,7 +39,13 @@ IS_LINUX = sys.platform.startswith("linux")
 
 
 @pytest.fixture(autouse=True)
-def blockbuster(request):
+def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
+    # Allow selectively disabling blockbuster for specific tests
+    # using the @pytest.mark.skip_blockbuster marker.
+    if "skip_blockbuster" in request.node.keywords:
+        yield
+        return
+
     # No blockbuster for benchmark tests.
     node = request.node.parent
     while node:
