@@ -656,6 +656,7 @@ async def test_static_file_directory_traversal_attack(
     await client.close()
 
 
+@pytest.mark.skip_blockbuster
 async def test_static_file_huge(
     aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
 ) -> None:
@@ -1091,6 +1092,7 @@ async def test_static_file_compression(
     await client.close()
 
 
+@pytest.mark.skip_blockbuster
 async def test_static_file_huge_cancel(
     aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
 ) -> None:

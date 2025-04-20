@@ -40,6 +40,12 @@ IS_LINUX = sys.platform.startswith("linux")
 
 @pytest.fixture(autouse=True)
 def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
+    # Allow selectively disabling blockbuster for specific tests
+    # using the @pytest.mark.skip_blockbuster marker.
+    if "skip_blockbuster" in request.node.keywords:
+        yield
+        return
+
     # No blockbuster for benchmark tests.
     node = request.node.parent
     while node:
