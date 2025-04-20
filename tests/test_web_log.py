@@ -7,11 +7,11 @@ from typing import Dict, NoReturn, Optional
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpRawServer, AiohttpServer
 
 import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer, AiohttpServer
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger

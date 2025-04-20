@@ -2,10 +2,10 @@
 
 import asyncio
 
+from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
 
 

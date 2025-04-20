@@ -3,10 +3,10 @@
 import asyncio
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import hdrs, web
-from aiohttp.pytest_plugin import AiohttpClient
 
 
 def test_one_hundred_simple_get_requests(

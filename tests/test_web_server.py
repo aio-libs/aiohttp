@@ -5,10 +5,10 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpRawServer
 
 from aiohttp import client, web
 from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer
 
 
 async def test_simple_server(

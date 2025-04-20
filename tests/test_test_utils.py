@@ -7,11 +7,11 @@ from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
+from pytest_aiohttp import AiohttpClient
 from yarl import URL
 
 import aiohttp
 from aiohttp import web
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import (
     AioHTTPTestCase,
     RawTestServer,

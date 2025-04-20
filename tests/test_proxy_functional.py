@@ -19,6 +19,7 @@ from uuid import uuid4
 
 import proxy
 import pytest
+from pytest_aiohttp import AiohttpRawServer, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -26,7 +27,6 @@ import aiohttp
 from aiohttp import ClientResponse, web
 from aiohttp.client import _RequestOptions
 from aiohttp.client_exceptions import ClientConnectionError
-from aiohttp.pytest_plugin import AiohttpRawServer, AiohttpServer
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 

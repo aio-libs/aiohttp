@@ -21,6 +21,7 @@ from uuid import uuid4
 
 import pytest
 from multidict import CIMultiDict, MultiDict
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -32,7 +33,6 @@ from aiohttp.client_reqrep import ClientRequest, ConnectionKey
 from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.tracing import Trace
 

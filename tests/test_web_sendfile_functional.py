@@ -8,11 +8,11 @@ from unittest import mock
 
 import pytest
 from _pytest.fixtures import SubRequest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
 
 try:

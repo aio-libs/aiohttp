@@ -5,6 +5,7 @@ from typing import List, NoReturn, Optional
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp import (
@@ -19,7 +20,6 @@ from aiohttp._websocket.models import WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout

@@ -26,6 +26,7 @@ from typing import (
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -48,7 +49,6 @@ from aiohttp.connector import (
     TCPConnector,
     _DNSCacheTable,
 )
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 

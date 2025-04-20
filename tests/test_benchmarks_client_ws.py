@@ -3,11 +3,11 @@
 import asyncio
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
 from aiohttp._websocket.helpers import MSG_SIZE
-from aiohttp.pytest_plugin import AiohttpClient
 
 
 def test_one_thousand_round_trip_websocket_text_messages(

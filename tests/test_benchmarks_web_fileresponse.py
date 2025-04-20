@@ -4,10 +4,10 @@ import asyncio
 import pathlib
 
 from multidict import CIMultiDict
+from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import ClientResponse, web
-from aiohttp.pytest_plugin import AiohttpClient
 
 
 def test_simple_web_file_response(

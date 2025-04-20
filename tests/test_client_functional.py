@@ -29,6 +29,7 @@ from unittest import mock
 import pytest
 import trustme
 from multidict import MultiDict
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -48,7 +49,6 @@ from aiohttp.client_exceptions import (
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestClient, TestServer, unused_port
 from aiohttp.typedefs import Handler, Query
 

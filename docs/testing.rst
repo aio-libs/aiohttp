@@ -26,10 +26,6 @@ For using pytest plugin please install pytest-aiohttp_ library:
 
    $ pip install pytest-aiohttp
 
-If you don't want to install *pytest-aiohttp* for some reason you may
-insert ``pytest_plugins = 'aiohttp.pytest_plugin'`` line into
-``conftest.py`` instead for the same functionality.
-
 
 
 The Test Client and Servers
