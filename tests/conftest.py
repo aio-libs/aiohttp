@@ -237,7 +237,7 @@ def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 @pytest.fixture
 def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    policy = uvloop.EventLoopPolicy()  # type: ignore[attr-defined]
+    policy = uvloop.EventLoopPolicy()
     asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
