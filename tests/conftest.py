@@ -7,7 +7,7 @@ import sys
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Generator
+from typing import Any, Generator, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -26,6 +26,12 @@ try:
     TRUSTME: bool = True
 except ImportError:
     TRUSTME = False
+
+
+try:
+    import uvloop
+except ImportError:
+    uvloop = None  # type: ignore[assignment]
 
 pytest_plugins = ["aiohttp.pytest_plugin", "pytester"]
 
@@ -186,6 +192,16 @@ def create_mocked_conn(loop: Any):
 @pytest.fixture
 def selector_loop():
     policy = asyncio.WindowsSelectorEventLoopPolicy()
+    asyncio.set_event_loop_policy(policy)
+
+    with loop_context(policy.new_event_loop) as _loop:
+        asyncio.set_event_loop(_loop)
+        yield _loop
+
+
+@pytest.fixture
+def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    policy = uvloop.EventLoopPolicy()
     asyncio.set_event_loop_policy(policy)
 
     with loop_context(policy.new_event_loop) as _loop:
