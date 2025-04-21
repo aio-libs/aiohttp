@@ -30,7 +30,7 @@ jinja2==3.1.6
     #   towncrier
 markupsafe==3.0.2
     # via jinja2
-packaging==24.2
+packaging==25.0
     # via sphinx
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
@@ -76,5 +76,5 @@ urllib3==2.4.0
     # via requests
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==78.1.0
+setuptools==79.0.0
     # via incremental
