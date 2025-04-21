@@ -1,3 +1,0 @@
-Fixed reading fragmented WebSocket messages when the payload was masked -- by :user:`bdraco`.
-
-The problem first appeared in 3.11.17

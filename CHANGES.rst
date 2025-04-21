@@ -10,6 +10,34 @@
 
 .. towncrier release notes start
 
+3.11.18 (2025-04-20)
+====================
+
+Bug fixes
+---------
+
+- Disabled TLS in TLS warning (when using HTTPS proxies) for uvloop and newer Python versions -- by :user:`lezgomatt`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7686`.
+
+
+
+- Fixed reading fragmented WebSocket messages when the payload was masked -- by :user:`bdraco`.
+
+  The problem first appeared in 3.11.17
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10764`.
+
+
+
+
+----
+
+
 3.11.17 (2025-04-19)
 ====================
 
