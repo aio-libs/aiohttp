@@ -8,7 +8,7 @@ if sys.version_info < (3, 9):
     raise RuntimeError("aiohttp 4.x requires Python 3.9+")
 
 
-USE_SYSTEM_DEPS: bool = bool(os.environ.get("USE_SYSTEM_DEPS"))
+USE_SYSTEM_DEPS = bool(os.environ.get("AIOHTTP_USE_SYSTEM_DEPS"))
 NO_EXTENSIONS: bool = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 HERE = pathlib.Path(__file__).parent
 IS_GIT_REPO = (HERE / ".git").exists()
