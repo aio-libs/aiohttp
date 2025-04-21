@@ -11,6 +11,7 @@ import pytest
 import aiohttp
 from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
+from aiohttp.pytest_plugin import AiohttpClient
 
 try:
     import brotlicffi as brotli
@@ -642,7 +643,10 @@ async def test_static_file_directory_traversal_attack(aiohttp_client) -> None:
     await client.close()
 
 
-async def test_static_file_huge(aiohttp_client, tmp_path) -> None:
+@pytest.mark.skip_blockbuster
+async def test_static_file_huge(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
     file_path = tmp_path / "huge_data.unknown_mime_type"
 
     # fill 20MB file
@@ -1073,7 +1077,10 @@ async def test_static_file_compression(aiohttp_client, sender) -> None:
     await client.close()
 
 
-async def test_static_file_huge_cancel(aiohttp_client, tmp_path) -> None:
+@pytest.mark.skip_blockbuster
+async def test_static_file_huge_cancel(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
     file_path = tmp_path / "huge_data.unknown_mime_type"
 
     # fill 100MB file
