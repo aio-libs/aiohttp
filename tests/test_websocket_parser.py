@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 from aiohttp._websocket import helpers as _websocket_helpers
-from aiohttp._websocket.helpers import PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2
+from aiohttp._websocket.helpers import PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2, PACK_LEN3
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
@@ -74,9 +74,10 @@ def build_frame(
 
     if msg_length < 126:
         header = PACK_LEN1(header_first_byte, msg_length)
-    else:
-        assert msg_length < (1 << 16)
+    elif msg_length < 65536:
         header = PACK_LEN2(header_first_byte, 126, msg_length)
+    else:
+        header = PACK_LEN3(header_first_byte, 127, msg_length)
 
     if noheader:
         return message
@@ -123,6 +124,11 @@ def parser_low_limit(
 @pytest.fixture()
 def parser(out: WebSocketDataQueue) -> PatchableWebSocketReader:
     return PatchableWebSocketReader(out, 4 * 1024 * 1024)
+
+
+@pytest.fixture()
+def parser_with_large_limit(out: WebSocketDataQueue) -> PatchableWebSocketReader:
+    return PatchableWebSocketReader(out, 1024 * 1024 * 1024)
 
 
 def test_feed_data_remembers_exception(parser: WebSocketReader) -> None:
@@ -350,6 +356,17 @@ def test_fragmentation_header(
 
     res = out._buffer[0]
     assert res == WSMessageText(data="a", size=1, extra="")
+
+
+def test_very_large_message(
+    out: WebSocketDataQueue, parser_with_large_limit: PatchableWebSocketReader
+) -> None:
+    large_payload = b"b" * 20022767
+    data = build_frame(large_payload, WSMsgType.BINARY)
+    parser_with_large_limit._feed_data(data)
+
+    res = out._buffer[0]
+    assert res == WSMessageBinary(data=large_payload, size=20022767, extra="")
 
 
 def test_continuation(
