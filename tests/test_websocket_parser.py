@@ -1,5 +1,6 @@
 import asyncio
 import pickle
+import random
 import struct
 from typing import Optional, Union
 from unittest import mock
@@ -7,7 +8,14 @@ from unittest import mock
 import pytest
 
 from aiohttp._websocket import helpers as _websocket_helpers
-from aiohttp._websocket.helpers import PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2
+from aiohttp._websocket.helpers import (
+    PACK_CLOSE_CODE,
+    PACK_LEN1,
+    PACK_LEN2,
+    PACK_LEN3,
+    PACK_RANDBITS,
+    websocket_mask,
+)
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
@@ -52,6 +60,7 @@ def build_frame(
     noheader: bool = False,
     is_fin: bool = True,
     ZLibBackend: Optional[ZLibBackendWrapper] = None,
+    mask: bool = False,
 ) -> bytes:
     # Send a frame over the websocket with message as its payload.
     compress = False
@@ -72,11 +81,21 @@ def build_frame(
     if compress:
         header_first_byte |= 0x40
 
+    mask_bit = 0x80 if mask else 0
+
     if msg_length < 126:
-        header = PACK_LEN1(header_first_byte, msg_length)
+        header = PACK_LEN1(header_first_byte, msg_length | mask_bit)
+    elif msg_length < 65536:
+        header = PACK_LEN2(header_first_byte, 126 | mask_bit, msg_length)
     else:
-        assert msg_length < (1 << 16)
-        header = PACK_LEN2(header_first_byte, 126, msg_length)
+        header = PACK_LEN3(header_first_byte, 127 | mask_bit, msg_length)
+
+    if mask:
+        assert not noheader
+        mask_bytes = PACK_RANDBITS(random.getrandbits(32))
+        message_arr = bytearray(message)
+        websocket_mask(mask_bytes, message_arr)
+        return header + mask_bytes + message_arr
 
     if noheader:
         return message
@@ -350,6 +369,51 @@ def test_fragmentation_header(
 
     res = out._buffer[0]
     assert res == WSMessageText(data="a", size=1, extra="")
+
+
+def test_large_message(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    large_payload = b"b" * 131072
+    data = build_frame(large_payload, WSMsgType.BINARY)
+    parser._feed_data(data)
+
+    res = out._buffer[0]
+    assert res == WSMessageBinary(data=large_payload, size=131072, extra="")
+
+
+def test_large_masked_message(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    large_payload = b"b" * 131072
+    data = build_frame(large_payload, WSMsgType.BINARY, mask=True)
+    parser._feed_data(data)
+
+    res = out._buffer[0]
+    assert res == WSMessageBinary(data=large_payload, size=131072, extra="")
+
+
+def test_fragmented_masked_message(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    large_payload = b"b" * 100
+    data = build_frame(large_payload, WSMsgType.BINARY, mask=True)
+    for i in range(len(data)):
+        parser._feed_data(data[i : i + 1])
+
+    res = out._buffer[0]
+    assert res == WSMessageBinary(data=large_payload, size=100, extra="")
+
+
+def test_large_fragmented_masked_message(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    large_payload = b"b" * 131072
+    data = build_frame(large_payload, WSMsgType.BINARY, mask=True)
+    for i in range(0, len(data), 16384):
+        parser._feed_data(data[i : i + 16384])
+    res = out._buffer[0]
+    assert res == WSMessageBinary(data=large_payload, size=131072, extra="")
 
 
 def test_continuation(
