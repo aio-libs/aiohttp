@@ -92,10 +92,10 @@ def build_frame(
 
     if mask:
         assert not noheader
-        mask = PACK_RANDBITS(random.getrandbits(32))
+        mask_bytes = PACK_RANDBITS(random.getrandbits(32))
         message_arr = bytearray(message)
-        websocket_mask(mask, message_arr)
-        return header + mask + message_arr
+        websocket_mask(mask_bytes, message_arr)
+        return header + mask_bytes + message_arr
 
     if noheader:
         return message
