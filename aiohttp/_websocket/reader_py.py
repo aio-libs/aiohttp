@@ -458,10 +458,7 @@ class WebSocketReader:
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     if self._has_mask:
                         assert self._frame_mask is not None
-                        payload_bytearray = bytearray()
-                        payload_bytearray = payload_bytearray.join(
-                            self._payload_fragments
-                        )
+                        payload_bytearray = bytearray(b"".join(self._payload_fragments))
                         websocket_mask(self._frame_mask, payload_bytearray)
                         payload = payload_bytearray
                     else:
