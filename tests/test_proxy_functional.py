@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import platform
 import ssl
 import sys
 from re import match as match_regex
@@ -237,6 +238,32 @@ async def test_https_proxy_unsupported_tls_in_tls(
     await sess.close()
     await conn.close()
 
+    await asyncio.sleep(0.1)
+
+
+@pytest.mark.usefixtures("uvloop_loop")
+@pytest.mark.skipif(
+    platform.system() == "Windows" or sys.implementation.name != "cpython",
+    reason="uvloop is not supported on Windows and non-CPython implementations",
+)
+@pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
+# Filter out the warning from
+# https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
+# otherwise this test will fail because the proxy will die with an error.
+async def test_uvloop_secure_https_proxy(
+    client_ssl_ctx: ssl.SSLContext,
+    secure_proxy_url: URL,
+) -> None:
+    """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
+    conn = aiohttp.TCPConnector()
+    sess = aiohttp.ClientSession(connector=conn)
+    url = URL("https://example.com")
+
+    async with sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx) as response:
+        assert response.status == 200
+
+    await sess.close()
+    await conn.close()
     await asyncio.sleep(0.1)
 
 
