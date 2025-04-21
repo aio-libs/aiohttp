@@ -376,26 +376,49 @@ def test_fragmentation_header(
     assert res == WSMessageText(data="a", size=1, extra="")
 
 
-def test_very_large_message(
+def test_large_message(
     out: WebSocketDataQueue, parser_with_large_limit: PatchableWebSocketReader
 ) -> None:
-    large_payload = b"b" * 20022767
+    large_payload = b"b" * 131072
     data = build_frame(large_payload, WSMsgType.BINARY)
     parser_with_large_limit._feed_data(data)
 
     res = out._buffer[0]
-    assert res == WSMessageBinary(data=large_payload, size=20022767, extra="")
+    assert res == WSMessageBinary(data=large_payload, size=131072, extra="")
 
 
-def test_very_large_masked_message(
+def test_large_masked_message(
     out: WebSocketDataQueue, parser_with_large_limit: PatchableWebSocketReader
 ) -> None:
-    large_payload = b"b" * 20022767
+    large_payload = b"b" * 131072
     data = build_frame(large_payload, WSMsgType.BINARY, mask=True)
     parser_with_large_limit._feed_data(data)
 
     res = out._buffer[0]
-    assert res == WSMessageBinary(data=large_payload, size=20022767, extra="")
+    assert res == WSMessageBinary(data=large_payload, size=131072, extra="")
+
+
+def test_fragmented_masked_message(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    large_payload = b"b" * 100
+    data = build_frame(large_payload, WSMsgType.BINARY, mask=True)
+    for i in range(len(data)):
+        parser._feed_data(data[i : i + 1])
+
+    res = out._buffer[0]
+    assert res == WSMessageBinary(data=large_payload, size=100, extra="")
+
+
+def test_large_fragmented_masked_message(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    large_payload = b"b" * 131072
+    data = build_frame(large_payload, WSMsgType.BINARY, mask=True)
+    for i in range(0, len(data), 16384):
+        parser._feed_data(data[i : i + 16384])
+    res = out._buffer[0]
+    assert res == WSMessageBinary(data=large_payload, size=131072, extra="")
 
 
 def test_continuation(
