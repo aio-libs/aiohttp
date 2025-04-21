@@ -144,11 +144,6 @@ def parser(out: WebSocketDataQueue) -> PatchableWebSocketReader:
     return PatchableWebSocketReader(out, 4 * 1024 * 1024)
 
 
-@pytest.fixture()
-def parser_with_large_limit(out: WebSocketDataQueue) -> PatchableWebSocketReader:
-    return PatchableWebSocketReader(out, 1024 * 1024 * 1024)
-
-
 def test_feed_data_remembers_exception(parser: WebSocketReader) -> None:
     """Verify that feed_data remembers an exception was already raised internally."""
     error, data = parser.feed_data(struct.pack("!BB", 0b01100000, 0b00000000))
@@ -377,22 +372,22 @@ def test_fragmentation_header(
 
 
 def test_large_message(
-    out: WebSocketDataQueue, parser_with_large_limit: PatchableWebSocketReader
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
     large_payload = b"b" * 131072
     data = build_frame(large_payload, WSMsgType.BINARY)
-    parser_with_large_limit._feed_data(data)
+    parser._feed_data(data)
 
     res = out._buffer[0]
     assert res == WSMessageBinary(data=large_payload, size=131072, extra="")
 
 
 def test_large_masked_message(
-    out: WebSocketDataQueue, parser_with_large_limit: PatchableWebSocketReader
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
     large_payload = b"b" * 131072
     data = build_frame(large_payload, WSMsgType.BINARY, mask=True)
-    parser_with_large_limit._feed_data(data)
+    parser._feed_data(data)
 
     res = out._buffer[0]
     assert res == WSMessageBinary(data=large_payload, size=131072, extra="")
