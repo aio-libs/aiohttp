@@ -187,7 +187,7 @@ async def test_constructor_with_expired(
 
 def test_save_load(
     tmp_path: Path,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     cookies_to_send: SimpleCookie,
     cookies_to_receive: SimpleCookie,
 ) -> None:
@@ -209,7 +209,7 @@ def test_save_load(
 
 
 async def test_update_cookie_with_unicode_domain(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     cookies = (
         "idna-domain-first=first; Domain=xn--9caa.com; Path=/;",
@@ -228,7 +228,7 @@ async def test_update_cookie_with_unicode_domain(
 
 
 async def test_filter_cookie_with_unicode_domain(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     jar = CookieJar()
     jar.update_cookies(
@@ -238,7 +238,7 @@ async def test_filter_cookie_with_unicode_domain(
     assert len(jar.filter_cookies(URL("http://xn--9caa.com"))) == 1
 
 
-async def test_filter_cookies_str_deprecated(loop: asyncio.AbstractEventLoop) -> None:
+async def test_filter_cookies_str_deprecated(event_loop: asyncio.AbstractEventLoop) -> None:
     jar = CookieJar()
     with pytest.deprecated_call(
         match="The method accepts yarl.URL instances only, got <class 'str'>",
@@ -301,7 +301,7 @@ async def test_filter_cookies_str_deprecated(loop: asyncio.AbstractEventLoop) ->
     ),
 )
 async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     url: str,
     expected_cookies: Set[str],
 ) -> None:
@@ -336,7 +336,7 @@ async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
         assert c in expected_cookies
 
 
-async def test_domain_filter_ip_cookie_send(loop: asyncio.AbstractEventLoop) -> None:
+async def test_domain_filter_ip_cookie_send(event_loop: asyncio.AbstractEventLoop) -> None:
     jar = CookieJar()
     cookies = SimpleCookie(
         "shared-cookie=first; "
@@ -397,7 +397,7 @@ async def test_domain_filter_ip_cookie_receive(
     ),
 )
 async def test_quotes_correctly_based_on_input(
-    loop: asyncio.AbstractEventLoop, cookies: str, expected: str, quote_bool: bool
+    event_loop: asyncio.AbstractEventLoop, cookies: str, expected: str, quote_bool: bool
 ) -> None:
     jar = CookieJar(unsafe=True, quote_cookie=quote_bool)
     jar.update_cookies(SimpleCookie(cookies))
@@ -405,7 +405,7 @@ async def test_quotes_correctly_based_on_input(
     assert cookies_sent == expected
 
 
-async def test_ignore_domain_ending_with_dot(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ignore_domain_ending_with_dot(event_loop: asyncio.AbstractEventLoop) -> None:
     jar = CookieJar(unsafe=True)
     jar.update_cookies(
         SimpleCookie("cookie=val; Domain=example.com.;"), URL("http://www.example.com")
@@ -419,7 +419,7 @@ async def test_ignore_domain_ending_with_dot(loop: asyncio.AbstractEventLoop) ->
 class TestCookieJarBase(unittest.TestCase):
     cookies_to_receive: SimpleCookie
     cookies_to_send: SimpleCookie
-    loop: asyncio.AbstractEventLoop
+    event_loop: asyncio.AbstractEventLoop
     jar: CookieJar
 
     def setUp(self) -> None:

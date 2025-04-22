@@ -85,7 +85,7 @@ def test_del(session: ClientSession) -> None:
     connection.release.assert_called_with()
 
 
-def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+def test_close(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -106,7 +106,7 @@ def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
 
 
 def test_wait_for_100_1(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -124,7 +124,7 @@ def test_wait_for_100_1(
 
 
 def test_wait_for_100_2(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -141,7 +141,7 @@ def test_wait_for_100_2(
     response.close()
 
 
-def test_repr(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+def test_repr(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -192,7 +192,7 @@ def test_repr_non_ascii_reason() -> None:
 
 
 async def test_read_and_release_connection(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -220,7 +220,7 @@ async def test_read_and_release_connection(
 
 
 async def test_read_and_release_connection_with_error(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -242,7 +242,7 @@ async def test_read_and_release_connection_with_error(
     assert response._closed
 
 
-async def test_release(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+async def test_release(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -268,7 +268,7 @@ async def test_release(loop: asyncio.AbstractEventLoop, session: ClientSession) 
     reason="Other implementations has different GC strategies",
 )
 async def test_release_on_del(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     connection = mock.Mock()
     connection.protocol.upgraded = False
@@ -294,7 +294,7 @@ async def test_release_on_del(
 
 
 async def test_response_eof(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -317,7 +317,7 @@ async def test_response_eof(
 
 
 async def test_response_eof_upgraded(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -340,7 +340,7 @@ async def test_response_eof_upgraded(
 
 
 async def test_response_eof_after_connection_detach(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -362,7 +362,7 @@ async def test_response_eof_after_connection_detach(
     assert response._connection is None
 
 
-async def test_text(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+async def test_text(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -391,7 +391,7 @@ async def test_text(loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
 
 
 async def test_text_bad_encoding(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -424,7 +424,7 @@ async def test_text_bad_encoding(
 
 
 async def test_text_badly_encoded_encoding_header(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     session._resolve_charset = lambda *_: "utf-8"
     response = ClientResponse(
@@ -456,7 +456,7 @@ async def test_text_badly_encoded_encoding_header(
 
 
 async def test_text_custom_encoding(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -488,7 +488,7 @@ async def test_text_custom_encoding(
 
 @pytest.mark.parametrize("content_type", ("text/plain", "text/plain;charset=invalid"))
 async def test_text_charset_resolver(
-    content_type: str, loop: asyncio.AbstractEventLoop, session: ClientSession
+    content_type: str, event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     session._resolve_charset = lambda r, b: "cp1251"
     response = ClientResponse(
@@ -521,7 +521,7 @@ async def test_text_charset_resolver(
 
 
 async def test_get_encoding_body_none(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -549,7 +549,7 @@ async def test_get_encoding_body_none(
 
 
 async def test_text_after_read(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -578,7 +578,7 @@ async def test_text_after_read(
     assert response._connection is None
 
 
-async def test_json(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+async def test_json(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -607,7 +607,7 @@ async def test_json(loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
 
 
 async def test_json_extended_content_type(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -637,7 +637,7 @@ async def test_json_extended_content_type(
 
 
 async def test_json_custom_content_type(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -667,7 +667,7 @@ async def test_json_custom_content_type(
 
 
 async def test_json_custom_loader(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -692,7 +692,7 @@ async def test_json_custom_loader(
 
 
 async def test_json_invalid_content_type(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -718,7 +718,7 @@ async def test_json_invalid_content_type(
 
 
 async def test_json_no_content(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -740,7 +740,7 @@ async def test_json_no_content(
 
 
 async def test_json_override_encoding(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -771,7 +771,7 @@ async def test_json_override_encoding(
 
 
 def test_get_encoding_unknown(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -1139,7 +1139,7 @@ def test_redirect_history_in_exception() -> None:
 
 
 async def test_response_read_triggers_callback(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     trace = mock.Mock()
     trace.send_response_chunk_received = make_mocked_coro()
@@ -1180,7 +1180,7 @@ async def test_response_read_triggers_callback(
 
 
 def test_response_cookies(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -1199,7 +1199,7 @@ def test_response_cookies(
 
 
 def test_response_real_url(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/#urlfragment")
     response = ClientResponse(
@@ -1218,7 +1218,7 @@ def test_response_real_url(
 
 
 def test_response_links_comma_separated(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1249,7 +1249,7 @@ def test_response_links_comma_separated(
 
 
 def test_response_links_multiple_headers(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1275,7 +1275,7 @@ def test_response_links_multiple_headers(
 
 
 def test_response_links_no_rel(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1297,7 +1297,7 @@ def test_response_links_no_rel(
 
 
 def test_response_links_quoted(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1319,7 +1319,7 @@ def test_response_links_quoted(
 
 
 def test_response_links_relative(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1341,7 +1341,7 @@ def test_response_links_relative(
 
 
 def test_response_links_empty(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(

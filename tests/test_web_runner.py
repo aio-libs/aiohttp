@@ -23,7 +23,7 @@ def app() -> web.Application:
 
 @pytest.fixture
 def make_runner(
-    loop: asyncio.AbstractEventLoop, app: web.Application
+    event_loop: asyncio.AbstractEventLoop, app: web.Application
 ) -> Iterator[_RunnerMaker]:
     asyncio.set_event_loop(loop)
     runners = []
@@ -219,7 +219,7 @@ async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
 async def test_named_pipe_runner_wrong_loop(
-    app: web.Application, selector_loop: asyncio.AbstractEventLoop, pipe_name: str
+    app: web.Application, selector_event_loop: asyncio.AbstractEventLoop, pipe_name: str
 ) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
@@ -231,7 +231,7 @@ async def test_named_pipe_runner_wrong_loop(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
 async def test_named_pipe_runner_proactor_loop(
-    proactor_loop: asyncio.AbstractEventLoop, app: web.Application, pipe_name: str
+    proactor_event_loop: asyncio.AbstractEventLoop, app: web.Application, pipe_name: str
 ) -> None:
     runner = web.AppRunner(app)
     await runner.setup()

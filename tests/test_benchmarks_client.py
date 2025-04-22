@@ -10,7 +10,7 @@ from aiohttp import hdrs, web
 
 
 def test_one_hundred_simple_get_requests(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -35,7 +35,7 @@ def test_one_hundred_simple_get_requests(
 
 
 def test_one_hundred_simple_get_requests_multiple_methods_route(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -63,7 +63,7 @@ def test_one_hundred_simple_get_requests_multiple_methods_route(
 
 
 def test_one_hundred_get_requests_with_1024_chunked_payload(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -92,7 +92,7 @@ def test_one_hundred_get_requests_with_1024_chunked_payload(
 
 
 def test_one_hundred_get_requests_with_30000_chunked_payload(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -121,7 +121,7 @@ def test_one_hundred_get_requests_with_30000_chunked_payload(
 
 
 def test_one_hundred_get_requests_with_512kib_chunked_payload(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -150,7 +150,7 @@ def test_one_hundred_get_requests_with_512kib_chunked_payload(
 
 
 def test_one_hundred_get_requests_iter_chunks_on_512kib_chunked_payload(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -181,7 +181,7 @@ def test_one_hundred_get_requests_iter_chunks_on_512kib_chunked_payload(
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_get_request_with_251308_compressed_chunked_payload(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -215,7 +215,7 @@ def test_get_request_with_251308_compressed_chunked_payload(
 
 
 def test_one_hundred_get_requests_with_1024_content_length_payload(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -243,7 +243,7 @@ def test_one_hundred_get_requests_with_1024_content_length_payload(
 
 
 def test_one_hundred_get_requests_with_30000_content_length_payload(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -271,7 +271,7 @@ def test_one_hundred_get_requests_with_30000_content_length_payload(
 
 
 def test_one_hundred_get_requests_with_512kib_content_length_payload(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -299,7 +299,7 @@ def test_one_hundred_get_requests_with_512kib_content_length_payload(
 
 
 def test_one_hundred_simple_post_requests(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -324,7 +324,7 @@ def test_one_hundred_simple_post_requests(
 
 
 def test_one_hundred_json_post_requests(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -351,7 +351,7 @@ def test_one_hundred_json_post_requests(
 
 
 def test_ten_streamed_responses_iter_any(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -383,7 +383,7 @@ def test_ten_streamed_responses_iter_any(
 
 
 def test_ten_streamed_responses_iter_chunked_4096(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -415,7 +415,7 @@ def test_ten_streamed_responses_iter_chunked_4096(
 
 
 def test_ten_streamed_responses_iter_chunked_65536(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -447,7 +447,7 @@ def test_ten_streamed_responses_iter_chunked_65536(
 
 
 def test_ten_streamed_responses_iter_chunks(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:

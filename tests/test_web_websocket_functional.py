@@ -16,7 +16,7 @@ from aiohttp.http import WSCloseCode, WSMsgType
 
 
 async def test_websocket_can_prepare(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> NoReturn:
         ws = web.WebSocketResponse()
@@ -32,7 +32,7 @@ async def test_websocket_can_prepare(
 
 
 async def test_websocket_json(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -63,7 +63,7 @@ async def test_websocket_json(
 
 
 async def test_websocket_json_invalid_message(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -91,7 +91,7 @@ async def test_websocket_json_invalid_message(
 
 
 async def test_websocket_send_json(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -116,7 +116,7 @@ async def test_websocket_send_json(
 
 
 async def test_websocket_receive_json(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -143,7 +143,7 @@ async def test_websocket_receive_json(
 
 
 async def test_send_recv_text(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -178,7 +178,7 @@ async def test_send_recv_text(
 
 
 async def test_send_recv_bytes(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -214,7 +214,7 @@ async def test_send_recv_bytes(
 
 
 async def test_send_recv_json(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -251,7 +251,7 @@ async def test_send_recv_json(
 
 
 async def test_close_timeout(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     aborted = loop.create_future()
     elapsed = 1e10  # something big
@@ -295,7 +295,7 @@ async def test_close_timeout(
 
 
 async def test_concurrent_close(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     srv_ws = None
 
@@ -335,7 +335,7 @@ async def test_concurrent_close(
 
 
 async def test_concurrent_close_multiple_tasks(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     srv_ws = None
 
@@ -379,7 +379,7 @@ async def test_concurrent_close_multiple_tasks(
 
 
 async def test_close_op_code_from_client(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     srv_ws: Optional[web.WebSocketResponse] = None
 
@@ -410,7 +410,7 @@ async def test_close_op_code_from_client(
 
 
 async def test_auto_pong_with_closing_by_peer(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -441,7 +441,7 @@ async def test_auto_pong_with_closing_by_peer(
 
 
 async def test_ping(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -469,7 +469,7 @@ async def test_ping(
 
 
 async def test_client_ping(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -496,7 +496,7 @@ async def test_client_ping(
 
 
 async def test_pong(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -532,7 +532,7 @@ async def test_pong(
 
 
 async def test_change_status(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -558,7 +558,7 @@ async def test_change_status(
 
 
 async def test_handle_protocol(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -581,7 +581,7 @@ async def test_handle_protocol(
 
 
 async def test_server_close_handshake(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -605,7 +605,7 @@ async def test_server_close_handshake(
 
 
 async def test_client_close_handshake(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -639,7 +639,7 @@ async def test_client_close_handshake(
 
 
 async def test_server_close_handshake_server_eats_client_messages(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -670,7 +670,7 @@ async def test_server_close_handshake_server_eats_client_messages(
 
 
 async def test_receive_timeout(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     raised = False
 
@@ -698,7 +698,7 @@ async def test_receive_timeout(
 
 
 async def test_custom_receive_timeout(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     raised = False
 
@@ -726,7 +726,7 @@ async def test_custom_receive_timeout(
 
 
 async def test_heartbeat(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse(heartbeat=0.05)
@@ -748,7 +748,7 @@ async def test_heartbeat(
 
 
 async def test_heartbeat_no_pong(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse(heartbeat=0.05)
@@ -768,7 +768,7 @@ async def test_heartbeat_no_pong(
 
 
 async def test_heartbeat_connection_closed(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     """Test that the connection is closed while ping is in progress."""
     ping_count = 0
@@ -812,7 +812,7 @@ async def test_heartbeat_connection_closed(
 
 
 async def test_heartbeat_failure_ends_receive(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     """Test that no heartbeat response to the server ends the receive call."""
     ws_server_close_code = None
@@ -846,7 +846,7 @@ async def test_heartbeat_failure_ends_receive(
 
 
 async def test_heartbeat_no_pong_send_many_messages(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     """Test no pong after sending many messages."""
 
@@ -875,7 +875,7 @@ async def test_heartbeat_no_pong_send_many_messages(
 
 
 async def test_heartbeat_no_pong_receive_many_messages(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     """Test no pong after receiving many messages."""
 
@@ -903,7 +903,7 @@ async def test_heartbeat_no_pong_receive_many_messages(
 
 
 async def test_server_ws_async_for(
-    loop: asyncio.AbstractEventLoop, aiohttp_server: AiohttpServer
+    event_loop: asyncio.AbstractEventLoop, aiohttp_server: AiohttpServer
 ) -> None:
     closed = loop.create_future()
 
@@ -936,7 +936,7 @@ async def test_server_ws_async_for(
 
 
 async def test_closed_async_for(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -973,7 +973,7 @@ async def test_closed_async_for(
 
 
 async def test_websocket_disable_keepalive(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         ws = web.WebSocketResponse()
@@ -1002,7 +1002,7 @@ async def test_websocket_disable_keepalive(
 
 
 async def test_receive_str_nonstring(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -1023,7 +1023,7 @@ async def test_receive_str_nonstring(
 
 
 async def test_receive_bytes_nonbytes(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> NoReturn:
         ws = web.WebSocketResponse()
@@ -1043,7 +1043,7 @@ async def test_receive_bytes_nonbytes(
 
 
 async def test_bug3380(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handle_null(request: web.Request) -> web.Response:
         return web.json_response({"err": None})
@@ -1070,7 +1070,7 @@ async def test_bug3380(
 
 
 async def test_receive_being_cancelled_keeps_connection_open(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
 
@@ -1115,7 +1115,7 @@ async def test_receive_being_cancelled_keeps_connection_open(
 
 
 async def test_receive_timeout_keeps_connection_open(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     closed = loop.create_future()
     timed_out = loop.create_future()

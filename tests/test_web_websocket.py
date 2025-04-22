@@ -27,7 +27,7 @@ class _RequestMaker(Protocol):
 
 
 @pytest.fixture
-def app(loop: asyncio.AbstractEventLoop) -> web.Application:
+def app(event_loop: asyncio.AbstractEventLoop) -> web.Application:
     ret: web.Application = mock.create_autospec(web.Application, spec_set=True)
     ret.on_response_prepare = aiosignal.Signal(ret)  # type: ignore[misc]
     ret.on_response_prepare.freeze()
@@ -413,7 +413,7 @@ async def test_write_eof_idempotent(make_request: _RequestMaker) -> None:
 
 
 async def test_receive_eofstream_in_reader(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
+    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
@@ -434,7 +434,7 @@ async def test_receive_eofstream_in_reader(
 
 
 async def test_receive_exception_in_reader(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
+    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
@@ -458,7 +458,7 @@ async def test_receive_exception_in_reader(
 
 
 async def test_receive_close_but_left_open(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
+    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
@@ -480,7 +480,7 @@ async def test_receive_close_but_left_open(
 
 
 async def test_receive_closing(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
+    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
@@ -510,7 +510,7 @@ async def test_receive_closing(
 
 
 async def test_close_after_closing(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
+    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
@@ -536,7 +536,7 @@ async def test_close_after_closing(
 
 
 async def test_receive_timeouterror(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
+    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()

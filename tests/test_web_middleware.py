@@ -15,7 +15,7 @@ CLI = Callable[
 
 
 async def test_middleware_modifies_response(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=b"OK")
@@ -43,7 +43,7 @@ async def test_middleware_modifies_response(
 
 
 async def test_middleware_handles_exception(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> NoReturn:
         raise RuntimeError("Error text")
@@ -67,7 +67,7 @@ async def test_middleware_handles_exception(
 
 
 async def test_middleware_chain(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="OK")
@@ -116,7 +116,7 @@ async def test_middleware_chain(
 
 
 async def test_middleware_subapp(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def sub_handler(request: web.Request) -> web.Response:
         return web.Response(text="OK")
@@ -165,7 +165,7 @@ async def test_middleware_subapp(
 
 
 @pytest.fixture
-def cli(loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> CLI:
+def cli(event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient) -> CLI:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="OK")
 
@@ -441,7 +441,7 @@ async def test_bug_3669(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_old_style_middleware(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def view_handler(request: web.Request) -> web.Response:
         return web.Response(body=b"OK")
@@ -471,7 +471,7 @@ async def test_old_style_middleware(
 
 
 async def test_new_style_middleware_class(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=b"OK")
@@ -499,7 +499,7 @@ async def test_new_style_middleware_class(
 
 
 async def test_new_style_middleware_method(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=b"OK")

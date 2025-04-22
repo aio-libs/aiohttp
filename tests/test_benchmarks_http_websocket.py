@@ -13,7 +13,7 @@ from aiohttp.http_websocket import WebSocketReader, WebSocketWriter, WSMsgType
 
 
 def test_read_large_binary_websocket_messages(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Read one hundred large binary websocket messages."""
     queue = WebSocketDataQueue(BaseProtocol(loop), 2**18, loop=loop)
@@ -34,7 +34,7 @@ def test_read_large_binary_websocket_messages(
 
 
 def test_read_one_hundred_websocket_text_messages(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Benchmark reading 100 WebSocket text messages."""
     queue = WebSocketDataQueue(BaseProtocol(loop), 2**16, loop=loop)
@@ -71,7 +71,7 @@ class MockProtocol(BaseProtocol):
 
 
 def test_send_one_hundred_websocket_text_messages(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Benchmark sending 100 WebSocket text messages."""
     writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport())
@@ -87,7 +87,7 @@ def test_send_one_hundred_websocket_text_messages(
 
 
 def test_send_one_hundred_large_websocket_text_messages(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Benchmark sending 100 WebSocket text messages."""
     writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport())
@@ -103,7 +103,7 @@ def test_send_one_hundred_large_websocket_text_messages(
 
 
 def test_send_one_hundred_websocket_text_messages_with_mask(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Benchmark sending 100 masked WebSocket text messages."""
     writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport(), use_mask=True)
@@ -120,7 +120,7 @@ def test_send_one_hundred_websocket_text_messages_with_mask(
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_send_one_hundred_websocket_compressed_messages(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Benchmark sending 100 WebSocket compressed messages."""
     writer = WebSocketWriter(MockProtocol(loop=loop), MockTransport(), compress=15)

@@ -53,7 +53,7 @@ def _mock_request(method: str, path: str) -> web.Request:
 
 
 def test_resolve_root_route(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve top level PlainResources route 100 times."""
@@ -85,7 +85,7 @@ def test_resolve_root_route(
 
 
 def test_resolve_root_route_with_many_fixed_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve top level PlainResources route 100 times."""
@@ -123,7 +123,7 @@ def test_resolve_root_route_with_many_fixed_routes(
 
 
 def test_resolve_static_root_route(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve top level StaticResource route 100 times."""
@@ -153,7 +153,7 @@ def test_resolve_static_root_route(
 
 
 def test_resolve_single_fixed_url_with_many_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve PlainResources route 100 times."""
@@ -186,7 +186,7 @@ def test_resolve_single_fixed_url_with_many_routes(
 
 
 def test_resolve_multiple_fixed_url_with_many_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve 250 different PlainResources routes."""
@@ -221,7 +221,7 @@ def test_resolve_multiple_fixed_url_with_many_routes(
 
 
 def test_resolve_multiple_level_fixed_url_with_many_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve 1024 different PlainResources routes."""
@@ -262,7 +262,7 @@ def test_resolve_multiple_level_fixed_url_with_many_routes(
 
 
 def test_resolve_dynamic_resource_url_with_many_static_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve different a DynamicResource when there are 250 PlainResources registered."""
@@ -301,7 +301,7 @@ def test_resolve_dynamic_resource_url_with_many_static_routes(
 
 
 def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve different a DynamicResource when there are 250 DynamicResources registered."""
@@ -342,7 +342,7 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
 
 
 def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefix(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve different a DynamicResource when there are 250 DynamicResources registered with the same common prefix."""
@@ -379,7 +379,7 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
 
 
 def test_resolve_gitapi(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     github_urls: list[str],
 ) -> None:
@@ -430,7 +430,7 @@ def test_resolve_gitapi(
 
 
 def test_resolve_gitapi_subapps(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     github_urls: list[str],
 ) -> None:
@@ -501,7 +501,7 @@ def test_resolve_gitapi_subapps(
 
 
 def test_resolve_gitapi_root(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     github_urls: list[str],
 ) -> None:
@@ -534,7 +534,7 @@ def test_resolve_gitapi_root(
 
 
 def test_resolve_prefix_resources_many_prefix_many_plain(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve prefix resource (sub_app) whene 250 PlainResources registered and there are 250 subapps that shares the same sub_app path prefix."""

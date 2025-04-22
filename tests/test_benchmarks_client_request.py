@@ -12,7 +12,7 @@ from aiohttp.http_writer import HttpVersion11
 
 
 def test_client_request_update_cookies(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     morsel: "Morsel[str]" = Morsel()
@@ -25,7 +25,7 @@ def test_client_request_update_cookies(
 
 
 def test_create_client_request_with_cookies(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
 
@@ -47,7 +47,7 @@ def test_create_client_request_with_cookies(
 
 
 def test_create_client_request_with_headers(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
 
@@ -69,7 +69,7 @@ def test_create_client_request_with_headers(
 
 
 def test_send_client_request_one_hundred(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
     req = ClientRequest("get", url, loop=loop)

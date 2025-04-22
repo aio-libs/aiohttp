@@ -929,7 +929,7 @@ async def test_heartbeat_no_pong_concurrent_receive(
 
 
 async def test_close_websocket_while_ping_inflight(
-    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
+    aiohttp_client: AiohttpClient, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     """Test closing the websocket while a ping is in-flight."""
     ping_received = False
@@ -1264,7 +1264,7 @@ async def test_websocket_connection_not_closed_properly(
 
 
 async def test_websocket_connection_cancellation(
-    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
+    aiohttp_client: AiohttpClient, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     """Test canceling the WebSocket connection task does not raise an exception in __del__."""
 

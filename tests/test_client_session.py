@@ -48,7 +48,7 @@ class _Params(TypedDict):
 
 @pytest.fixture
 def connector(
-    loop: asyncio.AbstractEventLoop, create_mocked_conn: Callable[[], ResponseHandler]
+    event_loop: asyncio.AbstractEventLoop, create_mocked_conn: Callable[[], ResponseHandler]
 ) -> Iterator[BaseConnector]:
     async def make_conn() -> BaseConnector:
         return BaseConnector()
@@ -63,7 +63,7 @@ def connector(
 
 @pytest.fixture
 def create_session(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
 
@@ -80,7 +80,7 @@ def create_session(  # type: ignore[misc]
 @pytest.fixture
 def session(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> ClientSession:
     return loop.run_until_complete(create_session())
 
@@ -323,7 +323,7 @@ async def test_closed(session: ClientSession) -> None:
 
 async def test_connector(
     create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     mocker: MockerFixture,
 ) -> None:
     connector = TCPConnector()
@@ -338,7 +338,7 @@ async def test_connector(
 
 async def test_create_connector(
     create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     mocker: MockerFixture,
 ) -> None:
     session = await create_session()
@@ -348,7 +348,7 @@ async def test_create_connector(
     assert m.called
 
 
-def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
+def test_connector_loop(event_loop: asyncio.AbstractEventLoop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
         stack.enter_context(contextlib.closing(another_loop))
@@ -369,7 +369,7 @@ def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
         another_loop.run_until_complete(connector.close())
 
 
-def test_detach(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+def test_detach(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     conn = session.connector
     assert conn is not None
     try:
@@ -408,7 +408,7 @@ async def test_double_close(
     assert connector.closed
 
 
-async def test_del(connector: BaseConnector, loop: asyncio.AbstractEventLoop) -> None:
+async def test_del(connector: BaseConnector, event_loop: asyncio.AbstractEventLoop) -> None:
     loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
@@ -425,7 +425,7 @@ async def test_del(connector: BaseConnector, loop: asyncio.AbstractEventLoop) ->
 
 
 async def test_del_debug(
-    connector: BaseConnector, loop: asyncio.AbstractEventLoop
+    connector: BaseConnector, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     loop.set_debug(True)
     # N.B. don't use session fixture, it stores extra reference internally
@@ -449,7 +449,7 @@ async def test_del_debug(
 async def test_borrow_connector_loop(
     connector: BaseConnector,
     create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     async with ClientSession(connector=connector) as session:
         assert session._loop is loop
@@ -655,7 +655,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
 
 
 async def test_cookie_jar_usage(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     req_url = None
 
@@ -712,7 +712,7 @@ async def test_cookies_with_not_quoted_cookie_jar(
     assert resp.request_info.headers.get("Cookie", "") == "name=val=foobar"
 
 
-async def test_session_default_version(loop: asyncio.AbstractEventLoop) -> None:
+async def test_session_default_version(event_loop: asyncio.AbstractEventLoop) -> None:
     session = aiohttp.ClientSession()
     assert session.version == aiohttp.HttpVersion11
     await session.close()
@@ -730,7 +730,7 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
     ]
 
 
-async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
+async def test_default_proxy(event_loop: asyncio.AbstractEventLoop) -> None:
     proxy_url = URL("http://proxy.example.com")
     proxy_auth = mock.Mock()
     proxy_url2 = URL("http://proxy.example2.com")
@@ -780,7 +780,7 @@ async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
 
 
 async def test_request_tracing(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
@@ -860,7 +860,7 @@ async def test_request_tracing(
 
 
 async def test_request_tracing_url_params(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def root_handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -994,7 +994,7 @@ async def test_request_tracing_exception() -> None:
 
 
 async def test_request_tracing_interpose_headers(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    event_loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -1041,7 +1041,7 @@ async def test_client_session_custom_attr() -> None:
 
 
 async def test_client_session_timeout_default_args(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     session1 = ClientSession()
     assert session1.timeout == client.DEFAULT_TIMEOUT
@@ -1175,7 +1175,7 @@ async def test_base_url_without_trailing_slash() -> None:
 
 
 async def test_instantiation_with_invalid_timeout_value(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     loop.set_debug(False)
     logs = []

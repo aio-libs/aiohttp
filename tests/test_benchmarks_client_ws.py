@@ -11,7 +11,7 @@ from aiohttp._websocket.helpers import MSG_SIZE
 
 
 def test_one_thousand_round_trip_websocket_text_messages(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -43,7 +43,7 @@ def test_one_thousand_round_trip_websocket_text_messages(
 
 @pytest.mark.parametrize("msg_size", [6, MSG_SIZE * 4], ids=["small", "large"])
 def test_one_thousand_round_trip_websocket_binary_messages(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
     msg_size: int,
@@ -76,7 +76,7 @@ def test_one_thousand_round_trip_websocket_binary_messages(
 
 
 def test_one_thousand_large_round_trip_websocket_text_messages(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -109,7 +109,7 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_client_send_large_websocket_compressed_messages(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -142,7 +142,7 @@ def test_client_send_large_websocket_compressed_messages(
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_client_receive_large_websocket_compressed_messages(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:

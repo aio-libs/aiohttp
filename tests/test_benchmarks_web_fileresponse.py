@@ -11,7 +11,7 @@ from aiohttp import ClientResponse, web
 
 
 def test_simple_web_file_response(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -37,7 +37,7 @@ def test_simple_web_file_response(
 
 
 def test_simple_web_file_sendfile_fallback_response(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -66,7 +66,7 @@ def test_simple_web_file_sendfile_fallback_response(
 
 
 def test_simple_web_file_response_not_modified(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:

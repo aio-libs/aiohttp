@@ -58,7 +58,7 @@ def _gen_ids(parsers: Iterable[Type[HttpParser[Any]]]) -> List[str]:
 
 @pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
 def parser(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     protocol: BaseProtocol,
     request: pytest.FixtureRequest,
 ) -> HttpRequestParser:
@@ -80,7 +80,7 @@ def request_cls(request: pytest.FixtureRequest) -> Type[HttpRequestParser]:
 
 @pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
 def response(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     protocol: BaseProtocol,
     request: pytest.FixtureRequest,
 ) -> HttpResponseParser:
@@ -139,7 +139,7 @@ test2: data\r
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_character(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     protocol: BaseProtocol,
     request: pytest.FixtureRequest,
 ) -> None:
@@ -163,7 +163,7 @@ def test_invalid_character(
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_linebreak(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     protocol: BaseProtocol,
     request: pytest.FixtureRequest,
 ) -> None:
@@ -230,7 +230,7 @@ def test_bad_headers(parser: HttpRequestParser, hdr: str) -> None:
 
 
 def test_unpaired_surrogate_in_header_py(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> None:
     parser = HttpRequestParserPy(
         protocol,
@@ -258,7 +258,7 @@ def test_content_length_transfer_encoding(parser: HttpRequestParser) -> None:
 
 
 def test_bad_chunked_py(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> None:
     """Test that invalid chunked encoding doesn't allow content-length to be used."""
     parser = HttpRequestParserPy(
@@ -280,7 +280,7 @@ def test_bad_chunked_py(
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
 )
-def test_bad_chunked_c(loop: asyncio.AbstractEventLoop, protocol: BaseProtocol) -> None:
+def test_bad_chunked_c(event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol) -> None:
     """C parser behaves differently. Maybe we should align them later."""
     parser = HttpRequestParserC(
         protocol,
@@ -1178,7 +1178,7 @@ async def test_http_response_parser_bad_chunked_lax(
 
 @pytest.mark.dev_mode
 async def test_http_response_parser_bad_chunked_strict_py(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> None:
     response = HttpResponseParserPy(
         protocol,
@@ -1200,7 +1200,7 @@ async def test_http_response_parser_bad_chunked_strict_py(
     reason="C based HTTP parser not available",
 )
 async def test_http_response_parser_bad_chunked_strict_c(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> None:
     response = HttpResponseParserC(
         protocol,
@@ -1338,7 +1338,7 @@ def test_parse_chunked_payload_chunk_extension(parser: HttpRequestParser) -> Non
 
 
 def test_parse_no_length_or_te_on_post(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     protocol: BaseProtocol,
     request_cls: Type[HttpRequestParser],
 ) -> None:
@@ -1350,7 +1350,7 @@ def test_parse_no_length_or_te_on_post(
 
 
 def test_parse_payload_response_without_body(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     protocol: BaseProtocol,
     response_cls: Type[HttpResponseParser],
 ) -> None:
@@ -1532,7 +1532,7 @@ async def test_parse_chunked_payload_split_chunks(response: HttpResponseParser) 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 async def test_parse_chunked_payload_with_lf_in_extensions_c_parser(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> None:
     """Test the C-parser with a chunked payload that has a LF in the chunk extensions."""
     # The C parser will raise a BadHttpMessage from feed_data
@@ -1554,7 +1554,7 @@ async def test_parse_chunked_payload_with_lf_in_extensions_c_parser(
 
 
 async def test_parse_chunked_payload_with_lf_in_extensions_py_parser(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> None:
     """Test the py-parser with a chunked payload that has a LF in the chunk extensions."""
     # The py parser will not raise the BadHttpMessage directly, but instead
@@ -1649,7 +1649,7 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     reason="C based HTTP parser not available",
 )
 def test_parse_bad_method_for_c_parser_raises(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> None:
     payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(

@@ -74,7 +74,7 @@ def app() -> web.Application:
 
 @pytest.fixture
 def test_client(
-    loop: asyncio.AbstractEventLoop, app: web.Application
+    event_loop: asyncio.AbstractEventLoop, app: web.Application
 ) -> Iterator[_TestClient]:
     async def make_client() -> TestClient[web.Request, web.Application]:
         return TestClient(TestServer(app))
@@ -121,7 +121,7 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         await test_get_route()
 
 
-def test_get_route(loop: asyncio.AbstractEventLoop, test_client: _TestClient) -> None:
+def test_get_route(event_loop: asyncio.AbstractEventLoop, test_client: _TestClient) -> None:
     async def test_get_route() -> None:
         resp = await test_client.request("GET", "/")
         assert resp.status == 200
@@ -132,7 +132,7 @@ def test_get_route(loop: asyncio.AbstractEventLoop, test_client: _TestClient) ->
 
 
 async def test_client_websocket(
-    loop: asyncio.AbstractEventLoop, test_client: _TestClient
+    event_loop: asyncio.AbstractEventLoop, test_client: _TestClient
 ) -> None:
     resp = await test_client.ws_connect("/websocket")
     await resp.send_str("foo")
@@ -145,7 +145,7 @@ async def test_client_websocket(
 
 
 async def test_client_cookie(
-    loop: asyncio.AbstractEventLoop, test_client: _TestClient
+    event_loop: asyncio.AbstractEventLoop, test_client: _TestClient
 ) -> None:
     assert not test_client.session.cookie_jar
     await test_client.get("/cookie")
@@ -158,7 +158,7 @@ async def test_client_cookie(
     "method", ["get", "post", "options", "post", "put", "patch", "delete"]
 )
 async def test_test_client_methods(
-    method: str, loop: asyncio.AbstractEventLoop, test_client: _TestClient
+    method: str, event_loop: asyncio.AbstractEventLoop, test_client: _TestClient
 ) -> None:
     resp = await getattr(test_client, method)("/")
     assert resp.status == 200
@@ -167,7 +167,7 @@ async def test_test_client_methods(
 
 
 async def test_test_client_head(
-    loop: asyncio.AbstractEventLoop, test_client: _TestClient
+    event_loop: asyncio.AbstractEventLoop, test_client: _TestClient
 ) -> None:
     resp = await test_client.head("/")
     assert resp.status == 200
@@ -268,7 +268,7 @@ async def test_test_client_raw_server_props() -> None:
     assert client.port == 0
 
 
-async def test_test_server_context_manager(loop: asyncio.AbstractEventLoop) -> None:
+async def test_test_server_context_manager(event_loop: asyncio.AbstractEventLoop) -> None:
     app = _create_example_app()
     async with TestServer(app) as server:
         client = aiohttp.ClientSession()
@@ -288,7 +288,7 @@ def test_client_unsupported_arg() -> None:
 
 
 async def test_server_make_url_yarl_compatibility(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     app = _create_example_app()
     async with TestServer(app) as server:
@@ -301,7 +301,7 @@ async def test_server_make_url_yarl_compatibility(
 
 
 def test_testcase_no_app(
-    testdir: pytest.Testdir, loop: asyncio.AbstractEventLoop
+    testdir: pytest.Testdir, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     testdir.makepyfile(
         """
@@ -339,7 +339,7 @@ async def test_disable_retry_persistent_connection(
 
 
 async def test_server_context_manager(
-    app: web.Application, loop: asyncio.AbstractEventLoop
+    app: web.Application, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     async with TestServer(app) as server:
         async with aiohttp.ClientSession() as client:
@@ -351,7 +351,7 @@ async def test_server_context_manager(
     "method", ["head", "get", "post", "options", "post", "put", "patch", "delete"]
 )
 async def test_client_context_manager_response(
-    method: str, app: web.Application, loop: asyncio.AbstractEventLoop
+    method: str, app: web.Application, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     async with TestClient(TestServer(app)) as client:
         async with getattr(client, method)("/") as resp:
@@ -362,7 +362,7 @@ async def test_client_context_manager_response(
 
 
 async def test_custom_port(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     app: web.Application,
     unused_port_socket: socket.socket,
 ) -> None:
@@ -388,7 +388,7 @@ async def test_custom_port(
     [("127.0.0.1", "127.0.0.1"), ("localhost", "127.0.0.1"), ("::1", "::1")],
 )
 async def test_test_server_hostnames(
-    hostname: str, expected_host: str, loop: asyncio.AbstractEventLoop
+    hostname: str, expected_host: str, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     app = _create_example_app()
     server = TestServer(app, host=hostname, loop=loop)
@@ -399,7 +399,7 @@ async def test_test_server_hostnames(
 
 @pytest.mark.parametrize("test_server_cls", [TestServer, RawTestServer])
 async def test_base_test_server_socket_factory(
-    test_server_cls: type, app: web.Application, loop: asyncio.AbstractEventLoop
+    test_server_cls: type, app: web.Application, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     factory_called = False
 

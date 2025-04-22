@@ -53,7 +53,7 @@ if uvloop is not None:
 
 @pytest.fixture(params=PARAMS)
 def worker(
-    request: SubRequest, loop: asyncio.AbstractEventLoop
+    request: SubRequest, event_loop: asyncio.AbstractEventLoop
 ) -> base_worker.GunicornWebWorker:
     asyncio.set_event_loop(loop)
     ret = request.param()
@@ -73,7 +73,7 @@ def test_init_process(worker: base_worker.GunicornWebWorker) -> None:
 
 
 def test_run(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
@@ -90,7 +90,7 @@ def test_run(
 
 
 def test_run_async_factory(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
@@ -114,7 +114,7 @@ def test_run_async_factory(
 
 
 def test_run_not_app(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
@@ -205,7 +205,7 @@ def test__get_valid_log_format_exc(worker: base_worker.GunicornWebWorker) -> Non
 
 async def test__run_ok_parent_changed(
     worker: base_worker.GunicornWebWorker,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     unused_port_socket: socket.socket,
 ) -> None:
     worker.ppid = 0
@@ -226,7 +226,7 @@ async def test__run_ok_parent_changed(
 
 async def test__run_exc(
     worker: base_worker.GunicornWebWorker,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     unused_port_socket: socket.socket,
 ) -> None:
     worker.ppid = os.getppid()

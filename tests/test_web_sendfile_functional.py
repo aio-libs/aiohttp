@@ -61,7 +61,7 @@ def hello_txt(
 
 @pytest.fixture
 def loop_with_mocked_native_sendfile(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     def sendfile(transport: object, fobj: object, offset: int, count: int) -> NoReturn:
         if count == 0:
@@ -73,7 +73,7 @@ def loop_with_mocked_native_sendfile(
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
-def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Sender]:
+def sender(request: SubRequest, event_loop: asyncio.AbstractEventLoop) -> Iterator[_Sender]:
     sendfile_mock = None
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:

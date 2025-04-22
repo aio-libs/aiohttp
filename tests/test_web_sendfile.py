@@ -11,7 +11,7 @@ MOCK_MODE = S_IFREG | S_IRUSR | S_IWUSR
 
 
 def test_using_gzip_if_header_present_and_file_available(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     request = make_mocked_request(
         "GET",
@@ -40,7 +40,7 @@ def test_using_gzip_if_header_present_and_file_available(
 
 
 def test_gzip_if_header_not_present_and_file_available(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
@@ -67,7 +67,7 @@ def test_gzip_if_header_not_present_and_file_available(
 
 
 def test_gzip_if_header_not_present_and_file_not_available(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
@@ -92,7 +92,7 @@ def test_gzip_if_header_not_present_and_file_not_available(
 
 
 def test_gzip_if_header_present_and_file_not_available(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     request = make_mocked_request(
         "GET", "http://python.org/logo.png", headers={hdrs.ACCEPT_ENCODING: "gzip"}
@@ -118,7 +118,7 @@ def test_gzip_if_header_present_and_file_not_available(
     assert not gz_filepath.open.called
 
 
-def test_status_controlled_by_user(loop: asyncio.AbstractEventLoop) -> None:
+def test_status_controlled_by_user(event_loop: asyncio.AbstractEventLoop) -> None:
     request = make_mocked_request("GET", "http://python.org/logo.png", headers={})
 
     filepath = mock.create_autospec(Path, spec_set=True)

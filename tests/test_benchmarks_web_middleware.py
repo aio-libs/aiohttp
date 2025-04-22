@@ -11,7 +11,7 @@ from aiohttp.typedefs import Handler
 
 def test_ten_web_middlewares(
     benchmark: BenchmarkFixture,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Benchmark 100 requests with 10 middlewares."""

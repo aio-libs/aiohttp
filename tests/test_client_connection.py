@@ -34,7 +34,7 @@ def test_ctor(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert conn.protocol is protocol
@@ -45,7 +45,7 @@ def test_callbacks_on_close(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = Connection(connector, key, protocol, loop)
     notified = False
@@ -63,7 +63,7 @@ def test_callbacks_on_release(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = Connection(connector, key, protocol, loop)
     notified = False
@@ -81,7 +81,7 @@ def test_callbacks_exception(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = Connection(connector, key, protocol, loop)
     notified = False
@@ -127,7 +127,7 @@ def test_close(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
@@ -141,7 +141,7 @@ def test_release(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
@@ -157,7 +157,7 @@ def test_release_proto_should_close(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     protocol.should_close = True  # type: ignore[misc]
     conn = Connection(connector, key, protocol, loop)
@@ -174,7 +174,7 @@ def test_release_released(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     conn = Connection(connector, key, protocol, loop)
     conn.release()

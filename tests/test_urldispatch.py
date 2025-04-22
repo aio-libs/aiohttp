@@ -1173,7 +1173,7 @@ def test_subapp_rule_resource(app: web.Application) -> None:
 
 
 async def test_add_domain_not_str(
-    app: web.Application, loop: asyncio.AbstractEventLoop
+    app: web.Application, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     app = web.Application()
     with pytest.raises(TypeError):
@@ -1181,7 +1181,7 @@ async def test_add_domain_not_str(
 
 
 async def test_add_domain(
-    app: web.Application, loop: asyncio.AbstractEventLoop
+    app: web.Application, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     subapp1 = web.Application()
     h1 = make_handler()

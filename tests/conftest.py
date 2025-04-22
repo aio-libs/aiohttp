@@ -141,7 +141,7 @@ def pipe_name() -> str:
 
 @pytest.fixture
 def create_mocked_conn(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[Callable[[], ResponseHandler]]:
     def _proto_factory() -> Any:
         proto = mock.create_autospec(ResponseHandler, instance=True)

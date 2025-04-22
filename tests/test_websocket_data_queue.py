@@ -15,7 +15,7 @@ def protocol() -> BaseProtocol:
 
 @pytest.fixture
 def buffer(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> WebSocketDataQueue:
     return WebSocketDataQueue(protocol, limit=1, loop=loop)
 
