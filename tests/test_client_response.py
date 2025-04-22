@@ -242,7 +242,9 @@ async def test_read_and_release_connection_with_error(
     assert response._closed
 
 
-async def test_release(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+async def test_release(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -362,7 +364,9 @@ async def test_response_eof_after_connection_detach(
     assert response._connection is None
 
 
-async def test_text(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+async def test_text(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -578,7 +582,9 @@ async def test_text_after_read(
     assert response._connection is None
 
 
-async def test_json(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+async def test_json(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),

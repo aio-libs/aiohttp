@@ -537,7 +537,9 @@ def test_run_app_custom_backlog(patched_event_loop: asyncio.AbstractEventLoop) -
     )
 
 
-def test_run_app_custom_backlog_unix(patched_event_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_custom_backlog_unix(
+    patched_event_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     web.run_app(
         app,
@@ -591,7 +593,9 @@ def test_run_app_https_unix_socket(
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 @skip_if_no_abstract_paths
-def test_run_app_abstract_linux_socket(patched_event_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_abstract_linux_socket(
+    patched_event_loop: asyncio.AbstractEventLoop,
+) -> None:
     sock_path = b"\x00" + uuid4().hex.encode("ascii")
     app = web.Application()
     web.run_app(
@@ -887,7 +891,9 @@ def test_run_app_cancels_all_pending_tasks(
     assert task.cancelled()
 
 
-def test_run_app_cancels_done_tasks(patched_event_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_done_tasks(
+    patched_event_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     task = None
 
@@ -906,7 +912,9 @@ def test_run_app_cancels_done_tasks(patched_event_loop: asyncio.AbstractEventLoo
     assert task.done()
 
 
-def test_run_app_cancels_failed_tasks(patched_event_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_failed_tasks(
+    patched_event_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     task = None
 
@@ -996,7 +1004,9 @@ def test_run_app_context_vars(patched_event_loop: asyncio.AbstractEventLoop) -> 
     assert count == 3
 
 
-def test_run_app_raises_exception(patched_event_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_raises_exception(
+    patched_event_loop: asyncio.AbstractEventLoop,
+) -> None:
     async def context(app: web.Application) -> AsyncIterator[None]:
         raise RuntimeError("foo")
         yield  # type: ignore[unreachable]  # pragma: no cover

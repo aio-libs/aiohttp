@@ -157,7 +157,9 @@ async def test_unexpected_exception_during_data_received(
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-async def test_client_protocol_readuntil_eof(event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_client_protocol_readuntil_eof(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)

@@ -183,7 +183,9 @@ async def test_async_resolver_positive_link_local_ipv6_lookup(
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_multiple_replies(event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_async_resolver_multiple_replies(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         ips = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result(ips)
@@ -194,7 +196,9 @@ async def test_async_resolver_multiple_replies(event_loop: asyncio.AbstractEvent
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_negative_lookup(event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_async_resolver_negative_lookup(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.side_effect = aiodns.error.DNSError()
         resolver = AsyncResolver()
@@ -308,7 +312,9 @@ async def test_threaded_negative_lookup_with_unknown_result() -> None:
     assert len(res) == 0
 
 
-async def test_close_for_threaded_resolver(event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_close_for_threaded_resolver(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     resolver = ThreadedResolver()
     await resolver.close()
 

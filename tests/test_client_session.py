@@ -48,7 +48,8 @@ class _Params(TypedDict):
 
 @pytest.fixture
 def connector(
-    event_loop: asyncio.AbstractEventLoop, create_mocked_conn: Callable[[], ResponseHandler]
+    event_loop: asyncio.AbstractEventLoop,
+    create_mocked_conn: Callable[[], ResponseHandler],
 ) -> Iterator[BaseConnector]:
     async def make_conn() -> BaseConnector:
         return BaseConnector()
@@ -408,7 +409,9 @@ async def test_double_close(
     assert connector.closed
 
 
-async def test_del(connector: BaseConnector, event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_del(
+    connector: BaseConnector, event_loop: asyncio.AbstractEventLoop
+) -> None:
     event_loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
