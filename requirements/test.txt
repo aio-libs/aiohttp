@@ -77,7 +77,7 @@ mypy==1.15.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
 mypy-extensions==1.0.0
     # via mypy
-packaging==24.2
+packaging==25.0
     # via
     #   gunicorn
     #   pytest
@@ -90,7 +90,7 @@ propcache==0.3.1
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test.in
-pycares==4.6.0
+pycares==4.6.1
     # via aiodns
 pycparser==2.22
     # via cffi

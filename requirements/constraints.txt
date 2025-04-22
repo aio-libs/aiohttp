@@ -96,7 +96,7 @@ gidgethub==5.3.0
     # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.6.9
+identify==2.6.10
     # via pre-commit
 idna==3.6
     # via
@@ -137,7 +137,7 @@ mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.9.1
     # via pre-commit
-packaging==24.2
+packaging==25.0
     # via
     #   build
     #   gunicorn
@@ -161,7 +161,7 @@ proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pycares==4.6.0
+pycares==4.6.1
     # via aiodns
 pycparser==2.22
     # via cffi
@@ -318,7 +318,7 @@ zlib-ng==0.5.1
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.0.1
     # via pip-tools
-setuptools==78.1.0
+setuptools==79.0.0
     # via
     #   incremental
     #   pip-tools

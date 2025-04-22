@@ -47,7 +47,7 @@ frozenlist==1.6.0
     # via
     #   aiohttp
     #   aiosignal
-identify==2.6.9
+identify==2.6.10
     # via pre-commit
 idna==3.7
     # via
@@ -71,7 +71,7 @@ mypy-extensions==1.0.0
     # via mypy
 nodeenv==1.9.1
     # via pre-commit
-packaging==24.2
+packaging==25.0
     # via pytest
 platformdirs==4.3.7
     # via virtualenv
@@ -85,7 +85,7 @@ propcache==0.3.1
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/lint.in
-pycares==4.6.0
+pycares==4.6.1
     # via aiodns
 pycparser==2.22
     # via cffi
