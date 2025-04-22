@@ -153,7 +153,7 @@ Environment Variables
 
 .. envvar:: AIOHTTP_NO_EXTENSIONS
 
-   If set to a non-empty value while building from source, aiohttp will be built without speedsup
+   If set to a non-empty value while building from source, aiohttp will be built without speedups
    written as C extensions. This option is primarily useful for debugging.
 
 .. envvar:: AIOHTTP_USE_SYSTEM_DEPS
