@@ -103,7 +103,7 @@ def test_del(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: asyncio.AbstractEventLoop,
+    loop: mock.Mock,
 ) -> None:
     loop.is_closed.return_value = False
     conn = Connection(connector, key, protocol, loop)
