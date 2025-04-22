@@ -82,7 +82,7 @@ def test_run(
     worker.cfg.graceful_timeout = 100
     worker.sockets = []
 
-    worker.loop = loop
+    worker.loop = event_loop
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_not_called()
@@ -105,7 +105,7 @@ def test_run_async_factory(
 
     worker.wsgi = make_app
 
-    worker.loop = loop
+    worker.loop = event_loop
     worker.alive = False
     with pytest.raises(SystemExit):
         worker.run()
@@ -120,7 +120,7 @@ def test_run_not_app(
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
 
-    worker.loop = loop
+    worker.loop = event_loop
     worker.wsgi = "not-app"
     worker.alive = False
     with pytest.raises(SystemExit):
@@ -213,7 +213,7 @@ async def test__run_ok_parent_changed(
     sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
-    worker.loop = loop
+    worker.loop = event_loop
     worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.is_ssl = False
@@ -234,7 +234,7 @@ async def test__run_exc(
     sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
-    worker.loop = loop
+    worker.loop = event_loop
     worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.is_ssl = False

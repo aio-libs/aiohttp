@@ -56,7 +56,7 @@ def transport(buf: bytearray) -> Any:  # type: ignore[misc]
 
 
 @pytest.fixture
-def protocol(event_loop: asyncio.AbstractEventLoop, transport: asyncio.Transport) -> Any:  # type: ignore[misc]
+def protocol(transport: asyncio.Transport) -> Any:  # type: ignore[misc]
     return mock.create_autospec(
         BaseProtocol, spec_set=True, instance=True, transport=transport
     )
@@ -87,7 +87,7 @@ def test_payloadwriter_properties(
     protocol: BaseProtocol,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    writer = http.StreamWriter(protocol, loop)
+    writer = http.StreamWriter(protocol, event_loop)
     assert writer.protocol == protocol
     assert writer.transport == transport
 
@@ -97,7 +97,7 @@ async def test_write_payload_eof(
     protocol: BaseProtocol,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
 
     await msg.write(b"data1")
     await msg.write(b"data2")
@@ -113,7 +113,7 @@ async def test_write_payload_chunked(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_chunking()
     await msg.write(b"data")
     await msg.write_eof()
@@ -127,7 +127,7 @@ async def test_write_payload_chunked_multiple(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_chunking()
     await msg.write(b"data1")
     await msg.write(b"data2")
@@ -141,7 +141,7 @@ async def test_write_payload_length(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.length = 2
     await msg.write(b"d")
     await msg.write(b"ata")
@@ -158,7 +158,7 @@ async def test_write_large_payload_deflate_compression_data_in_eof(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
 
     await msg.write(b"data" * 4096)
@@ -185,7 +185,7 @@ async def test_write_large_payload_deflate_compression_data_in_eof_all_zlib(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
 
     await msg.write(b"data" * 4096)
@@ -219,7 +219,7 @@ async def test_write_large_payload_deflate_compression_data_in_eof_writelines(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
 
     await msg.write(b"data" * 4096)
@@ -247,7 +247,7 @@ async def test_write_large_payload_deflate_compression_data_in_eof_writelines_al
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
 
     await msg.write(b"data" * 4096)
@@ -282,7 +282,7 @@ async def test_write_payload_chunked_filter(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_chunking()
     await msg.write(b"da")
     await msg.write(b"ta")
@@ -298,7 +298,7 @@ async def test_write_payload_chunked_filter_multiple_chunks(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_chunking()
     await msg.write(b"da")
     await msg.write(b"ta")
@@ -320,7 +320,7 @@ async def test_write_payload_deflate_compression(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     COMPRESSED = b"x\x9cKI,I\x04\x00\x04\x00\x01\x9b"
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     await msg.write(b"data")
     await msg.write_eof()
@@ -337,7 +337,7 @@ async def test_write_payload_deflate_compression_all_zlib(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     await msg.write(b"data")
     await msg.write_eof()
@@ -355,7 +355,7 @@ async def test_write_payload_deflate_compression_chunked(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     expected = b"2\r\nx\x9c\r\na\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n0\r\n\r\n"
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -373,7 +373,7 @@ async def test_write_payload_deflate_compression_chunked_all_zlib(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -394,7 +394,7 @@ async def test_write_payload_deflate_compression_chunked_writelines(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     expected = b"2\r\nx\x9c\r\na\r\nKI,I\x04\x00\x04\x00\x01\x9b\r\n0\r\n\r\n"
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -414,7 +414,7 @@ async def test_write_payload_deflate_compression_chunked_writelines_all_zlib(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -433,7 +433,7 @@ async def test_write_payload_deflate_and_chunked(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
 
@@ -452,7 +452,7 @@ async def test_write_payload_deflate_and_chunked_all_zlib(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
 
@@ -470,7 +470,7 @@ async def test_write_payload_deflate_compression_chunked_data_in_eof(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     expected = b"2\r\nx\x9c\r\nd\r\nKI,IL\xcdK\x01\x00\x0b@\x02\xd2\r\n0\r\n\r\n"
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -488,7 +488,7 @@ async def test_write_payload_deflate_compression_chunked_data_in_eof_all_zlib(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -509,7 +509,7 @@ async def test_write_payload_deflate_compression_chunked_data_in_eof_writelines(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     expected = b"2\r\nx\x9c\r\nd\r\nKI,IL\xcdK\x01\x00\x0b@\x02\xd2\r\n0\r\n\r\n"
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -529,7 +529,7 @@ async def test_write_payload_deflate_compression_chunked_data_in_eof_writelines_
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -547,7 +547,7 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
 
@@ -574,7 +574,7 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof_all_z
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
 
@@ -603,7 +603,7 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof_write
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
 
@@ -632,7 +632,7 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof_write
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
 
@@ -659,7 +659,7 @@ async def test_write_payload_deflate_compression_chunked_connection_lost(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -678,7 +678,7 @@ async def test_write_payload_deflate_compression_chunked_connection_lost_all_zli
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_compression("deflate")
     msg.enable_chunking()
     await msg.write(b"data")
@@ -697,7 +697,7 @@ async def test_write_payload_bytes_memoryview(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
 
     mv = memoryview(b"abcd")
 
@@ -714,7 +714,7 @@ async def test_write_payload_short_ints_memoryview(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_chunking()
 
     payload = memoryview(array.array("H", [65, 66, 67]))
@@ -735,7 +735,7 @@ async def test_write_payload_2d_shape_memoryview(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.enable_chunking()
 
     mv = memoryview(b"ABCDEF")
@@ -754,7 +754,7 @@ async def test_write_payload_slicing_long_memoryview(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg.length = 4
 
     mv = memoryview(b"ABCDEF")
@@ -772,7 +772,7 @@ async def test_write_drain(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     with mock.patch.object(msg, "drain", autospec=True, spec_set=True) as m:
         await msg.write(b"1" * (64 * 1024 * 2), drain=False)
         assert not m.called
@@ -788,7 +788,7 @@ async def test_write_calls_callback(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     on_chunk_sent = make_mocked_coro()
-    msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
+    msg = http.StreamWriter(protocol, event_loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
     await msg.write(chunk)
     assert on_chunk_sent.called
@@ -801,7 +801,7 @@ async def test_write_eof_calls_callback(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     on_chunk_sent = make_mocked_coro()
-    msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
+    msg = http.StreamWriter(protocol, event_loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
     await msg.write_eof(chunk=chunk)
     assert on_chunk_sent.called
@@ -813,7 +813,7 @@ async def test_write_to_closing_transport(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
 
     await msg.write(b"Before closing")
     transport.is_closing.return_value = True  # type: ignore[attr-defined]
@@ -832,7 +832,7 @@ async def test_write_to_closed_transport(
     The StreamWriter checks to see if protocol.transport is None before
     writing to the transport. If it is None, it raises ConnectionResetError.
     """
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
 
     await msg.write(b"Before transport close")
     protocol.transport = None
@@ -848,7 +848,7 @@ async def test_drain(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     await msg.drain()
     assert protocol._drain_helper.called  # type: ignore[attr-defined]
 
@@ -858,7 +858,7 @@ async def test_drain_no_transport(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     msg._protocol.transport = None
     await msg.drain()
     assert not protocol._drain_helper.called  # type: ignore[attr-defined]
@@ -869,7 +869,7 @@ async def test_write_headers_prevents_injection(
     transport: asyncio.Transport,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     status_line = "HTTP/1.1 200 OK"
     wrong_headers = CIMultiDict({"Set-Cookie: abc=123\r\nContent-Length": "256"})
     with pytest.raises(ValueError):
@@ -884,7 +884,7 @@ async def test_set_eof_after_write_headers(
     transport: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    msg = http.StreamWriter(protocol, loop)
+    msg = http.StreamWriter(protocol, event_loop)
     status_line = "HTTP/1.1 200 OK"
     good_headers = CIMultiDict({"Set-Cookie": "abc=123"})
     await msg.write_headers(status_line, good_headers)

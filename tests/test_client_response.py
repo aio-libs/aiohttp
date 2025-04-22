@@ -94,7 +94,7 @@ def test_close(event_loop: asyncio.AbstractEventLoop, session: ClientSession) ->
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     response._closed = False
@@ -116,7 +116,7 @@ def test_wait_for_100_1(
         writer=WriterMock(),
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     assert response._continue is not None
@@ -134,7 +134,7 @@ def test_wait_for_100_2(
         writer=WriterMock(),
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     assert response._continue is None
@@ -150,7 +150,7 @@ def test_repr(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     response.status = 200
@@ -202,7 +202,7 @@ async def test_read_and_release_connection(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -230,7 +230,7 @@ async def test_read_and_release_connection_with_error(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     content = response.content = mock.Mock()
@@ -253,7 +253,7 @@ async def test_release(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     fut = event_loop.create_future()
@@ -284,7 +284,7 @@ async def test_release_on_del(
             continue100=None,
             timer=TimerNoop(),
             traces=[],
-            loop=loop,
+            loop=event_loop,
             session=session,
         )
         response._closed = False
@@ -306,7 +306,7 @@ async def test_response_eof(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     response._closed = False
@@ -329,7 +329,7 @@ async def test_response_eof_upgraded(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -352,7 +352,7 @@ async def test_response_eof_after_connection_detach(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     response._closed = False
@@ -375,7 +375,7 @@ async def test_text(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -405,7 +405,7 @@ async def test_text_bad_encoding(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -439,7 +439,7 @@ async def test_text_badly_encoded_encoding_header(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -470,7 +470,7 @@ async def test_text_custom_encoding(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -503,7 +503,7 @@ async def test_text_charset_resolver(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -535,7 +535,7 @@ async def test_get_encoding_body_none(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -563,7 +563,7 @@ async def test_text_after_read(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -593,7 +593,7 @@ async def test_json(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -623,7 +623,7 @@ async def test_json_extended_content_type(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -653,7 +653,7 @@ async def test_json_custom_content_type(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -683,7 +683,7 @@ async def test_json_custom_loader(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
@@ -708,7 +708,7 @@ async def test_json_invalid_content_type(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     h = {"Content-Type": "data/octet-stream"}
@@ -734,7 +734,7 @@ async def test_json_no_content(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     h = {"Content-Type": "application/json"}
@@ -756,7 +756,7 @@ async def test_json_override_encoding(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -787,7 +787,7 @@ def test_get_encoding_unknown(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
 
@@ -1160,7 +1160,7 @@ async def test_response_read_triggers_callback(
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
-        loop=loop,
+        loop=event_loop,
         session=session,
         traces=[trace],
     )
@@ -1196,7 +1196,7 @@ def test_response_cookies(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     cookies = response.cookies
@@ -1216,7 +1216,7 @@ def test_response_real_url(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     assert response.url == url.with_fragment(None)
@@ -1235,7 +1235,7 @@ def test_response_links_comma_separated(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     h = (
@@ -1266,7 +1266,7 @@ def test_response_links_multiple_headers(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     h = (
@@ -1292,7 +1292,7 @@ def test_response_links_no_rel(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     h = (("Link", "<http://example.com/>"),)
@@ -1314,7 +1314,7 @@ def test_response_links_quoted(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     h = (("Link", '<http://example.com/>; rel="home-page"'),)
@@ -1336,7 +1336,7 @@ def test_response_links_relative(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     h = (("Link", "</relative/path>; rel=rel"),)
@@ -1358,7 +1358,7 @@ def test_response_links_empty(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
     )
     response._headers = CIMultiDictProxy(CIMultiDict())

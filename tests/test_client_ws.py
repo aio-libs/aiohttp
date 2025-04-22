@@ -652,7 +652,7 @@ async def test_receive_runtime_err(event_loop: asyncio.AbstractEventLoop) -> Non
         ClientWSTimeout(ws_receive=10.0),
         True,
         True,
-        loop,
+        event_loop,
     )
     resp._waiting = True
 

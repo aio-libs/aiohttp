@@ -1133,7 +1133,7 @@ async def test_empty_stream_reader_iter_chunks() -> None:
 
 @pytest.fixture
 async def buffer(event_loop: asyncio.AbstractEventLoop) -> streams.DataQueue[bytes]:
-    return streams.DataQueue(loop)
+    return streams.DataQueue(event_loop)
 
 
 class TestDataQueue:

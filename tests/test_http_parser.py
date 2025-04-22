@@ -145,7 +145,7 @@ def test_invalid_character(
 ) -> None:
     parser = HttpRequestParserC(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -169,7 +169,7 @@ def test_invalid_linebreak(
 ) -> None:
     parser = HttpRequestParserC(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -234,7 +234,7 @@ def test_unpaired_surrogate_in_header_py(
 ) -> None:
     parser = HttpRequestParserPy(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -263,7 +263,7 @@ def test_bad_chunked_py(
     """Test that invalid chunked encoding doesn't allow content-length to be used."""
     parser = HttpRequestParserPy(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -286,7 +286,7 @@ def test_bad_chunked_c(
     """C parser behaves differently. Maybe we should align them later."""
     parser = HttpRequestParserC(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -1184,7 +1184,7 @@ async def test_http_response_parser_bad_chunked_strict_py(
 ) -> None:
     response = HttpResponseParserPy(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -1206,7 +1206,7 @@ async def test_http_response_parser_bad_chunked_strict_c(
 ) -> None:
     response = HttpResponseParserC(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -1344,7 +1344,7 @@ def test_parse_no_length_or_te_on_post(
     protocol: BaseProtocol,
     request_cls: Type[HttpRequestParser],
 ) -> None:
-    parser = request_cls(protocol, loop, limit=2**16)
+    parser = request_cls(protocol, event_loop, limit=2**16)
     text = b"POST /test HTTP/1.1\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
@@ -1356,7 +1356,7 @@ def test_parse_payload_response_without_body(
     protocol: BaseProtocol,
     response_cls: Type[HttpResponseParser],
 ) -> None:
-    parser = response_cls(protocol, loop, 2**16, response_with_body=False)
+    parser = response_cls(protocol, event_loop, 2**16, response_with_body=False)
     text = b"HTTP/1.1 200 Ok\r\ncontent-length: 10\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
@@ -1540,7 +1540,7 @@ async def test_parse_chunked_payload_with_lf_in_extensions_c_parser(
     # The C parser will raise a BadHttpMessage from feed_data
     parser = HttpRequestParserC(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -1563,7 +1563,7 @@ async def test_parse_chunked_payload_with_lf_in_extensions_py_parser(
     # it will set the exception on the StreamReader.
     parser = HttpRequestParserPy(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -1656,7 +1656,7 @@ def test_parse_bad_method_for_c_parser_raises(
     payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,

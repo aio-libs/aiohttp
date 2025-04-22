@@ -92,7 +92,7 @@ def patched_loop(
             spec_set=True,
             return_value=unix_server,
         ):
-            asyncio.set_event_loop(loop)
+            asyncio.set_event_loop(event_loop)
             yield event_loop
 
 
