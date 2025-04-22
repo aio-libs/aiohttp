@@ -280,7 +280,9 @@ def test_bad_chunked_py(
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
 )
-def test_bad_chunked_c(event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol) -> None:
+def test_bad_chunked_c(
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+) -> None:
     """C parser behaves differently. Maybe we should align them later."""
     parser = HttpRequestParserC(
         protocol,

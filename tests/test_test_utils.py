@@ -121,7 +121,9 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         await test_get_route()
 
 
-def test_get_route(event_loop: asyncio.AbstractEventLoop, test_client: _TestClient) -> None:
+def test_get_route(
+    event_loop: asyncio.AbstractEventLoop, test_client: _TestClient
+) -> None:
     async def test_get_route() -> None:
         resp = await test_client.request("GET", "/")
         assert resp.status == 200
@@ -268,7 +270,9 @@ async def test_test_client_raw_server_props() -> None:
     assert client.port == 0
 
 
-async def test_test_server_context_manager(event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_test_server_context_manager(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = _create_example_app()
     async with TestServer(app) as server:
         client = aiohttp.ClientSession()

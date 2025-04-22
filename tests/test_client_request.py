@@ -758,7 +758,9 @@ async def test_formdata_boundary_from_headers(
         assert req.body._boundary == boundary.encode()
 
 
-async def test_post_data(event_loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_post_data(
+    event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     for meth in ClientRequest.POST_METHODS:
         req = ClientRequest(
             meth, URL("http://python.org/"), data={"life": "42"}, loop=loop
@@ -808,7 +810,9 @@ async def test_get_with_data(event_loop: asyncio.AbstractEventLoop) -> None:
         await req.close()
 
 
-async def test_bytes_data(event_loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_bytes_data(
+    event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     for meth in ClientRequest.POST_METHODS:
         req = ClientRequest(
             meth, URL("http://python.org/"), data=b"binary data", loop=loop
@@ -949,7 +953,9 @@ async def test_chunked_explicit(
     resp.close()
 
 
-async def test_chunked_length(event_loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_chunked_length(
+    event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     with pytest.raises(ValueError):
         ClientRequest(
             "post",
@@ -1001,7 +1007,9 @@ async def test_precompressed_data_stays_intact(
     await req.close()
 
 
-async def test_file_upload_not_chunked_seek(event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_file_upload_not_chunked_seek(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
         f.seek(100)
@@ -1021,7 +1029,9 @@ async def test_file_upload_force_chunked(event_loop: asyncio.AbstractEventLoop) 
         await req.close()
 
 
-async def test_expect100(event_loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_expect100(
+    event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("get", URL("http://python.org/"), expect100=True, loop=loop)
     resp = await req.send(conn)
     assert "100-continue" == req.headers["EXPECT"]
@@ -1224,7 +1234,9 @@ async def test_close(
     resp.close()
 
 
-async def test_bad_version(event_loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_bad_version(
+    event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest(
         "GET",
         URL("http://python.org"),
@@ -1269,7 +1281,9 @@ async def test_oserror_on_write_bytes(
 
 
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
-async def test_cancel_close(event_loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_cancel_close(
+    event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     req._writer = asyncio.Future()  # type: ignore[assignment]
 
@@ -1284,7 +1298,9 @@ async def test_cancel_close(event_loop: asyncio.AbstractEventLoop, conn: mock.Mo
         await t
 
 
-async def test_terminate(event_loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_terminate(
+    event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
 
     async def _mock_write_bytes(*args: object, **kwargs: object) -> None:

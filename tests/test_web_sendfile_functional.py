@@ -73,7 +73,9 @@ def loop_with_mocked_native_sendfile(
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
-def sender(request: SubRequest, event_loop: asyncio.AbstractEventLoop) -> Iterator[_Sender]:
+def sender(
+    request: SubRequest, event_loop: asyncio.AbstractEventLoop
+) -> Iterator[_Sender]:
     sendfile_mock = None
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
