@@ -85,10 +85,7 @@ def test_del(session: ClientSession) -> None:
     connection.release.assert_called_with()
 
 
-def test_close(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
-) -> None:
+def test_close(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -109,8 +106,7 @@ def test_close(
 
 
 def test_wait_for_100_1(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -128,8 +124,7 @@ def test_wait_for_100_1(
 
 
 def test_wait_for_100_2(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -146,10 +141,7 @@ def test_wait_for_100_2(
     response.close()
 
 
-def test_repr(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
-) -> None:
+def test_repr(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     response = ClientResponse(
         "get",
         URL("http://def-cl-resp.org"),
@@ -756,8 +748,7 @@ async def test_json_override_encoding(session: ClientSession) -> None:
 
 
 def test_get_encoding_unknown(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -1165,8 +1156,7 @@ async def test_response_read_triggers_callback(session: ClientSession) -> None:
 
 
 def test_response_cookies(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     response = ClientResponse(
         "get",
@@ -1185,8 +1175,7 @@ def test_response_cookies(
 
 
 def test_response_real_url(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/#urlfragment")
     response = ClientResponse(
@@ -1205,8 +1194,7 @@ def test_response_real_url(
 
 
 def test_response_links_comma_separated(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1237,8 +1225,7 @@ def test_response_links_comma_separated(
 
 
 def test_response_links_multiple_headers(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1264,8 +1251,7 @@ def test_response_links_multiple_headers(
 
 
 def test_response_links_no_rel(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1287,8 +1273,7 @@ def test_response_links_no_rel(
 
 
 def test_response_links_quoted(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1310,8 +1295,7 @@ def test_response_links_quoted(
 
 
 def test_response_links_relative(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1333,8 +1317,7 @@ def test_response_links_relative(
 
 
 def test_response_links_empty(
-    event_loop: asyncio.AbstractEventLoop,
-    session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
