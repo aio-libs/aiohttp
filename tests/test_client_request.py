@@ -671,7 +671,9 @@ async def test_content_type_auto_header_form(
 async def test_content_type_auto_header_bytes(
     event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
-    req = ClientRequest("post", URL("http://python.org"), data=b"hey you", loop=event_loop)
+    req = ClientRequest(
+        "post", URL("http://python.org"), data=b"hey you", loop=event_loop
+    )
     resp = await req.send(conn)
     assert "application/octet-stream" == req.headers.get("CONTENT-TYPE")
     resp.close()
@@ -832,7 +834,11 @@ async def test_content_encoding(
     conn: mock.Mock,
 ) -> None:
     req = ClientRequest(
-        "post", URL("http://python.org/"), data="foo", compress="deflate", loop=event_loop
+        "post",
+        URL("http://python.org/"),
+        data="foo",
+        compress="deflate",
+        loop=event_loop,
     )
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
         m_writer.return_value.write_headers = make_mocked_coro()
@@ -942,7 +948,9 @@ async def test_chunked_empty_body(
 async def test_chunked_explicit(
     event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
-    req = ClientRequest("post", URL("http://python.org/"), chunked=True, loop=event_loop)
+    req = ClientRequest(
+        "post", URL("http://python.org/"), chunked=True, loop=event_loop
+    )
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
         m_writer.return_value.write_headers = make_mocked_coro()
         resp = await req.send(conn)
@@ -1032,7 +1040,9 @@ async def test_file_upload_force_chunked(event_loop: asyncio.AbstractEventLoop) 
 async def test_expect100(
     event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
-    req = ClientRequest("get", URL("http://python.org/"), expect100=True, loop=event_loop)
+    req = ClientRequest(
+        "get", URL("http://python.org/"), expect100=True, loop=event_loop
+    )
     resp = await req.send(conn)
     assert "100-continue" == req.headers["EXPECT"]
     assert req._continue is not None
@@ -1044,7 +1054,10 @@ async def test_expect_100_continue_header(
     event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest(
-        "get", URL("http://python.org/"), headers={"expect": "100-continue"}, loop=event_loop
+        "get",
+        URL("http://python.org/"),
+        headers={"expect": "100-continue"},
+        loop=event_loop,
     )
     resp = await req.send(conn)
     assert "100-continue" == req.headers["EXPECT"]

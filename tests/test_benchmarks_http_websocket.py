@@ -106,7 +106,9 @@ def test_send_one_hundred_websocket_text_messages_with_mask(
     event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Benchmark sending 100 masked WebSocket text messages."""
-    writer = WebSocketWriter(MockProtocol(loop=event_loop), MockTransport(), use_mask=True)
+    writer = WebSocketWriter(
+        MockProtocol(loop=event_loop), MockTransport(), use_mask=True
+    )
     raw_message = b"Hello, World!" * 100
 
     async def _send_one_hundred_websocket_text_messages() -> None:
@@ -123,7 +125,9 @@ def test_send_one_hundred_websocket_compressed_messages(
     event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Benchmark sending 100 WebSocket compressed messages."""
-    writer = WebSocketWriter(MockProtocol(loop=event_loop), MockTransport(), compress=15)
+    writer = WebSocketWriter(
+        MockProtocol(loop=event_loop), MockTransport(), compress=15
+    )
     raw_message = b"Hello, World!" * 100
 
     async def _send_one_hundred_websocket_compressed_messages() -> None:
