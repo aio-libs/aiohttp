@@ -361,7 +361,7 @@ async def test_async_resolver_error_messages_passed_no_hosts() -> None:
         assert excinfo.value.strerror == "DNS lookup failed"
 
 
-async def test_async_resolver_aiodns_not_present() -> None:
+async def test_async_resolver_aiodns_not_present(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("aiohttp.resolver.aiodns", None)
     with pytest.raises(RuntimeError):
         AsyncResolver()

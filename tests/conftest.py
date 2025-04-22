@@ -61,7 +61,7 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             yield
             return
         node = node.parent
-    with blockbuster_ctx("aiohttp", excluded_modules=("aiohttp.test_utils",)) as bb:
+    with blockbuster_ctx("aiohttp", excluded_modules=["aiohttp.test_utils"]) as bb:
         # TODO: Fix blocking call in ClientRequest's constructor.
         # https://github.com/aio-libs/aiohttp/issues/10435
         for func in ["io.TextIOWrapper.read", "os.stat"]:

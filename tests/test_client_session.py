@@ -455,7 +455,7 @@ async def test_borrow_connector_loop(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     async with ClientSession(connector=connector) as session:
-        assert session._loop is loop
+        assert session._loop is event_loop
 
 
 async def test_reraise_os_error(

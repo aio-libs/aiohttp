@@ -98,7 +98,7 @@ def unix_server(
 
 @pytest.fixture
 def named_pipe_server(
-    proactor_event_loop: asyncio.AbstractEventLoop, pipe_name: str
+    proactor_loop: asyncio.AbstractEventLoop, pipe_name: str
 ) -> Iterator[Callable[[web.Application], Awaitable[None]]]:
     runners = []
 
@@ -3282,7 +3282,7 @@ async def test_named_pipe_connector_wrong_loop(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
 async def test_named_pipe_connector_not_found(
-    proactor_event_loop: asyncio.AbstractEventLoop, pipe_name: str
+    proactor_loop: asyncio.AbstractEventLoop, pipe_name: str
 ) -> None:
     asyncio.set_event_loop(proactor_loop)
     connector = aiohttp.NamedPipeConnector(pipe_name)
@@ -3296,7 +3296,7 @@ async def test_named_pipe_connector_not_found(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
 async def test_named_pipe_connector_permission(
-    proactor_event_loop: asyncio.AbstractEventLoop, pipe_name: str
+    proactor_loop: asyncio.AbstractEventLoop, pipe_name: str
 ) -> None:
     m = make_mocked_coro(raise_exception=PermissionError())
     with mock.patch.object(proactor_loop, "create_pipe_connection", m):
@@ -3501,7 +3501,7 @@ async def test_unix_connector(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
 async def test_named_pipe_connector(
-    proactor_event_loop: asyncio.AbstractEventLoop,
+    proactor_loop: asyncio.AbstractEventLoop,
     named_pipe_server: Callable[[web.Application], Awaitable[None]],
     pipe_name: str,
 ) -> None:
