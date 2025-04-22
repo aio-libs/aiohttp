@@ -39,7 +39,7 @@ except ImportError:
     uvloop = None  # type: ignore[assignment]
 
 
-pytest_plugins = ("pytest_aiohttp", "pytester")
+pytest_plugins = ("pytest_asyncio", "pytest_aiohttp", "pytester")
 
 
 IS_HPUX = sys.platform.startswith("hp-ux")
