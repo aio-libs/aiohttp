@@ -677,7 +677,10 @@ async def test_tcp_connector_server_hostname_override(
         create_connection.return_value = mock.Mock(), mock.Mock()
 
         req = ClientRequest(
-            "GET", URL("https://127.0.0.1:443"), loop=event_loop, server_hostname="localhost"
+            "GET",
+            URL("https://127.0.0.1:443"),
+            loop=event_loop,
+            server_hostname="localhost",
         )
 
         with closing(await conn.connect(req, [], ClientTimeout())):
@@ -1667,7 +1670,9 @@ async def test_connect(
 
     conn = aiohttp.BaseConnector()
     conn._conns[key] = deque([(proto, event_loop.time())])
-    with mock.patch.object(conn, "_create_connection", create_mocked_conn(event_loop)) as m:
+    with mock.patch.object(
+        conn, "_create_connection", create_mocked_conn(event_loop)
+    ) as m:
         m.return_value = event_loop.create_future()
         m.return_value.set_result(proto)
 
