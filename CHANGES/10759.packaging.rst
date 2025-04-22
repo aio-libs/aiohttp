@@ -1,5 +1,5 @@
-Support building against system llhttp library -- by :user:`mgorny`
+Added support for building against system ``llhttp`` library -- by :user:`mgorny`.
 
-This change adds support for ``USE_SYSTEM_DEPS`` environment variable that
-can be used to build aiohttp against the system install of the llhttp library
+This change adds support for :envvar:`USE_SYSTEM_DEPS` environment variable that
+can be used to build aiohttp against the system install of the ``llhttp`` library
 rather than the vendored one.
