@@ -1409,7 +1409,9 @@ async def test_tcp_connector_cancel_dns_error_captured(
             use_dns_cache=False,
         )
         m_resolver().resolve.return_value = dns_response_error()
-        f = event_loop.create_task(conn._create_direct_connection(req, [], ClientTimeout(0)))
+        f = event_loop.create_task(
+            conn._create_direct_connection(req, [], ClientTimeout(0))
+        )
 
         await asyncio.sleep(0)
         f.cancel()
@@ -1549,7 +1551,9 @@ async def test_tcp_connector_dns_tracing_throttle_requests(
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
         t = event_loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
-        t1 = event_loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
+        t1 = event_loop.create_task(
+            conn._resolve_host("localhost", 8080, traces=traces)
+        )
         await asyncio.sleep(0)
         await asyncio.sleep(0)
         on_dns_cache_hit.assert_called_once_with(
