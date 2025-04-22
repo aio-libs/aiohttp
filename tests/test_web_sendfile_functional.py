@@ -68,8 +68,8 @@ def loop_with_mocked_native_sendfile(
             raise ValueError("count must be a positive integer (got 0)")
         raise NotImplementedError
 
-    with mock.patch.object(loop, "sendfile", sendfile):
-        yield loop
+    with mock.patch.object(event_loop, "sendfile", sendfile):
+        yield event_loop
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])

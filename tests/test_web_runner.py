@@ -25,7 +25,7 @@ def app() -> web.Application:
 def make_runner(
     event_loop: asyncio.AbstractEventLoop, app: web.Application
 ) -> Iterator[_RunnerMaker]:
-    asyncio.set_event_loop(loop)
+    asyncio.set_event_loop(event_loop)
     runners = []
 
     def go(handle_signals: bool = False, **kwargs: Any) -> web.AppRunner:

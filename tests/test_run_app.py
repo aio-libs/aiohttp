@@ -83,17 +83,17 @@ def patched_loop(
     unix_server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     unix_server.wait_closed.return_value = None
     with mock.patch.object(
-        loop, "create_server", autospec=True, spec_set=True, return_value=server
+        event_loop, "create_server", autospec=True, spec_set=True, return_value=server
     ):
         with mock.patch.object(
-            loop,
+            event_loop,
             "create_unix_server",
             autospec=True,
             spec_set=True,
             return_value=unix_server,
         ):
             asyncio.set_event_loop(loop)
-            yield loop
+            yield event_loop
 
 
 def stopper(event_loop: asyncio.AbstractEventLoop) -> Callable[[], None]:

@@ -17,7 +17,7 @@ def protocol() -> BaseProtocol:
 def buffer(
     event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> WebSocketDataQueue:
-    return WebSocketDataQueue(protocol, limit=1, loop=loop)
+    return WebSocketDataQueue(protocol, limit=1, loop=event_loop)
 
 
 class TestWebSocketDataQueue:

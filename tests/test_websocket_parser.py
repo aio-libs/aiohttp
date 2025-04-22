@@ -122,7 +122,7 @@ def protocol(event_loop: asyncio.AbstractEventLoop) -> BaseProtocol:
 
 @pytest.fixture()
 def out(event_loop: asyncio.AbstractEventLoop) -> WebSocketDataQueue:
-    return WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
+    return WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=event_loop)
 
 
 @pytest.fixture()

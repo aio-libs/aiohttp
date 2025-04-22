@@ -55,7 +55,7 @@ if uvloop is not None:
 def worker(
     request: SubRequest, event_loop: asyncio.AbstractEventLoop
 ) -> base_worker.GunicornWebWorker:
-    asyncio.set_event_loop(loop)
+    asyncio.set_event_loop(event_loop)
     ret = request.param()
     ret.notify = mock.Mock()
     return ret  # type: ignore[no-any-return]
