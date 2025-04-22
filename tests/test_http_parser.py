@@ -87,7 +87,7 @@ def response(
     # Parser implementations
     return request.param(  # type: ignore[no-any-return]
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
