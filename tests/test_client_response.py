@@ -111,7 +111,7 @@ def test_wait_for_100_1(
     response = ClientResponse(
         "get",
         URL("http://python.org"),
-        continue100=loop.create_future(),
+        continue100=event_loop.create_future(),
         request_info=mock.Mock(),
         writer=WriterMock(),
         timer=TimerNoop(),
@@ -207,7 +207,7 @@ async def test_read_and_release_connection(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result(b"payload")
         return fut
 
@@ -234,7 +234,7 @@ async def test_read_and_release_connection_with_error(
         session=session,
     )
     content = response.content = mock.Mock()
-    content.read.return_value = loop.create_future()
+    content.read.return_value = event_loop.create_future()
     content.read.return_value.set_exception(ValueError)
 
     with pytest.raises(ValueError):
@@ -254,7 +254,7 @@ async def test_release(event_loop: asyncio.AbstractEventLoop, session: ClientSes
         loop=loop,
         session=session,
     )
-    fut = loop.create_future()
+    fut = event_loop.create_future()
     fut.set_result(b"")
     content = response.content = mock.Mock()
     content.readany.return_value = fut
@@ -376,7 +376,7 @@ async def test_text(event_loop: asyncio.AbstractEventLoop, session: ClientSessio
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
         return fut
 
@@ -406,7 +406,7 @@ async def test_text_bad_encoding(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result('{"тестkey": "пройденvalue"}'.encode("cp1251"))
         return fut
 
@@ -440,7 +440,7 @@ async def test_text_badly_encoded_encoding_header(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result(b"foo")
         return fut
 
@@ -471,7 +471,7 @@ async def test_text_custom_encoding(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
         return fut
 
@@ -504,7 +504,7 @@ async def test_text_charset_resolver(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
         return fut
 
@@ -564,7 +564,7 @@ async def test_text_after_read(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
         return fut
 
@@ -592,7 +592,7 @@ async def test_json(event_loop: asyncio.AbstractEventLoop, session: ClientSessio
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
         return fut
 
@@ -622,7 +622,7 @@ async def test_json_extended_content_type(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
         return fut
 
@@ -652,7 +652,7 @@ async def test_json_custom_content_type(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
         return fut
 
@@ -755,7 +755,7 @@ async def test_json_override_encoding(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode("cp1251"))
         return fut
 
@@ -1160,7 +1160,7 @@ async def test_response_read_triggers_callback(
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
+        fut = event_loop.create_future()
         fut.set_result(response_body)
         return fut
 

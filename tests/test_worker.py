@@ -86,7 +86,7 @@ def test_run(
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_not_called()
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_run_async_factory(
@@ -110,7 +110,7 @@ def test_run_async_factory(
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_not_called()
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_run_not_app(
@@ -126,7 +126,7 @@ def test_run_not_app(
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_called_with("Exception in gunicorn worker")
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_handle_abort(worker: base_worker.GunicornWebWorker) -> None:
@@ -245,7 +245,7 @@ async def test__run_exc(
         assert waiter is not None
         waiter.set_exception(RuntimeError())
 
-    loop.call_later(0.1, raiser)
+    event_loop.call_later(0.1, raiser)
     await worker._run()
 
     worker.notify.assert_called_with()

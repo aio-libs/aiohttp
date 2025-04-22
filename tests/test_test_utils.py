@@ -79,11 +79,11 @@ def test_client(
     async def make_client() -> TestClient[web.Request, web.Application]:
         return TestClient(TestServer(app))
 
-    client = loop.run_until_complete(make_client())
+    client = event_loop.run_until_complete(make_client())
 
-    loop.run_until_complete(client.start_server())
+    event_loop.run_until_complete(client.start_server())
     yield client
-    loop.run_until_complete(client.close())
+    event_loop.run_until_complete(client.close())
 
 
 async def test_aiohttp_client_close_is_idempotent() -> None:
@@ -128,7 +128,7 @@ def test_get_route(event_loop: asyncio.AbstractEventLoop, test_client: _TestClie
         text = await resp.text()
         assert _hello_world_str == text
 
-    loop.run_until_complete(test_get_route())
+    event_loop.run_until_complete(test_get_route())
 
 
 async def test_client_websocket(

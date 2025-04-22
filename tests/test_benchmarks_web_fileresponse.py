@@ -33,7 +33,7 @@ def test_simple_web_file_response(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_file_response_benchmark())
+        event_loop.run_until_complete(run_file_response_benchmark())
 
 
 def test_simple_web_file_sendfile_fallback_response(
@@ -62,7 +62,7 @@ def test_simple_web_file_sendfile_fallback_response(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_file_response_benchmark())
+        event_loop.run_until_complete(run_file_response_benchmark())
 
 
 def test_simple_web_file_response_not_modified(
@@ -97,9 +97,9 @@ def test_simple_web_file_response_not_modified(
         await client.close()
         return resp  # type: ignore[possibly-undefined]
 
-    headers = loop.run_until_complete(make_last_modified_header())
+    headers = event_loop.run_until_complete(make_last_modified_header())
 
     @benchmark
     def _run() -> None:
-        resp = loop.run_until_complete(run_file_response_benchmark(headers))
+        resp = event_loop.run_until_complete(run_file_response_benchmark(headers))
         assert resp.status == 304

@@ -54,11 +54,11 @@ def connector(
         return BaseConnector()
 
     key = ConnectionKey("localhost", 80, False, True, None, None, None)
-    conn = loop.run_until_complete(make_conn())
+    conn = event_loop.run_until_complete(make_conn())
     proto = create_mocked_conn()
     conn._conns[key] = deque([(proto, 123)])
     yield conn
-    loop.run_until_complete(conn.close())
+    event_loop.run_until_complete(conn.close())
 
 
 @pytest.fixture
@@ -74,7 +74,7 @@ def create_session(  # type: ignore[misc]
 
     yield maker
     if session is not None:
-        loop.run_until_complete(session.close())
+        event_loop.run_until_complete(session.close())
 
 
 @pytest.fixture
@@ -82,7 +82,7 @@ def session(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
     event_loop: asyncio.AbstractEventLoop,
 ) -> ClientSession:
-    return loop.run_until_complete(create_session())
+    return event_loop.run_until_complete(create_session())
 
 
 @pytest.fixture
@@ -363,7 +363,7 @@ def test_connector_loop(event_loop: asyncio.AbstractEventLoop) -> None:
             async def make_sess() -> ClientSession:
                 return ClientSession(connector=connector)
 
-            loop.run_until_complete(make_sess())
+            event_loop.run_until_complete(make_sess())
         expected = "Session and connector have to use same event loop"
         assert str(ctx.value).startswith(expected)
         another_loop.run_until_complete(connector.close())
@@ -379,7 +379,7 @@ def test_detach(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -
         assert session.closed
         assert not conn.closed
     finally:
-        loop.run_until_complete(conn.close())
+        event_loop.run_until_complete(conn.close())
 
 
 async def test_request_closed_session(session: ClientSession) -> None:
@@ -409,11 +409,11 @@ async def test_double_close(
 
 
 async def test_del(connector: BaseConnector, event_loop: asyncio.AbstractEventLoop) -> None:
-    loop.set_debug(False)
+    event_loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
     logs = []
-    loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
+    event_loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
 
     with pytest.warns(ResourceWarning):
         del session
@@ -427,11 +427,11 @@ async def test_del(connector: BaseConnector, event_loop: asyncio.AbstractEventLo
 async def test_del_debug(
     connector: BaseConnector, event_loop: asyncio.AbstractEventLoop
 ) -> None:
-    loop.set_debug(True)
+    event_loop.set_debug(True)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
     logs = []
-    loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
+    event_loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
 
     with pytest.warns(ResourceWarning):
         del session
@@ -1177,9 +1177,9 @@ async def test_base_url_without_trailing_slash() -> None:
 async def test_instantiation_with_invalid_timeout_value(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    loop.set_debug(False)
+    event_loop.set_debug(False)
     logs = []
-    loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
+    event_loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
     with pytest.raises(ValueError, match="timeout parameter cannot be .*"):
         ClientSession(timeout=1)  # type: ignore[arg-type]
     # should not have "Unclosed client session" warning

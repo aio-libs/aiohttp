@@ -37,7 +37,7 @@ class TestCase(AioHTTPTestCase):
 
 
 def test_default_loop(event_loop: asyncio.AbstractEventLoop) -> None:
-    assert asyncio.get_event_loop_policy().get_event_loop() is loop
+    assert asyncio.get_event_loop_policy().get_event_loop() is event_loop
 
 
 def test_setup_loop_non_main_thread() -> None:

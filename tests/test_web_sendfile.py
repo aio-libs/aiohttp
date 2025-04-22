@@ -33,7 +33,7 @@ def test_using_gzip_if_header_present_and_file_available(
     file_sender._path = filepath
     file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
-    loop.run_until_complete(file_sender.prepare(request))
+    event_loop.run_until_complete(file_sender.prepare(request))
 
     assert not filepath.open.called
     assert gz_filepath.open.called
@@ -60,7 +60,7 @@ def test_gzip_if_header_not_present_and_file_available(
     file_sender._path = filepath
     file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
-    loop.run_until_complete(file_sender.prepare(request))
+    event_loop.run_until_complete(file_sender.prepare(request))
 
     assert filepath.open.called
     assert not gz_filepath.open.called
@@ -85,7 +85,7 @@ def test_gzip_if_header_not_present_and_file_not_available(
     file_sender._path = filepath
     file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
-    loop.run_until_complete(file_sender.prepare(request))
+    event_loop.run_until_complete(file_sender.prepare(request))
 
     assert filepath.open.called
     assert not gz_filepath.open.called
@@ -112,7 +112,7 @@ def test_gzip_if_header_present_and_file_not_available(
     file_sender._path = filepath
     file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
-    loop.run_until_complete(file_sender.prepare(request))
+    event_loop.run_until_complete(file_sender.prepare(request))
 
     assert filepath.open.called
     assert not gz_filepath.open.called
@@ -131,6 +131,6 @@ def test_status_controlled_by_user(event_loop: asyncio.AbstractEventLoop) -> Non
     file_sender._path = filepath
     file_sender._sendfile = make_mocked_coro(None)  # type: ignore[method-assign]
 
-    loop.run_until_complete(file_sender.prepare(request))
+    event_loop.run_until_complete(file_sender.prepare(request))
 
     assert file_sender._status == 203

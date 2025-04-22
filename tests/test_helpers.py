@@ -294,7 +294,7 @@ def test_timeout_handle(event_loop: asyncio.AbstractEventLoop) -> None:
 
 def test_when_timeout_smaller_second(event_loop: asyncio.AbstractEventLoop) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
+    timer = event_loop.time() + timeout
 
     handle = helpers.TimeoutHandle(loop, timeout)
     assert handle is not None
@@ -311,7 +311,7 @@ def test_when_timeout_smaller_second_with_low_threshold(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
+    timer = event_loop.time() + timeout
 
     handle = helpers.TimeoutHandle(loop, timeout, 0.01)
     assert handle is not None
@@ -414,9 +414,7 @@ async def test_weakref_handle(event_loop: asyncio.AbstractEventLoop) -> None:
     assert cb.test.called
 
 
-async def test_weakref_handle_with_small_threshold(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_weakref_handle_with_small_threshold() -> None:
     cb = mock.Mock()
     loop = mock.Mock()
     loop.time.return_value = 10
@@ -730,13 +728,13 @@ def test_get_env_proxy_for_url(proxy_env_vars: Dict[str, str], url_input: str) -
 
 
 async def test_set_result(event_loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+    fut = event_loop.create_future()
     helpers.set_result(fut, 123)
     assert 123 == await fut
 
 
 async def test_set_result_cancelled(event_loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+    fut = event_loop.create_future()
     fut.cancel()
     helpers.set_result(fut, 123)
 
@@ -745,14 +743,14 @@ async def test_set_result_cancelled(event_loop: asyncio.AbstractEventLoop) -> No
 
 
 async def test_set_exception(event_loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+    fut = event_loop.create_future()
     helpers.set_exception(fut, RuntimeError())
     with pytest.raises(RuntimeError):
         await fut
 
 
 async def test_set_exception_cancelled(event_loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+    fut = event_loop.create_future()
     fut.cancel()
     helpers.set_exception(fut, RuntimeError())
 

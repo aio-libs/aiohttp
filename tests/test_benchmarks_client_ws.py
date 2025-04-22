@@ -38,7 +38,7 @@ def test_one_thousand_round_trip_websocket_text_messages(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_websocket_benchmark())
+        event_loop.run_until_complete(run_websocket_benchmark())
 
 
 @pytest.mark.parametrize("msg_size", [6, MSG_SIZE * 4], ids=["small", "large"])
@@ -72,7 +72,7 @@ def test_one_thousand_round_trip_websocket_binary_messages(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_websocket_benchmark())
+        event_loop.run_until_complete(run_websocket_benchmark())
 
 
 def test_one_thousand_large_round_trip_websocket_text_messages(
@@ -104,7 +104,7 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_websocket_benchmark())
+        event_loop.run_until_complete(run_websocket_benchmark())
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
@@ -137,7 +137,7 @@ def test_client_send_large_websocket_compressed_messages(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_websocket_benchmark())
+        event_loop.run_until_complete(run_websocket_benchmark())
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
@@ -170,4 +170,4 @@ def test_client_receive_large_websocket_compressed_messages(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_websocket_benchmark())
+        event_loop.run_until_complete(run_websocket_benchmark())

@@ -953,7 +953,7 @@ async def test_close_websocket_while_ping_inflight(
     await resp.send_bytes(b"ask")
 
     cancelled = False
-    ping_started = loop.create_future()
+    ping_started = event_loop.create_future()
 
     async def delayed_send_frame(
         message: bytes, opcode: int, compress: Optional[int] = None
@@ -1278,7 +1278,7 @@ async def test_websocket_connection_cancellation(
     app.router.add_route("GET", "/", handler)
 
     sync_future: "asyncio.Future[List[aiohttp.ClientWebSocketResponse]]" = (
-        loop.create_future()
+        event_loop.create_future()
     )
     client = await aiohttp_client(app)
 
@@ -1292,7 +1292,7 @@ async def test_websocket_connection_cancellation(
         client._websockets.clear()
         await asyncio.sleep(0)
 
-    task = loop.create_task(websocket_task())
+    task = event_loop.create_task(websocket_task())
     websockets = await sync_future
     task.cancel()
     with pytest.raises(asyncio.CancelledError):

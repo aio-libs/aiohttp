@@ -61,7 +61,7 @@ def make_request(event_loop: asyncio.AbstractEventLoop) -> Iterator[_RequestMake
 
     yield maker
     if request is not None:
-        loop.run_until_complete(request.close())
+        event_loop.run_until_complete(request.close())
 
 
 @pytest.fixture
@@ -75,7 +75,7 @@ def protocol(
 ) -> BaseProtocol:
     protocol = mock.Mock()
     protocol.transport = transport
-    protocol._drain_helper.return_value = loop.create_future()
+    protocol._drain_helper.return_value = event_loop.create_future()
     protocol._drain_helper.return_value.set_result(None)
     return protocol
 
@@ -1097,7 +1097,7 @@ async def test_data_file(
 async def test_data_stream_exc(
     event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
-    fut = loop.create_future()
+    fut = event_loop.create_future()
 
     async def gen() -> AsyncIterator[bytes]:
         yield b"binary data"
@@ -1111,7 +1111,7 @@ async def test_data_stream_exc(
         await asyncio.sleep(0.01)
         fut.set_exception(ValueError)
 
-    t = loop.create_task(throw_exc())
+    t = event_loop.create_task(throw_exc())
 
     async with await req.send(conn):
         assert req._writer is not None
@@ -1126,7 +1126,7 @@ async def test_data_stream_exc(
 async def test_data_stream_exc_chain(
     event_loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
-    fut = loop.create_future()
+    fut = event_loop.create_future()
 
     async def gen() -> AsyncIterator[None]:
         await fut
@@ -1141,7 +1141,7 @@ async def test_data_stream_exc_chain(
         await asyncio.sleep(0.01)
         fut.set_exception(inner_exc)
 
-    t = loop.create_task(throw_exc())
+    t = event_loop.create_task(throw_exc())
 
     async with await req.send(conn):
         assert req._writer is not None
@@ -1172,7 +1172,7 @@ async def test_data_stream_continue(
         assert req._continue is not None
         req._continue.set_result(1)
 
-    t = loop.create_task(coro())
+    t = event_loop.create_task(coro())
 
     resp = await req.send(conn)
     assert req._writer is not None
@@ -1197,7 +1197,7 @@ async def test_data_continue(
         assert req._continue is not None
         req._continue.set_result(1)
 
-    t = loop.create_task(coro())
+    t = event_loop.create_task(coro())
 
     resp = await req.send(conn)
 
@@ -1335,9 +1335,9 @@ def test_terminate_with_closed_loop(
 
         await asyncio.sleep(0.05)
 
-    loop.run_until_complete(go())
+    event_loop.run_until_complete(go())
 
-    loop.close()
+    event_loop.close()
     assert req is not None
     req.terminate()
     assert req._writer is None

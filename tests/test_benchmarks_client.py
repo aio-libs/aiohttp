@@ -31,7 +31,7 @@ def test_one_hundred_simple_get_requests(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_simple_get_requests_multiple_methods_route(
@@ -59,7 +59,7 @@ def test_one_hundred_simple_get_requests_multiple_methods_route(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_get_requests_with_1024_chunked_payload(
@@ -88,7 +88,7 @@ def test_one_hundred_get_requests_with_1024_chunked_payload(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_get_requests_with_30000_chunked_payload(
@@ -117,7 +117,7 @@ def test_one_hundred_get_requests_with_30000_chunked_payload(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_get_requests_with_512kib_chunked_payload(
@@ -146,7 +146,7 @@ def test_one_hundred_get_requests_with_512kib_chunked_payload(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_get_requests_iter_chunks_on_512kib_chunked_payload(
@@ -176,7 +176,7 @@ def test_one_hundred_get_requests_iter_chunks_on_512kib_chunked_payload(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
@@ -211,7 +211,7 @@ def test_get_request_with_251308_compressed_chunked_payload(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_get_requests_with_1024_content_length_payload(
@@ -239,7 +239,7 @@ def test_one_hundred_get_requests_with_1024_content_length_payload(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_get_requests_with_30000_content_length_payload(
@@ -267,7 +267,7 @@ def test_one_hundred_get_requests_with_30000_content_length_payload(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_get_requests_with_512kib_content_length_payload(
@@ -295,7 +295,7 @@ def test_one_hundred_get_requests_with_512kib_content_length_payload(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_simple_post_requests(
@@ -320,7 +320,7 @@ def test_one_hundred_simple_post_requests(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_json_post_requests(
@@ -347,7 +347,7 @@ def test_one_hundred_json_post_requests(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_ten_streamed_responses_iter_any(
@@ -379,7 +379,7 @@ def test_ten_streamed_responses_iter_any(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_ten_streamed_responses_iter_chunked_4096(
@@ -411,7 +411,7 @@ def test_ten_streamed_responses_iter_chunked_4096(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_ten_streamed_responses_iter_chunked_65536(
@@ -443,7 +443,7 @@ def test_ten_streamed_responses_iter_chunked_65536(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_ten_streamed_responses_iter_chunks(
@@ -475,4 +475,4 @@ def test_ten_streamed_responses_iter_chunks(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())

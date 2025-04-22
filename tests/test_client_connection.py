@@ -103,12 +103,12 @@ def test_del(
     connector: BaseConnector,
     key: ConnectionKey,
     protocol: ResponseHandler,
-    loop: mock.Mock,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    loop.is_closed.return_value = False
+    event_loop.is_closed.return_value = False
     conn = Connection(connector, key, protocol, loop)
     exc_handler = mock.Mock()
-    loop.set_exception_handler(exc_handler)
+    event_loop.set_exception_handler(exc_handler)
 
     with pytest.warns(ResourceWarning):
         del conn
@@ -120,7 +120,7 @@ def test_del(
         "message": "Unclosed connection",
     }
     msg["source_traceback"] = mock.ANY
-    loop.call_exception_handler.assert_called_with(msg)
+    event_loop.call_exception_handler.assert_called_with(msg)
 
 
 def test_close(

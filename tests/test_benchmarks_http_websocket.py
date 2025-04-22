@@ -83,7 +83,7 @@ def test_send_one_hundred_websocket_text_messages(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(_send_one_hundred_websocket_text_messages())
+        event_loop.run_until_complete(_send_one_hundred_websocket_text_messages())
 
 
 def test_send_one_hundred_large_websocket_text_messages(
@@ -99,7 +99,7 @@ def test_send_one_hundred_large_websocket_text_messages(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(_send_one_hundred_websocket_text_messages())
+        event_loop.run_until_complete(_send_one_hundred_websocket_text_messages())
 
 
 def test_send_one_hundred_websocket_text_messages_with_mask(
@@ -115,7 +115,7 @@ def test_send_one_hundred_websocket_text_messages_with_mask(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(_send_one_hundred_websocket_text_messages())
+        event_loop.run_until_complete(_send_one_hundred_websocket_text_messages())
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
@@ -132,4 +132,4 @@ def test_send_one_hundred_websocket_compressed_messages(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(_send_one_hundred_websocket_compressed_messages())
+        event_loop.run_until_complete(_send_one_hundred_websocket_compressed_messages())

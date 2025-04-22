@@ -85,7 +85,7 @@ def sender(request: SubRequest, event_loop: asyncio.AbstractEventLoop) -> Iterat
 
     if request.param == "no_sendfile":
         with mock.patch.object(
-            loop,
+            event_loop,
             "sendfile",
             autospec=True,
             spec_set=True,

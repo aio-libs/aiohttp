@@ -101,7 +101,7 @@ def stopper(event_loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
         raise KeyboardInterrupt
 
     def f(*args: object) -> None:
-        loop.call_soon(raiser)
+        event_loop.call_soon(raiser)
 
     return f
 

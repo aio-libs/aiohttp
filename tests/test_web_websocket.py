@@ -421,11 +421,11 @@ async def test_receive_eofstream_in_reader(
 
     ws._reader = mock.Mock()
     exc = EofStream()
-    res = loop.create_future()
+    res = event_loop.create_future()
     res.set_exception(exc)
     ws._reader.read = make_mocked_coro(res)
     assert ws._payload_writer is not None
-    f = loop.create_future()
+    f = event_loop.create_future()
     f.set_result(True)
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     msg = await ws.receive()
@@ -442,11 +442,11 @@ async def test_receive_exception_in_reader(
 
     ws._reader = mock.Mock()
     exc = Exception()
-    res = loop.create_future()
+    res = event_loop.create_future()
     res.set_exception(exc)
     ws._reader.read = make_mocked_coro(res)
 
-    f = loop.create_future()
+    f = event_loop.create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -468,7 +468,7 @@ async def test_receive_close_but_left_open(
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=close_message)
 
-    f = loop.create_future()
+    f = event_loop.create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -491,7 +491,7 @@ async def test_receive_closing(
     read_mock = mock.AsyncMock(return_value=closing_message)
     ws._reader.read = read_mock
 
-    f = loop.create_future()
+    f = event_loop.create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -520,7 +520,7 @@ async def test_close_after_closing(
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=closing_message)
 
-    f = loop.create_future()
+    f = event_loop.create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -545,7 +545,7 @@ async def test_receive_timeouterror(
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
     ws._reader = mock.Mock()
-    res = loop.create_future()
+    res = event_loop.create_future()
     res.set_exception(asyncio.TimeoutError())
     ws._reader.read = make_mocked_coro(res)
 

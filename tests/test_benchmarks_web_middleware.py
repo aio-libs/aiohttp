@@ -40,4 +40,4 @@ def test_ten_web_middlewares(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())

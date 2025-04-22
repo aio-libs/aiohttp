@@ -118,4 +118,4 @@ def test_send_client_request_one_hundred(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(send_requests())
+        event_loop.run_until_complete(send_requests())

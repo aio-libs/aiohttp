@@ -35,7 +35,7 @@ def make_runner(
 
     yield go
     for runner in runners:
-        loop.run_until_complete(runner.cleanup())
+        event_loop.run_until_complete(runner.cleanup())
 
 
 async def test_site_for_nonfrozen_app(make_runner: _RunnerMaker) -> None:
