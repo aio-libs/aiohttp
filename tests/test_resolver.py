@@ -313,12 +313,11 @@ async def test_close_for_async_resolver() -> None:
     await resolver.close()
 
 
-async def test_default_loop_for_threaded_resolver(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
-    asyncio.set_event_loop(event_loop)
+async def test_default_loop_for_threaded_resolver() -> None:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     resolver = ThreadedResolver()
-    assert resolver._loop is event_loop
+    assert resolver._loop is loop
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")

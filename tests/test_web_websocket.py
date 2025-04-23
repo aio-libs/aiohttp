@@ -412,20 +412,19 @@ async def test_write_eof_idempotent(make_request: _RequestMaker) -> None:
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
-async def test_receive_eofstream_in_reader(
-    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_eofstream_in_reader(make_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
 
     ws._reader = mock.Mock()
     exc = EofStream()
-    res = event_loop.create_future()
+    res = loop.create_future()
     res.set_exception(exc)
     ws._reader.read = make_mocked_coro(res)
     assert ws._payload_writer is not None
-    f = event_loop.create_future()
+    f = loop.create_future()
     f.set_result(True)
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     msg = await ws.receive()
@@ -433,20 +432,19 @@ async def test_receive_eofstream_in_reader(
     assert ws.closed
 
 
-async def test_receive_exception_in_reader(
-    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_exception_in_reader(make_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
 
     ws._reader = mock.Mock()
     exc = Exception()
-    res = event_loop.create_future()
+    res = loop.create_future()
     res.set_exception(exc)
     ws._reader.read = make_mocked_coro(res)
 
-    f = event_loop.create_future()
+    f = loop.create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -457,9 +455,7 @@ async def test_receive_exception_in_reader(
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
-async def test_receive_close_but_left_open(
-    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_close_but_left_open(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -468,7 +464,7 @@ async def test_receive_close_but_left_open(
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=close_message)
 
-    f = event_loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -479,9 +475,7 @@ async def test_receive_close_but_left_open(
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
-async def test_receive_closing(
-    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_closing(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -491,7 +485,7 @@ async def test_receive_closing(
     read_mock = mock.AsyncMock(return_value=closing_message)
     ws._reader.read = read_mock
 
-    f = event_loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -509,9 +503,7 @@ async def test_receive_closing(
     assert msg.type == WSMsgType.CLOSING
 
 
-async def test_close_after_closing(
-    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_close_after_closing(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -520,7 +512,7 @@ async def test_close_after_closing(
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=closing_message)
 
-    f = event_loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -535,9 +527,7 @@ async def test_close_after_closing(
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[unreachable]
 
 
-async def test_receive_timeouterror(
-    make_request: _RequestMaker, event_loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_timeouterror(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -545,7 +535,7 @@ async def test_receive_timeouterror(
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
     ws._reader = mock.Mock()
-    res = event_loop.create_future()
+    res = asyncio.get_running_loop().create_future()
     res.set_exception(asyncio.TimeoutError())
     ws._reader.read = make_mocked_coro(res)
 

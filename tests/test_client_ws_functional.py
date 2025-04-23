@@ -929,10 +929,11 @@ async def test_heartbeat_no_pong_concurrent_receive(
 
 
 async def test_close_websocket_while_ping_inflight(
-    aiohttp_client: AiohttpClient, event_loop: asyncio.AbstractEventLoop
+    aiohttp_client: AiohttpClient
 ) -> None:
     """Test closing the websocket while a ping is in-flight."""
     ping_received = False
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:
         nonlocal ping_received
@@ -953,7 +954,7 @@ async def test_close_websocket_while_ping_inflight(
     await resp.send_bytes(b"ask")
 
     cancelled = False
-    ping_started = event_loop.create_future()
+    ping_started = loop.create_future()
 
     async def delayed_send_frame(
         message: bytes, opcode: int, compress: Optional[int] = None
@@ -1263,9 +1264,7 @@ async def test_websocket_connection_not_closed_properly(
     await resp.close()
 
 
-async def test_websocket_connection_cancellation(
-    aiohttp_client: AiohttpClient, event_loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_websocket_connection_cancellation(aiohttp_client: AiohttpClient) -> None:
     """Test canceling the WebSocket connection task does not raise an exception in __del__."""
 
     async def handler(request: web.Request) -> NoReturn:
@@ -1274,11 +1273,12 @@ async def test_websocket_connection_cancellation(
         await ws.close()
         assert False
 
+    loop = asyncio.get_running_loop()
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
     sync_future: "asyncio.Future[List[aiohttp.ClientWebSocketResponse]]" = (
-        event_loop.create_future()
+        loop.create_future()
     )
     client = await aiohttp_client(app)
 
@@ -1292,7 +1292,7 @@ async def test_websocket_connection_cancellation(
         client._websockets.clear()
         await asyncio.sleep(0)
 
-    task = event_loop.create_task(websocket_task())
+    task = loop.create_task(websocket_task())
     websockets = await sync_future
     task.cancel()
     with pytest.raises(asyncio.CancelledError):

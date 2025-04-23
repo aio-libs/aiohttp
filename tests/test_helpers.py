@@ -407,9 +407,9 @@ def test_timer_context_no_task(event_loop: asyncio.AbstractEventLoop) -> None:
             pass
 
 
-async def test_weakref_handle(event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_weakref_handle() -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, "test", 0.01, event_loop)
+    helpers.weakref_handle(cb, "test", 0.01, asyncio.get_running_loop())
     await asyncio.sleep(0.1)
     assert cb.test.called
 
@@ -424,9 +424,9 @@ async def test_weakref_handle_with_small_threshold() -> None:
     )
 
 
-async def test_weakref_handle_weak(event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_weakref_handle_weak() -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, "test", 0.01, event_loop)
+    helpers.weakref_handle(cb, "test", 0.01, asyncio.get_running_loop())
     del cb
     gc.collect()
     await asyncio.sleep(0.1)
@@ -725,14 +725,14 @@ def test_get_env_proxy_for_url(proxy_env_vars: Dict[str, str], url_input: str) -
 # ------------- set_result / set_exception ----------------------
 
 
-async def test_set_result(event_loop: asyncio.AbstractEventLoop) -> None:
-    fut = event_loop.create_future()
+async def test_set_result() -> None:
+    fut = asyncio.get_running_loop().create_future()
     helpers.set_result(fut, 123)
     assert 123 == await fut
 
 
-async def test_set_result_cancelled(event_loop: asyncio.AbstractEventLoop) -> None:
-    fut = event_loop.create_future()
+async def test_set_result_cancelled() -> None:
+    fut = asyncio.get_running_loop().create_future()
     fut.cancel()
     helpers.set_result(fut, 123)
 
@@ -740,15 +740,15 @@ async def test_set_result_cancelled(event_loop: asyncio.AbstractEventLoop) -> No
         await fut
 
 
-async def test_set_exception(event_loop: asyncio.AbstractEventLoop) -> None:
-    fut = event_loop.create_future()
+async def test_set_exception() -> None:
+    fut = asyncio.get_running_loop().create_future()
     helpers.set_exception(fut, RuntimeError())
     with pytest.raises(RuntimeError):
         await fut
 
 
-async def test_set_exception_cancelled(event_loop: asyncio.AbstractEventLoop) -> None:
-    fut = event_loop.create_future()
+async def test_set_exception_cancelled() -> None:
+    fut = asyncio.get_running_loop().create_future()
     fut.cancel()
     helpers.set_exception(fut, RuntimeError())
 

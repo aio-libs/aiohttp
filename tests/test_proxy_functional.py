@@ -268,7 +268,6 @@ async def test_uvloop_secure_https_proxy(
 @pytest.fixture
 def proxy_test_server(
     aiohttp_raw_server: AiohttpRawServer,
-    event_loop: asyncio.AbstractEventLoop,
     monkeypatch: pytest.MonkeyPatch,
 ) -> Callable[[], Awaitable[mock.Mock]]:
     # Handle all proxy requests and imitate remote server response.
@@ -438,7 +437,6 @@ async def test_proxy_http_auth_from_url(
 
 async def test_proxy_http_acquired_cleanup(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "http://aiohttp.io/path"
 
@@ -460,7 +458,6 @@ async def test_proxy_http_acquired_cleanup(
 @pytest.mark.skip("we need to reconsider how we test this")
 async def test_proxy_http_acquired_cleanup_force(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "http://aiohttp.io/path"
 
@@ -484,7 +481,6 @@ async def test_proxy_http_acquired_cleanup_force(
 @pytest.mark.skip("we need to reconsider how we test this")
 async def test_proxy_http_multi_conn_limit(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "http://aiohttp.io/path"
     limit, multi_conn_num = 1, 5
@@ -554,7 +550,6 @@ async def test_proxy_https_connect_with_port(
 @pytest.mark.xfail
 async def test_proxy_https_send_body(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     sess = aiohttp.ClientSession()
     proxy = await proxy_test_server()
@@ -654,7 +649,6 @@ async def test_proxy_https_auth(
 @pytest.mark.xfail
 async def test_proxy_https_acquired_cleanup(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "https://secure.aiohttp.io/path"
 
@@ -678,7 +672,6 @@ async def test_proxy_https_acquired_cleanup(
 @pytest.mark.xfail
 async def test_proxy_https_acquired_cleanup_force(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "https://secure.aiohttp.io/path"
 
@@ -702,7 +695,6 @@ async def test_proxy_https_acquired_cleanup_force(
 @pytest.mark.xfail
 async def test_proxy_https_multi_conn_limit(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "https://secure.aiohttp.io/path"
     limit, multi_conn_num = 1, 5

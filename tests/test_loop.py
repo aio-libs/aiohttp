@@ -11,7 +11,7 @@ from aiohttp.test_utils import AioHTTPTestCase, loop_context
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
-async def test_subprocess_co(event_loop: asyncio.AbstractEventLoop) -> None:
+async def test_subprocess_co() -> None:
     proc = await asyncio.create_subprocess_shell(
         "exit 0",
         stdin=asyncio.subprocess.DEVNULL,
@@ -34,10 +34,6 @@ class TestCase(AioHTTPTestCase):
 
     async def test_on_startup_hook(self) -> None:
         self.assertTrue(self.on_startup_called)
-
-
-def test_default_loop(event_loop: asyncio.AbstractEventLoop) -> None:
-    assert asyncio.get_event_loop_policy().get_event_loop() is event_loop
 
 
 def test_setup_loop_non_main_thread() -> None:

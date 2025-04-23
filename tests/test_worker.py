@@ -204,16 +204,14 @@ def test__get_valid_log_format_exc(worker: base_worker.GunicornWebWorker) -> Non
 
 
 async def test__run_ok_parent_changed(
-    worker: base_worker.GunicornWebWorker,
-    event_loop: asyncio.AbstractEventLoop,
-    unused_port_socket: socket.socket,
+    worker: base_worker.GunicornWebWorker, unused_port_socket: socket.socket,
 ) -> None:
     worker.ppid = 0
     worker.alive = True
     sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
-    worker.loop = event_loop
+    worker.loop = asyncio.get_running_loop()
     worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.is_ssl = False
@@ -225,16 +223,15 @@ async def test__run_ok_parent_changed(
 
 
 async def test__run_exc(
-    worker: base_worker.GunicornWebWorker,
-    event_loop: asyncio.AbstractEventLoop,
-    unused_port_socket: socket.socket,
+    worker: base_worker.GunicornWebWorker, unused_port_socket: socket.socket
 ) -> None:
+    loop = asyncio.get_running_loop()
     worker.ppid = os.getppid()
     worker.alive = True
     sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
-    worker.loop = event_loop
+    worker.loop = loop
     worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.is_ssl = False
@@ -245,15 +242,14 @@ async def test__run_exc(
         assert waiter is not None
         waiter.set_exception(RuntimeError())
 
-    event_loop.call_later(0.1, raiser)
+    loop.call_later(0.1, raiser)
     await worker._run()
 
     worker.notify.assert_called_with()
 
 
 def test__create_ssl_context_without_certs_and_ciphers(
-    worker: base_worker.GunicornWebWorker,
-    tls_certificate_pem_path: str,
+    worker: base_worker.GunicornWebWorker, tls_certificate_pem_path: str,
 ) -> None:
     worker.cfg.ssl_version = ssl.PROTOCOL_TLS_CLIENT
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
@@ -266,8 +262,7 @@ def test__create_ssl_context_without_certs_and_ciphers(
 
 
 def test__create_ssl_context_with_ciphers(
-    worker: base_worker.GunicornWebWorker,
-    tls_certificate_pem_path: str,
+    worker: base_worker.GunicornWebWorker, tls_certificate_pem_path: str,
 ) -> None:
     worker.cfg.ssl_version = ssl.PROTOCOL_TLS_CLIENT
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
