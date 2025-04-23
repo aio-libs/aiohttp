@@ -254,19 +254,22 @@ async def test_del_with_scheduled_cleanup(key: ConnectionKey) -> None:  # type: 
 @pytest.mark.skipif(
     sys.implementation.name != "cpython", reason="CPython GC is required for the test"
 )
-async def test_del_with_closed_loop(key: ConnectionKey) -> None:  # type: ignore[misc]
+def test_del_with_closed_loop(  # type: ignore[misc]
+    event_loop: asyncio.AbstractEventLoop
+    key: ConnectionKey,
+) -> None:
     async def make_conn() -> aiohttp.BaseConnector:
         return aiohttp.BaseConnector()
 
-    loop = asyncio.get_running_loop()
-    conn = loop.run_until_complete(make_conn())
-    transp = create_mocked_conn(loop)
+    event_loop = asyncio.get_running_loop()
+    conn = event_loop.run_until_complete(make_conn())
+    transp = create_mocked_conn(event_loop)
     conn._conns[key] = deque([(transp, 123)])
 
     conns_impl = conn._conns
     exc_handler = mock.Mock()
-    loop.set_exception_handler(exc_handler)
-    loop.close()
+    event_loop.set_exception_handler(exc_handler)
+    event_loop.close()
 
     with pytest.warns(ResourceWarning):
         del conn

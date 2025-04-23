@@ -1326,11 +1326,10 @@ def test_terminate_with_closed_loop(
     conn: mock.Mock,
 ) -> None:
     req = resp = writer = None
-    loop = asyncio.get_running_loop()
 
     async def go() -> None:
         nonlocal req, resp, writer
-        req = ClientRequest("get", URL("http://python.org"), loop=loop)
+        req = ClientRequest("get", URL("http://python.org"), loop=event_loop)
 
         async def _mock_write_bytes(*args: object, **kwargs: object) -> None:
             # Ensure the task is scheduled
@@ -1347,9 +1346,9 @@ def test_terminate_with_closed_loop(
 
         await asyncio.sleep(0.05)
 
-    loop.run_until_complete(go())
+    event_loop.run_until_complete(go())
 
-    loop.close()
+    event_loop.close()
     assert req is not None
     req.terminate()
     assert req._writer is None
