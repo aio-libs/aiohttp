@@ -255,7 +255,7 @@ async def test_del_with_scheduled_cleanup(key: ConnectionKey) -> None:  # type: 
     sys.implementation.name != "cpython", reason="CPython GC is required for the test"
 )
 def test_del_with_closed_loop(  # type: ignore[misc]
-    event_loop: asyncio.AbstractEventLoop
+    event_loop: asyncio.AbstractEventLoop,
     key: ConnectionKey,
 ) -> None:
     async def make_conn() -> aiohttp.BaseConnector:
