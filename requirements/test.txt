@@ -65,7 +65,7 @@ multidict==6.4.3
     #   yarl
 mypy==1.15.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
-mypy-extensions==1.0.0
+mypy-extensions==1.1.0
     # via mypy
 packaging==25.0
     # via
