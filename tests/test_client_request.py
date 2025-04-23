@@ -954,7 +954,7 @@ async def test_chunked_length(conn: mock.Mock) -> None:
             URL("http://python.org/"),
             headers={"CONTENT-LENGTH": "1000"},
             chunked=True,
-            loop=event_loop,
+            loop=asyncio.get_running_loop(),
         )
 
 
@@ -965,7 +965,7 @@ async def test_chunked_transfer_encoding(conn: mock.Mock) -> None:
             URL("http://python.org/"),
             headers={"TRANSFER-ENCODING": "chunked"},
             chunked=True,
-            loop=event_loop,
+            loop=asyncio.get_running_loop(),
         )
 
 
@@ -1101,14 +1101,14 @@ async def test_data_file(buf: bytearray, conn: mock.Mock) -> None:
 
 
 async def test_data_stream_exc(conn: mock.Mock) -> None:
-    event_loop = asyncio.get_running_loop()
-    fut = event_loop.create_future()
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
 
     async def gen() -> AsyncIterator[bytes]:
         yield b"binary data"
         await fut
 
-    req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=event_loop)
+    req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
     assert req.chunked
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
@@ -1116,7 +1116,7 @@ async def test_data_stream_exc(conn: mock.Mock) -> None:
         await asyncio.sleep(0.01)
         fut.set_exception(ValueError)
 
-    t = event_loop.create_task(throw_exc())
+    t = loop.create_task(throw_exc())
 
     async with await req.send(conn):
         assert req._writer is not None
@@ -1129,15 +1129,15 @@ async def test_data_stream_exc(conn: mock.Mock) -> None:
 
 
 async def test_data_stream_exc_chain(conn: mock.Mock) -> None:
-    event_loop = asyncio.get_running_loop()
-    fut = event_loop.create_future()
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
 
     async def gen() -> AsyncIterator[None]:
         await fut
         assert False
         yield  # type: ignore[unreachable]  # pragma: no cover
 
-    req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=event_loop)
+    req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
 
     inner_exc = ValueError()
 
@@ -1145,7 +1145,7 @@ async def test_data_stream_exc_chain(conn: mock.Mock) -> None:
         await asyncio.sleep(0.01)
         fut.set_exception(inner_exc)
 
-    t = event_loop.create_task(throw_exc())
+    t = loop.create_task(throw_exc())
 
     async with await req.send(conn):
         assert req._writer is not None
@@ -1178,7 +1178,7 @@ async def test_data_stream_continue(buf: bytearray, conn: mock.Mock) -> None:
         assert req._continue is not None
         req._continue.set_result(1)
 
-    t = event_loop.create_task(coro())
+    t = asyncio.get_running_loop().create_task(coro())
 
     resp = await req.send(conn)
     assert req._writer is not None
@@ -1192,9 +1192,9 @@ async def test_data_stream_continue(buf: bytearray, conn: mock.Mock) -> None:
 
 
 async def test_data_continue(buf: bytearray, conn: mock.Mock) -> None:
-    event_loop = asyncio.get_running_loop()
+    loop = asyncio.get_running_loop()
     req = ClientRequest(
-        "POST", URL("http://python.org/"), data=b"data", expect100=True, loop=event_loop
+        "POST", URL("http://python.org/"), data=b"data", expect100=True, loop=loop
     )
 
     async def coro() -> None:
@@ -1202,7 +1202,7 @@ async def test_data_continue(buf: bytearray, conn: mock.Mock) -> None:
         assert req._continue is not None
         req._continue.set_result(1)
 
-    t = event_loop.create_task(coro())
+    t = loop.create_task(coro())
 
     resp = await req.send(conn)
 
@@ -1321,13 +1321,16 @@ async def test_terminate(conn: mock.Mock) -> None:
     resp.close()
 
 
-def test_terminate_with_closed_loop(conn: mock.Mock) -> None:
+def test_terminate_with_closed_loop(
+    event_loop: asyncio.AbstractEventLoop,
+    conn: mock.Mock,
+) -> None:
     req = resp = writer = None
-    event_loop = asyncio.get_running_loop()
+    loop = asyncio.get_running_loop()
 
     async def go() -> None:
         nonlocal req, resp, writer
-        req = ClientRequest("get", URL("http://python.org"), loop=event_loop)
+        req = ClientRequest("get", URL("http://python.org"), loop=loop)
 
         async def _mock_write_bytes(*args: object, **kwargs: object) -> None:
             # Ensure the task is scheduled
@@ -1344,9 +1347,9 @@ def test_terminate_with_closed_loop(conn: mock.Mock) -> None:
 
         await asyncio.sleep(0.05)
 
-    event_loop.run_until_complete(go())
+    loop.run_until_complete(go())
 
-    event_loop.close()
+    loop.close()
     assert req is not None
     req.terminate()
     assert req._writer is None
@@ -1356,7 +1359,7 @@ def test_terminate_with_closed_loop(conn: mock.Mock) -> None:
     resp.close()
 
 
-def test_terminate_without_writer() -> None:
+async def test_terminate_without_writer() -> None:
     req = ClientRequest(
         "get", URL("http://python.org"), loop=asyncio.get_running_loop()
     )
@@ -1437,7 +1440,7 @@ def test_insecure_fingerprint_sha1() -> None:
         Fingerprint(hashlib.sha1(b"foo").digest())
 
 
-def test_loose_cookies_types() -> None:
+async def test_loose_cookies_types() -> None:
     req = ClientRequest(
         "get", URL("http://python.org"), loop=asyncio.get_running_loop()
     )

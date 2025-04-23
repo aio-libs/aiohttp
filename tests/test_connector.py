@@ -157,7 +157,7 @@ async def test_connection_del() -> None:
     exc_handler.assert_called_with(loop, msg)
 
 
-def test_connection_del_loop_debug() -> None:
+async def test_connection_del_loop_debug() -> None:
     loop = asyncio.get_running_loop()
     connector = mock.Mock()
     key = mock.Mock()
@@ -179,7 +179,7 @@ def test_connection_del_loop_debug() -> None:
     exc_handler.assert_called_with(loop, msg)
 
 
-def test_connection_del_loop_closed() -> None:
+async def test_connection_del_loop_closed() -> None:
     loop = asyncio.get_running_loop()
     connector = mock.Mock()
     key = mock.Mock()
@@ -254,7 +254,7 @@ async def test_del_with_scheduled_cleanup(key: ConnectionKey) -> None:  # type: 
 @pytest.mark.skipif(
     sys.implementation.name != "cpython", reason="CPython GC is required for the test"
 )
-def test_del_with_closed_loop(key: ConnectionKey) -> None:  # type: ignore[misc]
+async def test_del_with_closed_loop(key: ConnectionKey) -> None:  # type: ignore[misc]
     async def make_conn() -> aiohttp.BaseConnector:
         return aiohttp.BaseConnector()
 
@@ -1351,6 +1351,7 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread() -> None:
 async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
     dns_response: Callable[[], Awaitable[List[str]]],
 ) -> None:
+    loop = asyncio.get_running_loop()
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
