@@ -89,10 +89,9 @@ def test_data_received_after_close(event_loop: asyncio.AbstractEventLoop) -> Non
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-def test_multiple_responses_one_byte_at_a_time(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
-    proto = ResponseHandler(loop=event_loop)
+async def test_multiple_responses_one_byte_at_a_time() -> None:
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
     proto.connection_made(mock.Mock())
     conn = mock.Mock(protocol=proto)
     proto.set_response_params(read_until_eof=True)
@@ -116,17 +115,16 @@ def test_multiple_responses_one_byte_at_a_time(
                 timer=TimerNoop(),
                 request_info=mock.Mock(),
                 traces=[],
-                loop=event_loop,
+                loop=loop,
                 session=mock.Mock(),
             )
             await response.start(conn)
             await response.read() == payload
 
 
-def test_unexpected_exception_during_data_received(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
-    proto = ResponseHandler(loop=event_loop)
+async def test_unexpected_exception_during_data_received() -> None:
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
 
     class PatchableHttpResponseParser(http.HttpResponseParser):
         """Subclass of HttpResponseParser to make it patchable."""
@@ -146,7 +144,7 @@ def test_unexpected_exception_during_data_received(
             timer=TimerNoop(),
             request_info=mock.Mock(),
             traces=[],
-            loop=event_loop,
+            loop=loop,
             session=mock.Mock(),
         )
         await response.start(conn)
@@ -157,10 +155,9 @@ def test_unexpected_exception_during_data_received(
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-def test_client_protocol_readuntil_eof(
-    event_loop: asyncio.AbstractEventLoop,
-) -> None:
-    proto = ResponseHandler(loop=event_loop)
+async def test_client_protocol_readuntil_eof() -> None:
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
     conn = mock.Mock()
@@ -176,7 +173,7 @@ def test_client_protocol_readuntil_eof(
         timer=TimerNoop(),
         request_info=mock.Mock(),
         traces=[],
-        loop=event_loop,
+        loop=loop,
         session=mock.Mock(),
     )
     proto.set_response_params(read_until_eof=True)
