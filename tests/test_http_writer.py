@@ -754,7 +754,9 @@ async def test_write_calls_callback(
     transport: asyncio.Transport,
 ) -> None:
     on_chunk_sent = make_mocked_coro()
-    msg = http.StreamWriter(protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent)
+    msg = http.StreamWriter(
+        protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent
+    )
     chunk = b"1"
     await msg.write(chunk)
     assert on_chunk_sent.called
@@ -766,7 +768,9 @@ async def test_write_eof_calls_callback(
     transport: asyncio.Transport,
 ) -> None:
     on_chunk_sent = make_mocked_coro()
-    msg = http.StreamWriter(protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent)
+    msg = http.StreamWriter(
+        protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent
+    )
     chunk = b"1"
     await msg.write_eof(chunk=chunk)
     assert on_chunk_sent.called

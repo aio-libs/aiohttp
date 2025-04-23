@@ -599,7 +599,7 @@ async def test_client_close_handshake(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_server_close_handshake_server_eats_client_messages(
-    aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient,
 ) -> None:
     closed = asyncio.get_running_loop().create_future()
 
@@ -794,7 +794,7 @@ async def test_heartbeat_failure_ends_receive(aiohttp_client: AiohttpClient) -> 
 
 
 async def test_heartbeat_no_pong_send_many_messages(
-    aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient,
 ) -> None:
     """Test no pong after sending many messages."""
 
@@ -823,7 +823,7 @@ async def test_heartbeat_no_pong_send_many_messages(
 
 
 async def test_heartbeat_no_pong_receive_many_messages(
-    aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient,
 ) -> None:
     """Test no pong after receiving many messages."""
 
@@ -1006,7 +1006,7 @@ async def test_bug3380(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_receive_being_cancelled_keeps_connection_open(
-    aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient,
 ) -> None:
     closed = asyncio.get_running_loop().create_future()
 
@@ -1051,7 +1051,7 @@ async def test_receive_being_cancelled_keeps_connection_open(
 
 
 async def test_receive_timeout_keeps_connection_open(
-    aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient,
 ) -> None:
     loop = asyncio.get_running_loop()
     closed = loop.create_future()

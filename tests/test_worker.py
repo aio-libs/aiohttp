@@ -204,7 +204,8 @@ def test__get_valid_log_format_exc(worker: base_worker.GunicornWebWorker) -> Non
 
 
 async def test__run_ok_parent_changed(
-    worker: base_worker.GunicornWebWorker, unused_port_socket: socket.socket,
+    worker: base_worker.GunicornWebWorker,
+    unused_port_socket: socket.socket,
 ) -> None:
     worker.ppid = 0
     worker.alive = True
@@ -249,7 +250,8 @@ async def test__run_exc(
 
 
 def test__create_ssl_context_without_certs_and_ciphers(
-    worker: base_worker.GunicornWebWorker, tls_certificate_pem_path: str,
+    worker: base_worker.GunicornWebWorker,
+    tls_certificate_pem_path: str,
 ) -> None:
     worker.cfg.ssl_version = ssl.PROTOCOL_TLS_CLIENT
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
@@ -262,7 +264,8 @@ def test__create_ssl_context_without_certs_and_ciphers(
 
 
 def test__create_ssl_context_with_ciphers(
-    worker: base_worker.GunicornWebWorker, tls_certificate_pem_path: str,
+    worker: base_worker.GunicornWebWorker,
+    tls_certificate_pem_path: str,
 ) -> None:
     worker.cfg.ssl_version = ssl.PROTOCOL_TLS_CLIENT
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL

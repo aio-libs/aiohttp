@@ -646,7 +646,9 @@ async def test_ws_connect_close_resp_on_err(ws_key: str, key_data: bytes) -> Non
             resp.close.assert_called_with()
 
 
-async def test_ws_connect_non_overlapped_protocols(ws_key: str, key_data: bytes) -> None:
+async def test_ws_connect_non_overlapped_protocols(
+    ws_key: str, key_data: bytes
+) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {

@@ -929,7 +929,7 @@ async def test_heartbeat_no_pong_concurrent_receive(
 
 
 async def test_close_websocket_while_ping_inflight(
-    aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient,
 ) -> None:
     """Test closing the websocket while a ping is in-flight."""
     ping_received = False

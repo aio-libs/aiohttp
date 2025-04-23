@@ -1180,7 +1180,7 @@ async def test_http_response_parser_bad_chunked_lax(
 
 @pytest.mark.dev_mode
 async def test_http_response_parser_bad_chunked_strict_py(
-    protocol: BaseProtocol
+    protocol: BaseProtocol,
 ) -> None:
     response = HttpResponseParserPy(
         protocol,
@@ -1202,7 +1202,7 @@ async def test_http_response_parser_bad_chunked_strict_py(
     reason="C based HTTP parser not available",
 )
 async def test_http_response_parser_bad_chunked_strict_c(
-    protocol: BaseProtocol
+    protocol: BaseProtocol,
 ) -> None:
     response = HttpResponseParserC(
         protocol,
@@ -1534,7 +1534,7 @@ async def test_parse_chunked_payload_split_chunks(response: HttpResponseParser) 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 async def test_parse_chunked_payload_with_lf_in_extensions_c_parser(
-    protocol: BaseProtocol
+    protocol: BaseProtocol,
 ) -> None:
     """Test the C-parser with a chunked payload that has a LF in the chunk extensions."""
     # The C parser will raise a BadHttpMessage from feed_data
@@ -1556,7 +1556,7 @@ async def test_parse_chunked_payload_with_lf_in_extensions_c_parser(
 
 
 async def test_parse_chunked_payload_with_lf_in_extensions_py_parser(
-    protocol: BaseProtocol
+    protocol: BaseProtocol,
 ) -> None:
     """Test the py-parser with a chunked payload that has a LF in the chunk extensions."""
     # The py parser will not raise the BadHttpMessage directly, but instead
