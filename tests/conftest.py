@@ -234,8 +234,6 @@ def unix_sockname(
 
 @pytest.fixture
 def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    pytest.skip("testing")
-    return
     policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore[attr-defined]
     asyncio.set_event_loop_policy(policy)
 
@@ -253,8 +251,6 @@ def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 @pytest.fixture
 def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    pytest.skip("testing")
-    return
     policy = uvloop.EventLoopPolicy()
     asyncio.set_event_loop_policy(policy)
 
