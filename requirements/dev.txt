@@ -290,7 +290,7 @@ zlib-ng==0.5.1
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.0.1
     # via pip-tools
-setuptools==79.0.0
+setuptools==79.0.1
     # via
     #   incremental
     #   pip-tools
