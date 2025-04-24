@@ -3387,7 +3387,8 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
 
 
 async def test_tcp_connector_uses_provided_local_addr(
-    aiohttp_server: AiohttpServer, unused_tcp_port: int,
+    aiohttp_server: AiohttpServer,
+    unused_tcp_port: int,
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
