@@ -130,7 +130,7 @@ mypy==1.15.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-mypy-extensions==1.0.0
+mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.9.1
     # via pre-commit
