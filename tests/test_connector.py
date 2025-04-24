@@ -1930,7 +1930,6 @@ async def test_cleanup(key: ConnectionKey) -> None:
 async def test_cleanup_close_ssl_transport(  # type: ignore[misc]
     ssl_key: ConnectionKey,
 ) -> None:
-    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(asyncio.get_running_loop())
     transport = proto.transport
     testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
