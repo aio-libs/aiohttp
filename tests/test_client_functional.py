@@ -49,7 +49,7 @@ from aiohttp.client_exceptions import (
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
-from aiohttp.test_utils import TestClient, TestServer, unused_port
+from aiohttp.test_utils import TestClient, TestServer
 from aiohttp.typedefs import Handler, Query
 
 
@@ -253,7 +253,7 @@ async def test_keepalive_server_force_close_connection(
     assert 0 == len(client._session.connector._conns)
 
 
-async def test_keepalive_timeout_async_sleep() -> None:
+async def test_keepalive_timeout_async_sleep(unused_tcp_port: int) -> None:
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()
         assert b"" == body
@@ -265,8 +265,7 @@ async def test_keepalive_timeout_async_sleep() -> None:
     runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
     await runner.setup()
 
-    port = unused_port()
-    site = web.TCPSite(runner, host="localhost", port=port)
+    site = web.TCPSite(runner, host="localhost", port=unused_tcp_port)
     await site.start()
 
     try:
@@ -285,7 +284,7 @@ async def test_keepalive_timeout_async_sleep() -> None:
     sys.version_info[:2] == (3, 11),
     reason="https://github.com/pytest-dev/pytest/issues/10763",
 )
-async def test_keepalive_timeout_sync_sleep() -> None:
+async def test_keepalive_timeout_sync_sleep(unused_tcp_port: int) -> None:
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()
         assert b"" == body
@@ -297,8 +296,7 @@ async def test_keepalive_timeout_sync_sleep() -> None:
     runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
     await runner.setup()
 
-    port = unused_port()
-    site = web.TCPSite(runner, host="localhost", port=port)
+    site = web.TCPSite(runner, host="localhost", port=unused_tcp_port)
     await site.start()
 
     try:
@@ -3620,7 +3618,7 @@ async def test_dont_close_explicit_connector(aiohttp_client: AiohttpClient) -> N
     assert 1 == len(client.session.connector._conns)
 
 
-async def test_server_close_keepalive_connection() -> None:
+async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
     loop = asyncio.get_event_loop()
 
     class Proto(asyncio.Protocol):
@@ -3645,7 +3643,7 @@ async def test_server_close_keepalive_connection() -> None:
         def connection_lost(self, exc: Optional[BaseException]) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_port())
+    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
 
     addr = server.sockets[0].getsockname()
 
@@ -3663,7 +3661,7 @@ async def test_server_close_keepalive_connection() -> None:
     await server.wait_closed()
 
 
-async def test_handle_keepalive_on_closed_connection() -> None:
+async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> None:
     loop = asyncio.get_event_loop()
 
     class Proto(asyncio.Protocol):
@@ -3682,7 +3680,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
         def connection_lost(self, exc: Optional[BaseException]) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_port())
+    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
 
     addr = server.sockets[0].getsockname()
 

@@ -49,7 +49,7 @@ from aiohttp.connector import (
     TCPConnector,
     _DNSCacheTable,
 )
-from aiohttp.test_utils import make_mocked_coro, unused_port
+from aiohttp.test_utils import make_mocked_coro
 from aiohttp.tracing import Trace
 
 
@@ -3221,7 +3221,7 @@ async def test_unix_connector_permission() -> None:
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
 async def test_named_pipe_connector_wrong_loop(
-    selector_event_loop: asyncio.AbstractEventLoop, pipe_name: str
+    selector_loop: asyncio.AbstractEventLoop, pipe_name: str
 ) -> None:
     with pytest.raises(RuntimeError):
         aiohttp.NamedPipeConnector(pipe_name)
@@ -3264,13 +3264,13 @@ async def test_default_use_dns_cache() -> None:
     await conn.close()
 
 
-async def test_resolver_not_called_with_address_is_ip() -> None:
+async def test_resolver_not_called_with_address_is_ip(unused_tcp_port: int) -> None:
     resolver = mock.MagicMock()
     connector = aiohttp.TCPConnector(resolver=resolver)
 
     req = ClientRequest(
         "GET",
-        URL(f"http://127.0.0.1:{unused_port()}"),
+        URL(f"http://127.0.0.1:{unused_tcp_port}"),
         loop=asyncio.get_running_loop(),
         response_class=mock.Mock(),
     )
@@ -3284,7 +3284,7 @@ async def test_resolver_not_called_with_address_is_ip() -> None:
 
 
 async def test_tcp_connector_raise_connector_ssl_error(
-    aiohttp_server: AiohttpServer, ssl_ctx: ssl.SSLContext
+    aiohttp_server: AiohttpServer, ssl_ctx: ssl.SSLContext, unused_tcp_port: int
 ) -> None:
     async def handler(request: web.Request) -> NoReturn:
         assert False
@@ -3294,8 +3294,7 @@ async def test_tcp_connector_raise_connector_ssl_error(
 
     srv = await aiohttp_server(app, ssl=ssl_ctx)
 
-    port = unused_port()
-    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
+    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", unused_tcp_port))
 
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
@@ -3329,6 +3328,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     ssl_ctx: ssl.SSLContext,
     client_ssl_ctx: ssl.SSLContext,
     host: str,
+    unused_tcp_port: int,
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -3337,8 +3337,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     app.router.add_get("/", handler)
 
     srv = await aiohttp_server(app, ssl=ssl_ctx)
-    port = unused_port()
-    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
+    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", unused_tcp_port))
 
     # resolving something.localhost with the real DNS resolver does not work on macOS, so we have a stub.
     async def _resolve_host(
@@ -3388,7 +3387,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
 
 
 async def test_tcp_connector_uses_provided_local_addr(
-    aiohttp_server: AiohttpServer,
+    aiohttp_server: AiohttpServer, unused_tcp_port: int,
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -3397,8 +3396,7 @@ async def test_tcp_connector_uses_provided_local_addr(
     app.router.add_get("/", handler)
     srv = await aiohttp_server(app)
 
-    port = unused_port()
-    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
+    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", unused_tcp_port))
 
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")

@@ -20,7 +20,7 @@ from blockbuster import blockbuster_ctx
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
-from aiohttp.test_utils import get_unused_port_socket, loop_context
+from aiohttp.test_utils import get_unused_port_socket
 
 try:
     import trustme
@@ -235,9 +235,16 @@ def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
     policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore[attr-defined]
     asyncio.set_event_loop_policy(policy)
 
-    with loop_context(policy.new_event_loop) as _loop:
-        asyncio.set_event_loop(_loop)
-        yield _loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+    if not loop.is_closed():
+        loop.call_soon(loop.stop)
+        loop.run_forever()
+        loop.close()
+
+    gc.collect()
+    asyncio.set_event_loop(None)
 
 
 @pytest.fixture
@@ -245,9 +252,16 @@ def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
     policy = uvloop.EventLoopPolicy()
     asyncio.set_event_loop_policy(policy)
 
-    with loop_context(policy.new_event_loop) as _loop:
-        asyncio.set_event_loop(_loop)
-        yield _loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+    if not loop.is_closed():
+        loop.call_soon(loop.stop)
+        loop.run_forever()
+        loop.close()
+
+    gc.collect()
+    asyncio.set_event_loop(None)
 
 
 @pytest.fixture

@@ -98,13 +98,6 @@ def get_port_socket(
     return s
 
 
-def unused_port() -> int:
-    """Return a port that is unused on the current host."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return cast(int, s.getsockname()[1])
-
-
 class BaseTestServer(ABC, Generic[_Request]):
     __test__ = False
 
@@ -531,49 +524,6 @@ class AioHTTPTestCase(IsolatedAsyncioTestCase, ABC):
     async def get_client(self, server: TestServer) -> TestClient[Request, Application]:
         """Return a TestClient instance."""
         return TestClient(server)
-
-
-_LOOP_FACTORY = Callable[[], asyncio.AbstractEventLoop]
-
-
-@contextlib.contextmanager
-def loop_context(
-    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop, fast: bool = False
-) -> Iterator[asyncio.AbstractEventLoop]:
-    """A contextmanager that creates an event_loop, for test purposes.
-
-    Handles the creation and cleanup of a test loop.
-    """
-    loop = setup_test_loop(loop_factory)
-    yield loop
-    teardown_test_loop(loop, fast=fast)
-
-
-def setup_test_loop(
-    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop,
-) -> asyncio.AbstractEventLoop:
-    """Create and return an asyncio.BaseEventLoop instance.
-
-    The caller should also call teardown_test_loop,
-    once they are done with the loop.
-    """
-    loop = loop_factory()
-    asyncio.set_event_loop(loop)
-    return loop
-
-
-def teardown_test_loop(loop: asyncio.AbstractEventLoop, fast: bool = False) -> None:
-    """Teardown and cleanup an event_loop created by setup_test_loop."""
-    closed = loop.is_closed()
-    if not closed:
-        loop.call_soon(loop.stop)
-        loop.run_forever()
-        loop.close()
-
-    if not fast:
-        gc.collect()
-
-    asyncio.set_event_loop(None)
 
 
 def _create_app_mock() -> mock.MagicMock:
