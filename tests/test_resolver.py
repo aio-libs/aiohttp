@@ -314,9 +314,13 @@ async def test_close_for_async_resolver() -> None:
 
 
 def test_default_loop_for_threaded_resolver() -> None:
+    async def create_resolver() -> ThreadedResolver:
+        """Create resolver in async context."""
+        return ThreadedResolver()
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    resolver = ThreadedResolver()
+    resolver = loop.run_until_complete(create_resolver())
     assert resolver._loop is loop
     loop.close()
 

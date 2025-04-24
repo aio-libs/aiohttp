@@ -179,16 +179,17 @@ async def test_connection_del_loop_debug() -> None:
     exc_handler.assert_called_with(loop, msg)
 
 
-async def test_connection_del_loop_closed() -> None:
-    loop = asyncio.get_running_loop()
+def test_connection_del_loop_closed(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     connector = mock.Mock()
     key = mock.Mock()
     protocol = mock.Mock()
-    loop.set_debug(True)
-    conn = Connection(connector, key, protocol, loop=loop)
+    event_loop.set_debug(True)
+    conn = Connection(connector, key, protocol, loop=event_loop)
     exc_handler = mock.Mock()
-    loop.set_exception_handler(exc_handler)
-    loop.close()
+    event_loop.set_exception_handler(exc_handler)
+    event_loop.close()
 
     with pytest.warns(ResourceWarning):
         del conn
@@ -261,7 +262,6 @@ def test_del_with_closed_loop(  # type: ignore[misc]
     async def make_conn() -> aiohttp.BaseConnector:
         return aiohttp.BaseConnector()
 
-    event_loop = asyncio.get_running_loop()
     conn = event_loop.run_until_complete(make_conn())
     transp = create_mocked_conn(event_loop)
     conn._conns[key] = deque([(transp, 123)])
