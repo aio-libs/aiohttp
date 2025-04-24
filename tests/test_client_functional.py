@@ -270,11 +270,11 @@ async def test_keepalive_timeout_async_sleep(unused_tcp_port: int) -> None:
 
     try:
         async with aiohttp.ClientSession() as sess:
-            resp1 = await sess.get(f"http://localhost:{port}/")
+            resp1 = await sess.get(f"http://localhost:{unused_tcp_port}/")
             await resp1.read()
             # wait for server keepalive_timeout
             await asyncio.sleep(0.01)
-            resp2 = await sess.get(f"http://localhost:{port}/")
+            resp2 = await sess.get(f"http://localhost:{unused_tcp_port}/")
             await resp2.read()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
@@ -301,12 +301,12 @@ async def test_keepalive_timeout_sync_sleep(unused_tcp_port: int) -> None:
 
     try:
         async with aiohttp.ClientSession() as sess:
-            resp1 = await sess.get(f"http://localhost:{port}/")
+            resp1 = await sess.get(f"http://localhost:{unused_tcp_port}/")
             await resp1.read()
             # wait for server keepalive_timeout
             # time.sleep is a more challenging scenario than asyncio.sleep
             time.sleep(0.01)
-            resp2 = await sess.get(f"http://localhost:{port}/")
+            resp2 = await sess.get(f"http://localhost:{unused_tcp_port}/")
             await resp2.read()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())

@@ -381,6 +381,7 @@ async def test_custom_port(
     [("127.0.0.1", "127.0.0.1"), ("localhost", "127.0.0.1"), ("::1", "::1")],
 )
 async def test_test_server_hostnames(hostname: str, expected_host: str) -> None:
+    loop = asyncio.get_running_loop()
     app = _create_example_app()
     server = TestServer(app, host=hostname, loop=loop)
     async with server:
@@ -392,6 +393,7 @@ async def test_test_server_hostnames(hostname: str, expected_host: str) -> None:
 async def test_base_test_server_socket_factory(
     test_server_cls: type, app: web.Application
 ) -> None:
+    loop = asyncio.get_running_loop()
     factory_called = False
 
     def factory(host: str, port: int, family: socket.AddressFamily) -> socket.socket:
