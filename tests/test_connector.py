@@ -3407,7 +3407,8 @@ async def test_tcp_connector_uses_provided_local_addr(
 
     first_conn = next(iter(conn._conns.values()))[0][0]
     assert first_conn.transport is not None
-    assert first_conn.transport.get_extra_info("sockname") == ("127.0.0.1", port)
+    sockname = first_conn.transport.get_extra_info("sockname")
+    assert sockname == ("127.0.0.1", unused_tcp_port)
     r.close()
     await session.close()
     await conn.close()
