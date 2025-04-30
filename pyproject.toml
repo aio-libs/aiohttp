@@ -46,7 +46,7 @@ version = {attr = "aiohttp.__version__"}
 include = ["aiohttp*"]
 
 [tool.setuptools.exclude-package-data]
-"*" = ["*.c", "*.h"]
+"*" = ["*.c", "*.h", "*.hash"]
 
 [tool.towncrier]
   package = "aiohttp"
