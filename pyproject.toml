@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools >= 70.0.0"]
+requires = ["setuptools >= 67.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -44,10 +44,6 @@ version = {attr = "aiohttp.__version__"}
 
 [tool.setuptools.packages.find]
 include = ["aiohttp*"]
-exclude = ["examples"]
-
-[tool.setuptools.package-data]
-"*" = ["*.so"]
 
 [tool.setuptools.exclude-package-data]
 "*" = ["*.c", "*.h"]
