@@ -2,7 +2,7 @@
 import array
 import asyncio
 import zlib
-from typing import Any, Generator, Iterable
+from typing import Any, Generator, Iterable, Union
 from unittest import mock
 
 import pytest
@@ -10,6 +10,7 @@ from multidict import CIMultiDict
 
 from aiohttp import ClientConnectionResetError, hdrs, http
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.compression_utils import ZLibBackend
 from aiohttp.http_writer import _serialize_headers
 from aiohttp.test_utils import make_mocked_coro
 
@@ -59,6 +60,26 @@ def protocol(loop: asyncio.AbstractEventLoop, transport: asyncio.Transport) -> A
     return mock.create_autospec(
         BaseProtocol, spec_set=True, instance=True, transport=transport
     )
+
+
+def decompress(data: bytes) -> bytes:
+    d = ZLibBackend.decompressobj()
+    return d.decompress(data)
+
+
+def decode_chunked(chunked: Union[bytes, bytearray]) -> bytes:
+    i = 0
+    out = b""
+    while i < len(chunked):
+        j = chunked.find(b"\r\n", i)
+        assert j != -1, "Malformed chunk"
+        size = int(chunked[i:j], 16)
+        if size == 0:
+            break
+        i = j + 2
+        out += chunked[i : i + size]
+        i += size + 2  # skip \r\n after the chunk
+    return out
 
 
 def test_payloadwriter_properties(
@@ -131,6 +152,7 @@ async def test_write_payload_length(
 
 
 @pytest.mark.usefixtures("disable_writelines")
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_large_payload_deflate_compression_data_in_eof(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -156,7 +178,42 @@ async def test_write_large_payload_deflate_compression_data_in_eof(
     assert zlib.decompress(content) == (b"data" * 4096) + payload
 
 
+@pytest.mark.usefixtures("disable_writelines")
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_large_payload_deflate_compression_data_in_eof_all_zlib(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+
+    await msg.write(b"data" * 4096)
+    # Behavior depends on zlib backend, isal compress() returns b'' initially
+    # and the entire compressed bytes at flush() for this data
+    backend_to_write_called = {
+        "isal.isal_zlib": False,
+        "zlib": True,
+        "zlib_ng.zlib_ng": True,
+    }
+    assert transport.write.called == backend_to_write_called[ZLibBackend.name]  # type: ignore[attr-defined]
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    transport.write.reset_mock()  # type: ignore[attr-defined]
+
+    # This payload compresses to 20447 bytes
+    payload = b"".join(
+        [bytes((*range(0, i), *range(i, 0, -1))) for i in range(255) for _ in range(64)]
+    )
+    await msg.write_eof(payload)
+    chunks.extend([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
+
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert ZLibBackend.decompress(content) == (b"data" * 4096) + payload
+
+
 @pytest.mark.usefixtures("enable_writelines")
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_large_payload_deflate_compression_data_in_eof_writelines(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -181,6 +238,43 @@ async def test_write_large_payload_deflate_compression_data_in_eof_writelines(
     chunks.extend(transport.writelines.mock_calls[0][1][0])  # type: ignore[attr-defined]
     content = b"".join(chunks)
     assert zlib.decompress(content) == (b"data" * 4096) + payload
+
+
+@pytest.mark.usefixtures("enable_writelines")
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_large_payload_deflate_compression_data_in_eof_writelines_all_zlib(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+
+    await msg.write(b"data" * 4096)
+    # Behavior depends on zlib backend, isal compress() returns b'' initially
+    # and the entire compressed bytes at flush() for this data
+    backend_to_write_called = {
+        "isal.isal_zlib": False,
+        "zlib": True,
+        "zlib_ng.zlib_ng": True,
+    }
+    assert transport.write.called == backend_to_write_called[ZLibBackend.name]  # type: ignore[attr-defined]
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    transport.write.reset_mock()  # type: ignore[attr-defined]
+    assert not transport.writelines.called  # type: ignore[attr-defined]
+
+    # This payload compresses to 20447 bytes
+    payload = b"".join(
+        [bytes((*range(0, i), *range(i, 0, -1))) for i in range(255) for _ in range(64)]
+    )
+    await msg.write_eof(payload)
+    assert transport.writelines.called != transport.write.called  # type: ignore[attr-defined]
+    if transport.writelines.called:  # type: ignore[attr-defined]
+        chunks.extend(transport.writelines.mock_calls[0][1][0])  # type: ignore[attr-defined]
+    else:  # transport.write.called:  # type: ignore[attr-defined]
+        chunks.extend([c[1][0] for c in list(transport.write.mock_calls)])  # type: ignore[attr-defined]
+    content = b"".join(chunks)
+    assert ZLibBackend.decompress(content) == (b"data" * 4096) + payload
 
 
 async def test_write_payload_chunked_filter(
@@ -219,6 +313,7 @@ async def test_write_payload_chunked_filter_multiple_chunks(
     )
 
 
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_payload_deflate_compression(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -236,6 +331,24 @@ async def test_write_payload_deflate_compression(
     assert COMPRESSED == content.split(b"\r\n\r\n", 1)[-1]
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_payload_deflate_compression_all_zlib(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    await msg.write(b"data")
+    await msg.write_eof()
+
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert b"data" == decompress(content)
+
+
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_payload_deflate_compression_chunked(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -254,8 +367,27 @@ async def test_write_payload_deflate_compression_chunked(
     assert content == expected
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_payload_deflate_compression_chunked_all_zlib(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    await msg.write_eof()
+
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert b"data" == decompress(decode_chunked(content))
+
+
 @pytest.mark.usefixtures("enable_writelines")
 @pytest.mark.usefixtures("force_writelines_small_payloads")
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_payload_deflate_compression_chunked_writelines(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -274,6 +406,27 @@ async def test_write_payload_deflate_compression_chunked_writelines(
     assert content == expected
 
 
+@pytest.mark.usefixtures("enable_writelines")
+@pytest.mark.usefixtures("force_writelines_small_payloads")
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_payload_deflate_compression_chunked_writelines_all_zlib(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    await msg.write_eof()
+
+    chunks = [b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert b"data" == decompress(decode_chunked(content))
+
+
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_payload_deflate_and_chunked(
     buf: bytearray,
     protocol: BaseProtocol,
@@ -292,6 +445,25 @@ async def test_write_payload_deflate_and_chunked(
     assert thing == buf
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_payload_deflate_and_chunked_all_zlib(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+
+    await msg.write(b"da")
+    await msg.write(b"ta")
+    await msg.write_eof()
+
+    assert b"data" == decompress(decode_chunked(buf))
+
+
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_payload_deflate_compression_chunked_data_in_eof(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -310,8 +482,27 @@ async def test_write_payload_deflate_compression_chunked_data_in_eof(
     assert content == expected
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_payload_deflate_compression_chunked_data_in_eof_all_zlib(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    await msg.write_eof(b"end")
+
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert b"dataend" == decompress(decode_chunked(content))
+
+
 @pytest.mark.usefixtures("enable_writelines")
 @pytest.mark.usefixtures("force_writelines_small_payloads")
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_payload_deflate_compression_chunked_data_in_eof_writelines(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -330,6 +521,27 @@ async def test_write_payload_deflate_compression_chunked_data_in_eof_writelines(
     assert content == expected
 
 
+@pytest.mark.usefixtures("enable_writelines")
+@pytest.mark.usefixtures("force_writelines_small_payloads")
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_payload_deflate_compression_chunked_data_in_eof_writelines_all_zlib(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    await msg.write_eof(b"end")
+
+    chunks = [b"".join(c[1][0]) for c in list(transport.writelines.mock_calls)]  # type: ignore[attr-defined]
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert b"dataend" == decompress(decode_chunked(content))
+
+
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -356,8 +568,36 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof(
     assert zlib.decompress(content) == (b"data" * 4096) + payload
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_large_payload_deflate_compression_chunked_data_in_eof_all_zlib(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+
+    await msg.write(b"data" * 4096)
+    # This payload compresses to 1111 bytes
+    payload = b"".join([bytes((*range(0, i), *range(i, 0, -1))) for i in range(255)])
+    await msg.write_eof(payload)
+
+    compressed = []
+    chunks = [c[1][0] for c in list(transport.write.mock_calls)]  # type: ignore[attr-defined]
+    chunked_body = b"".join(chunks)
+    split_body = chunked_body.split(b"\r\n")
+    while split_body:
+        if split_body.pop(0):
+            compressed.append(split_body.pop(0))
+
+    content = b"".join(compressed)
+    assert ZLibBackend.decompress(content) == (b"data" * 4096) + payload
+
+
 @pytest.mark.usefixtures("enable_writelines")
 @pytest.mark.usefixtures("force_writelines_small_payloads")
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_large_payload_deflate_compression_chunked_data_in_eof_writelines(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -384,7 +624,56 @@ async def test_write_large_payload_deflate_compression_chunked_data_in_eof_write
     assert zlib.decompress(content) == (b"data" * 4096) + payload
 
 
+@pytest.mark.usefixtures("enable_writelines")
+@pytest.mark.usefixtures("force_writelines_small_payloads")
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_large_payload_deflate_compression_chunked_data_in_eof_writelines_all_zlib(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+
+    await msg.write(b"data" * 4096)
+    # This payload compresses to 1111 bytes
+    payload = b"".join([bytes((*range(0, i), *range(i, 0, -1))) for i in range(255)])
+    await msg.write_eof(payload)
+    assert not transport.write.called  # type: ignore[attr-defined]
+
+    chunks = []
+    for write_lines_call in transport.writelines.mock_calls:  # type: ignore[attr-defined]
+        chunked_payload = list(write_lines_call[1][0])[1:]
+        chunked_payload.pop()
+        chunks.extend(chunked_payload)
+
+    assert all(chunks)
+    content = b"".join(chunks)
+    assert ZLibBackend.decompress(content) == (b"data" * 4096) + payload
+
+
+@pytest.mark.internal  # Used for performance benchmarking
 async def test_write_payload_deflate_compression_chunked_connection_lost(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    with (
+        pytest.raises(
+            ClientConnectionResetError, match="Cannot write to closing transport"
+        ),
+        mock.patch.object(transport, "is_closing", return_value=True),
+    ):
+        await msg.write_eof(b"end")
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_payload_deflate_compression_chunked_connection_lost_all_zlib(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
     loop: asyncio.AbstractEventLoop,

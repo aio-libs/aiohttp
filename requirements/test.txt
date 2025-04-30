@@ -39,7 +39,7 @@ forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.1
     # via -r requirements/test.in
-frozenlist==1.5.0
+frozenlist==1.6.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
@@ -51,6 +51,8 @@ idna==3.6
     #   yarl
 iniconfig==2.1.0
     # via pytest
+isal==1.7.2
+    # via -r requirements/test.in
 markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
@@ -61,9 +63,9 @@ multidict==6.4.3
     #   yarl
 mypy==1.15.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
-mypy-extensions==1.0.0
+mypy-extensions==1.1.0
     # via mypy
-packaging==24.2
+packaging==25.0
     # via
     #   gunicorn
     #   pytest
@@ -75,7 +77,7 @@ propcache==0.3.1
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test.in
-pycares==4.6.0
+pycares==4.6.1
     # via aiodns
 pycparser==2.22
     # via cffi
@@ -132,5 +134,7 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     # via -r requirements/base.in
 wait-for-it==2.3.0
     # via -r requirements/test.in
-yarl==1.19.0
+yarl==1.20.0
     # via -r requirements/runtime-deps.in
+zlib-ng==0.5.1
+    # via -r requirements/test.in

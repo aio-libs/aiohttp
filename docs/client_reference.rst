@@ -2145,6 +2145,30 @@ Utilities
 
    .. versionadded:: 3.0
 
+.. function:: set_zlib_backend(lib)
+
+   Sets the compression backend for zlib-based operations.
+
+   This function allows you to override the default zlib backend
+   used internally by passing a module that implements the standard
+   compression interface.
+
+   The module should implement at minimum the exact interface offered by the
+   latest version of zlib.
+
+   :param types.ModuleType lib: A module that implements the zlib-compatible compression API.
+
+   Example usage::
+
+      import zlib_ng.zlib_ng as zng
+      import aiohttp
+
+      aiohttp.set_zlib_backend(zng)
+
+   .. note:: aiohttp has been tested internally with :mod:`zlib`, :mod:`zlib_ng.zlib_ng`, and :mod:`isal.isal_zlib`.
+
+   .. versionadded:: 3.12
+
 FormData
 ^^^^^^^^
 

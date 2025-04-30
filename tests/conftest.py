@@ -4,6 +4,7 @@ import os
 import socket
 import ssl
 import sys
+import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -11,10 +12,13 @@ from typing import Any, Callable, Generator, Iterator
 from unittest import mock
 from uuid import uuid4
 
+import isal.isal_zlib
 import pytest
+import zlib_ng.zlib_ng
 from blockbuster import blockbuster_ctx
 
 from aiohttp.client_proto import ResponseHandler
+from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
 from aiohttp.test_utils import get_unused_port_socket, loop_context
 
@@ -28,6 +32,13 @@ try:
 except ImportError:
     TRUSTME = False
 
+
+try:
+    import uvloop
+except ImportError:
+    uvloop = None  # type: ignore[assignment]
+
+
 pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
 
 IS_HPUX = sys.platform.startswith("hp-ux")
@@ -36,6 +47,12 @@ IS_LINUX = sys.platform.startswith("linux")
 
 @pytest.fixture(autouse=True)
 def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
+    # Allow selectively disabling blockbuster for specific tests
+    # using the @pytest.mark.skip_blockbuster marker.
+    if "skip_blockbuster" in request.node.keywords:
+        yield
+        return
+
     # No blockbuster for benchmark tests.
     node = request.node.parent
     while node:
@@ -225,6 +242,16 @@ def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 
 @pytest.fixture
+def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    policy = uvloop.EventLoopPolicy()
+    asyncio.set_event_loop_policy(policy)
+
+    with loop_context(policy.new_event_loop) as _loop:
+        asyncio.set_event_loop(_loop)
+        yield _loop
+
+
+@pytest.fixture
 def netrc_contents(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -296,3 +323,15 @@ def unused_port_socket() -> Generator[socket.socket, None, None]:
         yield s
     finally:
         s.close()
+
+
+@pytest.fixture(params=[zlib, zlib_ng.zlib_ng, isal.isal_zlib])
+def parametrize_zlib_backend(
+    request: pytest.FixtureRequest,
+) -> Generator[None, None, None]:
+    original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
+    set_zlib_backend(request.param)
+
+    yield
+
+    set_zlib_backend(original_backend)

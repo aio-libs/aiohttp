@@ -5,7 +5,6 @@ import io
 import json
 import re
 import weakref
-import zlib
 from concurrent.futures import ThreadPoolExecutor
 from typing import AsyncIterator, Optional, Union
 from unittest import mock
@@ -389,6 +388,7 @@ async def test_chunked_encoding_forbidden_for_http_10() -> None:
     assert str(ctx.value) == "Using chunked encoding is forbidden for HTTP/1.0"
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_compression_no_accept() -> None:
     req = make_request("GET", "/")
     resp = web.StreamResponse()
@@ -402,6 +402,7 @@ async def test_compression_no_accept() -> None:
     assert not msg.enable_compression.called
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_compression_default_coding() -> None:
     req = make_request(
         "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip, deflate"})
@@ -415,11 +416,12 @@ async def test_compression_default_coding() -> None:
 
     msg = await resp.prepare(req)  # type: ignore[unreachable]
 
-    msg.enable_compression.assert_called_with("deflate", zlib.Z_DEFAULT_STRATEGY)
+    msg.enable_compression.assert_called_with("deflate", None)
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
     assert msg.filter is not None
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_deflate() -> None:
     req = make_request(
         "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip, deflate"})
@@ -431,10 +433,11 @@ async def test_force_compression_deflate() -> None:
 
     msg = await resp.prepare(req)
     assert msg is not None
-    msg.enable_compression.assert_called_with("deflate", zlib.Z_DEFAULT_STRATEGY)  # type: ignore[attr-defined]
+    msg.enable_compression.assert_called_with("deflate", None)  # type: ignore[attr-defined]
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_deflate_large_payload() -> None:
     """Make sure a warning is thrown for large payloads compressed in the event loop."""
     req = make_request(
@@ -454,6 +457,7 @@ async def test_force_compression_deflate_large_payload() -> None:
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_no_accept_deflate() -> None:
     req = make_request("GET", "/")
     resp = web.StreamResponse()
@@ -463,10 +467,11 @@ async def test_force_compression_no_accept_deflate() -> None:
 
     msg = await resp.prepare(req)
     assert msg is not None
-    msg.enable_compression.assert_called_with("deflate", zlib.Z_DEFAULT_STRATEGY)  # type: ignore[attr-defined]
+    msg.enable_compression.assert_called_with("deflate", None)  # type: ignore[attr-defined]
     assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_gzip() -> None:
     req = make_request(
         "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip, deflate"})
@@ -478,10 +483,11 @@ async def test_force_compression_gzip() -> None:
 
     msg = await resp.prepare(req)
     assert msg is not None
-    msg.enable_compression.assert_called_with("gzip", zlib.Z_DEFAULT_STRATEGY)  # type: ignore[attr-defined]
+    msg.enable_compression.assert_called_with("gzip", None)  # type: ignore[attr-defined]
     assert "gzip" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_no_accept_gzip() -> None:
     req = make_request("GET", "/")
     resp = web.StreamResponse()
@@ -491,10 +497,11 @@ async def test_force_compression_no_accept_gzip() -> None:
 
     msg = await resp.prepare(req)
     assert msg is not None
-    msg.enable_compression.assert_called_with("gzip", zlib.Z_DEFAULT_STRATEGY)  # type: ignore[attr-defined]
+    msg.enable_compression.assert_called_with("gzip", None)  # type: ignore[attr-defined]
     assert "gzip" == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_change_content_threaded_compression_enabled() -> None:
     req = make_request("GET", "/")
     body_thread_size = 1024
@@ -507,6 +514,7 @@ async def test_change_content_threaded_compression_enabled() -> None:
     assert gzip.decompress(resp._compressed_body) == body
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_change_content_threaded_compression_enabled_explicit() -> None:
     req = make_request("GET", "/")
     body_thread_size = 1024
@@ -522,6 +530,7 @@ async def test_change_content_threaded_compression_enabled_explicit() -> None:
         assert gzip.decompress(resp._compressed_body) == body
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_change_content_length_if_compression_enabled() -> None:
     req = make_request("GET", "/")
     resp = web.Response(body=b"answer")
@@ -531,6 +540,7 @@ async def test_change_content_length_if_compression_enabled() -> None:
     assert resp.content_length is not None and resp.content_length != len(b"answer")
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_set_content_length_if_compression_enabled() -> None:
     writer = mock.Mock()
 
@@ -550,6 +560,7 @@ async def test_set_content_length_if_compression_enabled() -> None:
     assert resp.content_length == 26
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_remove_content_length_if_compression_enabled_http11() -> None:
     writer = mock.Mock()
 
@@ -566,6 +577,7 @@ async def test_remove_content_length_if_compression_enabled_http11() -> None:
     assert resp.content_length is None
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_remove_content_length_if_compression_enabled_http10() -> None:
     writer = mock.Mock()
 
@@ -582,6 +594,7 @@ async def test_remove_content_length_if_compression_enabled_http10() -> None:
     assert resp.content_length is None
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_identity() -> None:
     writer = mock.Mock()
 
@@ -598,6 +611,7 @@ async def test_force_compression_identity() -> None:
     assert resp.content_length == 123
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_identity_response() -> None:
     writer = mock.Mock()
 
@@ -613,6 +627,7 @@ async def test_force_compression_identity_response() -> None:
     assert resp.content_length == 6
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_rm_content_length_if_compression_http11() -> None:
     writer = mock.Mock()
 
@@ -630,6 +645,7 @@ async def test_rm_content_length_if_compression_http11() -> None:
     assert resp.content_length is None
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_rm_content_length_if_compression_http10() -> None:
     writer = mock.Mock()
 

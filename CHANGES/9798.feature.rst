@@ -1,0 +1,5 @@
+Allow user setting zlib compression backend -- by :user:`TimMenninger`
+
+This change allows the user to call :func:`aiohttp.set_zlib_backend()` with the
+zlib compression module of their choice. Default behavior continues to use
+the builtin ``zlib`` library.

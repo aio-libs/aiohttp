@@ -47,6 +47,7 @@ from .client import (
     WSServerHandshakeError,
     request,
 )
+from .compression_utils import set_zlib_backend
 from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
 from .formdata import FormData
@@ -165,6 +166,7 @@ __all__: Tuple[str, ...] = (
     "BasicAuth",
     "ChainMapProxy",
     "ETag",
+    "set_zlib_backend",
     # http
     "HttpVersion",
     "HttpVersion10",
