@@ -297,7 +297,7 @@ zlib-ng==0.5.1
     #   -r requirements/test.in
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==25.1
+pip==25.1.1
     # via pip-tools
 setuptools==80.1.0
     # via
