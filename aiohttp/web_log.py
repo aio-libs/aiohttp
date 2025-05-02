@@ -138,8 +138,12 @@ class AccessLogger(AbstractAccessLogger):
     def _format_a(request: BaseRequest, response: StreamResponse, time: float) -> str:
         if request is None:
             return "-"
-        ip = request.headers.get('X-FORWARDED-FOR',None)
-        return ip if ip is not None else request.remote if request.remote is not None else "-"
+        ip = request.headers.get("X-FORWARDED-FOR", None)
+        return (
+            ip
+            if ip is not None
+            else request.remote if request.remote is not None else "-"
+        )
 
     @staticmethod
     def _format_t(request: BaseRequest, response: StreamResponse, time: float) -> str:
