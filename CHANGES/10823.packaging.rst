@@ -1,0 +1,3 @@
+``aiodns`` is now installed on Windows with speedups extra -- by :user:`bdraco`.
+
+As of ``aiodns`` 3.3.0, ``SelectorEventLoop`` is no longer required when using ``pycares`` 4.7.0 or later.
