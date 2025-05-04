@@ -24,8 +24,8 @@ entertain early in the review process. Thank you in advance!
 
 ## Related issue number
 
-<!-- Are there any issues opened that will be resolved by merging this change? -->
-<!-- Remember to prefix with 'Fixes' if it should close the issue (e.g. 'Fixes #123'). -->
+<!-- Will this resolve any open issues? -->
+<!-- Remember to prefix with 'Fixes' if it closes an issue (e.g. 'Fixes #123'). -->
 
 ## Checklist
 
