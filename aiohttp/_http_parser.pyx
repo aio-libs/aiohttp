@@ -506,10 +506,10 @@ cdef class HttpParser:
         if self._payload is not None:
             if self._cparser.flags & cparser.F_CHUNKED:
                 raise TransferEncodingError(
-                    "Not enough data for satisfy transfer length header.")
+                    "Not enough data to satisfy transfer length header.")
             elif self._cparser.flags & cparser.F_CONTENT_LENGTH:
                 raise ContentLengthError(
-                    "Not enough data for satisfy content length header.")
+                    "Not enough data to satisfy content length header.")
             elif cparser.llhttp_get_errno(self._cparser) != cparser.HPE_OK:
                 desc = cparser.llhttp_get_error_reason(self._cparser)
                 raise PayloadEncodingError(desc.decode('latin-1'))

@@ -71,7 +71,7 @@ class TransferEncodingError(PayloadEncodingError):
 
 
 class ContentLengthError(PayloadEncodingError):
-    """Not enough data for satisfy content length header."""
+    """Not enough data to satisfy content length header."""
 
 
 class LineTooLong(BadHttpMessage):
