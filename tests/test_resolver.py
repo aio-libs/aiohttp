@@ -313,19 +313,10 @@ async def test_close_for_async_resolver() -> None:
     await resolver.close()
 
 
-def test_default_loop_for_threaded_resolver() -> None:
-    pytest.skip("broken")
-    return
-
-    async def create_resolver() -> ThreadedResolver:
-        """Create resolver in async context."""
-        return ThreadedResolver()
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    resolver = loop.run_until_complete(create_resolver())
+async def test_default_loop_for_threaded_resolver() -> None:
+    loop = asyncio.get_running_loop()
+    resolver = ThreadedResolver()
     assert resolver._loop is loop
-    loop.close()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
