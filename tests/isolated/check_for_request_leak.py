@@ -5,6 +5,7 @@ import sys
 from typing import NoReturn
 
 from aiohttp import ClientSession, web
+from aiohttp.test_utils import REUSE_ADDRESS
 
 gc.set_debug(gc.DEBUG_LEAK)
 
@@ -17,7 +18,7 @@ async def main() -> None:
         assert False
 
     app.router.add_route("GET", "/json", handler)
-    with socket.create_server(("127.0.0.1", 0), reuse_port=True) as sock:
+    with socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS) as sock:
         port = sock.getsockname()[1]
 
         runner = web.AppRunner(app)
