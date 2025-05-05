@@ -5,6 +5,7 @@ import socket
 import sys
 
 from aiohttp import ClientError, ClientSession, web
+from aiohttp.test_utils import REUSE_ADDRESS
 
 gc.set_debug(gc.DEBUG_LEAK)
 
@@ -18,7 +19,7 @@ async def main() -> None:
         return web.Response()
 
     app.router.add_get("/stream", stream_handler)
-    with socket.create_server(("127.0.0.1", 0), reuse_port=True) as sock:
+    with socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS) as sock:
         port = sock.getsockname()[1]
 
         runner = web.AppRunner(app)
