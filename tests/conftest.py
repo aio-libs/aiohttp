@@ -21,6 +21,7 @@ from blockbuster import blockbuster_ctx
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
+from aiohttp.test_utils import REUSE_ADDRESS
 
 try:
     import trustme
@@ -355,8 +356,7 @@ def unused_port_socket() -> Iterator[socket.socket]:
     race condition between checking if the port is in use and
     binding to it later in the test.
     """
-    reuse_port = os.name == "posix" and sys.platform != "cygwin"
-    with socket.create_server(("127.0.0.1", 0), reuse_port=reuse_port) as s:
+    with socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS) as s:
         yield s
 
 
