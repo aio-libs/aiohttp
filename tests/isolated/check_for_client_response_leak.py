@@ -33,7 +33,9 @@ async def main() -> None:
             with contextlib.suppress(ClientError):
                 await session.get(url)
 
-        client_task = asyncio.create_task(fetch_stream(f"http://localhost:{port}/stream"))
+        client_task = asyncio.create_task(
+            fetch_stream(f"http://localhost:{port}/stream")
+        )
         await client_task
         gc.collect()
         client_response_present = any(
