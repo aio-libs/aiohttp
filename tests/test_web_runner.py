@@ -68,13 +68,13 @@ async def test_runner_setup_without_signal_handling(make_runner: _RunnerMaker) -
 
 
 async def test_site_double_added(make_runner: _RunnerMaker) -> None:
-    with socket.create_server(("127.0.0.1", 0), reuse_port=True) as _sock:
-        runner = make_runner()
-        await runner.setup()
-        site = web.SockSite(runner, _sock)
+    _sock = socket.create_server(("127.0.0.1", 0), reuse_port=True)
+    runner = make_runner()
+    await runner.setup()
+    site = web.SockSite(runner, _sock)
+    await site.start()
+    with pytest.raises(RuntimeError):
         await site.start()
-        with pytest.raises(RuntimeError):
-            await site.start()
 
     assert len(runner.sites) == 1
 
@@ -203,15 +203,15 @@ async def test_app_make_handler_no_access_log_class() -> None:
 
 
 async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
-    with socket.create_server(("127.0.0.1", 0), reuse_port=True) as _sock:
-        runner = make_runner()
-        await runner.setup()
-        tcp = web.SockSite(runner, _sock)
-        await tcp.start()
-        unix = web.UnixSite(runner, unix_sockname)
-        await unix.start()
-        actual_addrs = runner.addresses
-        expected_host, expected_post = _sock.getsockname()[:2]
+    _sock = socket.create_server(("127.0.0.1", 0), reuse_port=True)
+    runner = make_runner()
+    await runner.setup()
+    tcp = web.SockSite(runner, _sock)
+    await tcp.start()
+    unix = web.UnixSite(runner, unix_sockname)
+    await unix.start()
+    actual_addrs = runner.addresses
+    expected_host, expected_post = _sock.getsockname()[:2]
     assert actual_addrs == [(expected_host, expected_post), unix_sockname]
 
 
