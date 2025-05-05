@@ -355,7 +355,8 @@ def unused_port_socket() -> Iterator[socket.socket]:
     race condition between checking if the port is in use and
     binding to it later in the test.
     """
-    with socket.create_server(("127.0.0.1", 0), reuse_port=True) as s:
+    reuse_port = os.name == "posix" and sys.platform != "cygwin"
+    with socket.create_server(("127.0.0.1", 0), reuse_port=reuse_port) as s:
         yield s
 
 
