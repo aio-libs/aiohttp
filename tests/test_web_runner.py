@@ -231,7 +231,7 @@ async def test_named_pipe_runner_wrong_loop(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
 async def test_named_pipe_runner_proactor_loop(
-    proactor_event_loop: asyncio.AbstractEventLoop, app: web.Application, pipe_name: str
+    proactor_loop: asyncio.AbstractEventLoop, app: web.Application, pipe_name: str
 ) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
