@@ -76,27 +76,6 @@ else:
 _ApplicationNone = TypeVar("_ApplicationNone", Application, None)
 _Request = TypeVar("_Request", bound=BaseRequest)
 
-REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
-
-
-def get_unused_port_socket(
-    host: str, family: socket.AddressFamily = socket.AF_INET
-) -> socket.socket:
-    return get_port_socket(host, 0, family)
-
-
-def get_port_socket(
-    host: str, port: int, family: socket.AddressFamily = socket.AF_INET
-) -> socket.socket:
-    s = socket.socket(family, socket.SOCK_STREAM)
-    if REUSE_ADDRESS:
-        # Windows has different semantics for SO_REUSEADDR,
-        # so don't set it. Ref:
-        # https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((host, port))
-    return s
-
 
 class BaseTestServer(ABC, Generic[_Request]):
     __test__ = False
@@ -110,7 +89,7 @@ class BaseTestServer(ABC, Generic[_Request]):
         skip_url_asserts: bool = False,
         socket_factory: Callable[
             [str, int, socket.AddressFamily], socket.socket
-        ] = get_port_socket,
+        ] = lambda h, p, f: socket.create_server((h, p), family=f, reuse_port=True),
         **kwargs: Any,
     ) -> None:
         self.runner: Optional[BaseRunner[_Request]] = None

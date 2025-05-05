@@ -9,7 +9,7 @@ import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Generator, Iterator
+from typing import Any, Callable, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -21,7 +21,6 @@ from blockbuster import blockbuster_ctx
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
-from aiohttp.test_utils import get_unused_port_socket
 
 try:
     import trustme
@@ -338,7 +337,7 @@ def ws_key(key: bytes) -> str:
 
 
 @pytest.fixture
-def enable_cleanup_closed() -> Generator[None, None, None]:
+def enable_cleanup_closed() -> Iterator[None]:
     """Fixture to override the NEEDS_CLEANUP_CLOSED flag.
 
     On Python 3.12.7+ and 3.13.1+ enable_cleanup_closed is not needed,
@@ -349,24 +348,21 @@ def enable_cleanup_closed() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def unused_port_socket() -> Generator[socket.socket, None, None]:
+def unused_port_socket() -> Iterator[socket.socket]:
     """Return a socket that is unused on the current host.
 
     Unlike aiohttp_used_port, the socket is yielded so there is no
     race condition between checking if the port is in use and
     binding to it later in the test.
     """
-    s = get_unused_port_socket("127.0.0.1")
-    try:
+    with socket.create_server(("127.0.0.1", 0), reuse_port=True) as s:
         yield s
-    finally:
-        s.close()
 
 
 @pytest.fixture(params=[zlib, zlib_ng.zlib_ng, isal.isal_zlib])
 def parametrize_zlib_backend(
     request: pytest.FixtureRequest,
-) -> Generator[None, None, None]:
+) -> Iterator[None]:
     original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
     set_zlib_backend(request.param)
 

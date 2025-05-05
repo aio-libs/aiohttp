@@ -17,7 +17,6 @@ from aiohttp.test_utils import (
     RawTestServer,
     TestClient,
     TestServer,
-    get_port_socket,
     make_mocked_request,
 )
 
@@ -402,7 +401,7 @@ async def test_base_test_server_socket_factory(
     def factory(host: str, port: int, family: socket.AddressFamily) -> socket.socket:
         nonlocal factory_called
         factory_called = True
-        return get_port_socket(host, port, family)
+        return socket.create_server((host, port), family=family, reuse_port=True)
 
     server = test_server_cls(app, loop=loop, socket_factory=factory)
     async with server:

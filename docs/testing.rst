@@ -535,7 +535,7 @@ Test server usually works in conjunction with
 :class:`aiohttp.test_utils.TestClient` which provides handy client methods
 for accessing to the server.
 
-.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None, socket_factory=get_port_socket)
+.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None, socket_factory=...)
 
    Base class for test servers.
 
