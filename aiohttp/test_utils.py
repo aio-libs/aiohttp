@@ -76,6 +76,8 @@ else:
 _ApplicationNone = TypeVar("_ApplicationNone", Application, None)
 _Request = TypeVar("_Request", bound=BaseRequest)
 
+REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
+
 
 class BaseTestServer(ABC, Generic[_Request]):
     __test__ = False
@@ -89,7 +91,7 @@ class BaseTestServer(ABC, Generic[_Request]):
         skip_url_asserts: bool = False,
         socket_factory: Callable[
             [str, int, socket.AddressFamily], socket.socket
-        ] = lambda h, p, f: socket.create_server((h, p), family=f, reuse_port=True),
+        ] = lambda h, p, f: socket.create_server((h, p), family=f, reuse_port=REUSE_ADDRESS),
         **kwargs: Any,
     ) -> None:
         self.runner: Optional[BaseRunner[_Request]] = None
