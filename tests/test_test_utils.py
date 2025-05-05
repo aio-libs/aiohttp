@@ -68,9 +68,6 @@ def app() -> web.Application:
 def test_client(
     event_loop: asyncio.AbstractEventLoop, app: web.Application
 ) -> Iterator[_TestClient]:
-    pytest.skip("broken")
-    return
-
     async def make_client() -> TestClient[web.Request, web.Application]:
         return TestClient(TestServer(app))
 
@@ -89,6 +86,7 @@ async def test_aiohttp_client_close_is_idempotent() -> None:
     await client.close()
     await client.close()
 
+pytest.skip(allow_module_level=True)
 
 class TestCaseStartup(AioHTTPTestCase):
     on_startup_called: bool
