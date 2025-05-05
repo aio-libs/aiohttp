@@ -9,6 +9,7 @@ import pytest
 
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger
+from aiohttp.test_utils import REUSE_ADDRESS
 from aiohttp.web_log import AccessLogger
 
 
@@ -68,7 +69,7 @@ async def test_runner_setup_without_signal_handling(make_runner: _RunnerMaker) -
 
 
 async def test_site_double_added(make_runner: _RunnerMaker) -> None:
-    _sock = socket.create_server(("127.0.0.1", 0), reuse_port=True)
+    _sock = socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS)
     runner = make_runner()
     await runner.setup()
     site = web.SockSite(runner, _sock)
