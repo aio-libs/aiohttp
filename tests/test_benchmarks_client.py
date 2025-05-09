@@ -35,6 +35,36 @@ def test_one_hundred_simple_get_requests(
         loop.run_until_complete(run_client_benchmark())
 
 
+def test_one_hundred_simple_get_requests_alternating_clients(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 100 simple GET requests with alternating clients."""
+    message_count = 100
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client1 = await aiohttp_client(app)
+        client2 = await aiohttp_client(app)
+        for i in range(message_count):
+            if i % 2 == 0:
+                await client1.get("/")
+            else:
+                await client2.get("/")
+        await client1.close()
+        await client2.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
 def test_one_hundred_simple_get_requests_no_session(
     loop: asyncio.AbstractEventLoop,
     aiohttp_server: AiohttpServer,
