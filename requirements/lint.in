@@ -6,6 +6,7 @@ mypy; implementation_name == "cpython"
 pre-commit
 proxy.py
 pytest
+pytest-aiohttp
 pytest-mock
 pytest_codspeed
 python-on-whales

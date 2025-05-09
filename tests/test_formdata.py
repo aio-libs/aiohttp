@@ -2,10 +2,10 @@ import io
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 
 from aiohttp import FormData, web
 from aiohttp.http_writer import StreamWriter
-from aiohttp.pytest_plugin import AiohttpClient
 
 
 @pytest.fixture

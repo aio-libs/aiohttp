@@ -9,12 +9,12 @@ from unittest import mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
+from pytest_aiohttp import AiohttpClient
 from yarl import URL
 
 from aiohttp import ETag, HttpVersion, web
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_parser import RawRequestMessage
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 

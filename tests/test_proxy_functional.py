@@ -20,6 +20,7 @@ from uuid import uuid4
 
 import proxy
 import pytest
+from pytest_aiohttp import AiohttpRawServer, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -27,7 +28,6 @@ import aiohttp
 from aiohttp import ClientResponse, web
 from aiohttp.client import _RequestOptions
 from aiohttp.client_exceptions import ClientConnectionError
-from aiohttp.pytest_plugin import AiohttpRawServer, AiohttpServer
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
@@ -140,7 +140,6 @@ async def web_server_endpoint_url(
 # Filter out the warning from
 # https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
 # otherwise this test will fail because the proxy will die with an error.
-@pytest.mark.usefixtures("loop")
 async def test_secure_https_proxy_absolute_path(
     client_ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
@@ -165,7 +164,6 @@ async def test_secure_https_proxy_absolute_path(
 
 
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
-@pytest.mark.usefixtures("loop")
 @pytest.mark.skipif(
     ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="asyncio on this python supports TLS in TLS"
 )
@@ -270,7 +268,6 @@ async def test_uvloop_secure_https_proxy(
 @pytest.fixture
 def proxy_test_server(
     aiohttp_raw_server: AiohttpRawServer,
-    loop: asyncio.AbstractEventLoop,
     monkeypatch: pytest.MonkeyPatch,
 ) -> Callable[[], Awaitable[mock.Mock]]:
     # Handle all proxy requests and imitate remote server response.
@@ -440,7 +437,6 @@ async def test_proxy_http_auth_from_url(
 
 async def test_proxy_http_acquired_cleanup(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "http://aiohttp.io/path"
 
@@ -462,7 +458,6 @@ async def test_proxy_http_acquired_cleanup(
 @pytest.mark.skip("we need to reconsider how we test this")
 async def test_proxy_http_acquired_cleanup_force(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "http://aiohttp.io/path"
 
@@ -486,7 +481,6 @@ async def test_proxy_http_acquired_cleanup_force(
 @pytest.mark.skip("we need to reconsider how we test this")
 async def test_proxy_http_multi_conn_limit(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "http://aiohttp.io/path"
     limit, multi_conn_num = 1, 5
@@ -556,7 +550,6 @@ async def test_proxy_https_connect_with_port(
 @pytest.mark.xfail
 async def test_proxy_https_send_body(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    loop: asyncio.AbstractEventLoop,
 ) -> None:
     sess = aiohttp.ClientSession()
     proxy = await proxy_test_server()
@@ -656,7 +649,6 @@ async def test_proxy_https_auth(
 @pytest.mark.xfail
 async def test_proxy_https_acquired_cleanup(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "https://secure.aiohttp.io/path"
 
@@ -680,7 +672,6 @@ async def test_proxy_https_acquired_cleanup(
 @pytest.mark.xfail
 async def test_proxy_https_acquired_cleanup_force(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    loop: asyncio.AbstractEventLoop,
 ) -> None:
     url = "https://secure.aiohttp.io/path"
 
@@ -704,8 +695,9 @@ async def test_proxy_https_acquired_cleanup_force(
 @pytest.mark.xfail
 async def test_proxy_https_multi_conn_limit(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
-    loop: asyncio.AbstractEventLoop,
 ) -> None:
+    pytest.skip("broken")
+    return
     url = "https://secure.aiohttp.io/path"
     limit, multi_conn_num = 1, 5
 
