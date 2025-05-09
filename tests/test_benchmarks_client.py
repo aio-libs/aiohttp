@@ -6,8 +6,7 @@ import pytest
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
-import aiohttp
-from aiohttp import hdrs, web
+from aiohttp import hdrs, request, web
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 
 
@@ -54,7 +53,7 @@ def test_one_hundred_simple_get_requests_no_session(
 
     async def run_client_benchmark() -> None:
         for _ in range(message_count):
-            async with aiohttp.request("GET", url):
+            async with request("GET", url):
                 pass
 
     @benchmark
