@@ -1,6 +1,6 @@
 import asyncio
 import socket
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Final, List, Optional, Tuple, Type, Union
 
 from .abc import AbstractResolver, ResolveResult
 
@@ -153,10 +153,7 @@ class AsyncResolver(AbstractResolver):
     async def _resolve_with_query(
         self, host: str, port: int = 0, family: int = socket.AF_INET
     ) -> List[Dict[str, Any]]:
-        if family == socket.AF_INET6:
-            qtype = "AAAA"
-        else:
-            qtype = "A"
+        qtype: Final = "AAAA" if family == socket.AF_INET6 else "A"
 
         try:
             resp = await self._resolver.query(host, qtype)
