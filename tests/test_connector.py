@@ -124,7 +124,7 @@ def create_mocked_conn(
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        loop = asyncio.get_event_loop_policy().get_event_loop()
+        loop = asyncio.new_event_loop()
 
     f = loop.create_future()
     proto: mock.Mock = mock.create_autospec(

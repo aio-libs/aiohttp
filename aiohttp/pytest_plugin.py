@@ -272,14 +272,12 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
 
 @pytest.fixture
 def loop(
-    loop_factory: Callable[[], asyncio.AbstractEventLoopPolicy],
+    loop_factory: Callable[[], asyncio.AbstractEventLoop],
     fast: bool,
     loop_debug: bool,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     """Return an instance of the event loop."""
-    policy = loop_factory()
-    asyncio.set_event_loop_policy(policy)
-    with loop_context(fast=fast) as _loop:
+    with loop_context(loop_factory, fast=fast) as _loop:
         if loop_debug:
             _loop.set_debug(True)
         asyncio.set_event_loop(_loop)
@@ -288,10 +286,9 @@ def loop(
 
 @pytest.fixture
 def proactor_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore[attr-defined]
-    asyncio.set_event_loop_policy(policy)
+    factory = asyncio.WindowsProactorEventLoop
 
-    with loop_context(policy.new_event_loop) as _loop:
+    with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 
