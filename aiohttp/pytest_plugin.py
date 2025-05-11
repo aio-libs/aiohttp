@@ -243,11 +243,11 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
         return
 
     loops = metafunc.config.option.aiohttp_loop
-    avail_factories: Dict[str, Type[asyncio.AbstractEventLoopPolicy]]
-    avail_factories = {"pyloop": asyncio.DefaultEventLoopPolicy}
+    avail_factories: dict[str, Callable[[], asyncio.AbstractEventLoop]]
+    avail_factories = {"pyloop": asyncio.new_event_loop}
 
     if uvloop is not None:
-        avail_factories["uvloop"] = uvloop.EventLoopPolicy
+        avail_factories["uvloop"] = uvloop.new_event_loop
 
     if loops == "all":
         loops = "pyloop,uvloop?"
@@ -286,7 +286,7 @@ def loop(
 
 @pytest.fixture
 def proactor_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    factory = asyncio.WindowsProactorEventLoop
+    factory = asyncio.ProactorEventLoop
 
     with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
