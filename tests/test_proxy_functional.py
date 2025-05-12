@@ -256,7 +256,7 @@ def test_uvloop_secure_https_proxy(
     """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
     uvloop = pytest.importorskip("uvloop")
 
-    async def inner():
+    async def test() -> None:
         conn = aiohttp.TCPConnector()
         sess = aiohttp.ClientSession(connector=conn)
         url = URL("https://example.com")
@@ -273,7 +273,7 @@ def test_uvloop_secure_https_proxy(
     loop = uvloop.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(inner())
+        loop.run_until_complete(test())
     finally:
         loop.close()
         asyncio.set_event_loop(None)
