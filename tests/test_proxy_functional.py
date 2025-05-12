@@ -253,8 +253,8 @@ def test_uvloop_secure_https_proxy(
     client_ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
 ) -> None:
-    uvloop = pytest.importorskip("uvloop")
     """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
+    uvloop = pytest.importorskip("uvloop")
 
     async def inner():
         conn = aiohttp.TCPConnector()
