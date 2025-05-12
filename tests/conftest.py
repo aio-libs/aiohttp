@@ -240,6 +240,16 @@ def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 
 @pytest.fixture
+def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    if uvloop is None:
+        pytest.skip("uvloop is not installed")
+    factory = uvloop.new_event_loop
+    with loop_context(factory) as _loop:
+        asyncio.set_event_loop(_loop)
+        yield _loop
+
+
+@pytest.fixture
 def netrc_contents(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -224,9 +224,13 @@ def pytest_pyfunc_call(pyfuncitem):  # type: ignore[no-untyped-def]
     """Run coroutines in an event loop instead of a normal function call."""
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
     if inspect.iscoroutinefunction(pyfuncitem.function):
-        existing_loop = pyfuncitem.funcargs.get(
-            "proactor_loop"
-        ) or pyfuncitem.funcargs.get("loop", None)
+        existing_loop = (
+            pyfuncitem.funcargs.get("proactor_loop")
+            or pyfuncitem.funcargs.get("selector_loop")
+            or pyfuncitem.funcargs.get("uvloop_loop")
+            or pyfuncitem.funcargs.get("loop", None)
+        )
+
         with _runtime_warning_context():
             with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
                 testargs = {
