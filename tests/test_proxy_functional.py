@@ -258,8 +258,10 @@ async def test_uvloop_secure_https_proxy(
     conn = aiohttp.TCPConnector()
     sess = aiohttp.ClientSession(connector=conn)
     url = URL("https://example.com")
+
     async with sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx) as response:
         assert response.status == 200
+
     await sess.close()
     await conn.close()
     await asyncio.sleep(0.1)
