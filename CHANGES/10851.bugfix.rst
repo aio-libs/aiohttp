@@ -1,1 +1,1 @@
-Fix pytest plugin to not use deprecated asyncio policy APIs.
+Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
