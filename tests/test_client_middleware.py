@@ -223,7 +223,7 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
         if auth_header == f'Custom response="{challenge_token}-secret"':
             return web.Response(text="Authenticated")
 
-        return web.Response(status=401, text="Invalid auth")
+        assert False  # Should not reach here
 
     async def challenge_auth_middleware(
         request: ClientRequest, handler: ClientHandlerType
