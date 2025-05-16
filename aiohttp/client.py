@@ -692,10 +692,14 @@ class ClientSession:
 
                         return resp
 
-                    # Apply middleware (if any)
-                    if self._middlewares is not None:
+                    # Apply middleware (if any) - per-request middleware overrides session middleware
+                    effective_middlewares = (
+                        self._middlewares if middlewares is None else middlewares
+                    )
+
+                    if effective_middlewares is not None:
                         handler = build_client_middlewares(
-                            _send_request, self._middlewares
+                            _send_request, effective_middlewares
                         )
                     else:
                         handler = _send_request
