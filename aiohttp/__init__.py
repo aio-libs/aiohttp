@@ -137,7 +137,6 @@ __all__: Tuple[str, ...] = (
     "ClientWebSocketResponse",
     "ClientWSTimeout",
     "ClientMiddlewareRetry",
-    "client_middleware",
     "ConnectionTimeoutError",
     "ContentTypeError",
     "Fingerprint",
