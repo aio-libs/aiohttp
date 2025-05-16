@@ -469,8 +469,7 @@ async def test_client_middleware_stateful_retry(aiohttp_server: AiohttpServer) -
         ) -> ClientResponse:
             request_id = id(request)
 
-            if request_id not in self.retry_counts:
-                self.retry_counts[request_id] = 0
+            self.retry_counts.setdefault(request_id, 0)
 
             response = await handler(request)
 
