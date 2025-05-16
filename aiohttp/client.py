@@ -57,7 +57,10 @@ from .client_exceptions import (
     ClientSSLError,
     ConnectionTimeoutError,
     ContentTypeError,
+    InvalidAuthClientError,
+    InvalidRedirectUrlAuthClientError,
     InvalidURL,
+    InvalidUrlAuthClientError,
     InvalidUrlClientError,
     InvalidUrlRedirectClientError,
     NonHttpUrlClientError,
@@ -124,7 +127,10 @@ __all__ = (
     "ClientSSLError",
     "ConnectionTimeoutError",
     "ContentTypeError",
+    "InvalidAuthClientError",
+    "InvalidRedirectUrlAuthClientError",
     "InvalidURL",
+    "InvalidUrlAuthClientError",
     "InvalidUrlClientError",
     "RedirectClientError",
     "NonHttpUrlClientError",
@@ -576,7 +582,19 @@ class ClientSession:
 
                     # Override the auth with the one from the URL only if we
                     # have no auth, or if we got an auth from a redirect URL
-                    if auth is None or (history and auth_from_url is not None):
+                    if (auth is None or history) and auth_from_url is not None:
+                        # Pre-check the credentials can be encoded to
+                        # avoid crashing down the line
+                        try:
+                            auth_from_url.encode()
+                        except UnicodeEncodeError as e:
+                            auth_err_exc_cls = (
+                                InvalidRedirectUrlAuthClientError
+                                if redirects
+                                else InvalidUrlAuthClientError
+                            )
+                            raise auth_err_exc_cls(url, str(e)) from e
+
                         auth = auth_from_url
 
                     if (
