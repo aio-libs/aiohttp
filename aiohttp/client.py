@@ -690,12 +690,9 @@ class ClientSession:
                         return resp
 
                     # Apply middleware (if any)
-                    effective_middlewares = (
-                        self._middlewares if middlewares is None else middlewares
-                    )
-                    if effective_middlewares:
+                    if self._middlewares is not None:
                         handler = build_client_middlewares(
-                            _send_request, effective_middlewares
+                            _send_request, self._middlewares
                         )
                     else:
                         handler = _send_request
