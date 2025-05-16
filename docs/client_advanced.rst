@@ -118,14 +118,13 @@ and a handler function, and returns the response. The middleware must match the
 :type:`ClientMiddlewareType` type signature:
 
     import logging
-    from aiohttp import ClientSession, ClientRequest, ClientResponse
-    from typing import Callable, Awaitable
+    from aiohttp import ClientSession, ClientRequest, ClientResponse, ClientHandlerType
 
     _LOGGER = logging.getLogger(__name__)
 
     async def my_middleware(
         request: ClientRequest,
-        handler: Callable[..., Awaitable[ClientResponse]]
+        handler: ClientHandlerType
     ) -> ClientResponse:
         # Process request before sending
         _LOGGER.debug(f"Request: {request.method} {request.url}")
@@ -155,7 +154,7 @@ Here's a simple example showing request modification:
 
     async def add_api_key_middleware(
         request: ClientRequest,
-        handler: Callable[..., Awaitable[ClientResponse]]
+        handler: ClientHandlerType
     ) -> ClientResponse:
         # Add API key to all requests
         request.headers['X-API-Key'] = 'my-secret-key'
@@ -175,7 +174,7 @@ Retrying requests with middleware:
         async def __call__(
             self,
             request: ClientRequest,
-            handler: Callable[..., Awaitable[ClientResponse]]
+            handler: ClientHandlerType
         ) -> ClientResponse:
             # Keep track of retries per request
             if not hasattr(request, 'retry_count'):
@@ -202,14 +201,14 @@ Multiple middlewares are applied in the order they are listed:
 
     async def logging_middleware(
         request: ClientRequest,
-        handler: Callable[..., Awaitable[ClientResponse]]
+        handler: ClientHandlerType
     ) -> ClientResponse:
         _LOGGER.debug(f"[LOG] {request.method} {request.url}")
         return await handler(request)
 
     async def auth_middleware(
         request: ClientRequest,
-        handler: Callable[..., Awaitable[ClientResponse]]
+        handler: ClientHandlerType
     ) -> ClientResponse:
         request.headers['Authorization'] = 'Bearer token123'
         return await handler(request)
