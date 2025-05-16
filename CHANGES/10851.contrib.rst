@@ -1,0 +1,2 @@
+Updated tests to avoid using deprecated :py:mod:`asyncio` policy APIs and
+make it compatible with Python 3.14.
