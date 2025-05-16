@@ -1,5 +1,7 @@
 """Tests for client middleware."""
 
+from typing import Dict, Optional, Union
+
 from aiohttp import (
     ClientHandlerType,
     ClientMiddlewareRetry,
@@ -265,7 +267,11 @@ async def test_client_middleware_challenge_auth(aiohttp_server: TestServer) -> N
 async def test_client_middleware_multi_step_auth(aiohttp_server: TestServer) -> None:
     """Test middleware with multi-step authentication flow."""
     auth_state: dict[str, int] = {}
-    middleware_state = {"step": 0, "session": None, "challenge": None}
+    middleware_state: Dict[str, Optional[Union[int, str]]] = {
+        "step": 0,
+        "session": None,
+        "challenge": None,
+    }
 
     async def handler(request: web.Request) -> web.Response:
         client_id = request.headers.get("X-Client-ID", "unknown")
@@ -339,7 +345,10 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: TestServer) -> 
 async def test_client_middleware_conditional_retry(aiohttp_server: TestServer) -> None:
     """Test middleware with conditional retry based on response content."""
     request_count = 0
-    token_state = {"token": "old-token", "refreshed": False}
+    token_state: Dict[str, Union[str, bool]] = {
+        "token": "old-token",
+        "refreshed": False,
+    }
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal request_count
@@ -397,10 +406,10 @@ async def test_client_middleware_conditional_retry(aiohttp_server: TestServer) -
     assert request_count == 2  # Initial request + retry after refresh
 
 
-async def test_build_client_middlewares_empty():
+async def test_build_client_middlewares_empty() -> None:
     """Test build_client_middlewares with empty middlewares."""
 
-    async def handler(request):
+    async def handler(request: ClientRequest) -> Dict[str, bool]:
         return {"handled": True}
 
     # Test empty case
@@ -456,7 +465,7 @@ async def test_client_middleware_stateful_retry(aiohttp_server: TestServer) -> N
 
         def __init__(self, max_retries: int = 3):
             self.max_retries = max_retries
-            self.retry_counts = {}  # Track retries per request
+            self.retry_counts: Dict[int, int] = {}  # Track retries per request
 
         async def __call__(
             self, request: ClientRequest, handler: ClientHandlerType

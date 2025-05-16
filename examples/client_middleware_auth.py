@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Dict, Optional
 
 from aiohttp import (
     ClientHandlerType,
@@ -18,30 +18,33 @@ _LOGGER = logging.getLogger(__name__)
 class TokenAuthMiddleware:
     """Middleware that handles token-based authentication with automatic refresh."""
 
-    def __init__(self, auth_url: str, username: str, password: str) -> None:
+    def __init__(
+        self, auth_url: str, username: str, password: str, session: ClientSession
+    ) -> None:
         self.auth_url = auth_url
         self.username = username
         self.password = password
+        self.session = session
         self.access_token: Optional[str] = None
         self.refresh_token: Optional[str] = None
 
-    async def authenticate(self, session: ClientSession) -> None:
+    async def authenticate(self) -> None:
         """Get initial authentication tokens."""
-        async with session.post(
+        async with self.session.post(
             self.auth_url, json={"username": self.username, "password": self.password}
         ) as resp:
             data = await resp.json()
             self.access_token = data["access_token"]
             self.refresh_token = data.get("refresh_token")
 
-    async def refresh_access_token(self, session: ClientSession) -> None:
+    async def refresh_access_token(self) -> None:
         """Refresh the access token using refresh token."""
         if not self.refresh_token:
             # No refresh token, need to re-authenticate
-            await self.authenticate(session)
+            await self.authenticate()
             return
 
-        async with session.post(
+        async with self.session.post(
             f"{self.auth_url}/refresh", json={"refresh_token": self.refresh_token}
         ) as resp:
             if resp.status == 200:
@@ -49,7 +52,7 @@ class TokenAuthMiddleware:
                 self.access_token = data["access_token"]
             else:
                 # Refresh failed, re-authenticate
-                await self.authenticate(session)
+                await self.authenticate()
 
     async def middleware(
         self, request: ClientRequest, handler: ClientHandlerType
@@ -69,7 +72,7 @@ class TokenAuthMiddleware:
         # Check if token expired
         if response.status == 401:
             # Try to refresh the token
-            await self.refresh_access_token(request.session)
+            await self.refresh_access_token()
             # Retry with new token
             raise ClientMiddlewareRetry()
 
@@ -82,9 +85,9 @@ class DigestAuthMiddleware:
     def __init__(self, username: str, password: str):
         self.username = username
         self.password = password
-        self.last_challenge: Optional[dict] = None
+        self.last_challenge: Optional[Dict[str, str]] = None
 
-    def parse_www_authenticate(self, header: str) -> dict:
+    def parse_www_authenticate(self, header: str) -> Dict[str, str]:
         """Parse WWW-Authenticate header for digest parameters."""
         # Simplified parsing - in production use a proper parser
         params = {}
@@ -94,7 +97,9 @@ class DigestAuthMiddleware:
             params[key] = value.strip('"')
         return params
 
-    def calculate_response(self, challenge: dict, method: str, uri: str) -> str:
+    def calculate_response(
+        self, challenge: Dict[str, str], method: str, uri: str
+    ) -> str:
         """Calculate digest response."""
         # Simplified - real implementation needs proper digest calculation
         import hashlib
@@ -142,13 +147,20 @@ class DigestAuthMiddleware:
 # Example usage
 async def main() -> None:
     # Token-based auth example
+    # Create a session first for authentication
+    auth_session = ClientSession()
+
     token_auth = TokenAuthMiddleware(
-        auth_url="https://api.example.com/auth", username="user", password="pass"
+        auth_url="https://api.example.com/auth",
+        username="user",
+        password="pass",
+        session=auth_session,
     )
 
+    # Create the main session with middleware
     async with ClientSession(middlewares=(token_auth.middleware,)) as session:
         # Initial authentication
-        await token_auth.authenticate(session)
+        await token_auth.authenticate()
 
         # Make API calls - auth will be handled automatically
         async with session.get("https://api.example.com/data") as resp:
