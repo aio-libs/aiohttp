@@ -1,30 +1,17 @@
 """Client middleware support."""
 
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 from .client_reqrep import ClientRequest, ClientResponse
 
 if TYPE_CHECKING:
     pass
 
-__all__ = ("client_middleware",)
-
-_T = TypeVar("_T")
-
 # Type for client middleware - similar to server but uses ClientRequest/ClientResponse
 ClientMiddleware = Callable[
     [ClientRequest, Callable[..., Awaitable[ClientResponse]]], Awaitable[ClientResponse]
 ]
-
-
-def client_middleware(f: _T) -> _T:
-    """
-    Decorator to mark client middleware.
-
-    Currently just returns the function as-is, but allows for future extensions.
-    """
-    return f
 
 
 def build_client_middlewares(

@@ -5,13 +5,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Optional
 
-from aiohttp import (
-    ClientMiddlewareRetry,
-    ClientRequest,
-    ClientResponse,
-    ClientSession,
-    client_middleware,
-)
+from aiohttp import ClientMiddlewareRetry, ClientRequest, ClientResponse, ClientSession
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,7 +46,6 @@ class TokenAuthMiddleware:
                 # Refresh failed, re-authenticate
                 await self.authenticate(session)
 
-    @client_middleware
     async def middleware(
         self, request: ClientRequest, handler: Callable[..., Awaitable[ClientResponse]]
     ) -> ClientResponse:
@@ -108,7 +101,6 @@ class DigestAuthMiddleware:
         response = hashlib.md5(f"{ha1}:{challenge['nonce']}:{ha2}".encode()).hexdigest()
         return response
 
-    @client_middleware
     async def middleware(
         self, request: ClientRequest, handler: Callable[..., Awaitable[ClientResponse]]
     ) -> ClientResponse:

@@ -7,7 +7,6 @@ from aiohttp import (
     ClientRequest,
     ClientResponse,
     ClientSession,
-    client_middleware,
     web,
 )
 from aiohttp.client_middlewares import build_client_middlewares
@@ -27,7 +26,6 @@ async def test_client_middleware_called(aiohttp_server: TestServer) -> None:
         request_count += 1
         return web.Response(text=f"OK {request_count}")
 
-    @client_middleware
     async def test_middleware(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -61,7 +59,6 @@ async def test_client_middleware_retry(aiohttp_server: TestServer) -> None:
             return web.Response(status=503)
         return web.Response(text=f"OK {request_count}")
 
-    @client_middleware
     async def retry_middleware(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -91,7 +88,6 @@ async def test_client_middleware_per_request(aiohttp_server: TestServer) -> None
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="OK")
 
-    @client_middleware
     async def session_middleware(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -100,7 +96,6 @@ async def test_client_middleware_per_request(aiohttp_server: TestServer) -> None
         response = await handler(request)
         return response
 
-    @client_middleware
     async def request_middleware(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -142,7 +137,6 @@ async def test_multiple_client_middlewares(aiohttp_server: TestServer) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="OK")
 
-    @client_middleware
     async def middleware1(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -151,7 +145,6 @@ async def test_multiple_client_middlewares(aiohttp_server: TestServer) -> None:
         calls.append("after1")
         return response
 
-    @client_middleware
     async def middleware2(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -182,7 +175,6 @@ async def test_client_middleware_auth_example(aiohttp_server: TestServer) -> Non
             return web.Response(text="Authenticated")
         return web.Response(status=401, text="Unauthorized")
 
-    @client_middleware
     async def auth_middleware(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -235,7 +227,6 @@ async def test_client_middleware_challenge_auth(aiohttp_server: TestServer) -> N
 
         return web.Response(status=401, text="Invalid auth")
 
-    @client_middleware
     async def challenge_auth_middleware(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -305,7 +296,6 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: TestServer) -> 
 
         return web.Response(status=403, text="Forbidden")
 
-    @client_middleware
     async def multi_step_auth_middleware(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -372,7 +362,6 @@ async def test_client_middleware_conditional_retry(aiohttp_server: TestServer) -
 
         return web.json_response({"error": "forbidden"}, status=403)
 
-    @client_middleware
     async def token_refresh_middleware(
         request: ClientRequest, handler: ClientHandler
     ) -> ClientResponse:
@@ -433,7 +422,6 @@ async def test_client_middleware_class_based_auth(aiohttp_server: TestServer) ->
             self.token = token
             self.request_count = 0
 
-        @client_middleware
         async def __call__(
             self, request: ClientRequest, handler: ClientHandler
         ) -> ClientResponse:
@@ -474,7 +462,6 @@ async def test_client_middleware_stateful_retry(aiohttp_server: TestServer) -> N
             self.max_retries = max_retries
             self.retry_counts = {}  # Track retries per request
 
-        @client_middleware
         async def __call__(
             self, request: ClientRequest, handler: ClientHandler
         ) -> ClientResponse:
@@ -532,7 +519,6 @@ async def test_client_middleware_multiple_instances(aiohttp_server: TestServer) 
             self.header_value = header_value
             self.applied = False
 
-        @client_middleware
         async def __call__(
             self, request: ClientRequest, handler: ClientHandler
         ) -> ClientResponse:
