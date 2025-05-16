@@ -11,10 +11,10 @@ from aiohttp import (
     web,
 )
 from aiohttp.client_middlewares import build_client_middlewares
-from aiohttp.test_utils import TestServer
+from aiohttp.pytest_plugin import AiohttpServer
 
 
-async def test_client_middleware_called(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_called(aiohttp_server: AiohttpServer) -> None:
     """Test that client middleware is called."""
     middleware_called = False
     request_count = 0
@@ -46,7 +46,7 @@ async def test_client_middleware_called(aiohttp_server: TestServer) -> None:
     assert request_count == 1
 
 
-async def test_client_middleware_retry(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_retry(aiohttp_server: AiohttpServer) -> None:
     """Test that middleware can trigger retries."""
     request_count = 0
 
@@ -78,7 +78,7 @@ async def test_client_middleware_retry(aiohttp_server: TestServer) -> None:
     assert request_count == 2
 
 
-async def test_client_middleware_per_request(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_per_request(aiohttp_server: AiohttpServer) -> None:
     """Test that middleware can be specified per request."""
     session_middleware_called = False
     request_middleware_called = False
@@ -128,7 +128,7 @@ async def test_client_middleware_per_request(aiohttp_server: TestServer) -> None
     assert request_middleware_called is True
 
 
-async def test_multiple_client_middlewares(aiohttp_server: TestServer) -> None:
+async def test_multiple_client_middlewares(aiohttp_server: AiohttpServer) -> None:
     """Test that multiple middlewares are executed in order."""
     calls: list[str] = []
 
@@ -164,7 +164,7 @@ async def test_multiple_client_middlewares(aiohttp_server: TestServer) -> None:
     assert calls == ["before1", "before2", "after2", "after1"]
 
 
-async def test_client_middleware_auth_example(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_auth_example(aiohttp_server: AiohttpServer) -> None:
     """Test an authentication middleware example."""
 
     async def handler(request: web.Request) -> web.Response:
@@ -198,7 +198,7 @@ async def test_client_middleware_auth_example(aiohttp_server: TestServer) -> Non
             assert text == "Authenticated"
 
 
-async def test_client_middleware_challenge_auth(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -> None:
     """Test authentication middleware with challenge/response pattern like digest auth."""
     request_count = 0
     challenge_token = "challenge-123"
@@ -264,7 +264,7 @@ async def test_client_middleware_challenge_auth(aiohttp_server: TestServer) -> N
     assert request_count == 2
 
 
-async def test_client_middleware_multi_step_auth(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) -> None:
     """Test middleware with multi-step authentication flow."""
     auth_state: dict[str, int] = {}
     middleware_state: Dict[str, Optional[Union[int, str]]] = {
@@ -342,7 +342,9 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: TestServer) -> 
             assert text == "Authenticated"
 
 
-async def test_client_middleware_conditional_retry(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_conditional_retry(
+    aiohttp_server: AiohttpServer,
+) -> None:
     """Test middleware with conditional retry based on response content."""
     request_count = 0
     token_state: Dict[str, Union[str, bool]] = {
@@ -371,7 +373,7 @@ async def test_client_middleware_conditional_retry(aiohttp_server: TestServer) -
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         # Add token to request
-        request.headers["X-Auth-Token"] = token_state["token"]
+        request.headers["X-Auth-Token"] = str(token_state["token"])
 
         response = await handler(request)
 
@@ -417,7 +419,9 @@ async def test_build_client_middlewares_empty() -> None:
     assert result is handler  # Should return handler unchanged
 
 
-async def test_client_middleware_class_based_auth(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_class_based_auth(
+    aiohttp_server: AiohttpServer,
+) -> None:
     """Test middleware using class-based pattern with instance state."""
 
     class TokenAuthMiddleware:
@@ -457,7 +461,7 @@ async def test_client_middleware_class_based_auth(aiohttp_server: TestServer) ->
     assert auth_middleware.request_count == 1
 
 
-async def test_client_middleware_stateful_retry(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_stateful_retry(aiohttp_server: AiohttpServer) -> None:
     """Test retry middleware using class with state management."""
 
     class RetryMiddleware:
@@ -513,7 +517,9 @@ async def test_client_middleware_stateful_retry(aiohttp_server: TestServer) -> N
     assert request_count == 3  # Initial + 2 retries
 
 
-async def test_client_middleware_multiple_instances(aiohttp_server: TestServer) -> None:
+async def test_client_middleware_multiple_instances(
+    aiohttp_server: AiohttpServer,
+) -> None:
     """Test using multiple instances of the same middleware class."""
 
     class HeaderMiddleware:
@@ -557,7 +563,7 @@ async def test_client_middleware_multiple_instances(aiohttp_server: TestServer) 
 
 
 async def test_client_middleware_disable_with_empty_tuple(
-    aiohttp_server: TestServer,
+    aiohttp_server: AiohttpServer,
 ) -> None:
     """Test that passing middlewares=() to a request disables session-level middlewares."""
     session_middleware_called = False
