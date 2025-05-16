@@ -379,19 +379,12 @@ async def test_client_middleware_conditional_retry(
 
         # Check if token needs refresh
         if response.status == 401 and not token_state["refreshed"]:
-            try:
-                data = await response.json()
-                if data.get("error") == "token_expired" and data.get(
-                    "refresh_required"
-                ):
-                    # Simulate token refresh
-                    token_state["token"] = "refreshed-token"
-                    token_state["refreshed"] = True
-                    raise ClientMiddlewareRetry()
-            except ClientMiddlewareRetry:
-                raise
-            except Exception:
-                pass  # Not JSON or other error
+            data = await response.json()
+            if data.get("error") == "token_expired" and data.get("refresh_required"):
+                # Simulate token refresh
+                token_state["token"] = "refreshed-token"
+                token_state["refreshed"] = True
+                raise ClientMiddlewareRetry()
 
         return response
 
