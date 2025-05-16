@@ -405,7 +405,7 @@ async def test_build_client_middlewares_empty() -> None:
     """Test build_client_middlewares with empty middlewares."""
 
     async def handler(request: ClientRequest) -> ClientResponse:
-        return {"handled": True}
+        """Dummy handler."""
 
     # Test empty case
     result = build_client_middlewares(handler, ())
