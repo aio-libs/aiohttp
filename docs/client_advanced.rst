@@ -138,7 +138,7 @@ and a handler function, and returns the response. The middleware must match the
 
         return response
 
-You can apply middleware to a client session or to individual requests::
+You can apply middleware to a client session or to individual requests:
 
     # Apply to all requests in a session
     async with ClientSession(middlewares=(my_middleware,)) as session:
@@ -151,7 +151,7 @@ You can apply middleware to a client session or to individual requests::
 Middleware Examples
 ^^^^^^^^^^^^^^^^^^^
 
-Here's a simple example showing request modification::
+Here's a simple example showing request modification:
 
     async def add_api_key_middleware(
         request: ClientRequest,
@@ -161,7 +161,7 @@ Here's a simple example showing request modification::
         request.headers['X-API-Key'] = 'my-secret-key'
         return await handler(request)
 
-Retrying requests with middleware::
+Retrying requests with middleware:
 
     import logging
     from aiohttp import ClientMiddlewareRetry
@@ -194,7 +194,7 @@ Retrying requests with middleware::
 Middleware Chaining
 ^^^^^^^^^^^^^^^^^^^
 
-Multiple middlewares are applied in the order they are listed::
+Multiple middlewares are applied in the order they are listed:
 
     import logging
 
@@ -224,6 +224,17 @@ Multiple middlewares are applied in the order they are listed::
    Each middleware adds overhead to request processing. For simple use cases
    like adding static headers, you can often use request parameters
    (e.g., ``headers``) or session configuration instead.
+
+Middleware Type
+^^^^^^^^^^^^^^^
+
+:data:`ClientMiddlewareType`
+   Type alias for client middleware functions. Middleware functions must have this signature::
+
+      Callable[
+          [ClientRequest, Callable[..., Awaitable[ClientResponse]]],
+          Awaitable[ClientResponse]
+      ]
 
 Custom Cookies
 --------------
