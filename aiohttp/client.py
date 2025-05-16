@@ -196,7 +196,7 @@ class _RequestOptions(TypedDict, total=False):
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
     max_field_size: Union[int, None]
-    middlewares: Union[Tuple[ClientMiddlewareType, ...], None]
+    middlewares: Optional[Tuple[ClientMiddlewareType, ...]]
 
 
 @frozen_dataclass_decorator
@@ -297,7 +297,7 @@ class ClientSession:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
-        middlewares: Tuple[ClientMiddlewareType, ...] = (),
+        middlewares: Optional[Tuple[ClientMiddlewareType, ...]] = None,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -697,7 +697,7 @@ class ClientSession:
                         self._middlewares if middlewares is None else middlewares
                     )
 
-                    if effective_middlewares is not None:
+                    if effective_middlewares:
                         handler = build_client_middlewares(
                             _send_request, effective_middlewares
                         )
