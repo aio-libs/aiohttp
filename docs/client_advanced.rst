@@ -228,13 +228,18 @@ Multiple middlewares are applied in the order they are listed:
 Middleware Type
 ^^^^^^^^^^^^^^^
 
-:data:`ClientMiddlewareType`
+:type:`ClientMiddlewareType`
    Type alias for client middleware functions. Middleware functions must have this signature::
 
       Callable[
-          [ClientRequest, Callable[..., Awaitable[ClientResponse]]],
+          [ClientRequest, ClientHandlerType],
           Awaitable[ClientResponse]
       ]
+
+:type:`ClientHandlerType`
+   Type alias for client request handler functions::
+
+      Callable[..., Awaitable[ClientResponse]]
 
 Custom Cookies
 --------------

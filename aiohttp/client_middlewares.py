@@ -4,18 +4,21 @@ from collections.abc import Awaitable, Callable
 
 from .client_reqrep import ClientRequest, ClientResponse
 
-__all__ = ("ClientMiddlewareType", "build_client_middlewares")
+__all__ = ("ClientMiddlewareType", "ClientHandlerType", "build_client_middlewares")
+
+# Type alias for client request handlers - functions that process requests and return responses
+ClientHandlerType = Callable[..., Awaitable[ClientResponse]]
 
 # Type for client middleware - similar to server but uses ClientRequest/ClientResponse
 ClientMiddlewareType = Callable[
-    [ClientRequest, Callable[..., Awaitable[ClientResponse]]], Awaitable[ClientResponse]
+    [ClientRequest, ClientHandlerType], Awaitable[ClientResponse]
 ]
 
 
 def build_client_middlewares(
-    handler: Callable[..., Awaitable[ClientResponse]],
+    handler: ClientHandlerType,
     middlewares: tuple[ClientMiddlewareType, ...],
-) -> Callable[..., Awaitable[ClientResponse]]:
+) -> ClientHandlerType:
     """
     Apply middlewares to request handler.
 
@@ -43,8 +46,8 @@ def build_client_middlewares(
     for middleware in reversed(middlewares):
         # Create a new closure that captures the current state
         def make_wrapper(
-            mw: ClientMiddlewareType, next_h: Callable[..., Awaitable[ClientResponse]]
-        ) -> Callable[..., Awaitable[ClientResponse]]:
+            mw: ClientMiddlewareType, next_h: ClientHandlerType
+        ) -> ClientHandlerType:
             async def wrapped(req: ClientRequest) -> ClientResponse:
                 return await mw(req, next_h)
 

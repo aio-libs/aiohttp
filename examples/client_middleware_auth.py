@@ -2,10 +2,15 @@
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable
 from typing import Optional
 
-from aiohttp import ClientMiddlewareRetry, ClientRequest, ClientResponse, ClientSession
+from aiohttp import (
+    ClientHandlerType,
+    ClientMiddlewareRetry,
+    ClientRequest,
+    ClientResponse,
+    ClientSession,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,7 +52,7 @@ class TokenAuthMiddleware:
                 await self.authenticate(session)
 
     async def middleware(
-        self, request: ClientRequest, handler: Callable[..., Awaitable[ClientResponse]]
+        self, request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         """Apply authentication to requests and handle token refresh."""
         # Skip auth endpoints
@@ -102,7 +107,7 @@ class DigestAuthMiddleware:
         return response
 
     async def middleware(
-        self, request: ClientRequest, handler: Callable[..., Awaitable[ClientResponse]]
+        self, request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         """Handle digest authentication challenges."""
         # If we have a previous challenge, add auth header
