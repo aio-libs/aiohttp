@@ -31,7 +31,9 @@ class TokenAuthMiddleware:
     async def authenticate(self) -> None:
         """Get initial authentication tokens."""
         async with self.session.post(
-            self.auth_url, json={"username": self.username, "password": self.password}
+            self.auth_url,
+            json={"username": self.username, "password": self.password},
+            middlewares=(),
         ) as resp:
             data = await resp.json()
             self.access_token = data["access_token"]
