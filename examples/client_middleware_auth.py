@@ -45,7 +45,9 @@ class TokenAuthMiddleware:
             return
 
         async with self.session.post(
-            f"{self.auth_url}/refresh", json={"refresh_token": self.refresh_token}
+            f"{self.auth_url}/refresh",
+            json={"refresh_token": self.refresh_token},
+            middlewares=(),
         ) as resp:
             if resp.status == 200:
                 data = await resp.json()
@@ -147,70 +149,79 @@ class DigestAuthMiddleware:
 # Example usage
 async def main() -> None:
     # Token-based auth example
-    # Create a session first for authentication
-    auth_session = ClientSession()
+    async with ClientSession() as session:
+        # Create token auth middleware with the session
+        token_auth = TokenAuthMiddleware(
+            auth_url="https://api.example.com/auth",
+            username="user",
+            password="pass",
+            session=session,
+        )
 
-    token_auth = TokenAuthMiddleware(
-        auth_url="https://api.example.com/auth",
-        username="user",
-        password="pass",
-        session=auth_session,
-    )
-
-    # Create the main session with middleware
-    async with ClientSession(middlewares=(token_auth.middleware,)) as session:
         # Initial authentication
         await token_auth.authenticate()
 
-        # Make API calls - auth will be handled automatically
-        async with session.get("https://api.example.com/data") as resp:
+        # Make API calls with middleware applied to specific requests
+        async with session.get(
+            "https://api.example.com/data", middlewares=(token_auth.middleware,)
+        ) as resp:
             data = await resp.json()
             _LOGGER.debug("Received data: %s", data)
 
     # Digest auth example
     digest_auth = DigestAuthMiddleware(username="user", password="pass")
 
-    async with ClientSession(middlewares=(digest_auth.middleware,)) as session:
-        # Make request - digest auth will be handled automatically
+    async with ClientSession() as session:
+        # Make request with digest auth middleware
         async with session.get(
-            "https://httpbin.org/digest-auth/auth/user/pass"
+            "https://httpbin.org/digest-auth/auth/user/pass",
+            middlewares=(digest_auth.middleware,),
         ) as resp:
             data = await resp.json()
             _LOGGER.debug("Digest auth response: %s", data)
 
-    # Combining multiple middlewares
-    async with ClientSession(
-        middlewares=(token_auth.middleware, digest_auth.middleware)
-    ) as session:
-        # Both middlewares will be applied
-        async with session.get("https://api.example.com/data") as resp:
+    # Combining multiple middlewares on a per-request basis
+    async with ClientSession() as session:
+        # Both middlewares will be applied to this request
+        async with session.get(
+            "https://api.example.com/data",
+            middlewares=(token_auth.middleware, digest_auth.middleware),
+        ) as resp:
             data = await resp.json()
             _LOGGER.debug("Combined middleware response: %s", data)
 
 
 # Per-request middleware override example
 async def example_with_override() -> None:
-    # Session with default auth
-    session_auth = TokenAuthMiddleware(
-        auth_url="https://api.example.com/auth",
-        username="default_user",
-        password="default_pass",
-    )
+    async with ClientSession() as session:
+        # Create different auth middlewares for different endpoints
+        session_auth = TokenAuthMiddleware(
+            auth_url="https://api.example.com/auth",
+            username="default_user",
+            password="default_pass",
+            session=session,
+        )
 
-    # Different auth for specific endpoints
-    admin_auth = TokenAuthMiddleware(
-        auth_url="https://api.example.com/auth",
-        username="admin_user",
-        password="admin_pass",
-    )
+        # Different auth for specific endpoints
+        admin_auth = TokenAuthMiddleware(
+            auth_url="https://api.example.com/auth",
+            username="admin_user",
+            password="admin_pass",
+            session=session,
+        )
 
-    async with ClientSession(middlewares=(session_auth.middleware,)) as session:
-        # Use session auth
-        async with session.get("https://api.example.com/user/data") as resp:
+        # Authenticate both before using
+        await session_auth.authenticate()
+        await admin_auth.authenticate()
+
+        # Use default auth for user endpoints
+        async with session.get(
+            "https://api.example.com/user/data", middlewares=(session_auth.middleware,)
+        ) as resp:
             user_data = await resp.json()
             _LOGGER.debug("User data: %s", user_data)
 
-        # Override with admin auth for admin endpoints
+        # Use admin auth for admin endpoints
         async with session.get(
             "https://api.example.com/admin/data", middlewares=(admin_auth.middleware,)
         ) as resp:

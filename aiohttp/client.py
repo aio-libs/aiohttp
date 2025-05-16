@@ -697,7 +697,7 @@ class ClientSession:
                         self._middlewares if middlewares is None else middlewares
                     )
 
-                    if effective_middlewares:
+                    if effective_middlewares is not None:
                         handler = build_client_middlewares(
                             _send_request, effective_middlewares
                         )
