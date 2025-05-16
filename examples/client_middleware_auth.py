@@ -233,6 +233,34 @@ async def example_with_override() -> None:
             _LOGGER.debug("Admin data: %s", admin_data)
 
 
+# Example of disabling middlewares for specific requests
+async def example_with_middleware_override() -> None:
+    async with ClientSession() as session:
+        # Create auth middleware
+        auth = TokenAuthMiddleware(
+            auth_url="https://api.example.com/auth",
+            username="user",
+            password="pass",
+            session=session,
+        )
+
+        # Create session with default auth middleware
+        async with ClientSession(middlewares=(auth.middleware,)) as api_session:
+            await auth.authenticate()
+
+            # Normal request with auth
+            async with api_session.get("https://api.example.com/data") as resp:
+                data = await resp.json()
+                _LOGGER.debug("Authenticated request: %s", data)
+
+            # Request without any middleware (disables session middleware)
+            async with api_session.get(
+                "https://api.example.com/public", middlewares=()
+            ) as resp:
+                data = await resp.json()
+                _LOGGER.debug("Public request (no auth): %s", data)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     asyncio.run(main())
