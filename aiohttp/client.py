@@ -89,6 +89,7 @@ from .client_ws import (
 from .connector import (
     HTTP_AND_EMPTY_SCHEMA_SET,
     BaseConnector,
+    Connection,
     NamedPipeConnector,
     TCPConnector,
     UnixConnector,
@@ -674,17 +675,19 @@ class ClientSession:
                         max_field_size=max_field_size,
                     )
 
-                    # Core request handler
-                    async def _send_request(req: ClientRequest) -> ClientResponse:
+                    # Core request handler - use default parameter to avoid loop variable issues
+                    async def _send_request(
+                        req: ClientRequest, *, _conn: Connection = conn
+                    ) -> ClientResponse:
                         try:
-                            resp = await req.send(conn)
+                            resp = await req.send(_conn)
                             try:
-                                await resp.start(conn)
+                                await resp.start(_conn)
                             except BaseException:
                                 resp.close()
                                 raise
                         except BaseException:
-                            conn.close()
+                            _conn.close()
                             raise
 
                         return resp
