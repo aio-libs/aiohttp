@@ -115,7 +115,7 @@ useful for authentication, logging, request/response modification, and retries.
 
 To create a middleware, you need to define an async function that accepts the request
 and a handler function, and returns the response. The middleware must match the
-:data:`ClientMiddlewareType` type signature:
+:type:`ClientMiddlewareType` type signature:
 
     import logging
     from aiohttp import ClientSession, ClientRequest, ClientResponse

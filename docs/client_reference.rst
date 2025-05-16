@@ -215,7 +215,7 @@ The client session supports the context manager protocol for self closing.
                          more information.
 
    :param middlewares: A tuple of middleware instances to apply to all session requests.
-                      Each middleware must match the :data:`ClientMiddlewareType` signature.
+                      Each middleware must match the :type:`ClientMiddlewareType` signature.
                       ``None`` (default) is used when no middleware is needed.
                       See :ref:`aiohttp-client-middleware` for more information.
 
@@ -529,7 +529,7 @@ The client session supports the context manager protocol for self closing.
          .. versionadded:: 3.0
 
       :param middlewares: A tuple of middleware instances to apply to this request only.
-                         Each middleware must match the :data:`ClientMiddlewareType` signature.
+                         Each middleware must match the :type:`ClientMiddlewareType` signature.
                          ``None`` by default which uses session middlewares.
                          See :ref:`aiohttp-client-middleware` for more information.
 
