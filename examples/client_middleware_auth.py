@@ -33,6 +33,7 @@ class TokenAuthMiddleware:
         async with self.session.post(
             self.auth_url,
             json={"username": self.username, "password": self.password},
+            # Don't use middlewares here to avoid recursion
             middlewares=(),
         ) as resp:
             data = await resp.json()
@@ -49,6 +50,7 @@ class TokenAuthMiddleware:
         async with self.session.post(
             f"{self.auth_url}/refresh",
             json={"refresh_token": self.refresh_token},
+            # Don't use middlewares here to avoid recursion
             middlewares=(),
         ) as resp:
             if resp.status == 200:
