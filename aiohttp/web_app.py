@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import warnings
-from functools import cache, partial, update_wrapper
+from functools import lru_cache, partial, update_wrapper
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -44,6 +44,7 @@ from .web_urldispatcher import (
     MaskDomain,
     MatchedSubAppResource,
     PrefixedSubAppResource,
+    SystemRoute,
     UrlDispatcher,
 )
 
@@ -70,7 +71,6 @@ _U = TypeVar("_U")
 _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
-@cache
 def _build_middlewares(
     handler: Handler, apps: Tuple["Application", ...]
 ) -> Callable[[Request], Awaitable[StreamResponse]]:
@@ -82,6 +82,9 @@ def _build_middlewares(
         for m in app._middlewares_handlers:
             handler = update_wrapper(partial(m, handler=handler), handler)
     return handler
+
+
+_cached_build_middleware = lru_cache(maxsize=1024)(_build_middlewares)
 
 
 @final
@@ -161,7 +164,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any: ...
+    def __getitem__(self, key: str) -> Any: ...  # type: ignore[misc]
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         return self._state[key]
@@ -176,7 +179,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def __setitem__(self, key: AppKey[_T], value: _T) -> None: ...
 
     @overload
-    def __setitem__(self, key: str, value: Any) -> None: ...
+    def __setitem__(self, key: str, value: Any) -> None: ...  # type: ignore[misc]
 
     def __setitem__(self, key: Union[str, AppKey[_T]], value: Any) -> None:
         self._check_frozen()
@@ -210,7 +213,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any: ...
+    def get(self, key: str, default: Any = ...) -> Any: ...  # type: ignore[misc]
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         return self._state.get(key, default)
@@ -397,7 +400,13 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         handler = match_info.handler
 
         if self._run_middlewares:
-            handler = _build_middlewares(handler, match_info.apps)
+            # If its a SystemRoute, don't cache building the middlewares since
+            # they are constructed for every MatchInfoError as a new handler
+            # is made each time.
+            if isinstance(match_info.route, SystemRoute):
+                handler = _build_middlewares(handler, match_info.apps)
+            else:
+                handler = _cached_build_middleware(handler, match_info.apps)
 
         return await handler(request)
 

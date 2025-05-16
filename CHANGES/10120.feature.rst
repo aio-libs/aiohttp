@@ -1,0 +1,1 @@
+Added ``host`` parameter to ``aiohttp_server`` fixture -- by :user:`christianwbrock`.

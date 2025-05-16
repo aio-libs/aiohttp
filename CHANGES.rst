@@ -10,6 +10,1220 @@
 
 .. towncrier release notes start
 
+3.11.18 (2025-04-20)
+====================
+
+Bug fixes
+---------
+
+- Disabled TLS in TLS warning (when using HTTPS proxies) for uvloop and newer Python versions -- by :user:`lezgomatt`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7686`.
+
+
+
+- Fixed reading fragmented WebSocket messages when the payload was masked -- by :user:`bdraco`.
+
+  The problem first appeared in 3.11.17
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10764`.
+
+
+
+
+----
+
+
+3.11.17 (2025-04-19)
+====================
+
+Miscellaneous internal changes
+------------------------------
+
+- Optimized web server performance when access logging is disabled by reducing time syscalls -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10713`.
+
+
+
+- Improved web server performance when connection can be reused -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10714`.
+
+
+
+- Improved performance of the WebSocket reader -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10740`.
+
+
+
+- Improved performance of the WebSocket reader with large messages -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10744`.
+
+
+
+
+----
+
+
+3.11.16 (2025-04-01)
+====================
+
+Bug fixes
+---------
+
+- Replaced deprecated ``asyncio.iscoroutinefunction`` with its counterpart from ``inspect``
+  -- by :user:`layday`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10634`.
+
+
+
+- Fixed :class:`multidict.CIMultiDict` being mutated when passed to :class:`aiohttp.web.Response` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10672`.
+
+
+
+
+----
+
+
+3.11.15 (2025-03-31)
+====================
+
+Bug fixes
+---------
+
+- Reverted explicitly closing sockets if an exception is raised during ``create_connection`` -- by :user:`bdraco`.
+
+  This change originally appeared in aiohttp 3.11.13
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10464`, :issue:`10617`, :issue:`10656`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of WebSocket buffer handling -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10601`.
+
+
+
+- Improved performance of serializing headers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10625`.
+
+
+
+
+----
+
+
+3.11.14 (2025-03-16)
+====================
+
+Bug fixes
+---------
+
+- Fixed an issue where dns queries were delayed indefinitely when an exception occurred in a ``trace.send_dns_cache_miss``
+  -- by :user:`logioniz`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10529`.
+
+
+
+- Fixed DNS resolution on platforms that don't support ``socket.AI_ADDRCONFIG`` -- by :user:`maxbachmann`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10542`.
+
+
+
+- The connector now raises :exc:`aiohttp.ClientConnectionError` instead of :exc:`OSError` when failing to explicitly close the socket after :py:meth:`asyncio.loop.create_connection` fails -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10551`.
+
+
+
+- Break cyclic references at connection close when there was a traceback -- by :user:`bdraco`.
+
+  Special thanks to :user:`availov` for reporting the issue.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10556`.
+
+
+
+- Break cyclic references when there is an exception handling a request -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10569`.
+
+
+
+
+Features
+--------
+
+- Improved logging on non-overlapping WebSocket client protocols to include the remote address -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10564`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of parsing content types by adding a cache in the same manner currently done with mime types -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10552`.
+
+
+
+
+----
+
+
+3.11.13 (2025-02-24)
+====================
+
+Bug fixes
+---------
+
+- Removed a break statement inside the finally block in :py:class:`~aiohttp.web.RequestHandler`
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10434`.
+
+
+
+- Changed connection creation to explicitly close sockets if an exception is raised in the event loop's ``create_connection`` method -- by :user:`top-oai`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10464`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Fixed test ``test_write_large_payload_deflate_compression_data_in_eof_writelines`` failing with Python 3.12.9+ or 3.13.2+ -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10423`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added human-readable error messages to the exceptions for WebSocket disconnects due to PONG not being received -- by :user:`bdraco`.
+
+  Previously, the error messages were empty strings, which made it hard to determine what went wrong.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10422`.
+
+
+
+
+----
+
+
+3.11.12 (2025-02-05)
+====================
+
+Bug fixes
+---------
+
+- ``MultipartForm.decode()`` now follows RFC1341 7.2.1 with a ``CRLF`` after the boundary
+  -- by :user:`imnotjames`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10270`.
+
+
+
+- Restored the missing ``total_bytes`` attribute to ``EmptyStreamReader`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10387`.
+
+
+
+
+Features
+--------
+
+- Updated :py:func:`~aiohttp.request` to make it accept ``_RequestOptions`` kwargs.
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10300`.
+
+
+
+- Improved logging of HTTP protocol errors to include the remote address -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10332`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Added ``aiohttp-openmetrics`` to list of third-party libraries -- by :user:`jelmer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10304`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Added missing files to the source distribution to fix ``Makefile`` targets.
+  Added a ``cythonize-nodeps`` target to run Cython without invoking pip to install dependencies.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10366`.
+
+
+
+- Started building armv7l musllinux wheels -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10404`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- The CI/CD workflow has been updated to use `upload-artifact` v4 and `download-artifact` v4 GitHub Actions -- by :user:`silamon`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10281`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Restored support for zero copy writes when using Python 3.12 versions 3.12.9 and later or Python 3.13.2+ -- by :user:`bdraco`.
+
+  Zero copy writes were previously disabled due to :cve:`2024-12254` which is resolved in these Python versions.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10137`.
+
+
+
+
+----
+
+
+3.11.11 (2024-12-18)
+====================
+
+Bug fixes
+---------
+
+- Updated :py:meth:`~aiohttp.ClientSession.request` to reuse the ``quote_cookie`` setting from ``ClientSession._cookie_jar`` when processing cookies parameter.
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10093`.
+
+
+
+- Fixed type of ``SSLContext`` for some static type checkers (e.g. pyright).
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10099`.
+
+
+
+- Updated :meth:`aiohttp.web.StreamResponse.write` annotation to also allow :class:`bytearray` and :class:`memoryview` as inputs -- by :user:`cdce8p`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10154`.
+
+
+
+- Fixed a hang where a connection previously used for a streaming
+  download could be returned to the pool in a paused state.
+  -- by :user:`javitonino`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10169`.
+
+
+
+
+Features
+--------
+
+- Enabled ALPN on default SSL contexts. This improves compatibility with some
+  proxies which don't work without this extension.
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10156`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Fixed an infinite loop that can occur when using aiohttp in combination
+  with `async-solipsism`_ -- by :user:`bmerry`.
+
+  .. _async-solipsism: https://github.com/bmerry/async-solipsism
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10149`.
+
+
+
+
+----
+
+
+3.11.10 (2024-12-05)
+====================
+
+Bug fixes
+---------
+
+- Fixed race condition in :class:`aiohttp.web.FileResponse` that could have resulted in an incorrect response if the file was replaced on the file system during ``prepare`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10101`, :issue:`10113`.
+
+
+
+- Replaced deprecated call to :func:`mimetypes.guess_type` with :func:`mimetypes.guess_file_type` when using Python 3.13+ -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10102`.
+
+
+
+- Disabled zero copy writes in the ``StreamWriter`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10125`.
+
+
+
+
+----
+
+
+3.11.9 (2024-12-01)
+===================
+
+Bug fixes
+---------
+
+- Fixed invalid method logging unexpected being logged at exception level on subsequent connections -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10055`, :issue:`10076`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of parsing headers when using the C parser -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10073`.
+
+
+
+
+----
+
+
+3.11.8 (2024-11-27)
+===================
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of creating :class:`aiohttp.ClientResponse` objects when there are no cookies -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10029`.
+
+
+
+- Improved performance of creating :class:`aiohttp.ClientResponse` objects -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10030`.
+
+
+
+- Improved performances of creating objects during the HTTP request lifecycle -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10037`.
+
+
+
+- Improved performance of constructing :class:`aiohttp.web.Response` with headers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10043`.
+
+
+
+- Improved performance of making requests when there are no auto headers to skip -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10049`.
+
+
+
+- Downgraded logging of invalid HTTP method exceptions on the first request to debug level -- by :user:`bdraco`.
+
+  HTTP requests starting with an invalid method are relatively common, especially when connected to the public internet, because browsers or other clients may try to speak SSL to a plain-text server or vice-versa. These exceptions can quickly fill the log with noise when nothing is wrong.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10055`.
+
+
+
+
+----
+
+
+3.11.7 (2024-11-21)
+===================
+
+Bug fixes
+---------
+
+- Fixed the HTTP client not considering the connector's ``force_close`` value when setting the ``Connection`` header -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10003`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of serializing HTTP headers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10014`.
+
+
+
+
+----
+
+
+3.11.6 (2024-11-19)
+===================
+
+Bug fixes
+---------
+
+- Restored the ``force_close`` method to the ``ResponseHandler`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9997`.
+
+
+
+
+----
+
+
+3.11.5 (2024-11-19)
+===================
+
+Bug fixes
+---------
+
+- Fixed the ``ANY`` method not appearing in :meth:`~aiohttp.web.UrlDispatcher.routes` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9899`, :issue:`9987`.
+
+
+
+
+----
+
+
+3.11.4 (2024-11-18)
+===================
+
+Bug fixes
+---------
+
+- Fixed ``StaticResource`` not allowing the ``OPTIONS`` method after calling ``set_options_route`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9972`, :issue:`9975`, :issue:`9976`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of creating web responses when there are no cookies -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9895`.
+
+
+
+
+----
+
+
+3.11.3 (2024-11-18)
+===================
+
+Bug fixes
+---------
+
+- Removed non-existing ``__author__`` from ``dir(aiohttp)`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9918`.
+
+
+
+- Restored the ``FlowControlDataQueue`` class -- by :user:`bdraco`.
+
+  This class is no longer used internally, and will be permanently removed in the next major version.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9963`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of resolving resources when multiple methods are registered for the same route -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9899`.
+
+
+
+
+----
+
+
+3.11.2 (2024-11-14)
+===================
+
+Bug fixes
+---------
+
+- Fixed improperly closed WebSocket connections generating an unhandled exception -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9883`.
+
+
+
+
+----
+
+
+3.11.1 (2024-11-14)
+===================
+
+Bug fixes
+---------
+
+- Added a backward compatibility layer to :class:`aiohttp.RequestInfo` to allow creating these objects without a ``real_url`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9873`.
+
+
+
+
+----
+
+
+3.11.0 (2024-11-13)
+===================
+
+Bug fixes
+---------
+
+- Raise :exc:`aiohttp.ServerFingerprintMismatch` exception on client-side if request through http proxy with mismatching server fingerprint digest: `aiohttp.ClientSession(headers=headers, connector=TCPConnector(ssl=aiohttp.Fingerprint(mismatch_digest), trust_env=True).request(...)` -- by :user:`gangj`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6652`.
+
+
+
+- Modified websocket :meth:`aiohttp.ClientWebSocketResponse.receive_str`, :py:meth:`aiohttp.ClientWebSocketResponse.receive_bytes`, :py:meth:`aiohttp.web.WebSocketResponse.receive_str` & :py:meth:`aiohttp.web.WebSocketResponse.receive_bytes` methods to raise new :py:exc:`aiohttp.WSMessageTypeError` exception, instead of generic :py:exc:`TypeError`, when websocket messages of incorrect types are received -- by :user:`ara-25`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6800`.
+
+
+
+- Made ``TestClient.app`` a ``Generic`` so type checkers will know the correct type (avoiding unneeded ``client.app is not None`` checks) -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8977`.
+
+
+
+- Fixed the keep-alive connection pool to be FIFO instead of LIFO -- by :user:`bdraco`.
+
+  Keep-alive connections are more likely to be reused before they disconnect.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9672`.
+
+
+
+
+Features
+--------
+
+- Added ``strategy`` parameter to :meth:`aiohttp.web.StreamResponse.enable_compression`
+  The value of this parameter is passed to the :func:`zlib.compressobj` function, allowing people
+  to use a more sufficient compression algorithm for their data served by :mod:`aiohttp.web`
+  -- by :user:`shootkin`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6257`.
+
+
+
+- Added ``server_hostname`` parameter to ``ws_connect``.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7941`.
+
+
+
+- Exported :py:class:`~aiohttp.ClientWSTimeout` to top-level namespace -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8612`.
+
+
+
+- Added ``secure``/``httponly``/``samesite`` parameters to ``.del_cookie()`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8956`.
+
+
+
+- Updated :py:class:`~aiohttp.ClientSession`'s auth logic to include default auth only if the request URL's origin matches _base_url; otherwise, the auth will not be included -- by :user:`MaximZemskov`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8966`, :issue:`9466`.
+
+
+
+- Added ``proxy`` and ``proxy_auth`` parameters to :py:class:`~aiohttp.ClientSession` -- by :user:`meshya`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9207`.
+
+
+
+- Added ``default_to_multipart`` parameter to ``FormData``.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9335`.
+
+
+
+- Added :py:meth:`~aiohttp.ClientWebSocketResponse.send_frame` and :py:meth:`~aiohttp.web.WebSocketResponse.send_frame` for WebSockets -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9348`.
+
+
+
+- Updated :py:class:`~aiohttp.ClientSession` to support paths in ``base_url`` parameter.
+  ``base_url`` paths must end with a ``/``  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9530`.
+
+
+
+- Improved performance of reading WebSocket messages with a Cython implementation -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9543`, :issue:`9554`, :issue:`9556`, :issue:`9558`, :issue:`9636`, :issue:`9649`, :issue:`9781`.
+
+
+
+- Added ``writer_limit`` to the :py:class:`~aiohttp.web.WebSocketResponse` to be able to adjust the limit before the writer forces the buffer to be drained -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9572`.
+
+
+
+- Added an :attr:`~aiohttp.abc.AbstractAccessLogger.enabled` property to :class:`aiohttp.abc.AbstractAccessLogger` to dynamically check if logging is enabled -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9822`.
+
+
+
+
+Deprecations (removal in next major release)
+--------------------------------------------
+
+- Deprecate obsolete `timeout: float` and `receive_timeout: Optional[float]` in :py:meth:`~aiohttp.ClientSession.ws_connect`. Change default websocket receive timeout from `None` to `10.0`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`3945`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Dropped support for Python 3.8 -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8797`.
+
+
+
+- Increased minimum yarl version to 1.17.0 -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8909`, :issue:`9079`, :issue:`9305`, :issue:`9574`.
+
+
+
+- Removed the ``is_ipv6_address`` and ``is_ip4_address`` helpers are they are no longer used -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9344`.
+
+
+
+- Changed ``ClientRequest.connection_key`` to be a `NamedTuple` to improve client performance -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9365`.
+
+
+
+- ``FlowControlDataQueue`` has been replaced with the ``WebSocketDataQueue`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9685`.
+
+
+
+- Changed ``ClientRequest.request_info`` to be a `NamedTuple` to improve client performance -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9692`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Switched to using the :mod:`propcache <propcache.api>` package for property caching
+  -- by :user:`bdraco`.
+
+  The :mod:`propcache <propcache.api>` package is derived from the property caching
+  code in :mod:`yarl` and has been broken out to avoid maintaining it for multiple
+  projects.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9394`.
+
+
+
+- Separated ``aiohttp.http_websocket`` into multiple files to make it easier to maintain -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9542`, :issue:`9552`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Changed diagram images generator from ``blockdiag`` to ``GraphViz``.
+  Generating documentation now requires the GraphViz executable to be included in $PATH or sphinx build configuration.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9359`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added flake8 settings to avoid some forms of implicit concatenation. -- by :user:`booniepepper`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7731`.
+
+
+
+- Enabled keep-alive support on proxies (which was originally disabled several years ago) -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`8920`.
+
+
+
+- Changed web entry point to not listen on TCP when only a Unix path is passed -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9033`.
+
+
+
+- Disabled automatic retries of failed requests in :class:`aiohttp.test_utils.TestClient`'s client session
+  (which could potentially hide errors in tests) -- by :user:`ShubhAgarwal-dev`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9141`.
+
+
+
+- Changed web ``keepalive_timeout`` default to around an hour in order to reduce race conditions on reverse proxies -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9285`.
+
+
+
+- Reduced memory required for stream objects created during the client request lifecycle -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9407`.
+
+
+
+- Improved performance of the internal ``DataQueue`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9659`.
+
+
+
+- Improved performance of calling ``receive`` for WebSockets for the most common message types -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9679`.
+
+
+
+- Replace internal helper methods ``method_must_be_empty_body`` and ``status_code_must_be_empty_body`` with simple `set` lookups -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9722`.
+
+
+
+- Improved performance of :py:class:`aiohttp.BaseConnector` when there is no ``limit_per_host`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9756`.
+
+
+
+- Improved performance of sending HTTP requests when there is no body -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9757`.
+
+
+
+- Improved performance of the ``WebsocketWriter`` when the protocol is not paused -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9796`.
+
+
+
+- Implemented zero copy writes for ``StreamWriter`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9839`.
+
+
+
+
+----
+
+
+3.10.11 (2024-11-13)
+====================
+
+Bug fixes
+---------
+
+- Authentication provided by a redirect now takes precedence over provided ``auth`` when making requests with the client -- by :user:`PLPeeters`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9436`.
+
+
+
+- Fixed :py:meth:`WebSocketResponse.close() <aiohttp.web.WebSocketResponse.close>` to discard non-close messages within its timeout window after sending close -- by :user:`lenard-mosys`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9506`.
+
+
+
+- Fixed a deadlock that could occur while attempting to get a new connection slot after a timeout -- by :user:`bdraco`.
+
+  The connector was not cancellation-safe.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9670`, :issue:`9671`.
+
+
+
+- Fixed the WebSocket flow control calculation undercounting with multi-byte data -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9686`.
+
+
+
+- Fixed incorrect parsing of chunk extensions with the pure Python parser -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9851`.
+
+
+
+- Fixed system routes polluting the middleware cache -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9852`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- Improved performance of the connector when a connection can be reused -- by :user:`bdraco`.
+
+  If ``BaseConnector.connect`` has been subclassed and replaced with custom logic, the ``ceil_timeout`` must be added.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9600`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of the client request lifecycle when there are no cookies -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9470`.
+
+
+
+- Improved performance of sending client requests when the writer can finish synchronously -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9485`.
+
+
+
+- Improved performance of serializing HTTP headers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9603`.
+
+
+
+- Passing ``enable_cleanup_closed`` to :py:class:`aiohttp.TCPConnector` is now ignored on Python 3.12.7+ and 3.13.1+ since the underlying bug that caused asyncio to leak SSL connections has been fixed upstream -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9726`, :issue:`9736`.
+
+
+
+----
+
+
+
+
 3.10.10 (2024-10-10)
 ====================
 

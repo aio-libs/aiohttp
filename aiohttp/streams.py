@@ -220,6 +220,9 @@ class StreamReader(AsyncStreamReaderMixin):
             self._eof_waiter = None
             set_result(waiter, None)
 
+        if self._protocol._reading_paused:
+            self._protocol.resume_reading()
+
         for cb in self._eof_callbacks:
             try:
                 cb()
@@ -272,9 +275,10 @@ class StreamReader(AsyncStreamReaderMixin):
         if not data:
             return
 
-        self._size += len(data)
+        data_len = len(data)
+        self._size += data_len
         self._buffer.append(data)
-        self.total_bytes += len(data)
+        self.total_bytes += data_len
 
         waiter = self._waiter
         if waiter is not None:
@@ -501,8 +505,9 @@ class StreamReader(AsyncStreamReaderMixin):
         else:
             data = self._buffer.popleft()
 
-        self._size -= len(data)
-        self._cursor += len(data)
+        data_len = len(data)
+        self._size -= data_len
+        self._cursor += data_len
 
         chunk_splits = self._http_chunk_splits
         # Prevent memory leak: drop useless chunk splits
@@ -535,6 +540,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 
     def __init__(self) -> None:
         self._read_eof_chunk = False
+        self.total_bytes = 0
 
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__

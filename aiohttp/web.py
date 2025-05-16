@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from contextlib import suppress
 from importlib import import_module
 from typing import (
+    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
@@ -267,10 +268,13 @@ __all__ = (
 )
 
 
-try:
+if TYPE_CHECKING:
     from ssl import SSLContext
-except ImportError:  # pragma: no cover
-    SSLContext = Any  # type: ignore[misc,assignment]
+else:
+    try:
+        from ssl import SSLContext
+    except ImportError:  # pragma: no cover
+        SSLContext = object  # type: ignore[misc,assignment]
 
 # Only display warning when using -Wdefault, -We, -X dev or similar.
 warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
@@ -499,7 +503,7 @@ def run_app(
     try:
         asyncio.set_event_loop(loop)
         loop.run_until_complete(main_task)
-    except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
+    except (GracefulExit, KeyboardInterrupt):
         pass
     finally:
         try:

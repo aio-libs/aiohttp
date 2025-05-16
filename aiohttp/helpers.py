@@ -24,8 +24,9 @@ from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
 from pathlib import Path
-from types import TracebackType
+from types import MappingProxyType, TracebackType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     ContextManager,
@@ -61,7 +62,16 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
-__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "reify")
+if TYPE_CHECKING:
+    from dataclasses import dataclass as frozen_dataclass_decorator
+elif sys.version_info < (3, 10):
+    frozen_dataclass_decorator = functools.partial(dataclasses.dataclass, frozen=True)
+else:
+    frozen_dataclass_decorator = functools.partial(
+        dataclasses.dataclass, frozen=True, slots=True
+    )
+
+__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
 
 PY_310 = sys.version_info >= (3, 10)
 
@@ -74,6 +84,12 @@ _SENTINEL = enum.Enum("_SENTINEL", "sentinel")
 sentinel = _SENTINEL.sentinel
 
 NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
+
+# https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+EMPTY_BODY_STATUS_CODES = frozenset((204, 304, *range(100, 200)))
+# https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+# https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
+EMPTY_BODY_METHODS = hdrs.METH_HEAD_ALL
 
 DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
@@ -129,7 +145,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         return super().__new__(cls, login, password, encoding)
 
     @classmethod
-    def decode(cls, auth_header: str, encoding: str = "latin1") -> "BasicAuth":
+    def decode(cls, auth_header: str, encoding: str = "latin1") -> "BasicAuth":  # type: ignore[misc]
         """Create a BasicAuth object from an Authorization HTTP header."""
         try:
             auth_type, encoded_credentials = auth_header.split(" ", 1)
@@ -158,7 +174,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         return cls(username, password, encoding=encoding)
 
     @classmethod
-    def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:
+    def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:  # type: ignore[misc]
         """Create BasicAuth from url."""
         if not isinstance(url, URL):
             raise TypeError("url should be yarl.URL instance")
@@ -198,7 +214,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     else:
         try:
             home_dir = Path.home()
-        except RuntimeError as e:  # pragma: no cover
+        except RuntimeError as e:
             # if pathlib can't resolve home, it may raise a RuntimeError
             client_logger.debug(
                 "Could not resolve home directory when "
@@ -228,8 +244,8 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     return None
 
 
-@dataclasses.dataclass(frozen=True)
-class ProxyInfo:
+@frozen_dataclass_decorator
+class ProxyInfo:  # type: ignore[misc]
     proxy: URL
     proxy_auth: Optional[BasicAuth]
 
@@ -303,7 +319,7 @@ def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
         return proxy_info.proxy, proxy_info.proxy_auth
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class MimeType:
     type: str
     subtype: str
@@ -349,6 +365,20 @@ def parse_mimetype(mimetype: str) -> MimeType:
     return MimeType(
         type=mtype, subtype=stype, suffix=suffix, parameters=MultiDictProxy(params)
     )
+
+
+@functools.lru_cache(maxsize=56)
+def parse_content_type(raw: str) -> Tuple[str, MappingProxyType[str, str]]:
+    """Parse Content-Type header.
+
+    Returns a tuple of the parsed content type and a
+    MappingProxyType of parameters.
+    """
+    msg = HeaderParser().parsestr(f"Content-Type: {raw}")
+    content_type = msg.get_content_type()
+    params = msg.get_params(())
+    content_dict = dict(params[1:])  # First element is content type again
+    return content_type, MappingProxyType(content_dict)
 
 
 def guess_filename(obj: Any, default: Optional[str] = None) -> Optional[str]:
@@ -703,15 +733,12 @@ def ceil_timeout(
 
 
 class HeadersMixin:
-    __slots__ = ("_content_type", "_content_dict", "_stored_content_type")
+    """Mixin for handling headers."""
 
     _headers: MultiMapping[str]
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._content_type: Optional[str] = None
-        self._content_dict: Optional[Dict[str, str]] = None
-        self._stored_content_type: Union[str, None, _SENTINEL] = sentinel
+    _content_type: Optional[str] = None
+    _content_dict: Optional[Dict[str, str]] = None
+    _stored_content_type: Union[str, None, _SENTINEL] = sentinel
 
     def _parse_content_type(self, raw: Optional[str]) -> None:
         self._stored_content_type = raw
@@ -720,10 +747,10 @@ class HeadersMixin:
             self._content_type = "application/octet-stream"
             self._content_dict = {}
         else:
-            msg = HeaderParser().parsestr("Content-Type: " + raw)
-            self._content_type = msg.get_content_type()
-            params = msg.get_params(())
-            self._content_dict = dict(params[1:])  # First element is content type again
+            content_type, content_mapping_proxy = parse_content_type(raw)
+            self._content_type = content_type
+            # _content_dict needs to be mutable so we can update it
+            self._content_dict = content_mapping_proxy.copy()
 
     @property
     def content_type(self) -> str:
@@ -763,7 +790,7 @@ class ErrorableProtocol(Protocol):
         self,
         exc: Union[Type[BaseException], BaseException],
         exc_cause: BaseException = ...,
-    ) -> None: ...  # pragma: no cover
+    ) -> None: ...
 
 
 def set_exception(
@@ -857,7 +884,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
     def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any: ...
+    def __getitem__(self, key: str) -> Any: ...  # type: ignore[misc]
 
     def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
         for mapping in self._maps:
@@ -874,7 +901,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
     def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any: ...
+    def get(self, key: str, default: Any = ...) -> Any: ...  # type: ignore[misc]
 
     def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
         try:
@@ -905,20 +932,14 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 
 
 class CookieMixin:
-    # The `_cookies` slots is not defined here because non-empty slots cannot
-    # be combined with an Exception base class, as is done in HTTPException.
-    # CookieMixin subclasses with slots should define the `_cookies`
-    # slot themselves.
-    __slots__ = ()
+    """Mixin for handling cookies."""
 
-    def __init__(self) -> None:
-        super().__init__()
-        # Mypy doesn't like that _cookies isn't in __slots__.
-        # See the comment on this class's __slots__ for why this is OK.
-        self._cookies = SimpleCookie()  # type: ignore[misc]
+    _cookies: Optional[SimpleCookie] = None
 
     @property
     def cookies(self) -> SimpleCookie:
+        if self._cookies is None:
+            self._cookies = SimpleCookie()
         return self._cookies
 
     def set_cookie(
@@ -933,16 +954,15 @@ class CookieMixin:
         secure: Optional[bool] = None,
         httponly: Optional[bool] = None,
         samesite: Optional[str] = None,
+        partitioned: Optional[bool] = None,
     ) -> None:
         """Set or update response cookie.
 
         Sets new cookie or updates existent with new value.
         Also updates only those params which are not None.
         """
-        old = self._cookies.get(name)
-        if old is not None and old.coded_value == "":
-            # deleted cookie
-            self._cookies.pop(name, None)
+        if self._cookies is None:
+            self._cookies = SimpleCookie()
 
         self._cookies[name] = value
         c = self._cookies[name]
@@ -969,6 +989,9 @@ class CookieMixin:
         if samesite is not None:
             c["samesite"] = samesite
 
+        if partitioned is not None:
+            c["partitioned"] = partitioned
+
         if DEBUG:
             cookie_length = len(c.output(header="")[1:])
             if cookie_length > COOKIE_MAX_LENGTH:
@@ -993,7 +1016,8 @@ class CookieMixin:
         Creates new empty expired cookie.
         """
         # TODO: do we need domain/path here?
-        self._cookies.pop(name, None)
+        if self._cookies is not None:
+            self._cookies.pop(name, None)
         self.set_cookie(
             name,
             "",
@@ -1023,7 +1047,7 @@ LIST_QUOTED_ETAG_RE = re.compile(rf"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
 ETAG_ANY = "*"
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class ETag:
     value: str
     is_weak: bool = False
@@ -1050,23 +1074,10 @@ def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
 def must_be_empty_body(method: str, code: int) -> bool:
     """Check if a request must return an empty body."""
     return (
-        status_code_must_be_empty_body(code)
-        or method_must_be_empty_body(method)
-        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+        code in EMPTY_BODY_STATUS_CODES
+        or method in EMPTY_BODY_METHODS
+        or (200 <= code < 300 and method in hdrs.METH_CONNECT_ALL)
     )
-
-
-def method_must_be_empty_body(method: str) -> bool:
-    """Check if a method must return an empty body."""
-    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
-    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
-    return method.upper() == hdrs.METH_HEAD
-
-
-def status_code_must_be_empty_body(code: int) -> bool:
-    """Check if a status code must return an empty body."""
-    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
-    return code in {204, 304} or 100 <= code < 200
 
 
 def should_remove_content_length(method: str, code: int) -> bool:
@@ -1076,8 +1087,6 @@ def should_remove_content_length(method: str, code: int) -> bool:
     """
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-8
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5-4
-    return (
-        code in {204, 304}
-        or 100 <= code < 200
-        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    return code in EMPTY_BODY_STATUS_CODES or (
+        200 <= code < 300 and method in hdrs.METH_CONNECT_ALL
     )

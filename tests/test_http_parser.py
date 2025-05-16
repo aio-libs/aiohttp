@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+from contextlib import suppress
 from typing import Any, Dict, Iterable, List, Type
 from unittest import mock
 from urllib.parse import quote
@@ -36,17 +37,15 @@ except ImportError:
 REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
 
-try:
+with suppress(ImportError):
     from aiohttp.http_parser import HttpRequestParserC, HttpResponseParserC
 
     REQUEST_PARSERS.append(HttpRequestParserC)
     RESPONSE_PARSERS.append(HttpResponseParserC)
-except ImportError:  # pragma: no cover
-    pass
 
 
 @pytest.fixture
-def protocol() -> Any:
+def protocol() -> Any:  # type: ignore[misc]
     return mock.create_autospec(BaseProtocol, spec_set=True, instance=True)
 
 
@@ -214,8 +213,8 @@ def test_bad_header_name(
     (
         "Content-Length: -5",  # https://www.rfc-editor.org/rfc/rfc9110.html#name-content-length
         "Content-Length: +256",
-        "Content-Length: \N{superscript one}",
-        "Content-Length: \N{mathematical double-struck digit one}",
+        "Content-Length: \N{SUPERSCRIPT ONE}",
+        "Content-Length: \N{MATHEMATICAL DOUBLE-STRUCK DIGIT ONE}",
         "Foo: abc\rdef",  # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
         "Bar: abc\ndef",
         "Baz: abc\x00def",
@@ -820,11 +819,11 @@ def test_http_request_bad_status_line(parser: HttpRequestParser) -> None:
 _num: Dict[bytes, str] = {
     # dangerous: accepted by Python int()
     # unicodedata.category("\U0001D7D9") == 'Nd'
-    "\N{mathematical double-struck digit one}".encode(): "utf8digit",
+    "\N{MATHEMATICAL DOUBLE-STRUCK DIGIT ONE}".encode(): "utf8digit",
     # only added for interop tests, refused by Python int()
     # unicodedata.category("\U000000B9") == 'No'
-    "\N{superscript one}".encode(): "utf8number",
-    "\N{superscript one}".encode("latin-1"): "latin1number",
+    "\N{SUPERSCRIPT ONE}".encode(): "utf8number",
+    "\N{SUPERSCRIPT ONE}".encode("latin-1"): "latin1number",
 }
 
 
@@ -839,7 +838,7 @@ def test_http_request_bad_status_line_number(
 
 def test_http_request_bad_status_line_separator(parser: HttpRequestParser) -> None:
     # single code point, old, multibyte NFKC, multibyte NFKD
-    utf8sep = "\N{arabic ligature sallallahou alayhe wasallam}".encode()
+    utf8sep = "\N{ARABIC LIGATURE SALLALLAHOU ALAYHE WASALLAM}".encode()
     text = b"GET /ligature HTTP/1" + utf8sep + b"1\r\n\r\n"
     with pytest.raises(http_exceptions.BadStatusLine):
         parser.feed_data(text)
@@ -913,7 +912,7 @@ def test_http_request_parser_utf8_request_line(parser: HttpRequestParser) -> Non
         b"GET /P\xc3\xbcnktchen\xa0\xef\xb7 HTTP/1.1\r\n" +
         # for easier grep: ASCII 0xA0 more commonly known as non-breaking space
         # note the leading and trailing spaces
-        "sTeP:  \N{latin small letter sharp s}nek\t\N{no-break space}  "
+        "sTeP:  \N{LATIN SMALL LETTER SHARP S}nek\t\N{NO-BREAK SPACE}  "
         "\r\n\r\n".encode()
     )
     msg = messages[0][0]
@@ -988,7 +987,7 @@ def test_http_request_parser_two_slashes(parser: HttpRequestParser) -> None:
 def test_http_request_parser_bad_method(
     parser: HttpRequestParser, rfc9110_5_6_2_token_delim: bytes
 ) -> None:
-    with pytest.raises(http_exceptions.BadStatusLine):
+    with pytest.raises(http_exceptions.BadHttpMethod):
         parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
 
 
@@ -1531,6 +1530,54 @@ async def test_parse_chunked_payload_split_chunks(response: HttpResponseParser) 
     assert await reader.read() == b"firstsecond"
 
 
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+async def test_parse_chunked_payload_with_lf_in_extensions_c_parser(
+    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+) -> None:
+    """Test the C-parser with a chunked payload that has a LF in the chunk extensions."""
+    # The C parser will raise a BadHttpMessage from feed_data
+    parser = HttpRequestParserC(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    payload = (
+        b"GET / HTTP/1.1\r\nHost: localhost:5001\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n2;\nxx\r\n4c\r\n0\r\n\r\n"
+        b"GET /admin HTTP/1.1\r\nHost: localhost:5001\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage, match="\\\\nxx"):
+        parser.feed_data(payload)
+
+
+async def test_parse_chunked_payload_with_lf_in_extensions_py_parser(
+    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+) -> None:
+    """Test the py-parser with a chunked payload that has a LF in the chunk extensions."""
+    # The py parser will not raise the BadHttpMessage directly, but instead
+    # it will set the exception on the StreamReader.
+    parser = HttpRequestParserPy(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    payload = (
+        b"GET / HTTP/1.1\r\nHost: localhost:5001\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n2;\nxx\r\n4c\r\n0\r\n\r\n"
+        b"GET /admin HTTP/1.1\r\nHost: localhost:5001\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n"
+    )
+    messages, _, _ = parser.feed_data(payload)
+    reader = messages[0][1]
+    assert isinstance(reader.exception(), http_exceptions.BadHttpMessage)
+    assert "\\nxx" in str(reader.exception())
+
+
 def test_partial_url(parser: HttpRequestParser) -> None:
     messages, upgrade, tail = parser.feed_data(b"GET /te")
     assert len(messages) == 0
@@ -1625,7 +1672,7 @@ class TestParsePayload:
         p.feed_eof()
 
         assert out.is_eof()
-        assert [(bytearray(b"data"))] == list(out._buffer)
+        assert [bytearray(b"data")] == list(out._buffer)
 
     async def test_parse_length_payload_eof(self, protocol: BaseProtocol) -> None:
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())

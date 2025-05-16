@@ -62,7 +62,7 @@ def connector(
 
 
 @pytest.fixture
-def create_session(
+def create_session(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
 ) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
@@ -78,7 +78,7 @@ def create_session(
 
 
 @pytest.fixture
-def session(
+def session(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
     loop: asyncio.AbstractEventLoop,
 ) -> ClientSession:
@@ -98,21 +98,21 @@ def params() -> _Params:
 
 
 async def test_close_coro(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session()
     await session.close()
 
 
 async def test_init_headers_simple_dict(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     assert sorted(session.headers.items()) == ([("h1", "header1"), ("h2", "header2")])
 
 
 async def test_init_headers_list_of_tuples(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(
         headers=[("h1", "header1"), ("h2", "header2"), ("h3", "header3")]
@@ -123,7 +123,7 @@ async def test_init_headers_list_of_tuples(
 
 
 async def test_init_headers_MultiDict(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(
         headers=MultiDict([("h1", "header1"), ("h2", "header2"), ("h3", "header3")])
@@ -134,7 +134,7 @@ async def test_init_headers_MultiDict(
 
 
 async def test_init_headers_list_of_tuples_with_duplicates(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(
         headers=[("h1", "header11"), ("h2", "header21"), ("h1", "header12")]
@@ -145,7 +145,7 @@ async def test_init_headers_list_of_tuples_with_duplicates(
 
 
 async def test_init_cookies_with_simple_dict(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(cookies={"c1": "cookie1", "c2": "cookie2"})
     cookies = session.cookie_jar.filter_cookies(URL())
@@ -155,7 +155,7 @@ async def test_init_cookies_with_simple_dict(
 
 
 async def test_init_cookies_with_list_of_tuples(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(cookies=[("c1", "cookie1"), ("c2", "cookie2")])
 
@@ -166,7 +166,7 @@ async def test_init_cookies_with_list_of_tuples(
 
 
 async def test_merge_headers(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     # Check incoming simple dict
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
@@ -177,7 +177,7 @@ async def test_merge_headers(
 
 
 async def test_merge_headers_with_multi_dict(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers(MultiDict([("h1", "h1")]))
@@ -186,7 +186,7 @@ async def test_merge_headers_with_multi_dict(
 
 
 async def test_merge_headers_with_list_of_tuples(
-    create_session: Callable[..., Awaitable[ClientSession]]
+    create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session(headers={"h1": "header1", "h2": "header2"})
     headers = session._prepare_headers([("h1", "h1")])
@@ -531,7 +531,7 @@ async def test_close_conn_on_error(
 
 
 @pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss"])
-async def test_ws_connect_allowed_protocols(
+async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
     create_mocked_conn: Callable[[], ResponseHandler],
     protocol: str,
@@ -574,11 +574,12 @@ async def test_ws_connect_allowed_protocols(
         return create_mocked_conn()
 
     connector = session._connector
-    with mock.patch.object(connector, "connect", connect), mock.patch.object(
-        connector, "_create_connection", create_connection
-    ), mock.patch.object(connector, "_release"), mock.patch(
-        "aiohttp.client.os"
-    ) as m_os:
+    with (
+        mock.patch.object(connector, "connect", connect),
+        mock.patch.object(connector, "_create_connection", create_connection),
+        mock.patch.object(connector, "_release"),
+        mock.patch("aiohttp.client.os") as m_os,
+    ):
         m_os.urandom.return_value = key_data
         await session.ws_connect(f"{protocol}://example")
 
@@ -592,7 +593,7 @@ async def test_ws_connect_allowed_protocols(
 
 
 @pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss", "unix"])
-async def test_ws_connect_unix_socket_allowed_protocols(
+async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
     create_mocked_conn: Callable[[], ResponseHandler],
     protocol: str,
@@ -635,11 +636,12 @@ async def test_ws_connect_unix_socket_allowed_protocols(
         return create_mocked_conn()
 
     connector = session._connector
-    with mock.patch.object(connector, "connect", connect), mock.patch.object(
-        connector, "_create_connection", create_connection
-    ), mock.patch.object(connector, "_release"), mock.patch(
-        "aiohttp.client.os"
-    ) as m_os:
+    with (
+        mock.patch.object(connector, "connect", connect),
+        mock.patch.object(connector, "_create_connection", create_connection),
+        mock.patch.object(connector, "_release"),
+        mock.patch("aiohttp.client.os") as m_os,
+    ):
         m_os.urandom.return_value = key_data
         await session.ws_connect(f"{protocol}://example")
 
@@ -694,7 +696,6 @@ async def test_cookie_jar_usage(
     assert resp_cookies["response"].value == "resp_value"
 
 
-@pytest.mark.xfail(reason="Reproducer for #9336")
 async def test_cookies_with_not_quoted_cookie_jar(
     aiohttp_server: AiohttpServer,
 ) -> None:
@@ -918,7 +919,7 @@ async def test_request_tracing_url_params(
             assert to_trace_urls(on_request_redirect) == []
             assert to_trace_urls(on_request_end) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_exception) == []
-            assert to_trace_urls(on_request_chunk_sent) == [to_url("/?x=0")]
+            assert to_trace_urls(on_request_chunk_sent) == []
             assert to_trace_urls(on_response_chunk_received) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_headers_sent) == [to_url("/?x=0")]
 
@@ -934,10 +935,7 @@ async def test_request_tracing_url_params(
             assert to_trace_urls(on_request_redirect) == [to_url("/redirect?x=0")]
             assert to_trace_urls(on_request_end) == [to_url("/")]
             assert to_trace_urls(on_request_exception) == []
-            assert to_trace_urls(on_request_chunk_sent) == [
-                to_url("/redirect?x=0"),
-                to_url("/"),
-            ]
+            assert to_trace_urls(on_request_chunk_sent) == []
             assert to_trace_urls(on_response_chunk_received) == [to_url("/")]
             assert to_trace_urls(on_request_headers_sent) == [
                 to_url("/redirect?x=0"),
@@ -1051,7 +1049,7 @@ async def test_client_session_timeout_default_args(
 
 
 async def test_client_session_timeout_zero(
-    create_mocked_conn: Callable[[], ResponseHandler]
+    create_mocked_conn: Callable[[], ResponseHandler],
 ) -> None:
     async def create_connection(
         req: object, traces: object, timeout: object
@@ -1141,9 +1139,27 @@ async def test_requote_redirect_url_default_disable() -> None:
             URL("http://example.com/test1/test2?q=foo#bar"),
             id="base_url=URL('http://example.com/test1/') url='test2?q=foo#bar'",
         ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "http://foo.com/bar",
+            URL("http://foo.com/bar"),
+            id="base_url=URL('http://example.com/test1/') url='http://foo.com/bar'",
+        ),
+        pytest.param(
+            URL("http://example.com"),
+            "http://foo.com/bar",
+            URL("http://foo.com/bar"),
+            id="base_url=URL('http://example.com') url='http://foo.com/bar'",
+        ),
+        pytest.param(
+            URL("http://example.com/test1/"),
+            "http://foo.com",
+            URL("http://foo.com"),
+            id="base_url=URL('http://example.com/test1/') url='http://foo.com'",
+        ),
     ],
 )
-async def test_build_url_returns_expected_url(
+async def test_build_url_returns_expected_url(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
     base_url: Union[URL, str, None],
     url: Union[URL, str],

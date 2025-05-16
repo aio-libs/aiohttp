@@ -61,8 +61,6 @@ def test_base_ctor() -> None:
 
     assert req.keep_alive
 
-    assert "__dict__" not in dir(req)
-
     assert req
 
 
@@ -108,8 +106,6 @@ def test_ctor() -> None:
     assert req.headers == headers
     assert req.raw_headers == ((b"FOO", b"bar"),)
     assert req.task is req._task
-
-    assert "__dict__" not in dir(req)
 
 
 def test_doubleslashes() -> None:
@@ -291,6 +287,7 @@ def test_match_info() -> None:
 def test_request_is_mutable_mapping() -> None:
     req = make_mocked_request("GET", "/")
     assert isinstance(req, MutableMapping)
+    assert req  # even when the MutableMapping is empty, request should always be True
     req["key"] = "value"
     assert "value" == req["key"]
 

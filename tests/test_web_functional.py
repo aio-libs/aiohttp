@@ -4,8 +4,17 @@ import json
 import pathlib
 import socket
 import sys
-import zlib
-from typing import AsyncIterator, Awaitable, Callable, Dict, List, NoReturn, Optional
+from typing import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    NoReturn,
+    Optional,
+    Tuple,
+)
 from unittest import mock
 
 import pytest
@@ -24,6 +33,7 @@ from aiohttp import (
     web,
 )
 from aiohttp.abc import AbstractResolver, ResolveResult
+from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import make_mocked_coro
@@ -414,7 +424,7 @@ async def test_post_single_file(aiohttp_client: AiohttpClient) -> None:
         assert ["data.unknown_mime_type"] == list(data.keys())
         for fs in data.values():
             assert isinstance(fs, aiohttp.web_request.FileField)
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -441,9 +451,9 @@ async def test_files_upload_with_same_key(aiohttp_client: AiohttpClient) -> None
             assert isinstance(_file, aiohttp.web_request.FileField)
             assert not _file.file.closed
             if _file.filename == "test1.jpeg":
-                assert _file.file.read() == b"binary data 1"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 1"
             if _file.filename == "test2.jpeg":
-                assert _file.file.read() == b"binary data 2"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 2"
             file_names.add(_file.filename)
             _file.file.close()
         assert len(files) == 2
@@ -483,7 +493,7 @@ async def test_post_files(aiohttp_client: AiohttpClient) -> None:
         assert ["data.unknown_mime_type", "conftest.py"] == list(data.keys())
         for fs in data.values():
             assert isinstance(fs, aiohttp.web_request.FileField)
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -700,7 +710,6 @@ async def test_http11_keep_alive_default(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
-@pytest.mark.xfail
 async def test_http10_keep_alive_default(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -763,7 +772,7 @@ async def test_upload_file(aiohttp_client: AiohttpClient) -> None:
         form = await request.post()
         form_file = form["file"]
         assert isinstance(form_file, aiohttp.web_request.FileField)
-        raw_data = form_file.file.read()
+        raw_data = await asyncio.to_thread(form_file.file.read)
         form_file.file.close()
         assert data == raw_data
         return web.Response()
@@ -788,7 +797,7 @@ async def test_upload_file_object(aiohttp_client: AiohttpClient) -> None:
         form = await request.post()
         form_file = form["file"]
         assert isinstance(form_file, aiohttp.web_request.FileField)
-        raw_data = form_file.file.read()
+        raw_data = await asyncio.to_thread(form_file.file.read)
         form_file.file.close()
         assert data == raw_data
         return web.Response()
@@ -915,10 +924,10 @@ async def test_response_with_async_gen(
 
     async def stream(f_name: pathlib.Path) -> AsyncIterator[bytes]:
         with f_name.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Length": str(data_size)}
@@ -947,10 +956,10 @@ async def test_response_with_async_gen_no_params(
 
     async def stream() -> AsyncIterator[bytes]:
         with fname.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Length": str(data_size)}
@@ -1091,19 +1100,30 @@ async def test_response_with_payload_stringio(
     resp.release()
 
 
-@pytest.mark.parametrize(
-    "compressor,encoding",
-    [
-        (zlib.compressobj(wbits=16 + zlib.MAX_WBITS), "gzip"),
-        (zlib.compressobj(wbits=zlib.MAX_WBITS), "deflate"),
-        # Actually, wrong compression format, but
-        # should be supported for some legacy cases.
-        (zlib.compressobj(wbits=-zlib.MAX_WBITS), "deflate"),
-    ],
-)
+@pytest.fixture(params=["gzip", "deflate", "deflate-raw"])
+def compressor_case(
+    request: pytest.FixtureRequest,
+    parametrize_zlib_backend: None,
+) -> Generator[Tuple[ZLibCompressObjProtocol, str], None, None]:
+    encoding: str = request.param
+    max_wbits: int = ZLibBackend.MAX_WBITS
+
+    encoding_to_wbits: Dict[str, int] = {
+        "deflate": max_wbits,
+        "deflate-raw": -max_wbits,
+        "gzip": 16 + max_wbits,
+    }
+
+    compressor = ZLibBackend.compressobj(wbits=encoding_to_wbits[encoding])
+    yield (compressor, "deflate" if encoding.startswith("deflate") else encoding)
+
+
 async def test_response_with_precompressed_body(
-    aiohttp_client: AiohttpClient, compressor: "zlib._Compress", encoding: str
+    aiohttp_client: AiohttpClient,
+    compressor_case: Tuple[ZLibCompressObjProtocol, str],
 ) -> None:
+    compressor, encoding = compressor_case
+
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Encoding": encoding}
         data = compressor.compress(b"mydata") + compressor.flush()
@@ -2180,6 +2200,7 @@ async def test_read_bufsize(aiohttp_client: AiohttpClient) -> None:
 @pytest.mark.parametrize(
     "auto_decompress,len_of", [(True, "uncompressed"), (False, "compressed")]
 )
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_auto_decompress(
     aiohttp_client: AiohttpClient,
     auto_decompress: bool,
@@ -2194,7 +2215,7 @@ async def test_auto_decompress(
 
     client = await aiohttp_client(app)
     uncompressed = b"dataaaaaaaaaaaaaaaaaaaaaaaaa"
-    compressor = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+    compressor = ZLibBackend.compressobj(wbits=16 + ZLibBackend.MAX_WBITS)
     compressed = compressor.compress(uncompressed) + compressor.flush()
     assert len(compressed) != len(uncompressed)
     headers = {"content-encoding": "gzip"}
@@ -2313,3 +2334,41 @@ async def test_keepalive_race_condition(aiohttp_client: AiohttpClient) -> None:
         # Make 2nd request which will hit the race condition.
         async with client.get("/") as resp:
             assert resp.status == 200
+
+
+async def test_keepalive_expires_on_time(aiohttp_client: AiohttpClient) -> None:
+    """Test that the keepalive handle expires on time."""
+
+    async def handler(request: web.Request) -> web.Response:
+        body = await request.read()
+        assert b"" == body
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector)
+
+    loop = asyncio.get_running_loop()
+    now = loop.time()
+
+    # Patch loop time so we can control when the keepalive timeout is processed
+    with mock.patch.object(loop, "time") as loop_time_mock:
+        loop_time_mock.return_value = now
+        resp1 = await client.get("/")
+        await resp1.read()
+        request_handler = client.server.handler.connections[0]
+
+        # Ensure the keep alive handle is set
+        assert request_handler._keepalive_handle is not None
+
+        # Set the loop time to exactly the keepalive timeout
+        loop_time_mock.return_value = request_handler._next_keepalive_close_time
+
+        # sleep twice to ensure the keep alive timeout is processed
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        # Ensure the keep alive handle expires
+        assert request_handler._keepalive_handle is None

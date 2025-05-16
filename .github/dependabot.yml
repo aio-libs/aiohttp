@@ -25,7 +25,7 @@ updates:
     directory: "/"
     labels:
       - dependencies
-    target-branch: "3.11"
+    target-branch: "3.12"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
@@ -37,7 +37,7 @@ updates:
       - dependency-type: "all"
     labels:
       - dependencies
-    target-branch: "3.11"
+    target-branch: "3.12"
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10

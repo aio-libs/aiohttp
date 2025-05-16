@@ -47,6 +47,8 @@ from .client import (
     WSServerHandshakeError,
     request,
 )
+from .compression_utils import set_zlib_backend
+from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
 from .formdata import FormData
 from .helpers import BasicAuth, ChainMapProxy, ETag
@@ -112,6 +114,7 @@ if TYPE_CHECKING:
 __all__: Tuple[str, ...] = (
     "hdrs",
     # client
+    "AddrInfoType",
     "BaseConnector",
     "ClientConnectionError",
     "ClientConnectionResetError",
@@ -146,6 +149,7 @@ __all__: Tuple[str, ...] = (
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
     "ServerTimeoutError",
+    "SocketFactoryType",
     "SocketTimeoutError",
     "TCPConnector",
     "TooManyRedirects",
@@ -162,6 +166,7 @@ __all__: Tuple[str, ...] = (
     "BasicAuth",
     "ChainMapProxy",
     "ETag",
+    "set_zlib_backend",
     # http
     "HttpVersion",
     "HttpVersion10",
@@ -227,7 +232,7 @@ __all__: Tuple[str, ...] = (
 
 
 def __dir__() -> Tuple[str, ...]:
-    return __all__ + ("__author__", "__doc__")
+    return __all__ + ("__doc__",)
 
 
 def __getattr__(name: str) -> object:

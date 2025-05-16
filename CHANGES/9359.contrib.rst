@@ -1,2 +1,0 @@
-Changed diagram images generator from ``blockdiag`` to ``GraphViz``.
-Generating documentation now requires the GraphViz executable to be included in $PATH or sphinx build configuration.

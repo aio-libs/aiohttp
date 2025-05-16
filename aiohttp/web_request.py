@@ -1,5 +1,4 @@
 import asyncio
-import dataclasses
 import datetime
 import io
 import re
@@ -38,6 +37,7 @@ from .helpers import (
     ChainMapProxy,
     ETag,
     HeadersMixin,
+    frozen_dataclass_decorator,
     is_expected_content_type,
     parse_http_date,
     reify,
@@ -76,7 +76,7 @@ if TYPE_CHECKING:
     from .web_urldispatcher import UrlMappingMatchInfo
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class FileField:
     name: str
     filename: str
@@ -127,26 +127,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         hdrs.METH_DELETE,
     }
 
-    __slots__ = (
-        "_message",
-        "_protocol",
-        "_payload_writer",
-        "_payload",
-        "_headers",
-        "_method",
-        "_version",
-        "_rel_url",
-        "_post",
-        "_read_bytes",
-        "_state",
-        "_cache",
-        "_task",
-        "_client_max_size",
-        "_loop",
-        "_transport_sslcontext",
-        "_transport_peername",
-        "__weakref__",
-    )
+    _post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
+    _read_bytes: Optional[bytes] = None
 
     def __init__(
         self,
@@ -163,9 +145,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         host: Optional[str] = None,
         remote: Optional[str] = None,
     ) -> None:
-        super().__init__()
-        if state is None:
-            state = {}
         self._message = message
         self._protocol = protocol
         self._payload_writer = payload_writer
@@ -189,23 +168,19 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             self._cache["scheme"] = url.scheme
             self._rel_url = url.relative()
         else:
-            self._rel_url = message.url
+            self._rel_url = url
             if scheme is not None:
                 self._cache["scheme"] = scheme
             if host is not None:
                 self._cache["host"] = host
-        self._post: Optional[MultiDictProxy[Union[str, bytes, FileField]]] = None
-        self._read_bytes: Optional[bytes] = None
 
-        self._state = state
+        self._state = {} if state is None else state
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
 
-        transport = self._protocol.transport
-        assert transport is not None
-        self._transport_sslcontext = transport.get_extra_info("sslcontext")
-        self._transport_peername = transport.get_extra_info("peername")
+        self._transport_sslcontext = protocol.ssl_context
+        self._transport_peername = protocol.peername
 
         if remote is not None:
             self._cache["remote"] = remote
@@ -586,7 +561,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return MappingProxyType({key: val.value for key, val in parsed.items()})
 
     @reify
-    def http_range(self) -> slice:
+    def http_range(self) -> "slice[int, int, int]":
         """The content of Range HTTP header.
 
         Return a slice instance.
@@ -838,16 +813,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
 
 class Request(BaseRequest):
-    __slots__ = ("_match_info",)
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-
-        # matchdict, route_name, handler
-        # or information about traversal lookup
-
-        # initialized after route resolving
-        self._match_info: Optional[UrlMappingMatchInfo] = None
+    _match_info: Optional["UrlMappingMatchInfo"] = None
 
     def clone(
         self,

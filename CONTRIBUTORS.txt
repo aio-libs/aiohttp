@@ -9,6 +9,7 @@ Adam Mills
 Adrian Krupa
 Adrián Chaves
 Ahmed Tahri
+Alan Bogarin
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
@@ -30,6 +31,7 @@ Alexandru Mihai
 Alexey Firsov
 Alexey Nikitin
 Alexey Popravka
+Alexey Stavrov
 Alexey Stepanov
 Almaz Salakhov
 Amin Etesamian
@@ -42,6 +44,7 @@ Andrej Antonov
 Andrew Leech
 Andrew Lytvyn
 Andrew Svetlov
+Andrew Top
 Andrew Zhou
 Andrii Soldatenko
 Anes Abismail
@@ -54,6 +57,7 @@ Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
 Austin Scola
+Bai Haoran
 Ben Bader
 Ben Greiner
 Ben Kallus
@@ -80,6 +84,7 @@ Chris AtLee
 Chris Laws
 Chris Moore
 Chris Shucksmith
+Christophe Bornet
 Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
@@ -173,10 +178,12 @@ Jaesung Lee
 Jake Davis
 Jakob Ackermann
 Jakub Wilk
+James Ward
 Jan Buchar
 Jan Gosmann
 Jarno Elonen
 Jashandeep Sohi
+Javier Torres
 Jean-Baptiste Estival
 Jens Steinhauser
 Jeonghun Lee
@@ -243,6 +250,7 @@ Martin Sucha
 Mathias Fröjdman
 Mathieu Dugré
 Matt VanEseltine
+Matthew Go
 Matthias Marquardt
 Matthieu Hauglustaine
 Matthieu Rigal
@@ -298,6 +306,7 @@ Robert Lu
 Robert Nikolich
 Roman Markeloff
 Roman Podoliaka
+Roman Postnov
 Rong Zhang
 Samir Akarioh
 Samuel Colvin
@@ -335,6 +344,7 @@ Thanos Lefteris
 Thijs Vermeir
 Thomas Forbes
 Thomas Grainger
+Tim Menninger
 Tolga Tezel
 Tomasz Trebski
 Toshiaki Tanaka
@@ -374,6 +384,7 @@ William S.
 Wilson Ong
 wouter bolsterlee
 Xavier Halloran
+Xi Rui
 Xiang Li
 Yang Zhou
 Yannick Koechlin

@@ -94,10 +94,11 @@ from .connector import (
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
+    frozen_dataclass_decorator,
     get_env_proxy_for_url,
-    method_must_be_empty_body,
     sentinel,
     strip_auth_from_url,
 )
@@ -194,7 +195,7 @@ class _RequestOptions(TypedDict, total=False):
     max_field_size: Union[int, None]
 
 
-@dataclasses.dataclass(frozen=True)
+@frozen_dataclass_decorator
 class ClientTimeout:
     total: Optional[float] = None
     connect: Optional[float] = None
@@ -413,11 +414,9 @@ class ClientSession:
 
     def _build_url(self, str_or_url: StrOrURL) -> URL:
         url = URL(str_or_url)
-        if self._base_url is None:
-            return url
-        else:
-            assert not url.absolute
+        if self._base_url and not url.absolute:
             return self._base_url.join(url)
+        return url
 
     async def _request(
         self,
@@ -490,10 +489,15 @@ class ClientSession:
         if url.scheme not in self._connector.allowed_protocol_schema_set:
             raise NonHttpUrlClientError(url)
 
-        skip_headers = set(self._skip_auto_headers)
+        skip_headers: Optional[Iterable[istr]]
         if skip_auto_headers is not None:
-            for i in skip_auto_headers:
-                skip_headers.add(istr(i))
+            skip_headers = {
+                istr(i) for i in skip_auto_headers
+            } | self._skip_auto_headers
+        elif self._skip_auto_headers:
+            skip_headers = self._skip_auto_headers
+        else:
+            skip_headers = None
 
         if proxy is None:
             proxy = self._default_proxy
@@ -596,24 +600,29 @@ class ClientSession:
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
                     if cookies is not None:
-                        tmp_cookie_jar = CookieJar()
+                        tmp_cookie_jar = CookieJar(
+                            quote_cookie=self._cookie_jar.quote_cookie
+                        )
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
                         if req_cookies:
                             all_cookies.load(req_cookies)
 
+                    proxy_: Optional[URL] = None
                     if proxy is not None:
-                        proxy = URL(proxy)
+                        proxy_ = URL(proxy)
                     elif self._trust_env:
                         with suppress(LookupError):
-                            proxy, proxy_auth = get_env_proxy_for_url(url)
+                            proxy_, proxy_auth = await asyncio.to_thread(
+                                get_env_proxy_for_url, url
+                            )
 
                     req = self._request_class(
                         method,
                         url,
                         params=params,
                         headers=headers,
-                        skip_auto_headers=skip_headers if skip_headers else None,
+                        skip_auto_headers=skip_headers,
                         data=data,
                         cookies=all_cookies,
                         auth=auth,
@@ -623,7 +632,7 @@ class ClientSession:
                         expect100=expect100,
                         loop=self._loop,
                         response_class=self._response_class,
-                        proxy=proxy,
+                        proxy=proxy_,
                         proxy_auth=proxy_auth,
                         timer=timer,
                         session=self,
@@ -649,7 +658,7 @@ class ClientSession:
                     assert conn.protocol is not None
                     conn.protocol.set_response_params(
                         timer=timer,
-                        skip_payload=method_must_be_empty_body(method),
+                        skip_payload=method in EMPTY_BODY_METHODS,
                         read_until_eof=read_until_eof,
                         auto_decompress=auto_decompress,
                         read_timeout=real_timeout.sock_read,
@@ -680,11 +689,11 @@ class ClientSession:
                     except ClientError:
                         raise
                     except OSError as exc:
-                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+                        if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                             raise
                         raise ClientOSError(*exc.args) from exc
 
-                    if cookies := resp.cookies:
+                    if cookies := resp._cookies:
                         self._cookie_jar.update_cookies(cookies, resp.url)
 
                     # redirects
@@ -1243,7 +1252,7 @@ class ClientSession:
         return self._skip_auto_headers
 
     @property
-    def auth(self) -> Optional[BasicAuth]:
+    def auth(self) -> Optional[BasicAuth]:  # type: ignore[misc]
         """An object that represents HTTP Basic Authorization"""
         return self._default_auth
 
@@ -1280,7 +1289,7 @@ class ClientSession:
         return self._trust_env
 
     @property
-    def trace_configs(self) -> List[TraceConfig[Any]]:
+    def trace_configs(self) -> List[TraceConfig[Any]]:  # type: ignore[misc]
         """A list of TraceConfig instances used for client tracing"""
         return self._trace_configs
 
@@ -1374,104 +1383,77 @@ class _SessionRequestContextManager:
         await self._session.close()
 
 
-def request(
-    method: str,
-    url: StrOrURL,
-    *,
-    params: Query = None,
-    data: Any = None,
-    json: Any = None,
-    headers: Optional[LooseHeaders] = None,
-    skip_auto_headers: Optional[Iterable[str]] = None,
-    auth: Optional[BasicAuth] = None,
-    allow_redirects: bool = True,
-    max_redirects: int = 10,
-    compress: Union[str, bool] = False,
-    chunked: Optional[bool] = None,
-    expect100: bool = False,
-    raise_for_status: Optional[bool] = None,
-    read_until_eof: bool = True,
-    proxy: Optional[StrOrURL] = None,
-    proxy_auth: Optional[BasicAuth] = None,
-    timeout: Union[ClientTimeout, _SENTINEL] = sentinel,
-    cookies: Optional[LooseCookies] = None,
-    version: HttpVersion = http.HttpVersion11,
-    connector: Optional[BaseConnector] = None,
-    read_bufsize: Optional[int] = None,
-    max_line_size: int = 8190,
-    max_field_size: int = 8190,
-) -> _SessionRequestContextManager:
-    """Constructs and sends a request.
+if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
-    Returns response object.
-    method - HTTP method
-    url - request url
-    params - (optional) Dictionary or bytes to be sent in the query
-      string of the new request
-    data - (optional) Dictionary, bytes, or file-like object to
-      send in the body of the request
-    json - (optional) Any json compatible python object
-    headers - (optional) Dictionary of HTTP Headers to send with
-      the request
-    cookies - (optional) Dict object to send with the request
-    auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
-    auth - aiohttp.helpers.BasicAuth
-    allow_redirects - (optional) If set to False, do not follow
-      redirects
-    version - Request HTTP version.
-    compress - Set to True if request has to be compressed
-       with deflate encoding.
-    chunked - Set to chunk size for chunked transfer encoding.
-    expect100 - Expect 100-continue response from server.
-    connector - BaseConnector sub-class instance to support
-       connection pooling.
-    read_until_eof - Read response until eof if response
-       does not have Content-Length header.
-    loop - Optional event loop.
-    timeout - Optional ClientTimeout settings structure, 5min
-       total timeout by default.
-    Usage::
-      >>> import aiohttp
-      >>> async with aiohttp.request('GET', 'http://python.org/') as resp:
-      ...    print(resp)
-      ...    data = await resp.read()
-      <ClientResponse(https://www.python.org/) [200 OK]>
-    """
-    connector_owner = False
-    if connector is None:
-        connector_owner = True
-        connector = TCPConnector(force_close=True)
+    def request(
+        method: str,
+        url: StrOrURL,
+        *,
+        version: HttpVersion = http.HttpVersion11,
+        connector: Optional[BaseConnector] = None,
+        **kwargs: Unpack[_RequestOptions],
+    ) -> _SessionRequestContextManager: ...
 
-    session = ClientSession(
-        cookies=cookies,
-        version=version,
-        timeout=timeout,
-        connector=connector,
-        connector_owner=connector_owner,
-    )
+else:
 
-    return _SessionRequestContextManager(
-        session._request(
-            method,
-            url,
-            params=params,
-            data=data,
-            json=json,
-            headers=headers,
-            skip_auto_headers=skip_auto_headers,
-            auth=auth,
-            allow_redirects=allow_redirects,
-            max_redirects=max_redirects,
-            compress=compress,
-            chunked=chunked,
-            expect100=expect100,
-            raise_for_status=raise_for_status,
-            read_until_eof=read_until_eof,
-            proxy=proxy,
-            proxy_auth=proxy_auth,
-            read_bufsize=read_bufsize,
-            max_line_size=max_line_size,
-            max_field_size=max_field_size,
-        ),
-        session,
-    )
+    def request(
+        method: str,
+        url: StrOrURL,
+        *,
+        version: HttpVersion = http.HttpVersion11,
+        connector: Optional[BaseConnector] = None,
+        **kwargs: Any,
+    ) -> _SessionRequestContextManager:
+        """Constructs and sends a request.
+
+        Returns response object.
+        method - HTTP method
+        url - request url
+        params - (optional) Dictionary or bytes to be sent in the query
+        string of the new request
+        data - (optional) Dictionary, bytes, or file-like object to
+        send in the body of the request
+        json - (optional) Any json compatible python object
+        headers - (optional) Dictionary of HTTP Headers to send with
+        the request
+        cookies - (optional) Dict object to send with the request
+        auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
+        auth - aiohttp.helpers.BasicAuth
+        allow_redirects - (optional) If set to False, do not follow
+        redirects
+        version - Request HTTP version.
+        compress - Set to True if request has to be compressed
+        with deflate encoding.
+        chunked - Set to chunk size for chunked transfer encoding.
+        expect100 - Expect 100-continue response from server.
+        connector - BaseConnector sub-class instance to support
+        connection pooling.
+        read_until_eof - Read response until eof if response
+        does not have Content-Length header.
+        loop - Optional event loop.
+        timeout - Optional ClientTimeout settings structure, 5min
+        total timeout by default.
+        Usage::
+        >>> import aiohttp
+        >>> async with aiohttp.request('GET', 'http://python.org/') as resp:
+        ...    print(resp)
+        ...    data = await resp.read()
+        <ClientResponse(https://www.python.org/) [200 OK]>
+        """
+        connector_owner = False
+        if connector is None:
+            connector_owner = True
+            connector = TCPConnector(force_close=True)
+
+        session = ClientSession(
+            cookies=kwargs.pop("cookies", None),
+            version=version,
+            timeout=kwargs.pop("timeout", sentinel),
+            connector=connector,
+            connector_owner=connector_owner,
+        )
+
+        return _SessionRequestContextManager(
+            session._request(method, url, **kwargs),
+            session,
+        )

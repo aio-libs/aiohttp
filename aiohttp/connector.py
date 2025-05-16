@@ -33,6 +33,7 @@ from typing import (
 )
 
 import aiohappyeyeballs
+from aiohappyeyeballs import AddrInfoType, SocketFactoryType
 
 from . import hdrs, helpers
 from .abc import AbstractResolver, ResolveResult
@@ -61,14 +62,23 @@ from .helpers import (
 )
 from .resolver import DefaultResolver
 
-try:
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer
+else:
+    Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+
+if TYPE_CHECKING:
     import ssl
 
     SSLContext = ssl.SSLContext
-except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore[assignment]
-    SSLContext = object  # type: ignore[misc,assignment]
+else:
+    try:
+        import ssl
 
+        SSLContext = ssl.SSLContext
+    except ImportError:  # pragma: no cover
+        ssl = None  # type: ignore[assignment]
+        SSLContext = object  # type: ignore[misc,assignment]
 
 EMPTY_SCHEMA_SET = frozenset({""})
 HTTP_SCHEMA_SET = frozenset({"http", "https"})
@@ -77,8 +87,23 @@ WS_SCHEMA_SET = frozenset({"ws", "wss"})
 HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
 HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
 
+NEEDS_CLEANUP_CLOSED = (3, 13, 0) <= sys.version_info < (
+    3,
+    13,
+    1,
+) or sys.version_info < (3, 12, 7)
+# Cleanup closed is no longer needed after https://github.com/python/cpython/pull/118960
+# which first appeared in Python 3.12.7 and 3.13.1
 
-__all__ = ("BaseConnector", "TCPConnector", "UnixConnector", "NamedPipeConnector")
+
+__all__ = (
+    "BaseConnector",
+    "TCPConnector",
+    "UnixConnector",
+    "NamedPipeConnector",
+    "AddrInfoType",
+    "SocketFactoryType",
+)
 
 
 if TYPE_CHECKING:
@@ -270,6 +295,17 @@ class BaseConnector:
 
         # start cleanup closed transports task
         self._cleanup_closed_handle: Optional[asyncio.TimerHandle] = None
+
+        if enable_cleanup_closed and not NEEDS_CLEANUP_CLOSED:
+            warnings.warn(
+                "enable_cleanup_closed ignored because "
+                "https://github.com/python/cpython/pull/118960 is fixed "
+                f"in Python version {sys.version_info}",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            enable_cleanup_closed = False
+
         self._cleanup_closed_disabled = not enable_cleanup_closed
         self._cleanup_closed_transports: List[Optional[asyncio.Transport]] = []
 
@@ -505,7 +541,8 @@ class BaseConnector:
                 ResponseHandler, _TransportPlaceholder(self._placeholder_future)
             )
             self._acquired.add(placeholder)
-            self._acquired_per_host[key].add(placeholder)
+            if self._limit_per_host:
+                self._acquired_per_host[key].add(placeholder)
 
             try:
                 # Traces are done inside the try block to ensure that the
@@ -531,11 +568,12 @@ class BaseConnector:
         # be no awaits after the proto is added to the acquired set
         # to ensure that the connection is not left in the acquired set
         # on cancellation.
-        acquired_per_host = self._acquired_per_host[key]
         self._acquired.remove(placeholder)
-        acquired_per_host.remove(placeholder)
         self._acquired.add(proto)
-        acquired_per_host.add(proto)
+        if self._limit_per_host:
+            acquired_per_host = self._acquired_per_host[key]
+            acquired_per_host.remove(placeholder)
+            acquired_per_host.add(proto)
         return Connection(self, key, proto, self._loop)
 
     async def _wait_for_available_connection(
@@ -600,7 +638,8 @@ class BaseConnector:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
                 self._acquired.add(proto)
-                self._acquired_per_host[key].add(proto)
+                if self._limit_per_host:
+                    self._acquired_per_host[key].add(proto)
                 if traces:
                     for trace in traces:
                         try:
@@ -654,7 +693,7 @@ class BaseConnector:
             return
 
         self._acquired.discard(proto)
-        if conns := self._acquired_per_host.get(key):
+        if self._limit_per_host and (conns := self._acquired_per_host.get(key)):
             conns.discard(proto)
             if not conns:
                 del self._acquired_per_host[key]
@@ -673,16 +712,9 @@ class BaseConnector:
 
         self._release_acquired(key, protocol)
 
-        if self._force_close:
-            should_close = True
-
-        if should_close or protocol.should_close:
+        if self._force_close or should_close or protocol.should_close:
             transport = protocol.transport
             protocol.close()
-            # TODO: Remove once fixed: https://bugs.python.org/issue39951
-            # See PR #6321
-            set_result(protocol.closed, None)
-
             if key.is_ssl and not self._cleanup_closed_disabled:
                 self._cleanup_closed_transports.append(transport)
             return
@@ -753,14 +785,16 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         # No ssl support
         return None  # type: ignore[unreachable]
     if verified:
-        return ssl.create_default_context()
-    sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    sslcontext.options |= ssl.OP_NO_SSLv2
-    sslcontext.options |= ssl.OP_NO_SSLv3
-    sslcontext.check_hostname = False
-    sslcontext.verify_mode = ssl.CERT_NONE
-    sslcontext.options |= ssl.OP_NO_COMPRESSION
-    sslcontext.set_default_verify_paths()
+        sslcontext = ssl.create_default_context()
+    else:
+        sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        sslcontext.options |= ssl.OP_NO_SSLv2
+        sslcontext.options |= ssl.OP_NO_SSLv3
+        sslcontext.check_hostname = False
+        sslcontext.verify_mode = ssl.CERT_NONE
+        sslcontext.options |= ssl.OP_NO_COMPRESSION
+        sslcontext.set_default_verify_paths()
+    sslcontext.set_alpn_protocols(("http/1.1",))
     return sslcontext
 
 
@@ -799,6 +833,9 @@ class TCPConnector(BaseConnector):
                            the happy eyeballs algorithm, set to None.
     interleave - “First Address Family Count” as defined in RFC 8305
     loop - Optional event loop.
+    socket_factory - A SocketFactoryType function that, if supplied,
+                     will be used to create sockets given an
+                     AddrInfoType.
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
@@ -820,6 +857,7 @@ class TCPConnector(BaseConnector):
         timeout_ceil_threshold: float = 5,
         happy_eyeballs_delay: Optional[float] = 0.25,
         interleave: Optional[int] = None,
+        socket_factory: Optional[SocketFactoryType] = None,
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -850,6 +888,7 @@ class TCPConnector(BaseConnector):
         self._happy_eyeballs_delay = happy_eyeballs_delay
         self._interleave = interleave
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
+        self._socket_factory = socket_factory
 
     def _close_immediately(self) -> List[Awaitable[object]]:
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
@@ -987,11 +1026,11 @@ class TCPConnector(BaseConnector):
         This method must be run in a task and shielded from cancellation
         to avoid cancelling the underlying lookup.
         """
-        if traces:
-            for trace in traces:
-                await trace.send_dns_cache_miss(host)
         try:
             if traces:
+                for trace in traces:
+                    await trace.send_dns_cache_miss(host)
+
                 for trace in traces:
                     await trace.send_dns_resolvehost_start(host)
 
@@ -1074,7 +1113,7 @@ class TCPConnector(BaseConnector):
     async def _wrap_create_connection(
         self,
         *args: Any,
-        addr_infos: List[aiohappyeyeballs.AddrInfoType],
+        addr_infos: List[AddrInfoType],
         req: ClientRequest,
         timeout: "ClientTimeout",
         client_error: Type[Exception] = ClientConnectorError,
@@ -1090,6 +1129,7 @@ class TCPConnector(BaseConnector):
                     happy_eyeballs_delay=self._happy_eyeballs_delay,
                     interleave=self._interleave,
                     loop=self._loop,
+                    socket_factory=self._socket_factory,
                 )
                 return await self._loop.create_connection(*args, **kwargs, sock=sock)
         except cert_errors as exc:
@@ -1097,7 +1137,7 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise client_error(req.connection_key, exc) from exc
 
@@ -1110,7 +1150,13 @@ class TCPConnector(BaseConnector):
         if req.request_info.url.scheme != "https":
             return
 
-        asyncio_supports_tls_in_tls = getattr(
+        # Check if uvloop is being used, which supports TLS in TLS,
+        # otherwise assume that asyncio's native transport is being used.
+        if type(underlying_transport).__module__.startswith("uvloop"):
+            return
+
+        # Support in asyncio was added in Python 3.11 (bpo-44011)
+        asyncio_supports_tls_in_tls = sys.version_info >= (3, 11) or getattr(
             underlying_transport,
             "_start_tls_compatible",
             False,
@@ -1186,7 +1232,7 @@ class TCPConnector(BaseConnector):
         except ssl_errors as exc:
             raise ClientConnectorSSLError(req.connection_key, exc) from exc
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise client_error(req.connection_key, exc) from exc
         except TypeError as type_err:
@@ -1212,13 +1258,13 @@ class TCPConnector(BaseConnector):
 
     def _convert_hosts_to_addr_infos(
         self, hosts: List[ResolveResult]
-    ) -> List[aiohappyeyeballs.AddrInfoType]:
+    ) -> List[AddrInfoType]:
         """Converts the list of hosts to a list of addr_infos.
 
         The list of hosts is the result of a DNS lookup. The list of
         addr_infos is the result of a call to `socket.getaddrinfo()`.
         """
-        addr_infos: List[aiohappyeyeballs.AddrInfoType] = []
+        addr_infos: List[AddrInfoType] = []
         for hinfo in hosts:
             host = hinfo["host"]
             is_ipv6 = ":" in host
@@ -1257,7 +1303,7 @@ class TCPConnector(BaseConnector):
             #  across all connections.
             hosts = await self._resolve_host(host, port, traces=traces)
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
@@ -1451,7 +1497,7 @@ class UnixConnector(BaseConnector):
                     self._factory, self._path
                 )
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
@@ -1520,7 +1566,7 @@ class NamedPipeConnector(BaseConnector):
                 # other option is to manually set transport like
                 # `proto.transport = trans`
         except OSError as exc:
-            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):  # type: ignore[unreachable]
+            if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                 raise
             raise ClientConnectorError(req.connection_key, exc) from exc
 

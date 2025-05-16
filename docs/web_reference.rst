@@ -649,7 +649,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       .. seealso:: :meth:`enable_compression`
 
-   .. method:: enable_compression(force=None, strategy=zlib.Z_DEFAULT_STRATEGY)
+   .. method:: enable_compression(force=None, strategy=None)
 
       Enable compression.
 
@@ -660,7 +660,10 @@ and :ref:`aiohttp-web-signals` handlers::
       :class:`ContentCoding`.
 
       *strategy* accepts a :mod:`zlib` compression strategy.
-      See :func:`zlib.compressobj` for possible values.
+      See :func:`zlib.compressobj` for possible values, or refer to the
+      docs for the zlib of your using, should you use :func:`aiohttp.set_zlib_backend`
+      to change zlib backend. If ``None``, the default value adopted by
+      your zlib backend will be used where applicable.
 
       .. seealso:: :attr:`compression`
 
@@ -705,7 +708,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
    .. method:: set_cookie(name, value, *, path='/', expires=None, \
                           domain=None, max_age=None, \
-                          secure=None, httponly=None, samesite=None)
+                          secure=None, httponly=None, samesite=None, \
+                          partitioned=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
       some additional properties like *max_age* in a single call.
@@ -752,6 +756,11 @@ and :ref:`aiohttp-web-signals` handlers::
          ``Lax`` or ``Strict``. (optional)
 
             .. versionadded:: 3.7
+
+      :param bool partitioned: ``True`` to set a partitioned cookie.
+         Available in Python 3.14+. (optional)
+
+            .. versionadded:: 3.12
 
    .. method:: del_cookie(name, *, path='/', domain=None)
 

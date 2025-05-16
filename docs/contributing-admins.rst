@@ -21,9 +21,9 @@ To create a new release:
 #. Run ``towncrier``.
 #. Check and cleanup the changes in ``CHANGES.rst``.
 #. Checkout a new branch: e.g. ``git checkout -b release/v3.8.6``
-#. Commit and create a PR. Once PR is merged, continue.
+#. Commit and create a PR. Verify the changelog and release notes look good on Read the Docs. Once PR is merged, continue.
 #. Go back to the release branch: e.g. ``git checkout 3.8 && git pull``
-#. Add a tag: e.g. ``git tag -a v3.8.6 -m 'Release 3.8.6'``
+#. Add a tag: e.g. ``git tag -a v3.8.6 -m 'Release 3.8.6' -s``
 #. Push the tag: e.g. ``git push origin v3.8.6``
 #. Monitor CI to ensure release process completes without errors.
 
@@ -48,6 +48,10 @@ first merge into the newer release branch (e.g. 3.8 into 3.9) and then to master
   #. This should automatically consider the PR merged and delete the temporary branch.
 
 Back on the original release branch, bump the version number and append ``.dev0`` in ``__init__.py``.
+
+Post the release announcement to social media:
+ - BlueSky: https://bsky.app/profile/aiohttp.org and re-post to https://bsky.app/profile/aio-libs.org
+ - Mastodon: https://fosstodon.org/@aiohttp and re-post to https://fosstodon.org/@aio_libs
 
 If doing a minor release:
 

@@ -2,7 +2,7 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import Any, Generic, List, Optional, Set, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, List, Optional, Set, Type, TypeVar
 
 from yarl import URL
 
@@ -16,11 +16,13 @@ from .web_protocol import RequestHandler
 from .web_request import BaseRequest, Request
 from .web_server import Server
 
-try:
+if TYPE_CHECKING:
     from ssl import SSLContext
-except ImportError:
-    SSLContext = object  # type: ignore[misc,assignment]
-
+else:
+    try:
+        from ssl import SSLContext
+    except ImportError:  # pragma: no cover
+        SSLContext = object  # type: ignore[misc,assignment]
 
 __all__ = (
     "BaseSite",
@@ -60,12 +62,12 @@ class BaseSite(ABC):
         self._runner = runner
         self._ssl_context = ssl_context
         self._backlog = backlog
-        self._server: Optional[asyncio.AbstractServer] = None
+        self._server: Optional[asyncio.Server] = None
 
     @property
     @abstractmethod
     def name(self) -> str:
-        pass  # pragma: no cover
+        """Return the name of the site (e.g. a URL)."""
 
     @abstractmethod
     async def start(self) -> None:
@@ -252,12 +254,12 @@ class BaseRunner(ABC, Generic[_Request]):
         return self._server
 
     @property
-    def addresses(self) -> List[Any]:
+    def addresses(self) -> List[Any]:  # type: ignore[misc]
         ret: List[Any] = []
         for site in self._sites:
             server = site._server
             if server is not None:
-                sockets = server.sockets  # type: ignore[attr-defined]
+                sockets = server.sockets
                 if sockets is not None:
                     for sock in sockets:
                         ret.append(sock.getsockname())
@@ -274,7 +276,7 @@ class BaseRunner(ABC, Generic[_Request]):
             try:
                 loop.add_signal_handler(signal.SIGINT, _raise_graceful_exit)
                 loop.add_signal_handler(signal.SIGTERM, _raise_graceful_exit)
-            except NotImplementedError:  # pragma: no cover
+            except NotImplementedError:
                 # add_signal_handler is not implemented on Windows
                 pass
 
@@ -307,17 +309,17 @@ class BaseRunner(ABC, Generic[_Request]):
             try:
                 loop.remove_signal_handler(signal.SIGINT)
                 loop.remove_signal_handler(signal.SIGTERM)
-            except NotImplementedError:  # pragma: no cover
+            except NotImplementedError:
                 # remove_signal_handler is not implemented on Windows
                 pass
 
     @abstractmethod
     async def _make_server(self) -> Server[_Request]:
-        pass  # pragma: no cover
+        """Return a new server for the runner to serve requests."""
 
     @abstractmethod
     async def _cleanup_server(self) -> None:
-        pass  # pragma: no cover
+        """Run any cleanup steps after the server is shutdown."""
 
     def _reg_site(self, site: BaseSite) -> None:
         if site in self._sites:

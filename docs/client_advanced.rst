@@ -468,6 +468,28 @@ If your HTTP server uses UNIX domain sockets you can use
   session = aiohttp.ClientSession(connector=conn)
 
 
+Custom socket creation
+^^^^^^^^^^^^^^^^^^^^^^
+
+If the default socket is insufficient for your use case, pass an optional
+``socket_factory`` to the :class:`~aiohttp.TCPConnector`, which implements
+:class:`SocketFactoryType`. This will be used to create all sockets for the
+lifetime of the class object. For example, we may want to change the
+conditions under which we consider a connection dead. The following would
+make all sockets respect 9*7200 = 18 hours::
+
+  import socket
+
+  def socket_factory(addr_info):
+      family, type_, proto, _, _, _ = addr_info
+      sock = socket.socket(family=family, type=type_, proto=proto)
+      sock.setsockopt(socket.SOL_SOCKET,  socket.SO_KEEPALIVE,  True)
+      sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE,  7200)
+      sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT,      9)
+      return sock
+  conn = aiohttp.TCPConnector(socket_factory=socket_factory)
+
+
 Named pipes in Windows
 ^^^^^^^^^^^^^^^^^^^^^^
 

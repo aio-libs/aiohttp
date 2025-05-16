@@ -30,14 +30,15 @@ from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
 from .helpers import (
     _EXC_SENTINEL,
     DEBUG,
+    EMPTY_BODY_METHODS,
+    EMPTY_BODY_STATUS_CODES,
     NO_EXTENSIONS,
     BaseTimerContext,
-    method_must_be_empty_body,
     set_exception,
-    status_code_must_be_empty_body,
 )
 from .http_exceptions import (
     BadHttpMessage,
+    BadHttpMethod,
     BadStatusLine,
     ContentEncodingError,
     ContentLengthError,
@@ -364,8 +365,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                         assert self.protocol is not None
                         # calculate payload
-                        empty_body = status_code_must_be_empty_body(code) or bool(
-                            method and method_must_be_empty_body(method)
+                        empty_body = code in EMPTY_BODY_STATUS_CODES or bool(
+                            method and method in EMPTY_BODY_METHODS
                         )
                         if not empty_body and (
                             ((length is not None and length > 0) or msg.chunked)
@@ -564,7 +565,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         try:
             method, path, version = line.split(" ", maxsplit=2)
         except ValueError:
-            raise BadStatusLine(line) from None
+            raise BadHttpMethod(line) from None
 
         if len(path) > self.max_line_size:
             raise LineTooLong(
@@ -573,7 +574,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
 
         # method
         if not TOKENRE.fullmatch(method):
-            raise BadStatusLine(method)
+            raise BadHttpMethod(method)
 
         # version
         match = VERSRE.fullmatch(version)
@@ -669,7 +670,6 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     ) -> Tuple[List[Tuple[RawResponseMessage, StreamReader]], bool, bytes]:
         if SEP is None:
             SEP = b"\r\n" if DEBUG else b"\n"
-            assert SEP is not None
         return super().feed_data(data, SEP, *args, **kwargs)
 
     def parse_message(self, lines: List[bytes]) -> RawResponseMessage:
@@ -792,11 +792,11 @@ class HttpPayloadParser:
             self.payload.feed_eof()
         elif self._type == ParseState.PARSE_LENGTH:
             raise ContentLengthError(
-                "Not enough data for satisfy content length header."
+                "Not enough data to satisfy content length header."
             )
         elif self._type == ParseState.PARSE_CHUNKED:
             raise TransferEncodingError(
-                "Not enough data for satisfy transfer length header."
+                "Not enough data to satisfy transfer length header."
             )
 
     def feed_data(
@@ -825,6 +825,13 @@ class HttpPayloadParser:
                         i = chunk.find(CHUNK_EXT, 0, pos)
                         if i >= 0:
                             size_b = chunk[:i]  # strip chunk-extensions
+                            # Verify no LF in the chunk-extension
+                            if b"\n" in (ext := chunk[i:pos]):
+                                exc = BadHttpMessage(
+                                    f"Unexpected LF in chunk-extension: {ext!r}"
+                                )
+                                set_exception(self.payload, exc)
+                                raise exc
                         else:
                             size_b = chunk[:pos]
 
@@ -925,7 +932,7 @@ class DeflateBuffer:
 
         self.decompressor: Union[BrotliDecompressor, ZLibDecompressor]
         if encoding == "br":
-            if not HAS_BROTLI:  # pragma: no cover
+            if not HAS_BROTLI:
                 raise ContentEncodingError(
                     "Can not decode content-encoding: brotli (br). "
                     "Please install `Brotli`"
@@ -996,7 +1003,7 @@ HttpResponseParserPy = HttpResponseParser
 RawRequestMessagePy = RawRequestMessage
 RawResponseMessagePy = RawResponseMessage
 
-try:
+with suppress(ImportError):
     if not NO_EXTENSIONS:
         from ._http_parser import (  # type: ignore[import-not-found,no-redef]
             HttpRequestParser,
@@ -1009,5 +1016,3 @@ try:
         HttpResponseParserC = HttpResponseParser
         RawRequestMessageC = RawRequestMessage
         RawResponseMessageC = RawResponseMessage
-except ImportError:  # pragma: no cover
-    pass

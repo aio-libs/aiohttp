@@ -3,9 +3,17 @@ import hashlib
 import io
 import pathlib
 import sys
-import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, AsyncIterator, Callable, Dict, Iterator, List, Protocol
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Protocol,
+)
 from unittest import mock
 
 import pytest
@@ -23,8 +31,9 @@ from aiohttp.client_reqrep import (
     Fingerprint,
     _gen_default_accept_encoding,
 )
+from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
-from aiohttp.http import HttpVersion
+from aiohttp.http import HttpVersion10, HttpVersion11
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import LooseCookies
 
@@ -73,12 +82,17 @@ def protocol(
 
 @pytest.fixture
 def transport(buf: bytearray) -> mock.Mock:
-    transport = mock.create_autospec(asyncio.Transport, spec_set=True)
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
 
     def write(chunk: bytes) -> None:
         buf.extend(chunk)
 
+    def writelines(chunks: Iterable[bytes]) -> None:
+        for chunk in chunks:
+            buf.extend(chunk)
+
     transport.write.side_effect = write
+    transport.writelines.side_effect = writelines
     transport.is_closing.return_value = False
 
     return transport  # type: ignore[no-any-return]
@@ -140,30 +154,6 @@ def test_request_info_with_fragment(make_request: _RequestMaker) -> None:
 def test_version_err(make_request: _RequestMaker) -> None:
     with pytest.raises(ValueError):
         make_request("get", "http://python.org/", version="1.c")
-
-
-def test_keep_alive(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/", version=(0, 9))
-    assert not req.keep_alive()
-
-    req = make_request("get", "http://python.org/", version=(1, 0))
-    assert not req.keep_alive()
-
-    req = make_request(
-        "get",
-        "http://python.org/",
-        version=(1, 0),
-        headers={"connection": "keep-alive"},
-    )
-    assert req.keep_alive()
-
-    req = make_request("get", "http://python.org/", version=(1, 1))
-    assert req.keep_alive()
-
-    req = make_request(
-        "get", "http://python.org/", version=(1, 1), headers={"connection": "close"}
-    )
-    assert not req.keep_alive()
 
 
 def test_host_port_default_http(make_request: _RequestMaker) -> None:
@@ -610,25 +600,31 @@ async def test_connection_header(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    with mock.patch.object(req, "keep_alive") as m:
-        req.headers.clear()
+    req.headers.clear()
 
-        m.return_value = True
-        req.version = HttpVersion(1, 1)
-        req.headers.clear()
+    req.version = HttpVersion11
+    req.headers.clear()
+    with mock.patch.object(conn._connector, "force_close", False):
         await req.send(conn)
-        assert req.headers.get("CONNECTION") is None
+    assert req.headers.get("CONNECTION") is None
 
-        req.version = HttpVersion(1, 0)
-        req.headers.clear()
+    req.version = HttpVersion10
+    req.headers.clear()
+    with mock.patch.object(conn._connector, "force_close", False):
         await req.send(conn)
-        assert req.headers.get("CONNECTION") == "keep-alive"
+    assert req.headers.get("CONNECTION") == "keep-alive"
 
-        m.return_value = False
-        req.version = HttpVersion(1, 1)
-        req.headers.clear()
+    req.version = HttpVersion11
+    req.headers.clear()
+    with mock.patch.object(conn._connector, "force_close", True):
         await req.send(conn)
-        assert req.headers.get("CONNECTION") == "close"
+    assert req.headers.get("CONNECTION") == "close"
+
+    req.version = HttpVersion10
+    req.headers.clear()
+    with mock.patch.object(conn._connector, "force_close", True):
+        await req.send(conn)
+    assert not req.headers.get("CONNECTION")
 
 
 async def test_no_content_length(
@@ -691,6 +687,7 @@ async def test_content_type_skip_auto_header_bytes(
         skip_auto_headers={"Content-Type"},
         loop=loop,
     )
+    assert req.skip_auto_headers == CIMultiDict({"CONTENT-TYPE": None})
     resp = await req.send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
@@ -736,7 +733,8 @@ async def test_urlencoded_formdata_charset(
         data=aiohttp.FormData({"hey": "you"}, charset="koi8-r"),
         loop=loop,
     )
-    await req.send(conn)
+    async with await req.send(conn):
+        await asyncio.sleep(0)
     assert "application/x-www-form-urlencoded; charset=koi8-r" == req.headers.get(
         "CONTENT-TYPE"
     )
@@ -755,7 +753,8 @@ async def test_formdata_boundary_from_headers(
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
             loop=loop,
         )
-        await req.send(conn)
+        async with await req.send(conn):
+            await asyncio.sleep(0)
         assert req.body._boundary == boundary.encode()
 
 
@@ -823,8 +822,10 @@ async def test_bytes_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> N
         resp.close()
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_content_encoding(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop,
+    conn: mock.Mock,
 ) -> None:
     req = ClientRequest(
         "post", URL("http://python.org/"), data="foo", compress="deflate", loop=loop
@@ -853,8 +854,10 @@ async def test_content_encoding_dont_set_headers_if_no_body(
     resp.close()
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_content_encoding_header(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop,
+    conn: mock.Mock,
 ) -> None:
     req = ClientRequest(
         "post",
@@ -913,6 +916,25 @@ async def test_chunked2(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> Non
     resp.close()
 
 
+async def test_chunked_empty_body(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+) -> None:
+    """Ensure write_bytes is called even if the body is empty."""
+    req = ClientRequest(
+        "post",
+        URL("http://python.org/"),
+        chunked=True,
+        loop=loop,
+        data=b"",
+    )
+    with mock.patch.object(req, "write_bytes") as write_bytes:
+        resp = await req.send(conn)
+    assert "chunked" == req.headers["TRANSFER-ENCODING"]
+    assert write_bytes.called
+    await req.close()
+    resp.close()
+
+
 async def test_chunked_explicit(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
@@ -960,8 +982,11 @@ async def test_file_upload_not_chunked(loop: asyncio.AbstractEventLoop) -> None:
         await req.close()
 
 
-async def test_precompressed_data_stays_intact(loop: asyncio.AbstractEventLoop) -> None:
-    data = zlib.compress(b"foobar")
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_precompressed_data_stays_intact(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    data = ZLibBackend.compress(b"foobar")
     req = ClientRequest(
         "post",
         URL("http://python.org/"),
@@ -1088,13 +1113,13 @@ async def test_data_stream_exc(
 
     t = loop.create_task(throw_exc())
 
-    await req.send(conn)
-    assert req._writer is not None
-    await req._writer
-    await t
-    # assert conn.close.called
-    assert conn.protocol is not None
-    assert conn.protocol.set_exception.called
+    async with await req.send(conn):
+        assert req._writer is not None
+        await req._writer
+        await t
+        # assert conn.close.called
+        assert conn.protocol is not None
+        assert conn.protocol.set_exception.called
     await req.close()
 
 
@@ -1118,9 +1143,9 @@ async def test_data_stream_exc_chain(
 
     t = loop.create_task(throw_exc())
 
-    await req.send(conn)
-    assert req._writer is not None
-    await req._writer
+    async with await req.send(conn):
+        assert req._writer is not None
+        await req._writer
     await t
     # assert conn.close.called
     assert conn.protocol.set_exception.called
@@ -1447,7 +1472,7 @@ def test_gen_default_accept_encoding(has_brotli: bool, expected: str) -> None:
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_from_netrc_present(
+def test_basicauth_from_netrc_present(  # type: ignore[misc]
     make_request: _RequestMaker,
     expected_auth: helpers.BasicAuth,
 ) -> None:
@@ -1509,3 +1534,46 @@ async def test_connection_key_without_proxy() -> None:
     )
     assert req.connection_key.proxy_headers_hash is None
     await req.close()
+
+
+def test_request_info_back_compat() -> None:
+    """Test RequestInfo can be created without real_url."""
+    url = URL("http://example.com")
+    other_url = URL("http://example.org")
+    assert (
+        aiohttp.RequestInfo(
+            url=url, method="GET", headers=CIMultiDictProxy(CIMultiDict())
+        ).real_url
+        is url
+    )
+    assert (
+        aiohttp.RequestInfo(url, "GET", CIMultiDictProxy(CIMultiDict())).real_url is url
+    )
+    assert (
+        aiohttp.RequestInfo(
+            url, "GET", CIMultiDictProxy(CIMultiDict()), real_url=url
+        ).real_url
+        is url
+    )
+    assert (
+        aiohttp.RequestInfo(
+            url, "GET", CIMultiDictProxy(CIMultiDict()), real_url=other_url
+        ).real_url
+        is other_url
+    )
+
+
+def test_request_info_tuple_new() -> None:
+    """Test RequestInfo must be created with real_url using tuple.__new__."""
+    url = URL("http://example.com")
+    with pytest.raises(IndexError):
+        tuple.__new__(
+            aiohttp.RequestInfo, (url, "GET", CIMultiDictProxy(CIMultiDict()))
+        ).real_url
+
+    assert (
+        tuple.__new__(
+            aiohttp.RequestInfo, (url, "GET", CIMultiDictProxy(CIMultiDict()), url)
+        ).real_url
+        is url
+    )

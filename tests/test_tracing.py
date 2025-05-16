@@ -102,7 +102,7 @@ class TestTrace:
             ("dns_cache_miss", (Mock(),), TraceDnsCacheMissParams),
         ],
     )
-    async def test_send(
+    async def test_send(  # type: ignore[misc]
         self, signal: str, params: Tuple[Mock, ...], param_obj: Any
     ) -> None:
         session = Mock()

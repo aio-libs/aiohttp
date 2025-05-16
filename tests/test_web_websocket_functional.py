@@ -782,11 +782,14 @@ async def test_heartbeat_connection_closed(
         # would cancel the heartbeat task and we wouldn't get a ping
         assert ws_server._req is not None
         assert ws_server._writer is not None
-        with mock.patch.object(
-            ws_server._req.transport, "write", side_effect=ConnectionResetError
-        ), mock.patch.object(
-            ws_server._writer, "send_frame", wraps=ws_server._writer.send_frame
-        ) as send_frame:
+        with (
+            mock.patch.object(
+                ws_server._req.transport, "write", side_effect=ConnectionResetError
+            ),
+            mock.patch.object(
+                ws_server._writer, "send_frame", wraps=ws_server._writer.send_frame
+            ) as send_frame,
+        ):
             try:
                 await ws_server.receive()
             finally:
@@ -838,6 +841,7 @@ async def test_heartbeat_failure_ends_receive(
     assert ws.close_code == WSCloseCode.ABNORMAL_CLOSURE
     assert ws_server_close_code == WSCloseCode.ABNORMAL_CLOSURE
     assert isinstance(ws_server_exception, asyncio.TimeoutError)
+    assert str(ws_server_exception) == "No PONG received after 0.025 seconds"
     await ws.close()
 
 

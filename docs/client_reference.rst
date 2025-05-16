@@ -79,6 +79,10 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.8
 
+      .. versionchanged:: 3.12
+
+         Added support for overriding the base URL with an absolute one in client sessions.
+
    :param aiohttp.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
 
@@ -348,7 +352,7 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   .. attribute:: trace_config
+   .. attribute:: trace_configs
 
       A list of :class:`TraceConfig` instances used for client
       tracing.  ``None`` (default) is used for request tracing
@@ -432,11 +436,16 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
 
-      :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                   ``True`` by default (optional).
+      :param bool allow_redirects: Whether to process redirects or not.
+         When ``True``, redirects are followed (up to ``max_redirects`` times)
+         and logged into :attr:`ClientResponse.history` and ``trace_configs``.
+         When ``False``, the original response is returned.
+         ``True`` by default (optional).
 
       :param int max_redirects: Maximum number of redirects to follow.
-                                ``10`` by default.
+         :exc:`TooManyRedirects` is raised if the number is exceeded.
+         Ignored when ``allow_redirects=False``.
+         ``10`` by default.
 
       :param bool compress: Set to ``True`` if request has to be compressed
          with deflate encoding. If `compress` can not be combined
@@ -492,7 +501,7 @@ The client session supports the context manager protocol for self closing.
          .. versionadded:: 3.0
 
       :param str server_hostname: Sets or overrides the host name that the
-         target server’s certificate will be matched against.
+         target server's certificate will be matched against.
 
          See :py:meth:`asyncio.loop.create_connection` for more information.
 
@@ -538,8 +547,11 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                   ``True`` by default (optional).
+      :param bool allow_redirects: Whether to process redirects or not.
+         When ``True``, redirects are followed and logged into
+         :attr:`ClientResponse.history`.
+         When ``False``, the original response is returned.
+         ``True`` by default (optional).
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -607,8 +619,11 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                   ``False`` by default (optional).
+      :param bool allow_redirects: Whether to process redirects or not.
+         When ``True``, redirects are followed and logged into
+         :attr:`ClientResponse.history`.
+         When ``False``, the original response is returned.
+         ``False`` by default (optional).
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -625,8 +640,11 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                   ``True`` by default (optional).
+      :param bool allow_redirects: Whether to process redirects or not.
+         When ``True``, redirects are followed and logged into
+         :attr:`ClientResponse.history`.
+         When ``False``, the original response is returned.
+         ``True`` by default (optional).
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -820,14 +838,21 @@ certification chaining.
 
 .. function:: request(method, url, *, params=None, data=None, \
                         json=None,\
-                        headers=None, cookies=None, auth=None, \
+                        cookies=None, headers=None, skip_auto_headers=None, auth=None, \
                         allow_redirects=True, max_redirects=10, \
-                        encoding='utf-8', \
-                        version=HttpVersion(major=1, minor=1), \
-                        compress=None, chunked=None, expect100=False, raise_for_status=False, \
+                        compress=False, chunked=None, expect100=False, raise_for_status=None, \
+                        read_until_eof=True, \
+                        proxy=None, proxy_auth=None, \
+                        timeout=sentinel, ssl=True, \
+                        server_hostname=None, \
+                        proxy_headers=None, \
+                        trace_request_ctx=None, \
                         read_bufsize=None, \
-                        connector=None, loop=None,\
-                        read_until_eof=True, timeout=sentinel)
+                        auto_decompress=None, \
+                        max_line_size=None, \
+                        max_field_size=None, \
+                        version=aiohttp.HttpVersion11, \
+                        connector=None)
    :async:
 
    Asynchronous context manager for performing an asynchronous HTTP
@@ -840,8 +865,20 @@ certification chaining.
                be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
                to skip encoding).
 
-   :param dict params: Parameters to be sent in the query
-                       string of the new request (optional)
+   :param params: Mapping, iterable of tuple of *key*/*value* pairs or
+                  string to be sent as parameters in the query
+                  string of the new request. Ignored for subsequent
+                  redirected requests (optional)
+
+                  Allowed values are:
+
+                  - :class:`collections.abc.Mapping` e.g. :class:`dict`,
+                     :class:`multidict.MultiDict` or
+                     :class:`multidict.MultiDictProxy`
+                  - :class:`collections.abc.Iterable` e.g. :class:`tuple` or
+                     :class:`list`
+                  - :class:`str` with preferably url-encoded content
+                     (**Warning:** content will not be encoded by *aiohttp*)
 
    :param data: The data to send in the body of the request. This can be a
                 :class:`FormData` object or anything that can be passed into
@@ -851,25 +888,46 @@ certification chaining.
    :param json: Any json compatible python object (optional). *json* and *data*
                 parameters could not be used at the same time.
 
+   :param dict cookies: HTTP Cookies to send with the request (optional)
+
    :param dict headers: HTTP Headers to send with the request (optional)
 
-   :param dict cookies: Cookies to send with the request (optional)
+   :param skip_auto_headers: set of headers for which autogeneration
+      should be skipped.
+
+      *aiohttp* autogenerates headers like ``User-Agent`` or
+      ``Content-Type`` if these headers are not explicitly
+      passed. Using ``skip_auto_headers`` parameter allows to skip
+      that generation.
+
+      Iterable of :class:`str` or :class:`~multidict.istr`
+      (optional)
 
    :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
                                   Authorization (optional)
 
-   :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                ``True`` by default (optional).
+   :param bool allow_redirects: Whether to process redirects or not.
+      When ``True``, redirects are followed (up to ``max_redirects`` times)
+      and logged into :attr:`ClientResponse.history` and ``trace_configs``.
+      When ``False``, the original response is returned.
+      ``True`` by default (optional).
 
-   :param aiohttp.protocol.HttpVersion version: Request HTTP version (optional)
+   :param int max_redirects: Maximum number of redirects to follow.
+      :exc:`TooManyRedirects` is raised if the number is exceeded.
+      Ignored when ``allow_redirects=False``.
+      ``10`` by default.
 
    :param bool compress: Set to ``True`` if request has to be compressed
-                         with deflate encoding.
-                         ``False`` instructs aiohttp to not compress data.
+                         with deflate encoding. If `compress` can not be combined
+                         with a *Content-Encoding* and *Content-Length* headers.
                          ``None`` by default (optional).
 
    :param int chunked: Enables chunked transfer encoding.
-                       ``None`` by default (optional).
+      It is up to the developer
+      to decide how to chunk data streams. If chunking is enabled, aiohttp
+      encodes the provided chunks in the "Transfer-encoding: chunked" format.
+      If *chunked* is set, then the *Transfer-encoding* and *content-length*
+      headers are disallowed. ``None`` by default (optional).
 
    :param bool expect100: Expect 100-continue response from server.
                           ``False`` by default (optional).
@@ -883,12 +941,41 @@ certification chaining.
 
       .. versionadded:: 3.4
 
-   :param aiohttp.BaseConnector connector: BaseConnector sub-class
-      instance to support connection pooling.
-
    :param bool read_until_eof: Read response until EOF if response
                                does not have Content-Length header.
                                ``True`` by default (optional).
+
+   :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
+
+   :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
+                                        Basic Authorization (optional)
+
+   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
+        total timeout, 30 seconds socket connect timeout by default.
+
+   :param ssl: SSL validation mode. ``True`` for default SSL check
+               (:func:`ssl.create_default_context` is used),
+               ``False`` for skip SSL certificate validation,
+               :class:`aiohttp.Fingerprint` for fingerprint
+               validation, :class:`ssl.SSLContext` for custom SSL
+               certificate validation.
+
+               Supersedes *verify_ssl*, *ssl_context* and
+               *fingerprint* parameters.
+
+   :param str server_hostname: Sets or overrides the host name that the
+      target server's certificate will be matched against.
+
+      See :py:meth:`asyncio.loop.create_connection`
+      for more information.
+
+   :param collections.abc.Mapping proxy_headers: HTTP headers to send to the proxy
+      if the parameter proxy has been provided.
+
+   :param trace_request_ctx: Object used to give as a kw param for each new
+      :class:`TraceConfig` object instantiated,
+      used to give information to the
+      tracers that is only available at request time.
 
    :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
                             ``None`` by default,
@@ -896,15 +983,18 @@ certification chaining.
 
       .. versionadded:: 3.7
 
-   :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
-        total timeout, 30 seconds socket connect timeout by default.
+   :param bool auto_decompress: Automatically decompress response body.
+      May be used to enable/disable auto decompression on a per-request basis.
 
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-                used for processing HTTP requests.
-                If param is ``None``, :func:`asyncio.get_event_loop`
-                is used for getting default event loop.
+   :param int max_line_size: Maximum allowed size of lines in responses.
 
-      .. deprecated:: 2.0
+   :param int max_field_size: Maximum allowed size of header fields in responses.
+
+   :param aiohttp.protocol.HttpVersion version: Request HTTP version,
+      ``HTTP 1.1`` by default. (optional)
+
+   :param aiohttp.BaseConnector connector: BaseConnector sub-class
+      instance to support connection pooling. (optional)
 
    :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
@@ -963,9 +1053,13 @@ is controlled by *force_close* constructor's parameter).
                             connection releasing (optional).
 
    :param bool enable_cleanup_closed: some SSL servers do not properly complete
-      SSL shutdown process, in that case asyncio leaks ssl connections.
+      SSL shutdown process, in that case asyncio leaks SSL connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
+
+      For Python version 3.12.7+, or 3.13.1 and later,
+      this parameter is ignored because the asyncio SSL connection
+      leak is fixed in these versions of Python.
 
 
    :param loop: :ref:`event loop<asyncio-event-loop>`
@@ -1028,13 +1122,38 @@ is controlled by *force_close* constructor's parameter).
       overridden in subclasses.
 
 
+.. py:class:: AddrInfoType
+
+   Refer to :py:data:`aiohappyeyeballs.AddrInfoType` for more info.
+
+.. warning::
+
+   Be sure to use ``aiohttp.AddrInfoType`` rather than
+   ``aiohappyeyeballs.AddrInfoType`` to avoid import breakage, as
+   it is likely to be removed from :mod:`aiohappyeyeballs` in the
+   future.
+
+
+.. py:class:: SocketFactoryType
+
+   Refer to :py:data:`aiohappyeyeballs.SocketFactoryType` for more info.
+
+.. warning::
+
+   Be sure to use ``aiohttp.SocketFactoryType`` rather than
+   ``aiohappyeyeballs.SocketFactoryType`` to avoid import breakage,
+   as it is likely to be removed from :mod:`aiohappyeyeballs` in the
+   future.
+
+
 .. class:: TCPConnector(*, ssl=True, verify_ssl=True, fingerprint=None, \
                  use_dns_cache=True, ttl_dns_cache=10, \
                  family=0, ssl_context=None, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
-                 happy_eyeballs_delay=0.25, interleave=None, loop=None)
+                 happy_eyeballs_delay=0.25, interleave=None, loop=None, \
+                 socket_factory=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1154,6 +1273,12 @@ is controlled by *force_close* constructor's parameter).
       ``1`` if it is.
 
         .. versionadded:: 3.10
+
+   :param SocketFactoryType socket_factory: This function takes an
+      :py:data:`AddrInfoType` and is used in lieu of
+      :py:func:`socket.socket` when creating TCP connections.
+
+        .. versionadded:: 3.12
 
    .. attribute:: family
 
@@ -2019,6 +2144,30 @@ Utilities
       await session.get(url, ssl=aiohttp.Fingerprint(digest))
 
    .. versionadded:: 3.0
+
+.. function:: set_zlib_backend(lib)
+
+   Sets the compression backend for zlib-based operations.
+
+   This function allows you to override the default zlib backend
+   used internally by passing a module that implements the standard
+   compression interface.
+
+   The module should implement at minimum the exact interface offered by the
+   latest version of zlib.
+
+   :param types.ModuleType lib: A module that implements the zlib-compatible compression API.
+
+   Example usage::
+
+      import zlib_ng.zlib_ng as zng
+      import aiohttp
+
+      aiohttp.set_zlib_backend(zng)
+
+   .. note:: aiohttp has been tested internally with :mod:`zlib`, :mod:`zlib_ng.zlib_ng`, and :mod:`isal.isal_zlib`.
+
+   .. versionadded:: 3.12
 
 FormData
 ^^^^^^^^

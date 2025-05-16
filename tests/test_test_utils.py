@@ -2,7 +2,7 @@ import asyncio
 import gzip
 import socket
 import sys
-from typing import Callable, Iterator, Mapping, NoReturn
+from typing import Iterator, Mapping, NoReturn
 from unittest import mock
 
 import pytest
@@ -364,10 +364,13 @@ async def test_client_context_manager_response(
 async def test_custom_port(
     loop: asyncio.AbstractEventLoop,
     app: web.Application,
-    aiohttp_unused_port: Callable[[], int],
+    unused_port_socket: socket.socket,
 ) -> None:
-    port = aiohttp_unused_port()
-    client = TestClient(TestServer(app, port=port))
+    sock = unused_port_socket
+    port = sock.getsockname()[1]
+    client = TestClient(
+        TestServer(app, port=port, socket_factory=lambda *args, **kwargs: sock)
+    )
     await client.start_server()
 
     assert client.server.port == port

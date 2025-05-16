@@ -33,28 +33,29 @@ from .web_protocol import _RequestHandler
 
 try:
     import uvloop
-except ImportError:  # pragma: no cover
+except ImportError:
     uvloop = None  # type: ignore[assignment]
 
 _Request = TypeVar("_Request", bound=BaseRequest)
 
 
 class AiohttpClient(Protocol):
+    # TODO(PY311): Use Unpack to specify ClientSession kwargs.
     @overload
-    async def __call__(
+    async def __call__(  # type: ignore[misc]
         self,
         __param: Application,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
     @overload
-    async def __call__(
+    async def __call__(  # type: ignore[misc]
         self,
         __param: BaseTestServer[_Request],
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[_Request, None]: ...
 
 
@@ -70,7 +71,7 @@ class AiohttpRawServer(Protocol):
         handler: _RequestHandler[BaseRequest],
         *,
         port: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Awaitable[RawTestServer]: ...
 
 
@@ -105,7 +106,7 @@ def pytest_fixture_setup(fixturedef):  # type: ignore[no-untyped-def]
     if inspect.isasyncgenfunction(func):
         # async generator fixture
         is_async_gen = True
-    elif asyncio.iscoroutinefunction(func):
+    elif inspect.iscoroutinefunction(func):
         # regular async fixture
         is_async_gen = False
     else:
@@ -153,19 +154,19 @@ def pytest_fixture_setup(fixturedef):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def fast(request):  # type: ignore[no-untyped-def]
+def fast(request: pytest.FixtureRequest) -> bool:
     """--fast config option"""
-    return request.config.getoption("--aiohttp-fast")
+    return request.config.getoption("--aiohttp-fast")  # type: ignore[no-any-return]
 
 
 @pytest.fixture
-def loop_debug(request):  # type: ignore[no-untyped-def]
+def loop_debug(request: pytest.FixtureRequest) -> bool:
     """--enable-loop-debug config option"""
-    return request.config.getoption("--aiohttp-enable-loop-debug")
+    return request.config.getoption("--aiohttp-enable-loop-debug")  # type: ignore[no-any-return]
 
 
 @contextlib.contextmanager
-def _runtime_warning_context():  # type: ignore[no-untyped-def]
+def _runtime_warning_context() -> Iterator[None]:
     """Context manager which checks for RuntimeWarnings.
 
     This exists specifically to
@@ -195,7 +196,9 @@ def _runtime_warning_context():  # type: ignore[no-untyped-def]
 
 
 @contextlib.contextmanager
-def _passthrough_loop_context(loop, fast=False):  # type: ignore[no-untyped-def]
+def _passthrough_loop_context(
+    loop: Optional[asyncio.AbstractEventLoop], fast: bool = False
+) -> Iterator[asyncio.AbstractEventLoop]:
     """Passthrough loop context.
 
     Sets up and tears down a loop unless one is passed in via the loop
@@ -213,14 +216,14 @@ def _passthrough_loop_context(loop, fast=False):  # type: ignore[no-untyped-def]
 
 def pytest_pycollect_makeitem(collector, name, obj):  # type: ignore[no-untyped-def]
     """Fix pytest collecting for coroutines."""
-    if collector.funcnamefilter(name) and asyncio.iscoroutinefunction(obj):
+    if collector.funcnamefilter(name) and inspect.iscoroutinefunction(obj):
         return list(collector._genfunctions(name, obj))
 
 
 def pytest_pyfunc_call(pyfuncitem):  # type: ignore[no-untyped-def]
     """Run coroutines in an event loop instead of a normal function call."""
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
-    if asyncio.iscoroutinefunction(pyfuncitem.function):
+    if inspect.iscoroutinefunction(pyfuncitem.function):
         existing_loop = pyfuncitem.funcargs.get(
             "proactor_loop"
         ) or pyfuncitem.funcargs.get("loop", None)
@@ -243,7 +246,7 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
     avail_factories: Dict[str, Type[asyncio.AbstractEventLoopPolicy]]
     avail_factories = {"pyloop": asyncio.DefaultEventLoopPolicy}
 
-    if uvloop is not None:  # pragma: no cover
+    if uvloop is not None:
         avail_factories["uvloop"] = uvloop.EventLoopPolicy
 
     if loops == "all":
@@ -253,7 +256,7 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
     for name in loops.split(","):
         required = not name.endswith("?")
         name = name.strip(" ?")
-        if name not in avail_factories:  # pragma: no cover
+        if name not in avail_factories:
             if required:
                 raise ValueError(
                     "Unknown loop '%s', available loops: %s"
@@ -268,19 +271,23 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def loop(loop_factory, fast, loop_debug):  # type: ignore[no-untyped-def]
+def loop(
+    loop_factory: Callable[[], asyncio.AbstractEventLoopPolicy],
+    fast: bool,
+    loop_debug: bool,
+) -> Iterator[asyncio.AbstractEventLoop]:
     """Return an instance of the event loop."""
     policy = loop_factory()
     asyncio.set_event_loop_policy(policy)
     with loop_context(fast=fast) as _loop:
         if loop_debug:
-            _loop.set_debug(True)  # pragma: no cover
+            _loop.set_debug(True)
         asyncio.set_event_loop(_loop)
         yield _loop
 
 
 @pytest.fixture
-def proactor_loop():  # type: ignore[no-untyped-def]
+def proactor_loop() -> Iterator[asyncio.AbstractEventLoop]:
     policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore[attr-defined]
     asyncio.set_event_loop_policy(policy)
 
@@ -304,9 +311,13 @@ def aiohttp_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
     servers = []
 
     async def go(
-        app: Application, *, port: Optional[int] = None, **kwargs: Any
+        app: Application,
+        *,
+        host: str = "127.0.0.1",
+        port: Optional[int] = None,
+        **kwargs: Any,
     ) -> TestServer:
-        server = TestServer(app, port=port)
+        server = TestServer(app, host=host, port=port)
         await server.start_server(**kwargs)
         servers.append(server)
         return server
@@ -332,7 +343,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
         handler: _RequestHandler[BaseRequest],
         *,
         port: Optional[int] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> RawTestServer:
         server = RawTestServer(handler, port=port)
         await server.start_server(**kwargs)
@@ -349,7 +360,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
 
 
 @pytest.fixture
-def aiohttp_client_cls() -> Type[TestClient[Any, Any]]:
+def aiohttp_client_cls() -> Type[TestClient[Any, Any]]:  # type: ignore[misc]
     """
     Client class to use in ``aiohttp_client`` factory.
 
@@ -376,7 +387,7 @@ def aiohttp_client_cls() -> Type[TestClient[Any, Any]]:
 
 
 @pytest.fixture
-def aiohttp_client(
+def aiohttp_client(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient[Any, Any]]
 ) -> Iterator[AiohttpClient]:
     """Factory to create a TestClient instance.
@@ -388,25 +399,26 @@ def aiohttp_client(
     clients = []
 
     @overload
-    async def go(
+    async def go(  # type: ignore[misc]
         __param: Application,
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
     @overload
-    async def go(
+    async def go(  # type: ignore[misc]
         __param: BaseTestServer[_Request],
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[_Request, None]: ...
     async def go(
         __param: Union[Application, BaseTestServer[Any]],
         *,
         server_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TestClient[Any, Any]:
+        # TODO(PY311): Use Unpack to specify ClientSession kwargs and server_kwargs.
         if isinstance(__param, Application):
             server_kwargs = server_kwargs or {}
             server = TestServer(__param, **server_kwargs)

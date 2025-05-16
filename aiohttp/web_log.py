@@ -181,10 +181,13 @@ class AccessLogger(AbstractAccessLogger):
     ) -> Iterable[Tuple[str, Callable[[BaseRequest, StreamResponse, float], str]]]:
         return [(key, method(request, response, time)) for key, method in self._methods]
 
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        # Avoid formatting the log line if it will not be emitted.
+        return self.logger.isEnabledFor(logging.INFO)
+
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
-        if not self.logger.isEnabledFor(logging.INFO):
-            # Avoid formatting the log line if it will not be emitted.
-            return
         try:
             fmt_info = self._format_line(request, response, time)
 

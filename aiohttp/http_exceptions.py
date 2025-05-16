@@ -69,7 +69,7 @@ class TransferEncodingError(PayloadEncodingError):
 
 
 class ContentLengthError(PayloadEncodingError):
-    """Not enough data for satisfy content length header."""
+    """Not enough data to satisfy content length header."""
 
 
 class LineTooLong(BadHttpMessage):
@@ -95,6 +95,13 @@ class BadStatusLine(BadHttpMessage):
         super().__init__(error or f"Bad status line {line!r}")
         self.args = (line,)
         self.line = line
+
+
+class BadHttpMethod(BadStatusLine):
+    """Invalid HTTP method in status line."""
+
+    def __init__(self, line: str = "", error: Optional[str] = None) -> None:
+        super().__init__(line, error or f"Bad HTTP method in status line {line!r}")
 
 
 class InvalidURLError(BadHttpMessage):

@@ -16,8 +16,8 @@ from yarl import URL
 
 from aiohttp import helpers, web
 from aiohttp.helpers import (
+    EMPTY_BODY_METHODS,
     is_expected_content_type,
-    method_must_be_empty_body,
     must_be_empty_body,
     parse_http_date,
     should_remove_content_length,
@@ -189,7 +189,7 @@ def test_basic_auth_decode_invalid_credentials() -> None:
         ),
     ),
 )
-def test_basic_auth_decode_blank_username(
+def test_basic_auth_decode_blank_username(  # type: ignore[misc]
     credentials: str, expected_auth: helpers.BasicAuth
 ) -> None:
     header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
@@ -378,7 +378,6 @@ async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     ctx = helpers.TimerContext(loop)
 
     async def task_with_timeout() -> None:
-        nonlocal ctx
         new_task = asyncio.current_task()
         assert new_task is not None
         with pytest.raises(asyncio.TimeoutError):
@@ -916,6 +915,11 @@ def test_cookies_mixin() -> None:
 
     sut.set_cookie("name", "value")
     assert str(sut.cookies) == "Set-Cookie: name=value; Path=/"
+    sut.set_cookie("name", "")
+    assert str(sut.cookies) == 'Set-Cookie: name=""; Path=/'
+    sut.set_cookie("name", "value")
+    assert str(sut.cookies) == "Set-Cookie: name=value; Path=/"
+
     sut.set_cookie("name", "other_value")
     assert str(sut.cookies) == "Set-Cookie: name=other_value; Path=/"
 
@@ -930,6 +934,8 @@ def test_cookies_mixin() -> None:
         'Set-Cookie: name=""; '
         "expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/"
     )
+    assert str(sut.cookies) == expected
+    sut.del_cookie("name")
     assert str(sut.cookies) == expected
 
     sut.set_cookie("name", "value", domain="local.host")
@@ -967,6 +973,19 @@ def test_cookies_mixin_path() -> None:
         "samesite=lax; "
         "secure"
     )
+
+
+@pytest.mark.skipif(sys.version_info < (3, 14), reason="No partitioned support")
+def test_cookies_mixin_partitioned() -> None:
+    sut = CookieImplementation()
+
+    assert sut.cookies == {}
+
+    sut.set_cookie("name", "value", partitioned=False)
+    assert str(sut.cookies) == "Set-Cookie: name=value; Path=/"
+
+    sut.set_cookie("name", "value", partitioned=True)
+    assert str(sut.cookies) == "Set-Cookie: name=value; Partitioned; Path=/"
 
 
 def test_sutonse_cookie__issue_del_cookie() -> None:
@@ -1086,7 +1105,7 @@ def test_netrc_from_home_does_not_raise_if_access_denied(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_present_in_netrc(
+def test_basicauth_present_in_netrc(  # type: ignore[misc]
     expected_auth: helpers.BasicAuth,
 ) -> None:
     """Test that netrc file contents are properly parsed into BasicAuth tuples"""
@@ -1115,9 +1134,9 @@ def test_read_basicauth_from_empty_netrc() -> None:
 
 def test_method_must_be_empty_body() -> None:
     """Test that HEAD is the only method that unequivocally must have an empty body."""
-    assert method_must_be_empty_body("HEAD") is True
+    assert "HEAD" in EMPTY_BODY_METHODS
     # CONNECT is only empty on a successful response
-    assert method_must_be_empty_body("CONNECT") is False
+    assert "CONNECT" not in EMPTY_BODY_METHODS
 
 
 def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
