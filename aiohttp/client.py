@@ -73,7 +73,7 @@ from .client_exceptions import (
     WSMessageTypeError,
     WSServerHandshakeError,
 )
-from .client_middlewares import ClientMiddleware, build_client_middlewares
+from .client_middlewares import ClientMiddlewareType, build_client_middlewares
 from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
@@ -195,7 +195,7 @@ class _RequestOptions(TypedDict, total=False):
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
     max_field_size: Union[int, None]
-    middlewares: Union[Tuple[ClientMiddleware, ...], None]
+    middlewares: Union[Tuple[ClientMiddlewareType, ...], None]
 
 
 @frozen_dataclass_decorator
@@ -296,7 +296,7 @@ class ClientSession:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
-        middlewares: Tuple[ClientMiddleware, ...] = (),
+        middlewares: Tuple[ClientMiddlewareType, ...] = (),
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -456,7 +456,7 @@ class ClientSession:
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_field_size: Optional[int] = None,
-        middlewares: Optional[Tuple[ClientMiddleware, ...]] = None,
+        middlewares: Optional[Tuple[ClientMiddlewareType, ...]] = None,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
