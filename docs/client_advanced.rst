@@ -116,21 +116,24 @@ useful for authentication, logging, request/response modification, and retries.
 To create a middleware, you need to define an async function that accepts the request
 and a handler function, and returns the response::
 
+    import logging
     from aiohttp import ClientSession, ClientRequest, ClientResponse
     from typing import Callable, Awaitable
+
+    _LOGGER = logging.getLogger(__name__)
 
     async def my_middleware(
         request: ClientRequest,
         handler: Callable[..., Awaitable[ClientResponse]]
     ) -> ClientResponse:
         # Process request before sending
-        print(f"Request: {request.method} {request.url}")
+        _LOGGER.debug(f"Request: {request.method} {request.url}")
 
         # Call the next handler
         response = await handler(request)
 
         # Process response after receiving
-        print(f"Response: {response.status}")
+        _LOGGER.debug(f"Response: {response.status}")
 
         return response
 
@@ -159,7 +162,10 @@ Here's a simple example showing request modification::
 
 Retrying requests with middleware::
 
+    import logging
     from aiohttp import ClientMiddlewareRetry
+
+    _LOGGER = logging.getLogger(__name__)
 
     class RetryMiddleware:
         def __init__(self, max_retries: int = 3):
@@ -179,7 +185,7 @@ Retrying requests with middleware::
             # Retry on 5xx errors
             if response.status >= 500 and request.retry_count < self.max_retries:
                 request.retry_count += 1
-                print(f"Retrying request (attempt {request.retry_count})")
+                _LOGGER.debug(f"Retrying request (attempt {request.retry_count})")
                 raise ClientMiddlewareRetry()
 
             return response
@@ -189,11 +195,15 @@ Middleware Chaining
 
 Multiple middlewares are applied in the order they are listed::
 
+    import logging
+
+    _LOGGER = logging.getLogger(__name__)
+
     async def logging_middleware(
         request: ClientRequest,
         handler: Callable[..., Awaitable[ClientResponse]]
     ) -> ClientResponse:
-        print(f"[LOG] {request.method} {request.url}")
+        _LOGGER.debug(f"[LOG] {request.method} {request.url}")
         return await handler(request)
 
     async def auth_middleware(
