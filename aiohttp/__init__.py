@@ -47,6 +47,8 @@ from .client import (
     WSServerHandshakeError,
     request,
 )
+from .client_exceptions import ClientMiddlewareRetry
+from .client_middlewares import client_middleware
 from .compression_utils import set_zlib_backend
 from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
@@ -135,6 +137,9 @@ __all__: Tuple[str, ...] = (
     "ClientTimeout",
     "ClientWebSocketResponse",
     "ClientWSTimeout",
+    "ClientMiddleware",
+    "ClientMiddlewareRetry",
+    "client_middleware",
     "ConnectionTimeoutError",
     "ContentTypeError",
     "Fingerprint",

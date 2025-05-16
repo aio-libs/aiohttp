@@ -105,6 +105,115 @@ background.
    Started keeping the ``Authorization`` header during HTTP → HTTPS
    redirects when the host remains the same.
 
+.. _aiohttp-client-middleware:
+
+Client Middleware
+-----------------
+
+aiohttp client supports middleware to intercept requests and responses. This can be
+useful for authentication, logging, request/response modification, and retries.
+
+To create a middleware, you need to define an async function that accepts the request
+and a handler function, and returns the response::
+
+    from aiohttp import ClientSession, ClientRequest, ClientResponse
+    from typing import Callable, Awaitable
+
+    async def my_middleware(
+        request: ClientRequest,
+        handler: Callable[..., Awaitable[ClientResponse]]
+    ) -> ClientResponse:
+        # Process request before sending
+        print(f"Request: {request.method} {request.url}")
+
+        # Call the next handler
+        response = await handler(request)
+
+        # Process response after receiving
+        print(f"Response: {response.status}")
+
+        return response
+
+You can apply middleware to a client session or to individual requests::
+
+    # Apply to all requests in a session
+    async with ClientSession(middlewares=(my_middleware,)) as session:
+        resp = await session.get('http://example.com')
+
+    # Apply to a specific request
+    async with ClientSession() as session:
+        resp = await session.get('http://example.com', middlewares=(my_middleware,))
+
+Middleware Examples
+^^^^^^^^^^^^^^^^^^^
+
+Here's a simple example showing request modification::
+
+    async def add_api_key_middleware(
+        request: ClientRequest,
+        handler: Callable[..., Awaitable[ClientResponse]]
+    ) -> ClientResponse:
+        # Add API key to all requests
+        request.headers['X-API-Key'] = 'my-secret-key'
+        return await handler(request)
+
+Retrying requests with middleware::
+
+    from aiohttp import ClientMiddlewareRetry
+
+    class RetryMiddleware:
+        def __init__(self, max_retries: int = 3):
+            self.max_retries = max_retries
+
+        async def __call__(
+            self,
+            request: ClientRequest,
+            handler: Callable[..., Awaitable[ClientResponse]]
+        ) -> ClientResponse:
+            # Keep track of retries per request
+            if not hasattr(request, 'retry_count'):
+                request.retry_count = 0
+
+            response = await handler(request)
+
+            # Retry on 5xx errors
+            if response.status >= 500 and request.retry_count < self.max_retries:
+                request.retry_count += 1
+                print(f"Retrying request (attempt {request.retry_count})")
+                raise ClientMiddlewareRetry()
+
+            return response
+
+Middleware Chaining
+^^^^^^^^^^^^^^^^^^^
+
+Multiple middlewares are applied in the order they are listed::
+
+    async def logging_middleware(
+        request: ClientRequest,
+        handler: Callable[..., Awaitable[ClientResponse]]
+    ) -> ClientResponse:
+        print(f"[LOG] {request.method} {request.url}")
+        return await handler(request)
+
+    async def auth_middleware(
+        request: ClientRequest,
+        handler: Callable[..., Awaitable[ClientResponse]]
+    ) -> ClientResponse:
+        request.headers['Authorization'] = 'Bearer token123'
+        return await handler(request)
+
+    # Middlewares are applied in order: logging -> auth -> request
+    async with ClientSession(middlewares=(logging_middleware, auth_middleware)) as session:
+        resp = await session.get('http://example.com')
+
+.. note::
+
+   Client middleware is a powerful feature but should be used judiciously.
+   Each middleware adds overhead to request processing. For simple use cases
+   like adding static headers, you can often use request parameters
+   (e.g., ``headers``) or session configuration instead.
+
 Custom Cookies
 --------------
 

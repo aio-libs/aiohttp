@@ -50,6 +50,7 @@ from .client_exceptions import (
     ClientConnectorSSLError,
     ClientError,
     ClientHttpProxyError,
+    ClientMiddlewareRetry,
     ClientOSError,
     ClientPayloadError,
     ClientProxyConnectionError,
@@ -72,6 +73,7 @@ from .client_exceptions import (
     WSMessageTypeError,
     WSServerHandshakeError,
 )
+from .client_middlewares import ClientMiddleware, build_client_middlewares
 from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
@@ -193,6 +195,7 @@ class _RequestOptions(TypedDict, total=False):
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
     max_field_size: Union[int, None]
+    middlewares: Union[Tuple[ClientMiddleware, ...], None]
 
 
 @frozen_dataclass_decorator
@@ -260,6 +263,7 @@ class ClientSession:
         "_default_proxy",
         "_default_proxy_auth",
         "_retry_connection",
+        "_middlewares",
     )
 
     def __init__(
@@ -292,6 +296,7 @@ class ClientSession:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
+        middlewares: Tuple[ClientMiddleware, ...] = (),
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -376,6 +381,7 @@ class ClientSession:
         self._default_proxy = proxy
         self._default_proxy_auth = proxy_auth
         self._retry_connection: bool = True
+        self._middlewares = middlewares
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(
@@ -450,7 +456,7 @@ class ClientSession:
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_field_size: Optional[int] = None,
-        middleware: Optional["Middleware"] = None,
+        middlewares: Optional[Tuple[ClientMiddleware, ...]] = None,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -668,9 +674,8 @@ class ClientSession:
                         max_field_size=max_field_size,
                     )
 
-                    # TODO: pre-request middleware
-
-                    try:
+                    # Core request handler
+                    async def _send_request(req: ClientRequest) -> ClientResponse:
                         try:
                             resp = await req.send(conn)
                             try:
@@ -681,6 +686,25 @@ class ClientSession:
                         except BaseException:
                             conn.close()
                             raise
+
+                        return resp
+
+                    # Apply middleware (if any)
+                    effective_middlewares = (
+                        self._middlewares if middlewares is None else middlewares
+                    )
+                    if effective_middlewares:
+                        handler = build_client_middlewares(
+                            _send_request, effective_middlewares
+                        )
+                    else:
+                        handler = _send_request
+
+                    try:
+                        resp = await handler(req)
+                    except ClientMiddlewareRetry:
+                        # Middleware explicitly requested a retry
+                        continue
                     except (ClientOSError, ServerDisconnectedError):
                         if retry_persistent_connection:
                             retry_persistent_connection = False
@@ -774,8 +798,6 @@ class ClientSession:
                         params = {}
                         resp.release()
                         continue
-
-                    # TODO: post request middleware
 
                     break
 
