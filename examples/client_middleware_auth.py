@@ -1,6 +1,8 @@
 """Example of using client middleware for authentication in production."""
 
 import asyncio
+import logging
+from collections.abc import Awaitable, Callable
 from typing import Optional
 
 from aiohttp import (
@@ -10,6 +12,8 @@ from aiohttp import (
     ClientSession,
     client_middleware,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class TokenAuthMiddleware:
@@ -49,7 +53,9 @@ class TokenAuthMiddleware:
                 await self.authenticate(session)
 
     @client_middleware
-    async def middleware(self, request: ClientRequest, handler) -> ClientResponse:
+    async def middleware(
+        self, request: ClientRequest, handler: Callable[..., Awaitable[ClientResponse]]
+    ) -> ClientResponse:
         """Apply authentication to requests and handle token refresh."""
         # Skip auth endpoints
         if str(request.url).startswith(self.auth_url):
@@ -103,7 +109,9 @@ class DigestAuthMiddleware:
         return response
 
     @client_middleware
-    async def middleware(self, request: ClientRequest, handler) -> ClientResponse:
+    async def middleware(
+        self, request: ClientRequest, handler: Callable[..., Awaitable[ClientResponse]]
+    ) -> ClientResponse:
         """Handle digest authentication challenges."""
         # If we have a previous challenge, add auth header
         if self.last_challenge:
@@ -148,7 +156,7 @@ async def main() -> None:
         # Make API calls - auth will be handled automatically
         async with session.get("https://api.example.com/data") as resp:
             data = await resp.json()
-            print(data)
+            _LOGGER.debug("Received data: %s", data)
 
     # Digest auth example
     digest_auth = DigestAuthMiddleware(username="user", password="pass")
@@ -159,7 +167,7 @@ async def main() -> None:
             "https://httpbin.org/digest-auth/auth/user/pass"
         ) as resp:
             data = await resp.json()
-            print(data)
+            _LOGGER.debug("Digest auth response: %s", data)
 
     # Combining multiple middlewares
     async with ClientSession(
@@ -168,7 +176,7 @@ async def main() -> None:
         # Both middlewares will be applied
         async with session.get("https://api.example.com/data") as resp:
             data = await resp.json()
-            print(data)
+            _LOGGER.debug("Combined middleware response: %s", data)
 
 
 # Per-request middleware override example
@@ -191,14 +199,14 @@ async def example_with_override() -> None:
         # Use session auth
         async with session.get("https://api.example.com/user/data") as resp:
             user_data = await resp.json()
-            print(user_data)
+            _LOGGER.debug("User data: %s", user_data)
 
         # Override with admin auth for admin endpoints
         async with session.get(
             "https://api.example.com/admin/data", middlewares=(admin_auth.middleware,)
         ) as resp:
             admin_data = await resp.json()
-            print(admin_data)
+            _LOGGER.debug("Admin data: %s", admin_data)
 
 
 if __name__ == "__main__":
