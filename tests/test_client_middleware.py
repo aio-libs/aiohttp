@@ -411,7 +411,7 @@ async def test_client_middleware_conditional_retry(
 async def test_build_client_middlewares_empty() -> None:
     """Test build_client_middlewares with empty middlewares."""
 
-    async def handler(request: ClientRequest) -> Dict[str, bool]:
+    async def handler(request: ClientRequest) -> ClientResponse:
         return {"handled": True}
 
     # Test empty case
