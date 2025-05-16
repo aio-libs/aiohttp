@@ -208,6 +208,10 @@ def pytest_pyfunc_call(pyfuncitem):  # type: ignore[no-untyped-def]
     """Run coroutines in an event loop instead of a normal function call."""
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
     if inspect.iscoroutinefunction(pyfuncitem.function):
+        warnings.warn(
+            "aiohttp.pytest_plugin will be removed in v4. Please install pytest-aiohttp.",
+            DeprecationWarning,
+        )
         existing_loop = pyfuncitem.funcargs.get(
             "proactor_loop"
         ) or pyfuncitem.funcargs.get("loop", None)
