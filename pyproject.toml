@@ -1,8 +1,52 @@
 [build-system]
-requires = [
-    "setuptools >= 46.4.0",
-]
+requires = ["setuptools >= 67.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name        = "aiohttp"
+license     = {text = "Apache-2.0"}
+description = "Async http client/server framework (asyncio)"
+readme      = "README.rst"
+maintainers = [{name = "aiohttp team", email = "team@aiohttp.org"}]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Framework :: AsyncIO",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: POSIX",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP",
+]
+requires-python = ">=3.9"
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[project.urls]
+"Homepage"           = "https://github.com/aio-libs/aiohttp"
+"Chat: Matrix"       = "https://matrix.to/#/#aio-libs:matrix.org"
+"Chat: Matrix Space" = "https://matrix.to/#/#aio-libs-space:matrix.org"
+"CI: GitHub Actions" = "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI"
+"Coverage: codecov"  = "https://codecov.io/github/aio-libs/aiohttp"
+"Docs: Changelog"    = "https://docs.aiohttp.org/en/stable/changes.html"
+"Docs: RTD"          = "https://docs.aiohttp.org"
+"GitHub: issues"     = "https://github.com/aio-libs/aiohttp/issues"
+"GitHub: repo"       = "https://github.com/aio-libs/aiohttp"
+
+[tool.setuptools.dynamic]
+version = {attr = "aiohttp.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["aiohttp*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["*.c", "*.h", "*.hash"]
 
 [tool.towncrier]
   package = "aiohttp"
@@ -87,8 +131,3 @@ ignore-words-list = 'te,assertIn'
 # TODO(3.13): Remove aiohttp.helpers once https://github.com/python/cpython/pull/106771
 # is available in all supported cpython versions
 exclude-modules = "(^aiohttp\\.helpers)"
-
-[tool.black]
-# TODO: Remove when project metadata is moved here.
-# Black can read the value from [project.requires-python].
-target-version = ["py39", "py310", "py311", "py312", "py313"]
