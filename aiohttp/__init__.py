@@ -48,6 +48,7 @@ from .client import (
     request,
 )
 from .client_exceptions import ClientMiddlewareRetry
+from .client_middlewares import ClientMiddlewareType
 from .compression_utils import set_zlib_backend
 from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
@@ -159,6 +160,8 @@ __all__: Tuple[str, ...] = (
     "NamedPipeConnector",
     "WSServerHandshakeError",
     "request",
+    # client_middleware
+    "ClientMiddlewareType",
     # cookiejar
     "CookieJar",
     "DummyCookieJar",
