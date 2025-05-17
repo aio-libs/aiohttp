@@ -1,7 +1,7 @@
 """Tests for client middleware."""
 
-from socket import AF_INET
-from typing import Any, Dict, List, NoReturn, Optional, Union
+import socket
+from typing import Dict, List, NoReturn, Optional, Union
 
 import pytest
 
@@ -15,6 +15,7 @@ from aiohttp import (
     TCPConnector,
     web,
 )
+from aiohttp.abc import ResolveResult
 from aiohttp.client_middlewares import build_client_middlewares
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.resolver import ThreadedResolver
@@ -757,8 +758,11 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
 
     class TrackingResolver(ThreadedResolver):
         async def resolve(
-            self, hostname: str, port: int = 0, family: int = AF_INET
-        ) -> List[Dict[str, Any]]:
+            self,
+            hostname: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> List[ResolveResult]:
             dns_lookups_made.append(hostname)
             return await super().resolve(hostname, port, family)
 

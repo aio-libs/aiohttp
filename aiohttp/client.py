@@ -89,7 +89,6 @@ from .client_ws import (
 from .connector import (
     HTTP_AND_EMPTY_SCHEMA_SET,
     BaseConnector,
-    Connection,
     NamedPipeConnector,
     TCPConnector,
     UnixConnector,
@@ -650,9 +649,6 @@ class ClientSession:
                         trust_env=self.trust_env,
                     )
 
-                    # Store connection for error handling
-                    conn: Union[Connection, None] = None
-
                     # Core request handler - now includes connection logic
                     async def _connect_and_send_request(
                         req: ClientRequest,
@@ -660,7 +656,6 @@ class ClientSession:
                         _url: URL = url,
                         _method: str = method,
                     ) -> ClientResponse:
-                        nonlocal conn
                         # connection timeout
                         assert self._connector is not None
                         try:
@@ -686,12 +681,15 @@ class ClientSession:
                             max_line_size=max_line_size,
                             max_field_size=max_field_size,
                         )
-
-                        resp = await req.send(conn)
                         try:
-                            await resp.start(conn)
+                            resp = await req.send(conn)
+                            try:
+                                await resp.start(conn)
+                            except BaseException:
+                                resp.close()
+                                raise
                         except BaseException:
-                            resp.close()
+                            conn.close()
                             raise
                         return resp
 
@@ -716,19 +714,13 @@ class ClientSession:
                         if retry_persistent_connection:
                             retry_persistent_connection = False
                             continue
-                        if conn is not None:
-                            conn.close()
+                        raise
+                    except ClientError:
                         raise
                     except OSError as exc:
-                        if conn is not None:
-                            conn.close()
                         if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                             raise
                         raise ClientOSError(*exc.args) from exc
-                    except BaseException:
-                        if conn is not None:
-                            conn.close()
-                        raise
 
                     if cookies := resp._cookies:
                         self._cookie_jar.update_cookies(cookies, resp.url)
