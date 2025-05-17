@@ -650,38 +650,45 @@ class ClientSession:
                         trust_env=self.trust_env,
                     )
 
-                    # connection timeout
-                    try:
-                        conn = await self._connector.connect(
-                            req, traces=traces, timeout=real_timeout
-                        )
-                    except asyncio.TimeoutError as exc:
-                        raise ConnectionTimeoutError(
-                            f"Connection timeout to host {url}"
-                        ) from exc
+                    # Store connection for error handling
+                    conn: Union[Connection, None] = None
 
-                    assert conn.transport is not None
-
-                    assert conn.protocol is not None
-                    conn.protocol.set_response_params(
-                        timer=timer,
-                        skip_payload=method in EMPTY_BODY_METHODS,
-                        read_until_eof=read_until_eof,
-                        auto_decompress=auto_decompress,
-                        read_timeout=real_timeout.sock_read,
-                        read_bufsize=read_bufsize,
-                        timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
-                        max_line_size=max_line_size,
-                        max_field_size=max_field_size,
-                    )
-
-                    # Core request handler - use default parameter to avoid loop variable issues
-                    async def _send_request(
-                        req: ClientRequest, *, _conn: Connection = conn
+                    # Core request handler - now includes connection logic
+                    async def _connect_and_send_request(
+                        req: ClientRequest,
+                        *,
+                        _url: URL = url,
+                        _method: str = method,
                     ) -> ClientResponse:
-                        resp = await req.send(_conn)
+                        nonlocal conn
+                        # connection timeout
                         try:
-                            await resp.start(_conn)
+                            conn = await self._connector.connect(
+                                req, traces=traces, timeout=real_timeout
+                            )
+                        except asyncio.TimeoutError as exc:
+                            raise ConnectionTimeoutError(
+                                f"Connection timeout to host {_url}"
+                            ) from exc
+
+                        assert conn.transport is not None
+
+                        assert conn.protocol is not None
+                        conn.protocol.set_response_params(
+                            timer=timer,
+                            skip_payload=_method in EMPTY_BODY_METHODS,
+                            read_until_eof=read_until_eof,
+                            auto_decompress=auto_decompress,
+                            read_timeout=real_timeout.sock_read,
+                            read_bufsize=read_bufsize,
+                            timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
+                            max_line_size=max_line_size,
+                            max_field_size=max_field_size,
+                        )
+
+                        resp = await req.send(conn)
+                        try:
+                            await resp.start(conn)
                         except BaseException:
                             resp.close()
                             raise
@@ -694,10 +701,10 @@ class ClientSession:
 
                     if effective_middlewares:
                         handler = build_client_middlewares(
-                            _send_request, effective_middlewares
+                            _connect_and_send_request, effective_middlewares
                         )
                     else:
-                        handler = _send_request
+                        handler = _connect_and_send_request
 
                     try:
                         resp = await handler(req)
@@ -708,15 +715,18 @@ class ClientSession:
                         if retry_persistent_connection:
                             retry_persistent_connection = False
                             continue
-                        conn.close()
+                        if conn is not None:
+                            conn.close()
                         raise
                     except OSError as exc:
-                        conn.close()
+                        if conn is not None:
+                            conn.close()
                         if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                             raise
                         raise ClientOSError(*exc.args) from exc
                     except BaseException:
-                        conn.close()
+                        if conn is not None:
+                            conn.close()
                         raise
 
                     if cookies := resp._cookies:

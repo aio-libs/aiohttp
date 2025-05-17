@@ -1,6 +1,6 @@
 """Tests for client middleware."""
 
-from typing import Dict, NoReturn, Optional, Union
+from typing import Dict, List, NoReturn, Optional, Union
 
 import pytest
 
@@ -16,6 +16,11 @@ from aiohttp import (
 )
 from aiohttp.client_middlewares import build_client_middlewares
 from aiohttp.pytest_plugin import AiohttpServer
+from aiohttp.resolver import DefaultResolver
+
+
+class BlockedByMiddleware(ClientError):
+    """Custom exception for when middleware blocks a request."""
 
 
 async def test_client_middleware_called(aiohttp_server: AiohttpServer) -> None:
@@ -672,3 +677,111 @@ async def test_client_middleware_exception_closes_connection(
     # Check that the connector has no active connections
     # If connections were properly closed, _conns should be empty
     assert len(connector._conns) == 0
+
+
+async def test_client_middleware_blocks_connection_before_established(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that middleware can block connections before they are established."""
+    blocked_hosts = {"blocked.example.com", "evil.com"}
+    connection_attempts: List[str] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="Reached")
+
+    async def blocking_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        # Record the connection attempt
+        connection_attempts.append(str(request.url))
+
+        # Block requests to certain hosts
+        if request.url.host in blocked_hosts:
+            raise BlockedByMiddleware(f"Connection to {request.url.host} is blocked")
+
+        # Allow the request to proceed
+        return await handler(request)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    connector = TCPConnector()
+    async with ClientSession(
+        connector=connector, middlewares=(blocking_middleware,)
+    ) as session:
+        # Test allowed request
+        allowed_url = server.make_url("/")
+        async with session.get(allowed_url) as resp:
+            assert resp.status == 200
+            assert await resp.text() == "Reached"
+
+        # Test blocked request
+        with pytest.raises(BlockedByMiddleware) as exc_info:
+            # Use a fake URL that would fail DNS if connection was attempted
+            await session.get("https://blocked.example.com/")
+
+        assert "Connection to blocked.example.com is blocked" in str(exc_info.value)
+
+        # Test another blocked host
+        with pytest.raises(BlockedByMiddleware) as exc_info:
+            await session.get("https://evil.com/path")
+
+        assert "Connection to evil.com is blocked" in str(exc_info.value)
+
+    # Verify that connections were attempted in the correct order
+    assert len(connection_attempts) == 3
+    assert allowed_url.host in connection_attempts[0]
+    assert "blocked.example.com" in connection_attempts[1]
+    assert "evil.com" in connection_attempts[2]
+
+    # Check that no connections were leaked
+    assert len(connector._conns) == 0
+
+
+async def test_client_middleware_blocks_connection_without_dns_lookup(
+    unused_tcp_port: int,
+) -> None:
+    """Test that middleware prevents DNS lookups for blocked hosts."""
+    blocked_hosts = {"blocked.domain.tld"}
+    dns_lookups_made: List[str] = []
+
+    # Custom resolver that tracks DNS lookups
+    class TrackingResolver(DefaultResolver):
+        async def resolve(self, hostname, port=0, family=0):
+            dns_lookups_made.append(hostname)
+            return await super().resolve(hostname, port, family)
+
+    async def blocking_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        # Block requests to certain hosts before DNS lookup
+        if request.url.host in blocked_hosts:
+            raise BlockedByMiddleware(f"Blocked by policy: {request.url.host}")
+
+        return await handler(request)
+
+    resolver = TrackingResolver()
+    connector = TCPConnector(resolver=resolver)
+    async with ClientSession(
+        connector=connector, middlewares=(blocking_middleware,)
+    ) as session:
+        # Test blocked request to non-existent domain
+        with pytest.raises(BlockedByMiddleware) as exc_info:
+            async with session.get("https://blocked.domain.tld/"):
+                pass
+
+        assert "Blocked by policy: blocked.domain.tld" in str(exc_info.value)
+
+        # Verify that no DNS lookup was made for the blocked domain
+        assert "blocked.domain.tld" not in dns_lookups_made
+
+        # Test allowed request to localhost (should trigger DNS lookup)
+        with pytest.raises(ClientError):
+            await session.get(f"http://localhost:{unused_tcp_port}/")
+
+        # Verify DNS lookup was made for allowed host
+        assert "localhost" in dns_lookups_made
+
+    # Clean up
+    await connector.close()
