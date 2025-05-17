@@ -18,6 +18,7 @@ from aiohttp import (
 )
 from aiohttp.abc import ResolveResult
 from aiohttp.client_middlewares import build_client_middlewares
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.resolver import ThreadedResolver
 from aiohttp.tracing import Trace
@@ -824,7 +825,7 @@ async def test_client_middleware_retry_reuses_connection(
 
         async def _create_connection(
             self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
-        ):
+        ) -> ResponseHandler:
             self.connection_attempts += 1
             return await super()._create_connection(req, traces, timeout)
 
