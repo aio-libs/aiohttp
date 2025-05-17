@@ -160,10 +160,12 @@ Here's a simple example showing request modification::
         request.headers['X-API-Key'] = 'my-secret-key'
         return await handler(request)
 
+.. _client-middleware-retry:
+
 ClientMiddlewareRetry
 ^^^^^^^^^^^^^^^^^^^^^
 
-When you raise :exc:`ClientMiddlewareRetry` from within a middleware, aiohttp will:
+When you raise :exc:`~aiohttp.ClientMiddlewareRetry` from within a middleware, aiohttp will:
 
 - Catch the exception in the client session's request processing loop
 - Immediately restart the request from the beginning
@@ -185,7 +187,7 @@ Example: Retrying requests with middleware
 ::
 
     import logging
-    from aiohttp import ClientMiddlewareRetry
+    import aiohttp
 
     _LOGGER = logging.getLogger(__name__)
 
@@ -211,13 +213,13 @@ Example: Retrying requests with middleware
                 self.retry_count += 1
                 self.use_fallback_auth = True
                 _LOGGER.debug(f"Retrying with fallback auth (attempt {self.retry_count})")
-                raise ClientMiddlewareRetry()
+                raise aiohttp.ClientMiddlewareRetry()
 
             # Retry on 5xx errors
             if response.status >= 500 and self.retry_count < self.max_retries:
                 self.retry_count += 1
                 _LOGGER.debug(f"Retrying request (attempt {self.retry_count})")
-                raise ClientMiddlewareRetry()
+                raise aiohttp.ClientMiddlewareRetry()
 
             return response
 
