@@ -169,7 +169,8 @@ When you raise :exc:`~aiohttp.ClientMiddlewareRetry` from within a middleware, a
 
 - Catch the exception in the client session's request processing loop
 - Immediately restart the request from the beginning
-- Re-run all middleware on the new attempt
+- Continue retrying as long as the exception is raised
+- Re-run all middleware on each retry attempt
 - Retain the middleware instance state between retries
 
 This is particularly useful for modifying the request between retries. Common use cases include:

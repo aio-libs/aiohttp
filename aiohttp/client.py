@@ -704,10 +704,13 @@ class ClientSession:
                         handler = _connect_and_send_request
 
                     try:
-                        resp = await handler(req)
-                    except ClientMiddlewareRetry:
-                        # Middleware explicitly requested a retry
-                        continue
+                        while True:  # Loop if we get ClientMiddlewareRetry
+                            try:
+                                resp = await handler(req)
+                                break
+                            except ClientMiddlewareRetry:
+                                # Middleware explicitly requested a retry
+                                continue
                     # Client connector errors should not be retried
                     except (
                         ConnectionTimeoutError,
