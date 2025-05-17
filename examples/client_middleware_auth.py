@@ -402,8 +402,8 @@ async def run_client_examples(server_url: str) -> None:
     async with ClientSession(middlewares=(digest_auth.middleware,)) as session:
         _LOGGER.info("Making digest auth request")
         async with session.get(f"{server_url}/digest-auth") as resp:
-            data: Dict[str, Any] = await resp.json()
-            _LOGGER.info("Digest auth response: %s", data)
+            digest_data: Dict[str, Any] = await resp.json()
+            _LOGGER.info("Digest auth response: %s", digest_data)
 
     # Example with different auth for different users
     _LOGGER.info("\n=== Example 3: Admin vs User auth ===")
@@ -421,8 +421,8 @@ async def run_client_examples(server_url: str) -> None:
 
         _LOGGER.info("Making admin request")
         async with admin_session.get(f"{server_url}/api/admin/data") as resp:
-            data: Dict[str, Any] = await resp.json()
-            _LOGGER.info("Admin response: %s", data)
+            admin_data: Dict[str, Any] = await resp.json()
+            _LOGGER.info("Admin response: %s", admin_data)
 
     # Create user middleware
     user_auth = TokenAuthMiddleware(
@@ -457,13 +457,13 @@ async def run_client_examples(server_url: str) -> None:
         _LOGGER.info("Testing token expiration and refresh")
         # First request will succeed
         async with session.get(f"{server_url}/api/expire-test") as resp:
-            data: Dict[str, Any] = await resp.json()
-            _LOGGER.info("First request: %s", data)
+            first_data: Dict[str, Any] = await resp.json()
+            _LOGGER.info("First request: %s", first_data)
 
         # Second request will get 401 and trigger refresh
         async with session.get(f"{server_url}/api/expire-test") as resp:
-            data: Dict[str, Any] = await resp.json()
-            _LOGGER.info("Second request after refresh: %s", data)
+            second_data: Dict[str, Any] = await resp.json()
+            _LOGGER.info("Second request after refresh: %s", second_data)
 
     # Example showing both initialization patterns
     _LOGGER.info("\n=== Example 5: Two initialization patterns ===")
@@ -481,8 +481,8 @@ async def run_client_examples(server_url: str) -> None:
         await middleware_early.authenticate()
 
         async with session.get(f"{server_url}/api/data") as resp:
-            data: Dict[str, Any] = await resp.json()
-            _LOGGER.info("Two-phase init response: %s", data)
+            two_phase_data: Dict[str, Any] = await resp.json()
+            _LOGGER.info("Two-phase init response: %s", two_phase_data)
 
     # Pattern 2: Create middleware with factory method (simpler for direct use)
     _LOGGER.info("Pattern 2: Factory method initialization")
@@ -498,8 +498,8 @@ async def run_client_examples(server_url: str) -> None:
         async with session.get(
             f"{server_url}/api/data", middlewares=(middleware_factory.middleware,)
         ) as resp:
-            data: Dict[str, Any] = await resp.json()
-            _LOGGER.info("Factory method response: %s", data)
+            factory_data: Dict[str, Any] = await resp.json()
+            _LOGGER.info("Factory method response: %s", factory_data)
 
 
 async def main() -> None:
