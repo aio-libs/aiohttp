@@ -679,17 +679,12 @@ class ClientSession:
                     async def _send_request(
                         req: ClientRequest, *, _conn: Connection = conn
                     ) -> ClientResponse:
+                        resp = await req.send(_conn)
                         try:
-                            resp = await req.send(_conn)
-                            try:
-                                await resp.start(_conn)
-                            except BaseException:
-                                resp.close()
-                                raise
+                            await resp.start(_conn)
                         except BaseException:
-                            _conn.close()
+                            resp.close()
                             raise
-
                         return resp
 
                     # Apply middleware (if any) - per-request middleware overrides session middleware
@@ -713,13 +708,19 @@ class ClientSession:
                         if retry_persistent_connection:
                             retry_persistent_connection = False
                             continue
+                        conn.close()
                         raise
                     except ClientError:
+                        conn.close()
                         raise
                     except OSError as exc:
+                        conn.close()
                         if exc.errno is None and isinstance(exc, asyncio.TimeoutError):
                             raise
                         raise ClientOSError(*exc.args) from exc
+                    except BaseException:
+                        conn.close()
+                        raise
 
                     if cookies := resp._cookies:
                         self._cookie_jar.update_cookies(cookies, resp.url)

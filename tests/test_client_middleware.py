@@ -2,12 +2,16 @@
 
 from typing import Dict, NoReturn, Optional, Union
 
+import pytest
+
 from aiohttp import (
+    ClientError,
     ClientHandlerType,
     ClientMiddlewareRetry,
     ClientRequest,
     ClientResponse,
     ClientSession,
+    TCPConnector,
     web,
 )
 from aiohttp.client_middlewares import build_client_middlewares
@@ -625,3 +629,45 @@ async def test_client_middleware_disable_with_empty_tuple(
             assert text == "Auth: Bearer request-token"
             assert session_middleware_called is False
             assert request_middleware_called is True
+
+
+@pytest.mark.parametrize(
+    "exception_class,match_text",
+    [
+        (ValueError, "Middleware error"),
+        (ClientError, "Client error from middleware"),
+    ],
+)
+async def test_client_middleware_exception_closes_connection(
+    aiohttp_server: AiohttpServer,
+    exception_class: type[Exception],
+    match_text: str,
+) -> None:
+    """Test that connections are closed when middleware raises an exception."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False, "Handler should not be reached"
+
+    async def failing_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> NoReturn:
+        # Raise exception before the handler is called
+        raise exception_class(match_text)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    # Create custom connector
+    connector = TCPConnector()
+
+    async with ClientSession(
+        connector=connector, middlewares=(failing_middleware,)
+    ) as session:
+        # Make request that should fail in middleware
+        with pytest.raises(exception_class, match=match_text):
+            await session.get(server.make_url("/"))
+
+    # Check that the connector has no active connections
+    # If connections were properly closed, _conns should be empty
+    assert len(connector._conns) == 0
