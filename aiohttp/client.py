@@ -710,6 +710,7 @@ class ClientSession:
                         continue
                     # Client connector errors should not be retried
                     except (
+                        ConnectionTimeoutError,
                         ClientConnectorError,
                         ClientConnectorCertificateError,
                         ClientConnectorSSLError,
