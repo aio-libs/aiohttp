@@ -1,6 +1,7 @@
 """Tests for client middleware."""
 
-from typing import Dict, List, NoReturn, Optional, Union
+from socket import AF_INET
+from typing import Any, Dict, List, NoReturn, Optional, Union
 
 import pytest
 
@@ -16,7 +17,7 @@ from aiohttp import (
 )
 from aiohttp.client_middlewares import build_client_middlewares
 from aiohttp.pytest_plugin import AiohttpServer
-from aiohttp.resolver import DefaultResolver
+from aiohttp.resolver import ThreadedResolver
 
 
 class BlockedByMiddleware(ClientError):
@@ -731,7 +732,7 @@ async def test_client_middleware_blocks_connection_before_established(
 
     # Verify that connections were attempted in the correct order
     assert len(connection_attempts) == 3
-    assert allowed_url.host in connection_attempts[0]
+    assert allowed_url.host and allowed_url.host in connection_attempts[0]
     assert "blocked.example.com" in connection_attempts[1]
     assert "evil.com" in connection_attempts[2]
 
@@ -754,9 +755,10 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
 
-    # Custom resolver that tracks DNS lookups
-    class TrackingResolver(DefaultResolver):
-        async def resolve(self, hostname, port=0, family=0):
+    class TrackingResolver(ThreadedResolver):
+        async def resolve(
+            self, hostname: str, port: int = 0, family: int = AF_INET
+        ) -> List[Dict[str, Any]]:
             dns_lookups_made.append(hostname)
             return await super().resolve(hostname, port, family)
 
