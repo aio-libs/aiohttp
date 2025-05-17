@@ -667,8 +667,6 @@ class ClientSession:
                                 f"Connection timeout to host {_url}"
                             ) from exc
 
-                        assert conn.transport is not None
-
                         assert conn.protocol is not None
                         conn.protocol.set_response_params(
                             timer=timer,
