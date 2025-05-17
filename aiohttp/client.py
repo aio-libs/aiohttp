@@ -708,6 +708,13 @@ class ClientSession:
                     except ClientMiddlewareRetry:
                         # Middleware explicitly requested a retry
                         continue
+                    # Client connector errors should not be retried
+                    except (
+                        ClientConnectorError,
+                        ClientConnectorCertificateError,
+                        ClientConnectorSSLError,
+                    ):
+                        raise
                     except (ClientOSError, ServerDisconnectedError):
                         if retry_persistent_connection:
                             retry_persistent_connection = False

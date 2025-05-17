@@ -3307,7 +3307,10 @@ async def test_tcp_connector_raise_connector_ssl_error(
 
     srv = await aiohttp_server(app, ssl=ssl_ctx)
 
-    session = aiohttp.ClientSession()
+    port = unused_port()
+    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
+
+    session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
 
     err = aiohttp.ClientConnectorCertificateError
@@ -3318,6 +3321,8 @@ async def test_tcp_connector_raise_connector_ssl_error(
     assert isinstance(ctx.value.certificate_error, ssl.SSLError)
 
     await session.close()
+
+    await conn.close()
 
 
 @pytest.mark.parametrize(
