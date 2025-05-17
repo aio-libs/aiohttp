@@ -212,7 +212,7 @@ cases include:
 - Refreshing authentication tokens after a 401 response
 - Switching to fallback servers or authentication methods
 - Adding or modifying headers based on error responses
-- Implementing backoff strategies with increasing delays
+- Implementing back-off strategies with increasing delays
 
 The middleware can maintain state between retries to track which strategies have
 been tried and modify the request accordingly for the next attempt.
