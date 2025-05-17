@@ -1,6 +1,6 @@
 """Tests for client middleware."""
 
-from typing import Dict, Optional, Union
+from typing import Dict, NoReturn, Optional, Union
 
 from aiohttp import (
     ClientHandlerType,
@@ -404,7 +404,7 @@ async def test_client_middleware_conditional_retry(
 async def test_build_client_middlewares_empty() -> None:
     """Test build_client_middlewares with empty middlewares."""
 
-    async def handler(request: ClientRequest) -> ClientResponse:
+    async def handler(request: ClientRequest) -> NoReturn:
         """Dummy handler."""
 
     # Test empty case
