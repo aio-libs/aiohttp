@@ -710,9 +710,6 @@ class ClientSession:
                             continue
                         conn.close()
                         raise
-                    except ClientError:
-                        conn.close()
-                        raise
                     except OSError as exc:
                         conn.close()
                         if exc.errno is None and isinstance(exc, asyncio.TimeoutError):

@@ -636,6 +636,7 @@ async def test_client_middleware_disable_with_empty_tuple(
     [
         (ValueError, "Middleware error"),
         (ClientError, "Client error from middleware"),
+        (OSError, "OS error from middleware"),
     ],
 )
 async def test_client_middleware_exception_closes_connection(
