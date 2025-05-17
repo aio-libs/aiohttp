@@ -243,7 +243,10 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
     async def challenge_auth_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        challenge_data = {"nonce": None, "attempted": False}
+        challenge_data: Dict[str, Union[bool, str, None]] = {
+            "nonce": None,
+            "attempted": False,
+        }
 
         while True:
             # If we have challenge data from previous attempt, add auth header
