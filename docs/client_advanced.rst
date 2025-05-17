@@ -170,25 +170,52 @@ Retrying requests with middleware::
     class RetryMiddleware:
         def __init__(self, max_retries: int = 3):
             self.max_retries = max_retries
+            self.retry_count = 0
+            self.use_fallback_auth = False
 
         async def __call__(
             self,
             request: ClientRequest,
             handler: ClientHandlerType
         ) -> ClientResponse:
-            # Keep track of retries per request
-            if not hasattr(request, 'retry_count'):
-                request.retry_count = 0
+            # Modify request based on retry state
+            if self.use_fallback_auth:
+                request.headers['Authorization'] = 'Bearer fallback-token'
 
             response = await handler(request)
 
+            # Retry on 401 errors with different authentication
+            if response.status == 401 and self.retry_count < self.max_retries:
+                self.retry_count += 1
+                self.use_fallback_auth = True
+                _LOGGER.debug(f"Retrying with fallback auth (attempt {self.retry_count})")
+                raise ClientMiddlewareRetry()
+
             # Retry on 5xx errors
-            if response.status >= 500 and request.retry_count < self.max_retries:
-                request.retry_count += 1
-                _LOGGER.debug(f"Retrying request (attempt {request.retry_count})")
+            if response.status >= 500 and self.retry_count < self.max_retries:
+                self.retry_count += 1
+                _LOGGER.debug(f"Retrying request (attempt {self.retry_count})")
                 raise ClientMiddlewareRetry()
 
             return response
+
+When you raise :exc:`ClientMiddlewareRetry` from within a middleware, aiohttp will:
+
+1. Catch the exception in the client session's request processing loop
+2. Immediately restart the request from the beginning
+3. Re-run all middleware on the new attempt
+4. Retain the middleware instance state between retries
+
+This is particularly useful for modifying the request between retries. Common use
+cases include:
+
+- Refreshing authentication tokens after a 401 response
+- Switching to fallback servers or authentication methods
+- Adding or modifying headers based on error responses
+- Implementing backoff strategies with increasing delays
+
+The middleware can maintain state between retries to track which strategies have
+been tried and modify the request accordingly for the next attempt.
 
 Middleware Chaining
 ^^^^^^^^^^^^^^^^^^^
