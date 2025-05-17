@@ -7,7 +7,7 @@ from .client_reqrep import ClientRequest, ClientResponse
 __all__ = ("ClientMiddlewareType", "ClientHandlerType", "build_client_middlewares")
 
 # Type alias for client request handlers - functions that process requests and return responses
-ClientHandlerType = Callable[..., Awaitable[ClientResponse]]
+ClientHandlerType = Callable[[ClientRequest], Awaitable[ClientResponse]]
 
 # Type for client middleware - similar to server but uses ClientRequest/ClientResponse
 ClientMiddlewareType = Callable[
