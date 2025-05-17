@@ -444,7 +444,7 @@ async def test_client_middleware_class_based_auth(
     class TokenAuthMiddleware:
         """Middleware that handles token-based authentication."""
 
-        def __init__(self, token: str):
+        def __init__(self, token: str) -> None:
             self.token = token
             self.request_count = 0
 
@@ -484,7 +484,7 @@ async def test_client_middleware_stateful_retry(aiohttp_server: AiohttpServer) -
     class RetryMiddleware:
         """Middleware that retries failed requests with backoff."""
 
-        def __init__(self, max_retries: int = 3):
+        def __init__(self, max_retries: int = 3) -> None:
             self.max_retries = max_retries
             self.retry_counts: Dict[int, int] = {}  # Track retries per request
 
@@ -535,7 +535,7 @@ async def test_client_middleware_multiple_instances(
     class HeaderMiddleware:
         """Middleware that adds a header with instance-specific value."""
 
-        def __init__(self, header_name: str, header_value: str):
+        def __init__(self, header_name: str, header_value: str) -> None:
             self.header_name = header_name
             self.header_value = header_value
             self.applied = False
