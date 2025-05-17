@@ -115,7 +115,7 @@ useful for authentication, logging, request/response modification, and retries.
 
 To create a middleware, you need to define an async function that accepts the request
 and a handler function, and returns the response. The middleware must match the
-:type:`ClientMiddlewareType` type signature:
+:type:`ClientMiddlewareType` type signature::
 
     import logging
     from aiohttp import ClientSession, ClientRequest, ClientResponse, ClientHandlerType
@@ -137,7 +137,7 @@ and a handler function, and returns the response. The middleware must match the
 
         return response
 
-You can apply middleware to a client session or to individual requests:
+You can apply middleware to a client session or to individual requests::
 
     # Apply to all requests in a session
     async with ClientSession(middlewares=(my_middleware,)) as session:
@@ -150,7 +150,7 @@ You can apply middleware to a client session or to individual requests:
 Middleware Examples
 ^^^^^^^^^^^^^^^^^^^
 
-Here's a simple example showing request modification:
+Here's a simple example showing request modification::
 
     async def add_api_key_middleware(
         request: ClientRequest,
@@ -160,7 +160,7 @@ Here's a simple example showing request modification:
         request.headers['X-API-Key'] = 'my-secret-key'
         return await handler(request)
 
-Retrying requests with middleware:
+Retrying requests with middleware::
 
     import logging
     from aiohttp import ClientMiddlewareRetry
@@ -193,7 +193,7 @@ Retrying requests with middleware:
 Middleware Chaining
 ^^^^^^^^^^^^^^^^^^^
 
-Multiple middlewares are applied in the order they are listed:
+Multiple middlewares are applied in the order they are listed::
 
     import logging
 
