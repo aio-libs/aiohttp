@@ -12,6 +12,7 @@ from aiohttp import (
     ClientRequest,
     ClientResponse,
     ClientSession,
+    ClientTimeout,
     TCPConnector,
     web,
 )
@@ -19,6 +20,7 @@ from aiohttp.abc import ResolveResult
 from aiohttp.client_middlewares import build_client_middlewares
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.resolver import ThreadedResolver
+from aiohttp.tracing import Trace
 
 
 class BlockedByMiddleware(ClientError):
@@ -680,6 +682,8 @@ async def test_client_middleware_exception_closes_connection(
     # If connections were properly closed, _conns should be empty
     assert len(connector._conns) == 0
 
+    await connector.close()
+
 
 async def test_client_middleware_blocks_connection_before_established(
     aiohttp_server: AiohttpServer,
@@ -802,4 +806,59 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
         assert "blocked.domain.tld" not in dns_lookups_made
 
     # Clean up
+    await connector.close()
+
+
+async def test_client_middleware_retry_reuses_connection(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that connections are reused when ClientMiddlewareRetry is raised."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="OK")
+
+    class TrackingConnector(TCPConnector):
+        """Connector that tracks connection attempts."""
+
+        connection_attempts = 0
+
+        async def _create_connection(
+            self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+        ):
+            self.connection_attempts += 1
+            return await super()._create_connection(req, traces, timeout)
+
+    class RetryOnceMiddleware:
+        """Middleware that retries exactly once."""
+
+        def __init__(self) -> None:
+            self.attempt_count = 0
+
+        async def __call__(
+            self, request: ClientRequest, handler: ClientHandlerType
+        ) -> ClientResponse:
+            self.attempt_count += 1
+            if self.attempt_count == 1:
+                raise ClientMiddlewareRetry()
+            return await handler(request)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    connector = TrackingConnector()
+    middleware = RetryOnceMiddleware()
+
+    async with ClientSession(connector=connector, middlewares=(middleware,)) as session:
+        # Make initial request
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "OK"
+
+    # Should have made 2 request attempts (initial + 1 retry)
+    assert middleware.attempt_count == 2
+    # Should have created only 1 connection (reused on retry)
+    assert connector.connection_attempts == 1
+
     await connector.close()
