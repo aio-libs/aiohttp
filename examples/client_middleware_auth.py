@@ -227,7 +227,7 @@ class TokenAuthMiddleware:
             data: Dict[str, str] = await resp.json()
             self.access_token = data["access_token"]
             self.refresh_token = data.get("refresh_token")
-            _LOGGER.info(f"Authenticated as {self.username}")
+            _LOGGER.info("Authenticated as %s", self.username)
 
     async def refresh_access_token(self) -> None:
         """Refresh the access token using refresh token."""
@@ -383,15 +383,15 @@ async def run_client_examples(server_url: str) -> None:
         _LOGGER.info("Making authenticated request to /api/data")
         async with session.get(f"{server_url}/api/data") as resp:
             data: Dict[str, Any] = await resp.json()
-            _LOGGER.info(f"Response: {data}")
+            _LOGGER.info("Response: %s", data)
 
         # Override middleware for public endpoint
         _LOGGER.info("Making public request without auth")
         async with session.get(
             f"{server_url}/api/public", middlewares=()  # Disable session middleware
         ) as resp:
-            data: Dict[str, Any] = await resp.json()
-            _LOGGER.info(f"Public response: {data}")
+            public_data: Dict[str, Any] = await resp.json()
+            _LOGGER.info("Public response: %s", public_data)
 
     # Example with session-level digest auth
     _LOGGER.info("\n=== Example 2: Session-level digest auth ===")
@@ -403,7 +403,7 @@ async def run_client_examples(server_url: str) -> None:
         _LOGGER.info("Making digest auth request")
         async with session.get(f"{server_url}/digest-auth") as resp:
             data: Dict[str, Any] = await resp.json()
-            _LOGGER.info(f"Digest auth response: {data}")
+            _LOGGER.info("Digest auth response: %s", data)
 
     # Example with different auth for different users
     _LOGGER.info("\n=== Example 3: Admin vs User auth ===")
@@ -422,7 +422,7 @@ async def run_client_examples(server_url: str) -> None:
         _LOGGER.info("Making admin request")
         async with admin_session.get(f"{server_url}/api/admin/data") as resp:
             data: Dict[str, Any] = await resp.json()
-            _LOGGER.info(f"Admin response: {data}")
+            _LOGGER.info("Admin response: %s", data)
 
     # Create user middleware
     user_auth = TokenAuthMiddleware(
@@ -439,7 +439,7 @@ async def run_client_examples(server_url: str) -> None:
         async with user_session.get(
             f"{server_url}/api/admin/data", raise_for_status=False
         ) as resp:
-            _LOGGER.info(f"Response status: {resp.status} (should be 403)")
+            _LOGGER.info("Response status: %s (should be 403)", resp.status)
 
     # Example with token refresh
     _LOGGER.info("\n=== Example 4: Token expiration and refresh ===")
@@ -458,12 +458,12 @@ async def run_client_examples(server_url: str) -> None:
         # First request will succeed
         async with session.get(f"{server_url}/api/expire-test") as resp:
             data: Dict[str, Any] = await resp.json()
-            _LOGGER.info(f"First request: {data}")
+            _LOGGER.info("First request: %s", data)
 
         # Second request will get 401 and trigger refresh
         async with session.get(f"{server_url}/api/expire-test") as resp:
             data: Dict[str, Any] = await resp.json()
-            _LOGGER.info(f"Second request after refresh: {data}")
+            _LOGGER.info("Second request after refresh: %s", data)
 
     # Example showing both initialization patterns
     _LOGGER.info("\n=== Example 5: Two initialization patterns ===")
@@ -482,7 +482,7 @@ async def run_client_examples(server_url: str) -> None:
 
         async with session.get(f"{server_url}/api/data") as resp:
             data: Dict[str, Any] = await resp.json()
-            _LOGGER.info(f"Two-phase init response: {data}")
+            _LOGGER.info("Two-phase init response: %s", data)
 
     # Pattern 2: Create middleware with factory method (simpler for direct use)
     _LOGGER.info("Pattern 2: Factory method initialization")
@@ -499,7 +499,7 @@ async def run_client_examples(server_url: str) -> None:
             f"{server_url}/api/data", middlewares=(middleware_factory.middleware,)
         ) as resp:
             data: Dict[str, Any] = await resp.json()
-            _LOGGER.info(f"Factory method response: {data}")
+            _LOGGER.info("Factory method response: %s", data)
 
 
 async def main() -> None:
