@@ -407,8 +407,6 @@ nitpick_ignore = [
     ("py:mod", "aiohttp.test_tools"),  # undocumented
     ("py:class", "list of pairs"),  # undocumented
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
-    ("py:type", "ClientMiddlewareType"),  # type alias in client_middlewares
-    ("py:type", "ClientHandlerType"),  # type alias in client_middlewares
     ("py:meth", "aiohttp.ClientSession.request"),  # undocumented
     ("py:class", "aiohttp.StreamWriter"),  # undocumented
     ("py:attr", "aiohttp.StreamResponse.body"),  # undocumented

@@ -254,7 +254,8 @@ Multiple middlewares are applied in the order they are listed::
 Middleware Type
 ^^^^^^^^^^^^^^^
 
-:type:`ClientMiddlewareType`
+.. type:: ClientMiddlewareType
+
    Type alias for client middleware functions. Middleware functions must have this signature::
 
       Callable[
@@ -262,7 +263,8 @@ Middleware Type
           Awaitable[ClientResponse]
       ]
 
-:type:`ClientHandlerType`
+.. type:: ClientHandlerType
+
    Type alias for client request handler functions::
 
       Callable[ClientRequest, Awaitable[ClientResponse]]
