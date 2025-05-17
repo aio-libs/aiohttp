@@ -238,7 +238,7 @@ Middleware Type
 :type:`ClientHandlerType`
    Type alias for client request handler functions::
 
-      Callable[..., Awaitable[ClientResponse]]
+      Callable[ClientRequest, Awaitable[ClientResponse]]
 
 Custom Cookies
 --------------
