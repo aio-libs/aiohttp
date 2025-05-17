@@ -662,6 +662,7 @@ class ClientSession:
                     ) -> ClientResponse:
                         nonlocal conn
                         # connection timeout
+                        assert self._connector is not None
                         try:
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=real_timeout

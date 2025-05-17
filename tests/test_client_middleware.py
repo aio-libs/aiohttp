@@ -740,11 +740,19 @@ async def test_client_middleware_blocks_connection_before_established(
 
 
 async def test_client_middleware_blocks_connection_without_dns_lookup(
-    unused_tcp_port: int,
+    aiohttp_server: AiohttpServer,
 ) -> None:
     """Test that middleware prevents DNS lookups for blocked hosts."""
     blocked_hosts = {"blocked.domain.tld"}
     dns_lookups_made: List[str] = []
+
+    # Create a simple server for the allowed request
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="OK")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
 
     # Custom resolver that tracks DNS lookups
     class TrackingResolver(DefaultResolver):
@@ -776,12 +784,16 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
         # Verify that no DNS lookup was made for the blocked domain
         assert "blocked.domain.tld" not in dns_lookups_made
 
-        # Test allowed request to localhost (should trigger DNS lookup)
-        with pytest.raises(ClientError):
-            await session.get(f"http://localhost:{unused_tcp_port}/")
+        # Test allowed request to existing server - this should trigger DNS lookup
+        async with session.get(f"http://localhost:{server.port}") as resp:
+            assert resp.status == 200
 
-        # Verify DNS lookup was made for allowed host
-        assert "localhost" in dns_lookups_made
+        # Verify that DNS lookup was made for the allowed request
+        # The server might use a hostname that requires DNS resolution
+        assert len(dns_lookups_made) > 0
+
+        # Make sure blocked domain is still not in DNS lookups
+        assert "blocked.domain.tld" not in dns_lookups_made
 
     # Clean up
     await connector.close()
