@@ -47,7 +47,6 @@ from .client import (
     WSServerHandshakeError,
     request,
 )
-from .client_exceptions import ClientMiddlewareRetry
 from .client_middlewares import ClientHandlerType, ClientMiddlewareType
 from .compression_utils import set_zlib_backend
 from .connector import AddrInfoType, SocketFactoryType
@@ -137,7 +136,6 @@ __all__: Tuple[str, ...] = (
     "ClientTimeout",
     "ClientWebSocketResponse",
     "ClientWSTimeout",
-    "ClientMiddlewareRetry",
     "ConnectionTimeoutError",
     "ContentTypeError",
     "Fingerprint",

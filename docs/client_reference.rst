@@ -2572,15 +2572,3 @@ Hierarchy of exceptions
     * :exc:`InvalidUrlRedirectClientError`
 
     * :exc:`NonHttpUrlRedirectClientError`
-
-
-.. exception:: ClientMiddlewareRetry
-
-   Special exception used by client middleware to signal that a request should be retried.
-
-   This exception is caught and handled by the client session to trigger a retry.
-   It's not propagated to the user code.
-
-   Derived from :exc:`Exception`
-
-   .. versionadded:: 3.12

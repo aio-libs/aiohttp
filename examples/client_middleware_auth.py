@@ -27,14 +27,7 @@ import logging
 import uuid
 from typing import Any, Dict, Optional, Tuple
 
-from aiohttp import (
-    ClientHandlerType,
-    ClientMiddlewareRetry,
-    ClientRequest,
-    ClientResponse,
-    ClientSession,
-    web,
-)
+from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession, web
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -263,22 +256,26 @@ class TokenAuthMiddleware:
         if str(request.url).startswith(self.auth_url):
             return await handler(request)
 
-        # Add auth header if we have a token
-        if self.access_token:
-            request.headers["Authorization"] = f"Bearer {self.access_token}"
+        retry_with_refresh = False
 
-        # Make the request
-        response = await handler(request)
+        while True:
+            # Add auth header if we have a token
+            if self.access_token:
+                request.headers["Authorization"] = f"Bearer {self.access_token}"
 
-        # Check if token expired
-        if response.status != 401:
+            # Make the request
+            response = await handler(request)
+
+            # Check if token expired
+            if response.status == 401 and not retry_with_refresh:
+                _LOGGER.info("Got 401, attempting to refresh token")
+                # Try to refresh the token
+                await self.refresh_access_token()
+                retry_with_refresh = True
+                # Retry with new token
+                continue
+
             return response
-
-        _LOGGER.info("Got 401, attempting to refresh token")
-        # Try to refresh the token
-        await self.refresh_access_token()
-        # Retry with new token
-        raise ClientMiddlewareRetry()
 
 
 class DigestAuthMiddleware:
@@ -326,36 +323,38 @@ class DigestAuthMiddleware:
         self, request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         """Handle digest authentication challenges."""
-        # If we have a previous challenge, add auth header
-        if self.last_challenge:
-            response_hash = self.calculate_response(
-                self.last_challenge, request.method, str(request.url.path)
-            )
-            auth_header = (
-                f'Digest username="{self.username}", '
-                f'realm="{self.last_challenge["realm"]}", '
-                f'nonce="{self.last_challenge["nonce"]}", '
-                f'uri="{request.url.path}", '
-                f'response="{response_hash}"'
-            )
-            request.headers["Authorization"] = auth_header
+        retry_with_auth = False
 
-        # Make the request
-        response = await handler(request)
+        while True:
+            # If we have a previous challenge or retrying, add auth header
+            if self.last_challenge and retry_with_auth:
+                response_hash = self.calculate_response(
+                    self.last_challenge, request.method, str(request.url.path)
+                )
+                auth_header = (
+                    f'Digest username="{self.username}", '
+                    f'realm="{self.last_challenge["realm"]}", '
+                    f'nonce="{self.last_challenge["nonce"]}", '
+                    f'uri="{request.url.path}", '
+                    f'response="{response_hash}"'
+                )
+                request.headers["Authorization"] = auth_header
 
-        # Check for authentication challenge
-        if response.status != 401:
+            # Make the request
+            response = await handler(request)
+
+            # Check for authentication challenge
+            if response.status == 401 and not retry_with_auth:
+                www_auth = response.headers.get("WWW-Authenticate", "")
+                if www_auth.startswith("Digest "):
+                    # Parse and store the challenge
+                    self.last_challenge = self.parse_www_authenticate(www_auth)
+                    _LOGGER.info("Got digest challenge, retrying with auth")
+                    retry_with_auth = True
+                    # Retry with authentication
+                    continue
+
             return response
-
-        www_auth = response.headers.get("WWW-Authenticate", "")
-        if www_auth.startswith("Digest "):
-            # Parse and store the challenge
-            self.last_challenge = self.parse_www_authenticate(www_auth)
-            _LOGGER.info("Got digest challenge, retrying with auth")
-            # Retry with authentication
-            raise ClientMiddlewareRetry()
-
-        return response
 
 
 # ========== Example Usage ==========

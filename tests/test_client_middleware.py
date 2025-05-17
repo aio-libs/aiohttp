@@ -8,7 +8,6 @@ import pytest
 from aiohttp import (
     ClientError,
     ClientHandlerType,
-    ClientMiddlewareRetry,
     ClientRequest,
     ClientResponse,
     ClientSession,
@@ -74,10 +73,13 @@ async def test_client_middleware_retry(aiohttp_server: AiohttpServer) -> None:
     async def retry_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        response = await handler(request)
-        if response.status == 503:
-            raise ClientMiddlewareRetry()
-        return response
+        retry_count = 0
+        while True:
+            response = await handler(request)
+            if response.status == 503 and retry_count < 1:
+                retry_count += 1
+                continue
+            return response
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -216,7 +218,6 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
     """Test authentication middleware with challenge/response pattern like digest auth."""
     request_count = 0
     challenge_token = "challenge-123"
-    retry_count = 0
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal request_count
@@ -242,27 +243,29 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
     async def challenge_auth_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        nonlocal retry_count
+        challenge_data = {"nonce": None, "attempted": False}
 
-        # If this is a retry, add auth header
-        if retry_count > 0:
-            # Note: In real-world usage, middleware would store challenge data
-            # between retries, not use a simple counter
-            request.headers["Authorization"] = (
-                f'Custom response="{challenge_token}-secret"'
-            )
+        while True:
+            # If we have challenge data from previous attempt, add auth header
+            if challenge_data["nonce"] and challenge_data["attempted"]:
+                request.headers["Authorization"] = (
+                    f'Custom response="{challenge_data["nonce"]}-secret"'
+                )
 
-        response = await handler(request)
+            response = await handler(request)
 
-        # If we get a 401 with challenge, prepare for retry
-        if response.status == 401 and retry_count == 0:
-            www_auth = response.headers.get("WWW-Authenticate")
-            if www_auth and "nonce=" in www_auth:
-                retry_count += 1
-                # In a real implementation, we'd extract and store the nonce here
-                raise ClientMiddlewareRetry()
+            # If we get a 401 with challenge, store it and retry
+            if response.status == 401 and not challenge_data["attempted"]:
+                www_auth = response.headers.get("WWW-Authenticate")
+                if www_auth and "nonce=" in www_auth:
+                    # Extract nonce from authentication header
+                    nonce_start = www_auth.find('nonce="') + 7
+                    nonce_end = www_auth.find('"', nonce_start)
+                    challenge_data["nonce"] = www_auth[nonce_start:nonce_end]
+                    challenge_data["attempted"] = True
+                    continue
 
-        return response
+            return response
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -317,33 +320,36 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) 
     ) -> ClientResponse:
         request.headers["X-Client-ID"] = "test-client"
 
-        # Apply auth based on current state
-        if middleware_state["step"] == 1 and middleware_state["session"]:
-            request.headers["Authorization"] = f"Bearer {middleware_state['session']}"
-        elif middleware_state["step"] == 2 and middleware_state["challenge"]:
-            request.headers["Authorization"] = (
-                f"Bearer {middleware_state['challenge']}-response"
-            )
+        while True:
+            # Apply auth based on current state
+            if middleware_state["step"] == 1 and middleware_state["session"]:
+                request.headers["Authorization"] = (
+                    f"Bearer {middleware_state['session']}"
+                )
+            elif middleware_state["step"] == 2 and middleware_state["challenge"]:
+                request.headers["Authorization"] = (
+                    f"Bearer {middleware_state['challenge']}-response"
+                )
 
-        response = await handler(request)
+            response = await handler(request)
 
-        # Handle multi-step auth flow
-        if response.status == 401:
-            auth_step = response.headers.get("X-Auth-Step")
+            # Handle multi-step auth flow
+            if response.status == 401:
+                auth_step = response.headers.get("X-Auth-Step")
 
-            if auth_step == "1":
-                # First step: store session token
-                middleware_state["session"] = response.headers.get("X-Session")
-                middleware_state["step"] = 1
-                raise ClientMiddlewareRetry()
+                if auth_step == "1":
+                    # First step: store session token
+                    middleware_state["session"] = response.headers.get("X-Session")
+                    middleware_state["step"] = 1
+                    continue
 
-            elif auth_step == "2":
-                # Second step: store challenge
-                middleware_state["challenge"] = response.headers.get("X-Challenge")
-                middleware_state["step"] = 2
-                raise ClientMiddlewareRetry()
+                elif auth_step == "2":
+                    # Second step: store challenge
+                    middleware_state["challenge"] = response.headers.get("X-Challenge")
+                    middleware_state["step"] = 2
+                    continue
 
-        return response
+            return response
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -386,21 +392,24 @@ async def test_client_middleware_conditional_retry(
     async def token_refresh_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        # Add token to request
-        request.headers["X-Auth-Token"] = str(token_state["token"])
+        while True:
+            # Add token to request
+            request.headers["X-Auth-Token"] = str(token_state["token"])
 
-        response = await handler(request)
+            response = await handler(request)
 
-        # Check if token needs refresh
-        if response.status == 401 and not token_state["refreshed"]:
-            data = await response.json()
-            if data.get("error") == "token_expired" and data.get("refresh_required"):
-                # Simulate token refresh
-                token_state["token"] = "refreshed-token"
-                token_state["refreshed"] = True
-                raise ClientMiddlewareRetry()
+            # Check if token needs refresh
+            if response.status == 401 and not token_state["refreshed"]:
+                data = await response.json()
+                if data.get("error") == "token_expired" and data.get(
+                    "refresh_required"
+                ):
+                    # Simulate token refresh
+                    token_state["token"] = "refreshed-token"
+                    token_state["refreshed"] = True
+                    continue
 
-        return response
+            return response
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -482,22 +491,16 @@ async def test_client_middleware_stateful_retry(aiohttp_server: AiohttpServer) -
         async def __call__(
             self, request: ClientRequest, handler: ClientHandlerType
         ) -> ClientResponse:
-            request_id = id(request)
+            retry_count = 0
 
-            self.retry_counts.setdefault(request_id, 0)
+            while True:
+                response = await handler(request)
 
-            response = await handler(request)
+                if response.status >= 500 and retry_count < self.max_retries:
+                    retry_count += 1
+                    continue
 
-            if (
-                response.status >= 500
-                and self.retry_counts[request_id] < self.max_retries
-            ):
-                self.retry_counts[request_id] += 1
-                raise ClientMiddlewareRetry()
-
-            # Clean up after successful response
-            self.retry_counts.pop(request_id, None)
-            return response
+                return response
 
     request_count = 0
 
@@ -813,7 +816,7 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
 async def test_client_middleware_retry_reuses_connection(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    """Test that connections are reused when ClientMiddlewareRetry is raised."""
+    """Test that connections are reused when middleware performs retries."""
 
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="OK")
@@ -838,10 +841,14 @@ async def test_client_middleware_retry_reuses_connection(
         async def __call__(
             self, request: ClientRequest, handler: ClientHandlerType
         ) -> ClientResponse:
-            self.attempt_count += 1
-            if self.attempt_count == 1:
-                raise ClientMiddlewareRetry()
-            return await handler(request)
+            retry_count = 0
+            while True:
+                self.attempt_count += 1
+                if retry_count == 0:
+                    retry_count += 1
+                    await handler(request)
+                    continue
+                return await handler(request)
 
     app = web.Application()
     app.router.add_get("/", handler)

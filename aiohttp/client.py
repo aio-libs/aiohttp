@@ -50,7 +50,6 @@ from .client_exceptions import (
     ClientConnectorSSLError,
     ClientError,
     ClientHttpProxyError,
-    ClientMiddlewareRetry,
     ClientOSError,
     ClientPayloadError,
     ClientProxyConnectionError,
@@ -704,13 +703,7 @@ class ClientSession:
                         handler = _connect_and_send_request
 
                     try:
-                        while True:  # Loop if we get ClientMiddlewareRetry
-                            try:
-                                resp = await handler(req)
-                                break
-                            except ClientMiddlewareRetry:
-                                # Middleware explicitly requested a retry
-                                continue
+                        resp = await handler(req)
                     # Client connector errors should not be retried
                     except (
                         ConnectionTimeoutError,

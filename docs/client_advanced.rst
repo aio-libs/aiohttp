@@ -162,18 +162,17 @@ Here's a simple example showing request modification::
 
 .. _client-middleware-retry:
 
-ClientMiddlewareRetry
-^^^^^^^^^^^^^^^^^^^^^
+Middleware Retry Pattern
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-When you raise :exc:`~aiohttp.ClientMiddlewareRetry` from within a middleware, aiohttp will:
+Client middleware can implement retry logic internally using a ``while`` loop. This allows the middleware to:
 
-- Catch the exception in the client session's request processing loop
-- Immediately restart the request from the beginning
-- Continue retrying as long as the exception is raised
-- Re-run all middleware on each retry attempt
-- Retain the middleware instance state between retries
+- Retry requests based on response status codes or other conditions
+- Modify the request between retries (e.g., refreshing tokens)
+- Maintain state across retry attempts
+- Control when to stop retrying and return the response
 
-This is particularly useful for modifying the request between retries. Common use cases include:
+This pattern is particularly useful for:
 
 - Refreshing authentication tokens after a 401 response
 - Switching to fallback servers or authentication methods
@@ -195,34 +194,36 @@ Example: Retrying requests with middleware
     class RetryMiddleware:
         def __init__(self, max_retries: int = 3):
             self.max_retries = max_retries
-            self.retry_count = 0
-            self.use_fallback_auth = False
 
         async def __call__(
             self,
             request: ClientRequest,
             handler: ClientHandlerType
         ) -> ClientResponse:
-            # Modify request based on retry state
-            if self.use_fallback_auth:
-                request.headers['Authorization'] = 'Bearer fallback-token'
+            retry_count = 0
+            use_fallback_auth = False
 
-            response = await handler(request)
+            while True:
+                # Modify request based on retry state
+                if use_fallback_auth:
+                    request.headers['Authorization'] = 'Bearer fallback-token'
 
-            # Retry on 401 errors with different authentication
-            if response.status == 401 and self.retry_count < self.max_retries:
-                self.retry_count += 1
-                self.use_fallback_auth = True
-                _LOGGER.debug(f"Retrying with fallback auth (attempt {self.retry_count})")
-                raise aiohttp.ClientMiddlewareRetry()
+                response = await handler(request)
 
-            # Retry on 5xx errors
-            if response.status >= 500 and self.retry_count < self.max_retries:
-                self.retry_count += 1
-                _LOGGER.debug(f"Retrying request (attempt {self.retry_count})")
-                raise aiohttp.ClientMiddlewareRetry()
+                # Retry on 401 errors with different authentication
+                if response.status == 401 and retry_count < self.max_retries:
+                    retry_count += 1
+                    use_fallback_auth = True
+                    _LOGGER.debug(f"Retrying with fallback auth (attempt {retry_count})")
+                    continue
 
-            return response
+                # Retry on 5xx errors
+                if response.status >= 500 and retry_count < self.max_retries:
+                    retry_count += 1
+                    _LOGGER.debug(f"Retrying request (attempt {retry_count})")
+                    continue
+
+                return response
 
 Middleware Chaining
 ^^^^^^^^^^^^^^^^^^^

@@ -54,7 +54,6 @@ __all__ = (
     "InvalidUrlRedirectClientError",
     "NonHttpUrlRedirectClientError",
     "WSMessageTypeError",
-    "ClientMiddlewareRetry",
 )
 
 
@@ -387,7 +386,3 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
 
 class WSMessageTypeError(TypeError):
     """WebSocket message type is not valid."""
-
-
-class ClientMiddlewareRetry(Exception):
-    """Exception for middleware to signal request retry needed."""
