@@ -406,6 +406,7 @@ async def test_build_client_middlewares_empty() -> None:
 
     async def handler(request: ClientRequest) -> NoReturn:
         """Dummy handler."""
+        assert False
 
     # Test empty case
     result = build_client_middlewares(handler, ())
