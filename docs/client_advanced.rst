@@ -160,7 +160,29 @@ Here's a simple example showing request modification::
         request.headers['X-API-Key'] = 'my-secret-key'
         return await handler(request)
 
-Retrying requests with middleware::
+ClientMiddlewareRetry
+^^^^^^^^^^^^^^^^^^^^^
+
+When you raise :exc:`ClientMiddlewareRetry` from within a middleware, aiohttp will:
+
+- Catch the exception in the client session's request processing loop
+- Immediately restart the request from the beginning
+- Re-run all middleware on the new attempt
+- Retain the middleware instance state between retries
+
+This is particularly useful for modifying the request between retries. Common use cases include:
+
+- Refreshing authentication tokens after a 401 response
+- Switching to fallback servers or authentication methods
+- Adding or modifying headers based on error responses
+- Implementing back-off strategies with increasing delays
+
+The middleware can maintain state between retries to track which strategies have been tried and modify the request accordingly for the next attempt.
+
+Example: Retrying requests with middleware
+""""""""""""""""""""""""""""""""""""""""""
+
+::
 
     import logging
     from aiohttp import ClientMiddlewareRetry
@@ -198,24 +220,6 @@ Retrying requests with middleware::
                 raise ClientMiddlewareRetry()
 
             return response
-
-When you raise :exc:`ClientMiddlewareRetry` from within a middleware, aiohttp will:
-
-1. Catch the exception in the client session's request processing loop
-2. Immediately restart the request from the beginning
-3. Re-run all middleware on the new attempt
-4. Retain the middleware instance state between retries
-
-This is particularly useful for modifying the request between retries. Common use
-cases include:
-
-- Refreshing authentication tokens after a 401 response
-- Switching to fallback servers or authentication methods
-- Adding or modifying headers based on error responses
-- Implementing back-off strategies with increasing delays
-
-The middleware can maintain state between retries to track which strategies have
-been tried and modify the request accordingly for the next attempt.
 
 Middleware Chaining
 ^^^^^^^^^^^^^^^^^^^
