@@ -2,5 +2,5 @@ Added client middleware support -- by :user:`bdraco` and :user:`Dreamsorcerer`.
 
 This change allows users to add middleware to the client session and requests, enabling features like
 authentication, logging, and request/response modification without modifying the core
-request logic. Additionally, the :py:meth:`~aiohttp.ClientRequest.session` attribute was added,
+request logic. Additionally, the ``session`` attribute was added to ``ClientRequest``,
 allowing middleware to access the session for making additional requests.
