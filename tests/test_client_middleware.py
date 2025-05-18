@@ -873,3 +873,137 @@ async def test_client_middleware_retry_reuses_connection(
     assert connector.connection_attempts == 1
 
     await connector.close()
+
+
+async def test_middleware_uses_session_avoids_recursion_with_path_check(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that middleware can avoid infinite recursion using a path check."""
+    log_collector: List[Dict[str, str]] = []
+
+    async def log_api_handler(request: web.Request) -> web.Response:
+        """Handle log API requests."""
+        data: Dict[str, str] = await request.json()
+        log_collector.append(data)
+        return web.Response(text="OK")
+
+    async def main_handler(request: web.Request) -> web.Response:
+        """Handle main server requests."""
+        return web.Response(text=f"Hello from {request.path}")
+
+    # Create log API server
+    log_app = web.Application()
+    log_app.router.add_post("/log", log_api_handler)
+    log_server = await aiohttp_server(log_app)
+
+    # Create main server
+    main_app = web.Application()
+    main_app.router.add_get("/{path:.*}", main_handler)
+    main_server = await aiohttp_server(main_app)
+
+    async def log_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        """Log requests to external API, avoiding recursion with path check."""
+        # Avoid infinite recursion by not logging requests to the /log endpoint
+        if request.url.path != "/log":
+            # Use the session from the request to make the logging call
+            async with request.session.post(
+                f"http://localhost:{log_server.port}/log",
+                json={"method": str(request.method), "url": str(request.url)},
+            ) as resp:
+                assert resp.status == 200
+
+        return await handler(request)
+
+    # Create session with the middleware
+    async with ClientSession(middlewares=(log_middleware,)) as session:
+        # Make request to main server - should be logged
+        async with session.get(main_server.make_url("/test")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "Hello from /test"
+
+        # Make direct request to log API - should NOT be logged (avoid recursion)
+        async with session.post(
+            log_server.make_url("/log"),
+            json={"method": "DIRECT_POST", "url": "manual_test_entry"},
+        ) as resp:
+            assert resp.status == 200
+
+    # Check logs
+    # The first request should be logged
+    # The second request (to /log) should also be logged but not the middleware's own log request
+    assert len(log_collector) == 2
+    assert log_collector[0]["method"] == "GET"
+    assert log_collector[0]["url"] == str(main_server.make_url("/test"))
+    assert log_collector[1]["method"] == "DIRECT_POST"
+    assert log_collector[1]["url"] == "manual_test_entry"
+
+
+async def test_middleware_uses_session_avoids_recursion_with_disabled_middleware(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that middleware can avoid infinite recursion by disabling middleware."""
+    log_collector: List[Dict[str, str]] = []
+    request_count = 0
+
+    async def log_api_handler(request: web.Request) -> web.Response:
+        """Handle log API requests."""
+        nonlocal request_count
+        request_count += 1
+        data: Dict[str, str] = await request.json()
+        log_collector.append(data)
+        return web.Response(text="OK")
+
+    async def main_handler(request: web.Request) -> web.Response:
+        """Handle main server requests."""
+        return web.Response(text=f"Hello from {request.path}")
+
+    # Create log API server
+    log_app = web.Application()
+    log_app.router.add_post("/log", log_api_handler)
+    log_server = await aiohttp_server(log_app)
+
+    # Create main server
+    main_app = web.Application()
+    main_app.router.add_get("/{path:.*}", main_handler)
+    main_server = await aiohttp_server(main_app)
+
+    async def log_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        """Log all requests using session with disabled middleware."""
+        # Use the session from the request to make the logging call
+        # Disable middleware to avoid infinite recursion
+        async with request.session.post(
+            f"http://localhost:{log_server.port}/log",
+            json={"method": str(request.method), "url": str(request.url)},
+            middlewares=(),  # This prevents infinite recursion
+        ) as resp:
+            assert resp.status == 200
+
+        return await handler(request)
+
+    # Create session with the middleware
+    async with ClientSession(middlewares=(log_middleware,)) as session:
+        # Make request to main server - should be logged
+        async with session.get(main_server.make_url("/test")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "Hello from /test"
+
+        # Make another request - should also be logged
+        async with session.get(main_server.make_url("/another")) as resp:
+            assert resp.status == 200
+
+    # Check logs - both requests should be logged
+    assert len(log_collector) == 2
+    assert log_collector[0]["method"] == "GET"
+    assert log_collector[0]["url"] == str(main_server.make_url("/test"))
+    assert log_collector[1]["method"] == "GET"
+    assert log_collector[1]["url"] == str(main_server.make_url("/another"))
+
+    # Ensure that log requests were made without the middleware
+    # (request_count equals number of logged requests, not infinite)
+    assert request_count == 2
