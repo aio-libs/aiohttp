@@ -650,7 +650,7 @@ class ClientSession:
 
                     # Core request handler - now includes connection logic
                     async def _connect_and_send_request(
-                        req: ClientRequest
+                        req: ClientRequest,
                     ) -> ClientResponse:
                         # connection timeout
                         assert self._connector is not None
