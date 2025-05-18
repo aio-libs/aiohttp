@@ -369,6 +369,12 @@ class ClientRequest:
 
     @property
     def session(self) -> "ClientSession":
+        """Return the ClientSession instance.
+
+        This property provides access to the ClientSession that initiated
+        this request, allowing middleware to make additional requests
+        using the same session.
+        """
         return self._session
 
     def update_host(self, url: URL) -> None:
