@@ -1107,8 +1107,8 @@ async def test_connection_timeout_error(
 ) -> None:
     """Test that ConnectionTimeoutError is raised when connection times out."""
 
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+    async def handler(request: web.Request) -> NoReturn:
+        assert False, "Handler should not be called"
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
