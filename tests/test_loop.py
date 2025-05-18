@@ -37,8 +37,8 @@ class TestCase(AioHTTPTestCase):
         self.assertIs(self.loop, asyncio.get_event_loop_policy().get_event_loop())
 
 
-def test_default_loop(loop) -> None:
-    assert asyncio.get_event_loop_policy().get_event_loop() is loop
+def test_default_loop(loop: asyncio.AbstractEventLoop) -> None:
+    assert asyncio.get_event_loop() is loop
 
 
 def test_setup_loop_non_main_thread() -> None:
@@ -47,7 +47,7 @@ def test_setup_loop_non_main_thread() -> None:
     def target() -> None:
         try:
             with loop_context() as loop:
-                assert asyncio.get_event_loop_policy().get_event_loop() is loop
+                assert asyncio.get_event_loop() is loop
                 loop.run_until_complete(test_subprocess_co(loop))
         except Exception as exc:
             nonlocal child_exc

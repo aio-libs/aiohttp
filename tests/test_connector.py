@@ -107,7 +107,7 @@ def create_mocked_conn(conn_closing_result=None, **kwargs):
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        loop = asyncio.get_event_loop_policy().get_event_loop()
+        loop = asyncio.get_event_loop()
 
     proto = mock.Mock(**kwargs)
     proto.closed = loop.create_future()
