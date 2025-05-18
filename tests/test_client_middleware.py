@@ -261,17 +261,13 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
             # If we get a 401 with challenge, store it and retry
             if response.status == 401 and not challenge_data["attempted"]:
                 www_auth = response.headers.get("WWW-Authenticate")
-                if www_auth and "nonce=" in www_auth:
+                if www_auth and "nonce=" in www_auth:  # pragma: no branch
                     # Extract nonce from authentication header
                     nonce_start = www_auth.find('nonce="') + 7
                     nonce_end = www_auth.find('"', nonce_start)
                     challenge_data["nonce"] = www_auth[nonce_start:nonce_end]
                     challenge_data["attempted"] = True
                     continue
-                else:
-                    assert (
-                        False
-                    ), "Should not reach here - 401 without valid nonce challenge"
 
             return response
 
@@ -351,15 +347,11 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) 
                     middleware_state["step"] = 1
                     continue
 
-                elif auth_step == "2":
+                elif auth_step == "2":  # pragma: no branch
                     # Second step: store challenge
                     middleware_state["challenge"] = response.headers.get("X-Challenge")
                     middleware_state["step"] = 2
                     continue
-                else:
-                    assert (
-                        False
-                    ), f"Should not reach here - unexpected auth step: {auth_step}"
 
             return response
 
@@ -415,15 +407,11 @@ async def test_client_middleware_conditional_retry(
                 data = await response.json()
                 if data.get("error") == "token_expired" and data.get(
                     "refresh_required"
-                ):
+                ):  # pragma: no branch
                     # Simulate token refresh
                     token_state["token"] = "refreshed-token"
                     token_state["refreshed"] = True
                     continue
-                else:
-                    assert (
-                        False
-                    ), f"Should not reach here - unexpected 401 error: {data}"
 
             return response
 
