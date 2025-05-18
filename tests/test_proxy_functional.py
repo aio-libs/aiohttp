@@ -5,6 +5,7 @@ import platform
 import ssl
 import sys
 from re import match as match_regex
+from typing import Awaitable, Callable
 from unittest import mock
 from uuid import uuid4
 
@@ -13,7 +14,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import web
+from aiohttp import ClientResponse, web
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS
 
@@ -498,17 +499,22 @@ async def xtest_proxy_https_connect_with_port(proxy_test_server, get_request):
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_send_body(proxy_test_server, loop):
-    sess = aiohttp.ClientSession(loop=loop)
-    proxy = await proxy_test_server()
-    proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
-    url = "https://www.google.com.ua/search?q=aiohttp proxy"
+async def xtest_proxy_https_send_body(
+    proxy_test_server: Callable[[], Awaitable[mock.Mock]],
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    sess = aiohttp.ClientSession()
+    try:
+        proxy = await proxy_test_server()
+        proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
+        url = "https://www.google.com.ua/search?q=aiohttp proxy"
 
-    async with sess.get(url, proxy=proxy.url) as resp:
-        body = await resp.read()
-    await sess.close()
+        async with sess.get(url, proxy=proxy.url) as resp:
+            body = await resp.read()
 
-    assert body == b"1" * (2**20)
+        assert body == b"1" * (2**20)
+    finally:
+        await sess.close()
 
 
 @pytest.mark.xfail
@@ -592,42 +598,46 @@ async def xtest_proxy_https_auth(proxy_test_server, get_request):
 async def xtest_proxy_https_acquired_cleanup(proxy_test_server, loop):
     url = "https://secure.aiohttp.io/path"
 
-    conn = aiohttp.TCPConnector(loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
-    proxy = await proxy_test_server()
+    conn = aiohttp.TCPConnector()
+    sess = aiohttp.ClientSession(connector=conn)
+    try:
+        proxy = await proxy_test_server()
 
-    assert 0 == len(conn._acquired)
+        assert 0 == len(conn._acquired)
 
-    async def request():
-        async with sess.get(url, proxy=proxy.url):
-            assert 1 == len(conn._acquired)
+        async def request() -> None:
+            async with sess.get(url, proxy=proxy.url):
+                assert 1 == len(conn._acquired)
 
-    await request()
+        await request()
 
-    assert 0 == len(conn._acquired)
-
-    await sess.close()
+        assert 0 == len(conn._acquired)
+    finally:
+        await sess.close()
+        await conn.close()
 
 
 @pytest.mark.xfail
 async def xtest_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
     url = "https://secure.aiohttp.io/path"
 
-    conn = aiohttp.TCPConnector(force_close=True, loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
-    proxy = await proxy_test_server()
+    conn = aiohttp.TCPConnector(force_close=True)
+    sess = aiohttp.ClientSession(connector=conn)
+    try:
+        proxy = await proxy_test_server()
 
-    assert 0 == len(conn._acquired)
+        assert 0 == len(conn._acquired)
 
-    async def request():
-        async with sess.get(url, proxy=proxy.url):
-            assert 1 == len(conn._acquired)
+        async def request() -> None:
+            async with sess.get(url, proxy=proxy.url):
+                assert 1 == len(conn._acquired)
 
-    await request()
+        await request()
 
-    assert 0 == len(conn._acquired)
-
-    await sess.close()
+        assert 0 == len(conn._acquired)
+    finally:
+        await sess.close()
+        await conn.close()
 
 
 @pytest.mark.xfail
@@ -639,26 +649,30 @@ async def xtest_proxy_https_multi_conn_limit(proxy_test_server, loop):
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = await proxy_test_server()
 
-    current_pid = None
+    try:
+        current_pid = None
 
-    async def request(pid):
-        # process requests only one by one
-        nonlocal current_pid
+        async def request(pid: int) -> ClientResponse:
+            # process requests only one by one
+            nonlocal current_pid
 
-        async with sess.get(url, proxy=proxy.url) as resp:
-            current_pid = pid
-            await asyncio.sleep(0.2, loop=loop)
-            assert current_pid == pid
+            async with sess.get(url, proxy=proxy.url) as resp:
+                current_pid = pid
+                await asyncio.sleep(0.2)
+                assert current_pid == pid
 
-        return resp
+            return resp
 
-    requests = [request(pid) for pid in range(multi_conn_num)]
-    responses = await asyncio.gather(*requests, loop=loop)
+        requests = [request(pid) for pid in range(multi_conn_num)]
+        responses = await asyncio.gather(*requests, return_exceptions=True)
 
-    assert len(responses) == multi_conn_num
-    assert {resp.status for resp in responses} == {200}
-
-    await sess.close()
+        # Filter out exceptions to count actual responses
+        actual_responses = [r for r in responses if isinstance(r, ClientResponse)]
+        assert len(actual_responses) == multi_conn_num
+        assert {resp.status for resp in actual_responses} == {200}
+    finally:
+        await sess.close()
+        await conn.close()
 
 
 def _patch_ssl_transport(monkeypatch):
@@ -809,7 +823,7 @@ async def xtest_proxy_from_env_https(proxy_test_server, get_request, mocker):
     url = "https://aiohttp.io/path"
     proxy = await proxy_test_server()
     mocker.patch.dict(os.environ, {"https_proxy": str(proxy.url)})
-    mock.patch("pathlib.Path.is_file", mock_is_file)
+    mocker.patch("pathlib.Path.is_file", mock_is_file)
 
     await get_request(url=url, trust_env=True)
 
