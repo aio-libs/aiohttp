@@ -39,12 +39,12 @@ except ImportError:
 try:
     import zlib_ng.zlib_ng as zlib_ng
 except ImportError:
-    zlib_ng = None
+    zlib_ng = None  # type: ignore[assignment]
 
 try:
     import isal.isal_zlib as isal_zlib
 except ImportError:
-    isal_zlib = None
+    isal_zlib = None  # type: ignore[assignment]
 
 
 pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
