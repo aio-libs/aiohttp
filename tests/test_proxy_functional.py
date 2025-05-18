@@ -512,7 +512,8 @@ async def test_proxy_http_multi_conn_limit(
     responses = await asyncio.gather(*requests)
 
     assert len(responses) == multi_conn_num
-    assert {resp.status for resp in responses} == {200}
+    actual_responses = [resp for resp in responses if isinstance(resp, ClientResponse)]
+    assert {resp.status for resp in actual_responses} == {200}
 
     await sess.close()
 
