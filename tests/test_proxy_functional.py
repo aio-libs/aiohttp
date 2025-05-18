@@ -512,8 +512,7 @@ async def test_proxy_http_multi_conn_limit(
     responses = await asyncio.gather(*requests)
 
     assert len(responses) == multi_conn_num
-    actual_responses = [resp for resp in responses if isinstance(resp, ClientResponse)]
-    assert {resp.status for resp in actual_responses} == {200}
+    assert {resp.status for resp in responses} == {200}
 
     await sess.close()
 
@@ -738,7 +737,7 @@ async def test_proxy_https_multi_conn_limit(
         responses = await asyncio.gather(*requests, return_exceptions=True)
 
         # Filter out exceptions to count actual responses
-        actual_responses = [r for r in responses if not isinstance(r, Exception)]
+        actual_responses = [r for r in responses if isinstance(r, ClientResponse)]
         assert len(actual_responses) == multi_conn_num
         assert {resp.status for resp in actual_responses} == {200}
     finally:
