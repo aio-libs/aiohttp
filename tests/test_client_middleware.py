@@ -1,5 +1,6 @@
 """Tests for client middleware."""
 
+import json
 import socket
 from typing import Dict, List, NoReturn, Optional, Union
 
@@ -1007,3 +1008,100 @@ async def test_middleware_uses_session_avoids_recursion_with_disabled_middleware
     # Ensure that log requests were made without the middleware
     # (request_count equals number of logged requests, not infinite)
     assert request_count == 2
+
+
+async def test_middleware_can_check_request_body(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that middleware can check request body."""
+    received_bodies: List[str] = []
+    received_headers: List[Dict[str, str]] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        """Server handler that receives requests."""
+        body = await request.text()
+        received_bodies.append(body)
+        received_headers.append(dict(request.headers))
+        return web.Response(text="OK")
+
+    app = web.Application()
+    app.router.add_post("/api", handler)
+    server = await aiohttp_server(app)
+
+    class CustomAuth:
+        """Middleware that follows the GitHub discussion pattern for authentication."""
+
+        def __init__(self, secretkey: str) -> None:
+            self.secretkey = secretkey
+
+        def get_hash(self, request: ClientRequest) -> str:
+            if request.body:
+                data = request.body.decode("utf-8")
+            else:
+                data = "{}"
+
+            # Simulate authentication hash without using real crypto
+            signature = f"SIGNATURE-{self.secretkey}-{len(data)}-{data[:10]}"
+            return signature
+
+        async def __call__(
+            self, request: ClientRequest, handler: ClientHandlerType
+        ) -> ClientResponse:
+            request.headers["CUSTOM-AUTH"] = self.get_hash(request)
+            return await handler(request)
+
+    middleware = CustomAuth("test-secret-key")
+
+    async with ClientSession(middlewares=(middleware,)) as session:
+        # Test 1: Send JSON data with user/action
+        data1 = {"user": "alice", "action": "login"}
+        json_str1 = json.dumps(data1)
+        async with session.post(
+            server.make_url("/api"),
+            data=json_str1,
+            headers={"Content-Type": "application/json"},
+        ) as resp:
+            assert resp.status == 200
+
+        # Test 2: Send JSON data with different fields
+        data2 = {"user": "bob", "value": 42}
+        json_str2 = json.dumps(data2)
+        async with session.post(
+            server.make_url("/api"),
+            data=json_str2,
+            headers={"Content-Type": "application/json"},
+        ) as resp:
+            assert resp.status == 200
+
+        # Test 3: Send plain text (non-JSON)
+        text_data = "plain text body"
+        async with session.post(
+            server.make_url("/api"),
+            data=text_data,
+            headers={"Content-Type": "text/plain"},
+        ) as resp:
+            assert resp.status == 200
+
+    # Verify server received the correct headers with authentication
+    headers1 = received_headers[0]
+    assert (
+        headers1["CUSTOM-AUTH"]
+        == f"SIGNATURE-test-secret-key-{len(json_str1)}-{json_str1[:10]}"
+    )
+
+    headers2 = received_headers[1]
+    assert (
+        headers2["CUSTOM-AUTH"]
+        == f"SIGNATURE-test-secret-key-{len(json_str2)}-{json_str2[:10]}"
+    )
+
+    headers3 = received_headers[2]
+    assert (
+        headers3["CUSTOM-AUTH"]
+        == f"SIGNATURE-test-secret-key-{len(text_data)}-{text_data[:10]}"
+    )
+
+    # Verify all responses were successful
+    assert received_bodies[0] == json_str1
+    assert received_bodies[1] == json_str2
+    assert received_bodies[2] == text_data
