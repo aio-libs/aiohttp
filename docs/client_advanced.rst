@@ -270,9 +270,11 @@ Multiple middlewares are applied in the order they are listed::
    **Recommended:** Pass ``middlewares=()`` to requests made inside the middleware to
    disable middleware for those specific requests::
 
-       async def log_middleware(request, handler):
-           # Assumes session is passed via class structure or closure
-           async with session.post(
+       async def log_middleware(
+           request: ClientRequest,
+           handler: ClientHandlerType
+       ) -> ClientResponse:
+           async with request.session.post(
                "https://logapi.example/log",
                json={"url": str(request.url)},
                middlewares=()  # This prevents infinite recursion
@@ -284,10 +286,12 @@ Multiple middlewares are applied in the order they are listed::
    **Alternative:** Check the request contents (URL, path, host) to avoid applying
    middleware to certain requests::
 
-       async def log_middleware(request, handler):
-           # Assumes session is passed via class structure or closure
+       async def log_middleware(
+           request: ClientRequest,
+           handler: ClientHandlerType
+       ) -> ClientResponse:
            if request.url.host != "logapi.example":  # Avoid infinite recursion
-               async with session.post(
+               async with request.session.post(
                    "https://logapi.example/log",
                    json={"url": str(request.url)}
                ) as resp:
