@@ -10,7 +10,6 @@ from typing import (
     Iterator,
     Optional,
     Protocol,
-    Type,
     Union,
     overload,
 )
@@ -208,9 +207,13 @@ def pytest_pyfunc_call(pyfuncitem):  # type: ignore[no-untyped-def]
     """Run coroutines in an event loop instead of a normal function call."""
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
     if inspect.iscoroutinefunction(pyfuncitem.function):
-        existing_loop = pyfuncitem.funcargs.get(
-            "proactor_loop"
-        ) or pyfuncitem.funcargs.get("loop", None)
+        existing_loop = (
+            pyfuncitem.funcargs.get("proactor_loop")
+            or pyfuncitem.funcargs.get("selector_loop")
+            or pyfuncitem.funcargs.get("uvloop_loop")
+            or pyfuncitem.funcargs.get("loop", None)
+        )
+
         with _runtime_warning_context():
             with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
                 testargs = {
@@ -227,11 +230,11 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
         return
 
     loops = metafunc.config.option.aiohttp_loop
-    avail_factories: Dict[str, Type[asyncio.AbstractEventLoopPolicy]]
-    avail_factories = {"pyloop": asyncio.DefaultEventLoopPolicy}
+    avail_factories: dict[str, Callable[[], asyncio.AbstractEventLoop]]
+    avail_factories = {"pyloop": asyncio.new_event_loop}
 
     if uvloop is not None:  # pragma: no cover
-        avail_factories["uvloop"] = uvloop.EventLoopPolicy
+        avail_factories["uvloop"] = uvloop.new_event_loop
 
     if loops == "all":
         loops = "pyloop,uvloop?"
@@ -255,11 +258,13 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def loop(loop_factory, fast, loop_debug):  # type: ignore[no-untyped-def]
+def loop(
+    loop_factory: Callable[[], asyncio.AbstractEventLoop],
+    fast: bool,
+    loop_debug: bool,
+) -> Iterator[asyncio.AbstractEventLoop]:
     """Return an instance of the event loop."""
-    policy = loop_factory()
-    asyncio.set_event_loop_policy(policy)
-    with loop_context(fast=fast) as _loop:
+    with loop_context(loop_factory, fast=fast) as _loop:
         if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
         asyncio.set_event_loop(_loop)
@@ -267,11 +272,10 @@ def loop(loop_factory, fast, loop_debug):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def proactor_loop():  # type: ignore[no-untyped-def]
-    policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore[attr-defined]
-    asyncio.set_event_loop_policy(policy)
+def proactor_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    factory = asyncio.ProactorEventLoop  # type: ignore[attr-defined]
 
-    with loop_context(policy.new_event_loop) as _loop:
+    with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 
