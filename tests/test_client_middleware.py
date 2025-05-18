@@ -239,7 +239,7 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
         if auth_header == f'Custom response="{challenge_token}-secret"':
             return web.Response(text="Authenticated")
 
-        assert False  # Should not reach here
+        assert False, "Should not reach here - invalid auth scenario"
 
     async def challenge_auth_middleware(
         request: ClientRequest, handler: ClientHandlerType
@@ -268,6 +268,10 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
                     challenge_data["nonce"] = www_auth[nonce_start:nonce_end]
                     challenge_data["attempted"] = True
                     continue
+                else:
+                    assert (
+                        False
+                    ), "Should not reach here - 401 without valid nonce challenge"
 
             return response
 
@@ -317,7 +321,7 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) 
         if step == 2 and auth_header == "Bearer challenge-456-response":
             return web.Response(text="Authenticated")
 
-        return web.Response(status=403, text="Forbidden")
+        assert False, "Should not reach here - invalid multi-step auth flow"
 
     async def multi_step_auth_middleware(
         request: ClientRequest, handler: ClientHandlerType
@@ -352,6 +356,10 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) 
                     middleware_state["challenge"] = response.headers.get("X-Challenge")
                     middleware_state["step"] = 2
                     continue
+                else:
+                    assert (
+                        False
+                    ), f"Should not reach here - unexpected auth step: {auth_step}"
 
             return response
 
@@ -391,7 +399,7 @@ async def test_client_middleware_conditional_retry(
         if auth_token == "refreshed-token":
             return web.json_response({"data": "success"})
 
-        return web.json_response({"error": "forbidden"}, status=403)
+        assert False, "Should not reach here - invalid token refresh flow"
 
     async def token_refresh_middleware(
         request: ClientRequest, handler: ClientHandlerType
@@ -412,6 +420,10 @@ async def test_client_middleware_conditional_retry(
                     token_state["token"] = "refreshed-token"
                     token_state["refreshed"] = True
                     continue
+                else:
+                    assert (
+                        False
+                    ), f"Should not reach here - unexpected 401 error: {data}"
 
             return response
 
@@ -463,7 +475,7 @@ async def test_client_middleware_class_based_auth(
         auth_header = request.headers.get("Authorization")
         if auth_header == "Bearer test-token":
             return web.Response(text="Authenticated")
-        return web.Response(status=401, text="Unauthorized")
+        assert False, "Should not reach here - class auth should always have token"
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -794,8 +806,7 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
     ) as session:
         # Test blocked request to non-existent domain
         with pytest.raises(BlockedByMiddleware) as exc_info:
-            async with session.get("https://blocked.domain.tld/"):
-                pass
+            await session.get("https://blocked.domain.tld/")
 
         assert "Blocked by policy: blocked.domain.tld" in str(exc_info.value)
 
@@ -1026,6 +1037,7 @@ async def test_middleware_can_check_request_body(
 
     app = web.Application()
     app.router.add_post("/api", handler)
+    app.router.add_get("/api", handler)  # Add GET handler too
     server = await aiohttp_server(app)
 
     class CustomAuth:
@@ -1073,7 +1085,11 @@ async def test_middleware_can_check_request_body(
         ) as resp:
             assert resp.status == 200
 
-        # Test 3: Send plain text (non-JSON)
+        # Test 3: Send GET request with no body
+        async with session.get(server.make_url("/api")) as resp:
+            assert resp.status == 200  # GET with empty body still should validate
+
+        # Test 4: Send plain text (non-JSON)
         text_data = "plain text body"
         async with session.post(
             server.make_url("/api"),
@@ -1096,12 +1112,17 @@ async def test_middleware_can_check_request_body(
     )
 
     headers3 = received_headers[2]
+    # GET request with no body should have empty JSON body
+    assert headers3["CUSTOM-AUTH"] == "SIGNATURE-test-secret-key-2-{}"
+
+    headers4 = received_headers[3]
     assert (
-        headers3["CUSTOM-AUTH"]
+        headers4["CUSTOM-AUTH"]
         == f"SIGNATURE-test-secret-key-{len(text_data)}-{text_data[:10]}"
     )
 
     # Verify all responses were successful
     assert received_bodies[0] == json_str1
     assert received_bodies[1] == json_str2
-    assert received_bodies[2] == text_data
+    assert received_bodies[2] == ""  # GET request has no body
+    assert received_bodies[3] == text_data
