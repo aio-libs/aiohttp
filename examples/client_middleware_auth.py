@@ -188,30 +188,12 @@ class TokenAuthMiddleware:
         self.auth_url = auth_url
         self.username = username
         self.password = password
-        self.session: Optional[ClientSession] = None
         self.access_token: Optional[str] = None
         self.refresh_token: Optional[str] = None
 
-    def set_session(self, session: ClientSession) -> None:
-        """Set the session after middleware creation."""
-        self.session = session
-
-    @classmethod
-    async def create_with_session(
-        cls, auth_url: str, username: str, password: str, session: ClientSession
-    ) -> "TokenAuthMiddleware":
-        """Factory method to create middleware with a session and authenticate immediately."""
-        middleware = cls(auth_url, username, password)
-        middleware.set_session(session)
-        await middleware.authenticate()
-        return middleware
-
-    async def authenticate(self) -> None:
+    async def authenticate(self, session: ClientSession) -> None:
         """Get initial authentication tokens."""
-        if not self.session:
-            raise RuntimeError("Session not set. Call set_session() first.")
-
-        async with self.session.post(
+        async with session.post(
             self.auth_url,
             json={"username": self.username, "password": self.password},
             # Don't use middlewares here to avoid recursion
@@ -222,17 +204,14 @@ class TokenAuthMiddleware:
             self.refresh_token = data.get("refresh_token")
             _LOGGER.info("Authenticated as %s", self.username)
 
-    async def refresh_access_token(self) -> None:
+    async def refresh_access_token(self, session: ClientSession) -> None:
         """Refresh the access token using refresh token."""
-        if not self.session:
-            raise RuntimeError("Session not set. Call set_session() first.")
-
         if not self.refresh_token:
             # No refresh token, need to re-authenticate
-            await self.authenticate()
+            await self.authenticate(session)
             return
 
-        async with self.session.post(
+        async with session.post(
             f"{self.auth_url}/refresh",
             json={"refresh_token": self.refresh_token},
             # Don't use middlewares here to avoid recursion
@@ -241,7 +220,7 @@ class TokenAuthMiddleware:
             if resp.status != 200:
                 # Refresh failed, re-authenticate
                 _LOGGER.warning("Token refresh failed, re-authenticating")
-                await self.authenticate()
+                await self.authenticate(session)
                 return
 
             data: Dict[str, str] = await resp.json()
@@ -270,7 +249,7 @@ class TokenAuthMiddleware:
             if response.status == 401 and not retry_with_refresh:
                 _LOGGER.info("Got 401, attempting to refresh token")
                 # Try to refresh the token
-                await self.refresh_access_token()
+                await self.refresh_access_token(request.session)
                 retry_with_refresh = True
                 # Retry with new token
                 continue
@@ -376,7 +355,7 @@ async def run_client_examples(server_url: str) -> None:
         token_auth.set_session(session)
 
         # Initial authentication
-        await token_auth.authenticate()
+        await token_auth.authenticate(session)
 
         # All requests will use auth by default
         _LOGGER.info("Making authenticated request to /api/data")
@@ -415,8 +394,7 @@ async def run_client_examples(server_url: str) -> None:
     )
 
     async with ClientSession(middlewares=(admin_auth.middleware,)) as admin_session:
-        admin_auth.set_session(admin_session)
-        await admin_auth.authenticate()
+        await admin_auth.authenticate(admin_session)
 
         _LOGGER.info("Making admin request")
         async with admin_session.get(f"{server_url}/api/admin/data") as resp:
@@ -431,8 +409,7 @@ async def run_client_examples(server_url: str) -> None:
     )
 
     async with ClientSession(middlewares=(user_auth.middleware,)) as user_session:
-        user_auth.set_session(user_session)
-        await user_auth.authenticate()
+        await user_auth.authenticate(user_session)
 
         _LOGGER.info("Making unauthorized admin request as regular user")
         async with user_session.get(
@@ -450,8 +427,7 @@ async def run_client_examples(server_url: str) -> None:
     )
 
     async with ClientSession(middlewares=(refresh_auth.middleware,)) as session:
-        refresh_auth.set_session(session)
-        await refresh_auth.authenticate()
+        await refresh_auth.authenticate(session)
 
         _LOGGER.info("Testing token expiration and refresh")
         # First request will succeed
@@ -476,8 +452,7 @@ async def run_client_examples(server_url: str) -> None:
     )
 
     async with ClientSession(middlewares=(middleware_early.middleware,)) as session:
-        middleware_early.set_session(session)
-        await middleware_early.authenticate()
+        await middleware_early.authenticate(session)
 
         async with session.get(f"{server_url}/api/data") as resp:
             two_phase_data: Dict[str, Any] = await resp.json()
@@ -490,8 +465,8 @@ async def run_client_examples(server_url: str) -> None:
             auth_url=f"{server_url}/auth",
             username="user",
             password="pass",
-            session=session,
         )
+        await middleware_factory.authenticate(session)
 
         # Use the same session with middleware on individual requests
         async with session.get(

@@ -362,6 +362,10 @@ class ClientRequest:
             RequestInfo, (self.url, self.method, headers, self.original_url)
         )
 
+    @property
+    def session(self) -> "ClientSession":
+        return self._session
+
     def update_host(self, url: URL) -> None:
         """Update destination host, port and connection type (ssl)."""
         # get host/port
