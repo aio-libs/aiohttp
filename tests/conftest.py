@@ -233,20 +233,16 @@ def unix_sockname(
 
 @pytest.fixture
 def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore[attr-defined]
-    asyncio.set_event_loop_policy(policy)
-
-    with loop_context(policy.new_event_loop) as _loop:
+    factory = asyncio.SelectorEventLoop
+    with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 
 
 @pytest.fixture
 def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    policy = uvloop.EventLoopPolicy()
-    asyncio.set_event_loop_policy(policy)
-
-    with loop_context(policy.new_event_loop) as _loop:
+    factory = uvloop.new_event_loop
+    with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 

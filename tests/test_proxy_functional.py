@@ -241,7 +241,6 @@ async def test_https_proxy_unsupported_tls_in_tls(
     await asyncio.sleep(0.1)
 
 
-@pytest.mark.usefixtures("uvloop_loop")
 @pytest.mark.skipif(
     platform.system() == "Windows" or sys.implementation.name != "cpython",
     reason="uvloop is not supported on Windows and non-CPython implementations",
@@ -253,6 +252,7 @@ async def test_https_proxy_unsupported_tls_in_tls(
 async def test_uvloop_secure_https_proxy(
     client_ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
+    uvloop_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
     conn = aiohttp.TCPConnector()
