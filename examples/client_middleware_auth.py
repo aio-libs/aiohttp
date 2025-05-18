@@ -351,9 +351,6 @@ async def run_client_examples(server_url: str) -> None:
 
     # Create session with middleware
     async with ClientSession(middlewares=(token_auth.middleware,)) as session:
-        # Inject session into middleware
-        token_auth.set_session(session)
-
         # Initial authentication
         await token_auth.authenticate(session)
 
@@ -461,7 +458,7 @@ async def run_client_examples(server_url: str) -> None:
     # Pattern 2: Create middleware with factory method (simpler for direct use)
     _LOGGER.info("Pattern 2: Factory method initialization")
     async with ClientSession() as session:
-        middleware_factory = await TokenAuthMiddleware.create_with_session(
+        middleware_factory = TokenAuthMiddleware(
             auth_url=f"{server_url}/auth",
             username="user",
             password="pass",
