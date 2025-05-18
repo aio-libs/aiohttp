@@ -650,10 +650,7 @@ class ClientSession:
 
                     # Core request handler - now includes connection logic
                     async def _connect_and_send_request(
-                        req: ClientRequest,
-                        *,
-                        _url: URL = url,
-                        _method: str = method,
+                        req: ClientRequest
                     ) -> ClientResponse:
                         # connection timeout
                         assert self._connector is not None
@@ -663,13 +660,13 @@ class ClientSession:
                             )
                         except asyncio.TimeoutError as exc:
                             raise ConnectionTimeoutError(
-                                f"Connection timeout to host {_url}"
+                                f"Connection timeout to host {req.url}"
                             ) from exc
 
                         assert conn.protocol is not None
                         conn.protocol.set_response_params(
                             timer=timer,
-                            skip_payload=_method in EMPTY_BODY_METHODS,
+                            skip_payload=req.method in EMPTY_BODY_METHODS,
                             read_until_eof=read_until_eof,
                             auto_decompress=auto_decompress,
                             read_timeout=real_timeout.sock_read,
