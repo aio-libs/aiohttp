@@ -210,6 +210,11 @@ class ClientRequest:
     auth = None
     response = None
 
+    # These class defaults help create_autospec() work correctly.
+    # If autospec is improved in future, maybe these can be removed.
+    url = URL()
+    method = "GET"
+
     __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
