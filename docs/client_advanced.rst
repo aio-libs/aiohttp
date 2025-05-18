@@ -259,6 +259,42 @@ Multiple middlewares are applied in the order they are listed::
    like adding static headers, you can often use request parameters
    (e.g., ``headers``) or session configuration instead.
 
+.. warning::
+
+   Using the same session from within middleware can cause infinite recursion if
+   the middleware makes HTTP requests using the same session that has the middleware
+   applied.
+
+   To avoid recursion, use one of these approaches:
+
+   **Recommended:** Pass ``middlewares=()`` to requests made inside the middleware to
+   disable middleware for those specific requests::
+
+       async def log_middleware(request, handler):
+           # Assumes session is passed via class structure or closure
+           async with session.post(
+               "https://logapi.example/log",
+               json={"url": str(request.url)},
+               middlewares=()  # This prevents infinite recursion
+           ) as resp:
+               pass
+
+           return await handler(request)
+
+   **Alternative:** Check the request contents (URL, path, host) to avoid applying
+   middleware to certain requests::
+
+       async def log_middleware(request, handler):
+           # Assumes session is passed via class structure or closure
+           if request.url.host != "logapi.example":  # Avoid infinite recursion
+               async with session.post(
+                   "https://logapi.example/log",
+                   json={"url": str(request.url)}
+               ) as resp:
+                   pass
+
+           return await handler(request)
+
 Middleware Type
 ^^^^^^^^^^^^^^^
 
