@@ -1102,6 +1102,30 @@ async def test_timeout_none(
         assert resp.status == 200
 
 
+async def test_connection_timeout_error(
+    aiohttp_client: AiohttpClient, mocker: MockerFixture
+) -> None:
+    """Test that ConnectionTimeoutError is raised when connection times out."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False, "Handler should not be called"
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    # Mock the connector's connect method to raise asyncio.TimeoutError
+    mock_connect = mocker.patch.object(
+        client.session._connector, "connect", side_effect=asyncio.TimeoutError()
+    )
+
+    with pytest.raises(aiohttp.ConnectionTimeoutError) as exc_info:
+        await client.get("/", timeout=aiohttp.ClientTimeout(connect=0.01))
+
+    assert "Connection timeout to host" in str(exc_info.value)
+    mock_connect.assert_called_once()
+
+
 async def test_readline_error_on_conn_close(aiohttp_client: AiohttpClient) -> None:
     loop = asyncio.get_event_loop()
 
@@ -2071,7 +2095,10 @@ async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
     assert expect_called
 
 
-async def test_encoding_deflate(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_deflate(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(text="text")
         resp.enable_chunked_encoding()
@@ -2089,7 +2116,10 @@ async def test_encoding_deflate(aiohttp_client: AiohttpClient) -> None:
     resp.close()
 
 
-async def test_encoding_deflate_nochunk(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_deflate_nochunk(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(text="text")
         resp.enable_compression(web.ContentCoding.deflate)
@@ -2106,7 +2136,10 @@ async def test_encoding_deflate_nochunk(aiohttp_client: AiohttpClient) -> None:
     resp.close()
 
 
-async def test_encoding_gzip(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_gzip(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(text="text")
         resp.enable_chunked_encoding()
@@ -2124,7 +2157,10 @@ async def test_encoding_gzip(aiohttp_client: AiohttpClient) -> None:
     resp.close()
 
 
-async def test_encoding_gzip_write_by_chunks(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_gzip_write_by_chunks(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()
         resp.enable_compression(web.ContentCoding.gzip)
@@ -2144,7 +2180,10 @@ async def test_encoding_gzip_write_by_chunks(aiohttp_client: AiohttpClient) -> N
     resp.close()
 
 
-async def test_encoding_gzip_nochunk(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_encoding_gzip_nochunk(
+    aiohttp_client: AiohttpClient,
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(text="text")
         resp.enable_compression(web.ContentCoding.gzip)

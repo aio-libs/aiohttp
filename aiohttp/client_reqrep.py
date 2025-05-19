@@ -212,6 +212,11 @@ class ClientRequest:
     auth = None
     response = None
 
+    # These class defaults help create_autospec() work correctly.
+    # If autospec is improved in future, maybe these can be removed.
+    url = URL()
+    method = "GET"
+
     __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
@@ -363,6 +368,16 @@ class ClientRequest:
         return tuple.__new__(
             RequestInfo, (self.url, self.method, headers, self.original_url)
         )
+
+    @property
+    def session(self) -> "ClientSession":
+        """Return the ClientSession instance.
+
+        This property provides access to the ClientSession that initiated
+        this request, allowing middleware to make additional requests
+        using the same session.
+        """
+        return self._session
 
     def update_host(self, url: URL) -> None:
         """Update destination host, port and connection type (ssl)."""

@@ -1,6 +1,7 @@
 aiodns
 blockbuster
 freezegun
+isal
 mypy; implementation_name == "cpython"
 pre-commit
 proxy.py
@@ -12,3 +13,4 @@ slotscheck
 trustme
 uvloop; platform_system != "Windows"
 valkey
+zlib_ng

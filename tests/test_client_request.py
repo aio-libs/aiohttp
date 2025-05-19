@@ -3,7 +3,6 @@ import hashlib
 import io
 import pathlib
 import sys
-import zlib
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (
     Any,
@@ -32,6 +31,7 @@ from aiohttp.client_reqrep import (
     Fingerprint,
     _gen_default_accept_encoding,
 )
+from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
 from aiohttp.http import HttpVersion10, HttpVersion11
 from aiohttp.test_utils import make_mocked_coro
@@ -822,8 +822,10 @@ async def test_bytes_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> N
         resp.close()
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_content_encoding(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop,
+    conn: mock.Mock,
 ) -> None:
     req = ClientRequest(
         "post", URL("http://python.org/"), data="foo", compress="deflate", loop=loop
@@ -852,8 +854,10 @@ async def test_content_encoding_dont_set_headers_if_no_body(
     resp.close()
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_content_encoding_header(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop,
+    conn: mock.Mock,
 ) -> None:
     req = ClientRequest(
         "post",
@@ -978,8 +982,11 @@ async def test_file_upload_not_chunked(loop: asyncio.AbstractEventLoop) -> None:
         await req.close()
 
 
-async def test_precompressed_data_stays_intact(loop: asyncio.AbstractEventLoop) -> None:
-    data = zlib.compress(b"foobar")
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_precompressed_data_stays_intact(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    data = ZLibBackend.compress(b"foobar")
     req = ClientRequest(
         "post",
         URL("http://python.org/"),

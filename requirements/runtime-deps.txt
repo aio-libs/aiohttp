@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/runtime-deps.txt --strip-extras requirements/runtime-deps.in
 #
-aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
+aiodns==3.4.0
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
     # via -r requirements/runtime-deps.in
@@ -16,13 +16,13 @@ brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 cffi==1.17.1
     # via pycares
-frozenlist==1.5.0
+frozenlist==1.6.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
 idna==3.6
     # via yarl
-multidict==6.4.2
+multidict==6.4.3
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -30,11 +30,11 @@ propcache==0.3.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-pycares==4.6.0
+pycares==4.8.0
     # via aiodns
 pycparser==2.22
     # via cffi
-typing-extensions==4.13.1
+typing-extensions==4.13.2
     # via multidict
-yarl==1.19.0
+yarl==1.20.0
     # via -r requirements/runtime-deps.in

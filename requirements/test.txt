@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/test.txt --resolver=backtracking --strip-extras requirements/test.in
 #
-aiodns==3.2.0 ; sys_platform == "linux" or sys_platform == "darwin"
+aiodns==3.4.0
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
     # via -r requirements/runtime-deps.in
@@ -29,9 +29,9 @@ coverage==7.8.0
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==44.0.2
+cryptography==45.0.2
     # via trustme
-exceptiongroup==1.2.2
+exceptiongroup==1.3.0
     # via pytest
 execnet==2.1.1
     # via pytest-xdist
@@ -39,7 +39,7 @@ forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.1
     # via -r requirements/test.in
-frozenlist==1.5.0
+frozenlist==1.6.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
@@ -51,23 +51,25 @@ idna==3.6
     #   yarl
 iniconfig==2.1.0
     # via pytest
+isal==1.7.2
+    # via -r requirements/test.in
 markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.4.2
+multidict==6.4.3
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
 mypy==1.15.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
-mypy-extensions==1.0.0
+mypy-extensions==1.1.0
     # via mypy
-packaging==24.2
+packaging==25.0
     # via
     #   gunicorn
     #   pytest
-pluggy==1.5.0
+pluggy==1.6.0
     # via pytest
 propcache==0.3.1
     # via
@@ -75,13 +77,13 @@ propcache==0.3.1
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test.in
-pycares==4.6.0
+pycares==4.8.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.11.3
+pydantic==2.11.4
     # via python-on-whales
-pydantic-core==2.33.1
+pydantic-core==2.33.2
     # via pydantic
 pygments==2.19.1
     # via rich
@@ -117,8 +119,9 @@ tomli==2.2.1
     #   pytest
 trustme==1.2.1 ; platform_machine != "i686"
     # via -r requirements/test.in
-typing-extensions==4.13.1
+typing-extensions==4.13.2
     # via
+    #   exceptiongroup
     #   multidict
     #   mypy
     #   pydantic
@@ -132,5 +135,7 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     # via -r requirements/base.in
 wait-for-it==2.3.0
     # via -r requirements/test.in
-yarl==1.19.0
+yarl==1.20.0
     # via -r requirements/runtime-deps.in
+zlib-ng==0.5.1
+    # via -r requirements/test.in

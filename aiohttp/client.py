@@ -72,6 +72,7 @@ from .client_exceptions import (
     WSMessageTypeError,
     WSServerHandshakeError,
 )
+from .client_middlewares import ClientMiddlewareType, build_client_middlewares
 from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
@@ -194,6 +195,7 @@ class _RequestOptions(TypedDict, total=False):
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
     max_field_size: Union[int, None]
+    middlewares: Optional[Tuple[ClientMiddlewareType, ...]]
 
 
 @frozen_dataclass_decorator
@@ -261,6 +263,7 @@ class ClientSession:
         "_default_proxy",
         "_default_proxy_auth",
         "_retry_connection",
+        "_middlewares",
     )
 
     def __init__(
@@ -293,6 +296,7 @@ class ClientSession:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
+        middlewares: Optional[Tuple[ClientMiddlewareType, ...]] = None,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -377,6 +381,7 @@ class ClientSession:
         self._default_proxy = proxy
         self._default_proxy_auth = proxy_auth
         self._retry_connection: bool = True
+        self._middlewares = middlewares
 
     def __init_subclass__(cls: Type["ClientSession"]) -> None:
         raise TypeError(
@@ -451,6 +456,7 @@ class ClientSession:
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_field_size: Optional[int] = None,
+        middlewares: Optional[Tuple[ClientMiddlewareType, ...]] = None,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -643,32 +649,33 @@ class ClientSession:
                         trust_env=self.trust_env,
                     )
 
-                    # connection timeout
-                    try:
-                        conn = await self._connector.connect(
-                            req, traces=traces, timeout=real_timeout
+                    # Core request handler - now includes connection logic
+                    async def _connect_and_send_request(
+                        req: ClientRequest,
+                    ) -> ClientResponse:
+                        # connection timeout
+                        assert self._connector is not None
+                        try:
+                            conn = await self._connector.connect(
+                                req, traces=traces, timeout=real_timeout
+                            )
+                        except asyncio.TimeoutError as exc:
+                            raise ConnectionTimeoutError(
+                                f"Connection timeout to host {req.url}"
+                            ) from exc
+
+                        assert conn.protocol is not None
+                        conn.protocol.set_response_params(
+                            timer=timer,
+                            skip_payload=req.method in EMPTY_BODY_METHODS,
+                            read_until_eof=read_until_eof,
+                            auto_decompress=auto_decompress,
+                            read_timeout=real_timeout.sock_read,
+                            read_bufsize=read_bufsize,
+                            timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
+                            max_line_size=max_line_size,
+                            max_field_size=max_field_size,
                         )
-                    except asyncio.TimeoutError as exc:
-                        raise ConnectionTimeoutError(
-                            f"Connection timeout to host {url}"
-                        ) from exc
-
-                    assert conn.transport is not None
-
-                    assert conn.protocol is not None
-                    conn.protocol.set_response_params(
-                        timer=timer,
-                        skip_payload=method in EMPTY_BODY_METHODS,
-                        read_until_eof=read_until_eof,
-                        auto_decompress=auto_decompress,
-                        read_timeout=real_timeout.sock_read,
-                        read_bufsize=read_bufsize,
-                        timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
-                        max_line_size=max_line_size,
-                        max_field_size=max_field_size,
-                    )
-
-                    try:
                         try:
                             resp = await req.send(conn)
                             try:
@@ -686,6 +693,30 @@ class ClientSession:
                         except BaseException:
                             conn.close()
                             raise
+                        return resp
+
+                    # Apply middleware (if any) - per-request middleware overrides session middleware
+                    effective_middlewares = (
+                        self._middlewares if middlewares is None else middlewares
+                    )
+
+                    if effective_middlewares:
+                        handler = build_client_middlewares(
+                            _connect_and_send_request, effective_middlewares
+                        )
+                    else:
+                        handler = _connect_and_send_request
+
+                    try:
+                        resp = await handler(req)
+                    # Client connector errors should not be retried
+                    except (
+                        ConnectionTimeoutError,
+                        ClientConnectorError,
+                        ClientConnectorCertificateError,
+                        ClientConnectorSSLError,
+                    ):
+                        raise
                     except (ClientOSError, ServerDisconnectedError):
                         if retry_persistent_connection:
                             retry_persistent_connection = False

@@ -196,6 +196,12 @@ async def test_app_make_handler_access_log_class2() -> None:
     assert runner._kwargs["access_log_class"] is Logger
 
 
+async def test_app_make_handler_no_access_log_class() -> None:
+    app = web.Application(handler_args={"access_log": None})
+    runner = web.AppRunner(app)
+    assert runner._kwargs["access_log"] is None
+
+
 async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
     _sock = get_unused_port_socket("127.0.0.1")
     runner = make_runner()

@@ -53,6 +53,7 @@ The client session supports the context manager protocol for self closing.
                          trust_env=False, \
                          requote_redirect_url=True, \
                          trace_configs=None, \
+                         middlewares=None, \
                          read_bufsize=2**16, \
                          max_line_size=8190, \
                          max_field_size=8190, \
@@ -213,6 +214,13 @@ The client session supports the context manager protocol for self closing.
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
 
+   :param middlewares: A tuple of middleware instances to apply to all session requests.
+                      Each middleware must match the :type:`ClientMiddlewareType` signature.
+                      ``None`` (default) is used when no middleware is needed.
+                      See :ref:`aiohttp-client-middleware` for more information.
+
+      .. versionadded:: 3.12
+
    :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
                             64 KiB by default.
 
@@ -371,6 +379,7 @@ The client session supports the context manager protocol for self closing.
                          server_hostname=None, \
                          proxy_headers=None, \
                          trace_request_ctx=None, \
+                         middlewares=None, \
                          read_bufsize=None, \
                          auto_decompress=None, \
                          max_line_size=None, \
@@ -518,6 +527,13 @@ The client session supports the context manager protocol for self closing.
         tracers that is only available at request time.
 
          .. versionadded:: 3.0
+
+      :param middlewares: A tuple of middleware instances to apply to this request only.
+                         Each middleware must match the :type:`ClientMiddlewareType` signature.
+                         ``None`` by default which uses session middlewares.
+                         See :ref:`aiohttp-client-middleware` for more information.
+
+         .. versionadded:: 3.12
 
       :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
                               ``None`` by default,
@@ -2218,6 +2234,30 @@ Utilities
       await session.get(url, ssl=aiohttp.Fingerprint(digest))
 
    .. versionadded:: 3.0
+
+.. function:: set_zlib_backend(lib)
+
+   Sets the compression backend for zlib-based operations.
+
+   This function allows you to override the default zlib backend
+   used internally by passing a module that implements the standard
+   compression interface.
+
+   The module should implement at minimum the exact interface offered by the
+   latest version of zlib.
+
+   :param types.ModuleType lib: A module that implements the zlib-compatible compression API.
+
+   Example usage::
+
+      import zlib_ng.zlib_ng as zng
+      import aiohttp
+
+      aiohttp.set_zlib_backend(zng)
+
+   .. note:: aiohttp has been tested internally with :mod:`zlib`, :mod:`zlib_ng.zlib_ng`, and :mod:`isal.isal_zlib`.
+
+   .. versionadded:: 3.12
 
 FormData
 ^^^^^^^^
