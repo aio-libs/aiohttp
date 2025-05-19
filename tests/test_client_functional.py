@@ -3585,7 +3585,7 @@ async def test_dont_close_explicit_connector(aiohttp_client: AiohttpClient) -> N
     app.router.add_get("/", handler)
 
     client = await aiohttp_client(app)
-    async with client.get("/") as resp:
+    async with client.get("/") as r:
         await r.read()
 
     assert client.session.connector is not None
