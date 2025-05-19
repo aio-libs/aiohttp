@@ -123,17 +123,12 @@ class DigestAuthMiddleware:
         self._login_bytes: Final[bytes] = login.encode("utf-8")
         self._password_bytes: Final[bytes] = password.encode("utf-8")
 
-        # Context attributes (previously in DigestAuthContext)
         self._last_nonce_bytes = b""
         self._nonce_count = 0
         self._challenge: DigestAuthChallenge = {}
-        self._handled_401 = False
 
     def _encode(self, method: str, url: URL, body: Union[bytes, str]) -> str:
-        """Build digest header"""
-        if not self._handled_401:
-            return ""
-
+        """Build digest header."""
         challenge = self._challenge
         if "realm" not in challenge:
             raise ClientError("Challenge is missing realm")
@@ -245,8 +240,6 @@ class DigestAuthMiddleware:
             pairs.append(f"nc={ncvalue}")
             pairs.append(f'cnonce="{cnonce_bytes.decode()}"')
 
-        self._handled_401 = False
-
         return f"Digest {', '.join(pairs)}"
 
     def _authenticate(self, response: ClientResponse) -> bool:
@@ -255,20 +248,13 @@ class DigestAuthMiddleware:
 
         Returns true if the original request must be resent.
         """
-        # Effective recursion guard
-        if self._handled_401:
-            return False
-
         if response.status != 401:
-            self._handled_401 = False
             return False
 
         auth_header = response.headers.get("www-authenticate", "")
 
         parts = auth_header.split(" ", 1)
-        if "digest" == parts[0].lower() and len(parts) > 1 and not self._handled_401:
-            self._handled_401 = True
-
+        if "digest" == parts[0].lower() and len(parts) > 1:
             header_pairs = parse_header_pairs(parts[1])
 
             # Extract challenge parameters
@@ -288,14 +274,11 @@ class DigestAuthMiddleware:
         retry_count = 0
 
         while True:
-            # For the first request, make sure context is clean
-            if retry_count == 0:
-                self._handled_401 = False
-
-            # Apply authorization header if we have a challenge
-            auth_header = self._encode(request.method, request.url, request.body)
-            if auth_header:
-                request.headers[hdrs.AUTHORIZATION] = auth_header
+            # Apply authorization header if we have a challenge (on second attempt)
+            if retry_count > 0:
+                auth_header = self._encode(request.method, request.url, request.body)
+                if auth_header:
+                    request.headers[hdrs.AUTHORIZATION] = auth_header
 
             # Send the request
             response = await handler(request)
