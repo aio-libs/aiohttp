@@ -1,11 +1,12 @@
 """Test digest authentication middleware for aiohttp client."""
 
+import hashlib
 from unittest import mock
 
 import pytest
 from yarl import URL
 
-from aiohttp import hdrs
+from aiohttp import ClientSession, hdrs
 from aiohttp.client_exceptions import ClientError
 from aiohttp.client_middleware_digest_auth import (
     DigestAuthMiddleware,
@@ -237,22 +238,12 @@ def test_digest_response_exact_match(qop: str, algorithm: str) -> None:
     auth._last_nonce_bytes = nonce.encode("utf-8")
     auth._nonce_count = nc
 
-    # Patch cnonce manually by replacing the auth.encode() logic
-    # We'll monkey-patch hashlib.sha1 to return a fixed cnonce if needed
-    import hashlib as real_hashlib
+    # Use patch.object to temporarily replace hashlib.sha1 with a mock
+    mock_sha1 = mock.Mock()
+    mock_sha1.hexdigest.return_value = cnonce
 
-    original_sha1 = real_hashlib.sha1
-
-    class FakeSHA1(mock.Mock):
-        def hexdigest(self) -> str:
-            return cnonce
-
-    real_hashlib.sha1 = lambda *_: FakeSHA1()
-
-    try:
+    with mock.patch.object(hashlib, "sha1", return_value=mock_sha1):
         header = auth._encode(method, URL(f"http://host{uri}"), body)
-    finally:
-        real_hashlib.sha1 = original_sha1
 
     # Get expected digest
     expected = compute_expected_digest(
@@ -515,9 +506,6 @@ async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
     app = Application()
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
-
-    # Create a mock session with the middleware
-    from aiohttp import ClientSession
 
     middleware = DigestAuthMiddleware("user", "pass")
 
