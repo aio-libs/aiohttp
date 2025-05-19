@@ -13,7 +13,7 @@ from aiohttp.client_middleware_digest_auth import (
     parse_header_pairs,
 )
 from aiohttp.client_reqrep import ClientResponse
-from aiohttp.web import Application, Request, Response, text
+from aiohttp.web import Application, Request, Response
 from aiohttp.web_exceptions import HTTPUnauthorized
 
 # ------------------- DigestAuth Tests -----------------------------------
@@ -297,19 +297,21 @@ async def test_middleware_retry_on_401(aiohttp_server) -> None:
 
         if request_count == 1:
             # First request returns 401 with digest challenge
-            return HTTPUnauthorized(
+            raise HTTPUnauthorized(
                 headers={
                     "WWW-Authenticate": 'Digest realm="test", nonce="abc123", qop="auth"'
                 },
-                body=b"Unauthorized",
+                text="Unauthorized",
             )
 
         # Second request should have Authorization header
         auth_header = request.headers.get(hdrs.AUTHORIZATION)
         if auth_header and auth_header.startswith("Digest "):
-            return text("OK")
+            resp = Response()
+            resp.text = "OK"
+            return resp
 
-        return HTTPUnauthorized(body=b"Still unauthorized")
+        raise HTTPUnauthorized(text="Still unauthorized")
 
     app = Application()
     app.router.add_get("/", handler)
