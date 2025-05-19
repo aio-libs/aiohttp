@@ -26,7 +26,17 @@ import hashlib
 import os
 import re
 import time
-from typing import Callable, Dict, Final, FrozenSet, List, Tuple, TypedDict, Union
+from typing import (
+    Callable,
+    Dict,
+    Final,
+    FrozenSet,
+    List,
+    Literal,
+    Tuple,
+    TypedDict,
+    Union,
+)
 
 from yarl import URL
 
@@ -35,6 +45,9 @@ from .client_exceptions import ClientError
 from .client_middlewares import ClientHandlerType
 from .client_reqrep import ClientRequest, ClientResponse
 
+# Define literal types for challenge fields
+ChallengeField = Literal["realm", "nonce", "qop", "algorithm", "opaque"]
+
 
 class DigestAuthChallenge(TypedDict, total=False):
     realm: str
@@ -42,7 +55,6 @@ class DigestAuthChallenge(TypedDict, total=False):
     qop: str
     algorithm: str
     opaque: str
-    ...
 
 
 DigestFunctions: Dict[str, Callable[[bytes], "hashlib._Hash"]] = {
@@ -85,7 +97,7 @@ _HEADER_PAIRS_PATTERN = re.compile(
 
 
 # RFC 7616: Challenge parameters to extract
-CHALLENGE_FIELDS: Final[Tuple[str, ...]] = (
+CHALLENGE_FIELDS: Final[Tuple[ChallengeField, ...]] = (
     "realm",
     "nonce",
     "qop",
