@@ -113,6 +113,7 @@ def test_encode_digest_with_md5_sess(digest_auth_mw: DigestAuthMiddleware) -> No
 
 
 def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> None:
+    """Test that unsupported algorithm raises ClientError."""
     digest_auth_mw._challenge = {
         "realm": "test",
         "nonce": "abc",
@@ -261,6 +262,46 @@ def test_parse_header_mixed() -> None:
     assert result["nonce"] == "12345"
     assert result["qop"] == "auth"
     assert result["domain"] == "/test"
+
+
+def test_parse_header_with_scheme() -> None:
+    """Test parsing header that includes the scheme."""
+    header = 'Digest realm="example.com", nonce="12345", qop="auth"'
+    result = parse_header_pairs(header)
+    assert result["realm"] == "example.com"
+    assert result["nonce"] == "12345"
+    assert result["qop"] == "auth"
+
+
+def test_parse_header_edge_cases() -> None:
+    """Test various edge cases for header parsing."""
+    # Empty header
+    assert parse_header_pairs("") == {}
+
+    # No space after comma
+    header = 'realm="test",nonce="123",qop="auth"'
+    result = parse_header_pairs(header)
+    assert result["realm"] == "test"
+    assert result["nonce"] == "123"
+    assert result["qop"] == "auth"
+
+    # Extra spaces
+    header = 'realm  =  "test"  ,  nonce  =  "123"'
+    result = parse_header_pairs(header)
+    assert result["realm"] == "test"
+    assert result["nonce"] == "123"
+
+    # Escaped quotes
+    header = 'realm="test\\"realm", nonce="123"'
+    result = parse_header_pairs(header)
+    assert result["realm"] == 'test"realm'
+    assert result["nonce"] == "123"
+
+    # Single quotes (should be treated as regular chars)
+    header = "realm='test', nonce=123"
+    result = parse_header_pairs(header)
+    assert result["realm"] == "'test'"
+    assert result["nonce"] == "123"
 
 
 def test_digest_auth_middleware_callable() -> None:

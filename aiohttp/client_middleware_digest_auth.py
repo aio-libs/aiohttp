@@ -76,19 +76,15 @@ def unescape_quotes(value: str) -> str:
 
 
 def parse_header_pairs(header: str) -> Dict[str, str]:
-    """Parses header pairs in the www-authenticate header value"""
-    # RFC 7616 accepts header key/values that look like
-    #   key1="value1", key2=value2, key3="some value, with, commas"
-    #
-    # This regex attempts to parse that out
+    """Parses header pairs in the www-authenticate header value.
 
+    RFC 7616 accepts header key/values that look like:
+      key1="value1", key2=value2, key3="some value, with, commas"
+    """
     return {
-        key: (
-            unescape_quotes(quoted_val or unquoted_val)
-            if quoted_val or unquoted_val
-            else ""
-        )
+        stripped_key: unescape_quotes(quoted_val) if quoted_val else unquoted_val
         for key, quoted_val, unquoted_val in _HEADER_PAIRS_PATTERN.findall(header)
+        if (stripped_key := key.strip())
     }
 
 
@@ -256,9 +252,9 @@ class DigestAuthMiddleware:
 
         auth_header = response.headers.get("www-authenticate", "")
 
-        parts = auth_header.split(" ", 1)
-        if "digest" == parts[0].lower() and len(parts) > 1:
-            header_pairs = parse_header_pairs(parts[1])
+        method, _, headers = auth_header.partition(" ")
+        if method.lower() == "digest" and headers:
+            header_pairs = parse_header_pairs(headers)
 
             # Extract challenge parameters
             self._challenge = {}
