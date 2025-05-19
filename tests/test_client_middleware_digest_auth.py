@@ -35,11 +35,11 @@ async def test_authenticate_valid_digest(digest_auth_mw: DigestAuthMiddleware) -
     }
 
     assert digest_auth_mw._authenticate(response)
-    assert digest_auth_mw.challenge["realm"] == "test"
-    assert digest_auth_mw.challenge["nonce"] == "abc"
-    assert digest_auth_mw.challenge["qop"] == "auth"
-    assert digest_auth_mw.challenge["algorithm"] == "MD5"
-    assert digest_auth_mw.challenge["opaque"] == "xyz"
+    assert digest_auth_mw._challenge["realm"] == "test"
+    assert digest_auth_mw._challenge["nonce"] == "abc"
+    assert digest_auth_mw._challenge["qop"] == "auth"
+    assert digest_auth_mw._challenge["algorithm"] == "MD5"
+    assert digest_auth_mw._challenge["opaque"] == "xyz"
 
 
 async def test_authenticate_invalid_status(
@@ -59,37 +59,37 @@ async def test_authenticate_already_handled(
     response.headers = {
         "www-authenticate": 'Digest realm="test", nonce="abc", qop="auth"'
     }
-    digest_auth_mw.handled_401 = True
+    digest_auth_mw._handled_401 = True
     assert not digest_auth_mw._authenticate(response)
 
 
 def test_encode_without_challenge(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw.handled_401 = False
+    digest_auth_mw._handled_401 = False
     assert digest_auth_mw._encode("GET", URL("http://example.com/resource"), "") == ""
 
 
 def test_encode_missing_realm_or_nonce(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw.handled_401 = True
+    digest_auth_mw._handled_401 = True
 
     # Test with missing realm
-    digest_auth_mw.challenge = {"nonce": "abc"}
+    digest_auth_mw._challenge = {"nonce": "abc"}
     with pytest.raises(ClientError, match="Challenge is missing realm"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
     # Test with missing nonce
-    digest_auth_mw.challenge = {"realm": "test"}
+    digest_auth_mw._challenge = {"realm": "test"}
     with pytest.raises(ClientError, match="Challenge is missing nonce"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
     # Test with empty nonce
-    digest_auth_mw.challenge = {"realm": "test", "nonce": ""}
+    digest_auth_mw._challenge = {"realm": "test", "nonce": ""}
     with pytest.raises(ClientError, match="Challenge has empty nonce"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
 def test_encode_digest_with_md5(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw.handled_401 = True
-    digest_auth_mw.challenge = {
+    digest_auth_mw._handled_401 = True
+    digest_auth_mw._challenge = {
         "realm": "test",
         "nonce": "abc",
         "qop": "auth",
@@ -103,8 +103,8 @@ def test_encode_digest_with_md5(digest_auth_mw: DigestAuthMiddleware) -> None:
 
 
 def test_encode_digest_with_md5_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw.handled_401 = True
-    digest_auth_mw.challenge = {
+    digest_auth_mw._handled_401 = True
+    digest_auth_mw._challenge = {
         "realm": "test",
         "nonce": "abc",
         "qop": "auth",
@@ -115,8 +115,8 @@ def test_encode_digest_with_md5_sess(digest_auth_mw: DigestAuthMiddleware) -> No
 
 
 def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw.handled_401 = True
-    digest_auth_mw.challenge = {
+    digest_auth_mw._handled_401 = True
+    digest_auth_mw._challenge = {
         "realm": "test",
         "nonce": "abc",
         "algorithm": "UNSUPPORTED",
@@ -126,13 +126,13 @@ def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> N
 
 def test_invalid_qop_rejected() -> None:
     auth = DigestAuthMiddleware("u", "p")
-    auth.challenge = {
+    auth._challenge = {
         "realm": "r",
         "nonce": "n",
         "qop": "badvalue",
         "algorithm": "MD5",
     }
-    auth.handled_401 = True
+    auth._handled_401 = True
     with pytest.raises(ClientError):
         auth._encode("GET", URL("http://x"), "")
 
@@ -196,15 +196,15 @@ def test_digest_response_exact_match(qop: str, algorithm: str) -> None:
 
     # Create the auth object
     auth = DigestAuthMiddleware(login, password)
-    auth.challenge = {
+    auth._challenge = {
         "realm": realm,
         "nonce": nonce,
         "qop": qop,
         "algorithm": algorithm,
     }
-    auth.handled_401 = True
-    auth.last_nonce_bytes = nonce.encode("utf-8")
-    auth.nonce_count = nc
+    auth._handled_401 = True
+    auth._last_nonce_bytes = nonce.encode("utf-8")
+    auth._nonce_count = nc
 
     # Patch cnonce manually by replacing the auth.encode() logic
     # We'll monkey-patch hashlib.sha1 to return a fixed cnonce if needed
@@ -288,8 +288,8 @@ def test_middleware_invalid_login() -> None:
 def test_escaping_quotes_in_auth_header() -> None:
     """Test that double quotes are properly escaped in auth header."""
     auth = DigestAuthMiddleware('user"with"quotes', "pass")
-    auth.handled_401 = True
-    auth.challenge = {
+    auth._handled_401 = True
+    auth._challenge = {
         "realm": 'realm"with"quotes',
         "nonce": 'nonce"with"quotes',
         "qop": "auth",
