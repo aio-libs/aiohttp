@@ -1102,6 +1102,30 @@ async def test_timeout_none(
         assert resp.status == 200
 
 
+async def test_connection_timeout_error(
+    aiohttp_client: AiohttpClient, mocker: MockerFixture
+) -> None:
+    """Test that ConnectionTimeoutError is raised when connection times out."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False, "Handler should not be called"
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    # Mock the connector's connect method to raise asyncio.TimeoutError
+    mock_connect = mocker.patch.object(
+        client.session._connector, "connect", side_effect=asyncio.TimeoutError()
+    )
+
+    with pytest.raises(aiohttp.ConnectionTimeoutError) as exc_info:
+        await client.get("/", timeout=aiohttp.ClientTimeout(connect=0.01))
+
+    assert "Connection timeout to host" in str(exc_info.value)
+    mock_connect.assert_called_once()
+
+
 async def test_readline_error_on_conn_close(aiohttp_client: AiohttpClient) -> None:
     loop = asyncio.get_event_loop()
 

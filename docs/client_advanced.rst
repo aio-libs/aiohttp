@@ -105,6 +105,218 @@ background.
    Started keeping the ``Authorization`` header during HTTP → HTTPS
    redirects when the host remains the same.
 
+.. _aiohttp-client-middleware:
+
+Client Middleware
+-----------------
+
+aiohttp client supports middleware to intercept requests and responses. This can be
+useful for authentication, logging, request/response modification, and retries.
+
+To create a middleware, you need to define an async function that accepts the request
+and a handler function, and returns the response. The middleware must match the
+:type:`ClientMiddlewareType` type signature::
+
+    import logging
+    from aiohttp import ClientSession, ClientRequest, ClientResponse, ClientHandlerType
+
+    _LOGGER = logging.getLogger(__name__)
+
+    async def my_middleware(
+        request: ClientRequest,
+        handler: ClientHandlerType
+    ) -> ClientResponse:
+        # Process request before sending
+        _LOGGER.debug(f"Request: {request.method} {request.url}")
+
+        # Call the next handler
+        response = await handler(request)
+
+        # Process response after receiving
+        _LOGGER.debug(f"Response: {response.status}")
+
+        return response
+
+You can apply middleware to a client session or to individual requests::
+
+    # Apply to all requests in a session
+    async with ClientSession(middlewares=(my_middleware,)) as session:
+        resp = await session.get('http://example.com')
+
+    # Apply to a specific request
+    async with ClientSession() as session:
+        resp = await session.get('http://example.com', middlewares=(my_middleware,))
+
+Middleware Examples
+^^^^^^^^^^^^^^^^^^^
+
+Here's a simple example showing request modification::
+
+    async def add_api_key_middleware(
+        request: ClientRequest,
+        handler: ClientHandlerType
+    ) -> ClientResponse:
+        # Add API key to all requests
+        request.headers['X-API-Key'] = 'my-secret-key'
+        return await handler(request)
+
+.. _client-middleware-retry:
+
+Middleware Retry Pattern
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Client middleware can implement retry logic internally using a ``while`` loop. This allows the middleware to:
+
+- Retry requests based on response status codes or other conditions
+- Modify the request between retries (e.g., refreshing tokens)
+- Maintain state across retry attempts
+- Control when to stop retrying and return the response
+
+This pattern is particularly useful for:
+
+- Refreshing authentication tokens after a 401 response
+- Switching to fallback servers or authentication methods
+- Adding or modifying headers based on error responses
+- Implementing back-off strategies with increasing delays
+
+The middleware can maintain state between retries to track which strategies have been tried and modify the request accordingly for the next attempt.
+
+Example: Retrying requests with middleware
+""""""""""""""""""""""""""""""""""""""""""
+
+::
+
+    import logging
+    import aiohttp
+
+    _LOGGER = logging.getLogger(__name__)
+
+    class RetryMiddleware:
+        def __init__(self, max_retries: int = 3):
+            self.max_retries = max_retries
+
+        async def __call__(
+            self,
+            request: ClientRequest,
+            handler: ClientHandlerType
+        ) -> ClientResponse:
+            retry_count = 0
+            use_fallback_auth = False
+
+            while True:
+                # Modify request based on retry state
+                if use_fallback_auth:
+                    request.headers['Authorization'] = 'Bearer fallback-token'
+
+                response = await handler(request)
+
+                # Retry on 401 errors with different authentication
+                if response.status == 401 and retry_count < self.max_retries:
+                    retry_count += 1
+                    use_fallback_auth = True
+                    _LOGGER.debug(f"Retrying with fallback auth (attempt {retry_count})")
+                    continue
+
+                # Retry on 5xx errors
+                if response.status >= 500 and retry_count < self.max_retries:
+                    retry_count += 1
+                    _LOGGER.debug(f"Retrying request (attempt {retry_count})")
+                    continue
+
+                return response
+
+Middleware Chaining
+^^^^^^^^^^^^^^^^^^^
+
+Multiple middlewares are applied in the order they are listed::
+
+    import logging
+
+    _LOGGER = logging.getLogger(__name__)
+
+    async def logging_middleware(
+        request: ClientRequest,
+        handler: ClientHandlerType
+    ) -> ClientResponse:
+        _LOGGER.debug(f"[LOG] {request.method} {request.url}")
+        return await handler(request)
+
+    async def auth_middleware(
+        request: ClientRequest,
+        handler: ClientHandlerType
+    ) -> ClientResponse:
+        request.headers['Authorization'] = 'Bearer token123'
+        return await handler(request)
+
+    # Middlewares are applied in order: logging -> auth -> request
+    async with ClientSession(middlewares=(logging_middleware, auth_middleware)) as session:
+        resp = await session.get('http://example.com')
+
+.. note::
+
+   Client middleware is a powerful feature but should be used judiciously.
+   Each middleware adds overhead to request processing. For simple use cases
+   like adding static headers, you can often use request parameters
+   (e.g., ``headers``) or session configuration instead.
+
+.. warning::
+
+   Using the same session from within middleware can cause infinite recursion if
+   the middleware makes HTTP requests using the same session that has the middleware
+   applied.
+
+   To avoid recursion, use one of these approaches:
+
+   **Recommended:** Pass ``middlewares=()`` to requests made inside the middleware to
+   disable middleware for those specific requests::
+
+       async def log_middleware(
+           request: ClientRequest,
+           handler: ClientHandlerType
+       ) -> ClientResponse:
+           async with request.session.post(
+               "https://logapi.example/log",
+               json={"url": str(request.url)},
+               middlewares=()  # This prevents infinite recursion
+           ) as resp:
+               pass
+
+           return await handler(request)
+
+   **Alternative:** Check the request contents (URL, path, host) to avoid applying
+   middleware to certain requests::
+
+       async def log_middleware(
+           request: ClientRequest,
+           handler: ClientHandlerType
+       ) -> ClientResponse:
+           if request.url.host != "logapi.example":  # Avoid infinite recursion
+               async with request.session.post(
+                   "https://logapi.example/log",
+                   json={"url": str(request.url)}
+               ) as resp:
+                   pass
+
+           return await handler(request)
+
+Middleware Type
+^^^^^^^^^^^^^^^
+
+.. type:: ClientMiddlewareType
+
+   Type alias for client middleware functions. Middleware functions must have this signature::
+
+      Callable[
+          [ClientRequest, ClientHandlerType],
+          Awaitable[ClientResponse]
+      ]
+
+.. type:: ClientHandlerType
+
+   Type alias for client request handler functions::
+
+      Callable[ClientRequest, Awaitable[ClientResponse]]
+
 Custom Cookies
 --------------
 
