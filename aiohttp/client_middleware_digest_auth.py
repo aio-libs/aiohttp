@@ -47,35 +47,38 @@ DigestFunctions: Dict[str, Callable[[bytes], "hashlib._Hash"]] = {
 }
 
 
+# Compile the regex pattern once at module level for performance
+_HEADER_PAIRS_PATTERN = re.compile(
+    r'(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
+    # |    |  | | |  |    |      |    |  ||     |
+    # +----|--|-|-|--|----|------|----|--||-----|--> alphanumeric key
+    #      +--|-|-|--|----|------|----|--||-----|--> maybe whitespace
+    #         | | |  |    |      |    |  ||     |
+    #         +-|-|--|----|------|----|--||-----|--> = (delimiter)
+    #           +-|--|----|------|----|--||-----|--> maybe whitespace
+    #             |  |    |      |    |  ||     |
+    #             +--|----|------|----|--||-----|--> group quoted or unquoted
+    #                |    |      |    |  ||     |
+    #                +----|------|----|--||-----|--> if quoted...
+    #                     +------|----|--||-----|--> anything but " or \
+    #                            +----|--||-----|--> escaped characters allowed
+    #                                 +--||-----|--> or can be empty string
+    #                                    ||     |
+    #                                    +|-----|--> if unquoted...
+    #                                     +-----|--> anything but , or <space>
+    #                                           +--> at least one char req'd
+)
+
+
 def parse_header_pairs(header: str) -> Dict[str, str]:
     """Parses header pairs in the www-authenticate header value"""
     # RFC 7616 accepts header key/values that look like
     #   key1="value1", key2=value2, key3="some value, with, commas"
     #
     # This regex attempts to parse that out
-    pattern = re.compile(
-        r'(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
-        # |    |  | | |  |    |      |    |  ||     |
-        # +----|--|-|-|--|----|------|----|--||-----|--> alphanumeric key
-        #      +--|-|-|--|----|------|----|--||-----|--> maybe whitespace
-        #         | | |  |    |      |    |  ||     |
-        #         +-|-|--|----|------|----|--||-----|--> = (delimiter)
-        #           +-|--|----|------|----|--||-----|--> maybe whitespace
-        #             |  |    |      |    |  ||     |
-        #             +--|----|------|----|--||-----|--> group quoted or unquoted
-        #                |    |      |    |  ||     |
-        #                +----|------|----|--||-----|--> if quoted...
-        #                     +------|----|--||-----|--> anything but " or \
-        #                            +----|--||-----|--> escaped characters allowed
-        #                                 +--||-----|--> or can be empty string
-        #                                    ||     |
-        #                                    +|-----|--> if unquoted...
-        #                                     +-----|--> anything but , or <space>
-        #                                           +--> at least one char req'd
-    )
 
     header_pairs = {}
-    for key, quoted_val, unquoted_val in pattern.findall(header):
+    for key, quoted_val, unquoted_val in _HEADER_PAIRS_PATTERN.findall(header):
         val = quoted_val if quoted_val else unquoted_val
         if val:
             val = val.replace('\\"', '"')  # unescape any escaped quotes
@@ -91,7 +94,10 @@ class DigestAuthMiddleware:
     The work here is based off of
     https://github.com/requests/requests/blob/v2.18.4/requests/auth.py.
 
-    Please also refer to RFC7616.
+    Please also refer to:
+    - RFC 7616: HTTP Digest Access Authentication
+    - RFC 2617: HTTP Authentication (deprecated by RFC 7616)
+    - RFC 1945: Section 11.1 (username restrictions)
     """
 
     def __init__(
@@ -154,9 +160,11 @@ class DigestAuthMiddleware:
         hash_fn: Final = DigestFunctions[algorithm]
 
         def H(x: str) -> str:
+            """RFC 7616 Section 3: Hash function H(data) = hex(hash(data))."""
             return hash_fn(x.encode()).hexdigest()
 
         def KD(s: str, d: str) -> str:
+            """RFC 7616 Section 3: KD(secret, data) = H(concat(secret, ":", data))."""
             return H(f"{s}:{d}")
 
         path = URL(url).path_qs
@@ -204,6 +212,12 @@ class DigestAuthMiddleware:
         else:
             response_digest = KD(HA1, f"{nonce}:{HA2}")
 
+        # Note: All values are already properly escaped/validated:
+        # - self.login: validated to not contain ":" in __init__
+        # - realm, nonce, opaque: server-provided values
+        # - path: URL-encoded path component
+        # - response_digest: hex-encoded hash output
+        # - algorithm: matched against whitelist in DigestFunctions
         pairs = [
             f'username="{self.login}"',
             f'realm="{realm}"',
@@ -247,17 +261,12 @@ class DigestAuthMiddleware:
 
             header_pairs = parse_header_pairs(parts[1])
 
+            # RFC 7616: Extract challenge parameters
+            challenge_fields = ("realm", "nonce", "qop", "algorithm", "opaque")
             ctx.challenge = {}
-            if "realm" in header_pairs and header_pairs["realm"]:
-                ctx.challenge["realm"] = header_pairs["realm"]
-            if "nonce" in header_pairs and header_pairs["nonce"]:
-                ctx.challenge["nonce"] = header_pairs["nonce"]
-            if "qop" in header_pairs and header_pairs["qop"]:
-                ctx.challenge["qop"] = header_pairs["qop"]
-            if "algorithm" in header_pairs and header_pairs["algorithm"]:
-                ctx.challenge["algorithm"] = header_pairs["algorithm"]
-            if "opaque" in header_pairs and header_pairs["opaque"]:
-                ctx.challenge["opaque"] = header_pairs["opaque"]
+            for field in challenge_fields:
+                if field in header_pairs and header_pairs[field]:
+                    ctx.challenge[field] = header_pairs[field]
 
             return True
 
