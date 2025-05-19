@@ -4,11 +4,12 @@ import hashlib
 import os
 import re
 import time
-from typing import Any, Callable, Dict, Final, Tuple, TypedDict
+from typing import Callable, Dict, Final, Tuple, TypedDict, Union
 
 from yarl import URL
 
-from . import client_exceptions, hdrs
+from . import hdrs
+from .client_exceptions import ClientError
 from .client_middlewares import ClientHandlerType
 from .client_reqrep import ClientRequest, ClientResponse
 
@@ -128,20 +129,26 @@ class DigestAuthMiddleware:
         self.challenge: DigestAuthChallenge = {}
         self.handled_401 = False
 
-    def _encode(self, method: str, url: URL, body: Any) -> str:
+    def _encode(self, method: str, url: URL, body: Union[bytes, str]) -> str:
         """Build digest header"""
         if not self.handled_401:
             return ""
 
         challenge = self.challenge
         if "realm" not in challenge:
-            raise client_exceptions.ClientError("Challenge is missing realm")
+            raise ClientError("Challenge is missing realm")
 
         if "nonce" not in challenge:
-            raise client_exceptions.ClientError("Challenge is missing nonce")
+            raise ClientError("Challenge is missing nonce")
 
+        # Empty realm values are allowed per RFC 7616 (SHOULD, not MUST, contain host name)
         realm: str = challenge.get("realm", "")
         nonce: str = challenge.get("nonce", "")
+
+        # Empty nonce values are not allowed as they are security-critical for replay protection
+        if not nonce:
+            raise ClientError("Challenge has empty nonce")
+
         nonce_bytes: bytes = nonce.encode("utf-8")
         qop_raw: str = challenge.get("qop", "")
         algorithm: str = challenge.get("algorithm", "MD5").upper()
@@ -153,9 +160,7 @@ class DigestAuthMiddleware:
             qop_list = [q.strip() for q in qop_raw.split(",") if q.strip()]
             valid_qops = {"auth", "auth-int"}.intersection(qop_list)
             if not valid_qops:
-                raise client_exceptions.ClientError(
-                    f"Unsupported qop value(s): {qop_raw}"
-                )
+                raise ClientError(f"Unsupported qop value(s): {qop_raw}")
 
             qop = "auth-int" if "auth-int" in valid_qops else "auth"
             qop_bytes = qop.encode("utf-8")
@@ -170,21 +175,19 @@ class DigestAuthMiddleware:
 
         def KD(s: bytes, d: bytes) -> bytes:
             """RFC 7616 Section 3: KD(secret, data) = H(concat(secret, ":", data))."""
-            return H(s + b":" + d)
+            return H(b":".join((s, d)))
 
         path = URL(url).path_qs
         realm_bytes = realm.encode("utf-8")
         A1 = b":".join((self.login_bytes, realm_bytes, self.password_bytes))
         A2 = f"{method.upper()}:{path}".encode()
         if qop == "auth-int":
-            if isinstance(body, bytes):
-                entity_str = body.decode("utf-8", errors="replace")
-            elif isinstance(body, str):
-                entity_str = body
+            if isinstance(body, str):
+                entity_str = body.encode("utf-8", errors="replace")
             else:
-                entity_str = ""
-            entity_hash = H(entity_str.encode())
-            A2 = A2 + b":" + entity_hash
+                entity_str = body
+            entity_hash = H(entity_str)
+            A2 = b":".join((A2, entity_hash))
 
         HA1 = H(A1)
         HA2 = H(A2)

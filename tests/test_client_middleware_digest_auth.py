@@ -5,7 +5,8 @@ from unittest import mock
 import pytest
 from yarl import URL
 
-from aiohttp import client_exceptions, hdrs
+from aiohttp import hdrs
+from aiohttp.client_exceptions import ClientError
 from aiohttp.client_middleware_digest_auth import (
     DigestAuthMiddleware,
     DigestFunctions,
@@ -69,8 +70,20 @@ def test_encode_without_challenge(digest_auth_mw: DigestAuthMiddleware) -> None:
 
 def test_encode_missing_realm_or_nonce(digest_auth_mw: DigestAuthMiddleware) -> None:
     digest_auth_mw.handled_401 = True
+
+    # Test with missing realm
     digest_auth_mw.challenge = {"nonce": "abc"}
-    with pytest.raises(Exception):
+    with pytest.raises(ClientError, match="Challenge is missing realm"):
+        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+
+    # Test with missing nonce
+    digest_auth_mw.challenge = {"realm": "test"}
+    with pytest.raises(ClientError, match="Challenge is missing nonce"):
+        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+
+    # Test with empty nonce
+    digest_auth_mw.challenge = {"realm": "test", "nonce": ""}
+    with pytest.raises(ClientError, match="Challenge has empty nonce"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
@@ -120,7 +133,7 @@ def test_invalid_qop_rejected() -> None:
         "algorithm": "MD5",
     }
     auth.handled_401 = True
-    with pytest.raises(client_exceptions.ClientError):
+    with pytest.raises(ClientError):
         auth._encode("GET", URL("http://x"), "")
 
 
