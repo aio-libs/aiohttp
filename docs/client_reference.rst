@@ -1474,7 +1474,7 @@ Response object
 
          Returns value is ``'application/octet-stream'`` if no
          Content-Type header present in HTTP headers according to
-         :rfc:`2616`. If the *Content-Type* header is invalid (e.g., ``jpg``
+         :rfc:`9110`. If the *Content-Type* header is invalid (e.g., ``jpg``
          instead of ``image/jpeg``), the value is ``text/plain`` by default
          according to :rfc:`2045`. To see the original header check
          ``resp.headers['CONTENT-TYPE']``.
