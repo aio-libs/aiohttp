@@ -132,17 +132,18 @@ class DigestAuthMiddleware:
         if not self.handled_401:
             return ""
 
-        if "realm" not in self.challenge:
+        challenge = self.challenge
+        if "realm" not in challenge:
             raise client_exceptions.ClientError("Challenge is missing realm")
 
-        if "nonce" not in self.challenge:
+        if "nonce" not in challenge:
             raise client_exceptions.ClientError("Challenge is missing nonce")
 
-        realm: str = self.challenge.get("realm", "")
-        nonce: str = self.challenge.get("nonce", "")
-        qop_raw: str = self.challenge.get("qop", "")
-        algorithm: str = self.challenge.get("algorithm", "MD5").upper()
-        opaque: str = self.challenge.get("opaque", "")
+        realm: str = challenge.get("realm", "")
+        nonce: str = challenge.get("nonce", "")
+        qop_raw: str = challenge.get("qop", "")
+        algorithm: str = challenge.get("algorithm", "MD5").upper()
+        opaque: str = challenge.get("opaque", "")
 
         qop: str = ""
         if qop_raw:
