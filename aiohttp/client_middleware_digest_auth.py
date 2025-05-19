@@ -119,11 +119,11 @@ class DigestAuthMiddleware:
             raise ValueError('A ":" is not allowed in username (RFC 1945#section-11.1)')
 
         self._login_str: Final[str] = login
-        self.login: Final[bytes] = login.encode("utf-8")
-        self.password: Final[bytes] = password.encode("utf-8")
+        self.login_bytes: Final[bytes] = login.encode("utf-8")
+        self.password_bytes: Final[bytes] = password.encode("utf-8")
 
         # Context attributes (previously in DigestAuthContext)
-        self.last_nonce = b""
+        self.last_nonce_bytes = b""
         self.nonce_count = 0
         self.challenge: DigestAuthChallenge = {}
         self.handled_401 = False
@@ -174,7 +174,7 @@ class DigestAuthMiddleware:
 
         path = URL(url).path_qs
         realm_bytes = realm.encode("utf-8")
-        A1 = self.login + b":" + realm_bytes + b":" + self.password
+        A1 = b":".join((self.login_bytes, realm_bytes, self.password_bytes))
         A2 = f"{method.upper()}:{path}".encode()
         if qop == "auth-int":
             if isinstance(body, bytes):
@@ -189,12 +189,12 @@ class DigestAuthMiddleware:
         HA1 = H(A1)
         HA2 = H(A2)
 
-        if nonce_bytes == self.last_nonce:
+        if nonce_bytes == self.last_nonce_bytes:
             self.nonce_count += 1
         else:
             self.nonce_count = 1
 
-        self.last_nonce = nonce_bytes
+        self.last_nonce_bytes = nonce_bytes
 
         ncvalue = f"{self.nonce_count:08x}"
         ncvalue_bytes = ncvalue.encode("utf-8")

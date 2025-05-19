@@ -86,7 +86,7 @@ def test_encode_digest_with_md5(digest_auth_mw: DigestAuthMiddleware) -> None:
     header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
     assert header.startswith("Digest ")
     assert 'username="user"' in header
-    assert 'algorithm="MD5"' in header
+    assert "algorithm=MD5" in header
 
 
 def test_encode_digest_with_md5_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
@@ -98,7 +98,7 @@ def test_encode_digest_with_md5_sess(digest_auth_mw: DigestAuthMiddleware) -> No
         "algorithm": "MD5-SESS",
     }
     header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
-    assert 'algorithm="MD5-SESS"' in header
+    assert "algorithm=MD5-SESS" in header
 
 
 def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> None:
@@ -190,7 +190,7 @@ def test_digest_response_exact_match(qop: str, algorithm: str) -> None:
         "algorithm": algorithm,
     }
     auth.handled_401 = True
-    auth.last_nonce = nonce
+    auth.last_nonce_bytes = nonce.encode("utf-8")
     auth.nonce_count = nc
 
     # Patch cnonce manually by replacing the auth.encode() logic
