@@ -415,7 +415,7 @@ class DigestAuthMiddleware:
         self._challenge = {}
         for field in CHALLENGE_FIELDS:
             if value := header_pairs.get(field):
-                self._challenge[field] = value
+                self._challenge[field] = value  # type: ignore[literal-required]
 
         # Return True only if we found at least one challenge parameter
         return bool(self._challenge)
