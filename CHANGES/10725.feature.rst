@@ -1,1 +1,6 @@
-Added a digest authentication helper class.
+Added a comprehensive HTTP Digest Authentication client middleware (DigestAuthMiddleware)
+that implements RFC 7616. The middleware supports all standard hash algorithms
+(MD5, SHA, SHA-256, SHA-512) with session variants, handles both 'auth' and
+'auth-int' quality of protection options, and automatically manages the
+authentication flow by intercepting 401 responses and retrying with proper
+credentials -- by :user:`feus4177`, :user:`TimMenninger`, and :user:`bdraco`.
