@@ -961,10 +961,7 @@ class TestProxy(unittest.TestCase):
             proxy_auth=aiohttp.helpers.BasicAuth("user", "pass"),
             loop=self.loop,
         )
-        assert isinstance(req.proxy_auth, aiohttp.helpers.BasicAuth)
-        self.assertEqual(req.proxy_auth.login, "user")
-        self.assertEqual(req.proxy_auth.password, "pass")
-        self.assertEqual(req.proxy_auth.encoding, "latin1")
+        self.assertEqual(("user", "pass", "latin1"), req.proxy_auth)
 
     def test_proxy_auth_property_default(self) -> None:
         req = aiohttp.ClientRequest(

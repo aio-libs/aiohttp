@@ -107,8 +107,8 @@ The client session supports the context manager protocol for self closing.
 
       Iterable of :class:`str` or :class:`~multidict.istr` (optional)
 
-   :param aiohttp.AuthBase auth: an object that represents HTTP Authorization
-                                 (optional). It will be included
+   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+                                  Authorization (optional). It will be included
                                  with any request. However, if the
                                  ``_base_url`` parameter is set, the request
                                  URL's origin must match the base URL's origin;
@@ -314,7 +314,7 @@ The client session supports the context manager protocol for self closing.
 
       An object that represents HTTP Basic Authorization.
 
-      :class:`~aiohttp.AuthBase` (optional)
+      :class:`~aiohttp.BasicAuth` (optional)
 
       .. versionadded:: 3.7
 
@@ -442,8 +442,8 @@ The client session supports the context manager protocol for self closing.
          Iterable of :class:`str` or :class:`~multidict.istr`
          (optional)
 
-      :param aiohttp.AuthBase auth: an object that represents HTTP
-                                    Authorization (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP
+                                     Basic Authorization (optional)
 
       :param bool allow_redirects: Whether to process redirects or not.
          When ``True``, redirects are followed (up to ``max_redirects`` times)
@@ -714,8 +714,8 @@ The client session supports the context manager protocol for self closing.
                       (``10.0`` seconds for the websocket to close).
                       ``None`` means no timeout will be used.
 
-      :param aiohttp.AuthBase auth: an object that represents HTTP
-                                    Authorization (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP
+                                     Basic Authorization (optional)
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False
@@ -919,7 +919,7 @@ certification chaining.
       Iterable of :class:`str` or :class:`~multidict.istr`
       (optional)
 
-   :param aiohttp.AuthBase auth: an object that represents HTTP
+   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
                                  Authorization (optional)
 
    :param bool allow_redirects: Whether to process redirects or not.
@@ -1987,33 +1987,6 @@ Utilities
       .. versionadded:: 3.2
 
 
-.. class:: AuthBase(login, password)
-
-   Abstract base class for HTTP authentication helpers.
-
-   :param str login: Username used for authentication.
-   :param str password: Password used for authentication.
-
-   :raises ValueError: If login or password is None or login contains a colon.
-
-   .. method:: encode(method, url, body) -> str
-
-      :param str method: HTTP method (e.g., GET, POST).
-      :param ~yarl.URL url: Full request URL.
-      :param body: Optional request body (used for `auth-int` qop).
-
-      :return: A complete `Authorization` header.
-
-      Abstract method to generate the `Authorization` header.
-
-   .. method:: authenticate(resp: ClientResponse) -> bool
-
-      :param ClientResponse response: The HTTP response to inspect.
-
-      :return: ``True`` if a retry is required to complete authentication.
-
-      Abstract method to handle 401 responses and extract challenges.
-
 
 .. class:: BasicAuth(login, password='', encoding='latin1')
 
@@ -2054,51 +2027,33 @@ Utilities
 
       :return: encoded authentication data, :class:`str`.
 
-   .. method:: authenticate(resp)
-
-      :param ClientResponse resp: Unused
-
-      :return: Always returns ``False`` because no request resending is required with basic authorization.
-
-      .. versionadded:: 3.12
 
 
-.. class:: DigestAuth(login, password)
+.. class:: DigestAuthMiddleware(login, password)
 
-   HTTP digest authentication helper.
+   HTTP digest authentication client middleware.
 
    :param str login: login
    :param str password: password
 
-   This class builds digest authentication headers, supporting both `auth` and
-   `auth-int` qop modes, and a variety of hashing algorithms.
+   This middleware supports HTTP digest authentication with both `auth` and
+   `auth-int` quality of protection (qop) modes, and a variety of hashing algorithms.
+
+   It automatically handles the digest authentication handshake by:
+
+   - Parsing 401 Unauthorized responses with `WWW-Authenticate: Digest` headers
+   - Generating appropriate `Authorization: Digest` headers on retry
+   - Maintaining nonce counts and challenge data per request
+
+   Usage::
+
+       digest_auth_middleware = DigestAuthMiddleware(login="user", password="pass")
+       async with ClientSession(middlewares=(digest_auth_middleware,)) as session:
+           async with session.get("http://protected.example.com") as resp:
+               # The middleware automatically handles the digest auth handshake
+               assert resp.status == 200
 
    .. versionadded:: 3.12
-
-   .. method:: encode(method, url, body) -> str
-
-      Generates the `Authorization: Digest ...` header using stored challenge data.
-
-      :param str method: HTTP method (e.g., GET, POST).
-      :param ~yarl.URL url: Full request URL.
-      :param body: Optional request body (used for `auth-int` qop).
-
-      :return: A complete `Authorization` header.
-
-      :raises ClientError: If the challenge is missing required fields or contains unsupported qop values.
-
-      .. versionadded:: 3.12
-
-   .. method:: authenticate(response) -> bool
-
-      Parses the `WWW-Authenticate` header from a 401 response and stores the challenge
-      in thread-local state.
-
-      :param ClientResponse response: The HTTP response to inspect.
-
-      :return: ``True`` if a retry is required to complete authentication.
-
-      .. versionadded:: 3.12
 
 
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])

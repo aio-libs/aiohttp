@@ -96,7 +96,6 @@ from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     EMPTY_BODY_METHODS,
-    AuthBase,
     BasicAuth,
     TimeoutHandle,
     frozen_dataclass_decorator,
@@ -176,7 +175,7 @@ class _RequestOptions(TypedDict, total=False):
     cookies: Union[LooseCookies, None]
     headers: Union[LooseHeaders, None]
     skip_auto_headers: Union[Iterable[str], None]
-    auth: Union[AuthBase, None]
+    auth: Union[BasicAuth, None]
     allow_redirects: bool
     max_redirects: int
     compress: Union[str, bool]
@@ -276,7 +275,7 @@ class ClientSession:
         proxy: Optional[StrOrURL] = None,
         proxy_auth: Optional[BasicAuth] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[AuthBase] = None,
+        auth: Optional[BasicAuth] = None,
         json_serialize: JSONEncoder = json.dumps,
         request_class: Type[ClientRequest] = ClientRequest,
         response_class: Type[ClientResponse] = ClientResponse,
@@ -435,7 +434,7 @@ class ClientSession:
         cookies: Optional[LooseCookies] = None,
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[AuthBase] = None,
+        auth: Optional[BasicAuth] = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
         compress: Union[str, bool] = False,
@@ -680,13 +679,6 @@ class ClientSession:
                             resp = await req.send(conn)
                             try:
                                 await resp.start(conn)
-                                # Try performing digest authentication. It returns
-                                # True if we need to resend the request, as
-                                # DigestAuth is a bit of a handshake. This is
-                                # a no-op for BasicAuth. If it
-                                if auth is not None and auth.authenticate(resp):
-                                    resp.close()
-                                    continue
                             except BaseException:
                                 resp.close()
                                 raise
@@ -863,7 +855,7 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: Optional[float] = None,
-        auth: Optional[AuthBase] = None,
+        auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
         params: Query = None,
         headers: Optional[LooseHeaders] = None,
@@ -911,7 +903,7 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: Optional[float] = None,
-        auth: Optional[AuthBase] = None,
+        auth: Optional[BasicAuth] = None,
         origin: Optional[str] = None,
         params: Query = None,
         headers: Optional[LooseHeaders] = None,
@@ -1286,7 +1278,7 @@ class ClientSession:
         return self._skip_auto_headers
 
     @property
-    def auth(self) -> Optional[AuthBase]:
+    def auth(self) -> Optional[BasicAuth]:  # type: ignore[misc]
         """An object that represents HTTP Basic Authorization"""
         return self._default_auth
 
@@ -1451,7 +1443,8 @@ else:
         headers - (optional) Dictionary of HTTP Headers to send with
         the request
         cookies - (optional) Dict object to send with the request
-        auth - (optional) something implementing AuthBase for authentication
+        auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
+        auth - aiohttp.helpers.BasicAuth
         allow_redirects - (optional) If set to False, do not follow
         redirects
         version - Request HTTP version.

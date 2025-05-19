@@ -47,12 +47,13 @@ from .client import (
     WSServerHandshakeError,
     request,
 )
+from .client_middleware_digest_auth import DigestAuthMiddleware
 from .client_middlewares import ClientHandlerType, ClientMiddlewareType
 from .compression_utils import set_zlib_backend
 from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
 from .formdata import FormData
-from .helpers import BasicAuth, ChainMapProxy, DigestAuth, ETag
+from .helpers import BasicAuth, ChainMapProxy, ETag
 from .http import (
     HttpVersion,
     HttpVersion10,
@@ -169,7 +170,7 @@ __all__: Tuple[str, ...] = (
     # helpers
     "BasicAuth",
     "ChainMapProxy",
-    "DigestAuth",
+    "DigestAuthMiddleware",
     "ETag",
     "set_zlib_backend",
     # http

@@ -14,15 +14,11 @@ import pytest
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
-from aiohttp import client_exceptions, helpers, web
+from aiohttp import helpers, web
 from aiohttp.helpers import (
     EMPTY_BODY_METHODS,
-    DigestAuth,
-    DigestAuthContext,
-    DigestFunctions,
     is_expected_content_type,
     must_be_empty_body,
-    parse_header_pairs,
     parse_http_date,
     should_remove_content_length,
 )
@@ -193,7 +189,7 @@ def test_basic_auth_decode_invalid_credentials() -> None:
         ),
     ),
 )
-def test_basic_auth_decode_blank_username(
+def test_basic_auth_decode_blank_username(  # type: ignore[misc]
     credentials: str, expected_auth: helpers.BasicAuth
 ) -> None:
     header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
@@ -632,7 +628,6 @@ def test_proxies_from_env_http_with_auth(url_input: str, expected_scheme: str) -
     assert ret.keys() == {expected_scheme}
     assert ret[expected_scheme].proxy == url.with_user(None)
     proxy_auth = ret[expected_scheme].proxy_auth
-    assert isinstance(proxy_auth, helpers.BasicAuth)
     assert proxy_auth is not None
     assert proxy_auth.login == "user"
     assert proxy_auth.password == "pass"
@@ -1110,7 +1105,7 @@ def test_netrc_from_home_does_not_raise_if_access_denied(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_present_in_netrc(
+def test_basicauth_present_in_netrc(  # type: ignore[misc]
     expected_auth: helpers.BasicAuth,
 ) -> None:
     """Test that netrc file contents are properly parsed into BasicAuth tuples"""
@@ -1173,254 +1168,3 @@ def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
 
     assert should_remove_content_length("CONNECT", 300) is False
     assert must_be_empty_body("CONNECT", 300) is False
-
-
-@pytest.mark.parametrize(
-    "header, expected",
-    [
-        (
-            'realm="testrealm", nonce="abc123", qop="auth"',
-            {"realm": "testrealm", "nonce": "abc123", "qop": "auth"},
-        ),
-        ("qop=auth, algorithm=MD5", {"qop": "auth", "algorithm": "MD5"}),
-        ('nonce="abc", opaque=""', {"nonce": "abc", "opaque": ""}),
-        (
-            'realm="a realm with spaces", qop=auth',
-            {"realm": "a realm with spaces", "qop": "auth"},
-        ),
-        (
-            'realm="escaped \\"quote\\"", qop=auth',
-            {"realm": 'escaped "quote"', "qop": "auth"},
-        ),
-        (' algorithm = MD5 , realm = "x" ', {"algorithm": "MD5", "realm": "x"}),
-    ],
-)
-def test_parse_key_value_header(header: str, expected: Dict[str, str]) -> None:
-    result = parse_header_pairs(header)
-    assert result == expected
-
-
-# ------------------- DigestAuth -----------------------------------
-
-
-@pytest.fixture
-def digest_auth() -> DigestAuth:
-    return DigestAuth("user", "pass")
-
-
-def test_context_initialization() -> None:
-    ctx = DigestAuthContext()
-    assert not ctx.init
-    ctx.init_thread()
-    assert ctx.nonce_count == 0
-    assert ctx.last_nonce == ""
-    assert ctx.challenge == {}
-    assert ctx.handled_401 is False
-    assert ctx.init is True
-
-
-def test_authenticate_valid_digest(digest_auth: DigestAuth) -> None:
-    response = mock.Mock()
-    response.status = 401
-    response.headers = {
-        "www-authenticate": 'Digest realm="test", nonce="abc", qop="auth", opaque="xyz", algorithm=MD5'
-    }
-
-    assert digest_auth.authenticate(response)
-    assert digest_auth.ctx.challenge["realm"] == "test"
-    assert digest_auth.ctx.challenge["nonce"] == "abc"
-    assert digest_auth.ctx.challenge["qop"] == "auth"
-    assert digest_auth.ctx.challenge["algorithm"] == "MD5"
-    assert digest_auth.ctx.challenge["opaque"] == "xyz"
-
-
-def test_authenticate_invalid_status(digest_auth: DigestAuth) -> None:
-    response = mock.Mock()
-    response.status = 200
-    response.headers = {}
-    assert not digest_auth.authenticate(response)
-
-
-def test_authenticate_already_handled(digest_auth: DigestAuth) -> None:
-    response = mock.Mock()
-    response.status = 401
-    response.headers = {
-        "www-authenticate": 'Digest realm="test", nonce="abc", qop="auth"'
-    }
-    digest_auth.ctx.init_thread()
-    digest_auth.ctx.handled_401 = True
-    assert not digest_auth.authenticate(response)
-
-
-def test_encode_without_challenge(digest_auth: DigestAuth) -> None:
-    digest_auth.ctx.init_thread()
-    digest_auth.ctx.handled_401 = False
-    assert digest_auth.encode("GET", URL("http://example.com/resource"), "") == ""
-
-
-def test_encode_missing_realm_or_nonce(digest_auth: DigestAuth) -> None:
-    digest_auth.ctx.init_thread()
-    digest_auth.ctx.handled_401 = True
-    digest_auth.ctx.challenge = {"nonce": "abc"}
-    with pytest.raises(Exception):
-        digest_auth.encode("GET", URL("http://example.com/resource"), "")
-
-
-def test_encode_digest_with_md5(digest_auth: DigestAuth) -> None:
-    digest_auth.ctx.init_thread()
-    digest_auth.ctx.handled_401 = True
-    digest_auth.ctx.challenge = {
-        "realm": "test",
-        "nonce": "abc",
-        "qop": "auth",
-        "algorithm": "MD5",
-        "opaque": "xyz",
-    }
-    header = digest_auth.encode("GET", URL("http://example.com/resource"), "")
-    assert header.startswith("Digest ")
-    assert 'username="user"' in header
-    assert 'algorithm="MD5"' in header
-
-
-def test_encode_digest_with_md5_sess(digest_auth: DigestAuth) -> None:
-    digest_auth.ctx.init_thread()
-    digest_auth.ctx.handled_401 = True
-    digest_auth.ctx.challenge = {
-        "realm": "test",
-        "nonce": "abc",
-        "qop": "auth",
-        "algorithm": "MD5-SESS",
-    }
-    header = digest_auth.encode("GET", URL("http://example.com/resource"), "")
-    assert 'algorithm="MD5-SESS"' in header
-
-
-def test_encode_unsupported_algorithm(digest_auth: DigestAuth) -> None:
-    digest_auth.ctx.init_thread()
-    digest_auth.ctx.handled_401 = True
-    digest_auth.ctx.challenge = {
-        "realm": "test",
-        "nonce": "abc",
-        "algorithm": "UNSUPPORTED",
-    }
-    assert digest_auth.encode("GET", URL("http://example.com/resource"), "") == ""
-
-
-def test_invalid_qop_rejected() -> None:
-    auth = DigestAuth("u", "p")
-    auth.ctx.init_thread()
-    auth.ctx.challenge = {
-        "realm": "r",
-        "nonce": "n",
-        "qop": "badvalue",
-        "algorithm": "MD5",
-    }
-    auth.ctx.handled_401 = True
-    with pytest.raises(client_exceptions.ClientError):
-        auth.encode("GET", URL("http://x"), "")
-
-
-def compute_expected_digest(
-    algorithm: str,
-    username: str,
-    password: str,
-    realm: str,
-    nonce: str,
-    uri: str,
-    method: str,
-    qop: str,
-    nc: str,
-    cnonce: str,
-    body: str = "",
-) -> str:
-    hash_fn = DigestFunctions[algorithm]
-
-    def H(x: str) -> str:
-        return hash_fn(x.encode()).hexdigest()
-
-    def KD(secret: str, data: str) -> str:
-        return H(f"{secret}:{data}")
-
-    A1 = f"{username}:{realm}:{password}"
-    HA1 = H(A1)
-
-    if algorithm.upper() == "MD5-SESS":
-        HA1 = H(f"{HA1}:{nonce}:{cnonce}")
-
-    A2 = f"{method}:{uri}"
-    if "auth-int" in qop:
-        entity_hash = H(body)
-        A2 = f"{A2}:{entity_hash}"
-    HA2 = H(A2)
-
-    if qop:
-        response = KD(HA1, f"{nonce}:{nc}:{cnonce}:{qop}:{HA2}")
-    else:
-        response = KD(HA1, f"{nonce}:{HA2}")
-
-    return response
-
-
-@pytest.mark.parametrize("qop", ["auth", "auth-int", "auth,auth-int"])
-@pytest.mark.parametrize("algorithm", list(DigestFunctions.keys()))
-def test_digest_response_exact_match(qop: str, algorithm: str) -> None:
-    # Fixed input values
-    login = "user"
-    password = "pass"
-    realm = "example.com"
-    nonce = "abc123nonce"
-    cnonce = "deadbeefcafebabe"
-    nc = 1
-    ncvalue = f"{nc+1:08x}"
-    method = "GET"
-    uri = "/secret"
-    body = "this is a body"
-    qop = "auth-int" if "auth-int" in qop else "auth"
-
-    # Create the auth object
-    auth = DigestAuth(login, password)
-    auth.ctx.init_thread()
-    auth.ctx.challenge = {
-        "realm": realm,
-        "nonce": nonce,
-        "qop": qop,
-        "algorithm": algorithm,
-    }
-    auth.ctx.handled_401 = True
-    auth.ctx.last_nonce = nonce
-    auth.ctx.nonce_count = nc
-
-    # Patch cnonce manually by replacing the auth.encode() logic
-    # We'll monkey-patch hashlib.sha1 to return a fixed cnonce if needed
-    import hashlib as real_hashlib
-
-    original_sha1 = real_hashlib.sha1
-
-    class FakeSHA1(mock.Mock):
-        def hexdigest(self) -> str:
-            return cnonce
-
-    real_hashlib.sha1 = lambda *_: FakeSHA1()
-
-    try:
-        header = auth.encode(method, URL(f"http://host{uri}"), body)
-    finally:
-        real_hashlib.sha1 = original_sha1
-
-    # Get expected digest
-    expected = compute_expected_digest(
-        algorithm=algorithm,
-        username=login,
-        password=password,
-        realm=realm,
-        nonce=nonce,
-        uri=uri,
-        method=method,
-        qop=qop,
-        nc=ncvalue,
-        cnonce=cnonce,
-        body=body,
-    )
-
-    # Check that the response digest is exactly correct
-    assert f'response="{expected}"' in header
