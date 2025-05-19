@@ -22,6 +22,7 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    TypedDict,
     Union,
 )
 
@@ -188,6 +189,18 @@ class ConnectionKey(NamedTuple):
     proxy: Optional[URL]
     proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
+ 
+ 
+class _ResponseParams(TypedDict):
+    timer: Optional[BaseTimerContext]
+    skip_payload: bool
+    read_until_eof: bool
+    auto_decompress: bool
+    read_timeout: Optional[float]
+    read_bufsize: int
+    timeout_ceil_threshold: float
+    max_line_size: int
+    max_field_size: int
 
 
 class ClientRequest:
@@ -230,6 +243,8 @@ class ClientRequest:
         method: str,
         url: URL,
         *,
+        response_params: _ResponseParams,
+        timeout: ClientTimeout,
         params: Query = None,
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
@@ -281,6 +296,8 @@ class ClientRequest:
         self.response_class: Type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
         self._ssl = ssl
+        self._response_params = response_params
+        self._timeout = timeout
         self.server_hostname = server_hostname
 
         if loop.get_debug():
