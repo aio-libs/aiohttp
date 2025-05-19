@@ -1472,14 +1472,13 @@ Response object
 
       .. note::
 
-         If *Content-Type* header is invalid, the value
-         is ``text/plain`` by default according to :rfc:`2045`.
-
-      .. note::
-
          Returns value is ``'application/octet-stream'`` if no
          Content-Type header present in HTTP headers according to
-         :rfc:`2616`. To make sure Content-Type header is not present in
+         :rfc:`2616`. If *Content-Type* header is invalid (e.g., ``jpg``
+         instead of ``image/jpeg``), the value is ``text/plain`` by default
+         according to :rfc:`2045`.
+
+         To make sure Content-Type header is not present in
          the server reply, use :attr:`headers` or :attr:`raw_headers`, e.g.
          ``'CONTENT-TYPE' not in resp.headers``.
 
