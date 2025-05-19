@@ -2,9 +2,9 @@
 Digest authentication middleware for aiohttp client.
 
 This middleware implements HTTP Digest Authentication according to RFC 7616,
-providing a more secure alternative to Basic Authentication. It supports MD5,
-SHA, SHA256, and SHA512 hash algorithms, as well as both 'auth' and 'auth-int'
-quality of protection (qop) options.
+providing a more secure alternative to Basic Authentication. It supports all
+standard hash algorithms including MD5, SHA, SHA-256, SHA-512 and their session
+variants, as well as both 'auth' and 'auth-int' quality of protection (qop) options.
 
 Example usage:
     ```python
@@ -49,8 +49,15 @@ DigestFunctions: Dict[str, Callable[[bytes], "hashlib._Hash"]] = {
     "MD5": hashlib.md5,
     "MD5-SESS": hashlib.md5,
     "SHA": hashlib.sha1,
+    "SHA-SESS": hashlib.sha1,
     "SHA256": hashlib.sha256,
+    "SHA256-SESS": hashlib.sha256,
+    "SHA-256": hashlib.sha256,
+    "SHA-256-SESS": hashlib.sha256,
     "SHA512": hashlib.sha512,
+    "SHA512-SESS": hashlib.sha512,
+    "SHA-512": hashlib.sha512,
+    "SHA-512-SESS": hashlib.sha512,
 }
 
 
@@ -87,7 +94,8 @@ CHALLENGE_FIELDS: Final[Tuple[str, ...]] = (
 )
 
 # Supported digest authentication algorithms
-SUPPORTED_ALGORITHMS: Final[Tuple[str, ...]] = tuple(DigestFunctions.keys())
+# Use a tuple of sorted keys for predictable documentation and error messages
+SUPPORTED_ALGORITHMS: Final[Tuple[str, ...]] = tuple(sorted(DigestFunctions.keys()))
 
 # RFC 7616: Fields that require quoting in the Digest auth header
 # These fields must be enclosed in double quotes in the Authorization header.
@@ -145,7 +153,11 @@ class DigestAuthMiddleware:
 
     Features:
     - Handles all aspects of Digest authentication handshake automatically
-    - Supports MD5, MD5-SESS, SHA, SHA256, and SHA512 hash algorithms
+    - Supports all standard hash algorithms:
+      - MD5, MD5-SESS
+      - SHA, SHA-SESS
+      - SHA256, SHA256-SESS, SHA-256, SHA-256-SESS
+      - SHA512, SHA512-SESS, SHA-512, SHA-512-SESS
     - Supports 'auth' and 'auth-int' quality of protection modes
     - Properly handles quoted strings and parameter parsing
     - Includes replay attack protection with client nonce count tracking
@@ -195,6 +207,12 @@ class DigestAuthMiddleware:
         3. Uses dictionaries to organize required and optional header fields
         4. Properly quotes fields according to RFC specifications
         5. Joins the header fields with the correct formatting
+
+        Supports all standard digest authentication algorithms including:
+        - MD5, MD5-SESS
+        - SHA, SHA-SESS
+        - SHA256, SHA256-SESS, SHA-256, SHA-256-SESS
+        - SHA512, SHA512-SESS, SHA-512, SHA-512-SESS
 
         Args:
             method: The HTTP method (GET, POST, etc.)
@@ -301,7 +319,8 @@ class DigestAuthMiddleware:
         ).hexdigest()[:16]
         cnonce_bytes = cnonce.encode("utf-8")
 
-        if algorithm == "MD5-SESS":
+        # All *-SESS algorithms need special handling
+        if algorithm.upper().endswith("-SESS"):
             HA1 = H(b":".join((HA1, nonce_bytes, cnonce_bytes)))
 
         if qop:

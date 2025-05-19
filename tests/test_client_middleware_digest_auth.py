@@ -114,6 +114,39 @@ def test_encode_digest_with_md5_sess(digest_auth_mw: DigestAuthMiddleware) -> No
     assert "algorithm=MD5-SESS" in header
 
 
+def test_encode_digest_with_sha_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
+    digest_auth_mw._challenge = {
+        "realm": "test",
+        "nonce": "abc",
+        "qop": "auth",
+        "algorithm": "SHA-SESS",
+    }
+    header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+    assert "algorithm=SHA-SESS" in header
+
+
+def test_encode_digest_with_sha256_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
+    digest_auth_mw._challenge = {
+        "realm": "test",
+        "nonce": "abc",
+        "qop": "auth",
+        "algorithm": "SHA-256-SESS",
+    }
+    header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+    assert "algorithm=SHA-256-SESS" in header
+
+
+def test_encode_digest_with_sha512_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
+    digest_auth_mw._challenge = {
+        "realm": "test",
+        "nonce": "abc",
+        "qop": "auth",
+        "algorithm": "SHA-512-SESS",
+    }
+    header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+    assert "algorithm=SHA-512-SESS" in header
+
+
 def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> None:
     """Test that unsupported algorithm raises ClientError."""
     digest_auth_mw._challenge = {
@@ -162,7 +195,7 @@ def compute_expected_digest(
     A1 = f"{username}:{realm}:{password}"
     HA1 = H(A1)
 
-    if algorithm.upper() == "MD5-SESS":
+    if algorithm.upper().endswith("-SESS"):
         HA1 = H(f"{HA1}:{nonce}:{cnonce}")
 
     A2 = f"{method}:{uri}"
@@ -180,7 +213,7 @@ def compute_expected_digest(
 
 
 @pytest.mark.parametrize("qop", ["auth", "auth-int", "auth,auth-int"])
-@pytest.mark.parametrize("algorithm", list(DigestFunctions.keys()))
+@pytest.mark.parametrize("algorithm", sorted(DigestFunctions.keys()))
 def test_digest_response_exact_match(qop: str, algorithm: str) -> None:
     # Fixed input values
     login = "user"
