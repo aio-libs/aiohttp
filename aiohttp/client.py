@@ -622,9 +622,23 @@ class ClientSession:
                                 get_env_proxy_for_url, url
                             )
 
+                    response_params = {
+                        "timer": timer,
+                        "skip_payload": method in EMPTY_BODY_METHODS,
+                        "read_until_eof": read_until_eof,
+                        "auto_decompress": auto_decompress,
+                        "read_timeout": real_timeout.sock_read,
+                        "read_bufsize": read_bufsize,
+                        "timeout_ceil_threshold": self._connector._timeout_ceil_threshold,
+                        "max_line_size": max_line_size,
+                        "max_field_size": max_field_size,
+                    }
+
                     req = self._request_class(
                         method,
                         url,
+                        response_params=response_params,
+                        timeout=real_timeout,
                         params=params,
                         headers=headers,
                         skip_auto_headers=skip_headers,
@@ -656,7 +670,7 @@ class ClientSession:
                         assert self._connector is not None
                         try:
                             conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
+                                req, traces=traces, timeout=req._timeout
                             )
                         except asyncio.TimeoutError as exc:
                             raise ConnectionTimeoutError(
@@ -664,17 +678,7 @@ class ClientSession:
                             ) from exc
 
                         assert conn.protocol is not None
-                        conn.protocol.set_response_params(
-                            timer=timer,
-                            skip_payload=req.method in EMPTY_BODY_METHODS,
-                            read_until_eof=read_until_eof,
-                            auto_decompress=auto_decompress,
-                            read_timeout=real_timeout.sock_read,
-                            read_bufsize=read_bufsize,
-                            timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
-                            max_line_size=max_line_size,
-                            max_field_size=max_field_size,
-                        )
+                        conn.protocol.set_response_params(**req._response_params)
                         try:
                             resp = await req.send(conn)
                             try:
