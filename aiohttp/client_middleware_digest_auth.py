@@ -70,6 +70,16 @@ _HEADER_PAIRS_PATTERN = re.compile(
 )
 
 
+def escape_quotes(value: str) -> str:
+    """Escape double quotes for HTTP header values."""
+    return value.replace('"', '\\"')
+
+
+def unescape_quotes(value: str) -> str:
+    """Unescape double quotes in HTTP header values."""
+    return value.replace('\\"', '"')
+
+
 def parse_header_pairs(header: str) -> Dict[str, str]:
     """Parses header pairs in the www-authenticate header value"""
     # RFC 7616 accepts header key/values that look like
@@ -79,7 +89,7 @@ def parse_header_pairs(header: str) -> Dict[str, str]:
 
     return {
         key: (
-            (quoted_val or unquoted_val).replace('\\"', '"')
+            unescape_quotes(quoted_val or unquoted_val)
             if quoted_val or unquoted_val
             else ""
         )
@@ -212,22 +222,27 @@ class DigestAuthMiddleware:
         else:
             response_digest = KD(HA1, f"{nonce}:{HA2}")
 
-        # Note: All values are already properly escaped/validated:
-        # - self.login: validated to not contain ":" in __init__
-        # - realm, nonce, opaque: server-provided values
-        # - path: URL-encoded path component
-        # - response_digest: hex-encoded hash output
+        # Escape double quotes in values that might contain them
+        def escape_quotes(value: str) -> str:
+            """Escape double quotes for HTTP header values."""
+            return value.replace('"', '\\"')
+
+        # Note: Values that need escaping vs those that don't:
+        # - self.login: user-provided, needs escaping
+        # - realm, nonce, opaque: server-provided, needs escaping
+        # - path: URL-encoded path component (quotes become %22)
+        # - response_digest: hex-encoded hash output (only 0-9a-f)
         # - algorithm: matched against whitelist in DigestFunctions
         pairs = [
-            f'username="{self.login}"',
-            f'realm="{realm}"',
-            f'nonce="{nonce}"',
+            f'username="{escape_quotes(self.login)}"',
+            f'realm="{escape_quotes(realm)}"',
+            f'nonce="{escape_quotes(nonce)}"',
             f'uri="{path}"',
             f'response="{response_digest}"',
             f'algorithm="{algorithm}"',
         ]
         if opaque:
-            pairs.append(f'opaque="{opaque}"')
+            pairs.append(f'opaque="{escape_quotes(opaque)}"')
         if qop:
             pairs.append(f'qop="{qop}"')
             pairs.append(f"nc={ncvalue}")

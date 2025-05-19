@@ -287,6 +287,28 @@ def test_middleware_invalid_login() -> None:
         DigestAuthMiddleware("user:name", "pass")
 
 
+def test_escaping_quotes_in_auth_header() -> None:
+    """Test that double quotes are properly escaped in auth header."""
+    auth = DigestAuthMiddleware('user"with"quotes', "pass")
+    ctx = auth._get_context()
+    ctx.handled_401 = True
+    ctx.challenge = {
+        "realm": 'realm"with"quotes',
+        "nonce": 'nonce"with"quotes',
+        "qop": "auth",
+        "algorithm": "MD5",
+        "opaque": 'opaque"with"quotes',
+    }
+
+    header = auth._encode("GET", URL("http://example.com/path"), "")
+
+    # Check that quotes are escaped in the header
+    assert 'username="user\\"with\\"quotes"' in header
+    assert 'realm="realm\\"with\\"quotes"' in header
+    assert 'nonce="nonce\\"with\\"quotes"' in header
+    assert 'opaque="opaque\\"with\\"quotes"' in header
+
+
 async def test_middleware_retry_on_401(aiohttp_server) -> None:
     """Test that the middleware retries on 401 errors."""
     request_count = 0
