@@ -5,21 +5,6 @@ This middleware implements HTTP Digest Authentication according to RFC 7616,
 providing a more secure alternative to Basic Authentication. It supports all
 standard hash algorithms including MD5, SHA, SHA-256, SHA-512 and their session
 variants, as well as both 'auth' and 'auth-int' quality of protection (qop) options.
-
-Example usage:
-    ```python
-    from aiohttp import ClientSession
-    from aiohttp.client_middleware_digest_auth import DigestAuthMiddleware
-
-    # Create the digest auth middleware
-    auth = DigestAuthMiddleware("username", "password")
-
-    # Use it with a ClientSession
-    async with ClientSession(middlewares=(auth,)) as session:
-        async with session.get("http://example.com/protected") as resp:
-            # The middleware handles 401 responses and auth automatically
-            text = await resp.text()
-    ```
 """
 
 import hashlib
@@ -129,7 +114,8 @@ def unescape_quotes(value: str) -> str:
 
 
 def parse_header_pairs(header: str) -> Dict[str, str]:
-    """Parse key-value pairs from WWW-Authenticate or similar HTTP headers.
+    """
+    Parse key-value pairs from WWW-Authenticate or similar HTTP headers.
 
     This function handles the complex format of WWW-Authenticate header values,
     supporting both quoted and unquoted values, proper handling of commas in
@@ -207,7 +193,8 @@ class DigestAuthMiddleware:
         self._challenge: DigestAuthChallenge = {}
 
     def _encode(self, method: str, url: URL, body: Union[bytes, str]) -> str:
-        """Build digest authorization header using a template-based approach.
+        """
+        Build digest authorization header using a template-based approach.
 
         This method constructs a properly formatted Digest Authorization header
         according to RFC 7616. It uses a template-based approach to organize
@@ -236,6 +223,7 @@ class DigestAuthMiddleware:
         Raises:
             ClientError: If the challenge is missing required parameters or
                          contains unsupported values
+
         """
         challenge = self._challenge
         if "realm" not in challenge:
@@ -442,10 +430,3 @@ class DigestAuthMiddleware:
                 continue  # Retry the request with digest auth
 
             return response
-
-
-# Example usage:
-# >>> auth = DigestAuthMiddleware("user", "pass")
-# >>> async with ClientSession(middlewares=(auth,)) as session:
-# ...     async with session.get("http://example.com") as resp:
-# ...         assert resp.status == 200
