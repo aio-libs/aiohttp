@@ -33,7 +33,7 @@ coverage==7.8.0
     #   pytest-cov
 cryptography==45.0.2
     # via trustme
-exceptiongroup==1.2.2
+exceptiongroup==1.3.0
     # via pytest
 execnet==2.1.1
     # via pytest-xdist
@@ -127,6 +127,7 @@ trustme==1.2.1 ; platform_machine != "i686"
     # via -r requirements/test.in
 typing-extensions==4.13.2
     # via
+    #   exceptiongroup
     #   multidict
     #   mypy
     #   pydantic
