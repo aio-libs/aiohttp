@@ -1,6 +1,7 @@
 """Test digest authentication middleware for aiohttp client."""
 
 import hashlib
+from typing import Optional, Union
 from unittest import mock
 
 import pytest
@@ -20,6 +21,48 @@ from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 from aiohttp.web_exceptions import HTTPUnauthorized
 
+
+def make_digest_unauthorized_response(
+    realm: str = "test-realm",
+    nonce: str = "testnonce",
+    qop: Optional[str] = None,
+    algorithm: str = "MD5",
+    opaque: Optional[str] = None,
+) -> HTTPUnauthorized:
+    """
+    Create an HTTPUnauthorized response with a Digest authentication challenge.
+
+    Args:
+        realm: The authentication realm
+        nonce: The server nonce
+        qop: Quality of protection (auth, auth-int, etc.), omitted if None
+        algorithm: The hashing algorithm to use
+        opaque: The opaque value, omitted if None
+
+    Returns:
+        HTTPUnauthorized response with appropriate WWW-Authenticate header
+
+    """
+    challenge_parts = [
+        f'Digest realm="{realm}"',
+        f'nonce="{nonce}"',
+    ]
+
+    if qop is not None:
+        challenge_parts.append(f'qop="{qop}"')
+
+    if algorithm is not None:
+        challenge_parts.append(f"algorithm={algorithm}")
+
+    if opaque is not None:
+        challenge_parts.append(f'opaque="{opaque}"')
+
+    return HTTPUnauthorized(
+        headers={"WWW-Authenticate": ", ".join(challenge_parts)},
+        text="Unauthorized",
+    )
+
+
 # ------------------- DigestAuth Tests -----------------------------------
 
 
@@ -28,63 +71,89 @@ def digest_auth_mw() -> DigestAuthMiddleware:
     return DigestAuthMiddleware("user", "pass")
 
 
-async def test_authenticate_valid_digest(digest_auth_mw: DigestAuthMiddleware) -> None:
-    response = mock.Mock(spec=ClientResponse)
-    response.status = 401
-    response.headers = {
-        "www-authenticate": 'Digest realm="test", nonce="abc", qop="auth", opaque="xyz", algorithm=MD5'
-    }
-
-    assert digest_auth_mw._authenticate(response)
-    assert digest_auth_mw._challenge["realm"] == "test"
-    assert digest_auth_mw._challenge["nonce"] == "abc"
-    assert digest_auth_mw._challenge["qop"] == "auth"
-    assert digest_auth_mw._challenge["algorithm"] == "MD5"
-    assert digest_auth_mw._challenge["opaque"] == "xyz"
-
-
-async def test_authenticate_invalid_status(
+@pytest.mark.parametrize(
+    ("response_status", "headers", "expected_result", "expected_challenge"),
+    [
+        # Valid digest with all fields
+        (
+            401,
+            {
+                "www-authenticate": 'Digest realm="test", nonce="abc", qop="auth", opaque="xyz", algorithm=MD5'
+            },
+            True,
+            {
+                "realm": "test",
+                "nonce": "abc",
+                "qop": "auth",
+                "algorithm": "MD5",
+                "opaque": "xyz",
+            },
+        ),
+        # Valid digest without opaque
+        (
+            401,
+            {"www-authenticate": 'Digest realm="test", nonce="abc", qop="auth"'},
+            True,
+            {"realm": "test", "nonce": "abc", "qop": "auth"},
+        ),
+        # Non-401 status
+        (200, {}, False, {}),  # No challenge should be set
+    ],
+)
+async def test_authenticate_scenarios(
     digest_auth_mw: DigestAuthMiddleware,
+    response_status: int,
+    headers: dict,
+    expected_result: bool,
+    expected_challenge: dict,
 ) -> None:
+    """Test different authentication scenarios."""
     response = mock.Mock(spec=ClientResponse)
-    response.status = 200
-    response.headers = {}
-    assert not digest_auth_mw._authenticate(response)
+    response.status = response_status
+    response.headers = headers
+
+    result = digest_auth_mw._authenticate(response)
+    assert result == expected_result
+
+    if expected_result:
+        for key, value in expected_challenge.items():
+            assert digest_auth_mw._challenge[key] == value
 
 
-async def test_authenticate_multiple_attempts(
+@pytest.mark.parametrize(
+    ("challenge", "expected_error", "description"),
+    [
+        (
+            {},
+            "Malformed Digest auth challenge: Missing 'realm' parameter",
+            "No challenge set",
+        ),
+        (
+            {"nonce": "abc"},
+            "Malformed Digest auth challenge: Missing 'realm' parameter",
+            "Missing realm",
+        ),
+        (
+            {"realm": "test"},
+            "Malformed Digest auth challenge: Missing 'nonce' parameter",
+            "Missing nonce",
+        ),
+        (
+            {"realm": "test", "nonce": ""},
+            "Security issue: Digest auth challenge contains empty 'nonce' value",
+            "Empty nonce",
+        ),
+    ],
+)
+def test_encode_validation_errors(
     digest_auth_mw: DigestAuthMiddleware,
+    challenge: dict,
+    expected_error: str,
+    description: str,
 ) -> None:
-    response = mock.Mock(spec=ClientResponse)
-    response.status = 401
-    response.headers = {
-        "www-authenticate": 'Digest realm="test", nonce="abc", qop="auth"'
-    }
-    assert digest_auth_mw._authenticate(response)
-
-
-def test_encode_without_challenge(digest_auth_mw: DigestAuthMiddleware) -> None:
-    # With no challenge set, _encode should raise an error about missing realm
-    with pytest.raises(
-        ClientError, match="Malformed Digest auth challenge: Missing 'realm' parameter"
-    ):
-        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
-
-
-def test_encode_missing_realm_or_nonce(digest_auth_mw: DigestAuthMiddleware) -> None:
-    # Test with missing realm
-    digest_auth_mw._challenge = {"nonce": "abc"}
-    with pytest.raises(ClientError, match="Missing 'realm' parameter"):
-        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
-
-    # Test with missing nonce
-    digest_auth_mw._challenge = {"realm": "test"}
-    with pytest.raises(ClientError, match="Missing 'nonce' parameter"):
-        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
-
-    # Test with empty nonce
-    digest_auth_mw._challenge = {"realm": "test", "nonce": ""}
-    with pytest.raises(ClientError, match="empty 'nonce' value"):
+    """Test validation errors when encoding digest auth headers."""
+    digest_auth_mw._challenge = challenge
+    with pytest.raises(ClientError, match=expected_error):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
@@ -102,48 +171,21 @@ def test_encode_digest_with_md5(digest_auth_mw: DigestAuthMiddleware) -> None:
     assert "algorithm=MD5" in header
 
 
-def test_encode_digest_with_md5_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
+@pytest.mark.parametrize(
+    "algorithm", ["MD5-SESS", "SHA-SESS", "SHA-256-SESS", "SHA-512-SESS"]
+)
+def test_encode_digest_with_sess_algorithms(
+    digest_auth_mw: DigestAuthMiddleware, algorithm: str
+) -> None:
+    """Test that all session-based digest algorithms work correctly."""
     digest_auth_mw._challenge = {
         "realm": "test",
         "nonce": "abc",
         "qop": "auth",
-        "algorithm": "MD5-SESS",
+        "algorithm": algorithm,
     }
     header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
-    assert "algorithm=MD5-SESS" in header
-
-
-def test_encode_digest_with_sha_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw._challenge = {
-        "realm": "test",
-        "nonce": "abc",
-        "qop": "auth",
-        "algorithm": "SHA-SESS",
-    }
-    header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
-    assert "algorithm=SHA-SESS" in header
-
-
-def test_encode_digest_with_sha256_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw._challenge = {
-        "realm": "test",
-        "nonce": "abc",
-        "qop": "auth",
-        "algorithm": "SHA-256-SESS",
-    }
-    header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
-    assert "algorithm=SHA-256-SESS" in header
-
-
-def test_encode_digest_with_sha512_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw._challenge = {
-        "realm": "test",
-        "nonce": "abc",
-        "qop": "auth",
-        "algorithm": "SHA-512-SESS",
-    }
-    header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
-    assert "algorithm=SHA-512-SESS" in header
+    assert f"algorithm={algorithm}" in header
 
 
 def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> None:
@@ -213,7 +255,16 @@ def compute_expected_digest(
 
 @pytest.mark.parametrize("qop", ["auth", "auth-int", "auth,auth-int"])
 @pytest.mark.parametrize("algorithm", sorted(DigestFunctions.keys()))
-def test_digest_response_exact_match(qop: str, algorithm: str) -> None:
+@pytest.mark.parametrize(
+    ("body", "body_str"),
+    [
+        ("this is a body", "this is a body"),  # String case
+        (b"this is a body", "this is a body"),  # Bytes case
+    ],
+)
+def test_digest_response_exact_match(
+    qop: str, algorithm: str, body: Union[str, bytes], body_str: str
+) -> None:
     # Fixed input values
     login = "user"
     password = "pass"
@@ -224,7 +275,6 @@ def test_digest_response_exact_match(qop: str, algorithm: str) -> None:
     ncvalue = f"{nc+1:08x}"
     method = "GET"
     uri = "/secret"
-    body = "this is a body"
     qop = "auth-int" if "auth-int" in qop else "auth"
 
     # Create the auth object
@@ -257,76 +307,74 @@ def test_digest_response_exact_match(qop: str, algorithm: str) -> None:
         qop=qop,
         nc=ncvalue,
         cnonce=cnonce,
-        body=body,
+        body=body_str,
     )
 
     # Check that the response digest is exactly correct
     assert f'response="{expected}"' in header
 
 
-def test_parse_header_pairs_quoted() -> None:
-    header = 'realm="example.com", nonce="12345", qop="auth"'
+@pytest.mark.parametrize(
+    ("header", "expected_result", "description"),
+    [
+        # Normal quoted values
+        (
+            'realm="example.com", nonce="12345", qop="auth"',
+            {"realm": "example.com", "nonce": "12345", "qop": "auth"},
+            "Fully quoted header",
+        ),
+        # Unquoted values
+        (
+            "realm=example.com, nonce=12345, qop=auth",
+            {"realm": "example.com", "nonce": "12345", "qop": "auth"},
+            "Unquoted header",
+        ),
+        # Mixed quoted/unquoted with commas in quoted values
+        (
+            'realm="ex,ample", nonce=12345, qop="auth", domain="/test"',
+            {"realm": "ex,ample", "nonce": "12345", "qop": "auth", "domain": "/test"},
+            "Mixed quoted/unquoted with commas in quoted values",
+        ),
+        # Header with scheme
+        (
+            'Digest realm="example.com", nonce="12345", qop="auth"',
+            {"realm": "example.com", "nonce": "12345", "qop": "auth"},
+            "Header with scheme",
+        ),
+        # No spaces after commas
+        (
+            'realm="test",nonce="123",qop="auth"',
+            {"realm": "test", "nonce": "123", "qop": "auth"},
+            "No spaces after commas",
+        ),
+        # Extra whitespace
+        (
+            'realm  =  "test"  ,  nonce  =  "123"',
+            {"realm": "test", "nonce": "123"},
+            "Extra whitespace",
+        ),
+        # Escaped quotes
+        (
+            'realm="test\\"realm", nonce="123"',
+            {"realm": 'test"realm', "nonce": "123"},
+            "Escaped quotes",
+        ),
+        # Single quotes (treated as regular chars)
+        (
+            "realm='test', nonce=123",
+            {"realm": "'test'", "nonce": "123"},
+            "Single quotes (treated as regular chars)",
+        ),
+        # Empty header
+        ("", {}, "Empty header"),
+    ],
+)
+def test_parse_header_pairs(
+    header: str, expected_result: dict, description: str
+) -> None:
+    """Test parsing HTTP header pairs with various formats."""
     result = parse_header_pairs(header)
-    assert result["realm"] == "example.com"
-    assert result["nonce"] == "12345"
-    assert result["qop"] == "auth"
-
-
-def test_parse_header_pairs_unquoted() -> None:
-    header = "realm=example.com, nonce=12345, qop=auth"
-    result = parse_header_pairs(header)
-    assert result["realm"] == "example.com"
-    assert result["nonce"] == "12345"
-    assert result["qop"] == "auth"
-
-
-def test_parse_header_mixed() -> None:
-    header = 'realm="ex,ample", nonce=12345, qop="auth", domain="/test"'
-    result = parse_header_pairs(header)
-    assert result["realm"] == "ex,ample"
-    assert result["nonce"] == "12345"
-    assert result["qop"] == "auth"
-    assert result["domain"] == "/test"
-
-
-def test_parse_header_with_scheme() -> None:
-    """Test parsing header that includes the scheme."""
-    header = 'Digest realm="example.com", nonce="12345", qop="auth"'
-    result = parse_header_pairs(header)
-    assert result["realm"] == "example.com"
-    assert result["nonce"] == "12345"
-    assert result["qop"] == "auth"
-
-
-def test_parse_header_edge_cases() -> None:
-    """Test various edge cases for header parsing."""
-    # Empty header
-    assert parse_header_pairs("") == {}
-
-    # No space after comma
-    header = 'realm="test",nonce="123",qop="auth"'
-    result = parse_header_pairs(header)
-    assert result["realm"] == "test"
-    assert result["nonce"] == "123"
-    assert result["qop"] == "auth"
-
-    # Extra spaces
-    header = 'realm  =  "test"  ,  nonce  =  "123"'
-    result = parse_header_pairs(header)
-    assert result["realm"] == "test"
-    assert result["nonce"] == "123"
-
-    # Escaped quotes
-    header = 'realm="test\\"realm", nonce="123"'
-    result = parse_header_pairs(header)
-    assert result["realm"] == 'test"realm'
-    assert result["nonce"] == "123"
-
-    # Single quotes (should be treated as regular chars)
-    header = "realm='test', nonce=123"
-    result = parse_header_pairs(header)
-    assert result["realm"] == "'test'"
-    assert result["nonce"] == "123"
+    assert result == expected_result
 
 
 def test_digest_auth_middleware_callable() -> None:
@@ -446,35 +494,37 @@ def test_template_based_header_construction() -> None:
     assert params["uri"] == "/test"  # path component of URL
 
 
-def test_escape_unescape_quotes_functions() -> None:
+@pytest.mark.parametrize(
+    ("test_string", "expected_escaped", "description"),
+    [
+        ('value"with"quotes', 'value\\"with\\"quotes', "Basic string with quotes"),
+        ("", "", "Empty string"),
+        ("no quotes", "no quotes", "String without quotes"),
+        ('with"one"quote', 'with\\"one\\"quote', "String with one quoted segment"),
+        (
+            'many"quotes"in"string',
+            'many\\"quotes\\"in\\"string',
+            "String with multiple quoted segments",
+        ),
+        ('""', '\\"\\"', "Just double quotes"),
+        ('"', '\\"', "Single double quote"),
+        ('already\\"escaped', 'already\\\\"escaped', "Already escaped quotes"),
+    ],
+)
+def test_quote_escaping_functions(
+    test_string: str, expected_escaped: str, description: str
+) -> None:
     """Test that escape_quotes and unescape_quotes work correctly."""
-    # Test basic escaping and unescaping
-    original = 'value"with"quotes'
-    escaped = escape_quotes(original)
-    assert escaped == 'value\\"with\\"quotes'
+    # Test escaping
+    escaped = escape_quotes(test_string)
+    assert escaped == expected_escaped
 
-    # Test unescaping
+    # Test unescaping (should return to original)
     unescaped = unescape_quotes(escaped)
-    assert unescaped == original
-
-    # Test edge cases
-    assert escape_quotes("") == ""
-    assert unescape_quotes("") == ""
-    assert escape_quotes("no quotes") == "no quotes"
-    assert unescape_quotes("no quotes") == "no quotes"
+    assert unescaped == test_string
 
     # Test that they're inverse operations
-    test_strings = [
-        "simple",
-        'with"one"quote',
-        'many"quotes"in"string',
-        '""',
-        '"',
-        'already\\"escaped',
-    ]
-
-    for s in test_strings:
-        assert unescape_quotes(escape_quotes(s)) == s
+    assert unescape_quotes(escape_quotes(test_string)) == test_string
 
 
 async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
@@ -487,11 +537,8 @@ async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
 
         if request_count == 1:
             # First request returns 401 with digest challenge
-            raise HTTPUnauthorized(
-                headers={
-                    "WWW-Authenticate": 'Digest realm="test", nonce="abc123", qop="auth"'
-                },
-                text="Unauthorized",
+            raise make_digest_unauthorized_response(
+                realm="test", nonce="abc123", qop="auth"
             )
 
         # Second request should have Authorization header
@@ -516,3 +563,125 @@ async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
             assert text_content == "OK"
 
     assert request_count == 2  # Initial request + retry with auth
+
+
+async def test_digest_auth_no_qop(aiohttp_server: AiohttpServer) -> None:
+    """Test digest auth with a server that doesn't provide a QoP parameter."""
+    request_count = 0
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        if request_count == 1:
+            # First request returns 401 with digest challenge without qop
+            raise make_digest_unauthorized_response(qop=None)
+
+        # Second request should have Authorization header
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        assert auth_header and auth_header.startswith("Digest ")
+        # Successful auth should have no qop param
+        assert "qop=" not in auth_header
+        assert "nc=" not in auth_header
+        assert "cnonce=" not in auth_header
+
+        resp = Response()
+        resp.text = "OK"
+        return resp
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    middleware = DigestAuthMiddleware("user", "pass")
+
+    async with ClientSession(middlewares=(middleware,)) as session:
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text_content = await resp.text()
+            assert text_content == "OK"
+
+    assert request_count == 2  # Initial request + retry with auth
+
+
+async def test_digest_auth_without_opaque(aiohttp_server: AiohttpServer) -> None:
+    """Test digest auth with a server that doesn't provide an opaque parameter."""
+    request_count = 0
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        if request_count == 1:
+            # First request returns 401 with digest challenge without opaque
+            raise make_digest_unauthorized_response(qop="auth", opaque=None)
+
+        # Second request should have Authorization header
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        assert auth_header and auth_header.startswith("Digest ")
+        # Successful auth should have no opaque param
+        assert "opaque=" not in auth_header
+
+        resp = Response()
+        resp.text = "OK"
+        return resp
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    middleware = DigestAuthMiddleware("user", "pass")
+
+    async with ClientSession(middlewares=(middleware,)) as session:
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text_content = await resp.text()
+            assert text_content == "OK"
+
+    assert request_count == 2  # Initial request + retry with auth
+
+
+@pytest.mark.parametrize(
+    ("www_authenticate", "description"),
+    [
+        (None, "No WWW-Authenticate header"),
+        ("DigestWithoutSpace", "No space after scheme"),
+        ('Basic realm="test"', "Not a Digest scheme"),
+        ("Digest ", "Empty parameters"),
+        ("Digest =invalid, format", "Invalid parameter format"),
+    ],
+)
+async def test_auth_header_no_retry(
+    aiohttp_server: AiohttpServer, www_authenticate: str, description: str
+) -> None:
+    """Test that middleware doesn't retry with invalid WWW-Authenticate headers."""
+    request_count = 0
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        # First (and only) request returns 401
+        headers = {}
+        if www_authenticate is not None:
+            headers["WWW-Authenticate"] = www_authenticate
+
+        # Use a custom HTTPUnauthorized instead of the helper since
+        # we're specifically testing malformed headers
+        raise HTTPUnauthorized(
+            headers=headers,
+            text="Unauthorized",
+        )
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    middleware = DigestAuthMiddleware("user", "pass")
+
+    async with ClientSession(middlewares=(middleware,)) as session:
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 401
+
+    # No retry should happen
+    assert request_count == 1
