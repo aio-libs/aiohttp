@@ -7,10 +7,11 @@ from yarl import URL
 
 from aiohttp import client_exceptions, hdrs
 from aiohttp.client_middleware_digest_auth import (
-    DigestAuthContext,
     DigestAuthMiddleware,
     DigestFunctions,
+    escape_quotes,
     parse_header_pairs,
+    unescape_quotes,
 )
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.web import Application, Request, Response
@@ -24,14 +25,6 @@ def digest_auth_mw() -> DigestAuthMiddleware:
     return DigestAuthMiddleware("user", "pass")
 
 
-def test_context_initialization() -> None:
-    ctx = DigestAuthContext()
-    assert ctx.nonce_count == 0
-    assert ctx.last_nonce == ""
-    assert ctx.challenge == {}
-    assert ctx.handled_401 is False
-
-
 async def test_authenticate_valid_digest(digest_auth_mw: DigestAuthMiddleware) -> None:
     response = mock.Mock(spec=ClientResponse)
     response.status = 401
@@ -40,12 +33,11 @@ async def test_authenticate_valid_digest(digest_auth_mw: DigestAuthMiddleware) -
     }
 
     assert digest_auth_mw._authenticate(response)
-    ctx = digest_auth_mw._get_context()
-    assert ctx.challenge["realm"] == "test"
-    assert ctx.challenge["nonce"] == "abc"
-    assert ctx.challenge["qop"] == "auth"
-    assert ctx.challenge["algorithm"] == "MD5"
-    assert ctx.challenge["opaque"] == "xyz"
+    assert digest_auth_mw.challenge["realm"] == "test"
+    assert digest_auth_mw.challenge["nonce"] == "abc"
+    assert digest_auth_mw.challenge["qop"] == "auth"
+    assert digest_auth_mw.challenge["algorithm"] == "MD5"
+    assert digest_auth_mw.challenge["opaque"] == "xyz"
 
 
 async def test_authenticate_invalid_status(
@@ -65,29 +57,25 @@ async def test_authenticate_already_handled(
     response.headers = {
         "www-authenticate": 'Digest realm="test", nonce="abc", qop="auth"'
     }
-    ctx = digest_auth_mw._get_context()
-    ctx.handled_401 = True
+    digest_auth_mw.handled_401 = True
     assert not digest_auth_mw._authenticate(response)
 
 
 def test_encode_without_challenge(digest_auth_mw: DigestAuthMiddleware) -> None:
-    ctx = digest_auth_mw._get_context()
-    ctx.handled_401 = False
+    digest_auth_mw.handled_401 = False
     assert digest_auth_mw._encode("GET", URL("http://example.com/resource"), "") == ""
 
 
 def test_encode_missing_realm_or_nonce(digest_auth_mw: DigestAuthMiddleware) -> None:
-    ctx = digest_auth_mw._get_context()
-    ctx.handled_401 = True
-    ctx.challenge = {"nonce": "abc"}
+    digest_auth_mw.handled_401 = True
+    digest_auth_mw.challenge = {"nonce": "abc"}
     with pytest.raises(Exception):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
 def test_encode_digest_with_md5(digest_auth_mw: DigestAuthMiddleware) -> None:
-    ctx = digest_auth_mw._get_context()
-    ctx.handled_401 = True
-    ctx.challenge = {
+    digest_auth_mw.handled_401 = True
+    digest_auth_mw.challenge = {
         "realm": "test",
         "nonce": "abc",
         "qop": "auth",
@@ -101,9 +89,8 @@ def test_encode_digest_with_md5(digest_auth_mw: DigestAuthMiddleware) -> None:
 
 
 def test_encode_digest_with_md5_sess(digest_auth_mw: DigestAuthMiddleware) -> None:
-    ctx = digest_auth_mw._get_context()
-    ctx.handled_401 = True
-    ctx.challenge = {
+    digest_auth_mw.handled_401 = True
+    digest_auth_mw.challenge = {
         "realm": "test",
         "nonce": "abc",
         "qop": "auth",
@@ -114,9 +101,8 @@ def test_encode_digest_with_md5_sess(digest_auth_mw: DigestAuthMiddleware) -> No
 
 
 def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> None:
-    ctx = digest_auth_mw._get_context()
-    ctx.handled_401 = True
-    ctx.challenge = {
+    digest_auth_mw.handled_401 = True
+    digest_auth_mw.challenge = {
         "realm": "test",
         "nonce": "abc",
         "algorithm": "UNSUPPORTED",
@@ -126,14 +112,13 @@ def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> N
 
 def test_invalid_qop_rejected() -> None:
     auth = DigestAuthMiddleware("u", "p")
-    ctx = auth._get_context()
-    ctx.challenge = {
+    auth.challenge = {
         "realm": "r",
         "nonce": "n",
         "qop": "badvalue",
         "algorithm": "MD5",
     }
-    ctx.handled_401 = True
+    auth.handled_401 = True
     with pytest.raises(client_exceptions.ClientError):
         auth._encode("GET", URL("http://x"), "")
 
@@ -197,16 +182,15 @@ def test_digest_response_exact_match(qop: str, algorithm: str) -> None:
 
     # Create the auth object
     auth = DigestAuthMiddleware(login, password)
-    ctx = auth._get_context()
-    ctx.challenge = {
+    auth.challenge = {
         "realm": realm,
         "nonce": nonce,
         "qop": qop,
         "algorithm": algorithm,
     }
-    ctx.handled_401 = True
-    ctx.last_nonce = nonce
-    ctx.nonce_count = nc
+    auth.handled_401 = True
+    auth.last_nonce = nonce
+    auth.nonce_count = nc
 
     # Patch cnonce manually by replacing the auth.encode() logic
     # We'll monkey-patch hashlib.sha1 to return a fixed cnonce if needed
@@ -290,9 +274,8 @@ def test_middleware_invalid_login() -> None:
 def test_escaping_quotes_in_auth_header() -> None:
     """Test that double quotes are properly escaped in auth header."""
     auth = DigestAuthMiddleware('user"with"quotes', "pass")
-    ctx = auth._get_context()
-    ctx.handled_401 = True
-    ctx.challenge = {
+    auth.handled_401 = True
+    auth.challenge = {
         "realm": 'realm"with"quotes',
         "nonce": 'nonce"with"quotes',
         "qop": "auth",
@@ -307,6 +290,37 @@ def test_escaping_quotes_in_auth_header() -> None:
     assert 'realm="realm\\"with\\"quotes"' in header
     assert 'nonce="nonce\\"with\\"quotes"' in header
     assert 'opaque="opaque\\"with\\"quotes"' in header
+
+
+def test_escape_unescape_quotes_functions() -> None:
+    """Test that escape_quotes and unescape_quotes work correctly."""
+    # Test basic escaping and unescaping
+    original = 'value"with"quotes'
+    escaped = escape_quotes(original)
+    assert escaped == 'value\\"with\\"quotes'
+
+    # Test unescaping
+    unescaped = unescape_quotes(escaped)
+    assert unescaped == original
+
+    # Test edge cases
+    assert escape_quotes("") == ""
+    assert unescape_quotes("") == ""
+    assert escape_quotes("no quotes") == "no quotes"
+    assert unescape_quotes("no quotes") == "no quotes"
+
+    # Test that they're inverse operations
+    test_strings = [
+        "simple",
+        'with"one"quote',
+        'many"quotes"in"string',
+        '""',
+        '"',
+        'already\\"escaped',
+    ]
+
+    for s in test_strings:
+        assert unescape_quotes(escape_quotes(s)) == s
 
 
 async def test_middleware_retry_on_401(aiohttp_server) -> None:
