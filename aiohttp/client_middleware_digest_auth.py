@@ -4,12 +4,13 @@ import hashlib
 import os
 import re
 import time
-from typing import Any, Callable, Dict, Final, TypedDict
+from typing import Any, Callable, Dict, Final, Tuple, TypedDict
+
+from yarl import URL
 
 from . import client_exceptions, hdrs
 from .client_middlewares import ClientHandlerType
 from .client_reqrep import ClientRequest, ClientResponse
-from .typedefs import URL
 
 
 class DigestAuthChallenge(TypedDict, total=False):
@@ -54,7 +55,13 @@ _HEADER_PAIRS_PATTERN = re.compile(
 
 
 # RFC 7616: Challenge parameters to extract
-CHALLENGE_FIELDS = ("realm", "nonce", "qop", "algorithm", "opaque")
+CHALLENGE_FIELDS: Final[Tuple[str, ...]] = (
+    "realm",
+    "nonce",
+    "qop",
+    "algorithm",
+    "opaque",
+)
 
 
 def escape_quotes(value: str) -> str:
