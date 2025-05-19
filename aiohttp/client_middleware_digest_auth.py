@@ -1,4 +1,26 @@
-"""Digest authentication middleware for aiohttp client."""
+"""
+Digest authentication middleware for aiohttp client.
+
+This middleware implements HTTP Digest Authentication according to RFC 7616,
+providing a more secure alternative to Basic Authentication. It supports MD5,
+SHA, SHA256, and SHA512 hash algorithms, as well as both 'auth' and 'auth-int'
+quality of protection (qop) options.
+
+Example usage:
+    ```python
+    from aiohttp import ClientSession
+    from aiohttp.client_middleware_digest_auth import DigestAuthMiddleware
+
+    # Create the digest auth middleware
+    auth = DigestAuthMiddleware("username", "password")
+
+    # Use it with a ClientSession
+    async with ClientSession(middlewares=(auth,)) as session:
+        async with session.get("http://example.com/protected") as resp:
+            # The middleware handles 401 responses and auth automatically
+            text = await resp.text()
+    ```
+"""
 
 import hashlib
 import os
@@ -64,6 +86,9 @@ CHALLENGE_FIELDS: Final[Tuple[str, ...]] = (
     "opaque",
 )
 
+# Supported digest authentication algorithms
+SUPPORTED_ALGORITHMS: Final[Tuple[str, ...]] = tuple(DigestFunctions.keys())
+
 
 def escape_quotes(value: str) -> str:
     """Escape double quotes for HTTP header values."""
@@ -76,10 +101,23 @@ def unescape_quotes(value: str) -> str:
 
 
 def parse_header_pairs(header: str) -> Dict[str, str]:
-    """Parses header pairs in the www-authenticate header value.
+    """Parse key-value pairs from WWW-Authenticate or similar HTTP headers.
 
-    RFC 7616 accepts header key/values that look like:
-      key1="value1", key2=value2, key3="some value, with, commas"
+    This function handles the complex format of WWW-Authenticate header values,
+    supporting both quoted and unquoted values, proper handling of commas in
+    quoted values, and whitespace variations per RFC 7616.
+
+    Examples of supported formats:
+      - key1="value1", key2=value2
+      - key1 = "value1" , key2="value, with, commas"
+      - key1=value1,key2="value2"
+      - realm="example.com", nonce="12345", qop="auth"
+
+    Args:
+        header: The header value string to parse
+
+    Returns:
+        Dictionary mapping parameter names to their values
     """
     return {
         stripped_key: unescape_quotes(quoted_val) if quoted_val else unquoted_val
@@ -90,15 +128,28 @@ def parse_header_pairs(header: str) -> Dict[str, str]:
 
 class DigestAuthMiddleware:
     """
-    HTTP digest authentication middleware.
+    HTTP digest authentication middleware for aiohttp client.
 
-    The work here is based off of
-    https://github.com/requests/requests/blob/v2.18.4/requests/auth.py.
+    This middleware intercepts 401 Unauthorized responses containing a Digest
+    authentication challenge, calculates the appropriate digest credentials,
+    and automatically retries the request with the proper Authorization header.
 
-    Please also refer to:
-    - RFC 7616: HTTP Digest Access Authentication
+    Features:
+    - Handles all aspects of Digest authentication handshake automatically
+    - Supports MD5, MD5-SESS, SHA, SHA256, and SHA512 hash algorithms
+    - Supports 'auth' and 'auth-int' quality of protection modes
+    - Properly handles quoted strings and parameter parsing
+    - Includes replay attack protection with client nonce count tracking
+
+    Standards compliance:
+    - RFC 7616: HTTP Digest Access Authentication (primary reference)
     - RFC 2617: HTTP Authentication (deprecated by RFC 7616)
     - RFC 1945: Section 11.1 (username restrictions)
+
+    Implementation notes:
+    The core digest calculation is inspired by the implementation in
+    https://github.com/requests/requests/blob/v2.18.4/requests/auth.py
+    with added support for modern digest auth features and error handling.
     """
 
     def __init__(
@@ -127,10 +178,14 @@ class DigestAuthMiddleware:
         """Build digest header."""
         challenge = self._challenge
         if "realm" not in challenge:
-            raise ClientError("Challenge is missing realm")
+            raise ClientError(
+                "Malformed Digest auth challenge: Missing 'realm' parameter"
+            )
 
         if "nonce" not in challenge:
-            raise ClientError("Challenge is missing nonce")
+            raise ClientError(
+                "Malformed Digest auth challenge: Missing 'nonce' parameter"
+            )
 
         # Empty realm values are allowed per RFC 7616 (SHOULD, not MUST, contain host name)
         realm = challenge["realm"]
@@ -138,7 +193,9 @@ class DigestAuthMiddleware:
 
         # Empty nonce values are not allowed as they are security-critical for replay protection
         if not nonce:
-            raise ClientError("Challenge has empty nonce")
+            raise ClientError(
+                "Security issue: Digest auth challenge contains empty 'nonce' value"
+            )
 
         nonce_bytes = nonce.encode("utf-8")
         qop_raw = challenge.get("qop", "")
@@ -152,13 +209,18 @@ class DigestAuthMiddleware:
                 {q.strip() for q in qop_raw.split(",") if q.strip()}
             )
             if not valid_qops:
-                raise ClientError(f"Unsupported qop value(s): {qop_raw}")
+                raise ClientError(
+                    f"Digest auth error: Unsupported Quality of Protection (qop) value(s): {qop_raw}"
+                )
 
             qop = "auth-int" if "auth-int" in valid_qops else "auth"
             qop_bytes = qop.encode("utf-8")
 
         if algorithm not in DigestFunctions:
-            raise ClientError(f"Unsupported algorithm: {algorithm}")
+            raise ClientError(
+                f"Digest auth error: Unsupported hash algorithm: {algorithm}. "
+                f"Supported algorithms: {', '.join(SUPPORTED_ALGORITHMS)}"
+            )
         hash_fn: Final = DigestFunctions[algorithm]
 
         def H(x: bytes) -> bytes:
@@ -251,20 +313,35 @@ class DigestAuthMiddleware:
             return False
 
         auth_header = response.headers.get("www-authenticate", "")
+        if not auth_header:
+            return False  # No authentication header present
 
-        method, _, headers = auth_header.partition(" ")
-        if method.lower() == "digest" and headers:
-            header_pairs = parse_header_pairs(headers)
+        method, sep, headers = auth_header.partition(" ")
+        if not sep:
+            # No space found in www-authenticate header
+            return False  # Malformed auth header, missing scheme separator
 
-            # Extract challenge parameters
-            self._challenge = {}
-            for field in CHALLENGE_FIELDS:
-                if value := header_pairs.get(field):
-                    self._challenge[field] = value
+        if method.lower() != "digest":
+            # Not a digest auth challenge (could be Basic, Bearer, etc.)
+            return False
 
-            return True
+        if not headers:
+            # We have a digest scheme but no parameters
+            return False  # Malformed digest header, missing parameters
 
-        return False
+        # We have a digest auth header with content
+        if not (header_pairs := parse_header_pairs(headers)):
+            # Failed to parse any key-value pairs
+            return False  # Malformed digest header, no valid parameters
+
+        # Extract challenge parameters
+        self._challenge = {}
+        for field in CHALLENGE_FIELDS:
+            if value := header_pairs.get(field):
+                self._challenge[field] = value
+
+        # Return True only if we found at least one challenge parameter
+        return bool(self._challenge)
 
     async def __call__(
         self, request: ClientRequest, handler: ClientHandlerType

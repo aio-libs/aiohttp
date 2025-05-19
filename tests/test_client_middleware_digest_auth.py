@@ -66,24 +66,26 @@ async def test_authenticate_multiple_attempts(
 
 def test_encode_without_challenge(digest_auth_mw: DigestAuthMiddleware) -> None:
     # With no challenge set, _encode should raise an error about missing realm
-    with pytest.raises(ClientError, match="Challenge is missing realm"):
+    with pytest.raises(
+        ClientError, match="Malformed Digest auth challenge: Missing 'realm' parameter"
+    ):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
 def test_encode_missing_realm_or_nonce(digest_auth_mw: DigestAuthMiddleware) -> None:
     # Test with missing realm
     digest_auth_mw._challenge = {"nonce": "abc"}
-    with pytest.raises(ClientError, match="Challenge is missing realm"):
+    with pytest.raises(ClientError, match="Missing 'realm' parameter"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
     # Test with missing nonce
     digest_auth_mw._challenge = {"realm": "test"}
-    with pytest.raises(ClientError, match="Challenge is missing nonce"):
+    with pytest.raises(ClientError, match="Missing 'nonce' parameter"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
     # Test with empty nonce
     digest_auth_mw._challenge = {"realm": "test", "nonce": ""}
-    with pytest.raises(ClientError, match="Challenge has empty nonce"):
+    with pytest.raises(ClientError, match="empty 'nonce' value"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
@@ -119,11 +121,12 @@ def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> N
         "nonce": "abc",
         "algorithm": "UNSUPPORTED",
     }
-    with pytest.raises(ClientError, match="Unsupported algorithm: UNSUPPORTED"):
+    with pytest.raises(ClientError, match="Unsupported hash algorithm"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
 def test_invalid_qop_rejected() -> None:
+    """Test that invalid Quality of Protection values are rejected."""
     auth = DigestAuthMiddleware("u", "p")
     auth._challenge = {
         "realm": "r",
@@ -131,7 +134,7 @@ def test_invalid_qop_rejected() -> None:
         "qop": "badvalue",
         "algorithm": "MD5",
     }
-    with pytest.raises(ClientError):
+    with pytest.raises(ClientError, match="Unsupported Quality of Protection"):
         auth._encode("GET", URL("http://x"), "")
 
 
