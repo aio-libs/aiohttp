@@ -14,6 +14,7 @@ from aiohttp.client_middleware_digest_auth import (
     unescape_quotes,
 )
 from aiohttp.client_reqrep import ClientResponse
+from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 from aiohttp.web_exceptions import HTTPUnauthorized
 
@@ -323,7 +324,7 @@ def test_escape_unescape_quotes_functions() -> None:
         assert unescape_quotes(escape_quotes(s)) == s
 
 
-async def test_middleware_retry_on_401(aiohttp_server) -> None:
+async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
     """Test that the middleware retries on 401 errors."""
     request_count = 0
 
