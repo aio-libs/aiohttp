@@ -224,8 +224,8 @@ async def test_upgrade_connection_not_released_after_read(
 
     async with client.get("/") as resp:
         await resp.read()
-    assert resp.connection is not None
-    assert not resp.closed
+        assert resp.connection is not None
+        assert not resp.closed
 
 
 async def test_keepalive_server_force_close_connection(
