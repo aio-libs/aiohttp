@@ -162,7 +162,7 @@ class DigestAuthMiddleware:
             qop_bytes = qop.encode("utf-8")
 
         if algorithm not in DigestFunctions:
-            return ""
+            raise ClientError(f"Unsupported algorithm: {algorithm}")
         hash_fn: Final = DigestFunctions[algorithm]
 
         def H(x: bytes) -> bytes:

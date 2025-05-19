@@ -118,7 +118,8 @@ def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> N
         "nonce": "abc",
         "algorithm": "UNSUPPORTED",
     }
-    assert digest_auth_mw._encode("GET", URL("http://example.com/resource"), "") == ""
+    with pytest.raises(ClientError, match="Unsupported algorithm: UNSUPPORTED"):
+        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
 def test_invalid_qop_rejected() -> None:
