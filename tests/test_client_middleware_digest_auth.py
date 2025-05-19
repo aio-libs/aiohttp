@@ -59,8 +59,6 @@ async def test_authenticate_multiple_attempts(
     response.headers = {
         "www-authenticate": 'Digest realm="test", nonce="abc", qop="auth"'
     }
-    # Without the _handled_401 flag, authenticate always returns True for valid 401s
-    # The retry prevention is now handled by retry_count in __call__ method
     assert digest_auth_mw._authenticate(response)
 
 

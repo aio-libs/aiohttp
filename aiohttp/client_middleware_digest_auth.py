@@ -45,9 +45,6 @@ from .client_exceptions import ClientError
 from .client_middlewares import ClientHandlerType
 from .client_reqrep import ClientRequest, ClientResponse
 
-# Define literal types for challenge fields
-ChallengeField = Final[Literal["realm", "nonce", "qop", "algorithm", "opaque"]]
-
 
 class DigestAuthChallenge(TypedDict, total=False):
     realm: str
@@ -97,7 +94,9 @@ _HEADER_PAIRS_PATTERN = re.compile(
 
 
 # RFC 7616: Challenge parameters to extract
-CHALLENGE_FIELDS: Final[Tuple[ChallengeField, ...]] = (
+CHALLENGE_FIELDS: Final[
+    Tuple[Literal["realm", "nonce", "qop", "algorithm", "opaque"], ...]
+] = (
     "realm",
     "nonce",
     "qop",
