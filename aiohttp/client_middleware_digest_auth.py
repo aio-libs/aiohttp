@@ -26,7 +26,7 @@ import hashlib
 import os
 import re
 import time
-from typing import Callable, Dict, Final, Tuple, TypedDict, Union
+from typing import Callable, Dict, Final, FrozenSet, List, Tuple, TypedDict, Union
 
 from yarl import URL
 
@@ -88,6 +88,15 @@ CHALLENGE_FIELDS: Final[Tuple[str, ...]] = (
 
 # Supported digest authentication algorithms
 SUPPORTED_ALGORITHMS: Final[Tuple[str, ...]] = tuple(DigestFunctions.keys())
+
+# RFC 7616: Fields that require quoting in the Digest auth header
+# These fields must be enclosed in double quotes in the Authorization header.
+# Algorithm, qop, and nc are never quoted per RFC specifications.
+# This frozen set is used by the template-based header construction to
+# automatically determine which fields need quotes.
+QUOTED_AUTH_FIELDS: Final[FrozenSet[str]] = frozenset(
+    {"username", "realm", "nonce", "uri", "response", "opaque", "cnonce"}
+)
 
 
 def escape_quotes(value: str) -> str:
@@ -175,7 +184,30 @@ class DigestAuthMiddleware:
         self._challenge: DigestAuthChallenge = {}
 
     def _encode(self, method: str, url: URL, body: Union[bytes, str]) -> str:
-        """Build digest header."""
+        """Build digest authorization header using a template-based approach.
+
+        This method constructs a properly formatted Digest Authorization header
+        according to RFC 7616. It uses a template-based approach to organize
+        the headers in a clean, maintainable way:
+
+        1. Handles all challenge parameters from the WWW-Authenticate response
+        2. Calculates the appropriate digest response
+        3. Uses dictionaries to organize required and optional header fields
+        4. Properly quotes fields according to RFC specifications
+        5. Joins the header fields with the correct formatting
+
+        Args:
+            method: The HTTP method (GET, POST, etc.)
+            url: The request URL
+            body: The request body (used for qop=auth-int)
+
+        Returns:
+            A fully formatted Digest authorization header string
+
+        Raises:
+            ClientError: If the challenge is missing required parameters or
+                         contains unsupported values
+        """
         challenge = self._challenge
         if "realm" not in challenge:
             raise ClientError(
@@ -280,26 +312,40 @@ class DigestAuthMiddleware:
         else:
             response_digest = KD(HA1, b":".join((nonce_bytes, HA2)))
 
-        # Note: Values that need escaping vs those that don't:
-        # - self.login: user-provided, needs escaping
-        # - realm, nonce, opaque: server-provided, needs escaping
-        # - path: URL-encoded path component (quotes become %22)
-        # - response_digest: hex-encoded hash output (only 0-9a-f)
-        # - algorithm, qop, nc: RFC 7616 specifies these are never quoted
-        pairs = [
-            f'username="{escape_quotes(self._login_str)}"',
-            f'realm="{escape_quotes(realm)}"',
-            f'nonce="{escape_quotes(nonce)}"',
-            f'uri="{path}"',
-            f'response="{response_digest.decode()}"',
-            f"algorithm={algorithm}",
-        ]
+        # Template-based header construction
+        # Each value is either quoted or unquoted according to RFC 7616
+        # - Quoted values: username, realm, nonce, uri, response, opaque, cnonce
+        # - Unquoted values: algorithm, qop, nc
+
+        # Define a dict mapping of header fields to their values
+        # Group fields into always-present, optional, and qop-dependent
+        header_fields = {
+            # Always present fields
+            "username": escape_quotes(self._login_str),
+            "realm": escape_quotes(realm),
+            "nonce": escape_quotes(nonce),
+            "uri": path,
+            "response": response_digest.decode(),
+            "algorithm": algorithm,
+        }
+
+        # Optional fields
         if opaque:
-            pairs.append(f'opaque="{escape_quotes(opaque)}"')
+            header_fields["opaque"] = escape_quotes(opaque)
+
+        # QoP-dependent fields
         if qop:
-            pairs.append(f"qop={qop}")
-            pairs.append(f"nc={ncvalue}")
-            pairs.append(f'cnonce="{cnonce}"')
+            header_fields["qop"] = qop
+            header_fields["nc"] = ncvalue
+            header_fields["cnonce"] = cnonce
+
+        # Build header using templates for each field type
+        pairs: List[str] = []
+        for field, value in header_fields.items():
+            if field in QUOTED_AUTH_FIELDS:
+                pairs.append(f'{field}="{value}"')
+            else:
+                pairs.append(f"{field}={value}")
 
         return f"Digest {', '.join(pairs)}"
 

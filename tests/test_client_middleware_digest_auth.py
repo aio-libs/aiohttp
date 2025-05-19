@@ -345,6 +345,85 @@ def test_escaping_quotes_in_auth_header() -> None:
     assert 'opaque="opaque\\"with\\"quotes"' in header
 
 
+def test_template_based_header_construction() -> None:
+    """Test that the template-based header construction works correctly."""
+    auth = DigestAuthMiddleware("testuser", "testpass")
+    auth._challenge = {
+        "realm": "test-realm",
+        "nonce": "test-nonce",
+        "qop": "auth",
+        "algorithm": "MD5",
+        "opaque": "test-opaque",
+    }
+
+    # Set last_nonce_bytes to test-nonce to ensure _nonce_count is incremented
+    auth._last_nonce_bytes = b"test-nonce"
+    auth._nonce_count = 0  # Start with 0, it will be incremented to 1
+
+    # Mock the hash functions to have predictable values
+    with mock.patch("hashlib.sha1") as mock_sha1:
+        mock_digest = mock.Mock()
+        mock_digest.hexdigest.return_value = "deadbeefcafebabe"
+        mock_sha1.return_value = mock_digest
+
+        with mock.patch("hashlib.md5") as mock_md5:
+            mock_md5_instance = mock.Mock()
+            mock_md5_instance.hexdigest.return_value = "abcdef0123456789"
+            mock_md5.return_value = mock_md5_instance
+
+            header = auth._encode("GET", URL("http://example.com/test"), "")
+
+    # Split the header into scheme and parameters
+    scheme, params_str = header.split(" ", 1)
+    assert scheme == "Digest"
+
+    # Parse the parameters into a dictionary
+    params = {}
+    for param in params_str.split(", "):
+        key, value = param.split("=", 1)
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]  # Remove quotes
+        params[key] = value
+
+    # Check all required fields are present
+    assert "username" in params
+    assert "realm" in params
+    assert "nonce" in params
+    assert "uri" in params
+    assert "response" in params
+    assert "algorithm" in params
+    assert "qop" in params
+    assert "nc" in params
+    assert "cnonce" in params
+    assert "opaque" in params
+
+    # Check that fields are quoted correctly
+    quoted_fields = [
+        "username",
+        "realm",
+        "nonce",
+        "uri",
+        "response",
+        "opaque",
+        "cnonce",
+    ]
+    unquoted_fields = ["algorithm", "qop", "nc"]
+
+    # Re-check the original header for proper quoting
+    for field in quoted_fields:
+        assert f'{field}="{params[field]}"' in header
+
+    for field in unquoted_fields:
+        assert f"{field}={params[field]}" in header
+
+    # Check specific values
+    assert params["username"] == "testuser"
+    assert params["realm"] == "test-realm"
+    assert params["algorithm"] == "MD5"
+    assert params["nc"] == "00000001"  # nonce_count = 1 (incremented from 0)
+    assert params["uri"] == "/test"  # path component of URL
+
+
 def test_escape_unescape_quotes_functions() -> None:
     """Test that escape_quotes and unescape_quotes work correctly."""
     # Test basic escaping and unescaping
