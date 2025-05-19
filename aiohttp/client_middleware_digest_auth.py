@@ -218,19 +218,19 @@ class DigestAuthMiddleware:
         # - realm, nonce, opaque: server-provided, needs escaping
         # - path: URL-encoded path component (quotes become %22)
         # - response_digest: hex-encoded hash output (only 0-9a-f)
-        # - algorithm: matched against whitelist in DigestFunctions
+        # - algorithm, qop, nc: RFC 7616 specifies these are never quoted
         pairs = [
             f'username="{escape_quotes(self.login)}"',
             f'realm="{escape_quotes(realm)}"',
             f'nonce="{escape_quotes(nonce)}"',
             f'uri="{path}"',
             f'response="{response_digest}"',
-            f'algorithm="{algorithm}"',
+            f"algorithm={algorithm}",
         ]
         if opaque:
             pairs.append(f'opaque="{escape_quotes(opaque)}"')
         if qop:
-            pairs.append(f'qop="{qop}"')
+            pairs.append(f"qop={qop}")
             pairs.append(f"nc={ncvalue}")
             pairs.append(f'cnonce="{cnonce}"')
 
