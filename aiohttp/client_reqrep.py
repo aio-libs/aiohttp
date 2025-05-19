@@ -189,8 +189,8 @@ class ConnectionKey(NamedTuple):
     proxy: Optional[URL]
     proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
- 
- 
+
+
 class _ResponseParams(TypedDict):
     timer: Optional[BaseTimerContext]
     skip_payload: bool
