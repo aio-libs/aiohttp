@@ -847,11 +847,12 @@ async def test_client_middleware_retry_reuses_connection(
             retry_count = 0
             while True:
                 self.attempt_count += 1
+                response = await handler(request)
                 if retry_count == 0:
                     retry_count += 1
-                    await handler(request)
+                    response.close()  # Close the response to release the connection
                     continue
-                return await handler(request)
+                return response
 
     app = web.Application()
     app.router.add_get("/", handler)
