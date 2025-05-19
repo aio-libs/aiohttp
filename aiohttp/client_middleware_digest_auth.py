@@ -137,20 +137,20 @@ class DigestAuthMiddleware:
             raise ClientError("Challenge is missing nonce")
 
         # Empty realm values are allowed per RFC 7616 (SHOULD, not MUST, contain host name)
-        realm: str = challenge.get("realm", "")
-        nonce: str = challenge.get("nonce", "")
+        realm = challenge["realm"]
+        nonce = challenge["nonce"]
 
         # Empty nonce values are not allowed as they are security-critical for replay protection
         if not nonce:
             raise ClientError("Challenge has empty nonce")
 
-        nonce_bytes: bytes = nonce.encode("utf-8")
-        qop_raw: str = challenge.get("qop", "")
-        algorithm: str = challenge.get("algorithm", "MD5").upper()
-        opaque: str = challenge.get("opaque", "")
+        nonce_bytes = nonce.encode("utf-8")
+        qop_raw = challenge.get("qop", "")
+        algorithm = challenge.get("algorithm", "MD5").upper()
+        opaque = challenge.get("opaque", "")
 
-        qop: str = ""
-        qop_bytes: bytes = b""
+        qop = ""
+        qop_bytes = b""
         if qop_raw:
             qop_list = [q.strip() for q in qop_raw.split(",") if q.strip()]
             valid_qops = {"auth", "auth-int"}.intersection(qop_list)
