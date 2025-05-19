@@ -152,8 +152,9 @@ class DigestAuthMiddleware:
         qop = ""
         qop_bytes = b""
         if qop_raw:
-            qop_list = [q.strip() for q in qop_raw.split(",") if q.strip()]
-            valid_qops = {"auth", "auth-int"}.intersection(qop_list)
+            valid_qops = {"auth", "auth-int"}.intersection(
+                {q.strip() for q in qop_raw.split(",") if q.strip()}
+            )
             if not valid_qops:
                 raise ClientError(f"Unsupported qop value(s): {qop_raw}")
 
