@@ -46,7 +46,7 @@ from .client_middlewares import ClientHandlerType
 from .client_reqrep import ClientRequest, ClientResponse
 
 # Define literal types for challenge fields
-ChallengeField = Literal["realm", "nonce", "qop", "algorithm", "opaque"]
+ChallengeField = Final[Literal["realm", "nonce", "qop", "algorithm", "opaque"]]
 
 
 class DigestAuthChallenge(TypedDict, total=False):
