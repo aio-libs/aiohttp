@@ -850,7 +850,7 @@ async def test_client_middleware_retry_reuses_connection(
                 response = await handler(request)
                 if retry_count == 0:
                     retry_count += 1
-                    response.close()  # Close the response to release the connection
+                    response.release()  # Release the response to enable connection reuse
                     continue
                 return response
 
