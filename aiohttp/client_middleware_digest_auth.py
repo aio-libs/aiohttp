@@ -77,14 +77,14 @@ def parse_header_pairs(header: str) -> Dict[str, str]:
     #
     # This regex attempts to parse that out
 
-    header_pairs = {}
-    for key, quoted_val, unquoted_val in _HEADER_PAIRS_PATTERN.findall(header):
-        val = quoted_val if quoted_val else unquoted_val
-        if val:
-            val = val.replace('\\"', '"')  # unescape any escaped quotes
-        header_pairs[key] = val
-
-    return header_pairs
+    return {
+        key: (
+            (quoted_val or unquoted_val).replace('\\"', '"')
+            if quoted_val or unquoted_val
+            else ""
+        )
+        for key, quoted_val, unquoted_val in _HEADER_PAIRS_PATTERN.findall(header)
+    }
 
 
 class DigestAuthMiddleware:
