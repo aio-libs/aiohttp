@@ -11,7 +11,6 @@ from multidict import CIMultiDict
 from aiohttp import ClientConnectionResetError, hdrs, http
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_writer import _serialize_headers
-from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
@@ -57,7 +56,7 @@ def transport(buf):
 @pytest.fixture
 def protocol(loop, transport):
     protocol = mock.Mock(transport=transport)
-    protocol._drain_helper = make_mocked_coro()
+    protocol._drain_helper = mock.AsyncMock()
     return protocol
 
 
@@ -443,7 +442,7 @@ async def test_write_payload_slicing_long_memoryview(buf, protocol, transport, l
 
 async def test_write_drain(protocol, transport, loop) -> None:
     msg = http.StreamWriter(protocol, loop)
-    msg.drain = make_mocked_coro()
+    msg.drain = mock.AsyncMock()
     await msg.write(b"1" * (64 * 1024 * 2), drain=False)
     assert not msg.drain.called
 
@@ -452,8 +451,12 @@ async def test_write_drain(protocol, transport, loop) -> None:
     assert msg.buffer_size == 0
 
 
-async def test_write_calls_callback(protocol, transport, loop) -> None:
-    on_chunk_sent = make_mocked_coro()
+async def test_write_calls_callback(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    on_chunk_sent = mock.AsyncMock()
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
     await msg.write(chunk)
@@ -461,8 +464,12 @@ async def test_write_calls_callback(protocol, transport, loop) -> None:
     assert on_chunk_sent.call_args == mock.call(chunk)
 
 
-async def test_write_eof_calls_callback(protocol, transport, loop) -> None:
-    on_chunk_sent = make_mocked_coro()
+async def test_write_eof_calls_callback(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    on_chunk_sent = mock.AsyncMock()
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
     await msg.write_eof(chunk=chunk)
