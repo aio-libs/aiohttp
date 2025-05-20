@@ -141,7 +141,7 @@ and a handler function, and returns a response. Middleware must follow the
 :type:`ClientMiddlewareType` signature (see :ref:`aiohttp-client-reference` for details).
 
 Using Middleware
-^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 You can apply middleware to a client session or to individual requests::
 
@@ -154,7 +154,7 @@ You can apply middleware to a client session or to individual requests::
         resp = await session.get('http://example.com', middlewares=(my_middleware,))
 
 Middleware Chaining
-^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 Multiple middlewares are applied in the order they are listed::
 
@@ -170,12 +170,12 @@ Multiple middlewares are applied in the order they are listed::
    (e.g., ``headers``) or session configuration instead.
 
 Common Middleware Patterns
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. _client-middleware-retry:
 
 Authentication and Retry
-"""""""""""""""""""""""
+""""""""""""""""""""""""
 
 There are two recommended approaches for implementing retry logic:
 
@@ -256,7 +256,7 @@ There are two recommended approaches for implementing retry logic:
                return response
 
 Request Modification
-"""""""""""""""""""
+""""""""""""""""""""
 
 Modify request properties based on request content::
 
@@ -277,7 +277,7 @@ Modify request properties based on request content::
         return await handler(request)
 
 Avoiding Infinite Recursion
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. warning::
 

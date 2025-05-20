@@ -2609,7 +2609,7 @@ Hierarchy of exceptions
 
 
 Client Types
------------
+------------
 
 .. type:: ClientMiddlewareType
 
