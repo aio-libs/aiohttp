@@ -648,7 +648,6 @@ class ClientSession:
                         trust_env=self.trust_env,
                     )
 
-                    # Core request handler - now includes connection logic
                     async def _connect_and_send_request(
                         req: ClientRequest,
                     ) -> ClientResponse:
