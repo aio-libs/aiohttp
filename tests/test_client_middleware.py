@@ -74,13 +74,12 @@ async def test_client_middleware_retry(aiohttp_server: AiohttpServer) -> None:
     async def retry_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        retry_count = 0
-        while True:
+        response = None
+        for _ in range(2):  # pragma: no branch
             response = await handler(request)
-            if response.status == 503 and retry_count < 1:
-                retry_count += 1
-                continue
-            return response
+            if response.ok:
+                return response
+        assert False, "not reachable in test"
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -244,30 +243,28 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
     async def challenge_auth_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        challenge_data: Dict[str, Union[bool, str, None]] = {
-            "nonce": None,
-            "attempted": False,
-        }
+        nonce: Optional[str] = None
+        attempted: bool = False
 
         while True:
             # If we have challenge data from previous attempt, add auth header
-            if challenge_data["nonce"] and challenge_data["attempted"]:
-                request.headers["Authorization"] = (
-                    f'Custom response="{challenge_data["nonce"]}-secret"'
-                )
+            if nonce and attempted:
+                request.headers["Authorization"] = f'Custom response="{nonce}-secret"'
 
             response = await handler(request)
 
             # If we get a 401 with challenge, store it and retry
-            if response.status == 401 and not challenge_data["attempted"]:
+            if response.status == 401 and not attempted:
                 www_auth = response.headers.get("WWW-Authenticate")
-                if www_auth and "nonce=" in www_auth:  # pragma: no branch
+                if www_auth and "nonce=" in www_auth:
                     # Extract nonce from authentication header
                     nonce_start = www_auth.find('nonce="') + 7
                     nonce_end = www_auth.find('"', nonce_start)
-                    challenge_data["nonce"] = www_auth[nonce_start:nonce_end]
-                    challenge_data["attempted"] = True
+                    nonce = www_auth[nonce_start:nonce_end]
+                    attempted = True
                     continue
+                else:
+                    assert False, "Should not reach here"
 
             return response
 
@@ -324,7 +321,7 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) 
     ) -> ClientResponse:
         request.headers["X-Client-ID"] = "test-client"
 
-        while True:
+        for _ in range(3):
             # Apply auth based on current state
             if middleware_state["step"] == 1 and middleware_state["session"]:
                 request.headers["Authorization"] = (
@@ -347,13 +344,17 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) 
                     middleware_state["step"] = 1
                     continue
 
-                elif auth_step == "2":  # pragma: no branch
+                elif auth_step == "2":
                     # Second step: store challenge
                     middleware_state["challenge"] = response.headers.get("X-Challenge")
                     middleware_state["step"] = 2
                     continue
+                else:
+                    assert False, "Should not reach here"
 
             return response
+        # This should not be reached but keeps mypy happy
+        assert False, "Should not reach here"
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -396,7 +397,7 @@ async def test_client_middleware_conditional_retry(
     async def token_refresh_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        while True:
+        for _ in range(2):
             # Add token to request
             request.headers["X-Auth-Token"] = str(token_state["token"])
 
@@ -407,13 +408,17 @@ async def test_client_middleware_conditional_retry(
                 data = await response.json()
                 if data.get("error") == "token_expired" and data.get(
                     "refresh_required"
-                ):  # pragma: no branch
+                ):
                     # Simulate token refresh
                     token_state["token"] = "refreshed-token"
                     token_state["refreshed"] = True
                     continue
+                else:
+                    assert False, "Should not reach here"
 
             return response
+        # This should not be reached but keeps mypy happy
+        assert False, "Should not reach here"
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -490,7 +495,6 @@ async def test_client_middleware_stateful_retry(aiohttp_server: AiohttpServer) -
 
         def __init__(self, max_retries: int = 3) -> None:
             self.max_retries = max_retries
-            self.retry_counts: Dict[int, int] = {}  # Track retries per request
 
         async def __call__(
             self, request: ClientRequest, handler: ClientHandlerType
@@ -576,10 +580,55 @@ async def test_client_middleware_multiple_instances(
     assert headers_received.get("X-Custom-2") == "value2"
 
 
-async def test_client_middleware_disable_with_empty_tuple(
+async def test_request_middleware_overrides_session_middleware_with_empty(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    """Test that passing middlewares=() to a request disables session-level middlewares."""
+    """Test that passing empty middlewares tuple to a request disables session-level middlewares."""
+    session_middleware_called = False
+
+    async def handler(request: web.Request) -> web.Response:
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            return web.Response(text=f"Auth: {auth_header}")
+        return web.Response(text="No auth")
+
+    async def session_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        nonlocal session_middleware_called
+        session_middleware_called = True
+        request.headers["Authorization"] = "Bearer session-token"
+        response = await handler(request)
+        return response
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    # Create session with middleware
+    async with ClientSession(middlewares=(session_middleware,)) as session:
+        # First request uses session middleware
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "Auth: Bearer session-token"
+            assert session_middleware_called is True
+
+        # Reset flags
+        session_middleware_called = False
+
+        # Second request explicitly disables middlewares with empty tuple
+        async with session.get(server.make_url("/"), middlewares=()) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "No auth"
+            assert session_middleware_called is False
+
+
+async def test_request_middleware_overrides_session_middleware_with_specific(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that passing specific middlewares to a request overrides session-level middlewares."""
     session_middleware_called = False
     request_middleware_called = False
 
@@ -625,19 +674,7 @@ async def test_client_middleware_disable_with_empty_tuple(
         session_middleware_called = False
         request_middleware_called = False
 
-        # Second request explicitly disables middlewares
-        async with session.get(server.make_url("/"), middlewares=()) as resp:
-            assert resp.status == 200
-            text = await resp.text()
-            assert text == "No auth"
-            assert session_middleware_called is False
-            assert request_middleware_called is False
-
-        # Reset flags
-        session_middleware_called = False
-        request_middleware_called = False
-
-        # Third request uses request-specific middleware
+        # Second request uses request-specific middleware
         async with session.get(
             server.make_url("/"), middlewares=(request_middleware,)
         ) as resp:
@@ -745,9 +782,13 @@ async def test_client_middleware_blocks_connection_before_established(
 
     # Verify that connections were attempted in the correct order
     assert len(connection_attempts) == 3
-    assert allowed_url.host and allowed_url.host in connection_attempts[0]
-    assert "blocked.example.com" in connection_attempts[1]
-    assert "evil.com" in connection_attempts[2]
+    assert allowed_url.host
+
+    assert connection_attempts == [
+        str(server.make_url("/")),
+        "https://blocked.example.com/",
+        "https://evil.com/path",
+    ]
 
     # Check that no connections were leaked
     assert len(connector._conns) == 0
@@ -1042,8 +1083,7 @@ async def test_middleware_can_check_request_body(
                 data = "{}"
 
             # Simulate authentication hash without using real crypto
-            signature = f"SIGNATURE-{self.secretkey}-{len(data)}-{data[:10]}"
-            return signature
+            return f"SIGNATURE-{self.secretkey}-{len(data)}-{data[:10]}"
 
         async def __call__(
             self, request: ClientRequest, handler: ClientHandlerType

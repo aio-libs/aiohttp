@@ -26,6 +26,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Sequence,
     Set,
     Tuple,
     Type,
@@ -194,7 +195,7 @@ class _RequestOptions(TypedDict, total=False):
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
     max_field_size: Union[int, None]
-    middlewares: Optional[Tuple[ClientMiddlewareType, ...]]
+    middlewares: Optional[Sequence[ClientMiddlewareType]]
 
 
 @frozen_dataclass_decorator
@@ -295,7 +296,7 @@ class ClientSession:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
-        middlewares: Optional[Tuple[ClientMiddlewareType, ...]] = None,
+        middlewares: Optional[Sequence[ClientMiddlewareType]] = None,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -455,7 +456,7 @@ class ClientSession:
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_field_size: Optional[int] = None,
-        middlewares: Optional[Tuple[ClientMiddlewareType, ...]] = None,
+        middlewares: Optional[Sequence[ClientMiddlewareType]] = None,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -648,7 +649,6 @@ class ClientSession:
                         trust_env=self.trust_env,
                     )
 
-                    # Core request handler - now includes connection logic
                     async def _connect_and_send_request(
                         req: ClientRequest,
                     ) -> ClientResponse:
