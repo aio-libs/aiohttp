@@ -138,22 +138,7 @@ Creating Middleware
 
 To create a middleware, define an async function (or callable class) that accepts a request
 and a handler function, and returns a response. Middleware must follow the
-:type:`ClientMiddlewareType` signature:
-
-.. type:: ClientMiddlewareType
-
-   Type alias for client middleware functions::
-
-      Callable[
-          [ClientRequest, ClientHandlerType],
-          Awaitable[ClientResponse]
-      ]
-
-.. type:: ClientHandlerType
-
-   Type alias for client request handler functions::
-
-      Callable[ClientRequest, Awaitable[ClientResponse]]
+:type:`ClientMiddlewareType` signature (see :ref:`aiohttp-client-reference` for details).
 
 Using Middleware
 ^^^^^^^^^^^^^^^

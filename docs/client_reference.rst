@@ -2606,3 +2606,22 @@ Hierarchy of exceptions
     * :exc:`InvalidUrlRedirectClientError`
 
     * :exc:`NonHttpUrlRedirectClientError`
+
+
+Client Types
+-----------
+
+.. type:: ClientMiddlewareType
+
+   Type alias for client middleware functions. Middleware functions must have this signature::
+
+      Callable[
+          [ClientRequest, ClientHandlerType],
+          Awaitable[ClientResponse]
+      ]
+
+.. type:: ClientHandlerType
+
+   Type alias for client request handler functions::
+
+      Callable[[ClientRequest], Awaitable[ClientResponse]]
