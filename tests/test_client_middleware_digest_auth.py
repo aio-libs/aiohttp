@@ -151,10 +151,9 @@ def test_encode_validation_errors(
     digest_auth_mw: DigestAuthMiddleware,
     challenge: dict[str, str],
     expected_error: str,
-    description: str,
 ) -> None:
     """Test validation errors when encoding digest auth headers."""
-    digest_auth_mw._challenge = DigestAuthChallenge(**challenge)
+    digest_auth_mw._challenge = challenge
     with pytest.raises(ClientError, match=expected_error):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
