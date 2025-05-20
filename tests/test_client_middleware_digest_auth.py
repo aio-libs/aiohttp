@@ -36,7 +36,8 @@ def digest_auth_mw() -> DigestAuthMiddleware:
         (
             401,
             {
-                "www-authenticate": 'Digest realm="test", nonce="abc", qop="auth", opaque="xyz", algorithm=MD5'
+                "www-authenticate": 'Digest realm="test", nonce="abc", '
+                'qop="auth", opaque="xyz", algorithm=MD5'
             },
             True,
             {
@@ -272,7 +273,12 @@ def test_digest_response_exact_match(
         # Mixed quoted/unquoted with commas in quoted values
         (
             'realm="ex,ample", nonce=12345, qop="auth", domain="/test"',
-            {"realm": "ex,ample", "nonce": "12345", "qop": "auth", "domain": "/test"},
+            {
+                "realm": "ex,ample",
+                "nonce": "12345",
+                "qop": "auth",
+                "domain": "/test",
+            },
             "Mixed quoted/unquoted with commas in quoted values",
         ),
         # Header with scheme
@@ -476,7 +482,9 @@ async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
             # First request returns 401 with digest challenge
             challenge = 'Digest realm="test", nonce="abc123", qop="auth", algorithm=MD5'
             return Response(
-                status=401, headers={"WWW-Authenticate": challenge}, text="Unauthorized"
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
             )
 
         # Second request should have Authorization header
@@ -583,9 +591,14 @@ async def test_digest_auth_without_opaque(aiohttp_server: AiohttpServer) -> None
 
         if request_count == 1:
             # First request returns 401 with digest challenge without opaque
-            challenge = 'Digest realm="test-realm", nonce="testnonce", qop="auth", algorithm=MD5'
+            challenge = (
+                'Digest realm="test-realm", nonce="testnonce", '
+                'qop="auth", algorithm=MD5'
+            )
             return Response(
-                status=401, headers={"WWW-Authenticate": challenge}, text="Unauthorized"
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
             )
 
         # Second request should have Authorization header
