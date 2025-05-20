@@ -547,7 +547,7 @@ async def test_dns_resolver_manager_client_registration(
         # Now the resolver should be canceled and removed
         assert manager is not None
         assert manager._resolver is None
-        mock().cancel.assert_called_once()
+        mock().cancel.assert_called_once()  # type: ignore[unreachable]
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
