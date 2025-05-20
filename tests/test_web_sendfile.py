@@ -3,7 +3,7 @@ from stat import S_IFREG, S_IRUSR, S_IWUSR
 from unittest import mock
 
 from aiohttp import hdrs
-from aiohttp.test_utils import make_mocked_coro, make_mocked_request
+from aiohttp.test_utils import make_mocked_request
 from aiohttp.web_fileresponse import FileResponse
 
 MOCK_MODE = S_IFREG | S_IRUSR | S_IWUSR
@@ -28,7 +28,7 @@ def test_using_gzip_if_header_present_and_file_available(loop) -> None:
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = mock.AsyncMock(return_value=None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -53,7 +53,7 @@ def test_gzip_if_header_not_present_and_file_available(loop) -> None:
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = mock.AsyncMock(return_value=None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -76,7 +76,7 @@ def test_gzip_if_header_not_present_and_file_not_available(loop) -> None:
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = mock.AsyncMock(return_value=None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -101,7 +101,7 @@ def test_gzip_if_header_present_and_file_not_available(loop) -> None:
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = mock.AsyncMock(return_value=None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 
@@ -120,7 +120,7 @@ def test_status_controlled_by_user(loop) -> None:
 
     file_sender = FileResponse(filepath, status=203)
     file_sender._path = filepath
-    file_sender._sendfile = make_mocked_coro(None)  # type: ignore[assignment]
+    file_sender._sendfile = mock.AsyncMock(return_value=None)  # type: ignore[method-assign]
 
     loop.run_until_complete(file_sender.prepare(request))
 

@@ -8,13 +8,12 @@ import pytest
 from aiohttp import WSMsgType
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.http import WebSocketReader, WebSocketWriter
-from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
 def protocol():
     ret = mock.Mock()
-    ret._drain_helper = make_mocked_coro()
+    ret._drain_helper = mock.AsyncMock()
     return ret
 
 
