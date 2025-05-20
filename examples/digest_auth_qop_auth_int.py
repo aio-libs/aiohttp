@@ -22,14 +22,14 @@ DIGEST_AUTH_MD5_URL = URL("https://httpbin.org/digest-auth/auth-int/my/dog/MD5")
 DIGEST_AUTH_SHA512_URL = URL("https://httpbin.org/digest-auth/auth-int/my/dog/SHA-512")
 
 
-async def main():
+async def main() -> None:
     # Create a DigestAuthMiddleware instance with appropriate credentials
     # Username: my
     # Password: dog
     digest_auth = DigestAuthMiddleware(login="my", password="dog")
 
     # Create a client session with the digest auth middleware
-    async with ClientSession(middlewares=[digest_auth]) as session:
+    async with ClientSession(middlewares=(digest_auth,)) as session:
         # Test with SHA-256 algorithm
         print("\n=== Testing with SHA-256 algorithm ===\n")
         async with session.get(DIGEST_AUTH_SHA256_URL) as resp:
