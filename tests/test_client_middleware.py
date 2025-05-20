@@ -1074,8 +1074,7 @@ async def test_middleware_can_check_request_body(
                 data = "{}"
 
             # Simulate authentication hash without using real crypto
-            signature = f"SIGNATURE-{self.secretkey}-{len(data)}-{data[:10]}"
-            return signature
+            return f"SIGNATURE-{self.secretkey}-{len(data)}-{data[:10]}"
 
         async def __call__(
             self, request: ClientRequest, handler: ClientHandlerType
