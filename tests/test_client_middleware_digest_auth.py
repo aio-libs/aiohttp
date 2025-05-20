@@ -1,7 +1,6 @@
 """Test digest authentication middleware for aiohttp client."""
 
-import hashlib
-from typing import Union
+from typing import Generator, Union
 from unittest import mock
 
 import pytest
@@ -25,6 +24,61 @@ from aiohttp.web import Application, Request, Response
 @pytest.fixture
 def digest_auth_mw() -> DigestAuthMiddleware:
     return DigestAuthMiddleware("user", "pass")
+
+
+@pytest.fixture
+def basic_challenge() -> DigestAuthChallenge:
+    """Return a basic digest auth challenge with required fields only."""
+    return DigestAuthChallenge(realm="test", nonce="abc")
+
+
+@pytest.fixture
+def complete_challenge() -> DigestAuthChallenge:
+    """Return a complete digest auth challenge with all fields."""
+    return DigestAuthChallenge(
+        realm="test", nonce="abc", qop="auth", algorithm="MD5", opaque="xyz"
+    )
+
+
+@pytest.fixture
+def qop_challenge() -> DigestAuthChallenge:
+    """Return a digest auth challenge with qop field."""
+    return DigestAuthChallenge(realm="test", nonce="abc", qop="auth")
+
+
+@pytest.fixture
+def no_qop_challenge() -> DigestAuthChallenge:
+    """Return a digest auth challenge without qop."""
+    return DigestAuthChallenge(realm="test-realm", nonce="testnonce", algorithm="MD5")
+
+
+@pytest.fixture
+def auth_mw_with_challenge(
+    digest_auth_mw: DigestAuthMiddleware, complete_challenge: DigestAuthChallenge
+) -> DigestAuthMiddleware:
+    """Return a digest auth middleware with pre-set challenge."""
+    digest_auth_mw._challenge = complete_challenge
+    digest_auth_mw._last_nonce_bytes = complete_challenge["nonce"].encode("utf-8")
+    digest_auth_mw._nonce_count = 0
+    return digest_auth_mw
+
+
+@pytest.fixture
+def mock_sha1_digest() -> Generator[mock.MagicMock, None, None]:
+    """Mock SHA1 to return a predictable value for testing."""
+    mock_digest = mock.Mock()
+    mock_digest.hexdigest.return_value = "deadbeefcafebabe"
+    with mock.patch("hashlib.sha1", return_value=mock_digest) as patched:
+        yield patched
+
+
+@pytest.fixture
+def mock_md5_digest() -> Generator[mock.MagicMock, None, None]:
+    """Mock MD5 to return a predictable value for testing."""
+    mock_digest = mock.Mock()
+    mock_digest.hexdigest.return_value = "abcdef0123456789"
+    with mock.patch("hashlib.md5", return_value=mock_digest) as patched:
+        yield patched
 
 
 @pytest.mark.parametrize(
@@ -110,11 +164,10 @@ def test_encode_validation_errors(
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
-def test_encode_digest_with_md5(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw._challenge = DigestAuthChallenge(
-        realm="test", nonce="abc", qop="auth", algorithm="MD5", opaque="xyz"
+def test_encode_digest_with_md5(auth_mw_with_challenge: DigestAuthMiddleware) -> None:
+    header = auth_mw_with_challenge._encode(
+        "GET", URL("http://example.com/resource"), ""
     )
-    header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
     assert header.startswith("Digest ")
     assert 'username="user"' in header
     assert "algorithm=MD5" in header
@@ -124,31 +177,43 @@ def test_encode_digest_with_md5(digest_auth_mw: DigestAuthMiddleware) -> None:
     "algorithm", ["MD5-SESS", "SHA-SESS", "SHA-256-SESS", "SHA-512-SESS"]
 )
 def test_encode_digest_with_sess_algorithms(
-    digest_auth_mw: DigestAuthMiddleware, algorithm: str
+    digest_auth_mw: DigestAuthMiddleware,
+    qop_challenge: DigestAuthChallenge,
+    algorithm: str,
 ) -> None:
     """Test that all session-based digest algorithms work correctly."""
-    digest_auth_mw._challenge = DigestAuthChallenge(
-        realm="test", nonce="abc", qop="auth", algorithm=algorithm
-    )
+    # Create a modified challenge with the test algorithm
+    challenge = qop_challenge.copy()
+    challenge["algorithm"] = algorithm
+    digest_auth_mw._challenge = challenge
+
     header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
     assert f"algorithm={algorithm}" in header
 
 
-def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> None:
+def test_encode_unsupported_algorithm(
+    digest_auth_mw: DigestAuthMiddleware, basic_challenge: DigestAuthChallenge
+) -> None:
     """Test that unsupported algorithm raises ClientError."""
-    digest_auth_mw._challenge = DigestAuthChallenge(
-        realm="test", nonce="abc", algorithm="UNSUPPORTED"
-    )
+    # Create a modified challenge with an unsupported algorithm
+    challenge = basic_challenge.copy()
+    challenge["algorithm"] = "UNSUPPORTED"
+    digest_auth_mw._challenge = challenge
+
     with pytest.raises(ClientError, match="Unsupported hash algorithm"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
-def test_invalid_qop_rejected(digest_auth_mw: DigestAuthMiddleware) -> None:
+def test_invalid_qop_rejected(
+    digest_auth_mw: DigestAuthMiddleware, basic_challenge: DigestAuthChallenge
+) -> None:
     """Test that invalid Quality of Protection values are rejected."""
     # Use bad QoP value to trigger error
-    digest_auth_mw._challenge = DigestAuthChallenge(
-        realm="realm", nonce="nonce", qop="badvalue", algorithm="MD5"
-    )
+    challenge = basic_challenge.copy()
+    challenge["qop"] = "badvalue"
+    challenge["algorithm"] = "MD5"
+    digest_auth_mw._challenge = challenge
+
     # This should raise an error about unsupported QoP
     with pytest.raises(ClientError, match="Unsupported Quality of Protection"):
         digest_auth_mw._encode("GET", URL("http://example.com"), "")
@@ -203,7 +268,11 @@ def compute_expected_digest(
     ],
 )
 def test_digest_response_exact_match(
-    qop: str, algorithm: str, body: Union[str, bytes], body_str: str
+    qop: str,
+    algorithm: str,
+    body: Union[str, bytes],
+    body_str: str,
+    mock_sha1_digest: mock.MagicMock,
 ) -> None:
     # Fixed input values
     login = "user"
@@ -225,12 +294,7 @@ def test_digest_response_exact_match(
     auth._last_nonce_bytes = nonce.encode("utf-8")
     auth._nonce_count = nc
 
-    # Use patch.object to temporarily replace hashlib.sha1 with a mock
-    mock_sha1 = mock.Mock()
-    mock_sha1.hexdigest.return_value = cnonce
-
-    with mock.patch.object(hashlib, "sha1", return_value=mock_sha1):
-        header = auth._encode(method, URL(f"http://host{uri}"), body)
+    header = auth._encode(method, URL(f"http://host{uri}"), body)
 
     # Get expected digest
     expected = compute_expected_digest(
@@ -252,19 +316,17 @@ def test_digest_response_exact_match(
 
 
 @pytest.mark.parametrize(
-    ("header", "expected_result", "description"),
+    ("header", "expected_result"),
     [
         # Normal quoted values
         (
             'realm="example.com", nonce="12345", qop="auth"',
             {"realm": "example.com", "nonce": "12345", "qop": "auth"},
-            "Fully quoted header",
         ),
         # Unquoted values
         (
             "realm=example.com, nonce=12345, qop=auth",
             {"realm": "example.com", "nonce": "12345", "qop": "auth"},
-            "Unquoted header",
         ),
         # Mixed quoted/unquoted with commas in quoted values
         (
@@ -275,45 +337,48 @@ def test_digest_response_exact_match(
                 "qop": "auth",
                 "domain": "/test",
             },
-            "Mixed quoted/unquoted with commas in quoted values",
         ),
         # Header with scheme
         (
             'Digest realm="example.com", nonce="12345", qop="auth"',
             {"realm": "example.com", "nonce": "12345", "qop": "auth"},
-            "Header with scheme",
         ),
         # No spaces after commas
         (
             'realm="test",nonce="123",qop="auth"',
             {"realm": "test", "nonce": "123", "qop": "auth"},
-            "No spaces after commas",
         ),
         # Extra whitespace
         (
             'realm  =  "test"  ,  nonce  =  "123"',
             {"realm": "test", "nonce": "123"},
-            "Extra whitespace",
         ),
         # Escaped quotes
         (
             'realm="test\\"realm", nonce="123"',
             {"realm": 'test"realm', "nonce": "123"},
-            "Escaped quotes",
         ),
         # Single quotes (treated as regular chars)
         (
             "realm='test', nonce=123",
             {"realm": "'test'", "nonce": "123"},
-            "Single quotes (treated as regular chars)",
         ),
         # Empty header
-        ("", {}, "Empty header"),
+        ("", {}),
+    ],
+    ids=[
+        "fully_quoted_header",
+        "unquoted_header",
+        "mixed_quoted_unquoted_with_commas",
+        "header_with_scheme",
+        "no_spaces_after_commas",
+        "extra_whitespace",
+        "escaped_quotes",
+        "single_quotes_as_regular_chars",
+        "empty_header",
     ],
 )
-def test_parse_header_pairs(
-    header: str, expected_result: dict[str, str], description: str
-) -> None:
+def test_parse_header_pairs(header: str, expected_result: dict[str, str]) -> None:
     """Test parsing HTTP header pairs with various formats."""
     result = parse_header_pairs(header)
     assert result == expected_result
@@ -357,32 +422,12 @@ def test_escaping_quotes_in_auth_header() -> None:
 
 
 def test_template_based_header_construction(
-    digest_auth_mw: DigestAuthMiddleware,
+    auth_mw_with_challenge: DigestAuthMiddleware,
+    mock_sha1_digest: mock.MagicMock,
+    mock_md5_digest: mock.MagicMock,
 ) -> None:
     """Test that the template-based header construction works correctly."""
-    digest_auth_mw._challenge = DigestAuthChallenge(
-        realm="test-realm",
-        nonce="test-nonce",
-        qop="auth",
-        algorithm="MD5",
-        opaque="test-opaque",
-    )
-
-    # Set last_nonce_bytes to test-nonce to ensure _nonce_count is incremented
-    digest_auth_mw._last_nonce_bytes = b"test-nonce"
-    digest_auth_mw._nonce_count = 0  # Start with 0, it will be incremented to 1
-
-    # Mock the hash functions to have predictable values
-    with mock.patch("hashlib.sha1") as mock_sha1, mock.patch("hashlib.md5") as mock_md5:
-        mock_digest = mock.Mock()
-        mock_digest.hexdigest.return_value = "deadbeefcafebabe"
-        mock_sha1.return_value = mock_digest
-
-        mock_md5_instance = mock.Mock()
-        mock_md5_instance.hexdigest.return_value = "abcdef0123456789"
-        mock_md5.return_value = mock_md5_instance
-
-        header = digest_auth_mw._encode("GET", URL("http://example.com/test"), "")
+    header = auth_mw_with_challenge._encode("GET", URL("http://example.com/test"), "")
 
     # Split the header into scheme and parameters
     scheme, params_str = header.split(" ", 1)
@@ -427,7 +472,7 @@ def test_template_based_header_construction(
 
     # Check specific values
     assert params["username"] == "user"
-    assert params["realm"] == "test-realm"
+    assert params["realm"] == "test"
     assert params["algorithm"] == "MD5"
     assert params["nc"] == "00000001"  # nonce_count = 1 (incremented from 0)
     assert params["uri"] == "/test"  # path component of URL
@@ -508,73 +553,72 @@ async def test_middleware_retry_on_401(
 
 
 async def test_digest_auth_no_qop(
-    aiohttp_server: AiohttpServer, digest_auth_mw: DigestAuthMiddleware
+    aiohttp_server: AiohttpServer,
+    digest_auth_mw: DigestAuthMiddleware,
+    no_qop_challenge: DigestAuthChallenge,
+    mock_sha1_digest: mock.MagicMock,
 ) -> None:
     """Test digest auth with a server that doesn't provide a QoP parameter."""
-    mock_digest = mock.Mock()
-    mock_digest.hexdigest.return_value = "deadbeefcafebabe"
-    # Mock the hash function to return a predictable value
-    with mock.patch("hashlib.sha1", return_value=mock_digest):
-        request_count = 0
-        realm = "test-realm"
-        nonce = "testnonce"
-        algorithm = "MD5"
-        username = "user"
-        password = "pass"
-        uri = "/"
+    request_count = 0
+    realm = no_qop_challenge["realm"]
+    nonce = no_qop_challenge["nonce"]
+    algorithm = no_qop_challenge["algorithm"]
+    username = "user"
+    password = "pass"
+    uri = "/"
 
-        async def handler(request: Request) -> Response:
-            nonlocal request_count
-            request_count += 1
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
 
-            if request_count == 1:
-                # First request returns 401 with digest challenge without qop
-                challenge = (
-                    f'Digest realm="{realm}", nonce="{nonce}", algorithm={algorithm}'
-                )
-                return Response(
-                    status=401,
-                    headers={"WWW-Authenticate": challenge},
-                    text="Unauthorized",
-                )
-
-            # Second request should have Authorization header
-            auth_header = request.headers.get(hdrs.AUTHORIZATION)
-            assert auth_header and auth_header.startswith("Digest ")
-
-            # Successful auth should have no qop param
-            assert "qop=" not in auth_header
-            assert "nc=" not in auth_header
-            assert "cnonce=" not in auth_header
-
-            expected_digest = compute_expected_digest(
-                algorithm=algorithm,
-                username=username,
-                password=password,
-                realm=realm,
-                nonce=nonce,
-                uri=uri,
-                method="GET",
-                qop="",  # This is the key part - explicitly setting qop=""
-                nc="",  # Not needed for non-qop digest
-                cnonce="",  # Not needed for non-qop digest
+        if request_count == 1:
+            # First request returns 401 with digest challenge without qop
+            challenge = (
+                f'Digest realm="{realm}", nonce="{nonce}", algorithm={algorithm}'
             )
-            # We mock the cnonce, so we can check the expected digest
-            assert expected_digest in auth_header
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
 
-            return Response(text="OK")
+        # Second request should have Authorization header
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        assert auth_header and auth_header.startswith("Digest ")
 
-        app = Application()
-        app.router.add_get("/", handler)
-        server = await aiohttp_server(app)
+        # Successful auth should have no qop param
+        assert "qop=" not in auth_header
+        assert "nc=" not in auth_header
+        assert "cnonce=" not in auth_header
 
-        async with ClientSession(middlewares=(digest_auth_mw,)) as session:
-            async with session.get(server.make_url("/")) as resp:
-                assert resp.status == 200
-                text_content = await resp.text()
-                assert text_content == "OK"
+        expected_digest = compute_expected_digest(
+            algorithm=algorithm,
+            username=username,
+            password=password,
+            realm=realm,
+            nonce=nonce,
+            uri=uri,
+            method="GET",
+            qop="",  # This is the key part - explicitly setting qop=""
+            nc="",  # Not needed for non-qop digest
+            cnonce="",  # Not needed for non-qop digest
+        )
+        # We mock the cnonce, so we can check the expected digest
+        assert expected_digest in auth_header
 
-        assert request_count == 2  # Initial request + retry with auth
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text_content = await resp.text()
+            assert text_content == "OK"
+
+    assert request_count == 2  # Initial request + retry with auth
 
 
 async def test_digest_auth_without_opaque(
@@ -691,24 +735,22 @@ async def test_direct_success_no_auth_needed(
 
 
 @pytest.mark.parametrize(
-    ("status", "headers", "expected", "description"),
+    ("status", "headers", "expected"),
     [
-        (200, {}, False, "Different status code"),
-        (401, {"www-authenticate": ""}, False, "Empty www-authenticate header"),
-        (
-            401,
-            {"www-authenticate": "DigestWithoutSpace"},
-            False,
-            "No space after scheme",
-        ),
-        (401, {"www-authenticate": "Basic realm=test"}, False, "Different scheme"),
-        (401, {"www-authenticate": "Digest "}, False, "Empty parameters"),
-        (
-            401,
-            {"www-authenticate": "Digest =invalid, format"},
-            False,
-            "Malformed parameters",
-        ),
+        (200, {}, False),
+        (401, {"www-authenticate": ""}, False),
+        (401, {"www-authenticate": "DigestWithoutSpace"}, False),
+        (401, {"www-authenticate": "Basic realm=test"}, False),
+        (401, {"www-authenticate": "Digest "}, False),
+        (401, {"www-authenticate": "Digest =invalid, format"}, False),
+    ],
+    ids=[
+        "different_status_code",
+        "empty_www_authenticate_header",
+        "no_space_after_scheme",
+        "different_scheme",
+        "empty_parameters",
+        "malformed_parameters",
     ],
 )
 def test_authenticate_with_malformed_headers(
@@ -716,7 +758,6 @@ def test_authenticate_with_malformed_headers(
     status: int,
     headers: dict[str, str],
     expected: bool,
-    description: str,
 ) -> None:
     """Test _authenticate method with various edge cases."""
     response = mock.Mock(spec=ClientResponse)
