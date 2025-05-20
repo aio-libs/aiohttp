@@ -28,9 +28,6 @@ def build_client_middlewares(
     This implementation avoids using partial/update_wrapper to minimize overhead
     and doesn't cache to avoid holding references to stateful middleware.
     """
-    if not middlewares:
-        return handler
-
     # Optimize for single middleware case
     if len(middlewares) == 1:
         middleware = middlewares[0]
