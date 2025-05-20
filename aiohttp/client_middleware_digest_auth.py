@@ -394,9 +394,7 @@ class DigestAuthMiddleware:
         self, request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         """Run the digest auth middleware."""
-        retry_count = 0
-
-        while True:
+        for retry_count in range(2):
             # Apply authorization header if we have a challenge (on second attempt)
             if retry_count > 0:
                 auth_header = self._encode(request.method, request.url, request.body)
@@ -407,9 +405,9 @@ class DigestAuthMiddleware:
             response = await handler(request)
 
             # Check if we need to authenticate
-            if self._authenticate(response) and retry_count < 1:
-                retry_count += 1
-                response.release()  # Release the response to enable connection reuse
-                continue  # Retry the request with digest auth
+            if not self._authenticate(response):
+                break
+            elif retry_count < 1:
+                response.release()  # Release the response to enable connection reuse on retry
 
-            return response
+        return response
