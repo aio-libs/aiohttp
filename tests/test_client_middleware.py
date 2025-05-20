@@ -324,7 +324,7 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) 
     ) -> ClientResponse:
         request.headers["X-Client-ID"] = "test-client"
 
-        while True:
+        for _ in range(3):
             # Apply auth based on current state
             if middleware_state["step"] == 1 and middleware_state["session"]:
                 request.headers["Authorization"] = (
@@ -396,7 +396,7 @@ async def test_client_middleware_conditional_retry(
     async def token_refresh_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        while True:
+        for _ in range(2):
             # Add token to request
             request.headers["X-Auth-Token"] = str(token_state["token"])
 
