@@ -11,7 +11,6 @@ import aiohttp
 from aiohttp import ClientConnectionResetError, ServerDisconnectedError, client, hdrs
 from aiohttp.http import WS_KEY
 from aiohttp.streams import EofStream
-from aiohttp.test_utils import make_mocked_coro
 
 
 async def test_ws_connect(ws_key: Any, loop: Any, key_data: Any) -> None:
@@ -352,7 +351,7 @@ async def test_close(loop, ws_key, key_data) -> None:
                 m_req.return_value.set_result(resp)
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
-                writer.close = make_mocked_coro()
+                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect("http://test.org")
@@ -461,7 +460,7 @@ async def test_close_exc(
                 m_req.return_value.set_result(mresp)
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
-                writer.close = make_mocked_coro()
+                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect("http://test.org")
@@ -595,7 +594,7 @@ async def test_reader_read_exception(ws_key, key_data, loop) -> None:
 
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
-                writer.close = make_mocked_coro()
+                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect("http://test.org")
@@ -731,7 +730,7 @@ async def test_ws_connect_deflate_per_message(loop, ws_key, key_data) -> None:
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
                 writer = WebSocketWriter.return_value = mock.Mock()
-                send_frame = writer.send_frame = make_mocked_coro()
+                send_frame = writer.send_frame = mock.AsyncMock()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect("http://test.org")

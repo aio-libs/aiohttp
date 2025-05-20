@@ -24,7 +24,6 @@ from aiohttp.client_reqrep import (
 )
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.http import HttpVersion10, HttpVersion11
-from aiohttp.test_utils import make_mocked_coro
 
 
 class WriterMock(mock.AsyncMock):
@@ -806,7 +805,7 @@ async def test_content_encoding(loop, conn) -> None:
         "post", URL("http://python.org/"), data="foo", compress="deflate", loop=loop
     )
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
-        m_writer.return_value.write_headers = make_mocked_coro()
+        m_writer.return_value.write_headers = mock.AsyncMock()
         resp = await req.send(conn)
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
     assert req.headers["CONTENT-ENCODING"] == "deflate"
@@ -837,7 +836,7 @@ async def test_content_encoding_header(loop, conn) -> None:
         loop=loop,
     )
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
-        m_writer.return_value.write_headers = make_mocked_coro()
+        m_writer.return_value.write_headers = mock.AsyncMock()
         resp = await req.send(conn)
 
     assert not m_writer.return_value.enable_compression.called
@@ -887,7 +886,7 @@ async def test_chunked2(loop, conn) -> None:
 async def test_chunked_explicit(loop, conn) -> None:
     req = ClientRequest("post", URL("http://python.org/"), chunked=True, loop=loop)
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
-        m_writer.return_value.write_headers = make_mocked_coro()
+        m_writer.return_value.write_headers = mock.AsyncMock()
         resp = await req.send(conn)
 
     assert "chunked" == req.headers["TRANSFER-ENCODING"]

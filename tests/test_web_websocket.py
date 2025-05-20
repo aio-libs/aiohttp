@@ -10,7 +10,7 @@ from multidict import CIMultiDict
 from aiohttp import WSMessage, WSMessageTypeError, WSMsgType, web
 from aiohttp.http import WS_CLOSED_MESSAGE
 from aiohttp.streams import EofStream
-from aiohttp.test_utils import make_mocked_coro, make_mocked_request
+from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPBadRequest, WebSocketResponse
 from aiohttp.web_ws import WebSocketReady
 
@@ -420,13 +420,11 @@ async def test_receive_eofstream_in_reader(make_request, loop) -> None:
 
     ws._reader = mock.Mock()
     exc = EofStream()
-    res = loop.create_future()
-    res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
-    ws._payload_writer.drain = mock.Mock()
-    ws._payload_writer.drain.return_value = loop.create_future()
-    ws._payload_writer.drain.return_value.set_result(True)
-
+    ws._reader.read = mock.AsyncMock(side_effect=exc)
+    assert ws._payload_writer is not None
+    f = loop.create_future()
+    f.set_result(True)
+    ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSED
     assert ws.closed
@@ -439,12 +437,7 @@ async def test_receive_exception_in_reader(make_request: Any, loop: Any) -> None
 
     ws._reader = mock.Mock()
     exc = Exception()
-    res = loop.create_future()
-    res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
-    ws._payload_writer.drain = mock.Mock()
-    ws._payload_writer.drain.return_value = loop.create_future()
-    ws._payload_writer.drain.return_value.set_result(True)
+    ws._reader.read = mock.AsyncMock(side_effect=exc)
 
     msg = await ws.receive()
     assert msg.type == WSMsgType.ERROR
@@ -526,9 +519,7 @@ async def test_receive_timeouterror(make_request: Any, loop: Any) -> None:
     assert len(ws._req.transport.close.mock_calls) == 0
 
     ws._reader = mock.Mock()
-    res = loop.create_future()
-    res.set_exception(asyncio.TimeoutError())
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(side_effect=asyncio.TimeoutError())
 
     with pytest.raises(asyncio.TimeoutError):
         await ws.receive()

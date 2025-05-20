@@ -23,8 +23,7 @@ from aiohttp import (
 )
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
-from aiohttp.pytest_plugin import AiohttpClient
-from aiohttp.test_utils import make_mocked_coro
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import Handler
 from aiohttp.web_protocol import RequestHandler
 
@@ -2025,15 +2024,14 @@ async def test_iter_any(aiohttp_server) -> None:
             assert resp.status == 200
 
 
-async def test_request_tracing(aiohttp_server) -> None:
-
-    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_create_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_create_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
+    on_request_start = mock.AsyncMock()
+    on_request_end = mock.AsyncMock()
+    on_dns_resolvehost_start = mock.AsyncMock()
+    on_dns_resolvehost_end = mock.AsyncMock()
+    on_request_redirect = mock.AsyncMock()
+    on_connection_create_start = mock.AsyncMock()
+    on_connection_create_end = mock.AsyncMock()
 
     async def redirector(request):
         raise web.HTTPFound(location=URL("/redirected"))
