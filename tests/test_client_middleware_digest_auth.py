@@ -594,9 +594,7 @@ async def test_digest_auth_without_opaque(aiohttp_server: AiohttpServer) -> None
         # Successful auth should have no opaque param
         assert "opaque=" not in auth_header
 
-        resp = Response()
-        resp.text = "OK"
-        return resp
+        return Response(text="OK")
 
     app = Application()
     app.router.add_get("/", handler)
