@@ -61,7 +61,7 @@ def check_no_lingering_resolvers() -> Generator[None, None, None]:
     AsyncResolver or directly uses _DNSResolverManager.
     """
     yield
-    if aiodns is None:
+    if not aiodns:
         return
     manager = _DNSResolverManager()
     if manager._loop_data:
