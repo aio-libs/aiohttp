@@ -180,11 +180,11 @@ class _DNSResolverManager:
         return cls._instance
 
     def _init(self) -> None:
-        # Map event loops to (resolver, client_set) tuples
-        self._loop_data: dict[
+        # Use WeakKeyDictionary to allow event loops to be garbage collected
+        self._loop_data: weakref.WeakKeyDictionary[
             asyncio.AbstractEventLoop,
             tuple["aiodns.DNSResolver", weakref.WeakSet["AsyncResolver"]],
-        ] = {}
+        ] = weakref.WeakKeyDictionary()
 
     def get_resolver(
         self, client: "AsyncResolver", loop: asyncio.AbstractEventLoop
