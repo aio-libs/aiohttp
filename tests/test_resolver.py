@@ -59,12 +59,12 @@ def check_no_lingering_resolvers() -> Generator[None, None, None]:
     before = len(manager._loop_data)
     yield
     after = len(manager._loop_data)
-    if after > before:
+    if after > before:  # pragma: no branch
         # Force garbage collection to ensure weak references are updated
-        gc.collect()
-        after = len(manager._loop_data)
-        if after > before:
-            pytest.fail(
+        gc.collect()  # pragma: no cover
+        after = len(manager._loop_data)  # pragma: no cover
+        if after > before:  # pragma: no cover
+            pytest.fail(  # pragma: no cover
                 f"Lingering resolvers found: {(after - before)} "
                 "new AsyncResolver instances were not properly closed."
             )
@@ -76,9 +76,6 @@ def dns_resolver_manager() -> Generator[_DNSResolverManager, None, None]:
 
     Saves and restores the singleton state to avoid affecting other tests.
     """
-    if aiodns is None:
-        pytest.skip("aiodns is required")
-
     # Save the original instance
     original_instance = _DNSResolverManager._instance
 
