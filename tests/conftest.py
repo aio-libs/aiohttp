@@ -53,7 +53,7 @@ IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
 
 
-@pytest.fixture()
+@pytest.fixture(autouse=True)
 def check_no_lingering_resolvers() -> Generator[None, None, None]:
     """Verify no resolvers remain after the test.
 
