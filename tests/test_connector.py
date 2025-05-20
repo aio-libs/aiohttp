@@ -31,7 +31,7 @@ from aiohttp.connector import (
     _DNSCacheTable,
 )
 from aiohttp.resolver import ResolveResult
-from aiohttp.test_utils import make_mocked_coro, unused_port
+from aiohttp.test_utils import unused_port
 from aiohttp.tracing import Trace
 
 
@@ -1337,10 +1337,10 @@ async def test_tcp_connector_cancel_dns_error_captured(
 async def test_tcp_connector_dns_tracing(loop, dns_response) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_dns_resolvehost_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_cache_hit = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_cache_miss = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_dns_resolvehost_start = mock.AsyncMock()
+    on_dns_resolvehost_end = mock.AsyncMock()
+    on_dns_cache_hit = mock.AsyncMock()
+    on_dns_cache_miss = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -1382,8 +1382,8 @@ async def test_tcp_connector_dns_tracing(loop, dns_response) -> None:
 async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_dns_resolvehost_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_dns_resolvehost_start = mock.AsyncMock()
+    on_dns_resolvehost_end = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -1437,8 +1437,8 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response) -> N
 async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_dns_cache_hit = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_cache_miss = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_dns_cache_hit = mock.AsyncMock()
+    on_dns_cache_miss = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -1467,8 +1467,8 @@ async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response) -
 
 async def test_dns_error(loop) -> None:
     connector = aiohttp.TCPConnector(loop=loop)
-    connector._resolve_host = make_mocked_coro(
-        raise_exception=OSError("dont take it serious")
+    connector._resolve_host = mock.AsyncMock(
+        side_effect=OSError("dont take it serious")
     )
 
     req = ClientRequest("GET", URL("http://www.python.org"), loop=loop)
@@ -1567,8 +1567,8 @@ async def test_connect(loop, key) -> None:
 async def test_connect_tracing(loop) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_connection_create_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_create_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_connection_create_start = mock.AsyncMock()
+    on_connection_create_end = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -2563,8 +2563,8 @@ async def test_connect_with_limit(
 async def test_connect_queued_operation_tracing(loop, key) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_connection_queued_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_queued_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_connection_queued_start = mock.AsyncMock()
+    on_connection_queued_end = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -2609,7 +2609,7 @@ async def test_connect_queued_operation_tracing(loop, key) -> None:
 async def test_connect_reuseconn_tracing(loop, key) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_connection_reuseconn = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_connection_reuseconn = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -3101,9 +3101,10 @@ async def test_unix_connector_not_found(loop) -> None:
 
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
-async def test_unix_connector_permission(loop) -> None:
-    loop.create_unix_connection = make_mocked_coro(raise_exception=PermissionError())
-    connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex, loop=loop)
+async def test_unix_connector_permission(loop: asyncio.AbstractEventLoop) -> None:
+    m = mock.AsyncMock(side_effect=PermissionError())
+    with mock.patch.object(loop, "create_unix_connection", m):
+        connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
     req = ClientRequest("GET", URL("http://www.python.org"), loop=loop)
     with pytest.raises(aiohttp.ClientConnectorError):
@@ -3132,11 +3133,13 @@ async def test_named_pipe_connector_not_found(proactor_loop, pipe_name) -> None:
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
-async def test_named_pipe_connector_permission(proactor_loop, pipe_name) -> None:
-    proactor_loop.create_pipe_connection = make_mocked_coro(
-        raise_exception=PermissionError()
-    )
-    connector = aiohttp.NamedPipeConnector(pipe_name, loop=proactor_loop)
+async def test_named_pipe_connector_permission(
+    proactor_loop: asyncio.AbstractEventLoop, pipe_name: str
+) -> None:
+    m = mock.AsyncMock(side_effect=PermissionError())
+    with mock.patch.object(proactor_loop, "create_pipe_connection", m):
+        asyncio.set_event_loop(proactor_loop)
+        connector = aiohttp.NamedPipeConnector(pipe_name)
 
     req = ClientRequest("GET", URL("http://www.python.org"), loop=proactor_loop)
     with pytest.raises(aiohttp.ClientConnectorError):
