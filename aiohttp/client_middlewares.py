@@ -1,6 +1,6 @@
 """Client middleware support."""
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 
 from .client_reqrep import ClientRequest, ClientResponse
 
@@ -17,7 +17,7 @@ ClientMiddlewareType = Callable[
 
 def build_client_middlewares(
     handler: ClientHandlerType,
-    middlewares: tuple[ClientMiddlewareType, ...],
+    middlewares: Sequence[ClientMiddlewareType],
 ) -> ClientHandlerType:
     """
     Apply middlewares to request handler.
