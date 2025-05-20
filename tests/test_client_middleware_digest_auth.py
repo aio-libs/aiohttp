@@ -10,6 +10,7 @@ from yarl import URL
 from aiohttp import ClientSession, hdrs
 from aiohttp.client_exceptions import ClientError
 from aiohttp.client_middleware_digest_auth import (
+    DigestAuthChallenge,
     DigestAuthMiddleware,
     DigestFunctions,
     escape_quotes,
@@ -153,19 +154,15 @@ def test_encode_validation_errors(
     description: str,
 ) -> None:
     """Test validation errors when encoding digest auth headers."""
-    digest_auth_mw._challenge = challenge
+    digest_auth_mw._challenge = DigestAuthChallenge(**challenge)
     with pytest.raises(ClientError, match=expected_error):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
 def test_encode_digest_with_md5(digest_auth_mw: DigestAuthMiddleware) -> None:
-    digest_auth_mw._challenge = {
-        "realm": "test",
-        "nonce": "abc",
-        "qop": "auth",
-        "algorithm": "MD5",
-        "opaque": "xyz",
-    }
+    digest_auth_mw._challenge = DigestAuthChallenge(
+        realm="test", nonce="abc", qop="auth", algorithm="MD5", opaque="xyz"
+    )
     header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
     assert header.startswith("Digest ")
     assert 'username="user"' in header
@@ -179,23 +176,18 @@ def test_encode_digest_with_sess_algorithms(
     digest_auth_mw: DigestAuthMiddleware, algorithm: str
 ) -> None:
     """Test that all session-based digest algorithms work correctly."""
-    digest_auth_mw._challenge = {
-        "realm": "test",
-        "nonce": "abc",
-        "qop": "auth",
-        "algorithm": algorithm,
-    }
+    digest_auth_mw._challenge = DigestAuthChallenge(
+        realm="test", nonce="abc", qop="auth", algorithm=algorithm
+    )
     header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
     assert f"algorithm={algorithm}" in header
 
 
 def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> None:
     """Test that unsupported algorithm raises ClientError."""
-    digest_auth_mw._challenge = {
-        "realm": "test",
-        "nonce": "abc",
-        "algorithm": "UNSUPPORTED",
-    }
+    digest_auth_mw._challenge = DigestAuthChallenge(
+        realm="test", nonce="abc", algorithm="UNSUPPORTED"
+    )
     with pytest.raises(ClientError, match="Unsupported hash algorithm"):
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
@@ -203,12 +195,9 @@ def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> N
 def test_invalid_qop_rejected() -> None:
     """Test that invalid Quality of Protection values are rejected."""
     auth = DigestAuthMiddleware("u", "p")
-    auth._challenge = {
-        "realm": "r",
-        "nonce": "n",
-        "qop": "badvalue",
-        "algorithm": "MD5",
-    }
+    auth._challenge = DigestAuthChallenge(
+        realm="r", nonce="n", qop="badvalue", algorithm="MD5"
+    )
     with pytest.raises(ClientError, match="Unsupported Quality of Protection"):
         auth._encode("GET", URL("http://x"), "")
 
@@ -280,12 +269,9 @@ def test_digest_response_exact_match(
 
     # Create the auth object
     auth = DigestAuthMiddleware(login, password)
-    auth._challenge = {
-        "realm": realm,
-        "nonce": nonce,
-        "qop": qop,
-        "algorithm": algorithm,
-    }
+    auth._challenge = DigestAuthChallenge(
+        realm=realm, nonce=nonce, qop=qop, algorithm=algorithm
+    )
     auth._last_nonce_bytes = nonce.encode("utf-8")
     auth._nonce_count = nc
 
@@ -399,13 +385,13 @@ def test_middleware_invalid_login() -> None:
 def test_escaping_quotes_in_auth_header() -> None:
     """Test that double quotes are properly escaped in auth header."""
     auth = DigestAuthMiddleware('user"with"quotes', "pass")
-    auth._challenge = {
-        "realm": 'realm"with"quotes',
-        "nonce": 'nonce"with"quotes',
-        "qop": "auth",
-        "algorithm": "MD5",
-        "opaque": 'opaque"with"quotes',
-    }
+    auth._challenge = DigestAuthChallenge(
+        realm='realm"with"quotes',
+        nonce='nonce"with"quotes',
+        qop="auth",
+        algorithm="MD5",
+        opaque='opaque"with"quotes',
+    )
 
     header = auth._encode("GET", URL("http://example.com/path"), "")
 
@@ -419,13 +405,13 @@ def test_escaping_quotes_in_auth_header() -> None:
 def test_template_based_header_construction() -> None:
     """Test that the template-based header construction works correctly."""
     auth = DigestAuthMiddleware("testuser", "testpass")
-    auth._challenge = {
-        "realm": "test-realm",
-        "nonce": "test-nonce",
-        "qop": "auth",
-        "algorithm": "MD5",
-        "opaque": "test-opaque",
-    }
+    auth._challenge = DigestAuthChallenge(
+        realm="test-realm",
+        nonce="test-nonce",
+        qop="auth",
+        algorithm="MD5",
+        opaque="test-opaque",
+    )
 
     # Set last_nonce_bytes to test-nonce to ensure _nonce_count is incremented
     auth._last_nonce_bytes = b"test-nonce"
