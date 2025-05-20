@@ -196,7 +196,7 @@ class _DNSResolverManager:
         # Create a new resolver and client set for this loop if it doesn't exist
         if loop not in self._loop_data:
             resolver = aiodns.DNSResolver(loop=loop)
-            client_set = weakref.WeakSet()
+            client_set: weakref.WeakSet["AsyncResolver"] = weakref.WeakSet()
             self._loop_data[loop] = (resolver, client_set)
         else:
             # Get the existing resolver and client set
