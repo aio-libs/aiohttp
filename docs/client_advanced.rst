@@ -130,7 +130,7 @@ background.
 Client Middleware
 -----------------
 
-aiohttp client supports middleware to intercept requests and responses. This can be
+The client supports middleware to intercept requests and responses. This can be
 useful for authentication, logging, request/response modification, and retries.
 
 To create a middleware, you need to define an async function that accepts the request
