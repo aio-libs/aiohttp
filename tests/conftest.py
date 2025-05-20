@@ -1,6 +1,5 @@
 import asyncio
 import base64
-import gc
 import os
 import socket
 import ssl
@@ -21,7 +20,6 @@ from blockbuster import blockbuster_ctx
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
-from aiohttp.resolver import _DNSResolverManager
 from aiohttp.test_utils import get_unused_port_socket, loop_context
 
 try:
@@ -36,12 +34,6 @@ except ImportError:
 
 
 try:
-    import aiodns
-except ImportError:
-    aiodns = None  # type: ignore[assignment]
-
-
-try:
     import uvloop
 except ImportError:
     uvloop = None  # type: ignore[assignment]
@@ -51,27 +43,6 @@ pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
 
 IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
-
-
-@pytest.fixture()
-def check_no_lingering_resolvers() -> Generator[None, None, None]:
-    """Verify no resolvers remain after the test.
-
-    This fixture should be used in any test that creates instances of
-    AsyncResolver or directly uses _DNSResolverManager.
-    """
-    yield
-    if not aiodns:
-        return
-    manager = _DNSResolverManager()
-    if manager._loop_data:
-        # Force garbage collection to ensure weak references are updated
-        gc.collect()
-        if manager._loop_data:
-            pytest.fail(
-                f"Lingering resolvers found: {len(manager._loop_data)}. "
-                "Some AsyncResolver instances were not properly closed."
-            )
 
 
 @pytest.fixture(autouse=True)

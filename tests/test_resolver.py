@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import ipaddress
 import socket
 from collections.abc import Generator
@@ -45,6 +46,25 @@ _AddrInfo6 = List[
 _UnknownAddrInfo = List[
     Tuple[socket.AddressFamily, socket.SocketKind, int, str, Tuple[int, bytes]]
 ]
+
+
+@pytest.fixture()
+def check_no_lingering_resolvers() -> Generator[None, None, None]:
+    """Verify no resolvers remain after the test.
+
+    This fixture should be used in any test that creates instances of
+    AsyncResolver or directly uses _DNSResolverManager.
+    """
+    yield
+    manager = _DNSResolverManager()
+    if manager._loop_data:
+        # Force garbage collection to ensure weak references are updated
+        gc.collect()
+        if manager._loop_data:
+            pytest.fail(
+                f"Lingering resolvers found: {len(manager._loop_data)}. "
+                "Some AsyncResolver instances were not properly closed."
+            )
 
 
 @pytest.fixture()
