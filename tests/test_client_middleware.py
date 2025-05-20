@@ -490,7 +490,6 @@ async def test_client_middleware_stateful_retry(aiohttp_server: AiohttpServer) -
 
         def __init__(self, max_retries: int = 3) -> None:
             self.max_retries = max_retries
-            self.retry_counts: Dict[int, int] = {}  # Track retries per request
 
         async def __call__(
             self, request: ClientRequest, handler: ClientHandlerType

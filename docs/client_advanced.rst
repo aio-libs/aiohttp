@@ -283,7 +283,10 @@ Avoiding Infinite Recursion
 
    Using the same session from within middleware can cause infinite recursion if
    the middleware makes HTTP requests using the same session that has the middleware
-   applied.
+   applied. This is especially risky in token refresh middleware or retry logic.
+
+   When implementing retry or refresh logic, always use bounded loops
+   (e.g., ``for _ in range(2):`` instead of ``while True:``) to prevent infinite recursion.
 
 To avoid recursion when making requests inside middleware, use one of these approaches:
 
