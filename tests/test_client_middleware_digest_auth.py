@@ -625,17 +625,17 @@ async def test_digest_auth_without_opaque(aiohttp_server: AiohttpServer) -> None
 
 
 @pytest.mark.parametrize(
-    ("www_authenticate", "description"),
+    "www_authenticate",
     [
-        (None, "No WWW-Authenticate header"),
-        ("DigestWithoutSpace", "No space after scheme"),
-        ('Basic realm="test"', "Not a Digest scheme"),
-        ("Digest ", "Empty parameters"),
-        ("Digest =invalid, format", "Invalid parameter format"),
+        None,
+        "DigestWithoutSpace",
+        'Basic realm="test"',
+        "Digest ",
+        "Digest =invalid, format",
     ],
 )
 async def test_auth_header_no_retry(
-    aiohttp_server: AiohttpServer, www_authenticate: str, description: str
+    aiohttp_server: AiohttpServer, www_authenticate: str
 ) -> None:
     """Test that middleware doesn't retry with invalid WWW-Authenticate headers."""
     request_count = 0
@@ -665,3 +665,67 @@ async def test_auth_header_no_retry(
 
     # No retry should happen
     assert request_count == 1
+
+
+async def test_direct_success_no_auth_needed(aiohttp_server: AiohttpServer) -> None:
+    """Test middleware with a direct 200 response with no auth challenge."""
+    request_count = 0
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        # Return success without auth challenge
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    middleware = DigestAuthMiddleware("user", "pass")
+
+    async with ClientSession(middlewares=(middleware,)) as session:
+        async with session.get(server.make_url("/")) as resp:
+            text = await resp.text()
+            assert resp.status == 200
+            assert text == "OK"
+
+    # Verify only one request was made
+    assert request_count == 1
+
+
+@pytest.mark.parametrize(
+    ("status", "headers", "expected", "description"),
+    [
+        (200, {}, False, "Different status code"),
+        (401, {"www-authenticate": ""}, False, "Empty www-authenticate header"),
+        (
+            401,
+            {"www-authenticate": "DigestWithoutSpace"},
+            False,
+            "No space after scheme",
+        ),
+        (401, {"www-authenticate": "Basic realm=test"}, False, "Different scheme"),
+        (401, {"www-authenticate": "Digest "}, False, "Empty parameters"),
+        (
+            401,
+            {"www-authenticate": "Digest =invalid, format"},
+            False,
+            "Malformed parameters",
+        ),
+    ],
+)
+def test_authenticate_with_malformed_headers(
+    digest_auth_mw: DigestAuthMiddleware,
+    status: int,
+    headers: dict[str, str],
+    expected: bool,
+    description: str,
+) -> None:
+    """Test _authenticate method with various edge cases."""
+    response = mock.Mock(spec=ClientResponse)
+    response.status = status
+    response.headers = headers
+
+    result = digest_auth_mw._authenticate(response)
+    assert result == expected
