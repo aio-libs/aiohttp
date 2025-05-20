@@ -244,29 +244,25 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
     async def challenge_auth_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        challenge_data: Dict[str, Union[bool, str, None]] = {
-            "nonce": None,
-            "attempted": False,
-        }
+        nonce: Optional[str] = None
+        attempted: bool = False
 
         while True:
             # If we have challenge data from previous attempt, add auth header
-            if challenge_data["nonce"] and challenge_data["attempted"]:
-                request.headers["Authorization"] = (
-                    f'Custom response="{challenge_data["nonce"]}-secret"'
-                )
+            if nonce and attempted:
+                request.headers["Authorization"] = f'Custom response="{nonce}-secret"'
 
             response = await handler(request)
 
             # If we get a 401 with challenge, store it and retry
-            if response.status == 401 and not challenge_data["attempted"]:
+            if response.status == 401 and not attempted:
                 www_auth = response.headers.get("WWW-Authenticate")
                 if www_auth and "nonce=" in www_auth:  # pragma: no branch
                     # Extract nonce from authentication header
                     nonce_start = www_auth.find('nonce="') + 7
                     nonce_end = www_auth.find('"', nonce_start)
-                    challenge_data["nonce"] = www_auth[nonce_start:nonce_end]
-                    challenge_data["attempted"] = True
+                    nonce = www_auth[nonce_start:nonce_end]
+                    attempted = True
                     continue
 
             return response
