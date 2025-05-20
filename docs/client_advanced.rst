@@ -187,19 +187,6 @@ Multiple middlewares are applied in the order they are listed::
 Common Middleware Patterns
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Simple Request Modification
-""""""""""""""""""""""""""
-
-Add or modify headers for all requests::
-
-    async def add_api_key_middleware(
-        request: ClientRequest,
-        handler: ClientHandlerType
-    ) -> ClientResponse:
-        # Add API key to all requests
-        request.headers['X-API-Key'] = 'my-secret-key'
-        return await handler(request)
-
 .. _client-middleware-retry:
 
 Authentication and Retry
