@@ -218,7 +218,7 @@ async def test_uvloop_secure_https_proxy(
     uvloop_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
-    conn = aiohttp.TCPConnector()
+    conn = aiohttp.TCPConnector(force_close=True)
     sess = aiohttp.ClientSession(connector=conn)
     try:
         url = URL("https://example.com")
@@ -227,6 +227,8 @@ async def test_uvloop_secure_https_proxy(
             url, proxy=secure_proxy_url, ssl=client_ssl_ctx
         ) as response:
             assert response.status == 200
+            # Ensure response body is read to completion
+            await response.read()
     finally:
         await sess.close()
         await conn.close()
