@@ -67,6 +67,26 @@ argument. An instance of :class:`BasicAuth` can be passed in like this::
     async with ClientSession(auth=auth) as session:
         ...
 
+For HTTP digest authentication, use the :class:`DigestAuthMiddleware` client middleware::
+
+    from aiohttp import ClientSession, DigestAuthMiddleware
+
+    # Create the middleware with your credentials
+    digest_auth = DigestAuthMiddleware(login="user", password="password")
+
+    # Pass it to the ClientSession as a tuple
+    async with ClientSession(middlewares=(digest_auth,)) as session:
+        # The middleware will automatically handle auth challenges
+        async with session.get("https://example.com/protected") as resp:
+            print(await resp.text())
+
+The :class:`DigestAuthMiddleware` implements HTTP Digest Authentication according to RFC 7616,
+providing a more secure alternative to Basic Authentication. It supports all
+standard hash algorithms including MD5, SHA, SHA-256, SHA-512 and their session
+variants, as well as both 'auth' and 'auth-int' quality of protection (qop) options.
+The middleware automatically handles the authentication flow by intercepting 401 responses
+and retrying with proper credentials.
+
 Note that if the request is redirected and the redirect URL contains
 credentials, those credentials will supersede any previously set credentials.
 In other words, if ``http://user@example.com`` redirects to
