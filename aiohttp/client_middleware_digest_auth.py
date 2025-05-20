@@ -385,7 +385,7 @@ class DigestAuthMiddleware:
         self._challenge = {}
         for field in CHALLENGE_FIELDS:
             if value := header_pairs.get(field):
-                self._challenge[field] = value  # type: ignore[literal-required]
+                self._challenge[field] = value
 
         # Return True only if we found at least one challenge parameter
         return bool(self._challenge)
@@ -394,6 +394,7 @@ class DigestAuthMiddleware:
         self, request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         """Run the digest auth middleware."""
+        response = None
         for retry_count in range(2):
             # Apply authorization header if we have a challenge (on second attempt)
             if retry_count > 0:
@@ -410,4 +411,6 @@ class DigestAuthMiddleware:
             elif retry_count < 1:
                 response.release()  # Release the response to enable connection reuse on retry
 
+        # At this point, response is guaranteed to be defined
+        assert response is not None
         return response

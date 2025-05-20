@@ -103,9 +103,9 @@ def digest_auth_mw() -> DigestAuthMiddleware:
 async def test_authenticate_scenarios(
     digest_auth_mw: DigestAuthMiddleware,
     response_status: int,
-    headers: dict,
+    headers: dict[str, str],
     expected_result: bool,
-    expected_challenge: dict,
+    expected_challenge: dict[str, str],
 ) -> None:
     """Test different authentication scenarios."""
     response = mock.Mock(spec=ClientResponse)
@@ -116,8 +116,9 @@ async def test_authenticate_scenarios(
     assert result == expected_result
 
     if expected_result:
+        challenge_dict = dict(digest_auth_mw._challenge)
         for key, value in expected_challenge.items():
-            assert digest_auth_mw._challenge[key] == value
+            assert challenge_dict[key] == value
 
 
 @pytest.mark.parametrize(
@@ -147,7 +148,7 @@ async def test_authenticate_scenarios(
 )
 def test_encode_validation_errors(
     digest_auth_mw: DigestAuthMiddleware,
-    challenge: dict,
+    challenge: dict[str, str],
     expected_error: str,
     description: str,
 ) -> None:
@@ -370,7 +371,7 @@ def test_digest_response_exact_match(
     ],
 )
 def test_parse_header_pairs(
-    header: str, expected_result: dict, description: str
+    header: str, expected_result: dict[str, str], description: str
 ) -> None:
     """Test parsing HTTP header pairs with various formats."""
     result = parse_header_pairs(header)
