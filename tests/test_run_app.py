@@ -25,7 +25,6 @@ from uuid import uuid4
 import pytest
 
 from aiohttp import ClientConnectorError, ClientSession, ClientTimeout, WSCloseCode, web
-from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_runner import BaseRunner
 
 # Test for features of OS' socket support
@@ -67,11 +66,11 @@ def skip_if_on_windows():
 @pytest.fixture
 def patched_loop(loop):
     server = mock.Mock()
-    server.wait_closed = make_mocked_coro(None)
-    loop.create_server = make_mocked_coro(server)
+    server.wait_closed = mock.AsyncMock(None)
+    loop.create_server = mock.AsyncMock(server)
     unix_server = mock.Mock()
-    unix_server.wait_closed = make_mocked_coro(None)
-    loop.create_unix_server = make_mocked_coro(unix_server)
+    unix_server.wait_closed = mock.AsyncMock(None)
+    loop.create_unix_server = mock.AsyncMock(unix_server)
     asyncio.set_event_loop(loop)
     return loop
 
@@ -88,9 +87,9 @@ def stopper(loop):
 
 def test_run_app_http(patched_loop) -> None:
     app = web.Application()
-    startup_handler = make_mocked_coro()
+    startup_handler = mock.AsyncMock()
     app.on_startup.append(startup_handler)
-    cleanup_handler = make_mocked_coro()
+    cleanup_handler = mock.AsyncMock()
     app.on_cleanup.append(cleanup_handler)
 
     web.run_app(app, print=stopper(patched_loop), loop=patched_loop)
@@ -693,9 +692,9 @@ def test_startup_cleanup_signals_even_on_failure(patched_loop) -> None:
     patched_loop.create_server = mock.Mock(side_effect=RuntimeError())
 
     app = web.Application()
-    startup_handler = make_mocked_coro()
+    startup_handler = mock.AsyncMock()
     app.on_startup.append(startup_handler)
-    cleanup_handler = make_mocked_coro()
+    cleanup_handler = mock.AsyncMock()
     app.on_cleanup.append(cleanup_handler)
 
     with pytest.raises(RuntimeError):
@@ -711,9 +710,9 @@ def test_run_app_coro(patched_loop) -> None:
     async def make_app():
         nonlocal startup_handler, cleanup_handler
         app = web.Application()
-        startup_handler = make_mocked_coro()
+        startup_handler = mock.AsyncMock()
         app.on_startup.append(startup_handler)
-        cleanup_handler = make_mocked_coro()
+        cleanup_handler = mock.AsyncMock()
         app.on_cleanup.append(cleanup_handler)
         return app
 
