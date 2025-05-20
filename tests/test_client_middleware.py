@@ -74,13 +74,11 @@ async def test_client_middleware_retry(aiohttp_server: AiohttpServer) -> None:
     async def retry_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        retry_count = 0
-        while True:
+        for _ in range(2):
             response = await handler(request)
-            if response.status == 503 and retry_count < 1:
-                retry_count += 1
-                continue
-            return response
+            if response.ok:
+                return response
+        return response
 
     app = web.Application()
     app.router.add_get("/", handler)
