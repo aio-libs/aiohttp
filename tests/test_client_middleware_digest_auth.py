@@ -120,7 +120,7 @@ async def test_authenticate_scenarios(
     expected_challenge: dict[str, str],
 ) -> None:
     """Test different authentication scenarios."""
-    response = mock.Mock(spec=ClientResponse)
+    response = mock.MagicMock(spec=ClientResponse)
     response.status = response_status
     response.headers = headers
 
