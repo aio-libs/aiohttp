@@ -3,7 +3,6 @@
 import asyncio
 import contextlib
 import gc
-import inspect
 import ipaddress
 import os
 import socket
@@ -42,7 +41,6 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar, AbstractStreamWriter
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import LooseHeaders, StrOrURL
