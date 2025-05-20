@@ -57,6 +57,11 @@ def check_no_lingering_resolvers() -> Generator[None, None, None]:
     try:
         yield
     finally:
+        # Force garbage collection to ensure weak references are updated
+        import gc
+
+        gc.collect()
+
         # We need to check in a finally block to ensure the check runs
         # even if the test fails
         if aiodns is not None:  # Only when aiodns is available
