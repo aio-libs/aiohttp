@@ -575,10 +575,55 @@ async def test_client_middleware_multiple_instances(
     assert headers_received.get("X-Custom-2") == "value2"
 
 
-async def test_client_middleware_disable_with_empty_tuple(
+async def test_request_middleware_overrides_session_middleware_with_empty(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    """Test that passing middlewares=() to a request disables session-level middlewares."""
+    """Test that passing empty middlewares tuple to a request disables session-level middlewares."""
+    session_middleware_called = False
+
+    async def handler(request: web.Request) -> web.Response:
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            return web.Response(text=f"Auth: {auth_header}")
+        return web.Response(text="No auth")
+
+    async def session_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        nonlocal session_middleware_called
+        session_middleware_called = True
+        request.headers["Authorization"] = "Bearer session-token"
+        response = await handler(request)
+        return response
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    # Create session with middleware
+    async with ClientSession(middlewares=(session_middleware,)) as session:
+        # First request uses session middleware
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "Auth: Bearer session-token"
+            assert session_middleware_called is True
+
+        # Reset flags
+        session_middleware_called = False
+
+        # Second request explicitly disables middlewares with empty tuple
+        async with session.get(server.make_url("/"), middlewares=()) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "No auth"
+            assert session_middleware_called is False
+
+
+async def test_request_middleware_overrides_session_middleware_with_specific(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that passing specific middlewares to a request overrides session-level middlewares."""
     session_middleware_called = False
     request_middleware_called = False
 
@@ -624,19 +669,7 @@ async def test_client_middleware_disable_with_empty_tuple(
         session_middleware_called = False
         request_middleware_called = False
 
-        # Second request explicitly disables middlewares
-        async with session.get(server.make_url("/"), middlewares=()) as resp:
-            assert resp.status == 200
-            text = await resp.text()
-            assert text == "No auth"
-            assert session_middleware_called is False
-            assert request_middleware_called is False
-
-        # Reset flags
-        session_middleware_called = False
-        request_middleware_called = False
-
-        # Third request uses request-specific middleware
+        # Second request uses request-specific middleware
         async with session.get(
             server.make_url("/"), middlewares=(request_middleware,)
         ) as resp:
