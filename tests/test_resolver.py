@@ -22,6 +22,7 @@ from aiohttp.resolver import (
     AsyncResolver,
     DefaultResolver,
     ThreadedResolver,
+    _DNSResolverManager,
 )
 
 try:
@@ -389,3 +390,103 @@ def test_aio_dns_is_default() -> None:
 @pytest.mark.skipif(getaddrinfo, reason="aiodns <3.2.0 required")
 def test_threaded_resolver_is_default() -> None:
     assert DefaultResolver is ThreadedResolver
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_sharing(loop: asyncio.AbstractEventLoop) -> None:
+    """Test that the DNSResolverManager shares a resolver among AsyncResolver instances."""
+    # Create two default AsyncResolver instances
+    resolver1 = AsyncResolver()
+    resolver2 = AsyncResolver()
+
+    # Check that they share the same underlying resolver
+    assert resolver1._resolver is resolver2._resolver
+
+    # Create an AsyncResolver with custom args
+    resolver3 = AsyncResolver(nameservers=["8.8.8.8"])
+
+    # Check that it has its own resolver
+    assert resolver1._resolver is not resolver3._resolver
+
+    # Cleanup
+    await resolver1.close()
+    await resolver2.close()
+    await resolver3.close()
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_singleton(loop: asyncio.AbstractEventLoop) -> None:
+    """Test that DNSResolverManager is a singleton."""
+    # Create two managers and check they're the same instance
+    manager1 = _DNSResolverManager()
+    manager2 = _DNSResolverManager()
+
+    assert manager1 is manager2
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_resolver_lifecycle(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that DNSResolverManager creates and destroys resolver correctly."""
+    manager = _DNSResolverManager()
+
+    # Initially there should be no resolver
+    assert manager._resolver is None
+
+    # Getting resolver should create one
+    resolver = manager.get_resolver()
+    assert resolver is not None
+    assert manager._resolver is resolver
+
+    # Getting it again should return the same instance
+    assert manager.get_resolver() is resolver
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_client_registration(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test client registration and unregistration logic."""
+    with patch("aiodns.DNSResolver") as mock:
+        # Create resolver instances
+        resolver1 = AsyncResolver()
+        resolver2 = AsyncResolver()
+
+        # Both should use the same resolver from the manager
+        assert resolver1._resolver is resolver2._resolver
+
+        # The manager should be tracking both clients
+        assert resolver1._manager is resolver2._manager
+        manager = resolver1._manager
+        assert len(manager._clients) == 2
+
+        # Close one resolver
+        await resolver1.close()
+        assert len(manager._clients) == 1
+
+        # Resolver should still exist
+        assert manager._resolver is not None
+
+        # Close the second resolver
+        await resolver2.close()
+        assert len(manager._clients) == 0
+
+        # Now the resolver should be canceled and removed
+        assert manager._resolver is None
+        mock().cancel.assert_called_once()
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_error_without_aiodns(
+    loop: asyncio.AbstractEventLoop, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that DNSResolverManager raises an error when aiodns is not available."""
+    # Simulate aiodns not being installed
+    monkeypatch.setattr("aiohttp.resolver.aiodns", None)
+
+    # Should raise RuntimeError when initialized
+    with pytest.raises(
+        RuntimeError, match="DNSResolverManager requires aiodns library"
+    ):
+        _DNSResolverManager()
