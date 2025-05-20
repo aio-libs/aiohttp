@@ -98,8 +98,7 @@ class AsyncResolver(AbstractResolver):
             return
         # Use the shared resolver from the manager for default arguments
         self._manager = _DNSResolverManager()
-        self._resolver = self._manager.get_resolver()
-        self._manager.register_client(self)
+        self._resolver = self._manager.get_resolver(self)
 
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
@@ -154,8 +153,8 @@ class AsyncResolver(AbstractResolver):
 
     async def close(self) -> None:
         if self._manager:
-            # Unregister from the manager if using the shared resolver
-            self._manager.unregister_client(self)
+            # Release the resolver from the manager if using the shared resolver
+            self._manager.release_resolver(self)
             return
         # Otherwise cancel our dedicated resolver
         self._resolver.cancel()
@@ -168,7 +167,7 @@ class _DNSResolverManager:
     with no custom arguments.
     """
 
-    _instance = None
+    _instance: Optional["_DNSResolverManager"] = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -177,23 +176,27 @@ class _DNSResolverManager:
         return cls._instance
 
     def _init(self) -> None:
-        if aiodns is None:
-            raise RuntimeError("DNSResolverManager requires aiodns library")
         self._resolver = None
         self._clients = weakref.WeakSet()
+        if aiodns is None:
+            raise RuntimeError("DNSResolverManager requires aiodns library")
 
-    def get_resolver(self) -> "aiodns.DNSResolver":
-        """Get or create the shared aiodns.DNSResolver instance."""
+    def get_resolver(self, client: "AsyncResolver") -> "aiodns.DNSResolver":
+        """Get or create the shared aiodns.DNSResolver instance.
+
+        Args:
+            client: The AsyncResolver instance requesting the resolver.
+                   This is required to track resolver usage.
+        """
+        # Register the client to ensure it's tracked
+        self._clients.add(client)
+
         if not self._resolver:
             self._resolver = aiodns.DNSResolver()
         return self._resolver
 
-    def register_client(self, client: "AsyncResolver") -> None:
-        """Register an AsyncResolver client."""
-        self._clients.add(client)
-
-    def unregister_client(self, client: "AsyncResolver") -> None:
-        """Unregister an AsyncResolver client when it's closed."""
+    def release_resolver(self, client: "AsyncResolver") -> None:
+        """Release the resolver for an AsyncResolver client when it's closed."""
         self._clients.discard(client)
 
         # If there are no more clients, close the resolver
