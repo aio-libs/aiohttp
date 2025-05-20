@@ -21,8 +21,6 @@ from aiohttp.client_reqrep import ClientResponse
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 
-# ------------------- DigestAuth Tests -----------------------------------
-
 
 @pytest.fixture
 def digest_auth_mw() -> DigestAuthMiddleware:
@@ -145,17 +143,15 @@ def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> N
         digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
 
 
-def test_invalid_qop_rejected() -> None:
+def test_invalid_qop_rejected(digest_auth_mw: DigestAuthMiddleware) -> None:
     """Test that invalid Quality of Protection values are rejected."""
-    # Initialize middleware with non-default values to improve coverage
-    auth = DigestAuthMiddleware("username", "password")
     # Use bad QoP value to trigger error
-    auth._challenge = DigestAuthChallenge(
+    digest_auth_mw._challenge = DigestAuthChallenge(
         realm="realm", nonce="nonce", qop="badvalue", algorithm="MD5"
     )
     # This should raise an error about unsupported QoP
     with pytest.raises(ClientError, match="Unsupported Quality of Protection"):
-        auth._encode("GET", URL("http://example.com"), "")
+        digest_auth_mw._encode("GET", URL("http://example.com"), "")
 
 
 def compute_expected_digest(
@@ -323,10 +319,9 @@ def test_parse_header_pairs(
     assert result == expected_result
 
 
-def test_digest_auth_middleware_callable() -> None:
+def test_digest_auth_middleware_callable(digest_auth_mw: DigestAuthMiddleware) -> None:
     """Test that DigestAuthMiddleware is callable."""
-    middleware = DigestAuthMiddleware("user", "pass")
-    assert callable(middleware)
+    assert callable(digest_auth_mw)
 
 
 def test_middleware_invalid_login() -> None:
@@ -361,10 +356,11 @@ def test_escaping_quotes_in_auth_header() -> None:
     assert 'opaque="opaque\\"with\\"quotes"' in header
 
 
-def test_template_based_header_construction() -> None:
+def test_template_based_header_construction(
+    digest_auth_mw: DigestAuthMiddleware,
+) -> None:
     """Test that the template-based header construction works correctly."""
-    auth = DigestAuthMiddleware("testuser", "testpass")
-    auth._challenge = DigestAuthChallenge(
+    digest_auth_mw._challenge = DigestAuthChallenge(
         realm="test-realm",
         nonce="test-nonce",
         qop="auth",
@@ -373,8 +369,8 @@ def test_template_based_header_construction() -> None:
     )
 
     # Set last_nonce_bytes to test-nonce to ensure _nonce_count is incremented
-    auth._last_nonce_bytes = b"test-nonce"
-    auth._nonce_count = 0  # Start with 0, it will be incremented to 1
+    digest_auth_mw._last_nonce_bytes = b"test-nonce"
+    digest_auth_mw._nonce_count = 0  # Start with 0, it will be incremented to 1
 
     # Mock the hash functions to have predictable values
     with mock.patch("hashlib.sha1") as mock_sha1, mock.patch("hashlib.md5") as mock_md5:
@@ -386,7 +382,7 @@ def test_template_based_header_construction() -> None:
         mock_md5_instance.hexdigest.return_value = "abcdef0123456789"
         mock_md5.return_value = mock_md5_instance
 
-        header = auth._encode("GET", URL("http://example.com/test"), "")
+        header = digest_auth_mw._encode("GET", URL("http://example.com/test"), "")
 
     # Split the header into scheme and parameters
     scheme, params_str = header.split(" ", 1)
@@ -430,7 +426,7 @@ def test_template_based_header_construction() -> None:
         assert f"{field}={params[field]}" in header
 
     # Check specific values
-    assert params["username"] == "testuser"
+    assert params["username"] == "user"
     assert params["realm"] == "test-realm"
     assert params["algorithm"] == "MD5"
     assert params["nc"] == "00000001"  # nonce_count = 1 (incremented from 0)
@@ -470,7 +466,9 @@ def test_quote_escaping_functions(
     assert unescape_quotes(escape_quotes(test_string)) == test_string
 
 
-async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
+async def test_middleware_retry_on_401(
+    aiohttp_server: AiohttpServer, digest_auth_mw: DigestAuthMiddleware
+) -> None:
     """Test that the middleware retries on 401 errors."""
     request_count = 0
 
@@ -500,9 +498,7 @@ async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
 
-    middleware = DigestAuthMiddleware("user", "pass")
-
-    async with ClientSession(middlewares=(middleware,)) as session:
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
         async with session.get(server.make_url("/")) as resp:
             assert resp.status == 200
             text_content = await resp.text()
@@ -511,7 +507,9 @@ async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
     assert request_count == 2  # Initial request + retry with auth
 
 
-async def test_digest_auth_no_qop(aiohttp_server: AiohttpServer) -> None:
+async def test_digest_auth_no_qop(
+    aiohttp_server: AiohttpServer, digest_auth_mw: DigestAuthMiddleware
+) -> None:
     """Test digest auth with a server that doesn't provide a QoP parameter."""
     mock_digest = mock.Mock()
     mock_digest.hexdigest.return_value = "deadbeefcafebabe"
@@ -570,9 +568,7 @@ async def test_digest_auth_no_qop(aiohttp_server: AiohttpServer) -> None:
         app.router.add_get("/", handler)
         server = await aiohttp_server(app)
 
-        middleware = DigestAuthMiddleware(username, password)
-
-        async with ClientSession(middlewares=(middleware,)) as session:
+        async with ClientSession(middlewares=(digest_auth_mw,)) as session:
             async with session.get(server.make_url("/")) as resp:
                 assert resp.status == 200
                 text_content = await resp.text()
@@ -581,7 +577,9 @@ async def test_digest_auth_no_qop(aiohttp_server: AiohttpServer) -> None:
         assert request_count == 2  # Initial request + retry with auth
 
 
-async def test_digest_auth_without_opaque(aiohttp_server: AiohttpServer) -> None:
+async def test_digest_auth_without_opaque(
+    aiohttp_server: AiohttpServer, digest_auth_mw: DigestAuthMiddleware
+) -> None:
     """Test digest auth with a server that doesn't provide an opaque parameter."""
     request_count = 0
 
@@ -613,9 +611,7 @@ async def test_digest_auth_without_opaque(aiohttp_server: AiohttpServer) -> None
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
 
-    middleware = DigestAuthMiddleware("user", "pass")
-
-    async with ClientSession(middlewares=(middleware,)) as session:
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
         async with session.get(server.make_url("/")) as resp:
             assert resp.status == 200
             text_content = await resp.text()
@@ -635,7 +631,9 @@ async def test_digest_auth_without_opaque(aiohttp_server: AiohttpServer) -> None
     ],
 )
 async def test_auth_header_no_retry(
-    aiohttp_server: AiohttpServer, www_authenticate: str
+    aiohttp_server: AiohttpServer,
+    www_authenticate: str,
+    digest_auth_mw: DigestAuthMiddleware,
 ) -> None:
     """Test that middleware doesn't retry with invalid WWW-Authenticate headers."""
     request_count = 0
@@ -657,9 +655,7 @@ async def test_auth_header_no_retry(
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
 
-    middleware = DigestAuthMiddleware("user", "pass")
-
-    async with ClientSession(middlewares=(middleware,)) as session:
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
         async with session.get(server.make_url("/")) as resp:
             assert resp.status == 401
 
@@ -667,7 +663,9 @@ async def test_auth_header_no_retry(
     assert request_count == 1
 
 
-async def test_direct_success_no_auth_needed(aiohttp_server: AiohttpServer) -> None:
+async def test_direct_success_no_auth_needed(
+    aiohttp_server: AiohttpServer, digest_auth_mw: DigestAuthMiddleware
+) -> None:
     """Test middleware with a direct 200 response with no auth challenge."""
     request_count = 0
 
@@ -682,9 +680,7 @@ async def test_direct_success_no_auth_needed(aiohttp_server: AiohttpServer) -> N
     app.router.add_get("/", handler)
     server = await aiohttp_server(app)
 
-    middleware = DigestAuthMiddleware("user", "pass")
-
-    async with ClientSession(middlewares=(middleware,)) as session:
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
         async with session.get(server.make_url("/")) as resp:
             text = await resp.text()
             assert resp.status == 200
