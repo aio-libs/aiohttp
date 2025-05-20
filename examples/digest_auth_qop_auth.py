@@ -44,26 +44,23 @@ async def main() -> None:
                 )
                 print(f"\n--- Testing with {algorithm} algorithm ---\n")
 
-                try:
-                    async with session.get(url) as resp:
-                        print(f"Status: {resp.status}")
-                        print(f"Headers: {resp.headers}")
+                async with session.get(url) as resp:
+                    print(f"Status: {resp.status}")
+                    print(f"Headers: {resp.headers}")
 
-                        # Parse the JSON response
-                        json_response = await resp.json()
-                        print(f"Response: {json_response}")
+                    # Parse the JSON response
+                    json_response = await resp.json()
+                    print(f"Response: {json_response}")
 
-                        # Verify authentication was successful
-                        if resp.status == 200:
-                            print("\nAuthentication successful!")
-                            print(f"Authenticated user: {json_response.get('user')}")
-                            print(
-                                f"Authentication method: {json_response.get('authenticated')}"
-                            )
-                        else:
-                            print("\nAuthentication failed.")
-                except Exception as e:
-                    print(f"Error occurred: {e}")
+                    # Verify authentication was successful
+                    if resp.status == 200:
+                        print("\nAuthentication successful!")
+                        print(f"Authenticated user: {json_response.get('user')}")
+                        print(
+                            f"Authentication method: {json_response.get('authenticated')}"
+                        )
+                    else:
+                        print("\nAuthentication failed.")
 
 
 if __name__ == "__main__":
