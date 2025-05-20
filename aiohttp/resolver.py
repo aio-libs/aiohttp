@@ -157,11 +157,11 @@ class AsyncResolver(AbstractResolver):
             # Release the resolver from the manager if using the shared resolver
             self._manager.release_resolver(self, self._loop)
             self._manager = None  # Clear reference to manager
-            self._resolver = None  # Clear reference to resolver
+            self._resolver = None  # type: ignore[assignment] # Clear reference to resolver
             return
         # Otherwise cancel our dedicated resolver
         self._resolver.cancel()
-        self._resolver = None  # Clear reference
+        self._resolver = None  # type: ignore[assignment] # Clear reference
 
 
 class _DNSResolverManager:
