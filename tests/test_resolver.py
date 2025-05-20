@@ -1,6 +1,8 @@
 import asyncio
+import gc
 import ipaddress
 import socket
+from collections.abc import Generator
 from ipaddress import ip_address
 from typing import Any, Awaitable, Callable, Collection, List, NamedTuple, Tuple, Union
 from unittest.mock import Mock, create_autospec, patch
@@ -12,6 +14,7 @@ from aiohttp.resolver import (
     AsyncResolver,
     DefaultResolver,
     ThreadedResolver,
+    _DNSResolverManager,
 )
 
 try:
@@ -21,6 +24,48 @@ try:
 except ImportError:
     aiodns = None  # type: ignore[assignment]
     getaddrinfo = False
+
+
+@pytest.fixture()
+def check_no_lingering_resolvers() -> Generator[None, None, None]:
+    """Verify no resolvers remain after the test.
+
+    This fixture should be used in any test that creates instances of
+    AsyncResolver or directly uses _DNSResolverManager.
+    """
+    manager = _DNSResolverManager()
+    before = len(manager._loop_data)
+    yield
+    after = len(manager._loop_data)
+    if after > before:  # pragma: no branch
+        # Force garbage collection to ensure weak references are updated
+        gc.collect()  # pragma: no cover
+        after = len(manager._loop_data)  # pragma: no cover
+        if after > before:  # pragma: no cover
+            pytest.fail(  # pragma: no cover
+                f"Lingering resolvers found: {(after - before)} "
+                "new AsyncResolver instances were not properly closed."
+            )
+
+
+@pytest.fixture()
+def dns_resolver_manager() -> Generator[_DNSResolverManager, None, None]:
+    """Create a fresh _DNSResolverManager instance for testing.
+
+    Saves and restores the singleton state to avoid affecting other tests.
+    """
+    # Save the original instance
+    original_instance = _DNSResolverManager._instance
+
+    # Reset the singleton
+    _DNSResolverManager._instance = None
+
+    # Create and yield a fresh instance
+    try:
+        yield _DNSResolverManager()
+    finally:
+        # Clean up and restore the original instance
+        _DNSResolverManager._instance = original_instance
 
 
 class FakeAIODNSAddrInfoNode(NamedTuple):
@@ -117,7 +162,10 @@ def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Any]]:
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_positive_ipv4_lookup(loop: Any) -> None:
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_positive_ipv4_lookup(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result(
             ["127.0.0.1"]
@@ -132,10 +180,14 @@ async def test_async_resolver_positive_ipv4_lookup(loop: Any) -> None:
             port=0,
             type=socket.SOCK_STREAM,
         )
+        await resolver.close()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None:
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_positive_link_local_ipv6_lookup(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(
             ["fe80::1"]
@@ -154,46 +206,44 @@ async def test_async_resolver_positive_link_local_ipv6_lookup(loop: Any) -> None
             type=socket.SOCK_STREAM,
         )
         mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
+        await resolver.close()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_multiple_replies(loop: Any) -> None:
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_multiple_replies(loop: asyncio.AbstractEventLoop) -> None:
     with patch("aiodns.DNSResolver") as mock:
         ips = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result(ips)
         resolver = AsyncResolver()
         real = await resolver.resolve("www.google.com")
-        ips = [ipaddress.ip_address(x["host"]) for x in real]
-        assert len(ips) > 3, "Expecting multiple addresses"
-
-
-@pytest.mark.skipif(aiodns is None, reason="aiodns required")
-async def test_async_resolver_query_multiple_replies(loop) -> None:
-    with patch("aiodns.DNSResolver") as mock:
-        del mock().gethostbyname
-        ips = ["127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.0.4"]
-        mock().query.return_value = fake_query_result(ips)
-        resolver = AsyncResolver(loop=loop)
-        real = await resolver.resolve("www.google.com")
-        ips = [ipaddress.ip_address(x["host"]) for x in real]
+        ipaddrs = [ipaddress.ip_address(x["host"]) for x in real]
+        assert len(ipaddrs) > 3, "Expecting multiple addresses"
+        await resolver.close()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_negative_lookup(loop: Any) -> None:
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_negative_lookup(loop: asyncio.AbstractEventLoop) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.side_effect = aiodns.error.DNSError()
         resolver = AsyncResolver()
         with pytest.raises(OSError):
             await resolver.resolve("doesnotexist.bla")
+        await resolver.close()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_no_hosts_in_getaddrinfo(loop: Any) -> None:
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_no_hosts_in_getaddrinfo(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result([])
         resolver = AsyncResolver()
         with pytest.raises(OSError):
             await resolver.resolve("doesnotexist.bla")
+        await resolver.close()
 
 
 async def test_threaded_resolver_positive_lookup() -> None:
@@ -294,8 +344,9 @@ async def test_close_for_threaded_resolver(loop) -> None:
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
-async def test_close_for_async_resolver(loop) -> None:
-    resolver = AsyncResolver(loop=loop)
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_close_for_async_resolver(loop: asyncio.AbstractEventLoop) -> None:
+    resolver = AsyncResolver()
     await resolver.close()
 
 
@@ -306,7 +357,10 @@ async def test_default_loop_for_threaded_resolver(loop) -> None:
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-async def test_async_resolver_ipv6_positive_lookup(loop: Any) -> None:
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_ipv6_positive_lookup(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(["::1"])
         resolver = AsyncResolver()
@@ -319,6 +373,7 @@ async def test_async_resolver_ipv6_positive_lookup(loop: Any) -> None:
             port=0,
             type=socket.SOCK_STREAM,
         )
+        await resolver.close()
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
@@ -363,6 +418,7 @@ async def test_async_resolver_query_fallback_error_messages_passed_no_hosts(
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
 async def test_async_resolver_error_messages_passed(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -374,9 +430,11 @@ async def test_async_resolver_error_messages_passed(
             await resolver.resolve("x.org")
 
         assert excinfo.value.strerror == "Test error message"
+        await resolver.close()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
 async def test_async_resolver_error_messages_passed_no_hosts(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -388,15 +446,20 @@ async def test_async_resolver_error_messages_passed_no_hosts(
             await resolver.resolve("x.org")
 
         assert excinfo.value.strerror == "DNS lookup failed"
+        await resolver.close()
 
 
-async def test_async_resolver_aiodns_not_present(loop: Any, monkeypatch: Any) -> None:
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_aiodns_not_present(
+    loop: asyncio.AbstractEventLoop, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("aiohttp.resolver.aiodns", None)
     with pytest.raises(RuntimeError):
         AsyncResolver(loop=loop)
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
 def test_aio_dns_is_default() -> None:
     assert DefaultResolver is AsyncResolver
 
@@ -404,3 +467,164 @@ def test_aio_dns_is_default() -> None:
 @pytest.mark.skipif(getaddrinfo, reason="aiodns <3.2.0 required")
 def test_threaded_resolver_is_default() -> None:
     assert DefaultResolver is ThreadedResolver
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_sharing(
+    dns_resolver_manager: _DNSResolverManager,
+) -> None:
+    """Test that the DNSResolverManager shares a resolver among AsyncResolver instances."""
+    # Create two default AsyncResolver instances
+    resolver1 = AsyncResolver()
+    resolver2 = AsyncResolver()
+
+    # Check that they share the same underlying resolver
+    assert resolver1._resolver is resolver2._resolver
+
+    # Create an AsyncResolver with custom args
+    resolver3 = AsyncResolver(nameservers=["8.8.8.8"])
+
+    # Check that it has its own resolver
+    assert resolver1._resolver is not resolver3._resolver
+
+    # Cleanup
+    await resolver1.close()
+    await resolver2.close()
+    await resolver3.close()
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_singleton(
+    dns_resolver_manager: _DNSResolverManager,
+) -> None:
+    """Test that DNSResolverManager is a singleton."""
+    # Create a second manager and check it's the same instance
+    manager1 = dns_resolver_manager
+    manager2 = _DNSResolverManager()
+
+    assert manager1 is manager2
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_resolver_lifecycle(
+    dns_resolver_manager: _DNSResolverManager,
+) -> None:
+    """Test that DNSResolverManager creates and destroys resolver correctly."""
+    manager = dns_resolver_manager
+
+    # Initially there should be no resolvers
+    assert not manager._loop_data
+
+    # Create a mock AsyncResolver for testing
+    mock_client = Mock(spec=AsyncResolver)
+    mock_client._loop = asyncio.get_running_loop()
+
+    # Getting resolver should create one
+    mock_loop = mock_client._loop
+    resolver = manager.get_resolver(mock_client, mock_loop)
+    assert resolver is not None
+    assert manager._loop_data[mock_loop][0] is resolver
+
+    # Getting it again should return the same instance
+    assert manager.get_resolver(mock_client, mock_loop) is resolver
+
+    # Clean up
+    manager.release_resolver(mock_client, mock_loop)
+    assert not manager._loop_data
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_client_registration(
+    dns_resolver_manager: _DNSResolverManager,
+) -> None:
+    """Test client registration and resolver release logic."""
+    with patch("aiodns.DNSResolver") as mock:
+        # Create resolver instances
+        resolver1 = AsyncResolver()
+        resolver2 = AsyncResolver()
+
+        # Both should use the same resolver from the manager
+        assert resolver1._resolver is resolver2._resolver
+
+        # The manager should be tracking both clients
+        assert resolver1._manager is resolver2._manager
+        manager = resolver1._manager
+        assert manager is not None
+        loop = asyncio.get_running_loop()
+        _, client_set = manager._loop_data[loop]
+        assert len(client_set) == 2
+
+        # Close one resolver
+        await resolver1.close()
+        _, client_set = manager._loop_data[loop]
+        assert len(client_set) == 1
+
+        # Resolver should still exist
+        assert manager._loop_data  # Not empty
+
+        # Close the second resolver
+        await resolver2.close()
+        assert not manager._loop_data  # Should be empty after closing all clients
+
+        # Now all resolvers should be canceled and removed
+        assert not manager._loop_data  # Should be empty
+        mock().cancel.assert_called_once()
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_multiple_event_loops(
+    dns_resolver_manager: _DNSResolverManager,
+) -> None:
+    """Test that DNSResolverManager correctly manages resolvers across different event loops."""
+    # Create separate resolvers for each loop
+    resolver1 = Mock(name="resolver1")
+    resolver2 = Mock(name="resolver2")
+
+    # Create a patch that returns different resolvers based on the loop argument
+    mock_resolver = Mock()
+    mock_resolver.side_effect = lambda loop=None, **kwargs: (
+        resolver1 if loop is asyncio.get_running_loop() else resolver2
+    )
+
+    with patch("aiodns.DNSResolver", mock_resolver):
+        manager = dns_resolver_manager
+
+        # Create two mock clients on different loops
+        mock_client1 = Mock(spec=AsyncResolver)
+        mock_client1._loop = asyncio.get_running_loop()
+
+        # Create a second event loop
+        loop2 = Mock(spec=asyncio.AbstractEventLoop)
+        mock_client2 = Mock(spec=AsyncResolver)
+        mock_client2._loop = loop2
+
+        # Get resolvers for both clients
+        loop1 = mock_client1._loop
+        loop2 = mock_client2._loop
+
+        # Get the resolvers through the manager
+        manager_resolver1 = manager.get_resolver(mock_client1, loop1)
+        manager_resolver2 = manager.get_resolver(mock_client2, loop2)
+
+        # Should be different resolvers for different loops
+        assert manager_resolver1 is resolver1
+        assert manager_resolver2 is resolver2
+        assert manager._loop_data[loop1][0] is resolver1
+        assert manager._loop_data[loop2][0] is resolver2
+
+        # Release the first resolver
+        manager.release_resolver(mock_client1, loop1)
+
+        # First loop's resolver should be gone, but second should remain
+        assert loop1 not in manager._loop_data
+        assert loop2 in manager._loop_data
+
+        # Release the second resolver
+        manager.release_resolver(mock_client2, loop2)
+
+        # Both resolvers should be gone
+        assert not manager._loop_data
+
+        # Verify resolver cleanup
+        resolver1.cancel.assert_called_once()
+        resolver2.cancel.assert_called_once()
