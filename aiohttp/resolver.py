@@ -1,6 +1,7 @@
 import asyncio
 import socket
-from typing import Any, List, Tuple, Type, Union
+import weakref
+from typing import Any, List, Optional, Tuple, Type, Union
 
 from .abc import AbstractResolver, ResolveResult
 
@@ -88,7 +89,17 @@ class AsyncResolver(AbstractResolver):
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
 
-        self._resolver = aiodns.DNSResolver(*args, **kwargs)
+        self._loop = asyncio.get_running_loop()
+        self._manager: Optional[_DNSResolverManager] = None
+        # If custom args are provided, create a dedicated resolver instance
+        # This means each AsyncResolver with custom args gets its own
+        # aiodns.DNSResolver instance
+        if args or kwargs:
+            self._resolver = aiodns.DNSResolver(*args, **kwargs)
+            return
+        # Use the shared resolver from the manager for default arguments
+        self._manager = _DNSResolverManager()
+        self._resolver = self._manager.get_resolver(self, self._loop)
 
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
@@ -142,7 +153,78 @@ class AsyncResolver(AbstractResolver):
         return hosts
 
     async def close(self) -> None:
+        if self._manager:
+            # Release the resolver from the manager if using the shared resolver
+            self._manager.release_resolver(self, self._loop)
+            self._manager = None  # Clear reference to manager
+            self._resolver = None  # type: ignore[assignment] # Clear reference to resolver
+            return
+        # Otherwise cancel our dedicated resolver
         self._resolver.cancel()
+        self._resolver = None  # type: ignore[assignment] # Clear reference
+
+
+class _DNSResolverManager:
+    """Manager for aiodns.DNSResolver objects.
+
+    This class manages shared aiodns.DNSResolver instances
+    with no custom arguments across different event loops.
+    """
+
+    _instance: Optional["_DNSResolverManager"] = None
+
+    def __new__(cls) -> "_DNSResolverManager":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._init()
+        return cls._instance
+
+    def _init(self) -> None:
+        # Use WeakKeyDictionary to allow event loops to be garbage collected
+        self._loop_data: weakref.WeakKeyDictionary[
+            asyncio.AbstractEventLoop,
+            tuple["aiodns.DNSResolver", weakref.WeakSet["AsyncResolver"]],
+        ] = weakref.WeakKeyDictionary()
+
+    def get_resolver(
+        self, client: "AsyncResolver", loop: asyncio.AbstractEventLoop
+    ) -> "aiodns.DNSResolver":
+        """Get or create the shared aiodns.DNSResolver instance for a specific event loop.
+
+        Args:
+            client: The AsyncResolver instance requesting the resolver.
+                   This is required to track resolver usage.
+            loop: The event loop to use for the resolver.
+        """
+        # Create a new resolver and client set for this loop if it doesn't exist
+        if loop not in self._loop_data:
+            resolver = aiodns.DNSResolver(loop=loop)
+            client_set: weakref.WeakSet["AsyncResolver"] = weakref.WeakSet()
+            self._loop_data[loop] = (resolver, client_set)
+        else:
+            # Get the existing resolver and client set
+            resolver, client_set = self._loop_data[loop]
+
+        # Register this client with the loop
+        client_set.add(client)
+        return resolver
+
+    def release_resolver(
+        self, client: "AsyncResolver", loop: asyncio.AbstractEventLoop
+    ) -> None:
+        """Release the resolver for an AsyncResolver client when it's closed.
+
+        Args:
+            client: The AsyncResolver instance to release.
+            loop: The event loop the resolver was using.
+        """
+        # Remove client from its loop's tracking
+        resolver, client_set = self._loop_data[loop]
+        client_set.discard(client)
+        # If no more clients for this loop, cancel and remove its resolver
+        if not client_set:
+            resolver.cancel()
+            del self._loop_data[loop]
 
 
 _DefaultType = Type[Union[AsyncResolver, ThreadedResolver]]

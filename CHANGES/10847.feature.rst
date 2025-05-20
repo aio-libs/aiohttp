@@ -1,0 +1,5 @@
+Implemented shared DNS resolver management to fix excessive resolver object creation
+when using multiple client sessions. The new ``_DNSResolverManager`` singleton ensures
+only one ``DNSResolver`` object is created for default configurations, significantly
+reducing resource usage and improving performance for applications using multiple
+client sessions simultaneously -- by :user:`bdraco`.
