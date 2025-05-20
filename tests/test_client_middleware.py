@@ -771,9 +771,13 @@ async def test_client_middleware_blocks_connection_before_established(
 
     # Verify that connections were attempted in the correct order
     assert len(connection_attempts) == 3
-    assert allowed_url.host and allowed_url.host in connection_attempts[0]
-    assert "blocked.example.com" in connection_attempts[1]
-    assert "evil.com" in connection_attempts[2]
+    assert allowed_url.host
+
+    assert connection_attempts == [
+        str(server.make_url("/")),
+        "https://blocked.example.com/",
+        "https://evil.com/path",
+    ]
 
     # Check that no connections were leaked
     assert len(connector._conns) == 0
