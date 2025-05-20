@@ -123,27 +123,23 @@ async def test_authenticate_scenarios(
 
 
 @pytest.mark.parametrize(
-    ("challenge", "expected_error", "description"),
+    ("challenge", "expected_error"),
     [
         (
             DigestAuthChallenge(),
             "Malformed Digest auth challenge: Missing 'realm' parameter",
-            "No challenge set",
         ),
         (
             DigestAuthChallenge(nonce="abc"),
             "Malformed Digest auth challenge: Missing 'realm' parameter",
-            "Missing realm",
         ),
         (
             DigestAuthChallenge(realm="test"),
             "Malformed Digest auth challenge: Missing 'nonce' parameter",
-            "Missing nonce",
         ),
         (
             DigestAuthChallenge(realm="test", nonce=""),
             "Security issue: Digest auth challenge contains empty 'nonce' value",
-            "Empty nonce",
         ),
     ],
 )
