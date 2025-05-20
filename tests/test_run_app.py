@@ -31,7 +31,6 @@ from pytest_mock import MockerFixture
 
 from aiohttp import ClientConnectorError, ClientSession, ClientTimeout, WSCloseCode, web
 from aiohttp.log import access_logger
-from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_runner import BaseRunner
 
@@ -108,9 +107,9 @@ def stopper(loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
 
 def test_run_app_http(patched_loop: asyncio.AbstractEventLoop) -> None:
     app = web.Application()
-    startup_handler = make_mocked_coro()
+    startup_handler = mock.AsyncMock()
     app.on_startup.append(startup_handler)
-    cleanup_handler = make_mocked_coro()
+    cleanup_handler = mock.AsyncMock()
     app.on_cleanup.append(cleanup_handler)
 
     web.run_app(app, print=stopper(patched_loop), loop=patched_loop)
@@ -734,9 +733,9 @@ def test_startup_cleanup_signals_even_on_failure(
     patched_loop.create_server.side_effect = RuntimeError()  # type: ignore[attr-defined]
 
     app = web.Application()
-    startup_handler = make_mocked_coro()
+    startup_handler = mock.AsyncMock()
     app.on_startup.append(startup_handler)
-    cleanup_handler = make_mocked_coro()
+    cleanup_handler = mock.AsyncMock()
     app.on_cleanup.append(cleanup_handler)
 
     with pytest.raises(RuntimeError):
@@ -752,9 +751,9 @@ def test_run_app_coro(patched_loop: asyncio.AbstractEventLoop) -> None:
     async def make_app() -> web.Application:
         nonlocal startup_handler, cleanup_handler
         app = web.Application()
-        startup_handler = make_mocked_coro()
+        startup_handler = mock.AsyncMock()
         app.on_startup.append(startup_handler)
-        cleanup_handler = make_mocked_coro()
+        cleanup_handler = mock.AsyncMock()
         app.on_cleanup.append(cleanup_handler)
         return app
 
