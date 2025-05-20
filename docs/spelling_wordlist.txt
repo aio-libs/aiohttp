@@ -252,6 +252,7 @@ pyflakes
 pyright
 pytest
 Pytest
+qop
 Quickstart
 quote’s
 rc

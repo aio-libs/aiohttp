@@ -1992,6 +1992,7 @@ Utilities
       .. versionadded:: 3.2
 
 
+
 .. class:: BasicAuth(login, password='', encoding='latin1')
 
    HTTP basic authentication helper.
@@ -2030,6 +2031,34 @@ Utilities
       header etc.
 
       :return: encoded authentication data, :class:`str`.
+
+
+
+.. class:: DigestAuthMiddleware(login, password)
+
+   HTTP digest authentication client middleware.
+
+   :param str login: login
+   :param str password: password
+
+   This middleware supports HTTP digest authentication with both `auth` and
+   `auth-int` quality of protection (qop) modes, and a variety of hashing algorithms.
+
+   It automatically handles the digest authentication handshake by:
+
+   - Parsing 401 Unauthorized responses with `WWW-Authenticate: Digest` headers
+   - Generating appropriate `Authorization: Digest` headers on retry
+   - Maintaining nonce counts and challenge data per request
+
+   Usage::
+
+       digest_auth_middleware = DigestAuthMiddleware(login="user", password="pass")
+       async with ClientSession(middlewares=(digest_auth_middleware,)) as session:
+           async with session.get("http://protected.example.com") as resp:
+               # The middleware automatically handles the digest auth handshake
+               assert resp.status == 200
+
+   .. versionadded:: 3.12
 
 
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
