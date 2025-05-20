@@ -162,6 +162,23 @@ Multiple middlewares are applied in the order they are listed::
     async with ClientSession(middlewares=(logging_middleware, auth_middleware)) as session:
         resp = await session.get('http://example.com')
 
+A key aspect to understand about the flat middleware structure is that the execution flow follows this pattern:
+
+1. The first middleware in the list is called first and executes its code before calling the handler
+2. The handler is the next middleware in the chain (or the actual request handler if there are no more middleware)
+3. When the handler returns a response, execution continues in the first middleware after the handler call
+4. This creates a nested "onion-like" pattern for execution
+
+For example, with ``middlewares=(middleware1, middleware2)``, the execution order would be:
+
+1. Enter ``middleware1`` (pre-request code)
+2. Enter ``middleware2`` (pre-request code)
+3. Execute the actual request handler
+4. Exit ``middleware2`` (post-response code)
+5. Exit ``middleware1`` (post-response code)
+
+This flat structure means that middleware is applied on each retry attempt inside the client's retry loop, not just once before all retries. This allows middleware to modify requests freshly on each retry attempt.
+
 .. note::
 
    Client middleware is a powerful feature but should be used judiciously.
