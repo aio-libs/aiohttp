@@ -19,7 +19,6 @@ from aiohttp.hdrs import (
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import MultipartResponseWrapper
 from aiohttp.streams import StreamReader
-from aiohttp.test_utils import make_mocked_coro
 
 BOUNDARY = b"--:"
 
@@ -97,21 +96,21 @@ class TestMultipartResponseWrapper:
 
     async def test_next(self) -> None:
         wrapper = MultipartResponseWrapper(mock.Mock(), mock.Mock())
-        wrapper.stream.next = make_mocked_coro(b"")
+        wrapper.stream.next = mock.AsyncMock(b"")
         wrapper.stream.at_eof.return_value = False
         await wrapper.next()
         assert wrapper.stream.next.called
 
     async def test_release(self) -> None:
         wrapper = MultipartResponseWrapper(mock.Mock(), mock.Mock())
-        wrapper.resp.release = make_mocked_coro(None)
+        wrapper.resp.release = mock.AsyncMock(None)
         await wrapper.release()
         assert wrapper.resp.release.called
 
     async def test_release_when_stream_at_eof(self) -> None:
         wrapper = MultipartResponseWrapper(mock.Mock(), mock.Mock())
-        wrapper.resp.release = make_mocked_coro(None)
-        wrapper.stream.next = make_mocked_coro(b"")
+        wrapper.resp.release = mock.AsyncMock(None)
+        wrapper.stream.next = mock.AsyncMock(b"")
         wrapper.stream.at_eof.return_value = True
         await wrapper.next()
         assert wrapper.stream.next.called
