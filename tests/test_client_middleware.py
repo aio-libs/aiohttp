@@ -75,12 +75,11 @@ async def test_client_middleware_retry(aiohttp_server: AiohttpServer) -> None:
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         response = None
-        for _ in range(2):
+        for _ in range(2):  # pragma: no branch
             response = await handler(request)
             if response.ok:
                 return response
-        assert response is not None
-        return response
+        assert False, "not reachable in test"
 
     app = web.Application()
     app.router.add_get("/", handler)
