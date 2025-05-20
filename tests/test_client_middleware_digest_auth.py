@@ -126,22 +126,22 @@ async def test_authenticate_scenarios(
     ("challenge", "expected_error", "description"),
     [
         (
-            {},
+            DigestAuthChallenge(),
             "Malformed Digest auth challenge: Missing 'realm' parameter",
             "No challenge set",
         ),
         (
-            {"nonce": "abc"},
+            DigestAuthChallenge(nonce="abc"),
             "Malformed Digest auth challenge: Missing 'realm' parameter",
             "Missing realm",
         ),
         (
-            {"realm": "test"},
+            DigestAuthChallenge(realm="test"),
             "Malformed Digest auth challenge: Missing 'nonce' parameter",
             "Missing nonce",
         ),
         (
-            {"realm": "test", "nonce": ""},
+            DigestAuthChallenge(realm="test", nonce=""),
             "Security issue: Digest auth challenge contains empty 'nonce' value",
             "Empty nonce",
         ),
@@ -149,7 +149,7 @@ async def test_authenticate_scenarios(
 )
 def test_encode_validation_errors(
     digest_auth_mw: DigestAuthMiddleware,
-    challenge: dict[str, str],
+    challenge: DigestAuthChallenge,
     expected_error: str,
 ) -> None:
     """Test validation errors when encoding digest auth headers."""
