@@ -55,20 +55,16 @@ def check_no_lingering_resolvers() -> Generator[None, None, None]:
     This fixture should be used in any test that creates instances of
     AsyncResolver or directly uses _DNSResolverManager.
     """
-    try:
-        yield
-    finally:
-        # We need to check in a finally block to ensure the check runs
-        # even if the test fails
-        manager = _DNSResolverManager()
+    yield
+    manager = _DNSResolverManager()
+    if manager._loop_data:
+        # Force garbage collection to ensure weak references are updated
+        gc.collect()
         if manager._loop_data:
-            # Force garbage collection to ensure weak references are updated
-            gc.collect()
-            if manager._loop_data:
-                pytest.fail(
-                    f"Lingering resolvers found: {len(manager._loop_data)}. "
-                    "Some AsyncResolver instances were not properly closed."
-                )
+            pytest.fail(
+                f"Lingering resolvers found: {len(manager._loop_data)}. "
+                "Some AsyncResolver instances were not properly closed."
+            )
 
 
 @pytest.fixture()
