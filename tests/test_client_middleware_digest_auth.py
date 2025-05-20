@@ -1,7 +1,7 @@
 """Test digest authentication middleware for aiohttp client."""
 
 import hashlib
-from typing import Optional, Union
+from typing import Union
 from unittest import mock
 
 import pytest
@@ -20,49 +20,6 @@ from aiohttp.client_middleware_digest_auth import (
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
-from aiohttp.web_exceptions import HTTPUnauthorized
-
-
-def make_digest_unauthorized_response(
-    realm: str = "test-realm",
-    nonce: str = "testnonce",
-    qop: Optional[str] = None,
-    algorithm: str = "MD5",
-    opaque: Optional[str] = None,
-) -> HTTPUnauthorized:
-    """
-    Create an HTTPUnauthorized response with a Digest authentication challenge.
-
-    Args:
-        realm: The authentication realm
-        nonce: The server nonce
-        qop: Quality of protection (auth, auth-int, etc.), omitted if None
-        algorithm: The hashing algorithm to use
-        opaque: The opaque value, omitted if None
-
-    Returns:
-        HTTPUnauthorized response with appropriate WWW-Authenticate header
-
-    """
-    challenge_parts = [
-        f'Digest realm="{realm}"',
-        f'nonce="{nonce}"',
-    ]
-
-    if qop is not None:
-        challenge_parts.append(f'qop="{qop}"')
-
-    if algorithm is not None:
-        challenge_parts.append(f"algorithm={algorithm}")
-
-    if opaque is not None:
-        challenge_parts.append(f'opaque="{opaque}"')
-
-    return HTTPUnauthorized(
-        headers={"WWW-Authenticate": ", ".join(challenge_parts)},
-        text="Unauthorized",
-    )
-
 
 # ------------------- DigestAuth Tests -----------------------------------
 
@@ -189,12 +146,15 @@ def test_encode_unsupported_algorithm(digest_auth_mw: DigestAuthMiddleware) -> N
 
 def test_invalid_qop_rejected() -> None:
     """Test that invalid Quality of Protection values are rejected."""
-    auth = DigestAuthMiddleware("u", "p")
+    # Initialize middleware with non-default values to improve coverage
+    auth = DigestAuthMiddleware("username", "password")
+    # Use bad QoP value to trigger error
     auth._challenge = DigestAuthChallenge(
-        realm="r", nonce="n", qop="badvalue", algorithm="MD5"
+        realm="realm", nonce="nonce", qop="badvalue", algorithm="MD5"
     )
+    # This should raise an error about unsupported QoP
     with pytest.raises(ClientError, match="Unsupported Quality of Protection"):
-        auth._encode("GET", URL("http://x"), "")
+        auth._encode("GET", URL("http://example.com"), "")
 
 
 def compute_expected_digest(
@@ -231,14 +191,12 @@ def compute_expected_digest(
     HA2 = H(A2)
 
     if qop:
-        response = KD(HA1, f"{nonce}:{nc}:{cnonce}:{qop}:{HA2}")
+        return KD(HA1, f"{nonce}:{nc}:{cnonce}:{qop}:{HA2}")
     else:
-        response = KD(HA1, f"{nonce}:{HA2}")
-
-    return response
+        return KD(HA1, f"{nonce}:{HA2}")
 
 
-@pytest.mark.parametrize("qop", ["auth", "auth-int", "auth,auth-int"])
+@pytest.mark.parametrize("qop", ["auth", "auth-int", "auth,auth-int", ""])
 @pytest.mark.parametrize("algorithm", sorted(DigestFunctions.keys()))
 @pytest.mark.parametrize(
     ("body", "body_str"),
@@ -516,18 +474,19 @@ async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
 
         if request_count == 1:
             # First request returns 401 with digest challenge
-            raise make_digest_unauthorized_response(
-                realm="test", nonce="abc123", qop="auth"
+            challenge = 'Digest realm="test", nonce="abc123", qop="auth", algorithm=MD5'
+            return Response(
+                status=401, headers={"WWW-Authenticate": challenge}, text="Unauthorized"
             )
 
         # Second request should have Authorization header
         auth_header = request.headers.get(hdrs.AUTHORIZATION)
         if auth_header and auth_header.startswith("Digest "):
-            resp = Response()
-            resp.text = "OK"
-            return resp
+            # Return success response
+            return Response(text="OK")
 
-        raise HTTPUnauthorized(text="Still unauthorized")
+        # This branch should not be reached in the tests
+        assert False, "This branch should not be reached"
 
     app = Application()
     app.router.add_get("/", handler)
@@ -546,41 +505,72 @@ async def test_middleware_retry_on_401(aiohttp_server: AiohttpServer) -> None:
 
 async def test_digest_auth_no_qop(aiohttp_server: AiohttpServer) -> None:
     """Test digest auth with a server that doesn't provide a QoP parameter."""
-    request_count = 0
+    mock_digest = mock.Mock()
+    mock_digest.hexdigest.return_value = "deadbeefcafebabe"
+    # Mock the hash function to return a predictable value
+    with mock.patch("hashlib.sha1", return_value=mock_digest):
+        request_count = 0
+        realm = "test-realm"
+        nonce = "testnonce"
+        algorithm = "MD5"
+        username = "user"
+        password = "pass"
+        uri = "/"
 
-    async def handler(request: Request) -> Response:
-        nonlocal request_count
-        request_count += 1
+        async def handler(request: Request) -> Response:
+            nonlocal request_count
+            request_count += 1
 
-        if request_count == 1:
-            # First request returns 401 with digest challenge without qop
-            raise make_digest_unauthorized_response(qop=None)
+            if request_count == 1:
+                # First request returns 401 with digest challenge without qop
+                challenge = (
+                    f'Digest realm="{realm}", nonce="{nonce}", algorithm={algorithm}'
+                )
+                return Response(
+                    status=401,
+                    headers={"WWW-Authenticate": challenge},
+                    text="Unauthorized",
+                )
 
-        # Second request should have Authorization header
-        auth_header = request.headers.get(hdrs.AUTHORIZATION)
-        assert auth_header and auth_header.startswith("Digest ")
-        # Successful auth should have no qop param
-        assert "qop=" not in auth_header
-        assert "nc=" not in auth_header
-        assert "cnonce=" not in auth_header
+            # Second request should have Authorization header
+            auth_header = request.headers.get(hdrs.AUTHORIZATION)
+            assert auth_header and auth_header.startswith("Digest ")
 
-        resp = Response()
-        resp.text = "OK"
-        return resp
+            # Successful auth should have no qop param
+            assert "qop=" not in auth_header
+            assert "nc=" not in auth_header
+            assert "cnonce=" not in auth_header
 
-    app = Application()
-    app.router.add_get("/", handler)
-    server = await aiohttp_server(app)
+            expected_digest = compute_expected_digest(
+                algorithm=algorithm,
+                username=username,
+                password=password,
+                realm=realm,
+                nonce=nonce,
+                uri=uri,
+                method="GET",
+                qop="",  # This is the key part - explicitly setting qop=""
+                nc="",  # Not needed for non-qop digest
+                cnonce="",  # Not needed for non-qop digest
+            )
+            # We mock the cnonce, so we can check the expected digest
+            assert expected_digest in auth_header
 
-    middleware = DigestAuthMiddleware("user", "pass")
+            return Response(text="OK")
 
-    async with ClientSession(middlewares=(middleware,)) as session:
-        async with session.get(server.make_url("/")) as resp:
-            assert resp.status == 200
-            text_content = await resp.text()
-            assert text_content == "OK"
+        app = Application()
+        app.router.add_get("/", handler)
+        server = await aiohttp_server(app)
 
-    assert request_count == 2  # Initial request + retry with auth
+        middleware = DigestAuthMiddleware(username, password)
+
+        async with ClientSession(middlewares=(middleware,)) as session:
+            async with session.get(server.make_url("/")) as resp:
+                assert resp.status == 200
+                text_content = await resp.text()
+                assert text_content == "OK"
+
+        assert request_count == 2  # Initial request + retry with auth
 
 
 async def test_digest_auth_without_opaque(aiohttp_server: AiohttpServer) -> None:
@@ -593,7 +583,10 @@ async def test_digest_auth_without_opaque(aiohttp_server: AiohttpServer) -> None
 
         if request_count == 1:
             # First request returns 401 with digest challenge without opaque
-            raise make_digest_unauthorized_response(qop="auth", opaque=None)
+            challenge = 'Digest realm="test-realm", nonce="testnonce", qop="auth", algorithm=MD5'
+            return Response(
+                status=401, headers={"WWW-Authenticate": challenge}, text="Unauthorized"
+            )
 
         # Second request should have Authorization header
         auth_header = request.headers.get(hdrs.AUTHORIZATION)
@@ -647,10 +640,7 @@ async def test_auth_header_no_retry(
 
         # Use a custom HTTPUnauthorized instead of the helper since
         # we're specifically testing malformed headers
-        raise HTTPUnauthorized(
-            headers=headers,
-            text="Unauthorized",
-        )
+        return Response(status=401, headers=headers, text="Unauthorized")
 
     app = Application()
     app.router.add_get("/", handler)
