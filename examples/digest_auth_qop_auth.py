@@ -10,6 +10,7 @@ In this case, it connects to httpbin.org's digest auth endpoint.
 """
 
 import asyncio
+from itertools import product
 
 from yarl import URL
 
@@ -26,6 +27,9 @@ ALGORITHMS = ["MD5", "SHA-256", "SHA-512"]
 USERNAME = "my"
 PASSWORD = "dog"
 
+# All combinations of QOP options and algorithms
+TEST_COMBINATIONS = list(product(QOP_OPTIONS, ALGORITHMS))
+
 
 async def main() -> None:
     # Create a DigestAuthMiddleware instance with appropriate credentials
@@ -33,34 +37,31 @@ async def main() -> None:
 
     # Create a client session with the digest auth middleware
     async with ClientSession(middlewares=(digest_auth,)) as session:
-        # Test with each QOP option
-        for qop in QOP_OPTIONS:
-            print(f"\n\n=== Testing with qop={qop} ===\n")
+        # Test each combination of QOP and algorithm
+        for qop, algorithm in TEST_COMBINATIONS:
+            print(f"\n\n=== Testing with qop={qop}, algorithm={algorithm} ===\n")
 
-            # Test with each algorithm
-            for algorithm in ALGORITHMS:
-                url = URL(
-                    f"https://httpbin.org/digest-auth/{qop}/{USERNAME}/{PASSWORD}/{algorithm}"
-                )
-                print(f"\n--- Testing with {algorithm} algorithm ---\n")
+            url = URL(
+                f"https://httpbin.org/digest-auth/{qop}/{USERNAME}/{PASSWORD}/{algorithm}"
+            )
 
-                async with session.get(url) as resp:
-                    print(f"Status: {resp.status}")
-                    print(f"Headers: {resp.headers}")
+            async with session.get(url) as resp:
+                print(f"Status: {resp.status}")
+                print(f"Headers: {resp.headers}")
 
-                    # Parse the JSON response
-                    json_response = await resp.json()
-                    print(f"Response: {json_response}")
+                # Parse the JSON response
+                json_response = await resp.json()
+                print(f"Response: {json_response}")
 
-                    # Verify authentication was successful
-                    if resp.status == 200:
-                        print("\nAuthentication successful!")
-                        print(f"Authenticated user: {json_response.get('user')}")
-                        print(
-                            f"Authentication method: {json_response.get('authenticated')}"
-                        )
-                    else:
-                        print("\nAuthentication failed.")
+                # Verify authentication was successful
+                if resp.status == 200:
+                    print("\nAuthentication successful!")
+                    print(f"Authenticated user: {json_response.get('user')}")
+                    print(
+                        f"Authentication method: {json_response.get('authenticated')}"
+                    )
+                else:
+                    print("\nAuthentication failed.")
 
 
 if __name__ == "__main__":

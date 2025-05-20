@@ -1,5 +1,6 @@
 """Test digest authentication middleware for aiohttp client."""
 
+from hashlib import md5, sha1
 from typing import Generator, Union
 from unittest import mock
 
@@ -66,7 +67,7 @@ def auth_mw_with_challenge(
 @pytest.fixture
 def mock_sha1_digest() -> Generator[mock.MagicMock, None, None]:
     """Mock SHA1 to return a predictable value for testing."""
-    mock_digest = mock.Mock()
+    mock_digest = mock.MagicMock(spec=sha1())
     mock_digest.hexdigest.return_value = "deadbeefcafebabe"
     with mock.patch("hashlib.sha1", return_value=mock_digest) as patched:
         yield patched
@@ -75,7 +76,7 @@ def mock_sha1_digest() -> Generator[mock.MagicMock, None, None]:
 @pytest.fixture
 def mock_md5_digest() -> Generator[mock.MagicMock, None, None]:
     """Mock MD5 to return a predictable value for testing."""
-    mock_digest = mock.Mock()
+    mock_digest = mock.MagicMock(spec=md5())
     mock_digest.hexdigest.return_value = "abcdef0123456789"
     with mock.patch("hashlib.md5", return_value=mock_digest) as patched:
         yield patched
@@ -792,7 +793,7 @@ def test_authenticate_with_malformed_headers(
     expected: bool,
 ) -> None:
     """Test _authenticate method with various edge cases."""
-    response = mock.Mock(spec=ClientResponse)
+    response = mock.MagicMock(spec=ClientResponse)
     response.status = status
     response.headers = headers
 
