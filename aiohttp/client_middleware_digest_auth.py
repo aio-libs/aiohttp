@@ -398,9 +398,9 @@ class DigestAuthMiddleware:
         for retry_count in range(2):
             # Apply authorization header if we have a challenge (on second attempt)
             if retry_count > 0:
-                auth_header = self._encode(request.method, request.url, request.body)
-                if auth_header:
-                    request.headers[hdrs.AUTHORIZATION] = auth_header
+                request.headers[hdrs.AUTHORIZATION] = self._encode(
+                    request.method, request.url, request.body
+                )
 
             # Send the request
             response = await handler(request)

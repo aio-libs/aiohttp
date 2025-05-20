@@ -734,6 +734,69 @@ async def test_direct_success_no_auth_needed(
     assert request_count == 1
 
 
+async def test_max_retries_reached(
+    aiohttp_server: AiohttpServer, digest_auth_mw: DigestAuthMiddleware
+) -> None:
+    """Test that middleware stops after max retries."""
+    request_count = 0
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        # Always return 401 with digest challenge for all requests
+        challenge = 'Digest realm="test", nonce="abc123", qop="auth", algorithm=MD5'
+        return Response(
+            status=401,
+            headers={"WWW-Authenticate": challenge},
+            text="Unauthorized",
+        )
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 401
+            await resp.text()
+
+    # Verify we made exactly 2 requests (original + 1 retry)
+    assert request_count == 2
+
+
+async def test_no_retry_on_second_401(
+    aiohttp_server: AiohttpServer, digest_auth_mw: DigestAuthMiddleware
+) -> None:
+    """Test digest auth does not retry on second 401."""
+    request_count = 0
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        # Always return 401 challenge
+        challenge = 'Digest realm="test", nonce="abc123", qop="auth", algorithm=MD5'
+        return Response(
+            status=401,
+            headers={"WWW-Authenticate": challenge},
+            text="Unauthorized",
+        )
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    # Create a session that uses the digest auth middleware
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        async with session.get(server.make_url("/")) as resp:
+            await resp.text()
+            assert resp.status == 401
+
+    # Verify we made exactly 2 requests (initial + 1 retry)
+    assert request_count == 2
+
+
 @pytest.mark.parametrize(
     ("status", "headers", "expected"),
     [
