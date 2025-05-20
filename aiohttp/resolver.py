@@ -169,15 +169,15 @@ class _DNSResolverManager:
 
     _instance: Optional["_DNSResolverManager"] = None
 
-    def __new__(cls):
+    def __new__(cls) -> "_DNSResolverManager":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._init()
         return cls._instance
 
     def _init(self) -> None:
-        self._resolver = None
-        self._clients = weakref.WeakSet()
+        self._resolver: Optional["aiodns.DNSResolver"] = None
+        self._clients: weakref.WeakSet["AsyncResolver"] = weakref.WeakSet()
         if aiodns is None:
             raise RuntimeError("DNSResolverManager requires aiodns library")
 
