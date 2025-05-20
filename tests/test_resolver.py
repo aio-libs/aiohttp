@@ -61,15 +61,34 @@ def check_no_lingering_resolvers() -> Generator[None, None, None]:
         # even if the test fails
         if aiodns is not None:  # Only when aiodns is available
             manager = _DNSResolverManager()
-            if manager._clients:
+            if manager._loop_data:
                 pytest.fail(
-                    f"Lingering resolver clients found: {len(manager._clients)}. "
+                    f"Lingering resolvers found: {len(manager._loop_data)}. "
                     "Some AsyncResolver instances were not properly closed."
                 )
-            if manager._resolver is not None:
-                pytest.fail(
-                    "Lingering resolver found. The _DNSResolverManager still has an active resolver."
-                )
+
+
+@pytest.fixture()
+def dns_resolver_manager() -> Generator[_DNSResolverManager, None, None]:
+    """Create a fresh _DNSResolverManager instance for testing.
+
+    Saves and restores the singleton state to avoid affecting other tests.
+    """
+    if aiodns is None:
+        pytest.skip("aiodns is required")
+
+    # Save the original instance
+    original_instance = _DNSResolverManager._instance
+
+    # Reset the singleton
+    _DNSResolverManager._instance = None
+
+    # Create and yield a fresh instance
+    try:
+        yield _DNSResolverManager()
+    finally:
+        # Clean up and restore the original instance
+        _DNSResolverManager._instance = original_instance
 
 
 class FakeAIODNSAddrInfoNode(NamedTuple):
@@ -438,12 +457,10 @@ def test_threaded_resolver_is_default() -> None:
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-@pytest.mark.usefixtures("check_no_lingering_resolvers")
-async def test_dns_resolver_manager_sharing(loop: asyncio.AbstractEventLoop) -> None:
+async def test_dns_resolver_manager_sharing(
+    dns_resolver_manager: _DNSResolverManager,
+) -> None:
     """Test that the DNSResolverManager shares a resolver among AsyncResolver instances."""
-    # First reset the singleton to None so we can create a fresh instance
-    _DNSResolverManager._instance = None
-
     # Create two default AsyncResolver instances
     resolver1 = AsyncResolver()
     resolver2 = AsyncResolver()
@@ -464,59 +481,51 @@ async def test_dns_resolver_manager_sharing(loop: asyncio.AbstractEventLoop) -> 
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-@pytest.mark.usefixtures("check_no_lingering_resolvers")
-async def test_dns_resolver_manager_singleton(loop: asyncio.AbstractEventLoop) -> None:
+async def test_dns_resolver_manager_singleton(
+    dns_resolver_manager: _DNSResolverManager,
+) -> None:
     """Test that DNSResolverManager is a singleton."""
-    # First reset the singleton to None so we can create a fresh instance
-    _DNSResolverManager._instance = None
-
-    # Create two managers and check they're the same instance
-    manager1 = _DNSResolverManager()
+    # Create a second manager and check it's the same instance
+    manager1 = dns_resolver_manager
     manager2 = _DNSResolverManager()
 
     assert manager1 is manager2
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-@pytest.mark.usefixtures("check_no_lingering_resolvers")
 async def test_dns_resolver_manager_resolver_lifecycle(
-    loop: asyncio.AbstractEventLoop,
+    dns_resolver_manager: _DNSResolverManager,
 ) -> None:
     """Test that DNSResolverManager creates and destroys resolver correctly."""
-    # First reset the singleton to None so we can create a fresh instance
-    _DNSResolverManager._instance = None
+    manager = dns_resolver_manager
 
-    manager = _DNSResolverManager()
-
-    # Initially there should be no resolver
-    assert manager._resolver is None
+    # Initially there should be no resolvers
+    assert not manager._loop_data
 
     # Create a mock AsyncResolver for testing
     mock_client = Mock(spec=AsyncResolver)
+    mock_client._loop = asyncio.get_running_loop()
 
     # Getting resolver should create one
-    resolver = manager.get_resolver(mock_client)
+    mock_loop = mock_client._loop
+    resolver = manager.get_resolver(mock_client, mock_loop)
     assert resolver is not None
-    assert manager._resolver is resolver
+    assert manager._loop_data[mock_loop][0] is resolver
 
     # Getting it again should return the same instance
-    assert manager.get_resolver(mock_client) is resolver  # type: ignore[unreachable]
+    assert manager.get_resolver(mock_client, mock_loop) is resolver
 
     # Clean up
-    manager.release_resolver(mock_client)
-    assert manager._resolver is None
+    manager.release_resolver(mock_client, mock_loop)
+    assert not manager._loop_data
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-@pytest.mark.usefixtures("check_no_lingering_resolvers")
 async def test_dns_resolver_manager_client_registration(
-    loop: asyncio.AbstractEventLoop,
+    dns_resolver_manager: _DNSResolverManager,
 ) -> None:
     """Test client registration and resolver release logic."""
     with patch("aiodns.DNSResolver") as mock:
-        # First reset the singleton to None so we can create a fresh instance
-        _DNSResolverManager._instance = None
-
         # Create resolver instances
         resolver1 = AsyncResolver()
         resolver2 = AsyncResolver()
@@ -528,42 +537,81 @@ async def test_dns_resolver_manager_client_registration(
         assert resolver1._manager is resolver2._manager
         manager = resolver1._manager
         assert manager is not None
-        assert len(manager._clients) == 2
+        loop = asyncio.get_running_loop()
+        _, client_set = manager._loop_data[loop]
+        assert len(client_set) == 2
 
         # Close one resolver
         await resolver1.close()
-        assert manager is not None
-        assert len(manager._clients) == 1
+        _, client_set = manager._loop_data[loop]
+        assert len(client_set) == 1
 
         # Resolver should still exist
-        assert manager is not None
-        assert manager._resolver is not None
+        assert manager._loop_data  # Not empty
 
         # Close the second resolver
         await resolver2.close()
-        assert manager is not None
-        assert len(manager._clients) == 0
+        assert not manager._loop_data  # Should be empty after closing all clients
 
-        # Now the resolver should be canceled and removed
-        assert manager is not None
-        assert manager._resolver is None
+        # Now all resolvers should be canceled and removed
+        assert not manager._loop_data  # Should be empty
         mock().cancel.assert_called_once()  # type: ignore[unreachable]
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
-@pytest.mark.usefixtures("check_no_lingering_resolvers")
-async def test_dns_resolver_manager_error_without_aiodns(
-    loop: asyncio.AbstractEventLoop, monkeypatch: pytest.MonkeyPatch
+async def test_dns_resolver_manager_multiple_event_loops(
+    dns_resolver_manager: _DNSResolverManager,
 ) -> None:
-    """Test that DNSResolverManager raises an error when aiodns is not available."""
-    # First reset the singleton to None so we can create a fresh instance
-    _DNSResolverManager._instance = None
+    """Test that DNSResolverManager correctly manages resolvers across different event loops."""
+    # Create separate resolvers for each loop
+    resolver1 = Mock(name="resolver1")
+    resolver2 = Mock(name="resolver2")
 
-    # Simulate aiodns not being installed
-    monkeypatch.setattr("aiohttp.resolver.aiodns", None)
+    # Create a patch that returns different resolvers based on the loop argument
+    mock_resolver = Mock()
+    mock_resolver.side_effect = lambda loop=None, **kwargs: (
+        resolver1 if loop is asyncio.get_running_loop() else resolver2
+    )
 
-    # Should raise RuntimeError when initialized
-    with pytest.raises(
-        RuntimeError, match="DNSResolverManager requires aiodns library"
-    ):
-        _DNSResolverManager()
+    with patch("aiodns.DNSResolver", mock_resolver):
+        manager = dns_resolver_manager
+
+        # Create two mock clients on different loops
+        mock_client1 = Mock(spec=AsyncResolver)
+        mock_client1._loop = asyncio.get_running_loop()
+
+        # Create a second event loop
+        loop2 = Mock(spec=asyncio.AbstractEventLoop)
+        mock_client2 = Mock(spec=AsyncResolver)
+        mock_client2._loop = loop2
+
+        # Get resolvers for both clients
+        loop1 = mock_client1._loop
+        loop2 = mock_client2._loop
+
+        # Get the resolvers through the manager
+        manager_resolver1 = manager.get_resolver(mock_client1, loop1)
+        manager_resolver2 = manager.get_resolver(mock_client2, loop2)
+
+        # Should be different resolvers for different loops
+        assert manager_resolver1 is resolver1
+        assert manager_resolver2 is resolver2
+        assert manager._loop_data[loop1][0] is resolver1
+        assert manager._loop_data[loop2][0] is resolver2
+
+        # Release the first resolver
+        manager.release_resolver(mock_client1, loop1)
+
+        # First loop's resolver should be gone, but second should remain
+        assert loop1 not in manager._loop_data
+        assert loop2 in manager._loop_data
+
+        # Release the second resolver
+        manager.release_resolver(mock_client2, loop2)
+
+        # Both resolvers should be gone
+        assert not manager._loop_data
+
+        # Verify resolver cleanup
+        resolver1.cancel.assert_called_once()
+        resolver2.cancel.assert_called_once()
