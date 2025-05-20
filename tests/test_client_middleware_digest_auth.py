@@ -413,29 +413,26 @@ def test_template_based_header_construction() -> None:
     auth._nonce_count = 0  # Start with 0, it will be incremented to 1
 
     # Mock the hash functions to have predictable values
-    with mock.patch("hashlib.sha1") as mock_sha1:
+    with mock.patch("hashlib.sha1") as mock_sha1, mock.patch("hashlib.md5") as mock_md5:
         mock_digest = mock.Mock()
         mock_digest.hexdigest.return_value = "deadbeefcafebabe"
         mock_sha1.return_value = mock_digest
 
-        with mock.patch("hashlib.md5") as mock_md5:
-            mock_md5_instance = mock.Mock()
-            mock_md5_instance.hexdigest.return_value = "abcdef0123456789"
-            mock_md5.return_value = mock_md5_instance
+        mock_md5_instance = mock.Mock()
+        mock_md5_instance.hexdigest.return_value = "abcdef0123456789"
+        mock_md5.return_value = mock_md5_instance
 
-            header = auth._encode("GET", URL("http://example.com/test"), "")
+        header = auth._encode("GET", URL("http://example.com/test"), "")
 
     # Split the header into scheme and parameters
     scheme, params_str = header.split(" ", 1)
     assert scheme == "Digest"
 
     # Parse the parameters into a dictionary
-    params = {}
-    for param in params_str.split(", "):
-        key, value = param.split("=", 1)
-        if value.startswith('"') and value.endswith('"'):
-            value = value[1:-1]  # Remove quotes
-        params[key] = value
+    params = {
+        key: value[1:-1] if value.startswith('"') and value.endswith('"') else value
+        for key, value in (param.split("=", 1) for param in params_str.split(", "))
+    }
 
     # Check all required fields are present
     assert "username" in params
