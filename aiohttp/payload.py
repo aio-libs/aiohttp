@@ -357,16 +357,22 @@ class IOBasePayload(Payload):
 
     def _read_and_available_len(
         self, maximum_read_len: Optional[int]
-    ) -> Tuple[Optional[int], Union[str, bytes]]:
+    ) -> Tuple[Optional[int], bytes]:
         """Read the file-like object and return its size."""
         size = self.size
-        return size, self._value.read(
+        chunk = size, self._value.read(
             min(size or READ_SIZE, maximum_read_len or READ_SIZE)
         )
+        return self._ensure_bytes(chunk) if self._encode else chunk
 
-    def _read(self, maximum_read_len: Optional[int]) -> Union[str, bytes]:
+    def _read(self, maximum_read_len: Optional[int]) -> bytes:
         """Read the file-like object."""
-        return self._value.read(maximum_read_len or READ_SIZE)
+        chunk = self._value.read(maximum_read_len or READ_SIZE)
+        return self._ensure_bytes(chunk) if self._encode else chunk
+
+    def _ensure_bytes(self, chunk: Union[str, bytes]) -> bytes:
+        """Ensure chunk is bytes."""
+        return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     @property
     def size(self) -> Optional[int]:
@@ -377,10 +383,6 @@ class IOBasePayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         await self.write_with_length(writer, None)
-
-    def _ensure_bytes(self, chunk: Union[str, bytes]) -> bytes:
-        """Ensure chunk is bytes."""
-        return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     async def write_with_length(
         self, writer: AbstractStreamWriter, content_length: Optional[int]
@@ -398,20 +400,18 @@ class IOBasePayload(Payload):
             available_len, chunk = await loop.run_in_executor(
                 None, self._read_and_available_len, remaining_content_length
             )
-            bytes_data = self._ensure_bytes(chunk) if self._encode else chunk
-
             # Process data chunks until done
-            while bytes_data:
-                bytes_data_len = len(bytes_data)
+            while chunk:
+                chunk_len = len(chunk)
 
                 # Write data with or without length constraint
                 if remaining_content_length is None:
-                    await writer.write(bytes_data)
+                    await writer.write(chunk)
                 else:
-                    await writer.write(bytes_data[:remaining_content_length])
-                    remaining_content_length -= bytes_data_len
+                    await writer.write(chunk[:remaining_content_length])
+                    remaining_content_length -= chunk_len
 
-                total_written_len += bytes_data_len
+                total_written_len += chunk_len
 
                 # Check if we're done writing
                 if self._should_stop_writing(
@@ -423,7 +423,6 @@ class IOBasePayload(Payload):
                 chunk = await loop.run_in_executor(
                     None, self._read, remaining_content_length
                 )
-                bytes_data = self._ensure_bytes(chunk) if self._encode else chunk
         finally:
             # Handle closing the file without awaiting to prevent cancellation issues
             # when the StreamReader reaches EOF
