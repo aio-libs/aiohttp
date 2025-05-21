@@ -1642,3 +1642,19 @@ async def test_write_bytes_with_iterable_content_length_limit(
     assert len(buf) == 7
     assert buf == b"Part1Pa"
     await req.close()
+
+
+async def test_write_bytes_empty_iterable_with_content_length(
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+) -> None:
+    """Test that write_bytes handles empty iterable body with content_length."""
+    req = ClientRequest("post", URL("http://python.org/"), loop=loop)
+    req.body = []  # Empty iterable
+
+    writer = StreamWriter(protocol=conn.protocol, loop=loop)
+    # Use content_length=10 with empty body
+    await req.write_bytes(writer, conn, 10)
+
+    # Verify nothing was written
+    assert len(buf) == 0
+    await req.close()
