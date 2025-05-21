@@ -390,46 +390,63 @@ class IOBasePayload(Payload):
         writer is an AbstractStreamWriter instance:
         """
         loop = asyncio.get_running_loop()
-        chunk: Union[bytes, str]
-        bytes_data: bytes
         total_written_len = 0
         remaining_content_length = content_length
-        # Check if the file-like object is seekable
+
         try:
+            # Get initial data and available length
             available_len, chunk = await loop.run_in_executor(
                 None, self._read_and_available_len, remaining_content_length
             )
             bytes_data = self._ensure_bytes(chunk) if self._encode else chunk
+
+            # Process data chunks until done
             while bytes_data:
                 bytes_data_len = len(bytes_data)
+
+                # Write data with or without length constraint
                 if remaining_content_length is None:
                     await writer.write(bytes_data)
                 else:
                     await writer.write(bytes_data[:remaining_content_length])
                     remaining_content_length -= bytes_data_len
+
                 total_written_len += bytes_data_len
-                if (
-                    available_len is not None and total_written_len >= available_len
-                ) or (
-                    remaining_content_length is not None
-                    and remaining_content_length <= 0
+
+                # Check if we're done writing
+                if self._should_stop_writing(
+                    available_len, total_written_len, remaining_content_length
                 ):
                     return
+
+                # Read next chunk
                 chunk = await loop.run_in_executor(
                     None, self._read, remaining_content_length
                 )
                 bytes_data = self._ensure_bytes(chunk) if self._encode else chunk
         finally:
-            # We do not await here because we may get cancelled if we do
-            # no finish fast enough since as soon as the StreamReader reaches EOF
-            # the client will proceed to cancel the writer as we need to make sure
-            # the task is done before we can move on to handling the next request
-            # as we don't want to leak writers.
-            close_future = loop.run_in_executor(None, self._value.close)
-            # Hold a strong reference to the future to prevent it from being
-            # garbage collected before it completes.
-            _CLOSE_FUTURES.add(close_future)
-            close_future.add_done_callback(_CLOSE_FUTURES.remove)
+            # Handle closing the file without awaiting to prevent cancellation issues
+            # when the StreamReader reaches EOF
+            self._schedule_file_close(loop)
+
+    def _should_stop_writing(
+        self,
+        available_len: Optional[int],
+        total_written_len: int,
+        remaining_content_length: Optional[int],
+    ) -> bool:
+        """Determine if we should stop writing data."""
+        return (available_len is not None and total_written_len >= available_len) or (
+            remaining_content_length is not None and remaining_content_length <= 0
+        )
+
+    def _schedule_file_close(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Schedule file closing without awaiting to prevent cancellation issues."""
+        close_future = loop.run_in_executor(None, self._value.close)
+        # Hold a strong reference to the future to prevent it from being
+        # garbage collected before it completes.
+        _CLOSE_FUTURES.add(close_future)
+        close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
