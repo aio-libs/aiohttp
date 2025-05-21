@@ -614,3 +614,49 @@ async def test_dns_resolver_manager_multiple_event_loops(
         # Verify resolver cleanup
         resolver1.cancel.assert_called_once()
         resolver2.cancel.assert_called_once()
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_weakref_garbage_collection() -> None:
+    """Test that release_resolver handles None resolver due to weakref garbage collection."""
+    manager = _DNSResolverManager()
+
+    # Create a mock resolver that will be None when accessed
+    mock_resolver = Mock()
+    mock_resolver.cancel = Mock()
+
+    with patch("aiodns.DNSResolver", return_value=mock_resolver):
+        # Create an AsyncResolver to get a resolver from the manager
+        resolver = AsyncResolver()
+        loop = asyncio.get_running_loop()
+
+        # Manually corrupt the data to simulate garbage collection
+        # by setting the resolver to None
+        manager._loop_data[loop] = (None, manager._loop_data[loop][1])
+
+        # This should not raise an AttributeError: 'NoneType' object has no attribute 'cancel'
+        await resolver.close()
+
+        # Verify no exception was raised and the loop data was cleaned up properly
+        # Since we set resolver to None and there was one client, the entry should be removed
+        assert loop not in manager._loop_data
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+async def test_dns_resolver_manager_missing_loop_data() -> None:
+    """Test that release_resolver handles missing loop data gracefully."""
+    manager = _DNSResolverManager()
+
+    with patch("aiodns.DNSResolver"):
+        # Create an AsyncResolver
+        resolver = AsyncResolver()
+        loop = asyncio.get_running_loop()
+
+        # Manually remove the loop data to simulate race condition
+        manager._loop_data.clear()
+
+        # This should not raise a KeyError
+        await resolver.close()
+
+        # Verify no exception was raised
+        assert loop not in manager._loop_data
