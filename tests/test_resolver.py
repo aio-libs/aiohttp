@@ -632,7 +632,7 @@ async def test_dns_resolver_manager_weakref_garbage_collection() -> None:
 
         # Manually corrupt the data to simulate garbage collection
         # by setting the resolver to None
-        manager._loop_data[loop] = (None, manager._loop_data[loop][1])
+        manager._loop_data[loop] = (None, manager._loop_data[loop][1])  # type: ignore[assignment]
 
         # This should not raise an AttributeError: 'NoneType' object has no attribute 'cancel'
         await resolver.close()
