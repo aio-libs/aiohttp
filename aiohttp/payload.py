@@ -379,23 +379,29 @@ class IOBasePayload(Payload):
                 if remaining_content_length is None
                 else min(READ_SIZE, remaining_content_length)
             )
+            import pprint
+
+            pprint.pprint(["read in executor", "first", read_size])
             available_len, chunk = await loop.run_in_executor(
                 None, self._read_and_available_len, read_size
             )
+            pprint.pprint(["finished reading in executor"])
             bytes_data = (
                 (chunk.encode(self._encoding) if self._encoding else chunk.encode())
                 if self._encode
                 else chunk
             )
-            bytes_read = len(bytes_data)
 
             while bytes_data:
+                bytes_data_len = len(bytes_data)
+                pprint.pprint(["write to writer", bytes_data_len])
                 if remaining_content_length is None:
                     await writer.write(bytes_data)
                 else:
                     await writer.write(bytes_data[:remaining_content_length])
-                    remaining_content_length -= bytes_read
-                total_written_len += bytes_read
+                    remaining_content_length -= bytes_data_len
+                pprint.pprint(["done writing to writer"])
+                total_written_len += bytes_data_len
                 if available_len is not None and total_written_len >= available_len:
                     break
                 read_size = (
@@ -405,13 +411,15 @@ class IOBasePayload(Payload):
                 )
                 if read_size <= 0:
                     break
+                import pprint
+
+                pprint.pprint(["read in executor", read_size])
                 chunk = await loop.run_in_executor(None, self._value.read, read_size)
                 bytes_data = (
                     (chunk.encode(self._encoding) if self._encoding else chunk.encode())
                     if self._encode
                     else chunk
                 )
-                bytes_read = len(bytes_data)
         finally:
             # We do not await here because we may get cancelled if we do
             # no finish fast enough since as soon as the StreamReader reaches EOF

@@ -1046,7 +1046,7 @@ class ClientResponse(HeadersMixin):
 
             pprint.pprint(["start got past read"])
             if self.__writer is not None:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0)
             pprint.pprint(["start finished sleep"])
             self._response_eof()
         else:
