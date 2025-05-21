@@ -591,16 +591,50 @@ class TextIOPayload(IOBasePayload):
         )
 
     def _read_and_available_len(
-        self, maximum_read_len: Optional[int]
+        self, remaining_content_len: Optional[int]
     ) -> Tuple[Optional[int], bytes]:
-        """Read the file-like object and return its size."""
+        """Read the text file-like object and return both its total size and the first chunk.
+
+        Args:
+            remaining_content_len: Optional limit on how many bytes to read in this operation.
+                If None, READ_SIZE will be used as the default chunk size.
+
+        Returns:
+            A tuple containing:
+            - The total size of the remaining unread content (None if size cannot be determined)
+            - The first chunk of bytes read from the file object, encoded using the payload's encoding
+
+        This method is optimized to perform both size calculation and initial read
+        in a single operation, which is executed in a single executor job to minimize
+        context switches and file operations when streaming content.
+
+        Note:
+            TextIOPayload handles encoding of the text content before writing it
+            to the stream. If no encoding is specified, UTF-8 is used as the default.
+        """
         size = self.size
-        chunk = self._value.read(min(size or READ_SIZE, maximum_read_len or READ_SIZE))
+        chunk = self._value.read(
+            min(size or READ_SIZE, remaining_content_len or READ_SIZE)
+        )
         return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
-    def _read(self, maximum_read_len: Optional[int]) -> bytes:
-        """Read the file-like object."""
-        chunk = self._value.read(maximum_read_len or READ_SIZE)
+    def _read(self, remaining_content_len: Optional[int]) -> bytes:
+        """Read a chunk of data from the text file-like object.
+
+        Args:
+            remaining_content_len: Optional maximum number of bytes to read.
+                If None, READ_SIZE will be used as the default chunk size.
+
+        Returns:
+            A chunk of bytes read from the file object and encoded using the payload's
+            encoding. The data is automatically converted from text to bytes.
+
+        This method is used for subsequent reads during streaming after
+        the initial _read_and_available_len call has been made. It properly
+        handles text encoding, converting the text content to bytes using
+        the specified encoding (or UTF-8 if none was provided).
+        """
+        chunk = self._value.read(remaining_content_len or READ_SIZE)
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
@@ -626,7 +660,8 @@ class BytesIOPayload(IOBasePayload):
     async def write_with_length(
         self, writer: AbstractStreamWriter, content_length: Optional[int]
     ) -> None:
-        """Write BytesIO payload with a specific content length constraint.
+        """
+        Write BytesIO payload with a specific content length constraint.
 
         Args:
             writer: An AbstractStreamWriter instance that handles the actual writing
@@ -642,6 +677,7 @@ class BytesIOPayload(IOBasePayload):
 
         The periodic yielding to the event loop is important for maintaining
         responsiveness when processing large in-memory buffers.
+
         """
         loop_count = 0
         remaining_bytes = content_length
@@ -658,6 +694,8 @@ class BytesIOPayload(IOBasePayload):
                 else:
                     await writer.write(chunk[:remaining_bytes])
                     remaining_bytes -= len(chunk)
+                    if remaining_bytes <= 0:
+                        return
                 loop_count += 1
         finally:
             self._value.close()
@@ -772,7 +810,7 @@ class AsyncIterablePayload(Payload):
                 await writer.write(chunk[:remaining_bytes])
                 remaining_bytes -= len(chunk)
                 if remaining_bytes <= 0:
-                    break
+                    return
         except StopAsyncIteration:
             # Iterator is exhausted
             self._iter = None
