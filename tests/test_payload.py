@@ -251,12 +251,36 @@ async def test_bytesio_payload_write_with_length_exact() -> None:
 async def test_bytesio_payload_write_with_length_truncated() -> None:
     """Test BytesIOPayload writing with truncated content length."""
     data = b"0123456789"
-    p = payload.BytesIOPayload(io.BytesIO(data))
+    payload_bytesio = payload.BytesIOPayload(io.BytesIO(data))
     writer = MockStreamWriter()
 
-    await p.write_with_length(writer, 5)
+    await payload_bytesio.write_with_length(writer, 5)
     assert writer.get_written_bytes() == b"01234"
     assert len(writer.get_written_bytes()) == 5
+
+
+async def test_bytesio_payload_large_data_multiple_chunks() -> None:
+    """Test BytesIOPayload with large data requiring multiple read chunks."""
+    chunk_size = 2**16  # 64KB (READ_SIZE)
+    data = b"x" * (chunk_size + 1000)  # Slightly larger than READ_SIZE
+    payload_bytesio = payload.BytesIOPayload(io.BytesIO(data))
+    writer = MockStreamWriter()
+
+    await payload_bytesio.write_with_length(writer, None)
+    assert writer.get_written_bytes() == data
+    assert len(writer.get_written_bytes()) == chunk_size + 1000
+
+
+async def test_bytesio_payload_remaining_bytes_exhausted() -> None:
+    """Test BytesIOPayload when remaining_bytes becomes <= 0."""
+    data = b"0123456789abcdef" * 1000  # 16000 bytes
+    payload_bytesio = payload.BytesIOPayload(io.BytesIO(data))
+    writer = MockStreamWriter()
+
+    await payload_bytesio.write_with_length(writer, 8000)  # Exactly half the data
+    written = writer.get_written_bytes()
+    assert len(written) == 8000
+    assert written == data[:8000]
 
 
 async def test_async_iterable_payload_write_with_length_no_limit() -> None:
