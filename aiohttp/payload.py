@@ -411,6 +411,13 @@ class BytesIOPayload(IOBasePayload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read().decode(encoding, errors)
 
+    async def write(self, writer: AbstractStreamWriter) -> None:
+        try:
+            while chunk := self._value.read(2**16):
+                await writer.write(chunk)
+        finally:
+            self._value.close()
+
 
 class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
