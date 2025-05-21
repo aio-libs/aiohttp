@@ -374,17 +374,43 @@ class IOBasePayload(Payload):
                 self.set_content_disposition(disposition, filename=self._filename)
 
     def _read_and_available_len(
-        self, maximum_read_len: Optional[int]
+        self, remaining_content_len: Optional[int]
     ) -> Tuple[Optional[int], bytes]:
-        """Read the file-like object and return its size."""
+        """Read the file-like object and return both its total size and the first chunk.
+
+        Args:
+            remaining_content_len: Optional limit on how many bytes to read in this operation.
+                If None, READ_SIZE will be used as the default chunk size.
+
+        Returns:
+            A tuple containing:
+            - The total size of the remaining unread content (None if size cannot be determined)
+            - The first chunk of bytes read from the file object
+
+        This method is optimized to perform both size calculation and initial read
+        in a single operation, which is executed in a single executor job to minimize
+        context switches and file operations when streaming content.
+        """
         size = self.size
         return size, self._value.read(
-            min(size or READ_SIZE, maximum_read_len or READ_SIZE)
+            min(size or READ_SIZE, remaining_content_len or READ_SIZE)
         )
 
-    def _read(self, maximum_read_len: Optional[int]) -> bytes:
-        """Read the file-like object."""
-        return self._value.read(maximum_read_len or READ_SIZE)
+    def _read(self, remaining_content_len: Optional[int]) -> bytes:
+        """Read a chunk of data from the file-like object.
+
+        Args:
+            remaining_content_len: Optional maximum number of bytes to read.
+                If None, READ_SIZE will be used as the default chunk size.
+
+        Returns:
+            A chunk of bytes read from the file object, respecting the
+            remaining_content_len limit if specified.
+
+        This method is used for subsequent reads during streaming after
+        the initial _read_and_available_len call has been made.
+        """
+        return self._value.read(remaining_content_len or READ_SIZE)
 
     @property
     def size(self) -> Optional[int]:
@@ -419,35 +445,35 @@ class IOBasePayload(Payload):
         """
         loop = asyncio.get_running_loop()
         total_written_len = 0
-        remaining_content_length = content_length
+        remaining_content_len = content_length
 
         try:
             # Get initial data and available length
             available_len, chunk = await loop.run_in_executor(
-                None, self._read_and_available_len, remaining_content_length
+                None, self._read_and_available_len, remaining_content_len
             )
             # Process data chunks until done
             while chunk:
                 chunk_len = len(chunk)
 
                 # Write data with or without length constraint
-                if remaining_content_length is None:
+                if remaining_content_len is None:
                     await writer.write(chunk)
                 else:
-                    await writer.write(chunk[:remaining_content_length])
-                    remaining_content_length -= chunk_len
+                    await writer.write(chunk[:remaining_content_len])
+                    remaining_content_len -= chunk_len
 
                 total_written_len += chunk_len
 
                 # Check if we're done writing
                 if self._should_stop_writing(
-                    available_len, total_written_len, remaining_content_length
+                    available_len, total_written_len, remaining_content_len
                 ):
                     return
 
                 # Read next chunk
                 chunk = await loop.run_in_executor(
-                    None, self._read, remaining_content_length
+                    None, self._read, remaining_content_len
                 )
         finally:
             # Handle closing the file without awaiting to prevent cancellation issues
@@ -458,14 +484,14 @@ class IOBasePayload(Payload):
         self,
         available_len: Optional[int],
         total_written_len: int,
-        remaining_content_length: Optional[int],
+        remaining_content_len: Optional[int],
     ) -> bool:
         """Determine if we should stop writing data.
 
         Args:
             available_len: Known size of the payload if available (None if unknown)
             total_written_len: Number of bytes already written
-            remaining_content_length: Remaining bytes to be written for content-length limited responses
+            remaining_content_len: Remaining bytes to be written for content-length limited responses
 
         Returns:
             True if we should stop writing data, based on either:
@@ -473,7 +499,7 @@ class IOBasePayload(Payload):
             - Having written all requested content (when content-length is specified)
         """
         return (available_len is not None and total_written_len >= available_len) or (
-            remaining_content_length is not None and remaining_content_length <= 0
+            remaining_content_len is not None and remaining_content_len <= 0
         )
 
     def _schedule_file_close(self, loop: asyncio.AbstractEventLoop) -> None:
