@@ -4296,3 +4296,78 @@ async def test_content_length_limit_with_multiple_reads(
     assert b"Chunk2" in received_data  # Some part of the second chunk was sent
     # 200 bytes from the second chunk
     assert len(received_data) - len(b"Chunk1" * 100) == 200
+
+
+async def test_post_connection_cleanup_with_bytesio(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that connections are properly cleaned up when using BytesIO data."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"")
+
+    app = web.Application()
+    app.router.add_post("/hello", handler)
+    client = await aiohttp_client(app)
+
+    # Test with direct bytes and BytesIO multiple times to ensure connection cleanup
+    for _ in range(10):
+        async with client.post(
+            "/hello",
+            data=b"x",
+            headers={"Content-Length": "1"},
+        ) as response:
+            response.raise_for_status()
+
+        assert client._session.connector is not None
+        assert len(client._session.connector._conns) == 1
+
+        x = io.BytesIO(b"x")
+        async with client.post(
+            "/hello",
+            data=x,
+            headers={"Content-Length": "1"},
+        ) as response:
+            response.raise_for_status()
+
+        assert len(client._session.connector._conns) == 1
+
+
+async def test_post_connection_cleanup_with_file(
+    aiohttp_client: AiohttpClient, here: pathlib.Path
+) -> None:
+    """Test that connections are properly cleaned up when using file data."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response(body=b"")
+
+    app = web.Application()
+    app.router.add_post("/hello", handler)
+    client = await aiohttp_client(app)
+
+    test_file = here / "data.unknown_mime_type"
+
+    # Test with direct bytes and file multiple times to ensure connection cleanup
+    for _ in range(10):
+        async with client.post(
+            "/hello",
+            data=b"xx",
+            headers={"Content-Length": "2"},
+        ) as response:
+            response.raise_for_status()
+
+        assert client._session.connector is not None
+        assert len(client._session.connector._conns) == 1
+        fh = await asyncio.get_running_loop().run_in_executor(
+            None, open, test_file, "rb"
+        )
+
+        async with client.post(
+            "/hello",
+            data=fh,
+            headers={"Content-Length": str(test_file.stat().st_size)},
+        ) as response:
+            response.raise_for_status()
+
+        assert len(client._session.connector._conns) == 1
