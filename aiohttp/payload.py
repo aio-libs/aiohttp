@@ -414,12 +414,13 @@ class IOBasePayload(Payload):
                     remaining_content_length -= bytes_data_len
                 pprint.pprint(["done writing to writer"])
                 total_written_len += bytes_data_len
-                if available_len is not None and total_written_len >= available_len:
-                    break
-                if remaining_content_length is None or remaining_content_length <= 0:
-                    break
-                import pprint
-
+                if (
+                    available_len is not None and total_written_len >= available_len
+                ) or (
+                    remaining_content_length is not None
+                    and remaining_content_length <= 0
+                ):
+                    return
                 pprint.pprint(["read in executor", remaining_content_length])
                 chunk = await loop.run_in_executor(
                     None, self._read, remaining_content_length
