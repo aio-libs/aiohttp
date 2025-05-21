@@ -331,3 +331,15 @@ def parametrize_zlib_backend(
     yield
 
     set_zlib_backend(original_backend)
+
+
+@pytest.fixture(autouse=True)
+async def cleanup_pending_file_closes() -> Generator[None, None, None]:
+    """Ensure all pending file close operations complete during test teardown."""
+    yield
+
+    # Import here to avoid circular imports
+    from aiohttp.payload import _CLOSE_FUTURES
+
+    if _CLOSE_FUTURES:
+        await asyncio.gather(*list(_CLOSE_FUTURES), return_exceptions=True)
