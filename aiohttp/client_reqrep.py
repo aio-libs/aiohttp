@@ -596,7 +596,10 @@ class ClientRequest:
         self.proxy_headers = proxy_headers
 
     async def write_bytes(
-        self, writer: AbstractStreamWriter, conn: "Connection"
+        self,
+        writer: AbstractStreamWriter,
+        conn: "Connection",
+        content_length: Optional[int],
     ) -> None:
         """Support coroutines that yields bytes objects."""
         # 100 response
@@ -608,13 +611,34 @@ class ClientRequest:
         assert protocol is not None
         try:
             if isinstance(self.body, payload.Payload):
+                if content_length is not None and self.body.size > content_length:
+                    conn.close()
+                    raise ValueError(
+                        f"Request body size {self.body.size} exceeds "
+                        f"Content-Length {content_length}"
+                    )
                 await self.body.write(writer)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
 
-                for chunk in self.body:
-                    await writer.write(chunk)
+                if content_length is None:
+                    for chunk in self.body:
+                        await writer.write(chunk)
+
+                else:
+                    # If the body is larger than content_length, we need to
+                    # chunk it.
+                    total = 0
+                    for chunk in self.body:
+                        total += len(chunk)
+                        if total > content_length:
+                            conn.close()
+                            raise ValueError(
+                                f"Request body size {total} exceeds "
+                                f"Content-Length {content_length}"
+                            )
+                        await writer.write(chunk)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
@@ -705,7 +729,16 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
         task: Optional["asyncio.Task[None]"]
         if self.body or self._continue is not None or protocol.writing_paused:
-            coro = self.write_bytes(writer, conn)
+            content_length_hdr = self.headers.get(hdrs.CONTENT_LENGTH)
+            content_length: Optional[int] = None
+            if content_length is not None:
+                try:
+                    content_length = int(content_length_hdr)
+                except ValueError:
+                    raise ValueError(
+                        f"Invalid Content-Length header: {content_length_hdr}"
+                    ) from None
+            coro = self.write_bytes(writer, conn, content_length)
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write
                 # bytes immediately to avoid having to schedule

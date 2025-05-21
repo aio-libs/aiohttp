@@ -316,78 +316,6 @@ class StringIOPayload(StringPayload):
         super().__init__(value.read(), *args, **kwargs)
 
 
-def _get_chunk_and_file_size(
-    io_source: IO[Any], chunk_size: int
-) -> Tuple[bytes, Optional[int]]:
-    """Read a chunk from the file-like object and return it along with its size."""
-    buffer_size: Optional[int] = None
-    if hasattr(io_source, "getbuffer"):
-        buffer_size = io_source.getbuffer().nbytes
-    else:
-        try:
-            buffer_size = os.fstat(io_source.fileno()).st_size
-        except OSError:
-            # If the file-like object does not have a fileno() method, we cannot
-            # determine its size. In this case, we will return None for the size.
-            pass
-    # Check if the file-like object is seekable
-    return io_source.read(chunk_size), buffer_size
-
-
-async def transfer_data_to_writer(
-    writer: AbstractStreamWriter,
-    io_source: IO[Any],
-    encode: bool,
-    encoding: Optional[str],
-) -> None:
-    """Transfer data from the file-like object to the writer."""
-    loop = asyncio.get_running_loop()
-    # Check if the file-like object is seekable
-    try:
-        chunk, file_size = await loop.run_in_executor(
-            None, _get_chunk_and_file_size, io_source, 2**16
-        )
-        if encode:
-            data = chunk.encode(encoding) if encoding else chunk.encode()
-        else:
-            data = chunk
-        if file_size is None:
-            # If we don't have a file size, we have to blindly read until EOF
-            while chunk:
-                await writer.write(data)
-                chunk = await loop.run_in_executor(None, io_source.read, 2**16)
-                if encode:
-                    data = chunk.encode(encoding) if encoding else chunk.encode()
-                else:
-                    data = chunk
-            return
-        # If we have a file size, we can read in chunks
-        bytes_transferred = 0
-        while bytes_transferred < file_size:
-            await writer.write(chunk)
-            bytes_transferred += len(chunk)
-            if bytes_transferred >= file_size:
-                break
-            chunk = await loop.run_in_executor(None, io_source.read, 2**16)
-            if not chunk:
-                break
-            if encode:
-                data = chunk.encode(encoding) if encoding else chunk.encode()
-            else:
-                data = chunk
-    finally:
-        # We do not await here because we may get cancelled if we do
-        # no finish fast enough since as soon as the StreamReader reaches EOF
-        # the client will proceed to cancel the writer as we need to make sure
-        # the task is done before we can move on to handling the next request
-        # as we don't want to leak writers.
-        close_future = loop.run_in_executor(None, io_source.close)
-        # Hold a strong reference to the future to prevent it from being
-        # garbage collected before it completes.
-        _CLOSE_FUTURES.add(close_future)
-        close_future.add_done_callback(_CLOSE_FUTURES.remove)
-
-
 class IOBasePayload(Payload):
     _value: io.IOBase
 
@@ -403,8 +331,74 @@ class IOBasePayload(Payload):
             if hdrs.CONTENT_DISPOSITION not in self.headers:
                 self.set_content_disposition(disposition, filename=self._filename)
 
+    def _read_and_get_size(self) -> Tuple[Optional[int], bytes]:
+        """Read the file-like object and return its size."""
+        return self.size, self._value.read(2**16)
+
+    async def _transfer_data_to_writer(
+        self,
+        writer: AbstractStreamWriter,
+        encode: bool,
+        encoding: Optional[str],
+    ) -> None:
+        """Transfer data from the file-like object to the writer."""
+        loop = asyncio.get_running_loop()
+        io_source = self._value
+        # Check if the file-like object is seekable
+        try:
+            file_size, chunk = await loop.run_in_executor(None, self._read_and_get_size)
+            import pprint
+
+            pprint.pprint([file_size, chunk])
+            if encode:
+                data = chunk.encode(encoding) if encoding else chunk.encode()
+            else:
+                data = chunk
+            if file_size is None:
+                # If we don't have a file size, we have to blindly read until EOF
+                while chunk:
+                    await writer.write(data)
+                    chunk = await loop.run_in_executor(None, io_source.read, 2**16)
+                    if encode:
+                        data = chunk.encode(encoding) if encoding else chunk.encode()
+                    else:
+                        data = chunk
+                return
+            # If we have a file size, we can read in chunks
+            bytes_transferred = 0
+            while bytes_transferred < file_size:
+                await writer.write(chunk)
+                bytes_transferred += len(chunk)
+                if bytes_transferred >= file_size:
+                    break
+                chunk = await loop.run_in_executor(None, io_source.read, 2**16)
+                if not chunk:
+                    break
+                if encode:
+                    data = chunk.encode(encoding) if encoding else chunk.encode()
+                else:
+                    data = chunk
+        finally:
+            # We do not await here because we may get cancelled if we do
+            # no finish fast enough since as soon as the StreamReader reaches EOF
+            # the client will proceed to cancel the writer as we need to make sure
+            # the task is done before we can move on to handling the next request
+            # as we don't want to leak writers.
+            close_future = loop.run_in_executor(None, io_source.close)
+            # Hold a strong reference to the future to prevent it from being
+            # garbage collected before it completes.
+            _CLOSE_FUTURES.add(close_future)
+            close_future.add_done_callback(_CLOSE_FUTURES.remove)
+
+    @property
+    def size(self) -> Optional[int]:
+        try:
+            return os.fstat(self._value.fileno()).st_size - self._value.tell()
+        except OSError:
+            return None
+
     async def write(self, writer: AbstractStreamWriter) -> None:
-        await transfer_data_to_writer(writer, self._value, False, None)
+        await self._transfer_data_to_writer(writer, False, None)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
@@ -440,18 +434,11 @@ class TextIOPayload(IOBasePayload):
             **kwargs,
         )
 
-    @property
-    def size(self) -> Optional[int]:
-        try:
-            return os.fstat(self._value.fileno()).st_size - self._value.tell()
-        except OSError:
-            return None
-
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        await transfer_data_to_writer(writer, self._value, True, self._encoding)
+        await self._transfer_data_to_writer(writer, True, self._encoding)
 
 
 class BytesIOPayload(IOBasePayload):
@@ -467,20 +454,24 @@ class BytesIOPayload(IOBasePayload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read().decode(encoding, errors)
 
+    async def write(self, writer: AbstractStreamWriter) -> None:
+        loop_count = 0
+        try:
+            while chunk := self._value.read(2**16):
+                if loop_count > 0:
+                    # Avoid blocking the event loop
+                    # if they pass a large BytesIO object
+                    # and we are not in the first iteration
+                    # of the loop
+                    await asyncio.sleep(0)
+                await writer.write(chunk)
+            loop_count += 1
+        finally:
+            self._value.close()
+
 
 class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
-
-    @property
-    def size(self) -> Optional[int]:
-        try:
-            return os.fstat(self._value.fileno()).st_size - self._value.tell()
-        except (OSError, AttributeError):
-            # data.fileno() is not supported, e.g.
-            # io.BufferedReader(io.BytesIO(b'data'))
-            # For some file-like objects (e.g. tarfile), the fileno() attribute may
-            # not exist at all, and will instead raise an AttributeError.
-            return None
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read().decode(encoding, errors)
