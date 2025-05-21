@@ -1028,15 +1028,12 @@ class ClientResponse(HeadersMixin):
                     self._continue = None
 
         # payload eof handler
-        if payload.is_eof():
+        if self.__writer is not None:
             # Make sure to tell the writer that the reader is done
             # so it doesn't close the connection if it gets cancelled
             # because there is still payload being read.
-            if self.__writer is not None:
-                self.__writer._reader_done = True
-            self._response_eof()
-        else:
-            payload.on_eof(self._response_eof)
+            self.__writer._reader_done = True
+        payload.on_eof(self._response_eof)
 
         # response status
         self.version = message.version
