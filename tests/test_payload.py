@@ -408,7 +408,7 @@ async def test_async_iterable_payload_with_none_iterator() -> None:
     """Test AsyncIterablePayload with None iterator returns early without writing."""
 
     async def gen() -> AsyncIterator[bytes]:
-        yield b"test"
+        yield b"test"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen())
     # Manually set _iter to None to test the guard clause
