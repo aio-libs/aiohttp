@@ -603,6 +603,9 @@ class ClientRequest:
     ) -> None:
         """Support coroutines that yields bytes objects."""
         # 100 response
+        import pprint
+
+        pprint.pprint(["starting write_bytes", content_length])
         if self._continue is not None:
             await writer.drain()
             await self._continue
@@ -642,6 +645,12 @@ class ClientRequest:
             set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
             # Body hasn't been fully sent, so connection can't be reused.
+            client_logger.exception(
+                "Cancelled while request body",
+            )
+            import pprint
+
+            pprint.pprint(["canceled error!"])
             conn.close()
             raise
         except Exception as underlying_exc:
@@ -653,6 +662,9 @@ class ClientRequest:
                 underlying_exc,
             )
         else:
+            import pprint
+
+            pprint.pprint(["writing EOF!"])
             await writer.write_eof()
             protocol.start_timeout()
 
@@ -719,9 +731,12 @@ class ClientRequest:
         if self.body or self._continue is not None or protocol.writing_paused:
             content_length_hdr = self.headers.get(hdrs.CONTENT_LENGTH)
             content_length: Optional[int] = None
-            if content_length is not None:
+            import pprint
+
+            pprint.pprint(["content_length_hdr", content_length_hdr])
+            if hdrs.CONTENT_LENGTH in self.headers:
                 try:
-                    content_length = int(content_length_hdr)
+                    content_length = int(self.headers[hdrs.CONTENT_LENGTH])
                 except ValueError:
                     raise ValueError(
                         f"Invalid Content-Length header: {content_length_hdr}"
@@ -776,6 +791,9 @@ class ClientRequest:
     def terminate(self) -> None:
         if self.__writer is not None:
             if not self.loop.is_closed():
+                import pprint
+
+                pprint.pprint(["terminating writer!"])
                 self.__writer.cancel()
             self.__writer.remove_done_callback(self.__reset_writer)
             self.__writer = None
@@ -1046,7 +1064,11 @@ class ClientResponse(HeadersMixin):
 
             pprint.pprint(["start got past read"])
             if self.__writer is not None:
-                await asyncio.sleep(0)
+                pprint.pprint(["starting sleep"])
+                # await asyncio.sleep(0)
+                # await asyncio.sleep(0)
+                # await asyncio.sleep(0)
+                pprint.pprint(["done sleep"])
             pprint.pprint(["start finished sleep"])
             self._response_eof()
         else:
@@ -1164,6 +1186,9 @@ class ClientResponse(HeadersMixin):
 
     def _cleanup_writer(self) -> None:
         if self.__writer is not None:
+            import pprint
+
+            pprint.pprint(["cleanup writer!"])
             self.__writer.cancel()
         self._session = None
 
