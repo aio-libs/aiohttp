@@ -304,6 +304,23 @@ class ClientRequest:
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
 
+    def _get_content_length(self) -> Optional[int]:
+        """Extract and validate Content-Length header value.
+
+        Returns parsed Content-Length value or None if not set.
+        Raises ValueError if header exists but cannot be parsed as an integer.
+        """
+        if hdrs.CONTENT_LENGTH not in self.headers:
+            return None
+
+        content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
+        try:
+            return int(content_length_hdr)
+        except ValueError:
+            raise ValueError(
+                f"Invalid Content-Length header: {content_length_hdr}"
+            ) from None
+
     @property
     def skip_auto_headers(self) -> CIMultiDict[None]:
         return self._skip_auto_headers or CIMultiDict()
@@ -744,15 +761,7 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
         task: Optional["asyncio.Task[None]"]
         if self.body or self._continue is not None or protocol.writing_paused:
-            content_length_hdr = self.headers.get(hdrs.CONTENT_LENGTH)
-            content_length: Optional[int] = None
-            if hdrs.CONTENT_LENGTH in self.headers:
-                try:
-                    content_length = int(self.headers[hdrs.CONTENT_LENGTH])
-                except ValueError:
-                    raise ValueError(
-                        f"Invalid Content-Length header: {content_length_hdr}"
-                    ) from None
+            content_length = self._get_content_length()
             coro = self.write_bytes(writer, conn, content_length)
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write

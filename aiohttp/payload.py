@@ -534,7 +534,8 @@ class IOBasePayload(Payload):
         total_written_len: int,
         remaining_content_len: Optional[int],
     ) -> bool:
-        """Determine if we should stop writing data.
+        """
+        Determine if we should stop writing data.
 
         Args:
             available_len: Known size of the payload if available (None if unknown)
@@ -545,6 +546,7 @@ class IOBasePayload(Payload):
             True if we should stop writing data, based on either:
             - Having written all available data (when size is known)
             - Having written all requested content (when content-length is specified)
+
         """
         return (available_len is not None and total_written_len >= available_len) or (
             remaining_content_len is not None and remaining_content_len <= 0
@@ -595,7 +597,8 @@ class TextIOPayload(IOBasePayload):
     def _read_and_available_len(
         self, remaining_content_len: Optional[int]
     ) -> Tuple[Optional[int], bytes]:
-        """Read the text file-like object and return both its total size and the first chunk.
+        """
+        Read the text file-like object and return both its total size and the first chunk.
 
         Args:
             remaining_content_len: Optional limit on how many bytes to read in this operation.
@@ -613,6 +616,7 @@ class TextIOPayload(IOBasePayload):
         Note:
             TextIOPayload handles encoding of the text content before writing it
             to the stream. If no encoding is specified, UTF-8 is used as the default.
+
         """
         size = self.size
         chunk = self._value.read(
@@ -621,7 +625,8 @@ class TextIOPayload(IOBasePayload):
         return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def _read(self, remaining_content_len: Optional[int]) -> bytes:
-        """Read a chunk of data from the text file-like object.
+        """
+        Read a chunk of data from the text file-like object.
 
         Args:
             remaining_content_len: Optional maximum number of bytes to read.
@@ -635,6 +640,7 @@ class TextIOPayload(IOBasePayload):
         the initial _read_and_available_len call has been made. It properly
         handles text encoding, converting the text content to bytes using
         the specified encoding (or UTF-8 if none was provided).
+
         """
         chunk = self._value.read(remaining_content_len or READ_SIZE)
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
