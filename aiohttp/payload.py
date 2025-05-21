@@ -361,7 +361,7 @@ class IOBasePayload(Payload):
         """Read the file-like object and return its size."""
         size = self.size
         return size, self._value.read(
-            min(size, maximum_read_len or READ_SIZE, READ_SIZE)
+            min(size or READ_SIZE, maximum_read_len or READ_SIZE)
         )
 
     def _read(self, maximum_read_len: Optional[int]) -> Union[str, bytes]:
