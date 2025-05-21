@@ -601,7 +601,30 @@ class ClientRequest:
         conn: "Connection",
         content_length: Optional[int],
     ) -> None:
-        """Support coroutines that yields bytes objects."""
+        """Write the request body to the connection stream.
+
+        This method handles writing different types of request bodies:
+        1. Payload objects (using their specialized write_with_length method)
+        2. Bytes/bytearray objects
+        3. Iterable body content
+
+        Args:
+            writer: The stream writer to write the body to
+            conn: The connection being used for this request
+            content_length: Optional maximum number of bytes to write from the body
+                            (None means write the entire body)
+
+        The method properly handles:
+        - Waiting for 100-Continue responses if required
+        - Content length constraints for chunked encoding
+        - Error handling for network issues, cancellation, and other exceptions
+        - Signaling EOF and timeout management
+
+        Raises:
+            ClientOSError: When there's an OS-level error writing the body
+            ClientConnectionError: When there's a general connection error
+            asyncio.CancelledError: When the operation is cancelled
+        """
         # 100 response
         if self._continue is not None:
             await writer.drain()
@@ -611,18 +634,20 @@ class ClientRequest:
         assert protocol is not None
         try:
             if isinstance(self.body, payload.Payload):
+                # Specialized handling for Payload objects that know how to write themselves
                 await self.body.write_with_length(writer, content_length)
             else:
+                # Handle bytes/bytearray by converting to an iterable for consistent handling
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
 
                 if content_length is None:
+                    # Write the entire body without length constraint
                     for chunk in self.body:
                         await writer.write(chunk)
-
                 else:
-                    # If the body is larger than content_length, we need to
-                    # truncate it to content_length.
+                    # Write with length constraint, respecting content_length limit
+                    # If the body is larger than content_length, we truncate it
                     remaining_bytes = content_length
                     for chunk in self.body:
                         await writer.write(chunk[:remaining_bytes])
@@ -630,6 +655,7 @@ class ClientRequest:
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
+            # Distinguish between timeout and other OS errors for better error reporting
             exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
                 underlying_exc, asyncio.TimeoutError
             )
@@ -641,7 +667,7 @@ class ClientRequest:
 
             set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
-            # Body hasn't been fully sent, so connection can't be reused.
+            # Body hasn't been fully sent, so connection can't be reused
             conn.close()
             raise
         except Exception as underlying_exc:
@@ -653,6 +679,7 @@ class ClientRequest:
                 underlying_exc,
             )
         else:
+            # Successfully wrote the body, signal EOF and start response timeout
             await writer.write_eof()
             protocol.start_timeout()
 
