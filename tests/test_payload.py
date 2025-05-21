@@ -296,6 +296,19 @@ async def test_bytesio_payload_remaining_bytes_exhausted() -> None:
     assert written == data[:8000]
 
 
+async def test_iobase_payload_exact_chunk_size_limit() -> None:
+    """Test IOBasePayload with content length matching exactly one read chunk."""
+    chunk_size = 2**16  # 65536 bytes (READ_SIZE)
+    data = b"x" * chunk_size + b"extra"  # Slightly larger than one read chunk
+    p = payload.IOBasePayload(io.BytesIO(data))
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, chunk_size)
+    written = writer.get_written_bytes()
+    assert len(written) == chunk_size
+    assert written == data[:chunk_size]
+
+
 async def test_async_iterable_payload_write_with_length_no_limit() -> None:
     """Test AsyncIterablePayload writing with no content length limit."""
 
