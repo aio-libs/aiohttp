@@ -439,7 +439,7 @@ class IOBasePayload(Payload):
     def size(self) -> Optional[int]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
-        except OSError:
+        except (AttributeError, OSError):
             return None
 
     async def write(self, writer: AbstractStreamWriter) -> None:
@@ -460,6 +460,7 @@ class IOBasePayload(Payload):
 
 class TextIOPayload(IOBasePayload):
     _value: io.TextIOBase
+    _encode = True
 
     def __init__(
         self,

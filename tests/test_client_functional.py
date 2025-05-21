@@ -1576,7 +1576,10 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
     original_write_bytes = ClientRequest.write_bytes
 
     async def write_bytes(
-        self: ClientRequest, writer: StreamWriter, conn: Connection
+        self: ClientRequest,
+        writer: StreamWriter,
+        conn: Connection,
+        content_length: Optional[int] = None,
     ) -> None:
         nonlocal write_mock
         original_write = writer._write
@@ -1584,7 +1587,7 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
         with mock.patch.object(
             writer, "_write", autospec=True, spec_set=True, side_effect=original_write
         ) as write_mock:
-            await original_write_bytes(self, writer, conn)
+            await original_write_bytes(self, writer, conn, content_length)
 
     with mock.patch.object(ClientRequest, "write_bytes", write_bytes):
         app = web.Application()

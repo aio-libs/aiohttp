@@ -12,6 +12,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Optional,
     Protocol,
 )
 from unittest import mock
@@ -1054,10 +1055,12 @@ async def test_data_stream(
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
     original_write_bytes = req.write_bytes
 
-    async def _mock_write_bytes(writer: AbstractStreamWriter, conn: mock.Mock) -> None:
+    async def _mock_write_bytes(
+        writer: AbstractStreamWriter, conn: mock.Mock, content_length: Optional[int]
+    ) -> None:
         # Ensure the task is scheduled
         await asyncio.sleep(0)
-        await original_write_bytes(writer, conn)
+        await original_write_bytes(writer, conn, content_length)
 
     with mock.patch.object(req, "write_bytes", _mock_write_bytes):
         resp = await req.send(conn)
@@ -1260,7 +1263,7 @@ async def test_oserror_on_write_bytes(
     writer = WriterMock()
     writer.write.side_effect = OSError
 
-    await req.write_bytes(writer, conn)
+    await req.write_bytes(writer, conn, None)
 
     assert conn.protocol.set_exception.called
     exc = conn.protocol.set_exception.call_args[0][0]
