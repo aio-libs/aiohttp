@@ -321,3 +321,63 @@ async def test_async_iterable_payload_write_with_length_truncated_at_chunk() -> 
     await p.write_with_length(writer, 4)
     assert writer.get_written_bytes() == b"0123"
     assert len(writer.get_written_bytes()) == 4
+
+
+async def test_bytes_payload_backwards_compatibility() -> None:
+    """Test BytesPayload.write() backwards compatibility delegates to write_with_length()."""
+    p = payload.BytesPayload(b"1234567890")
+    writer = MockStreamWriter()
+
+    await p.write(writer)
+    assert writer.get_written_bytes() == b"1234567890"
+
+
+async def test_textio_payload_with_encoding() -> None:
+    """Test TextIOPayload reading with encoding and size constraints."""
+    data = io.StringIO("hello world")
+    p = payload.TextIOPayload(data, encoding="utf-8")
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 8)
+    # Should write exactly 8 bytes: "hello wo"
+    assert writer.get_written_bytes() == b"hello wo"
+
+
+async def test_bytesio_payload_backwards_compatibility() -> None:
+    """Test BytesIOPayload.write() backwards compatibility delegates to write_with_length()."""
+    data = io.BytesIO(b"test data")
+    p = payload.BytesIOPayload(data)
+    writer = MockStreamWriter()
+
+    await p.write(writer)
+    assert writer.get_written_bytes() == b"test data"
+
+
+async def test_async_iterable_payload_backwards_compatibility() -> None:
+    """Test AsyncIterablePayload.write() backwards compatibility delegates to write_with_length()."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"chunk1"
+        yield b"chunk2"
+
+    p = payload.AsyncIterablePayload(gen())
+    writer = MockStreamWriter()
+
+    await p.write(writer)
+    assert writer.get_written_bytes() == b"chunk1chunk2"
+
+
+async def test_async_iterable_payload_with_none_iterator() -> None:
+    """Test AsyncIterablePayload with None iterator returns early without writing."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"test"
+
+    p = payload.AsyncIterablePayload(gen())
+    # Manually set _iter to None to test the guard clause
+    p._iter = None
+    writer = MockStreamWriter()
+
+    # Should return early without writing anything
+    await p.write_with_length(writer, 10)
+    assert writer.get_written_bytes() == b""
