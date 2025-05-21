@@ -54,6 +54,7 @@ __all__ = (
 )
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
+READ_SIZE: Final[int] = 2**16  # 64 KB
 _CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
 
 
@@ -374,9 +375,9 @@ class IOBasePayload(Payload):
         # Check if the file-like object is seekable
         try:
             read_size = (
-                2**16
+                READ_SIZE
                 if remaining_content_length is None
-                else min(2**16, remaining_content_length)
+                else min(READ_SIZE, remaining_content_length)
             )
             available_len, chunk = await loop.run_in_executor(
                 None, self._read_and_available_len, read_size
@@ -398,9 +399,9 @@ class IOBasePayload(Payload):
                 if available_len is not None and data_consumed >= available_len:
                     break
                 read_size = (
-                    2**16
+                    READ_SIZE
                     if remaining_content_length is None
-                    else min(2**16, remaining_content_length)
+                    else min(READ_SIZE, remaining_content_length)
                 )
                 if read_size <= 0:
                     break
