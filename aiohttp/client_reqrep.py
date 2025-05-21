@@ -1020,7 +1020,16 @@ class ClientResponse(HeadersMixin):
                     self._continue = None
 
         # payload eof handler
-        payload.on_eof(self._response_eof)
+        if payload.is_eof():
+            # If payload is already EOF, may sure we await the writer
+            # so we don't cancel it while its still cleaning as calling
+            # self._response_eof() calls self._cleanup_writer()
+            # which will cancel the writer.
+            if self.__writer is not None:
+                await self._wait_for_writer()
+            self._response_eof()
+        else:
+            payload.on_eof(self._response_eof)
 
         # response status
         self.version = message.version
@@ -1043,6 +1052,7 @@ class ClientResponse(HeadersMixin):
                 except CookieError as exc:
                     client_logger.warning("Can not load response cookies: %s", exc)
             self._cookies = cookies
+
         return self
 
     def _response_eof(self) -> None:
@@ -1119,17 +1129,20 @@ class ClientResponse(HeadersMixin):
             else:
                 self.__writer.add_done_callback(lambda f: self._release_connection())
 
+    async def _wait_for_writer(self) -> None:
+        try:
+            await self.__writer
+        except asyncio.CancelledError:
+            if (
+                sys.version_info >= (3, 11)
+                and (task := asyncio.current_task())
+                and task.cancelling()
+            ):
+                raise
+
     async def _wait_released(self) -> None:
         if self.__writer is not None:
-            try:
-                await self.__writer
-            except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
-                    raise
+            await self._wait_for_writer()
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
@@ -1146,15 +1159,7 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self.__writer is not None:
-            try:
-                await self.__writer
-            except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
-                    raise
+            await self._wait_for_writer()
         self.release()
 
     async def read(self) -> bytes:
