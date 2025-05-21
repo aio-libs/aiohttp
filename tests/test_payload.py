@@ -1,7 +1,7 @@
 import array
 import io
 from io import StringIO
-from typing import AsyncIterator, Iterator, List, Optional
+from typing import AsyncIterator, Iterator, List, Optional, Union
 
 import pytest
 from multidict import CIMultiDict
@@ -132,9 +132,11 @@ class MockStreamWriter(AbstractStreamWriter):
         self.written: List[bytes] = []
         self.eof_called = False
 
-    async def write(self, chunk: bytes) -> None:
+    async def write(
+        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+    ) -> None:
         """Store the chunk in the written list."""
-        self.written.append(chunk)
+        self.written.append(bytes(chunk))
 
     async def write_eof(self, chunk: Optional[bytes] = None) -> None:
         """Mark eof_called as True and write the chunk if provided."""
