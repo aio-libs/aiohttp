@@ -153,6 +153,7 @@ class PayloadRegistry:
 class Payload(ABC):
     _default_content_type: str = "application/octet-stream"
     _size: Optional[int] = None
+    _encode: bool = False
 
     def __init__(
         self,
@@ -246,6 +247,19 @@ class Payload(ABC):
         writer is an AbstractStreamWriter instance:
         """
 
+    # write_with_length is new in aiohttp 3.12
+    # it should be overridden by subclasses
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
+    ) -> None:
+        """Write payload with a length.
+
+        writer is an AbstractStreamWriter instance:
+        """
+        # Backwards compatibility for subclasses that don't override this method
+        # and for the default implementation
+        await self.write(writer)
+
 
 class BytesPayload(Payload):
     _value: bytes
@@ -279,6 +293,15 @@ class BytesPayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         await writer.write(self._value)
+
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
+    ) -> None:
+        """Write payload with a length."""
+        if content_length is not None:
+            await writer.write(self._value[:content_length])
+        else:
+            await writer.write(self._value)
 
 
 class StringPayload(BytesPayload):
@@ -331,60 +354,70 @@ class IOBasePayload(Payload):
             if hdrs.CONTENT_DISPOSITION not in self.headers:
                 self.set_content_disposition(disposition, filename=self._filename)
 
-    def _read_and_get_size(self) -> Tuple[Optional[int], bytes]:
+    def _read_and_available_len(
+        self, read_size: int
+    ) -> Tuple[Optional[int], Union[str, bytes]]:
         """Read the file-like object and return its size."""
-        return self.size, self._value.read(2**16)
+        return self.size, self._value.read(read_size)
 
     async def _transfer_data_to_writer(
         self,
         writer: AbstractStreamWriter,
-        encode: bool,
-        encoding: Optional[str],
+        content_length: Optional[int],
     ) -> None:
         """Transfer data from the file-like object to the writer."""
         loop = asyncio.get_running_loop()
-        io_source = self._value
+        chunk: Union[bytes, str]
+        bytes_data: bytes
+        data_consumed = 0
+        remaining_content_length = content_length
         # Check if the file-like object is seekable
         try:
-            file_size, chunk = await loop.run_in_executor(None, self._read_and_get_size)
-            import pprint
+            read_size = (
+                2**16
+                if remaining_content_length is None
+                else min(2**16, remaining_content_length)
+            )
+            available_len, chunk = await loop.run_in_executor(
+                None, self._read_and_available_len, read_size
+            )
+            bytes_data = (
+                (chunk.encode(self._encoding) if self._encoding else chunk.encode())
+                if self._encode
+                else chunk
+            )
+            bytes_read = len(bytes_data)
 
-            pprint.pprint([file_size, chunk])
-            if encode:
-                data = chunk.encode(encoding) if encoding else chunk.encode()
-            else:
-                data = chunk
-            if file_size is None:
-                # If we don't have a file size, we have to blindly read until EOF
-                while chunk:
-                    await writer.write(data)
-                    chunk = await loop.run_in_executor(None, io_source.read, 2**16)
-                    if encode:
-                        data = chunk.encode(encoding) if encoding else chunk.encode()
-                    else:
-                        data = chunk
-                return
-            # If we have a file size, we can read in chunks
-            bytes_transferred = 0
-            while bytes_transferred < file_size:
-                await writer.write(chunk)
-                bytes_transferred += len(chunk)
-                if bytes_transferred >= file_size:
-                    break
-                chunk = await loop.run_in_executor(None, io_source.read, 2**16)
-                if not chunk:
-                    break
-                if encode:
-                    data = chunk.encode(encoding) if encoding else chunk.encode()
+            while bytes_data:
+                if remaining_content_length is None:
+                    await writer.write(bytes_data)
                 else:
-                    data = chunk
+                    await writer.write(bytes_data[:remaining_content_length])
+                    remaining_content_length -= bytes_read
+                data_consumed += bytes_read
+                if available_len is not None and data_consumed >= available_len:
+                    break
+                read_size = (
+                    2**16
+                    if remaining_content_length is None
+                    else min(2**16, remaining_content_length)
+                )
+                if read_size <= 0:
+                    break
+                chunk = await loop.run_in_executor(None, self._value.read, read_size)
+                bytes_data = (
+                    (chunk.encode(self._encoding) if self._encoding else chunk.encode())
+                    if self._encode
+                    else chunk
+                )
+                bytes_read = len(bytes_data)
         finally:
             # We do not await here because we may get cancelled if we do
             # no finish fast enough since as soon as the StreamReader reaches EOF
             # the client will proceed to cancel the writer as we need to make sure
             # the task is done before we can move on to handling the next request
             # as we don't want to leak writers.
-            close_future = loop.run_in_executor(None, io_source.close)
+            close_future = loop.run_in_executor(None, self._value.close)
             # Hold a strong reference to the future to prevent it from being
             # garbage collected before it completes.
             _CLOSE_FUTURES.add(close_future)
@@ -398,7 +431,16 @@ class IOBasePayload(Payload):
             return None
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        await self._transfer_data_to_writer(writer, False, None)
+        await self._transfer_data_to_writer(writer, None)
+
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
+    ) -> None:
+        """Write payload with a length.
+
+        writer is an AbstractStreamWriter instance:
+        """
+        await self._transfer_data_to_writer(writer, content_length)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
@@ -437,9 +479,6 @@ class TextIOPayload(IOBasePayload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read()
 
-    async def write(self, writer: AbstractStreamWriter) -> None:
-        await self._transfer_data_to_writer(writer, True, self._encoding)
-
 
 class BytesIOPayload(IOBasePayload):
     _value: io.BytesIO
@@ -465,6 +504,27 @@ class BytesIOPayload(IOBasePayload):
                     # of the loop
                     await asyncio.sleep(0)
                 await writer.write(chunk)
+            loop_count += 1
+        finally:
+            self._value.close()
+
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
+    ) -> None:
+        if content_length:
+            await self.write(writer)
+        loop_count = 0
+        remaining_bytes = content_length
+        try:
+            while chunk := self._value.read(2**16):
+                if loop_count > 0:
+                    # Avoid blocking the event loop
+                    # if they pass a large BytesIO object
+                    # and we are not in the first iteration
+                    # of the loop
+                    await asyncio.sleep(0)
+                await writer.write(chunk[:remaining_bytes])
+                remaining_bytes -= len(chunk)
             loop_count += 1
         finally:
             self._value.close()

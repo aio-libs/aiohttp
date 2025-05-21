@@ -611,13 +611,7 @@ class ClientRequest:
         assert protocol is not None
         try:
             if isinstance(self.body, payload.Payload):
-                if content_length is not None and self.body.size > content_length:
-                    conn.close()
-                    raise ValueError(
-                        f"Request body size {self.body.size} exceeds "
-                        f"Content-Length {content_length}"
-                    )
-                await self.body.write(writer)
+                await self.body.write_with_length(writer, content_length)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
@@ -628,17 +622,11 @@ class ClientRequest:
 
                 else:
                     # If the body is larger than content_length, we need to
-                    # chunk it.
-                    total = 0
+                    # truncate it to content_length.
+                    remaining_bytes = content_length
                     for chunk in self.body:
-                        total += len(chunk)
-                        if total > content_length:
-                            conn.close()
-                            raise ValueError(
-                                f"Request body size {total} exceeds "
-                                f"Content-Length {content_length}"
-                            )
-                        await writer.write(chunk)
+                        await writer.write(chunk[:remaining_bytes])
+                        remaining_bytes -= len(chunk)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
