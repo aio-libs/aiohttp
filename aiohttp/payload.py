@@ -441,7 +441,7 @@ class IOBasePayload(Payload):
         the initial _read_and_available_len call has been made.
 
         """
-        return self._value.read(remaining_content_len or READ_SIZE)
+        return self._value.read(remaining_content_len or READ_SIZE)  # type: ignore[no-any-return]
 
     @property
     def size(self) -> Optional[int]:
@@ -451,7 +451,8 @@ class IOBasePayload(Payload):
             return None
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        """Write the entire file-like payload to the writer stream.
+        """
+        Write the entire file-like payload to the writer stream.
 
         Args:
             writer: An AbstractStreamWriter instance that handles the actual writing
@@ -463,6 +464,7 @@ class IOBasePayload(Payload):
         Note:
             For new implementations that need length control, use write_with_length() directly.
             This method is maintained for backwards compatibility with existing code.
+
         """
         await self.write_with_length(writer, None)
 

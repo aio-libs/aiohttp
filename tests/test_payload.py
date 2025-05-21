@@ -1,8 +1,10 @@
 import array
+import io
 from io import StringIO
-from typing import AsyncIterator, Iterator
+from typing import AsyncIterator, Iterator, List, Optional
 
 import pytest
+from multidict import CIMultiDict
 
 from aiohttp import payload
 from aiohttp.abc import AbstractStreamWriter
@@ -121,3 +123,202 @@ def test_async_iterable_payload_explicit_content_type() -> None:
 def test_async_iterable_payload_not_async_iterable() -> None:
     with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())  # type: ignore[arg-type]
+
+
+class MockStreamWriter(AbstractStreamWriter):
+    """Mock stream writer for testing payload writes."""
+
+    def __init__(self) -> None:
+        self.written: List[bytes] = []
+        self.eof_called = False
+
+    async def write(self, chunk: bytes) -> None:
+        """Store the chunk in the written list."""
+        self.written.append(chunk)
+
+    async def write_eof(self, chunk: Optional[bytes] = None) -> None:
+        """Mark eof_called as True and write the chunk if provided."""
+        self.eof_called = True
+        if chunk is not None:
+            await self.write(chunk)
+
+    async def drain(self) -> None:
+        """Drain implementation - no-op for tests."""
+
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: Optional[int] = None
+    ) -> None:
+        """Enable compression - no-op for tests."""
+
+    def enable_chunking(self) -> None:
+        """Enable chunking - no-op for tests."""
+
+    async def write_headers(self, status_line: str, headers: CIMultiDict[str]) -> None:
+        """Write headers - no-op for tests."""
+
+    def get_written_bytes(self) -> bytes:
+        """Return all written bytes as a single bytes object."""
+        return b"".join(self.written)
+
+
+async def test_bytes_payload_write_with_length_no_limit() -> None:
+    """Test BytesPayload writing with no content length limit."""
+    data = b"0123456789"
+    p = payload.BytesPayload(data)
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, None)
+    assert writer.get_written_bytes() == data
+    assert len(writer.get_written_bytes()) == 10
+
+
+async def test_bytes_payload_write_with_length_exact() -> None:
+    """Test BytesPayload writing with exact content length."""
+    data = b"0123456789"
+    p = payload.BytesPayload(data)
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 10)
+    assert writer.get_written_bytes() == data
+    assert len(writer.get_written_bytes()) == 10
+
+
+async def test_bytes_payload_write_with_length_truncated() -> None:
+    """Test BytesPayload writing with truncated content length."""
+    data = b"0123456789"
+    p = payload.BytesPayload(data)
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 5)
+    assert writer.get_written_bytes() == b"01234"
+    assert len(writer.get_written_bytes()) == 5
+
+
+async def test_iobase_payload_write_with_length_no_limit() -> None:
+    """Test IOBasePayload writing with no content length limit."""
+    data = b"0123456789"
+    p = payload.IOBasePayload(io.BytesIO(data))
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, None)
+    assert writer.get_written_bytes() == data
+    assert len(writer.get_written_bytes()) == 10
+
+
+async def test_iobase_payload_write_with_length_exact() -> None:
+    """Test IOBasePayload writing with exact content length."""
+    data = b"0123456789"
+    p = payload.IOBasePayload(io.BytesIO(data))
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 10)
+    assert writer.get_written_bytes() == data
+    assert len(writer.get_written_bytes()) == 10
+
+
+async def test_iobase_payload_write_with_length_truncated() -> None:
+    """Test IOBasePayload writing with truncated content length."""
+    data = b"0123456789"
+    p = payload.IOBasePayload(io.BytesIO(data))
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 5)
+    assert writer.get_written_bytes() == b"01234"
+    assert len(writer.get_written_bytes()) == 5
+
+
+async def test_bytesio_payload_write_with_length_no_limit() -> None:
+    """Test BytesIOPayload writing with no content length limit."""
+    data = b"0123456789"
+    p = payload.BytesIOPayload(io.BytesIO(data))
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, None)
+    assert writer.get_written_bytes() == data
+    assert len(writer.get_written_bytes()) == 10
+
+
+async def test_bytesio_payload_write_with_length_exact() -> None:
+    """Test BytesIOPayload writing with exact content length."""
+    data = b"0123456789"
+    p = payload.BytesIOPayload(io.BytesIO(data))
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 10)
+    assert writer.get_written_bytes() == data
+    assert len(writer.get_written_bytes()) == 10
+
+
+async def test_bytesio_payload_write_with_length_truncated() -> None:
+    """Test BytesIOPayload writing with truncated content length."""
+    data = b"0123456789"
+    p = payload.BytesIOPayload(io.BytesIO(data))
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 5)
+    assert writer.get_written_bytes() == b"01234"
+    assert len(writer.get_written_bytes()) == 5
+
+
+async def test_async_iterable_payload_write_with_length_no_limit() -> None:
+    """Test AsyncIterablePayload writing with no content length limit."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"0123"
+        yield b"4567"
+        yield b"89"
+
+    p = payload.AsyncIterablePayload(gen())
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, None)
+    assert writer.get_written_bytes() == b"0123456789"
+    assert len(writer.get_written_bytes()) == 10
+
+
+async def test_async_iterable_payload_write_with_length_exact() -> None:
+    """Test AsyncIterablePayload writing with exact content length."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"0123"
+        yield b"4567"
+        yield b"89"
+
+    p = payload.AsyncIterablePayload(gen())
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 10)
+    assert writer.get_written_bytes() == b"0123456789"
+    assert len(writer.get_written_bytes()) == 10
+
+
+async def test_async_iterable_payload_write_with_length_truncated_mid_chunk() -> None:
+    """Test AsyncIterablePayload writing with content length truncating mid-chunk."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"0123"
+        yield b"4567"
+        yield b"89"
+
+    p = payload.AsyncIterablePayload(gen())
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 6)
+    assert writer.get_written_bytes() == b"012345"
+    assert len(writer.get_written_bytes()) == 6
+
+
+async def test_async_iterable_payload_write_with_length_truncated_at_chunk() -> None:
+    """Test AsyncIterablePayload writing with content length truncating at chunk boundary."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"0123"
+        yield b"4567"
+        yield b"89"
+
+    p = payload.AsyncIterablePayload(gen())
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 4)
+    assert writer.get_written_bytes() == b"0123"
+    assert len(writer.get_written_bytes()) == 4
