@@ -316,6 +316,78 @@ class StringIOPayload(StringPayload):
         super().__init__(value.read(), *args, **kwargs)
 
 
+def _get_chunk_and_file_size(
+    io_source: IO[Any], chunk_size: int
+) -> Tuple[bytes, Optional[int]]:
+    """Read a chunk from the file-like object and return it along with its size."""
+    buffer_size: Optional[int] = None
+    if hasattr(io_source, "getbuffer"):
+        buffer_size = io_source.getbuffer().nbytes
+    else:
+        try:
+            buffer_size = os.fstat(io_source.fileno()).st_size
+        except OSError:
+            # If the file-like object does not have a fileno() method, we cannot
+            # determine its size. In this case, we will return None for the size.
+            pass
+    # Check if the file-like object is seekable
+    return io_source.read(chunk_size), buffer_size
+
+
+async def transfer_data_to_writer(
+    writer: AbstractStreamWriter,
+    io_source: IO[Any],
+    encode: bool,
+    encoding: Optional[str],
+) -> None:
+    """Transfer data from the file-like object to the writer."""
+    loop = asyncio.get_running_loop()
+    # Check if the file-like object is seekable
+    try:
+        chunk, file_size = await loop.run_in_executor(
+            None, _get_chunk_and_file_size, io_source, 2**16
+        )
+        if encode:
+            data = chunk.encode(encoding) if encoding else chunk.encode()
+        else:
+            data = chunk
+        if file_size is None:
+            # If we don't have a file size, we have to blindly read until EOF
+            while chunk:
+                await writer.write(data)
+                chunk = await loop.run_in_executor(None, io_source.read, 2**16)
+                if encode:
+                    data = chunk.encode(encoding) if encoding else chunk.encode()
+                else:
+                    data = chunk
+            return
+        # If we have a file size, we can read in chunks
+        bytes_transferred = 0
+        while bytes_transferred < file_size:
+            await writer.write(chunk)
+            bytes_transferred += len(chunk)
+            if bytes_transferred >= file_size:
+                break
+            chunk = await loop.run_in_executor(None, io_source.read, 2**16)
+            if not chunk:
+                break
+            if encode:
+                data = chunk.encode(encoding) if encoding else chunk.encode()
+            else:
+                data = chunk
+    finally:
+        # We do not await here because we may get cancelled if we do
+        # no finish fast enough since as soon as the StreamReader reaches EOF
+        # the client will proceed to cancel the writer as we need to make sure
+        # the task is done before we can move on to handling the next request
+        # as we don't want to leak writers.
+        close_future = loop.run_in_executor(None, io_source.close)
+        # Hold a strong reference to the future to prevent it from being
+        # garbage collected before it completes.
+        _CLOSE_FUTURES.add(close_future)
+        close_future.add_done_callback(_CLOSE_FUTURES.remove)
+
+
 class IOBasePayload(Payload):
     _value: io.IOBase
 
@@ -332,23 +404,7 @@ class IOBasePayload(Payload):
                 self.set_content_disposition(disposition, filename=self._filename)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        loop = asyncio.get_event_loop()
-        try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-            while chunk:
-                await writer.write(chunk)
-                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-        finally:
-            # We do not await here because we may get cancelled if we do
-            # no finish fast enough since as soon as the StreamReader reaches EOF
-            # the client will proceed to cancel the writer as we need to make sure
-            # the task is done before we can move on to handling the next request
-            # as we don't want to leak writers.
-            close_future = loop.run_in_executor(None, self._value.close)
-            # Hold a strong reference to the future to prevent it from being
-            # garbage collected before it completes.
-            _CLOSE_FUTURES.add(close_future)
-            close_future.add_done_callback(_CLOSE_FUTURES.remove)
+        await transfer_data_to_writer(writer, self._value, False, None)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
@@ -395,28 +451,7 @@ class TextIOPayload(IOBasePayload):
         return self._value.read()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        loop = asyncio.get_event_loop()
-        try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-            while chunk:
-                data = (
-                    chunk.encode(encoding=self._encoding)
-                    if self._encoding
-                    else chunk.encode()
-                )
-                await writer.write(data)
-                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-        finally:
-            # We do not await here because we may get cancelled if we do
-            # no finish fast enough since as soon as the StreamReader reaches EOF
-            # the client will proceed to cancel the writer as we need to make sure
-            # the task is done before we can move on to handling the next request
-            # as we don't want to leak writers.
-            close_future = loop.run_in_executor(None, self._value.close)
-            # Hold a strong reference to the future to prevent it from being
-            # garbage collected before it completes.
-            _CLOSE_FUTURES.add(close_future)
-            close_future.add_done_callback(_CLOSE_FUTURES.remove)
+        await transfer_data_to_writer(writer, self._value, True, self._encoding)
 
 
 class BytesIOPayload(IOBasePayload):
