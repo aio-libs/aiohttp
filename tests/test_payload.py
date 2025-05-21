@@ -1,13 +1,22 @@
 import array
+import asyncio
 import io
 from io import StringIO
-from typing import AsyncIterator, Iterator, List, Optional, Union
+from typing import AsyncGenerator, AsyncIterator, Iterator, List, Optional, Union
 
 import pytest
 from multidict import CIMultiDict
 
 from aiohttp import payload
 from aiohttp.abc import AbstractStreamWriter
+
+
+@pytest.fixture(autouse=True)
+async def cleanup_pending_file_closes() -> AsyncGenerator[None]:
+    """Ensure all pending file close operations complete during test teardown."""
+    yield
+    if payload._CLOSE_FUTURES:
+        await asyncio.gather(*list(payload._CLOSE_FUTURES), return_exceptions=True)
 
 
 @pytest.fixture
