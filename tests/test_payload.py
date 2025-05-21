@@ -408,7 +408,7 @@ async def test_async_iterable_payload_backwards_compatibility() -> None:
 
     async def gen() -> AsyncIterator[bytes]:
         yield b"chunk1"
-        yield b"chunk2"
+        yield b"chunk2"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen())
     writer = MockStreamWriter()
