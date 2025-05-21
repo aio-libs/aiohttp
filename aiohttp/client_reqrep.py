@@ -175,6 +175,11 @@ else:  # pragma: no cover
 _SSL_SCHEMES = frozenset(("https", "wss"))
 
 
+class _WriterTask(asyncio.Task):
+
+    _reader_done: bool = False
+
+
 # ConnectionKey is a NamedTuple because it is used as a key in a dict
 # and a set in the connector. Since a NamedTuple is a tuple it uses
 # the fast native tuple __hash__ and __eq__ implementation in CPython.
@@ -215,7 +220,7 @@ class ClientRequest:
     url = URL()
     method = "GET"
 
-    __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
+    __writer: Optional[_WriterTask] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
 
     _skip_auto_headers: Optional["CIMultiDict[None]"] = None
@@ -629,8 +634,11 @@ class ClientRequest:
 
             set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
-            # Body hasn't been fully sent, so connection can't be reused.
-            conn.close()
+            if self.__writer and self.__writer._reader_done:
+                conn.release()
+            else:
+                # Body hasn't been fully sent, so connection can't be reused.
+                conn.close()
             raise
         except Exception as underlying_exc:
             set_exception(
@@ -710,9 +718,9 @@ class ClientRequest:
                 # Optimization for Python 3.12, try to write
                 # bytes immediately to avoid having to schedule
                 # the task on the event loop.
-                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+                task = _WriterTask(coro, loop=self.loop, eager_start=True)
             else:
-                task = self.loop.create_task(coro)
+                task = _WriterTask(coro, loop=self.loop)
             if task.done():
                 task = None
             else:
@@ -801,14 +809,14 @@ class ClientResponse(HeadersMixin):
 
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
 
-    __writer: Optional["asyncio.Task[None]"] = None
+    __writer: Optional[_WriterTask] = None
 
     def __init__(
         self,
         method: str,
         url: URL,
         *,
-        writer: "Optional[asyncio.Task[None]]",
+        writer: "Optional[_WriterTask]",
         continue100: Optional["asyncio.Future[bool]"],
         timer: Optional[BaseTimerContext],
         request_info: RequestInfo,
@@ -1021,12 +1029,11 @@ class ClientResponse(HeadersMixin):
 
         # payload eof handler
         if payload.is_eof():
-            # If payload is already EOF, release the connection
-            # to ensure it can be reused as cancelling the writer
-            # will close it and prevent reuse. The writer may still
-            # be closing its stream or waiting for an executor job
-            # to finish.
-            self._connection.release()
+            # Make sure to tell the writer that the reader is done
+            # so it doesn't close the connection if it gets cancelled
+            # because there is still payload being read.
+            if self.__writer is not None:
+                self.__writer._reader_done = True
             self._response_eof()
         else:
             payload.on_eof(self._response_eof)
