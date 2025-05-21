@@ -634,10 +634,7 @@ class ClientRequest:
 
             set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
-            if self.__writer and self.__writer._reader_done:
-                conn.release()
-            else:
-                # Body hasn't been fully sent, so connection can't be reused.
+            if not self.__writer or not self.__writer._reader_done:
                 conn.close()
             raise
         except Exception as underlying_exc:
