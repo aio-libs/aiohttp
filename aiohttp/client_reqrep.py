@@ -1030,6 +1030,7 @@ class ClientResponse(HeadersMixin):
             # so it doesn't close the connection if it gets cancelled
             # because there is still payload being read.
             self.__writer._reader_done = True
+            self._connection.release()
         payload.on_eof(self._response_eof)
 
         # response status
