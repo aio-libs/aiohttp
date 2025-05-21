@@ -4229,3 +4229,74 @@ async def test_exception_when_read_outside_of_session(
 
     with pytest.raises(RuntimeError, match="Connection closed"):
         await resp.read()
+
+
+async def test_content_length_limit_enforced(aiohttp_server: AiohttpServer) -> None:
+    """Test that Content-Length header value limits the amount of data sent to the server."""
+    received_data = bytearray()
+
+    async def handler(request: web.Request) -> web.Response:
+        # Read all data from the request and store it
+        data = await request.read()
+        received_data.extend(data)
+        return web.Response(text="OK")
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+
+    server = await aiohttp_server(app)
+
+    # Create data larger than what we'll limit with Content-Length
+    data = b"X" * 1000
+    headers = {
+        "Content-Length": "500"
+    }  # Only send 500 bytes even though data is 1000 bytes
+
+    async with aiohttp.ClientSession() as session:
+        await session.post(server.make_url("/"), data=data, headers=headers)
+
+    # Verify only 500 bytes (not the full 1000) were received by the server
+    assert len(received_data) == 500
+    assert received_data == b"X" * 500
+
+
+async def test_content_length_limit_with_multiple_reads(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that Content-Length header value limits multi read data properly."""
+    received_data = bytearray()
+
+    async def handler(request: web.Request) -> web.Response:
+        # Read all data from the request and store it
+        data = await request.read()
+        received_data.extend(data)
+        return web.Response(text="OK")
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+
+    server = await aiohttp_server(app)
+
+    # Create an async generator of data
+    async def data_generator():
+        yield b"Chunk1" * 100  # 600 bytes
+        yield b"Chunk2" * 100  # another 600 bytes
+
+    headers = {
+        "Content-Length": "800"
+    }  # Limit to 800 bytes even though we'd generate 1200 bytes
+
+    async with aiohttp.ClientSession() as session:
+        await session.post(server.make_url("/"), data=data_generator(), headers=headers)
+
+    # Verify only 800 bytes (not the full 1200) were received by the server
+    assert len(received_data) == 800
+    assert received_data.startswith(
+        b"Chunk1" * 100
+    )  # First chunk fully sent (600 bytes)
+
+    # The rest should be from the second chunk (the exact split might vary by implementation)
+    assert b"Chunk2" in received_data  # Some part of the second chunk was sent
+    assert (
+        len(received_data) - len(b"Chunk1" * 100) == 200
+    )  # 200 bytes from the second chunk

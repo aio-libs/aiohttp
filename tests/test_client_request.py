@@ -14,6 +14,7 @@ from typing import (
     List,
     Optional,
     Protocol,
+    Union,
 )
 from unittest import mock
 
@@ -34,7 +35,7 @@ from aiohttp.client_reqrep import (
 )
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
-from aiohttp.http import HttpVersion10, HttpVersion11
+from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.typedefs import LooseCookies
 
 
@@ -1579,3 +1580,65 @@ def test_request_info_tuple_new() -> None:
         ).real_url
         is url
     )
+
+
+def test_get_content_length(make_request: _RequestMaker) -> None:
+    """Test _get_content_length method extracts Content-Length correctly."""
+    req = make_request("get", "http://python.org/")
+
+    # No Content-Length header
+    assert req._get_content_length() is None
+
+    # Valid Content-Length header
+    req.headers["Content-Length"] = "42"
+    assert req._get_content_length() == 42
+
+    # Invalid Content-Length header
+    req.headers["Content-Length"] = "invalid"
+    with pytest.raises(ValueError, match="Invalid Content-Length header: invalid"):
+        req._get_content_length()
+
+
+async def test_write_bytes_with_content_length_limit(
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+) -> None:
+    """Test that write_bytes respects content_length limit for different body types."""
+    # Test with bytes data
+    data = b"Hello World"
+    req = ClientRequest("post", URL("http://python.org/"), loop=loop)
+
+    req.body = data
+
+    writer = StreamWriter(protocol=conn.protocol, loop=loop)
+    # Use content_length=5 to truncate data
+    await req.write_bytes(writer, conn, 5)
+
+    # Verify only the first 5 bytes were written
+    assert buf == b"Hello"
+    await req.close()
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        [b"Part1", b"Part2", b"Part3"],
+        b"Part1Part2Part3",
+    ],
+)
+async def test_write_bytes_with_iterable_content_length_limit(
+    loop: asyncio.AbstractEventLoop,
+    buf: bytearray,
+    conn: mock.Mock,
+    data: Union[List[bytes], bytes],
+) -> None:
+    """Test that write_bytes respects content_length limit for iterable data."""
+    # Test with iterable data
+    req = ClientRequest("post", URL("http://python.org/"), loop=loop)
+    req.body = data
+
+    writer = StreamWriter(protocol=conn.protocol, loop=loop)
+    # Use content_length=7 to truncate at the middle of Part2
+    await req.write_bytes(writer, conn, 7)
+    assert buf == 7
+    assert buf == b"Part1Pa"
+    await req.close()
