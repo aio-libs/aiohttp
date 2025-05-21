@@ -394,25 +394,19 @@ class IOBasePayload(Payload):
         bytes_data: bytes
         total_written_len = 0
         remaining_content_length = content_length
-        import pprint
-
-        pprint.pprint(["write_with_length", content_length])
         # Check if the file-like object is seekable
         try:
             available_len, chunk = await loop.run_in_executor(
                 None, self._read_and_available_len, remaining_content_length
             )
-            pprint.pprint(["finished reading in executor"])
             bytes_data = self._ensure_bytes(chunk) if self._encode else chunk
             while bytes_data:
                 bytes_data_len = len(bytes_data)
-                pprint.pprint(["write to writer", bytes_data_len])
                 if remaining_content_length is None:
                     await writer.write(bytes_data)
                 else:
                     await writer.write(bytes_data[:remaining_content_length])
                     remaining_content_length -= bytes_data_len
-                pprint.pprint(["done writing to writer"])
                 total_written_len += bytes_data_len
                 if (
                     available_len is not None and total_written_len >= available_len
@@ -421,7 +415,6 @@ class IOBasePayload(Payload):
                     and remaining_content_length <= 0
                 ):
                     return
-                pprint.pprint(["read in executor", remaining_content_length])
                 chunk = await loop.run_in_executor(
                     None, self._read, remaining_content_length
                 )
@@ -432,18 +425,11 @@ class IOBasePayload(Payload):
             # the client will proceed to cancel the writer as we need to make sure
             # the task is done before we can move on to handling the next request
             # as we don't want to leak writers.
-            import pprint
-
-            pprint.pprint(["running finally"])
             close_future = loop.run_in_executor(None, self._value.close)
             # Hold a strong reference to the future to prevent it from being
             # garbage collected before it completes.
             _CLOSE_FUTURES.add(close_future)
             close_future.add_done_callback(_CLOSE_FUTURES.remove)
-            pprint.pprint(["done finally"])
-        import pprint
-
-        pprint.pprint(["payload finished"])
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
