@@ -618,7 +618,8 @@ class ClientRequest:
         conn: "Connection",
         content_length: Optional[int],
     ) -> None:
-        """Write the request body to the connection stream.
+        """
+        Write the request body to the connection stream.
 
         This method handles writing different types of request bodies:
         1. Payload objects (using their specialized write_with_length method)
@@ -641,6 +642,7 @@ class ClientRequest:
             ClientOSError: When there's an OS-level error writing the body
             ClientConnectionError: When there's a general connection error
             asyncio.CancelledError: When the operation is cancelled
+
         """
         # 100 response
         if self._continue is not None:
