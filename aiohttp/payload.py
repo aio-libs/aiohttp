@@ -370,7 +370,7 @@ class IOBasePayload(Payload):
         loop = asyncio.get_running_loop()
         chunk: Union[bytes, str]
         bytes_data: bytes
-        data_consumed = 0
+        total_written_len = 0
         remaining_content_length = content_length
         # Check if the file-like object is seekable
         try:
@@ -395,8 +395,8 @@ class IOBasePayload(Payload):
                 else:
                     await writer.write(bytes_data[:remaining_content_length])
                     remaining_content_length -= bytes_read
-                data_consumed += bytes_read
-                if available_len is not None and data_consumed >= available_len:
+                total_written_len += bytes_read
+                if available_len is not None and total_written_len >= available_len:
                     break
                 read_size = (
                     READ_SIZE
@@ -423,6 +423,9 @@ class IOBasePayload(Payload):
             # garbage collected before it completes.
             _CLOSE_FUTURES.add(close_future)
             close_future.add_done_callback(_CLOSE_FUTURES.remove)
+        import pprint
+
+        pprint.pprint(["payload finished"])
 
     @property
     def size(self) -> Optional[int]:
@@ -517,15 +520,18 @@ class BytesIOPayload(IOBasePayload):
         loop_count = 0
         remaining_bytes = content_length
         try:
-            while chunk := self._value.read(2**16):
+            while chunk := self._value.read(READ_SIZE):
                 if loop_count > 0:
                     # Avoid blocking the event loop
                     # if they pass a large BytesIO object
                     # and we are not in the first iteration
                     # of the loop
                     await asyncio.sleep(0)
-                await writer.write(chunk[:remaining_bytes])
-                remaining_bytes -= len(chunk)
+                if remaining_bytes is None:
+                    await writer.write(chunk)
+                else:
+                    await writer.write(chunk[:remaining_bytes])
+                    remaining_bytes -= len(chunk)
             loop_count += 1
         finally:
             self._value.close()

@@ -1041,7 +1041,16 @@ class ClientResponse(HeadersMixin):
                     self._continue = None
 
         # payload eof handler
-        payload.on_eof(self._response_eof)
+        if payload.is_eof():
+            import pprint
+
+            pprint.pprint(["start got past read"])
+            if self.__writer is not None:
+                await asyncio.sleep(0.5)
+            pprint.pprint(["start finished sleep"])
+            self._response_eof()
+        else:
+            payload.on_eof(self._response_eof)
 
         # response status
         self.version = message.version
