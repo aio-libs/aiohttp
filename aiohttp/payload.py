@@ -420,7 +420,7 @@ class IOBasePayload(Payload):
         context switches and file operations when streaming content.
 
         """
-        size = self.size
+        size = self.size  # Call size only once since it does I/O
         return size, self._value.read(
             min(size or READ_SIZE, remaining_content_len or READ_SIZE)
         )
