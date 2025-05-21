@@ -360,18 +360,12 @@ class IOBasePayload(Payload):
     ) -> Tuple[Optional[int], bytes]:
         """Read the file-like object and return its size."""
         size = self.size
-        chunk = size, self._value.read(
-            min(size or READ_SIZE, maximum_read_len or READ_SIZE)
-        )
-        return self._ensure_bytes(chunk) if self._encode else chunk
+        chunk = self._value.read(min(size or READ_SIZE, maximum_read_len or READ_SIZE))
+        return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def _read(self, maximum_read_len: Optional[int]) -> bytes:
         """Read the file-like object."""
         chunk = self._value.read(maximum_read_len or READ_SIZE)
-        return self._ensure_bytes(chunk) if self._encode else chunk
-
-    def _ensure_bytes(self, chunk: Union[str, bytes]) -> bytes:
-        """Ensure chunk is bytes."""
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     @property
