@@ -257,11 +257,14 @@ class _DNSResolverManager:
             loop: The event loop the resolver was using.
         """
         # Remove client from its loop's tracking
+        if loop not in self._loop_data:
+            return
         resolver, client_set = self._loop_data[loop]
         client_set.discard(client)
         # If no more clients for this loop, cancel and remove its resolver
         if not client_set:
-            resolver.cancel()
+            if resolver is not None:
+                resolver.cancel()
             del self._loop_data[loop]
 
 
