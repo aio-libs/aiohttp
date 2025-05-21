@@ -361,12 +361,23 @@ class IOBasePayload(Payload):
         """Read the file-like object and return its size."""
         return self.size, self._value.read(read_size)
 
-    async def _transfer_data_to_writer(
-        self,
-        writer: AbstractStreamWriter,
-        content_length: Optional[int],
+    @property
+    def size(self) -> Optional[int]:
+        try:
+            return os.fstat(self._value.fileno()).st_size - self._value.tell()
+        except (AttributeError, OSError):
+            return None
+
+    async def write(self, writer: AbstractStreamWriter) -> None:
+        await self.write_with_length(writer, None)
+
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
     ) -> None:
-        """Transfer data from the file-like object to the writer."""
+        """Write payload with a length.
+
+        writer is an AbstractStreamWriter instance:
+        """
         loop = asyncio.get_running_loop()
         chunk: Union[bytes, str]
         bytes_data: bytes
@@ -434,25 +445,6 @@ class IOBasePayload(Payload):
         import pprint
 
         pprint.pprint(["payload finished"])
-
-    @property
-    def size(self) -> Optional[int]:
-        try:
-            return os.fstat(self._value.fileno()).st_size - self._value.tell()
-        except (AttributeError, OSError):
-            return None
-
-    async def write(self, writer: AbstractStreamWriter) -> None:
-        await self._transfer_data_to_writer(writer, None)
-
-    async def write_with_length(
-        self, writer: AbstractStreamWriter, content_length: Optional[int]
-    ) -> None:
-        """Write payload with a length.
-
-        writer is an AbstractStreamWriter instance:
-        """
-        await self._transfer_data_to_writer(writer, content_length)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
