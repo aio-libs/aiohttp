@@ -378,6 +378,10 @@ class IOBasePayload(Payload):
     async def write(self, writer: AbstractStreamWriter) -> None:
         await self.write_with_length(writer, None)
 
+    def _ensure_bytes(self, chunk: Union[str, bytes]) -> bytes:
+        """Ensure chunk is bytes."""
+        return chunk.encode(self._encoding) if self._encoding else chunk.encode()
+
     async def write_with_length(
         self, writer: AbstractStreamWriter, content_length: Optional[int]
     ) -> None:
@@ -399,12 +403,7 @@ class IOBasePayload(Payload):
                 None, self._read_and_available_len, remaining_content_length
             )
             pprint.pprint(["finished reading in executor"])
-            bytes_data = (
-                (chunk.encode(self._encoding) if self._encoding else chunk.encode())
-                if self._encode
-                else chunk
-            )
-
+            bytes_data = self._ensure_bytes(chunk) if self._encode else chunk
             while bytes_data:
                 bytes_data_len = len(bytes_data)
                 pprint.pprint(["write to writer", bytes_data_len])
@@ -425,11 +424,7 @@ class IOBasePayload(Payload):
                 chunk = await loop.run_in_executor(
                     None, self._read, remaining_content_length
                 )
-                bytes_data = (
-                    (chunk.encode(self._encoding) if self._encoding else chunk.encode())
-                    if self._encode
-                    else chunk
-                )
+                bytes_data = self._ensure_bytes(chunk) if self._encode else chunk
         finally:
             # We do not await here because we may get cancelled if we do
             # no finish fast enough since as soon as the StreamReader reaches EOF
