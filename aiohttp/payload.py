@@ -489,8 +489,6 @@ class BytesIOPayload(IOBasePayload):
     async def write_with_length(
         self, writer: AbstractStreamWriter, content_length: Optional[int]
     ) -> None:
-        if content_length:
-            await self.write(writer)
         loop_count = 0
         remaining_bytes = content_length
         try:
