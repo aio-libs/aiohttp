@@ -139,10 +139,7 @@ class MockStreamWriter(AbstractStreamWriter):
         self.written.append(bytes(chunk))
 
     async def write_eof(self, chunk: Optional[bytes] = None) -> None:
-        """Mark eof_called as True and write the chunk if provided."""
-        self.eof_called = True
-        if chunk is not None:
-            await self.write(chunk)
+        """write_eof implementation - no-op for tests."""
 
     async def drain(self) -> None:
         """Drain implementation - no-op for tests."""
