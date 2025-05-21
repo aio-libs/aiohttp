@@ -1021,12 +1021,21 @@ class ClientResponse(HeadersMixin):
 
         # payload eof handler
         if payload.is_eof():
-            # If payload is already EOF, may sure we await the writer
-            # so we don't cancel it while its still cleaning as calling
-            # self._response_eof() calls self._cleanup_writer()
-            # which will cancel the writer.
+            # If payload is already EOF, give the writer a chance to
+            # finish its work before we call _response_eof() and
+            # cancel it as otherwise we will cancel the writer task
+            # immediately when it may still be closing the source
+            # data in the executor. If we don't do this, we may end up
+            # not reusing the connection.
             if self.__writer is not None:
-                await self._wait_for_writer()
+                # We can't await self.__writer here because it may be
+                # result in a deadlock if the StreamReader is already reached
+                # EOF but the writer has more data to write. This is the common
+                # case when the payload has more data than the content-length.
+                for _ in range(4):
+                    if self.__writer is not None:
+                        # Give the writer a chance to finish its work
+                        await asyncio.sleep(0)
             self._response_eof()
         else:
             payload.on_eof(self._response_eof)
@@ -1129,20 +1138,17 @@ class ClientResponse(HeadersMixin):
             else:
                 self.__writer.add_done_callback(lambda f: self._release_connection())
 
-    async def _wait_for_writer(self) -> None:
-        try:
-            await self.__writer
-        except asyncio.CancelledError:
-            if (
-                sys.version_info >= (3, 11)
-                and (task := asyncio.current_task())
-                and task.cancelling()
-            ):
-                raise
-
     async def _wait_released(self) -> None:
         if self.__writer is not None:
-            await self._wait_for_writer()
+            try:
+                await self.__writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         self._release_connection()
 
     def _cleanup_writer(self) -> None:
@@ -1159,7 +1165,15 @@ class ClientResponse(HeadersMixin):
 
     async def wait_for_close(self) -> None:
         if self.__writer is not None:
-            await self._wait_for_writer()
+            try:
+                await self.__writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
         self.release()
 
     async def read(self) -> bytes:

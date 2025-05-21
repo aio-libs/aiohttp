@@ -16,6 +16,7 @@ from typing import (
     Final,
     Iterable,
     Optional,
+    Set,
     TextIO,
     Tuple,
     Type,
@@ -53,6 +54,8 @@ __all__ = (
 )
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
+_CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
+
 
 if TYPE_CHECKING:
     from typing import List
@@ -336,7 +339,16 @@ class IOBasePayload(Payload):
                 await writer.write(chunk)
                 chunk = await loop.run_in_executor(None, self._value.read, 2**16)
         finally:
-            await loop.run_in_executor(None, self._value.close)
+            # We do not await here because we may get cancelled if we do
+            # no finish fast enough since as soon as the StreamReader reaches EOF
+            # the client will proceed to cancel the writer as we need to make sure
+            # the task is done before we can move on to handling the next request
+            # as we don't want to leak writers.
+            close_future = loop.run_in_executor(None, self._value.close)
+            # Hold a strong reference to the future to prevent it from being
+            # garbage collected before it completes.
+            _CLOSE_FUTURES.add(close_future)
+            close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
@@ -395,7 +407,16 @@ class TextIOPayload(IOBasePayload):
                 await writer.write(data)
                 chunk = await loop.run_in_executor(None, self._value.read, 2**16)
         finally:
-            await loop.run_in_executor(None, self._value.close)
+            # We do not await here because we may get cancelled if we do
+            # no finish fast enough since as soon as the StreamReader reaches EOF
+            # the client will proceed to cancel the writer as we need to make sure
+            # the task is done before we can move on to handling the next request
+            # as we don't want to leak writers.
+            close_future = loop.run_in_executor(None, self._value.close)
+            # Hold a strong reference to the future to prevent it from being
+            # garbage collected before it completes.
+            _CLOSE_FUTURES.add(close_future)
+            close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
 
 class BytesIOPayload(IOBasePayload):
