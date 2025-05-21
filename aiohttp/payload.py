@@ -356,10 +356,17 @@ class IOBasePayload(Payload):
                 self.set_content_disposition(disposition, filename=self._filename)
 
     def _read_and_available_len(
-        self, read_size: int
+        self, maximum_read_len: Optional[int]
     ) -> Tuple[Optional[int], Union[str, bytes]]:
         """Read the file-like object and return its size."""
-        return self.size, self._value.read(read_size)
+        size = self.size
+        return size, self._value.read(
+            min(size, maximum_read_len or READ_SIZE, READ_SIZE)
+        )
+
+    def _read(self, maximum_read_len: Optional[int]) -> Union[str, bytes]:
+        """Read the file-like object."""
+        return self._value.read(maximum_read_len or READ_SIZE)
 
     @property
     def size(self) -> Optional[int]:
@@ -383,18 +390,13 @@ class IOBasePayload(Payload):
         bytes_data: bytes
         total_written_len = 0
         remaining_content_length = content_length
+        import pprint
+
+        pprint.pprint(["write_with_length", content_length])
         # Check if the file-like object is seekable
         try:
-            read_size = (
-                READ_SIZE
-                if remaining_content_length is None
-                else min(READ_SIZE, remaining_content_length)
-            )
-            import pprint
-
-            pprint.pprint(["read in executor", "first", read_size])
             available_len, chunk = await loop.run_in_executor(
-                None, self._read_and_available_len, read_size
+                None, self._read_and_available_len, remaining_content_length
             )
             pprint.pprint(["finished reading in executor"])
             bytes_data = (
@@ -415,17 +417,14 @@ class IOBasePayload(Payload):
                 total_written_len += bytes_data_len
                 if available_len is not None and total_written_len >= available_len:
                     break
-                read_size = (
-                    READ_SIZE
-                    if remaining_content_length is None
-                    else min(READ_SIZE, remaining_content_length)
-                )
-                if read_size <= 0:
+                if remaining_content_length is None or remaining_content_length <= 0:
                     break
                 import pprint
 
-                pprint.pprint(["read in executor", read_size])
-                chunk = await loop.run_in_executor(None, self._value.read, read_size)
+                pprint.pprint(["read in executor", remaining_content_length])
+                chunk = await loop.run_in_executor(
+                    None, self._read, remaining_content_length
+                )
                 bytes_data = (
                     (chunk.encode(self._encoding) if self._encoding else chunk.encode())
                     if self._encode
