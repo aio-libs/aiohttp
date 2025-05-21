@@ -721,7 +721,8 @@ class AsyncIterablePayload(Payload):
         self._iter = value.__aiter__()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        """Write the entire async iterable payload to the writer stream.
+        """
+        Write the entire async iterable payload to the writer stream.
 
         Args:
             writer: An AbstractStreamWriter instance that handles the actual writing
@@ -732,13 +733,15 @@ class AsyncIterablePayload(Payload):
         Note:
             For new implementations that need length control, use write_with_length() directly.
             This method is maintained for backwards compatibility with existing code.
+
         """
         await self.write_with_length(writer, None)
 
     async def write_with_length(
         self, writer: AbstractStreamWriter, content_length: Optional[int]
     ) -> None:
-        """Write async iterable payload with a specific content length constraint.
+        """
+        Write async iterable payload with a specific content length constraint.
 
         Args:
             writer: An AbstractStreamWriter instance that handles the actual writing
@@ -752,6 +755,7 @@ class AsyncIterablePayload(Payload):
 
         Since async iterables are consumed as they're iterated, there is no way to
         restart the iteration if it's already in progress or completed.
+
         """
         if self._iter is None:
             return
