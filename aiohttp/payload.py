@@ -516,7 +516,7 @@ class BytesIOPayload(IOBasePayload):
                     # of the loop
                     await asyncio.sleep(0)
                 await writer.write(chunk)
-            loop_count += 1
+                loop_count += 1
         finally:
             self._value.close()
 
