@@ -154,7 +154,6 @@ class PayloadRegistry:
 class Payload(ABC):
     _default_content_type: str = "application/octet-stream"
     _size: Optional[int] = None
-    _encode: bool = False
 
     def __init__(
         self,
@@ -360,13 +359,13 @@ class IOBasePayload(Payload):
     ) -> Tuple[Optional[int], bytes]:
         """Read the file-like object and return its size."""
         size = self.size
-        chunk = self._value.read(min(size or READ_SIZE, maximum_read_len or READ_SIZE))
-        return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
+        return size, self._value.read(
+            min(size or READ_SIZE, maximum_read_len or READ_SIZE)
+        )
 
     def _read(self, maximum_read_len: Optional[int]) -> bytes:
         """Read the file-like object."""
-        chunk = self._value.read(maximum_read_len or READ_SIZE)
-        return chunk.encode(self._encoding) if self._encoding else chunk.encode()
+        return self._value.read(maximum_read_len or READ_SIZE)
 
     @property
     def size(self) -> Optional[int]:
@@ -447,7 +446,6 @@ class IOBasePayload(Payload):
 
 class TextIOPayload(IOBasePayload):
     _value: io.TextIOBase
-    _encode = True
 
     def __init__(
         self,
@@ -475,6 +473,19 @@ class TextIOPayload(IOBasePayload):
             *args,
             **kwargs,
         )
+
+    def _read_and_available_len(
+        self, maximum_read_len: Optional[int]
+    ) -> Tuple[Optional[int], bytes]:
+        """Read the file-like object and return its size."""
+        size = self.size
+        chunk = self._value.read(min(size or READ_SIZE, maximum_read_len or READ_SIZE))
+        return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
+
+    def _read(self, maximum_read_len: Optional[int]) -> bytes:
+        """Read the file-like object."""
+        chunk = self._value.read(maximum_read_len or READ_SIZE)
+        return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read()
