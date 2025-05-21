@@ -12,11 +12,15 @@ from aiohttp.abc import AbstractStreamWriter
 
 
 @pytest.fixture(autouse=True)
-async def cleanup_pending_file_closes() -> AsyncGenerator[None]:
+async def cleanup_pending_file_closes(
+    loop: asyncio.AbstractEventLoop,
+) -> AsyncGenerator[None]:
     """Ensure all pending file close operations complete during test teardown."""
     yield
     if payload._CLOSE_FUTURES:
-        await asyncio.gather(*list(payload._CLOSE_FUTURES), return_exceptions=True)
+        loop.run_until_complete(
+            asyncio.gather(*list(payload._CLOSE_FUTURES), return_exceptions=True)
+        )
 
 
 @pytest.fixture
