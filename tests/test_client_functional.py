@@ -4277,7 +4277,7 @@ async def test_content_length_limit_with_multiple_reads(
     server = await aiohttp_server(app)
 
     # Create an async generator of data
-    async def data_generator():
+    async def data_generator() -> AsyncIterator[bytes]:
         yield b"Chunk1" * 100  # 600 bytes
         yield b"Chunk2" * 100  # another 600 bytes
 
