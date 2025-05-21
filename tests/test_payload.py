@@ -18,9 +18,12 @@ def cleanup_pending_file_closes(
     """Ensure all pending file close operations complete during test teardown."""
     yield
     if payload._CLOSE_FUTURES:
-        loop.run_until_complete(
-            asyncio.gather(*list(payload._CLOSE_FUTURES), return_exceptions=True)
-        )
+        # Only wait for futures from the current loop
+        loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
+        if loop_futures:
+            loop.run_until_complete(
+                asyncio.gather(*loop_futures, return_exceptions=True)
+            )
 
 
 @pytest.fixture
