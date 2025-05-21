@@ -761,8 +761,7 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
         task: Optional["asyncio.Task[None]"]
         if self.body or self._continue is not None or protocol.writing_paused:
-            content_length = self._get_content_length()
-            coro = self.write_bytes(writer, conn, content_length)
+            coro = self.write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write
                 # bytes immediately to avoid having to schedule
