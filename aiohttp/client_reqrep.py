@@ -671,6 +671,8 @@ class ClientRequest:
                     for chunk in self.body:
                         await writer.write(chunk[:remaining_bytes])
                         remaining_bytes -= len(chunk)
+                        if remaining_bytes <= 0:
+                            break
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
