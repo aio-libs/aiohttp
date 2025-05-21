@@ -253,7 +253,7 @@ class Payload(ABC):
     async def write_with_length(
         self, writer: AbstractStreamWriter, content_length: Optional[int]
     ) -> None:
-        """Write payload with a length.
+        """Write payload with a maximum length.
 
         writer is an AbstractStreamWriter instance:
         """
@@ -507,19 +507,7 @@ class BytesIOPayload(IOBasePayload):
         return self._value.read().decode(encoding, errors)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        loop_count = 0
-        try:
-            while chunk := self._value.read(2**16):
-                if loop_count > 0:
-                    # Avoid blocking the event loop
-                    # if they pass a large BytesIO object
-                    # and we are not in the first iteration
-                    # of the loop
-                    await asyncio.sleep(0)
-                await writer.write(chunk)
-                loop_count += 1
-        finally:
-            self._value.close()
+        return await self.write_with_length(writer, None)
 
     async def write_with_length(
         self, writer: AbstractStreamWriter, content_length: Optional[int]
@@ -541,7 +529,7 @@ class BytesIOPayload(IOBasePayload):
                 else:
                     await writer.write(chunk[:remaining_bytes])
                     remaining_bytes -= len(chunk)
-            loop_count += 1
+                loop_count += 1
         finally:
             self._value.close()
 
