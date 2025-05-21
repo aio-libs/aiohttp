@@ -297,7 +297,7 @@ async def test_async_iterable_payload_write_with_length_truncated_mid_chunk() ->
     async def gen() -> AsyncIterator[bytes]:
         yield b"0123"
         yield b"4567"
-        yield b"89"
+        yield b"89"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen())
     writer = MockStreamWriter()
@@ -312,8 +312,8 @@ async def test_async_iterable_payload_write_with_length_truncated_at_chunk() -> 
 
     async def gen() -> AsyncIterator[bytes]:
         yield b"0123"
-        yield b"4567"
-        yield b"89"
+        yield b"4567"  # pragma: no cover
+        yield b"89"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen())
     writer = MockStreamWriter()
