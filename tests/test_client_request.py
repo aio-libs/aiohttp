@@ -1639,6 +1639,6 @@ async def test_write_bytes_with_iterable_content_length_limit(
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=7 to truncate at the middle of Part2
     await req.write_bytes(writer, conn, 7)
-    assert buf == 7
+    assert len(buf) == 7
     assert buf == b"Part1Pa"
     await req.close()
