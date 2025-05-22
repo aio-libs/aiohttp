@@ -78,8 +78,6 @@ from .typedefs import (
 if TYPE_CHECKING:
     import ssl
     from ssl import SSLContext
-
-    from .client import ClientTimeout
 else:
     try:
         import ssl
@@ -99,6 +97,28 @@ if TYPE_CHECKING:
 
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+
+
+@frozen_dataclass_decorator
+class ClientTimeout:
+    total: Optional[float] = None
+    connect: Optional[float] = None
+    sock_read: Optional[float] = None
+    sock_connect: Optional[float] = None
+    ceil_threshold: float = 5
+
+    # pool_queue_timeout: Optional[float] = None
+    # dns_resolution_timeout: Optional[float] = None
+    # socket_connect_timeout: Optional[float] = None
+    # connection_acquiring_timeout: Optional[float] = None
+    # new_connection_timeout: Optional[float] = None
+    # http_header_timeout: Optional[float] = None
+    # response_body_timeout: Optional[float] = None
+
+    # to create a timeout specific for a single request, either
+    # - create a completely new one to overwrite the default
+    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
+    # to overwrite the defaults
 
 
 def _gen_default_accept_encoding() -> str:
@@ -224,13 +244,13 @@ class ClientRequest:
     body: Any = b""
     auth = None
     response = None
-    _timeout = None
     _response_params = None
 
     # These class defaults help create_autospec() work correctly.
     # If autospec is improved in future, maybe these can be removed.
     url = URL()
     method = "GET"
+    _timeout = ClientTimeout()
 
     __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
@@ -269,7 +289,7 @@ class ClientRequest:
         trust_env: bool = False,
         server_hostname: Optional[str] = None,
         response_params: Optional[ResponseParams] = None,
-        timeout: Optional["ClientTimeout"] = None,
+        timeout: Optional[ClientTimeout] = None,
     ):
         if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
