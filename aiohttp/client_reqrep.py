@@ -193,7 +193,7 @@ class ConnectionKey(NamedTuple):
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
 
 
-class _ResponseParams(TypedDict):
+class ResponseParams(TypedDict):
     timer: Optional[BaseTimerContext]
     skip_payload: bool
     read_until_eof: bool
