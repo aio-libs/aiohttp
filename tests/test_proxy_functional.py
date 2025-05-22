@@ -418,6 +418,7 @@ async def test_proxy_http_acquired_cleanup(proxy_test_server, loop) -> None:
     assert 0 == len(conn._acquired)
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -439,6 +440,7 @@ async def test_proxy_http_acquired_cleanup_force(proxy_test_server, loop) -> Non
     assert 0 == len(conn._acquired)
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -470,6 +472,7 @@ async def test_proxy_http_multi_conn_limit(proxy_test_server, loop) -> None:
     assert {resp.status for resp in responses} == {200}
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.xfail
