@@ -77,6 +77,7 @@ from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientResponse,
+    ClientTimeout,
     Fingerprint,
     RequestInfo,
     ResponseParams,
@@ -99,7 +100,6 @@ from .helpers import (
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
-    frozen_dataclass_decorator,
     get_env_proxy_for_url,
     sentinel,
     strip_auth_from_url,
@@ -196,28 +196,6 @@ class _RequestOptions(TypedDict, total=False):
     max_line_size: Union[int, None]
     max_field_size: Union[int, None]
     middlewares: Optional[Tuple[ClientMiddlewareType, ...]]
-
-
-@frozen_dataclass_decorator
-class ClientTimeout:
-    total: Optional[float] = None
-    connect: Optional[float] = None
-    sock_read: Optional[float] = None
-    sock_connect: Optional[float] = None
-    ceil_threshold: float = 5
-
-    # pool_queue_timeout: Optional[float] = None
-    # dns_resolution_timeout: Optional[float] = None
-    # socket_connect_timeout: Optional[float] = None
-    # connection_acquiring_timeout: Optional[float] = None
-    # new_connection_timeout: Optional[float] = None
-    # http_header_timeout: Optional[float] = None
-    # response_body_timeout: Optional[float] = None
-
-    # to create a timeout specific for a single request, either
-    # - create a completely new one to overwrite the default
-    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
-    # to overwrite the defaults
 
 
 # 5 Minute default read timeout
