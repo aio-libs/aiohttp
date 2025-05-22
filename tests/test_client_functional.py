@@ -248,8 +248,8 @@ async def test_keepalive_server_force_close_connection(aiohttp_client) -> None:
     assert 0 == len(client._session.connector._conns)
 
 
-async def test_keepalive_timeout_async_sleep() -> None:
-    async def handler(request):
+async def test_keepalive_timeout_async_sleep(unused_port_socket: socket.socket) -> None:
+    async def handler(request: web.Request) -> web.Response:
         body = await request.read()
         assert b"" == body
         return web.Response(body=b"OK")
@@ -260,17 +260,18 @@ async def test_keepalive_timeout_async_sleep() -> None:
     runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
     await runner.setup()
 
-    port = unused_port()
-    site = web.TCPSite(runner, host="localhost", port=port)
+    site = web.SockSite(runner, unused_port_socket)
     await site.start()
 
+    host, port = unused_port_socket.getsockname()[:2]
+
     try:
-        async with aiohttp.client.ClientSession() as sess:
-            resp1 = await sess.get(f"http://localhost:{port}/")
+        async with aiohttp.ClientSession() as sess:
+            resp1 = await sess.get(f"http://{host}:{port}/")
             await resp1.read()
             # wait for server keepalive_timeout
             await asyncio.sleep(0.01)
-            resp2 = await sess.get(f"http://localhost:{port}/")
+            resp2 = await sess.get(f"http://{host}:{port}/")
             await resp2.read()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
@@ -280,8 +281,8 @@ async def test_keepalive_timeout_async_sleep() -> None:
     sys.version_info[:2] == (3, 11),
     reason="https://github.com/pytest-dev/pytest/issues/10763",
 )
-async def test_keepalive_timeout_sync_sleep() -> None:
-    async def handler(request):
+async def test_keepalive_timeout_sync_sleep(unused_port_socket: socket.socket) -> None:
+    async def handler(request: web.Request) -> web.Response:
         body = await request.read()
         assert b"" == body
         return web.Response(body=b"OK")
@@ -292,18 +293,19 @@ async def test_keepalive_timeout_sync_sleep() -> None:
     runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
     await runner.setup()
 
-    port = unused_port()
-    site = web.TCPSite(runner, host="localhost", port=port)
+    site = web.SockSite(runner, unused_port_socket)
     await site.start()
 
+    host, port = unused_port_socket.getsockname()[:2]
+
     try:
-        async with aiohttp.client.ClientSession() as sess:
-            resp1 = await sess.get(f"http://localhost:{port}/")
+        async with aiohttp.ClientSession() as sess:
+            resp1 = await sess.get(f"http://{host}:{port}/")
             await resp1.read()
             # wait for server keepalive_timeout
             # time.sleep is a more challenging scenario than asyncio.sleep
             time.sleep(0.01)
-            resp2 = await sess.get(f"http://localhost:{port}/")
+            resp2 = await sess.get(f"http://{host}:{port}/")
             await resp2.read()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
