@@ -1,0 +1,1 @@
+Fixed :py:class:`~aiohttp.resolver.AsyncResolver` not using the ``loop`` argument in versions 3.x where it should still be supported -- by :user:`bdraco`.
