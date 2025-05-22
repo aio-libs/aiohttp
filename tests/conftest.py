@@ -8,7 +8,7 @@ import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Generator, Iterator
+from typing import Any, AsyncIterator, Callable, Generator, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -338,15 +338,13 @@ def parametrize_zlib_backend(
 
 
 @pytest.fixture()
-def cleanup_payload_pending_file_closes(
+async def cleanup_payload_pending_file_closes(
     loop: asyncio.AbstractEventLoop,
-) -> Generator[None, None, None]:
+) -> AsyncIterator[None]:
     """Ensure all pending file close operations complete during test teardown."""
     yield
     if payload._CLOSE_FUTURES:
         # Only wait for futures from the current loop
         loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
         if loop_futures:
-            loop.run_until_complete(
-                asyncio.gather(*loop_futures, return_exceptions=True)
-            )
+            await asyncio.gather(*loop_futures, return_exceptions=True)
