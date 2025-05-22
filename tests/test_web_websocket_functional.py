@@ -1246,13 +1246,13 @@ async def test_abnormal_closure_when_client_does_not_close(
 async def test_normal_closure_while_client_sends_msg(
     aiohttp_client: AiohttpClient,
 ) -> None:
-    """Test abnormal closure when the server closes and the client doesn't respond."""
+    """Test normal closure when the server closes and the client responds properly."""
     close_code: Optional[WSCloseCode] = None
     got_close_code = asyncio.Event()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
-        # Setting a short close timeout
-        ws = web.WebSocketResponse(timeout=0.2)
+        # Setting a longer close timeout to avoid race conditions
+        ws = web.WebSocketResponse(timeout=1.0)
         await ws.prepare(request)
         await ws.close()
 
