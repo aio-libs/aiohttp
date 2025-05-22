@@ -94,7 +94,7 @@ class AsyncResolver(AbstractResolver):
             raise RuntimeError("Resolver requires aiodns library")
 
         loop = loop or kwargs.pop("loop", None) or asyncio.get_running_loop()
-        self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
+        self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)  # type: ignore[misc]
 
         if not hasattr(self._resolver, "gethostbyname"):
             # aiodns 1.1 is not available, fallback to DNSResolver.query
