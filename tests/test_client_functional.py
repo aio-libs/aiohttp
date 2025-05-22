@@ -18,6 +18,7 @@ from typing import (
     Awaitable,
     Callable,
     Dict,
+    Generator,
     List,
     NoReturn,
     Optional,
@@ -33,7 +34,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, payload, web
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.client_exceptions import (
     ClientResponseError,
@@ -53,11 +54,19 @@ from aiohttp.test_utils import TestClient, TestServer, unused_port
 from aiohttp.typedefs import Handler, Query
 
 
-@pytest.fixture(autouse=True)
-def cleanup(
-    cleanup_payload_pending_file_closes: None,
-) -> None:
+@pytest.fixture()
+def cleanup_payload_pending_file_closes(
+    loop: asyncio.AbstractEventLoop,
+) -> Generator[None, None, None]:
     """Ensure all pending file close operations complete during test teardown."""
+    yield
+    if payload._CLOSE_FUTURES:
+        # Only wait for futures from the current loop
+        loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
+        if loop_futures:
+            loop.run_until_complete(
+                asyncio.gather(*loop_futures, return_exceptions=True)
+            )
 
 
 @pytest.fixture

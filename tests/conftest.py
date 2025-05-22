@@ -17,7 +17,6 @@ import pytest
 import zlib_ng.zlib_ng
 from blockbuster import blockbuster_ctx
 
-from aiohttp import payload
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
@@ -332,18 +331,3 @@ def parametrize_zlib_backend(
     yield
 
     set_zlib_backend(original_backend)
-
-
-@pytest.fixture()
-def cleanup_payload_pending_file_closes(
-    loop: asyncio.AbstractEventLoop,
-) -> Generator[None, None, None]:
-    """Ensure all pending file close operations complete during test teardown."""
-    yield
-    if payload._CLOSE_FUTURES:
-        # Only wait for futures from the current loop
-        loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
-        if loop_futures:
-            loop.run_until_complete(
-                asyncio.gather(*loop_futures, return_exceptions=True)
-            )
