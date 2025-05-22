@@ -660,3 +660,40 @@ async def test_dns_resolver_manager_missing_loop_data() -> None:
 
         # Verify no exception was raised
         assert loop not in manager._loop_data
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_close_multiple_times() -> None:
+    """Test that AsyncResolver.close() can be called multiple times without error."""
+    with patch("aiodns.DNSResolver") as mock_dns_resolver:
+        mock_resolver = Mock()
+        mock_resolver.cancel = Mock()
+        mock_dns_resolver.return_value = mock_resolver
+
+        # Create a resolver with custom args (dedicated resolver)
+        resolver = AsyncResolver(nameservers=["8.8.8.8"])
+
+        # Close it once
+        await resolver.close()
+        mock_resolver.cancel.assert_called_once()
+
+        # Close it again - should not raise AttributeError
+        await resolver.close()
+        # cancel should still only be called once
+        mock_resolver.cancel.assert_called_once()
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_close_with_none_resolver() -> None:
+    """Test that AsyncResolver.close() handles None resolver gracefully."""
+    with patch("aiodns.DNSResolver"):
+        # Create a resolver with custom args (dedicated resolver)
+        resolver = AsyncResolver(nameservers=["8.8.8.8"])
+
+        # Manually set resolver to None to simulate edge case
+        resolver._resolver = None  # type: ignore[assignment]
+
+        # This should not raise AttributeError
+        await resolver.close()
