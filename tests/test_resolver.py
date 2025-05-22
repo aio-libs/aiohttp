@@ -404,3 +404,36 @@ def test_aio_dns_is_default() -> None:
 @pytest.mark.skipif(getaddrinfo, reason="aiodns <3.2.0 required")
 def test_threaded_resolver_is_default() -> None:
     assert DefaultResolver is ThreadedResolver
+
+
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+def test_async_resolver_uses_provided_loop() -> None:
+    """Test that AsyncResolver uses the loop parameter when provided."""
+    # Create a custom event loop
+    custom_loop = asyncio.new_event_loop()
+
+    try:
+        # Need to set the loop as current for get_running_loop() to work
+        asyncio.set_event_loop(custom_loop)
+
+        # Create resolver with explicit loop parameter
+        resolver = AsyncResolver(loop=custom_loop)
+
+        # Check that the resolver uses the provided loop
+        assert resolver._resolver.loop is custom_loop
+    finally:
+        asyncio.set_event_loop(None)
+        custom_loop.close()
+
+
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+async def test_async_resolver_uses_running_loop_when_none_provided() -> None:
+    """Test that AsyncResolver uses get_running_loop() when no loop is provided."""
+    # Create resolver without loop parameter
+    resolver = AsyncResolver()
+
+    # Check that the resolver uses the current running loop
+    assert resolver._resolver.loop is asyncio.get_running_loop()
+
+    # Clean up
+    await resolver.close()
