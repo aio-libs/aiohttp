@@ -367,6 +367,7 @@ websocket’s
 websockets
 Websockets
 wildcard
+Winloop
 Workflow
 ws
 wsgi
