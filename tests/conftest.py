@@ -34,10 +34,10 @@ except ImportError:
 
 
 try:
-    if sys.platform != "win32":
-        import uvloop
-    else:
+    if sys.platform == "win32":
         import winloop as uvloop
+    else:
+        import uvloop
 except ImportError:
     uvloop = None  # type: ignore[assignment]
 
