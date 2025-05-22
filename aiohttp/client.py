@@ -79,6 +79,7 @@ from .client_reqrep import (
     ClientResponse,
     Fingerprint,
     RequestInfo,
+    ResponseParams,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
@@ -622,7 +623,7 @@ class ClientSession:
                                 get_env_proxy_for_url, url
                             )
 
-                    response_params = {
+                    response_params: ResponseParams = {
                         "timer": timer,
                         "skip_payload": method in EMPTY_BODY_METHODS,
                         "read_until_eof": read_until_eof,
@@ -668,6 +669,7 @@ class ClientSession:
                     ) -> ClientResponse:
                         # connection timeout
                         assert self._connector is not None
+                        assert req._timeout is not none
                         try:
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=req._timeout
@@ -678,6 +680,7 @@ class ClientSession:
                             ) from exc
 
                         assert conn.protocol is not None
+                        assert req._response_params is not None
                         conn.protocol.set_response_params(**req._response_params)
                         try:
                             resp = await req.send(conn)
