@@ -224,6 +224,8 @@ class ClientRequest:
     body: Any = b""
     auth = None
     response = None
+    _timeout = None
+    _response_params = None
 
     # These class defaults help create_autospec() work correctly.
     # If autospec is improved in future, maybe these can be removed.
