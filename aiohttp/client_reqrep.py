@@ -78,6 +78,7 @@ from .typedefs import (
 if TYPE_CHECKING:
     import ssl
     from ssl import SSLContext
+
     from .client import ClientTimeout
 else:
     try:
