@@ -623,6 +623,11 @@ class ClientSession:
                                 get_env_proxy_for_url, url
                             )
 
+                    if proxy and not "http" in proxy.scheme:
+                        raise ValueError(
+                            "aiohttp works with http(s) proxy only currently."
+                        )
+
                     req = self._request_class(
                         method,
                         url,
