@@ -198,7 +198,8 @@ class AsyncResolver(AbstractResolver):
             self._resolver = None  # type: ignore[assignment] # Clear reference to resolver
             return
         # Otherwise cancel our dedicated resolver
-        self._resolver.cancel()
+        if self._resolver is not None:
+            self._resolver.cancel()
         self._resolver = None  # type: ignore[assignment] # Clear reference
 
 
