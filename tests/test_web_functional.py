@@ -1945,6 +1945,9 @@ async def test_response_context_manager_error(aiohttp_server: AiohttpServer) -> 
             await resp.read()
     assert resp.closed
 
+    # Wait for any pending operations to complete
+    await resp.wait_for_close()
+
     assert session._connector is not None
     assert len(session._connector._conns) == 1
 

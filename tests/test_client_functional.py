@@ -4382,3 +4382,128 @@ async def test_post_connection_cleanup_with_file(
             response.raise_for_status()
 
         assert len(client._session.connector._conns) == 1
+
+
+async def test_post_content_exception_connection_kept(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that connections are kept after content.set_exception() with POST."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response(
+            body=b"x" * 1000
+        )  # Larger response to ensure it's not pre-buffered
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    # POST request with body - connection should be closed after content exception
+    resp = await client.post("/", data=b"request body")
+
+    with pytest.raises(RuntimeError):
+        async with resp:
+            assert resp.status == 200
+            resp.content.set_exception(RuntimeError("Simulated error"))
+            await resp.read()
+
+    assert resp.closed
+
+    # Wait for any pending operations to complete
+    await resp.wait_for_close()
+
+    assert client._session.connector is not None
+    # Connection is kept because content.set_exception() is a client-side operation
+    # that doesn't affect the underlying connection state
+    assert len(client._session.connector._conns) == 1
+
+
+async def test_network_error_connection_closed(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that connections are closed after network errors."""
+
+    async def handler(request: web.Request) -> NoReturn:
+        # Read the request body
+        await request.read()
+
+        # Start sending response but close connection before completing
+        response = web.StreamResponse()
+        response.content_length = 1000  # Promise 1000 bytes
+        await response.prepare(request)
+
+        # Send partial data then force close the connection
+        await response.write(b"x" * 100)  # Only send 100 bytes
+        # Force close the transport to simulate network error
+        assert request.transport is not None
+        request.transport.close()
+        assert False, "Will not return"
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    # POST request that will fail due to network error
+    with pytest.raises(aiohttp.ClientPayloadError):
+        resp = await client.post("/", data=b"request body")
+        async with resp:
+            await resp.read()  # This should fail
+
+    # Give event loop a chance to process connection cleanup
+    await asyncio.sleep(0)
+
+    assert client._session.connector is not None
+    # Connection should be closed due to network error
+    assert len(client._session.connector._conns) == 0
+
+
+async def test_client_side_network_error_connection_closed(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that connections are closed after client-side network errors."""
+    handler_done = asyncio.Event()
+
+    async def handler(request: web.Request) -> NoReturn:
+        # Read the request body
+        await request.read()
+
+        # Start sending a large response
+        response = web.StreamResponse()
+        response.content_length = 10000  # Promise 10KB
+        await response.prepare(request)
+
+        # Send some data
+        await response.write(b"x" * 1000)
+
+        # Keep the response open - we'll interrupt from client side
+        await asyncio.wait_for(handler_done.wait(), timeout=5.0)
+        assert False, "Will not return"
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    # POST request that will fail due to client-side network error
+    with pytest.raises(aiohttp.ClientPayloadError):
+        resp = await client.post("/", data=b"request body")
+        async with resp:
+            # Simulate client-side network error by closing the transport
+            # This simulates connection reset, network failure, etc.
+            assert resp.connection is not None
+            assert resp.connection.protocol is not None
+            assert resp.connection.protocol.transport is not None
+            resp.connection.protocol.transport.close()
+
+            # This should fail with connection error
+            await resp.read()
+
+    # Signal handler to finish
+    handler_done.set()
+
+    # Give event loop a chance to process connection cleanup
+    await asyncio.sleep(0)
+
+    assert client._session.connector is not None
+    # Connection should be closed due to client-side network error
+    assert len(client._session.connector._conns) == 0
