@@ -243,8 +243,6 @@ class ClientRequest:
         method: str,
         url: URL,
         *,
-        response_params: _ResponseParams,
-        timeout: ClientTimeout,
         params: Query = None,
         headers: Optional[LooseHeaders] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
@@ -266,6 +264,8 @@ class ClientRequest:
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
         server_hostname: Optional[str] = None,
+        response_params: Optional[_ResponseParams] = None,
+        timeout: Optional[ClientTimeout] = None,
     ):
         if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
