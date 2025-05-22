@@ -266,7 +266,7 @@ class ClientRequest:
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
         server_hostname: Optional[str] = None,
-        response_params: Optional[_ResponseParams] = None,
+        response_params: Optional[ResponseParams] = None,
         timeout: Optional["ClientTimeout"] = None,
     ):
         if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
