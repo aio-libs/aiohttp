@@ -82,10 +82,19 @@ A retry middleware that automatically retries failed requests with exponential b
 
     import asyncio
     import logging
-    from typing import Optional, Set
+    from http import HTTPStatus
+    from typing import Union, Set
     from aiohttp import ClientRequest, ClientResponse, ClientHandlerType
 
     _LOGGER = logging.getLogger(__name__)
+
+    DEFAULT_RETRY_STATUSES = {
+        HTTPStatus.TOO_MANY_REQUESTS,
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        HTTPStatus.BAD_GATEWAY,
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        HTTPStatus.GATEWAY_TIMEOUT
+    }
 
     class RetryMiddleware:
         """Middleware that retries failed requests with exponential backoff."""
@@ -93,12 +102,12 @@ A retry middleware that automatically retries failed requests with exponential b
         def __init__(
             self,
             max_retries: int = 3,
-            retry_statuses: Optional[Set[int]] = None,
+            retry_statuses: Union[Set[int], None] = None,
             initial_delay: float = 1.0,
             backoff_factor: float = 2.0
         ):
             self.max_retries = max_retries
-            self.retry_statuses = retry_statuses or {429, 500, 502, 503, 504}
+            self.retry_statuses = retry_statuses or DEFAULT_RETRY_STATUSES
             self.initial_delay = initial_delay
             self.backoff_factor = backoff_factor
 
@@ -153,14 +162,23 @@ Usage example:
     import aiohttp
     import asyncio
     import logging
+    from http import HTTPStatus
 
     _LOGGER = logging.getLogger(__name__)
+
+    RETRY_STATUSES = {
+        HTTPStatus.TOO_MANY_REQUESTS,
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        HTTPStatus.BAD_GATEWAY,
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        HTTPStatus.GATEWAY_TIMEOUT
+    }
 
     async def main():
         # Create retry middleware with custom settings
         retry_middleware = RetryMiddleware(
             max_retries=3,
-            retry_statuses={429, 500, 502, 503, 504},
+            retry_statuses=RETRY_STATUSES,
             initial_delay=0.5,
             backoff_factor=2.0
         )
@@ -234,6 +252,7 @@ A more advanced example showing JWT token refresh:
 
     import asyncio
     from datetime import datetime, timedelta
+    from http import HTTPStatus
     from typing import Optional
     from aiohttp import ClientRequest, ClientResponse, ClientHandlerType
 
@@ -289,7 +308,7 @@ A more advanced example showing JWT token refresh:
             response = await handler(request)
 
             # If we get 401, try refreshing token once
-            if response.status == 401:
+            if response.status == HTTPStatus.UNAUTHORIZED:
                 await self._refresh_access_token(request.session)
                 request.headers["Authorization"] = f"Bearer {self.access_token}"
                 response = await handler(request)
