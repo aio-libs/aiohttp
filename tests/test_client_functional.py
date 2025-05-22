@@ -4424,7 +4424,7 @@ async def test_network_error_connection_closed(
 ) -> None:
     """Test that connections are closed after network errors."""
 
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         # Read the request body
         await request.read()
 
@@ -4436,8 +4436,9 @@ async def test_network_error_connection_closed(
         # Send partial data then force close the connection
         await response.write(b"x" * 100)  # Only send 100 bytes
         # Force close the transport to simulate network error
+        assert request.transport is not None
         request.transport.close()
-        return response
+        assert False, "Will not return"
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -4463,7 +4464,7 @@ async def test_client_side_network_error_connection_closed(
     """Test that connections are closed after client-side network errors."""
     handler_done = asyncio.Event()
 
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         # Read the request body
         await request.read()
 
@@ -4477,7 +4478,7 @@ async def test_client_side_network_error_connection_closed(
 
         # Keep the response open - we'll interrupt from client side
         await asyncio.wait_for(handler_done.wait(), timeout=5.0)
-        return response
+        assert False, "Will not return"
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -4491,6 +4492,7 @@ async def test_client_side_network_error_connection_closed(
             # This simulates connection reset, network failure, etc.
             assert resp.connection is not None
             assert resp.connection.protocol is not None
+            assert resp.connection.protocol.transport is not None
             resp.connection.protocol.transport.close()
 
             # This should fail with connection error
