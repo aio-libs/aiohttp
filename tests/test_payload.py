@@ -291,8 +291,8 @@ async def test_bytesio_payload_write_with_length_remaining_zero() -> None:
         nonlocal read_calls
         read_calls += 1
         if read_calls == 1:
-            # First call: return 8 bytes (more than content_length=5)
-            return original_read(8)
+            # First call: return 3 bytes (less than content_length=5)
+            return original_read(3)
         else:
             # Subsequent calls return remaining data normally
             return original_read(size)
