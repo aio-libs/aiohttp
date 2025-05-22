@@ -94,7 +94,7 @@ class AsyncResolver(AbstractResolver):
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
 
-        self._loop = asyncio.get_running_loop()
+        self._loop = loop or asyncio.get_running_loop()
         self._manager: Optional[_DNSResolverManager] = None
         # If custom args are provided, create a dedicated resolver instance
         # This means each AsyncResolver with custom args gets its own
