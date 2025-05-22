@@ -711,3 +711,37 @@ async def test_async_resolver_close_with_none_resolver() -> None:
 
         # This should not raise AttributeError
         await resolver.close()
+
+
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+def test_async_resolver_uses_provided_loop() -> None:
+    """Test that AsyncResolver uses the loop parameter when provided."""
+    # Create a custom event loop
+    custom_loop = asyncio.new_event_loop()
+
+    try:
+        # Need to set the loop as current for get_running_loop() to work
+        asyncio.set_event_loop(custom_loop)
+
+        # Create resolver with explicit loop parameter
+        resolver = AsyncResolver(loop=custom_loop)
+
+        # Check that the resolver uses the provided loop
+        assert resolver._loop is custom_loop
+    finally:
+        asyncio.set_event_loop(None)
+        custom_loop.close()
+
+
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_uses_running_loop_when_none_provided() -> None:
+    """Test that AsyncResolver uses get_running_loop() when no loop is provided."""
+    # Create resolver without loop parameter
+    resolver = AsyncResolver()
+
+    # Check that the resolver uses the current running loop
+    assert resolver._loop is asyncio.get_running_loop()
+
+    # Clean up
+    await resolver.close()
