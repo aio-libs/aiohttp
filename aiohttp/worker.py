@@ -9,6 +9,7 @@ import sys
 from types import FrameType
 from typing import TYPE_CHECKING, Any, Optional
 
+from gunicorn.arbiter import Arbiter
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
@@ -45,6 +46,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         self._task: Optional[asyncio.Task[None]] = None
         self.exit_code = 0
         self._notify_waiter: Optional[asyncio.Future[bool]] = None
+        self.started = False
 
     def init_process(self) -> None:
         # create new event_loop after fork
@@ -60,6 +62,8 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
             self.loop.run_until_complete(self._task)
         except Exception:
             self.log.exception("Exception in gunicorn worker")
+            self.exit_code = 1 if self.started else Arbiter.APP_LOAD_ERROR
+
         self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()
 
@@ -110,6 +114,8 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 ssl_context=ctx,
             )
             await site.start()
+
+        self.started = True
 
         # If our parent changed then we shut down.
         pid = os.getpid()
