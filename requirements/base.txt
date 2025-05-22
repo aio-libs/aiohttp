@@ -43,6 +43,7 @@ pycparser==2.22
 typing-extensions==4.13.2
     # via multidict
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
+winloop==0.1.8; platform_system == "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 yarl==1.20.0
     # via -r requirements/runtime-deps.in
