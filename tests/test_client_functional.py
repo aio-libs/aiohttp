@@ -2007,6 +2007,7 @@ async def test_POST_STREAM_DATA(
         "/", data=gen(fname), headers={"Content-Length": str(data_size)}
     ) as resp:
         assert 200 == resp.status
+    await asyncio.sleep(0.2)  # Ensure file handle is closed
 
 
 async def test_json(aiohttp_client: AiohttpClient) -> None:
