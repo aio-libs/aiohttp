@@ -1,7 +1,7 @@
 from libc.stdint cimport int32_t, uint8_t, uint16_t, uint64_t
 
 
-cdef extern from "../vendor/llhttp/build/llhttp.h":
+cdef extern from "llhttp.h":
 
     struct llhttp__internal_s:
         int32_t _index
