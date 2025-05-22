@@ -78,6 +78,7 @@ from .typedefs import (
 if TYPE_CHECKING:
     import ssl
     from ssl import SSLContext
+    from .client import ClientTimeout
 else:
     try:
         import ssl
@@ -265,7 +266,7 @@ class ClientRequest:
         trust_env: bool = False,
         server_hostname: Optional[str] = None,
         response_params: Optional[_ResponseParams] = None,
-        timeout: Optional[ClientTimeout] = None,
+        timeout: Optional["ClientTimeout"] = None,
     ):
         if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
