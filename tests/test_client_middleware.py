@@ -793,6 +793,8 @@ async def test_client_middleware_blocks_connection_before_established(
     # Check that no connections were leaked
     assert len(connector._conns) == 0
 
+    await connector.close()
+
 
 async def test_client_middleware_blocks_connection_without_dns_lookup(
     aiohttp_server: AiohttpServer,
