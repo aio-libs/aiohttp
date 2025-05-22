@@ -4291,7 +4291,10 @@ async def test_content_length_limit_with_multiple_reads(
     headers = {"Content-Length": "800"}
 
     async with aiohttp.ClientSession() as session:
-        await session.post(server.make_url("/"), data=data_generator(), headers=headers)
+        async with session.post(
+            server.make_url("/"), data=data_generator(), headers=headers
+        ) as resp:
+            await resp.read()  # Ensure response is fully read and connection cleaned up
 
     # Verify only 800 bytes (not the full 1200) were received by the server
     assert len(received_data) == 800
