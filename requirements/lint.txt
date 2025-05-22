@@ -108,7 +108,7 @@ typing-extensions==4.13.2
     #   python-on-whales
     #   rich
     #   typing-inspection
-typing-inspection==0.4.0
+typing-inspection==0.4.1
     # via pydantic
 uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
