@@ -147,7 +147,6 @@ class MockStreamWriter(AbstractStreamWriter):
 
     def __init__(self) -> None:
         self.written: List[bytes] = []
-        self.eof_called = False
 
     async def write(
         self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
