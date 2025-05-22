@@ -16,6 +16,7 @@ from typing import (
     Final,
     Iterable,
     Optional,
+    Set,
     TextIO,
     Tuple,
     Type,
@@ -53,6 +54,9 @@ __all__ = (
 )
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
+READ_SIZE: Final[int] = 2**16  # 64 KB
+_CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
+
 
 if TYPE_CHECKING:
     from typing import List
@@ -238,10 +242,46 @@ class Payload(ABC):
 
     @abstractmethod
     async def write(self, writer: AbstractStreamWriter) -> None:
-        """Write payload.
+        """Write payload to the writer stream.
 
-        writer is an AbstractStreamWriter instance:
+        Args:
+            writer: An AbstractStreamWriter instance that handles the actual writing
+
+        This is a legacy method that writes the entire payload without length constraints.
+
+        Important:
+            For new implementations, use write_with_length() instead of this method.
+            This method is maintained for backwards compatibility and will eventually
+            delegate to write_with_length(writer, None) in all implementations.
+
+        All payload subclasses must override this method for backwards compatibility,
+        but new code should use write_with_length for more flexibility and control.
         """
+
+    # write_with_length is new in aiohttp 3.12
+    # it should be overridden by subclasses
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
+    ) -> None:
+        """
+        Write payload with a specific content length constraint.
+
+        Args:
+            writer: An AbstractStreamWriter instance that handles the actual writing
+            content_length: Maximum number of bytes to write (None for unlimited)
+
+        This method allows writing payload content with a specific length constraint,
+        which is particularly useful for HTTP responses with Content-Length header.
+
+        Note:
+            This is the base implementation that provides backwards compatibility
+            for subclasses that don't override this method. Specific payload types
+            should override this method to implement proper length-constrained writing.
+
+        """
+        # Backwards compatibility for subclasses that don't override this method
+        # and for the default implementation
+        await self.write(writer)
 
 
 class BytesPayload(Payload):
@@ -276,7 +316,39 @@ class BytesPayload(Payload):
         return self._value.decode(encoding, errors)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
+        """Write the entire bytes payload to the writer stream.
+
+        Args:
+            writer: An AbstractStreamWriter instance that handles the actual writing
+
+        This method writes the entire bytes content without any length constraint.
+
+        Note:
+            For new implementations that need length control, use write_with_length().
+            This method is maintained for backwards compatibility and is equivalent
+            to write_with_length(writer, None).
+        """
         await writer.write(self._value)
+
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
+    ) -> None:
+        """
+        Write bytes payload with a specific content length constraint.
+
+        Args:
+            writer: An AbstractStreamWriter instance that handles the actual writing
+            content_length: Maximum number of bytes to write (None for unlimited)
+
+        This method writes either the entire byte sequence or a slice of it
+        up to the specified content_length. For BytesPayload, this operation
+        is performed efficiently using array slicing.
+
+        """
+        if content_length is not None:
+            await writer.write(self._value[:content_length])
+        else:
+            await writer.write(self._value)
 
 
 class StringPayload(BytesPayload):
@@ -330,15 +402,165 @@ class IOBasePayload(Payload):
             if hdrs.CONTENT_DISPOSITION not in self.headers:
                 self.set_content_disposition(disposition, filename=self._filename)
 
-    async def write(self, writer: AbstractStreamWriter) -> None:
-        loop = asyncio.get_event_loop()
+    def _read_and_available_len(
+        self, remaining_content_len: Optional[int]
+    ) -> Tuple[Optional[int], bytes]:
+        """
+        Read the file-like object and return both its total size and the first chunk.
+
+        Args:
+            remaining_content_len: Optional limit on how many bytes to read in this operation.
+                If None, READ_SIZE will be used as the default chunk size.
+
+        Returns:
+            A tuple containing:
+            - The total size of the remaining unread content (None if size cannot be determined)
+            - The first chunk of bytes read from the file object
+
+        This method is optimized to perform both size calculation and initial read
+        in a single operation, which is executed in a single executor job to minimize
+        context switches and file operations when streaming content.
+
+        """
+        size = self.size  # Call size only once since it does I/O
+        return size, self._value.read(
+            min(size or READ_SIZE, remaining_content_len or READ_SIZE)
+        )
+
+    def _read(self, remaining_content_len: Optional[int]) -> bytes:
+        """
+        Read a chunk of data from the file-like object.
+
+        Args:
+            remaining_content_len: Optional maximum number of bytes to read.
+                If None, READ_SIZE will be used as the default chunk size.
+
+        Returns:
+            A chunk of bytes read from the file object, respecting the
+            remaining_content_len limit if specified.
+
+        This method is used for subsequent reads during streaming after
+        the initial _read_and_available_len call has been made.
+
+        """
+        return self._value.read(remaining_content_len or READ_SIZE)  # type: ignore[no-any-return]
+
+    @property
+    def size(self) -> Optional[int]:
         try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
+            return os.fstat(self._value.fileno()).st_size - self._value.tell()
+        except (AttributeError, OSError):
+            return None
+
+    async def write(self, writer: AbstractStreamWriter) -> None:
+        """
+        Write the entire file-like payload to the writer stream.
+
+        Args:
+            writer: An AbstractStreamWriter instance that handles the actual writing
+
+        This method writes the entire file content without any length constraint.
+        It delegates to write_with_length() with no length limit for implementation
+        consistency.
+
+        Note:
+            For new implementations that need length control, use write_with_length() directly.
+            This method is maintained for backwards compatibility with existing code.
+
+        """
+        await self.write_with_length(writer, None)
+
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
+    ) -> None:
+        """
+        Write file-like payload with a specific content length constraint.
+
+        Args:
+            writer: An AbstractStreamWriter instance that handles the actual writing
+            content_length: Maximum number of bytes to write (None for unlimited)
+
+        This method implements optimized streaming of file content with length constraints:
+
+        1. File reading is performed in a thread pool to avoid blocking the event loop
+        2. Content is read and written in chunks to maintain memory efficiency
+        3. Writing stops when either:
+           - All available file content has been written (when size is known)
+           - The specified content_length has been reached
+        4. File resources are properly closed even if the operation is cancelled
+
+        The implementation carefully handles both known-size and unknown-size payloads,
+        as well as constrained and unconstrained content lengths.
+
+        """
+        loop = asyncio.get_running_loop()
+        total_written_len = 0
+        remaining_content_len = content_length
+
+        try:
+            # Get initial data and available length
+            available_len, chunk = await loop.run_in_executor(
+                None, self._read_and_available_len, remaining_content_len
+            )
+            # Process data chunks until done
             while chunk:
-                await writer.write(chunk)
-                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
+                chunk_len = len(chunk)
+
+                # Write data with or without length constraint
+                if remaining_content_len is None:
+                    await writer.write(chunk)
+                else:
+                    await writer.write(chunk[:remaining_content_len])
+                    remaining_content_len -= chunk_len
+
+                total_written_len += chunk_len
+
+                # Check if we're done writing
+                if self._should_stop_writing(
+                    available_len, total_written_len, remaining_content_len
+                ):
+                    return
+
+                # Read next chunk
+                chunk = await loop.run_in_executor(
+                    None, self._read, remaining_content_len
+                )
         finally:
-            await loop.run_in_executor(None, self._value.close)
+            # Handle closing the file without awaiting to prevent cancellation issues
+            # when the StreamReader reaches EOF
+            self._schedule_file_close(loop)
+
+    def _should_stop_writing(
+        self,
+        available_len: Optional[int],
+        total_written_len: int,
+        remaining_content_len: Optional[int],
+    ) -> bool:
+        """
+        Determine if we should stop writing data.
+
+        Args:
+            available_len: Known size of the payload if available (None if unknown)
+            total_written_len: Number of bytes already written
+            remaining_content_len: Remaining bytes to be written for content-length limited responses
+
+        Returns:
+            True if we should stop writing data, based on either:
+            - Having written all available data (when size is known)
+            - Having written all requested content (when content-length is specified)
+
+        """
+        return (available_len is not None and total_written_len >= available_len) or (
+            remaining_content_len is not None and remaining_content_len <= 0
+        )
+
+    def _schedule_file_close(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Schedule file closing without awaiting to prevent cancellation issues."""
+        close_future = loop.run_in_executor(None, self._value.close)
+        # Hold a strong reference to the future to prevent it from being
+        # garbage collected before it completes.
+        _CLOSE_FUTURES.add(close_future)
+        close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
@@ -375,30 +597,59 @@ class TextIOPayload(IOBasePayload):
             **kwargs,
         )
 
-    @property
-    def size(self) -> Optional[int]:
-        try:
-            return os.fstat(self._value.fileno()).st_size - self._value.tell()
-        except OSError:
-            return None
+    def _read_and_available_len(
+        self, remaining_content_len: Optional[int]
+    ) -> Tuple[Optional[int], bytes]:
+        """
+        Read the text file-like object and return both its total size and the first chunk.
+
+        Args:
+            remaining_content_len: Optional limit on how many bytes to read in this operation.
+                If None, READ_SIZE will be used as the default chunk size.
+
+        Returns:
+            A tuple containing:
+            - The total size of the remaining unread content (None if size cannot be determined)
+            - The first chunk of bytes read from the file object, encoded using the payload's encoding
+
+        This method is optimized to perform both size calculation and initial read
+        in a single operation, which is executed in a single executor job to minimize
+        context switches and file operations when streaming content.
+
+        Note:
+            TextIOPayload handles encoding of the text content before writing it
+            to the stream. If no encoding is specified, UTF-8 is used as the default.
+
+        """
+        size = self.size
+        chunk = self._value.read(
+            min(size or READ_SIZE, remaining_content_len or READ_SIZE)
+        )
+        return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
+
+    def _read(self, remaining_content_len: Optional[int]) -> bytes:
+        """
+        Read a chunk of data from the text file-like object.
+
+        Args:
+            remaining_content_len: Optional maximum number of bytes to read.
+                If None, READ_SIZE will be used as the default chunk size.
+
+        Returns:
+            A chunk of bytes read from the file object and encoded using the payload's
+            encoding. The data is automatically converted from text to bytes.
+
+        This method is used for subsequent reads during streaming after
+        the initial _read_and_available_len call has been made. It properly
+        handles text encoding, converting the text content to bytes using
+        the specified encoding (or UTF-8 if none was provided).
+
+        """
+        chunk = self._value.read(remaining_content_len or READ_SIZE)
+        return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read()
-
-    async def write(self, writer: AbstractStreamWriter) -> None:
-        loop = asyncio.get_event_loop()
-        try:
-            chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-            while chunk:
-                data = (
-                    chunk.encode(encoding=self._encoding)
-                    if self._encoding
-                    else chunk.encode()
-                )
-                await writer.write(data)
-                chunk = await loop.run_in_executor(None, self._value.read, 2**16)
-        finally:
-            await loop.run_in_executor(None, self._value.close)
 
 
 class BytesIOPayload(IOBasePayload):
@@ -414,20 +665,55 @@ class BytesIOPayload(IOBasePayload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read().decode(encoding, errors)
 
+    async def write(self, writer: AbstractStreamWriter) -> None:
+        return await self.write_with_length(writer, None)
+
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
+    ) -> None:
+        """
+        Write BytesIO payload with a specific content length constraint.
+
+        Args:
+            writer: An AbstractStreamWriter instance that handles the actual writing
+            content_length: Maximum number of bytes to write (None for unlimited)
+
+        This implementation is specifically optimized for BytesIO objects:
+
+        1. Reads content in chunks to maintain memory efficiency
+        2. Yields control back to the event loop periodically to prevent blocking
+           when dealing with large BytesIO objects
+        3. Respects content_length constraints when specified
+        4. Properly cleans up by closing the BytesIO object when done or on error
+
+        The periodic yielding to the event loop is important for maintaining
+        responsiveness when processing large in-memory buffers.
+
+        """
+        loop_count = 0
+        remaining_bytes = content_length
+        try:
+            while chunk := self._value.read(READ_SIZE):
+                if loop_count > 0:
+                    # Avoid blocking the event loop
+                    # if they pass a large BytesIO object
+                    # and we are not in the first iteration
+                    # of the loop
+                    await asyncio.sleep(0)
+                if remaining_bytes is None:
+                    await writer.write(chunk)
+                else:
+                    await writer.write(chunk[:remaining_bytes])
+                    remaining_bytes -= len(chunk)
+                    if remaining_bytes <= 0:
+                        return
+                loop_count += 1
+        finally:
+            self._value.close()
+
 
 class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
-
-    @property
-    def size(self) -> Optional[int]:
-        try:
-            return os.fstat(self._value.fileno()).st_size - self._value.tell()
-        except (OSError, AttributeError):
-            # data.fileno() is not supported, e.g.
-            # io.BufferedReader(io.BytesIO(b'data'))
-            # For some file-like objects (e.g. tarfile), the fileno() attribute may
-            # not exist at all, and will instead raise an AttributeError.
-            return None
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read().decode(encoding, errors)
@@ -486,15 +772,63 @@ class AsyncIterablePayload(Payload):
         self._iter = value.__aiter__()
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        if self._iter:
-            try:
-                # iter is not None check prevents rare cases
-                # when the case iterable is used twice
-                while True:
-                    chunk = await self._iter.__anext__()
+        """
+        Write the entire async iterable payload to the writer stream.
+
+        Args:
+            writer: An AbstractStreamWriter instance that handles the actual writing
+
+        This method iterates through the async iterable and writes each chunk
+        to the writer without any length constraint.
+
+        Note:
+            For new implementations that need length control, use write_with_length() directly.
+            This method is maintained for backwards compatibility with existing code.
+
+        """
+        await self.write_with_length(writer, None)
+
+    async def write_with_length(
+        self, writer: AbstractStreamWriter, content_length: Optional[int]
+    ) -> None:
+        """
+        Write async iterable payload with a specific content length constraint.
+
+        Args:
+            writer: An AbstractStreamWriter instance that handles the actual writing
+            content_length: Maximum number of bytes to write (None for unlimited)
+
+        This implementation handles streaming of async iterable content with length constraints:
+
+        1. Iterates through the async iterable one chunk at a time
+        2. Respects content_length constraints when specified
+        3. Handles the case when the iterable might be used twice
+
+        Since async iterables are consumed as they're iterated, there is no way to
+        restart the iteration if it's already in progress or completed.
+
+        """
+        if self._iter is None:
+            return
+
+        remaining_bytes = content_length
+
+        try:
+            while True:
+                chunk = await self._iter.__anext__()
+                if remaining_bytes is None:
                     await writer.write(chunk)
-            except StopAsyncIteration:
-                self._iter = None
+                # If we have a content length limit
+                elif remaining_bytes > 0:
+                    await writer.write(chunk[:remaining_bytes])
+                    remaining_bytes -= len(chunk)
+                # We still want to exhaust the iterator even
+                # if we have reached the content length limit
+                # since the file handle may not get closed by
+                # the iterator if we don't do this
+        except StopAsyncIteration:
+            # Iterator is exhausted
+            self._iter = None
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         raise TypeError("Unable to decode.")
