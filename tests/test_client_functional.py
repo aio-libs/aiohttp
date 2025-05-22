@@ -2009,6 +2009,25 @@ async def test_POST_STREAM_DATA(
         assert 200 == resp.status
 
 
+async def test_json(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        assert request.content_type == "application/json"
+        data = await request.json()
+        return web.Response(body=aiohttp.JsonPayload(data))
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", json={"some": "data"}) as resp:
+        assert resp.status == 200
+        content = await resp.json()
+    assert content == {"some": "data"}
+
+    with pytest.raises(ValueError):
+        await client.post("/", data="some data", json={"some": "data"})
+
+
 async def test_json_custom(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         assert request.content_type == "application/json"
@@ -4359,22 +4378,3 @@ async def test_post_connection_cleanup_with_file(
             response.raise_for_status()
 
         assert len(client._session.connector._conns) == 1
-
-
-async def test_json(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        assert request.content_type == "application/json"
-        data = await request.json()
-        return web.Response(body=aiohttp.JsonPayload(data))
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-    client = await aiohttp_client(app)
-
-    async with client.post("/", json={"some": "data"}) as resp:
-        assert resp.status == 200
-        content = await resp.json()
-    assert content == {"some": "data"}
-
-    with pytest.raises(ValueError):
-        await client.post("/", data="some data", json={"some": "data"})
