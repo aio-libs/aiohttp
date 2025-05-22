@@ -1,9 +1,8 @@
 import array
-import asyncio
 import io
 import unittest.mock
 from io import StringIO
-from typing import AsyncIterator, Generator, Iterator, List, Optional, Union
+from typing import AsyncIterator, Iterator, List, Optional, Union
 
 import pytest
 from multidict import CIMultiDict
@@ -13,18 +12,10 @@ from aiohttp.abc import AbstractStreamWriter
 
 
 @pytest.fixture(autouse=True)
-def cleanup_pending_file_closes(
-    loop: asyncio.AbstractEventLoop,
-) -> Generator[None, None, None]:
+def cleanup(
+    cleanup_payload_pending_file_closes: None,
+) -> None:
     """Ensure all pending file close operations complete during test teardown."""
-    yield
-    if payload._CLOSE_FUTURES:
-        # Only wait for futures from the current loop
-        loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
-        if loop_futures:
-            loop.run_until_complete(
-                asyncio.gather(*loop_futures, return_exceptions=True)
-            )
 
 
 @pytest.fixture
