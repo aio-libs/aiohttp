@@ -408,8 +408,6 @@ class DigestAuthMiddleware:
             # Check if we need to authenticate
             if not self._authenticate(response):
                 break
-            elif retry_count < 1:
-                response.release()  # Release the response to enable connection reuse on retry
 
         # At this point, response is guaranteed to be defined
         assert response is not None
