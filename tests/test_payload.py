@@ -1,6 +1,7 @@
 import array
 import asyncio
 import io
+import unittest.mock
 from io import StringIO
 from typing import AsyncIterator, Generator, Iterator, List, Optional, Union
 
@@ -273,6 +274,34 @@ async def test_bytesio_payload_write_with_length_truncated() -> None:
     await payload_bytesio.write_with_length(writer, 5)
     assert writer.get_written_bytes() == b"01234"
     assert len(writer.get_written_bytes()) == 5
+
+
+async def test_bytesio_payload_write_with_length_remaining_zero() -> None:
+    """Test BytesIOPayload with content_length smaller than first read chunk."""
+    data = b"0123456789" * 10  # 100 bytes
+    bio = io.BytesIO(data)
+    payload_bytesio = payload.BytesIOPayload(bio)
+    writer = MockStreamWriter()
+
+    # Mock the read method to return smaller chunks
+    original_read = bio.read
+    read_calls = 0
+
+    def mock_read(size: Optional[int] = None) -> bytes:
+        nonlocal read_calls
+        read_calls += 1
+        if read_calls == 1:
+            # First call: return 8 bytes (more than content_length=5)
+            return original_read(8)
+        else:
+            # Subsequent calls return remaining data normally
+            return original_read(size)
+
+    with unittest.mock.patch.object(bio, "read", mock_read):
+        await payload_bytesio.write_with_length(writer, 5)
+
+    assert len(writer.get_written_bytes()) == 5
+    assert writer.get_written_bytes() == b"01234"
 
 
 async def test_bytesio_payload_large_data_multiple_chunks() -> None:
