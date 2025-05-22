@@ -669,7 +669,7 @@ class ClientSession:
                     ) -> ClientResponse:
                         # connection timeout
                         assert self._connector is not None
-                        assert req._timeout is not none
+                        assert req._timeout is not None
                         try:
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=req._timeout
