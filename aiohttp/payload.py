@@ -810,7 +810,10 @@ class AsyncIterablePayload(Payload):
 
         try:
             while True:
-                chunk = await self._iter.__anext__()
+                if sys.version_info >= (3, 10):
+                    chunk = await anext(self._iter)
+                else:
+                    chunk = await self._iter.__anext__()
                 if remaining_bytes is None:
                     await writer.write(chunk)
                 # If we have a content length limit
