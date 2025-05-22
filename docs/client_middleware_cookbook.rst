@@ -18,7 +18,6 @@ Here's a middleware that automatically adds Basic Auth headers to all requests:
 .. code-block:: python
 
     import base64
-    from typing import Optional
     from aiohttp import ClientRequest, ClientResponse, ClientHandlerType
 
     class BasicAuthMiddleware:
@@ -121,7 +120,6 @@ A retry middleware that automatically retries failed requests with exponential b
             delay = self.initial_delay
 
             for attempt in range(self.max_retries + 1):
-                # Clone the request if this is a retry
                 if attempt > 0:
                     _LOGGER.info(
                         "Retrying request to %s (attempt %s/%s)",
@@ -279,7 +277,12 @@ A more advanced example showing JWT token refresh:
                     json={"refresh_token": self.refresh_token},
                     middlewares=()  # Disable middleware for this request
                 ) as resp:
+                    resp.raise_for_status()
                     data = await resp.json()
+
+                    if "access_token" not in data:
+                        raise ValueError("No access_token in refresh response")
+
                     self.access_token = data["access_token"]
                     # Assume token expires in 1 hour, refresh 5 min early
                     self.token_expires = datetime.now() + timedelta(minutes=55)
