@@ -813,12 +813,14 @@ class AsyncIterablePayload(Payload):
                 chunk = await self._iter.__anext__()
                 if remaining_bytes is None:
                     await writer.write(chunk)
-                    continue
                 # If we have a content length limit
-                await writer.write(chunk[:remaining_bytes])
-                remaining_bytes -= len(chunk)
-                if remaining_bytes <= 0:
-                    return
+                elif remaining_bytes > 0:
+                    await writer.write(chunk[:remaining_bytes])
+                    remaining_bytes -= len(chunk)
+                # We still want to exhaust the iterator even
+                # if we have reached the content length limit
+                # since the file handle may not get closed by
+                # the iterator if we don't do this
         except StopAsyncIteration:
             # Iterator is exhausted
             self._iter = None

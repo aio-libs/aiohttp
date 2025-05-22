@@ -2002,8 +2002,7 @@ async def test_POST_STREAM_DATA(
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    with fname.open("rb") as f:
-        data_size = len(f.read())
+    data_size = len(expected)
 
     async def gen(fname: pathlib.Path) -> AsyncIterator[bytes]:
         with fname.open("rb") as f:

@@ -695,7 +695,8 @@ class ClientRequest:
             set_exception(
                 protocol,
                 ClientConnectionError(
-                    f"Failed to send bytes into the underlying connection {conn !s}",
+                    "Failed to send bytes into the underlying connection "
+                    f"{conn !s}: {underlying_exc!r}",
                 ),
                 underlying_exc,
             )
