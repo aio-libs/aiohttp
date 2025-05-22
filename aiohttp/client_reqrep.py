@@ -370,6 +370,23 @@ class ClientRequest:
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
 
+    def _get_content_length(self) -> Optional[int]:
+        """Extract and validate Content-Length header value.
+
+        Returns parsed Content-Length value or None if not set.
+        Raises ValueError if header exists but cannot be parsed as an integer.
+        """
+        if hdrs.CONTENT_LENGTH not in self.headers:
+            return None
+
+        content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
+        try:
+            return int(content_length_hdr)
+        except ValueError:
+            raise ValueError(
+                f"Invalid Content-Length header: {content_length_hdr}"
+            ) from None
+
     @property
     def skip_auto_headers(self) -> CIMultiDict[None]:
         return self._skip_auto_headers or CIMultiDict()
@@ -659,9 +676,37 @@ class ClientRequest:
         self.proxy_headers = proxy_headers
 
     async def write_bytes(
-        self, writer: AbstractStreamWriter, conn: "Connection"
+        self,
+        writer: AbstractStreamWriter,
+        conn: "Connection",
+        content_length: Optional[int],
     ) -> None:
-        """Support coroutines that yields bytes objects."""
+        """
+        Write the request body to the connection stream.
+
+        This method handles writing different types of request bodies:
+        1. Payload objects (using their specialized write_with_length method)
+        2. Bytes/bytearray objects
+        3. Iterable body content
+
+        Args:
+            writer: The stream writer to write the body to
+            conn: The connection being used for this request
+            content_length: Optional maximum number of bytes to write from the body
+                            (None means write the entire body)
+
+        The method properly handles:
+        - Waiting for 100-Continue responses if required
+        - Content length constraints for chunked encoding
+        - Error handling for network issues, cancellation, and other exceptions
+        - Signaling EOF and timeout management
+
+        Raises:
+            ClientOSError: When there's an OS-level error writing the body
+            ClientConnectionError: When there's a general connection error
+            asyncio.CancelledError: When the operation is cancelled
+
+        """
         # 100 response
         if self._continue is not None:
             await writer.drain()
@@ -671,16 +716,30 @@ class ClientRequest:
         assert protocol is not None
         try:
             if isinstance(self.body, payload.Payload):
-                await self.body.write(writer)
+                # Specialized handling for Payload objects that know how to write themselves
+                await self.body.write_with_length(writer, content_length)
             else:
+                # Handle bytes/bytearray by converting to an iterable for consistent handling
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
 
-                for chunk in self.body:
-                    await writer.write(chunk)
+                if content_length is None:
+                    # Write the entire body without length constraint
+                    for chunk in self.body:
+                        await writer.write(chunk)
+                else:
+                    # Write with length constraint, respecting content_length limit
+                    # If the body is larger than content_length, we truncate it
+                    remaining_bytes = content_length
+                    for chunk in self.body:
+                        await writer.write(chunk[:remaining_bytes])
+                        remaining_bytes -= len(chunk)
+                        if remaining_bytes <= 0:
+                            break
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
+            # Distinguish between timeout and other OS errors for better error reporting
             exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
                 underlying_exc, asyncio.TimeoutError
             )
@@ -692,18 +751,20 @@ class ClientRequest:
 
             set_exception(protocol, reraised_exc, underlying_exc)
         except asyncio.CancelledError:
-            # Body hasn't been fully sent, so connection can't be reused.
+            # Body hasn't been fully sent, so connection can't be reused
             conn.close()
             raise
         except Exception as underlying_exc:
             set_exception(
                 protocol,
                 ClientConnectionError(
-                    f"Failed to send bytes into the underlying connection {conn !s}",
+                    "Failed to send bytes into the underlying connection "
+                    f"{conn !s}: {underlying_exc!r}",
                 ),
                 underlying_exc,
             )
         else:
+            # Successfully wrote the body, signal EOF and start response timeout
             await writer.write_eof()
             protocol.start_timeout()
 
@@ -768,7 +829,7 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
         task: Optional["asyncio.Task[None]"]
         if self.body or self._continue is not None or protocol.writing_paused:
-            coro = self.write_bytes(writer, conn)
+            coro = self.write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write
                 # bytes immediately to avoid having to schedule
