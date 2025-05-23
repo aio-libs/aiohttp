@@ -47,7 +47,6 @@ else:
 
 from asyncio import sleep
 
-
 __all__ = (
     "WebSocketResponse",
     "WebSocketReady",
