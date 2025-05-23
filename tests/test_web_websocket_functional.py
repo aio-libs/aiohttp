@@ -1386,9 +1386,9 @@ async def test_websocket_prepare_timeout_from_issue_reproducer(
 
         # Wait for client to close
         msg = await ws.receive()
-        if msg.type is WSMsgType.CLOSE:
-            await ws.close()
-            close_complete.set()
+        assert msg.type is WSMsgType.CLOSE
+        await ws.close()
+        close_complete.set()
 
         return ws
 
