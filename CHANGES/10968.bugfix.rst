@@ -1,1 +1,1 @@
-Fixed double compression issue when ``enable_compression()`` is called on a response with pre-existing Content-Encoding header -- by :user:`bdraco`.
+Fixed double compression issue when :py:meth:`~aiohttp.web.StreamResponse.enable_compression` is called on a response with pre-existing Content-Encoding header -- by :user:`bdraco`.
