@@ -1269,7 +1269,7 @@ class ClientResponse(HeadersMixin):
 
         # If Content-Length is known and exceeds limit, close connection
         try:
-            content_length = self._get_content_length()
+            content_length = _get_content_length(self.headers)
             if content_length is not None and content_length > max_size:
                 # Too large, close connection instead
                 self.close()
