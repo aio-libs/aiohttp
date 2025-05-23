@@ -339,7 +339,9 @@ class ClientWebSocketResponse:
                     self._waiting = False
                     if self._close_wait:
                         set_result(self._close_wait, None)
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except asyncio.TimeoutError:
+                raise
+            except asyncio.CancelledError:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 raise
             except EofStream:
