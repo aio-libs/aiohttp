@@ -1549,11 +1549,18 @@ Response object
       underlying connection automatically returns back to pool. If the
       payload is not fully read, the connection is closed
 
-   .. method:: discard_content()
+   .. method:: discard_content(*, max_size=1048576, timeout=1.0)
       :async:
 
       Read and discard the response body, allowing the connection to be
       released back to the pool if possible.
+
+      :param int max_size: Maximum bytes to read before closing connection (default: 1MB)
+      :param float timeout: Maximum time in seconds to wait for reading (default: 1.0s)
+
+      If either ``max_size`` or ``timeout`` is exceeded, the connection will be closed
+      instead of being reused. This prevents potential DoS attacks from servers sending
+      unbounded response bodies or reading content that never ends.
 
       This method is only needed when:
 
@@ -1592,6 +1599,7 @@ Response object
               response = await handler(request)
               if response.status >= 500:
                   # Discard response body to allow connection reuse
+                  # Note: discard_content() has built-in safety limits (1MB/1s by default)
                   await response.discard_content()
                   # Retry the request
                   response = await handler(request)

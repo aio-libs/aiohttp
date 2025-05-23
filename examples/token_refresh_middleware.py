@@ -111,6 +111,7 @@ class TokenRefreshMiddleware:
         if response.status == HTTPStatus.UNAUTHORIZED:
             _LOGGER.info("Got 401, attempting token refresh...")
             # Consume response body before retrying
+            # Note: discard_content() has built-in safety limits (1MB/1s by default)
             await response.discard_content()
             await self._refresh_access_token(request.session)
             request.headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"

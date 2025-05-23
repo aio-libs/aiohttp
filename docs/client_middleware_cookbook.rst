@@ -151,6 +151,7 @@ A retry middleware that automatically retries failed requests with exponential b
                     return response
 
                 # Consume response body before retrying
+                # Note: discard_content() has built-in safety limits (1MB/1s by default)
                 await response.discard_content()
 
                 # Wait before retrying
@@ -322,6 +323,7 @@ A more advanced example showing JWT token refresh:
             # If we get 401, try refreshing token once
             if response.status == HTTPStatus.UNAUTHORIZED:
                 # Consume response body before retrying
+                # Note: discard_content() has built-in safety limits (1MB/1s by default)
                 await response.discard_content()
                 await self._refresh_access_token(request.session)
                 request.headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
@@ -349,10 +351,16 @@ Best Practices
 5. **Use bounded loops**: Always use ``for`` loops with a maximum iteration count instead
    of unbounded ``while`` loops to prevent infinite retries.
 
-6. **Consider performance**: Each middleware adds overhead. For simple cases like adding
+6. **Safe response handling**: When using ``discard_content()`` in retry middleware:
+
+   - It has built-in safety limits (1MB max size, 1s timeout by default)
+   - For responses exceeding these limits, the connection will be closed instead of reused
+   - You can customize limits: ``await response.discard_content(max_size=5*1024*1024, timeout=5.0)``
+
+7. **Consider performance**: Each middleware adds overhead. For simple cases like adding
    static headers, consider using session or request parameters instead.
 
-7. **Test thoroughly**: Middleware can affect all requests in subtle ways. Test edge cases
+8. **Test thoroughly**: Middleware can affect all requests in subtle ways. Test edge cases
    like network errors, timeouts, and concurrent requests.
 
 See Also

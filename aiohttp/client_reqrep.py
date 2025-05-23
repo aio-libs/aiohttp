@@ -85,6 +85,11 @@ else:
         ssl = None  # type: ignore[assignment]
         SSLContext = object  # type: ignore[misc,assignment]
 
+if sys.version_info >= (3, 11):
+    import asyncio as async_timeout
+else:
+    import async_timeout
+
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
 
@@ -1238,16 +1243,56 @@ class ClientResponse(HeadersMixin):
             await self._wait_released()  # Underlying connection released
         return self._body
 
-    async def discard_content(self) -> None:
-        """Read and discard the response body to release the connection."""
+    async def discard_content(
+        self, *, max_size: int = 1024 * 1024, timeout: float = 1.0
+    ) -> None:
+        """Read and discard the response body to release the connection.
+
+        Args:
+            max_size: Maximum bytes to read before closing connection (default: 1MB)
+            timeout: Maximum time in seconds to wait for reading (default: 1.0s)
+
+        If either max_size or timeout is exceeded, the connection will be closed
+        instead of being reused.
+        """
         if self._released:
             return
 
-        # Read and discard content until EOF
-        while True:
-            chunk = await self.content.readany()
-            if not chunk:
-                break
+        bytes_read = 0
+
+        # If Content-Length is known and exceeds limit, close connection
+        if hdrs.CONTENT_LENGTH in self.headers:
+            try:
+                content_length = int(self.headers[hdrs.CONTENT_LENGTH])
+                if content_length > max_size:
+                    # Too large, close connection instead
+                    self.close()
+                    return
+            except (ValueError, TypeError):
+                pass
+
+        # Read and discard content with timeout
+        try:
+            async with async_timeout.timeout(timeout):
+                while bytes_read < max_size:
+                    chunk = await self.content.readany()
+                    if not chunk:
+                        break
+                    bytes_read += len(chunk)
+
+                # If we hit the size limit, check if there's more data
+                if bytes_read >= max_size:
+                    chunk = await self.content.readany()
+                    if chunk:
+                        # More data exists, close connection
+                        self.close()
+        except asyncio.TimeoutError:
+            # Timeout reached, close connection
+            self.close()
+        except Exception:
+            # On any error, close the connection to be safe
+            self.close()
+            raise
 
     def get_encoding(self) -> str:
         ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()

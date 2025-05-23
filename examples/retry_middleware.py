@@ -78,6 +78,8 @@ class RetryMiddleware:
                 return response
 
             # Discard response content to release connection for reuse
+            # Note: discard_content() has built-in safety limits (1MB/1s by default)
+            # For larger responses, the connection will be closed instead of reused
             await response.discard_content()
 
             # Wait before retrying
