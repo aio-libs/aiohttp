@@ -125,7 +125,7 @@ async def test_client_middleware_per_request(aiohttp_server: AiohttpServer) -> N
     # Request with session middleware
     async with ClientSession(middlewares=(session_middleware,)) as session:
         async with session.get(server.make_url("/")) as resp:
-            assert resp.status == 200
+            assert resp.status == 204
 
     assert session_middleware_called is True
     assert request_middleware_called is False
@@ -138,7 +138,7 @@ async def test_client_middleware_per_request(aiohttp_server: AiohttpServer) -> N
         async with session.get(
             server.make_url("/"), middlewares=(request_middleware,)
         ) as resp:
-            assert resp.status == 200
+            assert resp.status == 204
 
     assert session_middleware_called is False
     assert request_middleware_called is True
@@ -173,7 +173,7 @@ async def test_multiple_client_middlewares(aiohttp_server: AiohttpServer) -> Non
 
     async with ClientSession(middlewares=(middleware1, middleware2)) as session:
         async with session.get(server.make_url("/")) as resp:
-            assert resp.status == 200
+            assert resp.status == 204
 
     # Middlewares are applied in reverse order (like server middlewares)
     # So middleware1 wraps middleware2
@@ -846,7 +846,7 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
 
         # Test allowed request to existing server - this should trigger DNS lookup
         async with session.get(f"http://localhost:{server.port}") as resp:
-            assert resp.status == 200
+            assert resp.status == 204
 
         # Verify that DNS lookup was made for the allowed request
         # The server might use a hostname that requires DNS resolution
