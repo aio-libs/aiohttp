@@ -45,6 +45,9 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
+from asyncio import sleep
+
+
 __all__ = (
     "WebSocketResponse",
     "WebSocketReady",
@@ -511,6 +514,10 @@ class WebSocketResponse(StreamResponse):
         if self._req is not None and self._req.transport is not None:
             self._req.transport.close()
 
+    async def sleep(self, timeout: float):
+        await sleep(delay=timeout)
+        self._reset_heartbeat()
+
     async def receive(self, timeout: Optional[float] = None) -> WSMessage:
         if self._reader is None:
             raise RuntimeError("Call .prepare() first")
@@ -546,6 +553,7 @@ class WebSocketResponse(StreamResponse):
                     if self._close_wait:
                         set_result(self._close_wait, None)
             except asyncio.TimeoutError:
+                self._reset_heartbeat()
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK

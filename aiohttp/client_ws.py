@@ -31,6 +31,8 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
+from asyncio import sleep
+
 
 @frozen_dataclass_decorator
 class ClientWSTimeout:
@@ -309,6 +311,10 @@ class ClientWebSocketResponse:
                 self._response.close()
                 return True
 
+    async def sleep(self, timeout: float):
+        await sleep(delay=timeout)
+        self._reset_heartbeat()
+
     async def receive(self, timeout: Optional[float] = None) -> WSMessage:
         receive_timeout = timeout or self._timeout.ws_receive
 
@@ -340,6 +346,7 @@ class ClientWebSocketResponse:
                     if self._close_wait:
                         set_result(self._close_wait, None)
             except asyncio.TimeoutError:
+                self._reset_heartbeat()
                 raise
             except asyncio.CancelledError:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
