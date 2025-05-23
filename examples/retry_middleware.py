@@ -20,7 +20,7 @@ from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSess
 logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_RETRY_STATUSES = {
+DEFAULT_RETRY_STATUSES: Set[HTTPStatus] = {
     HTTPStatus.TOO_MANY_REQUESTS,
     HTTPStatus.INTERNAL_SERVER_ERROR,
     HTTPStatus.BAD_GATEWAY,
@@ -50,7 +50,7 @@ class RetryMiddleware:
         handler: ClientHandlerType,
     ) -> ClientResponse:
         """Execute request with retry logic."""
-        last_response = None
+        last_response: Union[ClientResponse, None] = None
         delay = self.initial_delay
 
         for attempt in range(self.max_retries + 1):
@@ -83,6 +83,7 @@ class RetryMiddleware:
             delay *= self.backoff_factor
 
         # Return the last response
+        assert last_response is not None  # Always set since we loop at least once
         return last_response
 
 

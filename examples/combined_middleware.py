@@ -91,7 +91,7 @@ class BasicAuthMiddleware:
         return await handler(request)
 
 
-DEFAULT_RETRY_STATUSES = {
+DEFAULT_RETRY_STATUSES: Set[HTTPStatus] = {
     HTTPStatus.TOO_MANY_REQUESTS,
     HTTPStatus.INTERNAL_SERVER_ERROR,
     HTTPStatus.BAD_GATEWAY,
@@ -121,7 +121,7 @@ class RetryMiddleware:
         handler: ClientHandlerType,
     ) -> ClientResponse:
         """Execute request with retry logic."""
-        last_response = None
+        last_response: Union[ClientResponse, None] = None
         delay = self.initial_delay
 
         for attempt in range(self.max_retries + 1):
@@ -150,6 +150,7 @@ class RetryMiddleware:
             await asyncio.sleep(delay)
             delay *= self.backoff_factor
 
+        assert last_response is not None  # Always set since we loop at least once
         return last_response
 
 
