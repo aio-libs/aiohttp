@@ -627,6 +627,31 @@ async def test_force_compression_identity_response() -> None:
     assert resp.content_length == 6
 
 
+async def test_enable_compression_with_existing_encoding() -> None:
+    """Test that enable_compression does not override existing content encoding."""
+    writer = mock.Mock()
+
+    async def write_headers(status_line: str, headers: CIMultiDict[str]) -> None:
+        # Should preserve the existing content encoding
+        assert headers[hdrs.CONTENT_ENCODING] == "gzip"
+        # Should not have double encoding
+        assert headers.get(hdrs.CONTENT_ENCODING) != "gzip, deflate"
+
+    writer.write_headers.side_effect = write_headers
+    req = make_request("GET", "/", writer=writer)
+    resp = web.Response(body=b"answer")
+
+    # Manually set content encoding (simulating FileResponse with pre-compressed file)
+    resp.headers[hdrs.CONTENT_ENCODING] = "gzip"
+
+    # Try to enable compression - should be ignored
+    resp.enable_compression(web.ContentCoding.deflate)
+
+    await resp.prepare(req)
+    # Verify compression was not enabled due to existing encoding
+    assert not resp.compression
+
+
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_rm_content_length_if_compression_http11() -> None:
     writer = mock.Mock()
