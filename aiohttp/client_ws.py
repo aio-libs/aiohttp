@@ -344,13 +344,11 @@ class ClientWebSocketResponse:
                             msg = await self._reader.read()
                     else:
                         msg = await self._reader.read()
-                    self._reset_heartbeat()
                 finally:
                     self._waiting = False
                     if self._close_wait:
                         set_result(self._close_wait, None)
             except asyncio.TimeoutError:
-                self._reset_heartbeat()
                 raise
             except asyncio.CancelledError:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
