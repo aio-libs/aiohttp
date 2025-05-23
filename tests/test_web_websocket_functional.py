@@ -1345,18 +1345,9 @@ async def test_websocket_prepare_timeout_close_issue(
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
-
-        # Test that we can check if websocket can be prepared
-        if not ws.can_prepare(request):
-            raise web.HTTPBadRequest(text="Cannot prepare WebSocket")
-
-        # Prepare the websocket normally
+        assert ws.can_prepare(request)
         await ws.prepare(request)
-
-        # Send a test message
         await ws.send_str("test")
-
-        # Close normally
         await ws.close()
         return ws
 
