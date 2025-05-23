@@ -18,7 +18,7 @@ import binascii
 import logging
 import time
 from http import HTTPStatus
-from typing import Set, Union
+from typing import TYPE_CHECKING, Set, Union
 
 from aiohttp import (
     ClientHandlerType,
@@ -151,7 +151,8 @@ class RetryMiddleware:
             await asyncio.sleep(delay)
             delay *= self.backoff_factor
 
-        assert last_response is not None  # Always set since we loop at least once
+        if TYPE_CHECKING:
+            assert last_response is not None  # Always set since we loop at least once
         return last_response
 
 

@@ -21,7 +21,7 @@ import logging
 import secrets
 import time
 from http import HTTPStatus
-from typing import Any, Coroutine, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Union
 
 from aiohttp import (
     ClientHandlerType,
@@ -80,7 +80,8 @@ class TokenRefreshMiddleware:
                 _LOGGER.info(
                     "Token refreshed successfully, expires in %s seconds", expires_in
                 )
-                assert self.access_token is not None  # Just assigned above
+                if TYPE_CHECKING:
+                    assert self.access_token is not None  # Just assigned above
                 return self.access_token
 
     async def __call__(

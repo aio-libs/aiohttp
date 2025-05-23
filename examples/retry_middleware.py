@@ -13,7 +13,7 @@ and can return different status codes on sequential requests.
 import asyncio
 import logging
 from http import HTTPStatus
-from typing import Dict, List, Set, Union
+from typing import TYPE_CHECKING, Dict, List, Set, Union
 
 from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession, web
 
@@ -83,7 +83,8 @@ class RetryMiddleware:
             delay *= self.backoff_factor
 
         # Return the last response
-        assert last_response is not None  # Always set since we loop at least once
+        if TYPE_CHECKING:
+            assert last_response is not None  # Always set since we loop at least once
         return last_response
 
 
