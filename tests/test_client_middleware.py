@@ -1221,3 +1221,31 @@ async def test_middleware_can_check_request_body(
     assert received_bodies[1] == json_str2
     assert received_bodies[2] == ""  # GET request has no body
     assert received_bodies[3] == text_data
+
+
+async def test_discard_content_on_released_response(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that discard_content() can be called on already released response."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="Test response body")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession() as session:
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            # Read the response body which releases the connection
+            body = await resp.text()
+            assert body == "Test response body"
+
+        # At this point, the response is released (context manager exited)
+        # Calling discard_content() should not raise an exception
+        await resp.discard_content()
+
+        # Call it multiple times to ensure it's idempotent
+        await resp.discard_content()
+        await resp.discard_content()
