@@ -7,6 +7,11 @@ Client Middleware Cookbook
 
 This cookbook provides practical examples of implementing client middleware for common use cases.
 
+.. note::
+
+   All examples in this cookbook are also available as complete, runnable scripts in the
+   ``examples/`` directory of the aiohttp repository. Look for files named ``*_middleware.py``.
+
 .. _cookbook-basic-auth-middleware:
 
 Basic Authentication Middleware
