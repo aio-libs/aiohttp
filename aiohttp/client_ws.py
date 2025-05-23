@@ -88,7 +88,7 @@ class ClientWebSocketResponse:
         self._ping_task: Optional[asyncio.Task[None]] = None
 
         self._reset_heartbeat()
-        
+
         if self._heartbeat is not None:
             loop.create_task(self._repeat_heartbeat())
 
