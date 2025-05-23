@@ -1076,6 +1076,11 @@ and :ref:`aiohttp-web-signals` handlers::
       of closing.
       :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
+   .. attribute:: prepared
+
+      Read-only :class:`bool` property, ``True`` if :meth:`prepare` has
+      been called, ``False`` otherwise.
+
    .. attribute:: close_code
 
       Read-only property, close code from peer. It is set to ``None`` on
