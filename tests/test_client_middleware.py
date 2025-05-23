@@ -100,7 +100,7 @@ async def test_client_middleware_per_request(aiohttp_server: AiohttpServer) -> N
     request_middleware_called = False
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(text="OK")
+        return web.Response(status=204)  # No Content - typical for auth checks
 
     async def session_middleware(
         request: ClientRequest, handler: ClientHandlerType
@@ -149,7 +149,7 @@ async def test_multiple_client_middlewares(aiohttp_server: AiohttpServer) -> Non
     calls: list[str] = []
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(text="OK")
+        return web.Response(status=204)  # No Content - typical for auth checks
 
     async def middleware1(
         request: ClientRequest, handler: ClientHandlerType
@@ -805,7 +805,7 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
 
     # Create a simple server for the allowed request
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(text="OK")
+        return web.Response(status=204)  # No Content - typical for auth checks
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -862,10 +862,13 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
 async def test_client_middleware_retry_reuses_connection(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    """Test that connections are reused when middleware performs retries."""
+    """Test that connections are reused when middleware performs retries with body responses."""
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(text="OK")
+        # Return a response with a body that needs to be read
+        return web.Response(
+            text="This is a longer response body that might not be fully buffered"
+        )
 
     class TrackingConnector(TCPConnector):
         """Connector that tracks connection attempts."""
@@ -893,6 +896,8 @@ async def test_client_middleware_retry_reuses_connection(
                 response = await handler(request)
                 if retry_count == 0:
                     retry_count += 1
+                    # Discard response content to release connection for reuse
+                    await response.discard_content()
                     continue
                 return response
 
@@ -908,7 +913,68 @@ async def test_client_middleware_retry_reuses_connection(
         async with session.get(server.make_url("/")) as resp:
             assert resp.status == 200
             text = await resp.text()
-            assert text == "OK"
+            assert "longer response body" in text
+
+    # Should have made 2 request attempts (initial + 1 retry)
+    assert middleware.attempt_count == 2
+    # Should have created only 1 connection (reused on retry)
+    assert connector.connection_attempts == 1
+
+    await connector.close()
+
+
+async def test_client_middleware_retry_reuses_connection_empty_body(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that connections are reused when middleware performs retries with empty responses."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=204)  # No Content - typical for auth checks
+
+    class TrackingConnector(TCPConnector):
+        """Connector that tracks connection attempts."""
+
+        connection_attempts = 0
+
+        async def _create_connection(
+            self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+        ) -> ResponseHandler:
+            self.connection_attempts += 1
+            return await super()._create_connection(req, traces, timeout)
+
+    class RetryOnceMiddleware:
+        """Middleware that retries exactly once."""
+
+        def __init__(self) -> None:
+            self.attempt_count = 0
+
+        async def __call__(
+            self, request: ClientRequest, handler: ClientHandlerType
+        ) -> ClientResponse:
+            retry_count = 0
+            while True:
+                self.attempt_count += 1
+                response = await handler(request)
+                if retry_count == 0:
+                    retry_count += 1
+                    # For 204 No Content, there's no body to read
+                    # Let's see if connection is reused without explicit handling
+                    continue
+                return response
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    connector = TrackingConnector()
+    middleware = RetryOnceMiddleware()
+
+    async with ClientSession(connector=connector, middlewares=(middleware,)) as session:
+        # Make initial request
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 204
+            # 204 No Content has no body
+            assert await resp.read() == b""
 
     # Should have made 2 request attempts (initial + 1 retry)
     assert middleware.attempt_count == 2

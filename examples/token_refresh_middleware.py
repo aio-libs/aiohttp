@@ -110,6 +110,8 @@ class TokenRefreshMiddleware:
         # If we get 401, try refreshing token once
         if response.status == HTTPStatus.UNAUTHORIZED:
             _LOGGER.info("Got 401, attempting token refresh...")
+            # Consume response body before retrying
+            await response.discard_content()
             await self._refresh_access_token(request.session)
             request.headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
             response = await handler(request)

@@ -1549,6 +1549,56 @@ Response object
       underlying connection automatically returns back to pool. If the
       payload is not fully read, the connection is closed
 
+   .. method:: discard_content()
+      :async:
+
+      Read and discard the response body, allowing the connection to be
+      released back to the pool if possible.
+
+      This method is only needed when:
+
+      - The response has a body that you're not going to read
+      - You want to ensure the connection has a chance to be reused
+
+      In many cases, you don't need to call this method:
+
+      - Small responses where headers and body arrive together are often
+        automatically handled
+      - Empty responses (like 204 No Content) release connections without
+        any action needed
+      - If you're reading the response body anyway, the connection will be
+        released after reading
+
+      Common use cases:
+
+      - Retry middleware that checks status codes before retrying
+      - When you only need response headers but want connection reuse
+      - To be 100% certain the connection gets a chance to be reused (though
+        reuse is never guaranteed due to other factors like connection limits,
+        timeouts, or server behavior)
+
+      If unsure, it's safe to call this method if you don't need the response
+      body anymore. The method does nothing if the response is already released.
+
+      Example usage in retry client middleware::
+
+          from aiohttp import ClientRequest, ClientResponse
+          from aiohttp.typedefs import ClientHandlerType
+
+          async def retry_client_middleware(
+              request: ClientRequest,
+              handler: ClientHandlerType
+          ) -> ClientResponse:
+              response = await handler(request)
+              if response.status >= 500:
+                  # Discard response body to allow connection reuse
+                  await response.discard_content()
+                  # Retry the request
+                  response = await handler(request)
+              return response
+
+      .. versionadded:: 3.12
+
    .. method:: raise_for_status()
 
       Raise an :exc:`aiohttp.ClientResponseError` if the response

@@ -146,6 +146,9 @@ class RetryMiddleware:
                 _LOGGER.warning("Max retries exceeded")
                 return response
 
+            # Discard response content to release connection for reuse
+            await response.discard_content()
+
             # Wait before retrying
             _LOGGER.debug("Waiting %ss before retry...", delay)
             await asyncio.sleep(delay)

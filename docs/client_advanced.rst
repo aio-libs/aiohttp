@@ -191,6 +191,23 @@ This flat structure means that middleware is applied on each retry attempt insid
 Common Middleware Patterns
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. note::
+
+   **Connection Reuse in Retry Middleware**
+
+   When implementing retry middleware, it's important to understand connection reuse:
+
+   - If you check a response status and decide to retry without reading the body,
+     call ``await response.discard_content()`` to allow connection reuse
+   - This is only needed if the response has a body that you're not going to read
+   - Empty responses (like 204 No Content) automatically release connections
+   - Small responses where headers and body arrive together often release automatically
+   - If unsure, it's safe to call ``discard_content()`` - it does nothing if already released
+
+   Without calling ``discard_content()``, the connection won't be released back to the
+   pool until the response is closed, potentially creating unnecessary new connections
+   on retries.
+
 .. _client-middleware-retry:
 
 Authentication and Retry
@@ -231,6 +248,9 @@ There are two recommended approaches for implementing retry logic:
                if response.status != 401:
                    return response
 
+               # Consume response body before retrying
+               await response.discard_content()
+
            # Return the last response if all retries are exhausted
            return response
 
@@ -264,6 +284,8 @@ There are two recommended approaches for implementing retry logic:
 
                    # Retry logic for different status codes
                    if response.status in (401, 429, 500, 502, 503, 504):
+                       # Consume response body before retrying
+                       await response.discard_content()
                        retry_count += 1
                        _LOGGER.debug(f"Retrying request (attempt {retry_count}/{self.max_retries})")
                        continue

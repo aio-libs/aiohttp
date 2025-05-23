@@ -1238,6 +1238,17 @@ class ClientResponse(HeadersMixin):
             await self._wait_released()  # Underlying connection released
         return self._body
 
+    async def discard_content(self) -> None:
+        """Read and discard the response body to release the connection."""
+        if self._released:
+            return
+
+        # Read and discard content until EOF
+        while True:
+            chunk = await self.content.readany()
+            if not chunk:
+                break
+
     def get_encoding(self) -> str:
         ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
         mimetype = helpers.parse_mimetype(ctype)

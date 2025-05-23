@@ -150,6 +150,9 @@ A retry middleware that automatically retries failed requests with exponential b
                     )
                     return response
 
+                # Consume response body before retrying
+                await response.discard_content()
+
                 # Wait before retrying
                 _LOGGER.debug("Waiting %ss before retry...", delay)
                 await asyncio.sleep(delay)
@@ -318,6 +321,8 @@ A more advanced example showing JWT token refresh:
 
             # If we get 401, try refreshing token once
             if response.status == HTTPStatus.UNAUTHORIZED:
+                # Consume response body before retrying
+                await response.discard_content()
                 await self._refresh_access_token(request.session)
                 request.headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
                 response = await handler(request)

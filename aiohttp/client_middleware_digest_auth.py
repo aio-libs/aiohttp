@@ -409,6 +409,9 @@ class DigestAuthMiddleware:
             if not self._authenticate(response):
                 break
 
+            # Discard response content to release connection for reuse
+            await response.discard_content()
+
         # At this point, response is guaranteed to be defined
         assert response is not None
         return response
