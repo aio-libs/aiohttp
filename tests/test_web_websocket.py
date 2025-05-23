@@ -639,4 +639,4 @@ async def test_get_extra_info(
     await ws.prepare(req)
     ws._writer = ws_transport
 
-    assert ws.get_extra_info(valid_key, default_value) == expected_result
+    assert expected_result == ws.get_extra_info(valid_key, default_value)
