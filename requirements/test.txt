@@ -71,6 +71,8 @@ packaging==25.0
     # via
     #   gunicorn
     #   pytest
+pkgconfig==1.5.5
+    # via -r requirements/test.in
 pluggy==1.6.0
     # via pytest
 propcache==0.3.1
@@ -83,7 +85,7 @@ pycares==4.8.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.11.4
+pydantic==2.11.5
     # via python-on-whales
 pydantic-core==2.33.2
     # via pydantic

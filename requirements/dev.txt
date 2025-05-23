@@ -133,6 +133,8 @@ packaging==25.0
     #   sphinx
 pip-tools==7.4.1
     # via -r requirements/dev.in
+pkgconfig==1.5.5
+    # via -r requirements/test.in
 platformdirs==4.3.8
     # via virtualenv
 pluggy==1.6.0
@@ -149,7 +151,7 @@ pycares==4.8.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.11.4
+pydantic==2.11.5
     # via python-on-whales
 pydantic-core==2.33.2
     # via pydantic
