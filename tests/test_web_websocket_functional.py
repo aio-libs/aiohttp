@@ -1428,12 +1428,16 @@ async def test_websocket_prepared_property(
         ws = web.WebSocketResponse()
 
         # Initially not prepared
-        assert not ws.prepared
+        initial_state = ws.prepared
+        assert not initial_state
 
         # After prepare() is called, should be prepared
         await ws.prepare(request)
-        assert ws.prepared
         prepare_called.set()
+
+        # Check prepared state
+        prepared_state = ws.prepared
+        assert prepared_state
 
         # Send a message to verify the connection works
         await ws.send_str("test")
