@@ -184,23 +184,23 @@ class TestServer:
             )
 
         # Validate credentials
-        if username == "user" and password == "pass":
-            # Fail with 500 on first attempt to test retry + auth combination
-            self.protected_counter += 1
-            if self.protected_counter == 1:
-                return web.Response(
-                    status=500, text="Internal server error (first attempt)"
-                )
+        if username != "user" or password != "pass":
+            return web.Response(status=401, text="Invalid credentials")
 
-            return web.json_response(
-                {
-                    "message": "Access granted",
-                    "user": username,
-                    "resource": "protected data",
-                }
+        # Fail with 500 on first attempt to test retry + auth combination
+        self.protected_counter += 1
+        if self.protected_counter == 1:
+            return web.Response(
+                status=500, text="Internal server error (first attempt)"
             )
 
-        return web.Response(status=401, text="Invalid credentials")
+        return web.json_response(
+            {
+                "message": "Access granted",
+                "user": username,
+                "resource": "protected data",
+            }
+        )
 
     async def handle_flaky(self, request: web.Request) -> web.Response:
         """Endpoint that fails a few times before succeeding."""

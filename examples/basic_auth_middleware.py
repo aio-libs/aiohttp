@@ -87,31 +87,31 @@ class TestServer:
             )
 
         # Validate credentials
-        if username == expected_user and password == expected_pass:
-            return web.json_response({"authenticated": True, "user": username})
+        if username != expected_user or password != expected_pass:
+            return web.Response(
+                status=401,
+                text="Invalid username or password",
+                headers={hdrs.WWW_AUTHENTICATE: 'Basic realm="test"'},
+            )
 
-        return web.Response(
-            status=401,
-            text="Invalid username or password",
-            headers={hdrs.WWW_AUTHENTICATE: 'Basic realm="test"'},
-        )
+        return web.json_response({"authenticated": True, "user": username})
 
     async def handle_protected_resource(self, request: web.Request) -> web.Response:
         """A protected resource that requires any valid auth."""
         auth_header = request.headers.get(hdrs.AUTHORIZATION, "")
 
-        if auth_header.startswith("Basic "):
-            return web.json_response(
-                {
-                    "message": "Access granted to protected resource",
-                    "auth_provided": True,
-                }
+        if not auth_header.startswith("Basic "):
+            return web.Response(
+                status=401,
+                text="Authentication required",
+                headers={hdrs.WWW_AUTHENTICATE: 'Basic realm="protected"'},
             )
 
-        return web.Response(
-            status=401,
-            text="Authentication required",
-            headers={hdrs.WWW_AUTHENTICATE: 'Basic realm="protected"'},
+        return web.json_response(
+            {
+                "message": "Access granted to protected resource",
+                "auth_provided": True,
+            }
         )
 
 
