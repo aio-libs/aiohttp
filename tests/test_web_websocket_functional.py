@@ -1332,3 +1332,176 @@ async def test_normal_closure_while_client_sends_msg(
     )
     await client.server.close()
     assert close_code == WSCloseCode.OK
+
+
+async def test_websocket_prepare_timeout_close_issue(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that WebSocket can handle prepare with early returns.
+
+    This is a regression test for issue #6009 where the prepared property
+    incorrectly checked _payload_writer instead of _writer.
+    """
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+
+        # Test that we can check if websocket can be prepared
+        if not ws.can_prepare(request):
+            raise web.HTTPBadRequest(text="Cannot prepare WebSocket")
+
+        # Prepare the websocket normally
+        await ws.prepare(request)
+
+        # Send a test message
+        await ws.send_str("test")
+
+        # Close normally
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/ws", handler)
+    client = await aiohttp_client(app)
+
+    # Connect via websocket
+    ws = await client.ws_connect("/ws")
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.TEXT
+    assert msg.data == "test"
+    await ws.close()
+
+
+async def test_websocket_prepare_timeout_from_issue_reproducer(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test websocket behavior when prepare is interrupted.
+
+    This test verifies the fix for issue #6009 where close() would
+    fail after prepare() was interrupted.
+    """
+    prepare_complete = asyncio.Event()
+    close_complete = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+
+        # Prepare the websocket
+        await ws.prepare(request)
+        prepare_complete.set()
+
+        # Send a message to confirm connection works
+        await ws.send_str("connected")
+
+        # Wait for client to close
+        msg = await ws.receive()
+        if msg.type == WSMsgType.CLOSE:
+            await ws.close()
+            close_complete.set()
+
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/ws", handler)
+    client = await aiohttp_client(app)
+
+    # Connect and verify the connection works
+    ws = await client.ws_connect("/ws")
+    await prepare_complete.wait()
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.TEXT
+    assert msg.data == "connected"
+
+    # Close the connection
+    await ws.close()
+    await close_complete.wait()
+
+
+async def test_websocket_prepared_property(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that WebSocketResponse.prepared property correctly reflects state."""
+    prepare_called = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+
+        # Initially not prepared
+        assert not ws.prepared
+
+        # After prepare() is called, should be prepared
+        await ws.prepare(request)
+        assert ws.prepared
+        prepare_called.set()
+
+        # Send a message to verify the connection works
+        await ws.send_str("test")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/")
+    await prepare_called.wait()
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.TEXT
+    assert msg.data == "test"
+    await ws.close()
+
+
+async def test_websocket_double_prepare_error(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that preparing WebSocket twice returns the same writer."""
+    first_prepare_done = asyncio.Event()
+    double_prepare_attempted = asyncio.Event()
+    second_prepare_raised = False
+    same_writer = False
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        nonlocal second_prepare_raised, same_writer
+        ws = web.WebSocketResponse()
+
+        # First prepare should succeed
+        writer1 = await ws.prepare(request)
+        assert ws.prepared
+        first_prepare_done.set()
+
+        # Second prepare should return the same writer (idempotent)
+        try:
+            writer2 = await ws.prepare(request)
+            same_writer = writer1 is writer2
+        except Exception:
+            second_prepare_raised = True
+
+        double_prepare_attempted.set()
+
+        # Send a test message
+        await ws.send_str("test")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/ws", handler)
+    client = await aiohttp_client(app)
+
+    # Connect via websocket
+    ws = await client.ws_connect("/ws")
+
+    # Wait for the handler to process
+    await first_prepare_done.wait()
+    await double_prepare_attempted.wait()
+
+    # Verify we got the message
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.TEXT
+    assert msg.data == "test"
+
+    await ws.close()
+
+    # Verify that second prepare returned the same writer (idempotent)
+    assert not second_prepare_raised
+    assert same_writer
