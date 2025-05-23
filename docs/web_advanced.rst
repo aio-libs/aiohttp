@@ -720,24 +720,7 @@ In contrast, when accessing the stream directly (not recommended in middleware):
         # body = await request.text()  # This would read from internal cache if available
         return web.Response(text=f"Received: {data}")
 
-If you need to share parsed request data between middleware and handlers,
-consider storing it in the request object::
-
-    async def parsing_middleware(
-        request: web.Request,
-        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
-    ) -> web.StreamResponse:
-        if request.headers.get('Content-Type') == 'application/json':
-            # Parse once and store in request
-            request['json_data'] = await request.json()
-        return await handler(request)
-
-    async def handler(request: web.Request) -> web.Response:
-        # Use pre-parsed data from middleware
-        data = request.get('json_data', {})
-        return web.json_response({'received': data})
-
-For raw stream data::
+When working with raw stream data that needs to be shared between middleware and handlers::
 
     async def stream_parsing_middleware(
         request: web.Request,
