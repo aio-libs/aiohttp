@@ -1462,11 +1462,10 @@ async def test_websocket_double_prepare_error(
     """Test that preparing WebSocket twice returns the same writer."""
     first_prepare_done = asyncio.Event()
     double_prepare_attempted = asyncio.Event()
-    second_prepare_raised = False
     same_writer = False
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
-        nonlocal second_prepare_raised, same_writer
+        nonlocal same_writer
         ws = web.WebSocketResponse()
 
         # First prepare should succeed
@@ -1475,12 +1474,8 @@ async def test_websocket_double_prepare_error(
         first_prepare_done.set()
 
         # Second prepare should return the same writer (idempotent)
-        try:
-            writer2 = await ws.prepare(request)
-            same_writer = writer1 is writer2
-        except Exception:
-            second_prepare_raised = True
-
+        writer2 = await ws.prepare(request)
+        same_writer = writer1 is writer2
         double_prepare_attempted.set()
 
         # Send a test message
@@ -1507,5 +1502,4 @@ async def test_websocket_double_prepare_error(
     await ws.close()
 
     # Verify that second prepare returned the same writer (idempotent)
-    assert not second_prepare_raised
     assert same_writer
