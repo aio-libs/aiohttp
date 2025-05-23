@@ -12,6 +12,7 @@ This example includes a test server that validates basic auth credentials.
 
 import asyncio
 import base64
+import binascii
 import logging
 
 from aiohttp import (
@@ -79,7 +80,7 @@ class TestServer:
         try:
             decoded = base64.b64decode(encoded_creds).decode()
             username, password = decoded.split(":", 1)
-        except (ValueError, base64.binascii.Error):
+        except (ValueError, binascii.Error):
             return web.Response(
                 status=401,
                 text="Invalid credentials format",
