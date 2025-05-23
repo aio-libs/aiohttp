@@ -958,7 +958,6 @@ async def test_client_middleware_retry_reuses_connection_empty_body(
                 if retry_count == 0:
                     retry_count += 1
                     # For 204 No Content, there's no body to read
-                    # Let's see if connection is reused without explicit handling
                     continue
                 return response
 
