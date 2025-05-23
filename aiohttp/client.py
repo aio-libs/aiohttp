@@ -296,7 +296,7 @@ class ClientSession:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
-        middlewares: Optional[Sequence[ClientMiddlewareType]] = None,
+        middlewares: Sequence[ClientMiddlewareType] = (),
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.

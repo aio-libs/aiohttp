@@ -53,7 +53,7 @@ The client session supports the context manager protocol for self closing.
                          trust_env=False, \
                          requote_redirect_url=True, \
                          trace_configs=None, \
-                         middlewares=None, \
+                         middlewares=(), \
                          read_bufsize=2**16, \
                          max_line_size=8190, \
                          max_field_size=8190, \
@@ -216,7 +216,7 @@ The client session supports the context manager protocol for self closing.
 
    :param middlewares: A sequence of middleware instances to apply to all session requests.
                       Each middleware must match the :type:`ClientMiddlewareType` signature.
-                      ``None`` (default) is used when no middleware is needed.
+                      ``()`` (empty tuple, default) is used when no middleware is needed.
                       See :ref:`aiohttp-client-middleware` for more information.
 
       .. versionadded:: 3.12
