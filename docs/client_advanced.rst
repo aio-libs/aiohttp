@@ -721,6 +721,19 @@ make all sockets respect 9*7200 = 18 hours::
       return sock
   conn = aiohttp.TCPConnector(socket_factory=socket_factory)
 
+``socket_factory`` may also be used for binding to the specific network
+interface on supported platforms::
+
+  def socket_factory(addr_info):
+      family, type_, proto, _, _ = addr_info
+      sock = socket.socket(family=family, type=type_, proto=proto)
+      sock.setsockopt(
+          socket.SOL_SOCKET, socket.SO_BINDTODEVICE, b'eth0'
+      )
+      return sock
+
+  conn = aiohttp.TCPConnector(socket_factory=socket_factory)
+
 
 Named pipes in Windows
 ^^^^^^^^^^^^^^^^^^^^^^
