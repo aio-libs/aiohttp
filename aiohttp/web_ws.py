@@ -215,6 +215,10 @@ class WebSocketResponse(StreamResponse):
         if self._payload_writer is not None:
             return self._payload_writer
 
+        # Check if already prepared using WebSocket-specific state
+        if self._writer is not None:
+            raise RuntimeError("WebSocket connection already prepared")
+
         protocol, writer = self._pre_start(request)
         payload_writer = await super().prepare(request)
         assert payload_writer is not None
@@ -357,6 +361,10 @@ class WebSocketResponse(StreamResponse):
             return WebSocketReady(False, None)
         else:
             return WebSocketReady(True, protocol)
+
+    @property
+    def prepared(self) -> bool:
+        return self._writer is not None
 
     @property
     def closed(self) -> bool:
