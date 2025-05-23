@@ -3409,6 +3409,7 @@ async def test_aiohttp_request_ctx_manager_close_sess_on_error(
 
     assert cm._session.closed
     # Allow event loop to process transport cleanup
+    # on Python < 3.11
     await asyncio.sleep(0)
 
 
