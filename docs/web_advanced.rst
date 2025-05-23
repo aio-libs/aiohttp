@@ -667,17 +667,18 @@ Request Body Stream Consumption
 
    When middleware reads the request body (using :meth:`~aiohttp.web.BaseRequest.read`,
    :meth:`~aiohttp.web.BaseRequest.text`, :meth:`~aiohttp.web.BaseRequest.json`, or
-   :meth:`~aiohttp.web.BaseRequest.post`), the body stream is consumed and cannot be
-   read again by subsequent middleware or the handler.
+   :meth:`~aiohttp.web.BaseRequest.post`), the body stream is consumed. However, these
+   high-level methods cache their result, so subsequent calls from the handler or other
+   middleware will return the same cached value.
 
-   This is because the HTTP request body is a stream that can only be read once.
-   Once consumed, these methods cache their result and return the same value on
-   subsequent calls, but the underlying stream position cannot be reset.
+   The important distinction is:
 
-   The same applies when accessing :attr:`~aiohttp.web.BaseRequest.content` directly.
-   ``request.content`` is a :class:`~aiohttp.StreamReader` instance. Once you read from
-   it (e.g., using ``await request.content.read()``), the stream is consumed and subsequent
-   reads will return empty bytes.
+   - High-level methods (:meth:`~aiohttp.web.BaseRequest.read`, :meth:`~aiohttp.web.BaseRequest.text`,
+     :meth:`~aiohttp.web.BaseRequest.json`, :meth:`~aiohttp.web.BaseRequest.post`) cache their
+     results internally, so they can be called multiple times and will return the same value.
+   - Direct stream access via :attr:`~aiohttp.web.BaseRequest.content` does NOT have this
+     caching behavior. Once you read from ``request.content`` directly (e.g., using
+     ``await request.content.read()``), subsequent reads will return empty bytes.
 
 Consider this middleware that logs request bodies::
 
@@ -694,17 +695,18 @@ Consider this middleware that logs request bodies::
         return await handler(request)
 
     async def handler(request: web.Request) -> web.Response:
-        # This will return the cached value from middleware
+        # This will return the same value that was read in the middleware
+        # (i.e., the cached result, not an empty string)
         body = await request.text()
         return web.Response(text=f"Received: {body}")
 
-Similarly, when accessing the stream directly::
+In contrast, when accessing the stream directly (not recommended in middleware)::
 
     async def stream_middleware(
         request: web.Request,
         handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
     ) -> web.StreamResponse:
-        # Reading directly from the stream
+        # Reading directly from the stream - this consumes it!
         data = await request.content.read()
         print(f"Stream data: {data}")
         return await handler(request)
@@ -713,6 +715,9 @@ Similarly, when accessing the stream directly::
         # This will return empty bytes because the stream was already consumed
         data = await request.content.read()
         # data will be b'' (empty bytes)
+
+        # However, high-level methods would still work if called for the first time:
+        # body = await request.text()  # This would read from internal cache if available
         return web.Response(text=f"Received: {data}")
 
 If you need to share parsed request data between middleware and handlers,
