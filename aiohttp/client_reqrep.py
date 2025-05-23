@@ -310,7 +310,8 @@ class ClientRequest:
         self.__writer = None
 
     def _get_content_length(self) -> Optional[int]:
-        """Extract and validate Content-Length header value.
+        """
+        Extract and validate Content-Length header value.
 
         Returns parsed Content-Length value or None if not set.
         Raises ValueError if header exists but cannot be parsed as an integer.
