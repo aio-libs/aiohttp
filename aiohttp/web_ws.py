@@ -45,6 +45,9 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
+from asyncio import sleep
+
+
 __all__ = (
     "WebSocketResponse",
     "WebSocketReady",
@@ -329,6 +332,11 @@ class WebSocketResponse(StreamResponse):
 
         return protocol, writer
 
+    async def _repeat_heartbeat(self):
+        while not self.closed:
+            await sleep(self._heartbeat)
+            self._reset_heartbeat()
+
     def _post_start(
         self, request: BaseRequest, protocol: Optional[str], writer: WebSocketWriter
     ) -> None:
@@ -345,6 +353,8 @@ class WebSocketResponse(StreamResponse):
                 self._reader, self._max_msg_size, compress=bool(self._compress)
             )
         )
+        if self._heartbeat is not None:
+            loop.create_task(self._repeat_heartbeat())
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
 
@@ -546,6 +556,7 @@ class WebSocketResponse(StreamResponse):
                     if self._close_wait:
                         set_result(self._close_wait, None)
             except asyncio.TimeoutError:
+                self._reset_heartbeat()
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK

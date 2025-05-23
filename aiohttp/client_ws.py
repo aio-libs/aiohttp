@@ -31,6 +31,8 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
+from asyncio import sleep
+
 
 @frozen_dataclass_decorator
 class ClientWSTimeout:
@@ -86,6 +88,14 @@ class ClientWebSocketResponse:
         self._ping_task: Optional[asyncio.Task[None]] = None
 
         self._reset_heartbeat()
+        
+        if self._heartbeat is not None:
+            loop.create_task(self._repeat_heartbeat())
+
+    async def _repeat_heartbeat(self):
+        while not self.closed:
+            await sleep(self._heartbeat)
+            self._reset_heartbeat()
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
@@ -340,6 +350,7 @@ class ClientWebSocketResponse:
                     if self._close_wait:
                         set_result(self._close_wait, None)
             except asyncio.TimeoutError:
+                self._reset_heartbeat()
                 raise
             except asyncio.CancelledError:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
