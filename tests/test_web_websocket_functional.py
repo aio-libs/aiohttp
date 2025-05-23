@@ -1367,7 +1367,7 @@ async def test_websocket_prepare_timeout_close_issue(
     # Connect via websocket
     ws = await client.ws_connect("/ws")
     msg = await ws.receive()
-    assert msg.type == WSMsgType.TEXT
+    assert msg.type is WSMsgType.TEXT
     assert msg.data == "test"
     await ws.close()
 
@@ -1395,7 +1395,7 @@ async def test_websocket_prepare_timeout_from_issue_reproducer(
 
         # Wait for client to close
         msg = await ws.receive()
-        if msg.type == WSMsgType.CLOSE:
+        if msg.type is WSMsgType.CLOSE:
             await ws.close()
             close_complete.set()
 
@@ -1410,7 +1410,7 @@ async def test_websocket_prepare_timeout_from_issue_reproducer(
     await prepare_complete.wait()
 
     msg = await ws.receive()
-    assert msg.type == WSMsgType.TEXT
+    assert msg.type is WSMsgType.TEXT
     assert msg.data == "connected"
 
     # Close the connection
@@ -1451,7 +1451,7 @@ async def test_websocket_prepared_property(
     ws = await client.ws_connect("/")
     await prepare_called.wait()
     msg = await ws.receive()
-    assert msg.type == WSMsgType.TEXT
+    assert msg.type is WSMsgType.TEXT
     assert msg.data == "test"
     await ws.close()
 
@@ -1496,7 +1496,7 @@ async def test_websocket_double_prepare_error(
 
     # Verify we got the message
     msg = await ws.receive()
-    assert msg.type == WSMsgType.TEXT
+    assert msg.type is WSMsgType.TEXT
     assert msg.data == "test"
 
     await ws.close()
