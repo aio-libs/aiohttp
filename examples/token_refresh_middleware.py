@@ -21,7 +21,7 @@ import logging
 import secrets
 import time
 from http import HTTPStatus
-from typing import Dict, List, Union
+from typing import Any, Coroutine, Dict, List, Union
 
 from aiohttp import (
     ClientHandlerType,
@@ -50,7 +50,11 @@ class TokenRefreshMiddleware:
         """Refresh the access token using the refresh token."""
         async with self._refresh_lock:
             # Check if another coroutine already refreshed the token
-            if self.token_expires_at and time.time() < self.token_expires_at:
+            if (
+                self.token_expires_at
+                and time.time() < self.token_expires_at
+                and self.access_token
+            ):
                 _LOGGER.debug("Token already refreshed by another request")
                 return self.access_token
 
@@ -160,7 +164,9 @@ class TestServer:
         # Clean up expired tokens periodically
         current_time = time.time()
         self.tokens_db = {
-            k: v for k, v in self.tokens_db.items() if v["expires_at"] > current_time
+            k: v
+            for k, v in self.tokens_db.items()
+            if isinstance(v["expires_at"], float) and v["expires_at"] > current_time
         }
 
         return web.json_response(
@@ -194,7 +200,10 @@ class TestServer:
         # Check if token exists and is not expired
         if token_hash in self.tokens_db:
             token_data = self.tokens_db[token_hash]
-            if token_data["expires_at"] > time.time():
+            if (
+                isinstance(token_data["expires_at"], float)
+                and token_data["expires_at"] > time.time()
+            ):
                 return token_data
 
         return None
@@ -274,12 +283,12 @@ async def run_tests() -> None:
 
         print("\n=== Test 3: Multiple concurrent requests ===")
         print("(Should only refresh token once)")
-        tasks: List[asyncio.Task[ClientResponse]] = []
+        coros: List[Coroutine[Any, Any, ClientResponse]] = []
         for i in range(3):
-            task = session.get("http://localhost:8080/api/protected")
-            tasks.append(task)
+            coro = session.get("http://localhost:8080/api/protected")
+            coros.append(coro)
 
-        responses = await asyncio.gather(*tasks)
+        responses = await asyncio.gather(*coros)
         for i, resp in enumerate(responses):
             async with resp:
                 if resp.status == 200:

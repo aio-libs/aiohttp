@@ -13,7 +13,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import List
+from typing import Any, Coroutine, List
 
 from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession, web
 
@@ -141,12 +141,12 @@ async def run_tests() -> None:
 
         # Test 6: Multiple concurrent requests
         print("\n=== Test 6: Multiple concurrent requests ===")
-        tasks: List[asyncio.Task[ClientResponse]] = []
+        coros: List[Coroutine[Any, Any, ClientResponse]] = []
         for i in range(3):
-            task = session.get(f"http://localhost:8080/hello/User{i}")
-            tasks.append(task)
+            coro = session.get(f"http://localhost:8080/hello/User{i}")
+            coros.append(coro)
 
-        responses = await asyncio.gather(*tasks)
+        responses = await asyncio.gather(*coros)
         for i, resp in enumerate(responses):
             async with resp:
                 data = await resp.json()
