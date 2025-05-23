@@ -16,11 +16,11 @@
 Bug fixes
 ---------
 
-- Fixed ``WebSocketResponse.prepared`` property to correctly reflect the prepared state, especially during timeout scenarios -- by :user:`bdraco`
+- Fixed :py:attr:`~aiohttp.web.WebSocketResponse.prepared` property to correctly reflect the prepared state, especially during timeout scenarios -- by :user:`bdraco`
 
 
   *Related issues and pull requests on GitHub:*
-  :issue:`6009`.
+  :issue:`6009`, :issue:`10988`.
 
 
 
