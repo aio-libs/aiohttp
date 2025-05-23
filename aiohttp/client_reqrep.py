@@ -180,6 +180,24 @@ else:  # pragma: no cover
 _SSL_SCHEMES = frozenset(("https", "wss"))
 
 
+def _get_content_length(headers: "CIMultiDictProxy[str]") -> Optional[int]:
+    """Extract and validate Content-Length header value.
+
+    Returns parsed Content-Length value or None if not set.
+    Raises ValueError if header exists but cannot be parsed as an integer.
+    """
+    if hdrs.CONTENT_LENGTH not in headers:
+        return None
+
+    content_length_hdr = headers[hdrs.CONTENT_LENGTH]
+    try:
+        return int(content_length_hdr)
+    except ValueError:
+        raise ValueError(
+            f"Invalid Content-Length header: {content_length_hdr}"
+        ) from None
+
+
 # ConnectionKey is a NamedTuple because it is used as a key in a dict
 # and a set in the connector. Since a NamedTuple is a tuple it uses
 # the fast native tuple __hash__ and __eq__ implementation in CPython.
@@ -308,24 +326,6 @@ class ClientRequest:
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
-
-    def _get_content_length(self) -> Optional[int]:
-        """
-        Extract and validate Content-Length header value.
-
-        Returns parsed Content-Length value or None if not set.
-        Raises ValueError if header exists but cannot be parsed as an integer.
-        """
-        if hdrs.CONTENT_LENGTH not in self.headers:
-            return None
-
-        content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
-        try:
-            return int(content_length_hdr)
-        except ValueError:
-            raise ValueError(
-                f"Invalid Content-Length header: {content_length_hdr}"
-            ) from None
 
     @property
     def skip_auto_headers(self) -> CIMultiDict[None]:
@@ -772,7 +772,7 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
         task: Optional["asyncio.Task[None]"]
         if self.body or self._continue is not None or protocol.writing_paused:
-            coro = self.write_bytes(writer, conn, self._get_content_length())
+            coro = self.write_bytes(writer, conn, _get_content_length(self.headers))
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write
                 # bytes immediately to avoid having to schedule
@@ -1261,18 +1261,22 @@ class ClientResponse(HeadersMixin):
         if self._released:
             return
 
+        # Check if this is an empty body response
+        if helpers.must_be_empty_body(self.method, self.status):
+            return
+
         bytes_read = 0
 
         # If Content-Length is known and exceeds limit, close connection
-        if hdrs.CONTENT_LENGTH in self.headers:
-            try:
-                content_length = int(self.headers[hdrs.CONTENT_LENGTH])
-                if content_length > max_size:
-                    # Too large, close connection instead
-                    self.close()
-                    return
-            except (ValueError, TypeError):
-                pass
+        try:
+            content_length = self._get_content_length()
+            if content_length is not None and content_length > max_size:
+                # Too large, close connection instead
+                self.close()
+                return
+        except ValueError:
+            # Invalid Content-Length header, proceed with reading
+            pass
 
         # Read and discard content with timeout
         try:
