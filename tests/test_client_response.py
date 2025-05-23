@@ -1377,3 +1377,210 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
     assert not response.ok
     assert not response.closed
     assert spy.call_count == 0
+
+
+async def test_discard_content_empty_body(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test that discard_content does nothing for empty body responses."""
+    response = ClientResponse(
+        "head",  # HEAD method should have empty body
+        URL("http://test.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    response.status = 200
+    response._headers = CIMultiDictProxy(CIMultiDict())
+
+    # Mock content to verify it's not read
+    response.content = mock.Mock()
+
+    await response.discard_content()
+
+    # Content should not be read for empty body responses
+    response.content.readany.assert_not_called()
+
+
+async def test_discard_content_already_released(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test that discard_content returns immediately if already released."""
+    response = ClientResponse(
+        "get",
+        URL("http://test.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    response._released = True
+    response.content = mock.Mock()
+
+    await response.discard_content()
+
+    # Content should not be read for released responses
+    response.content.readany.assert_not_called()
+
+
+async def test_discard_content_with_large_content_length(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test that discard_content closes connection for large Content-Length."""
+    response = ClientResponse(
+        "get",
+        URL("http://test.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    response.status = 200
+    # Set Content-Length larger than default max_size (1MB)
+    response._headers = CIMultiDictProxy(
+        CIMultiDict({"Content-Length": "2097152"})
+    )  # 2MB
+    response._closed = False
+    response._connection = mock.Mock()
+
+    await response.discard_content()
+
+    # Connection should be closed
+    response._connection.close.assert_called_once()
+
+
+async def test_discard_content_with_custom_max_size(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test discard_content with custom max_size parameter."""
+    response = ClientResponse(
+        "get",
+        URL("http://test.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    response.status = 200
+    response._headers = CIMultiDictProxy(CIMultiDict({"Content-Length": "100"}))
+    response._closed = False
+
+    # Mock content reader
+    response.content = mock.Mock()
+    response.content.readany = mock.AsyncMock(side_effect=[b"x" * 50, b""])
+
+    # Use custom max_size of 10 bytes
+    await response.discard_content(max_size=10)
+
+    # Should read once and then check for more data
+    assert response.content.readany.call_count == 2
+
+
+async def test_discard_content_timeout(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test discard_content with timeout."""
+    response = ClientResponse(
+        "get",
+        URL("http://test.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    response.status = 200
+    response._headers = CIMultiDictProxy(CIMultiDict())
+    response._closed = False
+    response._connection = mock.Mock()
+
+    # Mock content reader to hang
+    async def slow_read():
+        await asyncio.sleep(2)  # Longer than timeout
+        return b"data"
+
+    response.content = mock.Mock()
+    response.content.readany = mock.AsyncMock(side_effect=slow_read)
+
+    # Use short timeout
+    await response.discard_content(timeout=0.1)
+
+    # Connection should be closed due to timeout
+    response._connection.close.assert_called_once()
+
+
+async def test_discard_content_invalid_content_length(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test discard_content with invalid Content-Length header."""
+    response = ClientResponse(
+        "get",
+        URL("http://test.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    response.status = 200
+    # Invalid Content-Length
+    response._headers = CIMultiDictProxy(
+        CIMultiDict({"Content-Length": "not-a-number"})
+    )
+    response._closed = False
+
+    # Mock content reader
+    response.content = mock.Mock()
+    response.content.readany = mock.AsyncMock(side_effect=[b"data", b""])
+
+    # Should proceed with reading despite invalid header
+    await response.discard_content()
+
+    # Content should be read
+    assert response.content.readany.call_count == 2
+
+
+async def test_discard_content_read_until_eof(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test discard_content reads until EOF."""
+    response = ClientResponse(
+        "get",
+        URL("http://test.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+    response.status = 200
+    response._headers = CIMultiDictProxy(CIMultiDict())
+
+    # Mock content reader with multiple chunks
+    chunks = [b"chunk1", b"chunk2", b"chunk3", b""]
+    response.content = mock.Mock()
+    response.content.readany = mock.AsyncMock(side_effect=chunks)
+
+    await response.discard_content()
+
+    # Should read all chunks until EOF (empty chunk)
+    assert response.content.readany.call_count == 4
