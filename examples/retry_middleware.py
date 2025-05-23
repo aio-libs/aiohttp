@@ -35,7 +35,7 @@ class RetryMiddleware:
     def __init__(
         self,
         max_retries: int = 3,
-        retry_statuses: Union[Set[int], None] = None,
+        retry_statuses: Union[Set[HTTPStatus], None] = None,
         initial_delay: float = 1.0,
         backoff_factor: float = 2.0,
     ) -> None:
