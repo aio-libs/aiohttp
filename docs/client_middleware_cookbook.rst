@@ -249,80 +249,92 @@ You can combine multiple middleware to create powerful request pipelines:
 Token Refresh Middleware
 ------------------------
 
-A more advanced example showing JWT token refresh:
+If you need to refresh access tokens to continue accessing an API, this is also a good
+candidate for a middleware. For example, you could check for a 401 response, then
+refresh the token and retry:
 
 .. code-block:: python
 
-    import asyncio
-    import time
-    from http import HTTPStatus
-    from typing import Union
-    from aiohttp import ClientRequest, ClientResponse, ClientHandlerType, hdrs
+    class TokenRefreshMiddleware:
+        def __init__(self, refresh_token: str, access_token: str):
+            self.access_token = access_token
+            self.refresh_token = refresh_token
+            self.lock = asyncio.Lock()
+
+        def __call__(self, req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
+            for _ in range(2):  # Retry at most one time
+                token = self.access_token
+                req.headers["Authorization"] = f"Bearer {token}"
+                resp = await handler(req)
+                if resp.status != 401:
+                    return resp
+                async with self.lock:
+                    if token != self.access_token:  # Already refreshed
+                        continue
+                    async with req.session.post("https://api.example/refresh", data=self.refresh_token) as resp:
+                        self.access_token = await resp.json()
+
+If you have an expiry time for the token, you could refresh at the expiry time, to avoid the
+failed request:
+
+.. code-block:: python
 
     class TokenRefreshMiddleware:
-        """Middleware that handles JWT token refresh automatically."""
-
-        def __init__(self, token_endpoint: str, refresh_token: str) -> None:
-            self.token_endpoint = token_endpoint
+        def __init__(self, refresh_token: str):
+            self.access_token = ""
+            self.expires_at = 0
             self.refresh_token = refresh_token
-            self.access_token: Union[str, None] = None
-            self.token_expires_at: Union[float, None] = None
-            self._refresh_lock = asyncio.Lock()
+            self.lock = asyncio.Lock()
 
-        async def _refresh_access_token(self, session) -> str:
-            """Refresh the access token using the refresh token."""
-            async with self._refresh_lock:
-                # Check if another coroutine already refreshed the token
-                if self.token_expires_at and time.time() < self.token_expires_at:
-                    return self.access_token
+        def __call__(self, req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
+            if self.expires_at <= time.time():
+                token = self.access_token
+                async with self.lock:
+                    if token != self.access_token:  # Already refreshed
+                        continue
+                    async with req.session.post("https://api.example/refresh", data=self.refresh_token) as resp:
+                        self.access_token = await resp.json()
 
-                # Make refresh request without middleware to avoid recursion
-                async with session.post(
-                    self.token_endpoint,
-                    json={"refresh_token": self.refresh_token},
-                    middlewares=()  # Disable middleware for this request
-                ) as resp:
-                    resp.raise_for_status()
-                    data = await resp.json()
+            req.headers["Authorization"] = f"Bearer {self.access_token}"
+            return await handler(req)
 
-                    if "access_token" not in data:
-                        raise ValueError("No access_token in refresh response")
+Or you could even refresh pre-emptively in a background task to avoid any API delays:
 
-                    self.access_token = data["access_token"]
-                    # Token expires in 1 hour for demo, refresh 5 min early
-                    expires_in = data.get("expires_in", 3600)
-                    self.token_expires_at = time.time() + expires_in - 300
-                    return self.access_token
+.. code-block:: python
 
-        async def __call__(
-            self,
-            request: ClientRequest,
-            handler: ClientHandlerType
-        ) -> ClientResponse:
-            """Add auth token to request, refreshing if needed."""
-            # Skip token for refresh endpoint
-            if str(request.url).endswith('/token/refresh'):
-                return await handler(request)
+    class TokenRefreshMiddleware:
+        def __init__(self, refresh_token: str):
+            self.access_token = access_token
+            self.refresh_token = refresh_token
 
-            # Refresh token if needed
-            if not self.access_token or (
-                self.token_expires_at and time.time() >= self.token_expires_at
-            ):
-                await self._refresh_access_token(request.session)
+        async def __aenter__(self) -> Self:
+            await self._refresh(0)
 
-            # Add token to request
-            request.headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
+        async def __aexit__(self, ...):
+            self.task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self.task
 
-            # Execute request
-            response = await handler(request)
+        async def refresh(self, delay: float) -> None:
+            await asyncio.sleep(delay)
 
-            # If we get 401, try refreshing token once
-            if response.status == HTTPStatus.UNAUTHORIZED:
-                await self._refresh_access_token(request.session)
-                request.headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
-                response = await handler(request)
+            async with session.post("https://api.example/refresh", data=self.refresh_token) as resp:
+                data = await resp.json()
 
-            return response
+            self.access_token = data["access_token"]
+            # Reschedule refresh for 10 seconds before expiry
+            self.task = asyncio.create_task(self.refresh(data["expires_in"] - 10))
+            
+
+        def __call__(self, req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
+            req.headers["Authorization"] = f"Bearer {self.access_token}"
+            return await handler(req)
+
+    # Use async with to manage our background task properly.
+    async with TokenRefreshMiddleware("...") as mw:
+        async with ClientSession(middlewares=(mw,)) as session:
+            ...
+
 
 Best Practices
 --------------
