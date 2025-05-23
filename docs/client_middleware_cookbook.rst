@@ -18,12 +18,12 @@ Here's a middleware that automatically adds Basic Auth headers to all requests:
 .. code-block:: python
 
     import base64
-    from aiohttp import ClientRequest, ClientResponse, ClientHandlerType
+    from aiohttp import ClientRequest, ClientResponse, ClientHandlerType, hdrs
 
     class BasicAuthMiddleware:
         """Middleware that adds Basic Authentication to all requests."""
 
-        def __init__(self, username: str, password: str):
+        def __init__(self, username: str, password: str) -> None:
             self.username = username
             self.password = password
             self._auth_header = self._encode_credentials()
@@ -41,8 +41,8 @@ Here's a middleware that automatically adds Basic Auth headers to all requests:
         ) -> ClientResponse:
             """Add Basic Auth header to the request."""
             # Only add auth if not already present
-            if "Authorization" not in request.headers:
-                request.headers["Authorization"] = self._auth_header
+            if hdrs.AUTHORIZATION not in request.headers:
+                request.headers[hdrs.AUTHORIZATION] = self._auth_header
 
             # Proceed with the request
             return await handler(request)
@@ -104,7 +104,7 @@ A retry middleware that automatically retries failed requests with exponential b
             retry_statuses: Union[Set[int], None] = None,
             initial_delay: float = 1.0,
             backoff_factor: float = 2.0
-        ):
+        ) -> None:
             self.max_retries = max_retries
             self.retry_statuses = retry_statuses or DEFAULT_RETRY_STATUSES
             self.initial_delay = initial_delay
@@ -211,7 +211,7 @@ You can combine multiple middleware to create powerful request pipelines:
             request: ClientRequest,
             handler: ClientHandlerType
         ) -> ClientResponse:
-            start_time = time.time()
+            start_time = time.monotonic()
 
             # Log request
             _LOGGER.debug("[REQUEST] %s %s", request.method, request.url)
@@ -220,7 +220,7 @@ You can combine multiple middleware to create powerful request pipelines:
             response = await handler(request)
 
             # Log response
-            duration = time.time() - start_time
+            duration = time.monotonic() - start_time
             _LOGGER.debug("[RESPONSE] %s in %.2fs", response.status, duration)
 
             return response
@@ -249,26 +249,26 @@ A more advanced example showing JWT token refresh:
 .. code-block:: python
 
     import asyncio
-    from datetime import datetime, timedelta
+    import time
     from http import HTTPStatus
-    from typing import Optional
-    from aiohttp import ClientRequest, ClientResponse, ClientHandlerType
+    from typing import Union
+    from aiohttp import ClientRequest, ClientResponse, ClientHandlerType, hdrs
 
     class TokenRefreshMiddleware:
         """Middleware that handles JWT token refresh automatically."""
 
-        def __init__(self, token_endpoint: str, refresh_token: str):
+        def __init__(self, token_endpoint: str, refresh_token: str) -> None:
             self.token_endpoint = token_endpoint
             self.refresh_token = refresh_token
-            self.access_token: Optional[str] = None
-            self.token_expires: Optional[datetime] = None
+            self.access_token: Union[str, None] = None
+            self.token_expires_at: Union[float, None] = None
             self._refresh_lock = asyncio.Lock()
 
         async def _refresh_access_token(self, session) -> str:
             """Refresh the access token using the refresh token."""
             async with self._refresh_lock:
                 # Check if another coroutine already refreshed the token
-                if self.token_expires and datetime.now() < self.token_expires:
+                if self.token_expires_at and time.time() < self.token_expires_at:
                     return self.access_token
 
                 # Make refresh request without middleware to avoid recursion
@@ -284,8 +284,9 @@ A more advanced example showing JWT token refresh:
                         raise ValueError("No access_token in refresh response")
 
                     self.access_token = data["access_token"]
-                    # Assume token expires in 1 hour, refresh 5 min early
-                    self.token_expires = datetime.now() + timedelta(minutes=55)
+                    # Token expires in 1 hour for demo, refresh 5 min early
+                    expires_in = data.get("expires_in", 3600)
+                    self.token_expires_at = time.time() + expires_in - 300
                     return self.access_token
 
         async def __call__(
@@ -295,17 +296,17 @@ A more advanced example showing JWT token refresh:
         ) -> ClientResponse:
             """Add auth token to request, refreshing if needed."""
             # Skip token for refresh endpoint
-            if str(request.url) == self.token_endpoint:
+            if str(request.url).endswith('/token/refresh'):
                 return await handler(request)
 
             # Refresh token if needed
             if not self.access_token or (
-                self.token_expires and datetime.now() >= self.token_expires
+                self.token_expires_at and time.time() >= self.token_expires_at
             ):
                 await self._refresh_access_token(request.session)
 
             # Add token to request
-            request.headers["Authorization"] = f"Bearer {self.access_token}"
+            request.headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
 
             # Execute request
             response = await handler(request)
@@ -313,7 +314,7 @@ A more advanced example showing JWT token refresh:
             # If we get 401, try refreshing token once
             if response.status == HTTPStatus.UNAUTHORIZED:
                 await self._refresh_access_token(request.session)
-                request.headers["Authorization"] = f"Bearer {self.access_token}"
+                request.headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
                 response = await handler(request)
 
             return response
