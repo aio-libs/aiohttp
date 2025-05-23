@@ -568,9 +568,13 @@ A *middleware* is a coroutine that can modify either the request or
 response. For example, here's a simple *middleware* which appends
 ``' wink'`` to the response::
 
-    from aiohttp.web import middleware
+    from aiohttp import web
+    from typing import Callable, Awaitable
 
-    async def middleware(request, handler):
+    async def middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
         resp = await handler(request)
         resp.text = resp.text + ' wink'
         return resp
@@ -619,18 +623,25 @@ post-processing like handling *CORS* and so on.
 The following code demonstrates middlewares execution order::
 
    from aiohttp import web
+   from typing import Callable, Awaitable
 
-   async def test(request):
+   async def test(request: web.Request) -> web.Response:
        print('Handler function called')
        return web.Response(text="Hello")
 
-   async def middleware1(request, handler):
+   async def middleware1(
+       request: web.Request,
+       handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+   ) -> web.StreamResponse:
        print('Middleware 1 called')
        response = await handler(request)
        print('Middleware 1 finished')
        return response
 
-   async def middleware2(request, handler):
+   async def middleware2(
+       request: web.Request,
+       handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+   ) -> web.StreamResponse:
        print('Middleware 2 called')
        response = await handler(request)
        print('Middleware 2 finished')
@@ -648,6 +659,94 @@ Produced output::
    Handler function called
    Middleware 2 finished
    Middleware 1 finished
+
+Request Body Stream Consumption
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. warning::
+
+   When middleware reads the request body (using :meth:`~aiohttp.web.BaseRequest.read`,
+   :meth:`~aiohttp.web.BaseRequest.text`, :meth:`~aiohttp.web.BaseRequest.json`, or
+   :meth:`~aiohttp.web.BaseRequest.post`), the body stream is consumed and cannot be
+   read again by subsequent middleware or the handler.
+
+   This is because the HTTP request body is a stream that can only be read once.
+   Once consumed, these methods cache their result and return the same value on
+   subsequent calls, but the underlying stream position cannot be reset.
+
+   The same applies when accessing :attr:`~aiohttp.web.BaseRequest.content` directly.
+   ``request.content`` is a :class:`~aiohttp.StreamReader` instance. Once you read from
+   it (e.g., using ``await request.content.read()``), the stream is consumed and subsequent
+   reads will return empty bytes.
+
+Consider this middleware that logs request bodies::
+
+    from aiohttp import web
+    from typing import Callable, Awaitable
+
+    async def logging_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        # This consumes the request body stream
+        body = await request.text()
+        print(f"Request body: {body}")
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # This will return the cached value from middleware
+        body = await request.text()
+        return web.Response(text=f"Received: {body}")
+
+Similarly, when accessing the stream directly::
+
+    async def stream_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        # Reading directly from the stream
+        data = await request.content.read()
+        print(f"Stream data: {data}")
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # This will return empty bytes because the stream was already consumed
+        data = await request.content.read()
+        # data will be b'' (empty bytes)
+        return web.Response(text=f"Received: {data}")
+
+If you need to share parsed request data between middleware and handlers,
+consider storing it in the request object::
+
+    async def parsing_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        if request.headers.get('Content-Type') == 'application/json':
+            # Parse once and store in request
+            request['json_data'] = await request.json()
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # Use pre-parsed data from middleware
+        data = request.get('json_data', {})
+        return web.json_response({'received': data})
+
+For raw stream data::
+
+    async def stream_parsing_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        # Read stream once and store the data
+        raw_data = await request.content.read()
+        request['raw_body'] = raw_data
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # Access the stored data instead of reading the stream again
+        raw_data = request.get('raw_body', b'')
+        return web.Response(body=raw_data)
 
 Example
 ^^^^^^^
