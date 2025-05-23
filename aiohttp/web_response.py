@@ -186,6 +186,13 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         strategy: Optional[int] = None,
     ) -> None:
         """Enables response compression encoding."""
+        # Don't enable compression if content is already encoded.
+        # This prevents double compression and provides a safe, predictable behavior
+        # without breaking existing code that may call enable_compression() on
+        # responses that already have Content-Encoding set (e.g., FileResponse
+        # serving pre-compressed files).
+        if hdrs.CONTENT_ENCODING in self._headers:
+            return
         self._compression = True
         self._compression_force = force
         self._compression_strategy = strategy
