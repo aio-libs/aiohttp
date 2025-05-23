@@ -80,6 +80,7 @@ class TokenRefreshMiddleware:
                 _LOGGER.info(
                     "Token refreshed successfully, expires in %s seconds", expires_in
                 )
+                assert self.access_token is not None  # Just assigned above
                 return self.access_token
 
     async def __call__(
