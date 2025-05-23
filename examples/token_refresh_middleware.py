@@ -21,7 +21,7 @@ import logging
 import secrets
 import time
 from http import HTTPStatus
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 from aiohttp import (
     ClientHandlerType,
@@ -274,7 +274,7 @@ async def run_tests() -> None:
 
         print("\n=== Test 3: Multiple concurrent requests ===")
         print("(Should only refresh token once)")
-        tasks = []
+        tasks: List[asyncio.Task[ClientResponse]] = []
         for i in range(3):
             task = session.get("http://localhost:8080/api/protected")
             tasks.append(task)

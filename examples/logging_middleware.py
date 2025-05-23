@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import time
+from typing import List
 
 from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession, web
 
@@ -140,7 +141,7 @@ async def run_tests() -> None:
 
         # Test 6: Multiple concurrent requests
         print("\n=== Test 6: Multiple concurrent requests ===")
-        tasks = []
+        tasks: List[asyncio.Task[ClientResponse]] = []
         for i in range(3):
             task = session.get(f"http://localhost:8080/hello/User{i}")
             tasks.append(task)
