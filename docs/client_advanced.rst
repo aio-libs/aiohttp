@@ -706,12 +706,13 @@ make all sockets respect 9*7200 = 18 hours::
   import socket
 
   def socket_factory(addr_info):
-      family, type_, proto, _, _, _ = addr_info
+      family, type_, proto, _, _ = addr_info
       sock = socket.socket(family=family, type=type_, proto=proto)
       sock.setsockopt(socket.SOL_SOCKET,  socket.SO_KEEPALIVE,  True)
       sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE,  7200)
       sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT,      9)
       return sock
+
   conn = aiohttp.TCPConnector(socket_factory=socket_factory)
 
 ``socket_factory`` may also be used for binding to the specific network
