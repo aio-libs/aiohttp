@@ -1246,7 +1246,8 @@ class ClientResponse(HeadersMixin):
     async def discard_content(
         self, *, max_size: int = 1024 * 1024, timeout: float = 1.0
     ) -> None:
-        """Read and discard the response body to release the connection.
+        """
+        Read and discard the response body to release the connection.
 
         Args:
             max_size: Maximum bytes to read before closing connection (default: 1MB)
@@ -1254,6 +1255,7 @@ class ClientResponse(HeadersMixin):
 
         If either max_size or timeout is exceeded, the connection will be closed
         instead of being reused.
+
         """
         if self._released:
             return
