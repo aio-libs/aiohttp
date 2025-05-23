@@ -2033,7 +2033,6 @@ Utilities
       :return: encoded authentication data, :class:`str`.
 
 
-
 .. class:: DigestAuthMiddleware(login, password)
 
    HTTP digest authentication client middleware.
