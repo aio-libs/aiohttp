@@ -324,7 +324,7 @@ Or you could even refresh pre-emptively in a background task to avoid any API de
             self.access_token = data["access_token"]
             # Reschedule refresh for 10 seconds before expiry
             self.task = asyncio.create_task(self.refresh(data["expires_in"] - 10))
-            
+
 
         def __call__(self, req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
             req.headers["Authorization"] = f"Bearer {self.access_token}"
