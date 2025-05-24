@@ -12,9 +12,9 @@ from aiohttp import (
     ClientResponse,
     ClientSession,
     TCPConnector,
-    Trace,
 )
 from aiohttp.abc import ResolveResult
+from aiohttp.tracing import Trace
 
 
 class SSRFError(Exception):
@@ -57,11 +57,12 @@ class TokenRefreshExpiryMiddleware:
         if self.expires_at <= time.time():
             token = self.access_token
             async with self.lock:
-                if token != self.access_token:  # Already refreshed
-                    continue
-                url = "https://api.example/refresh"
-                async with req.session.post(url, data=self.refresh_token) as resp:
-                    self.access_token = await resp.json()
+                if token == self.access_token:  # Still not refreshed
+                    url = "https://api.example/refresh"
+                    async with req.session.post(url, data=self.refresh_token) as resp:
+                        data = await resp.json()
+                        self.access_token = data["access_token"]
+                        self.expires_at = data["expires_at"]
 
         req.headers["Authorization"] = f"Bearer {self.access_token}"
         return await handler(req)
