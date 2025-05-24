@@ -1,3 +1,0 @@
-Fixed connection reuse for file-like data payloads by ensuring buffer
-truncation respects content-length boundaries and preventing premature
-connection closure race -- by :user:`bdraco`.
