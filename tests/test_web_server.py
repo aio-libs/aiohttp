@@ -261,9 +261,8 @@ async def test_raw_server_cancelled_in_write_eof(aiohttp_raw_server, aiohttp_cli
     server = await aiohttp_raw_server(handler, logger=logger)
     cli = await aiohttp_client(server)
 
-    resp = await cli.get("/path/to")
-    with pytest.raises(client.ClientPayloadError):
-        await resp.read()
+    with pytest.raises(client.ServerDisconnectedError):
+        await cli.get("/path/to")
 
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
