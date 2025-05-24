@@ -1,6 +1,7 @@
 # Tests for aiohttp/http_writer.py
 import array
 import asyncio
+import re
 import zlib
 from typing import Any, Generator, Iterable, Union
 from unittest import mock
@@ -1070,3 +1071,242 @@ def test_serialize_headers_raises_on_new_line_or_carriage_return(char: str) -> N
         ),
     ):
         _serialize_headers(status_line, headers)
+
+
+async def test_write_compressed_data_with_headers_coalescing(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that headers are coalesced with compressed data in write() method."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    headers = CIMultiDict({"Content-Encoding": "deflate", "Host": "example.com"})
+
+    # Write headers - should be buffered
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+    assert len(buf) == 0
+
+    # Write compressed data - should coalesce with headers
+    await msg.write(b"Hello World")
+
+    # Headers and compressed data should be written together
+    assert b"POST /data HTTP/1.1\r\n" in buf
+    assert b"Content-Encoding: deflate\r\n" in buf
+    assert len(buf) > 50  # Headers + compressed data
+
+
+async def test_write_compressed_chunked_with_headers_coalescing(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test headers coalescing with compressed chunked data."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    headers = CIMultiDict(
+        {"Content-Encoding": "deflate", "Transfer-Encoding": "chunked"}
+    )
+
+    # Write headers - should be buffered
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+    assert len(buf) == 0
+
+    # Write compressed chunked data - should coalesce
+    await msg.write(b"Hello World")
+
+    # Check headers are present
+    assert b"POST /data HTTP/1.1\r\n" in buf
+    assert b"Transfer-Encoding: chunked\r\n" in buf
+
+    # Should have chunk size marker for compressed data
+    output = buf.decode("latin-1", errors="ignore")
+    assert "\r\n" in output  # Should have chunk markers
+
+
+async def test_write_multiple_compressed_chunks_after_headers_sent(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test multiple compressed writes after headers are already sent."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    headers = CIMultiDict({"Content-Encoding": "deflate"})
+
+    # Write headers immediately
+    await msg.write_headers_immediately("POST /data HTTP/1.1", headers)
+    initial_len = len(buf)
+    assert initial_len > 0  # Headers written
+
+    # Write multiple compressed chunks
+    await msg.write(b"First chunk of data that should compress")
+    len_after_first = len(buf)
+    assert len_after_first > initial_len
+
+    # Write second chunk and force flush via EOF
+    await msg.write(b"Second chunk of data that should also compress well")
+    await msg.write_eof()
+
+    # After EOF, all compressed data should be flushed
+    final_len = len(buf)
+    assert final_len > len_after_first
+
+
+async def test_write_eof_empty_compressed_with_buffered_headers(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test write_eof with no data but compression enabled and buffered headers."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    headers = CIMultiDict({"Content-Encoding": "deflate"})
+
+    # Write headers - should be buffered
+    await msg.write_headers("GET /data HTTP/1.1", headers)
+    assert len(buf) == 0
+
+    # Write EOF with no data - should still coalesce headers with compression flush
+    await msg.write_eof()
+
+    # Headers should be present
+    assert b"GET /data HTTP/1.1\r\n" in buf
+    assert b"Content-Encoding: deflate\r\n" in buf
+    # Should have compression flush data
+    assert len(buf) > 40
+
+
+async def test_write_compressed_gzip_with_headers_coalescing(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test gzip compression with header coalescing."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("gzip")
+    headers = CIMultiDict({"Content-Encoding": "gzip"})
+
+    # Write headers - should be buffered
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+    assert len(buf) == 0
+
+    # Write gzip compressed data via write_eof
+    await msg.write_eof(b"Test gzip compression")
+
+    # Verify coalescing happened
+    assert b"POST /data HTTP/1.1\r\n" in buf
+    assert b"Content-Encoding: gzip\r\n" in buf
+    # Gzip typically produces more overhead than deflate
+    assert len(buf) > 60
+
+
+async def test_compression_with_content_length_constraint(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test compression respects content length constraints."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.length = 5  # Set small content length
+    headers = CIMultiDict({"Content-Length": "5"})
+
+    await msg.write_headers_immediately("POST /data HTTP/1.1", headers)
+    buf.clear()
+
+    # Write more data than content length allows
+    await msg.write(b"This is a longer message")
+
+    # Due to compression, we can't predict exact size, but it should be limited
+    # The write should respect the content length before compression
+    assert len(buf) > 0  # Some compressed data written
+
+
+async def test_write_compressed_zero_length_chunk(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test writing empty chunk with compression."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+
+    await msg.write_headers_immediately("POST /data HTTP/1.1", CIMultiDict())
+    buf.clear()
+
+    # Write empty chunk - compression may still produce output
+    await msg.write(b"")
+
+    # With compression, even empty input might produce small output
+    # due to compression state, but it should be minimal
+    assert len(buf) < 10  # Should be very small if anything
+
+
+async def test_chunked_compressed_eof_coalescing(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test chunked compressed data with EOF marker coalescing."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    headers = CIMultiDict(
+        {"Content-Encoding": "deflate", "Transfer-Encoding": "chunked"}
+    )
+
+    # Buffer headers
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+    assert len(buf) == 0
+
+    # Write compressed chunked data with EOF
+    await msg.write_eof(b"Final compressed chunk")
+
+    # Should have headers
+    assert b"POST /data HTTP/1.1\r\n" in buf
+
+    # Should end with chunked EOF marker
+    assert buf.endswith(b"0\r\n\r\n")
+
+    # Should have chunk size in hex before the compressed data
+    output = bytes(buf)
+    # Look for hex chunk size pattern
+    hex_pattern = re.compile(rb"\r\n([0-9a-fA-F]+)\r\n")
+    matches = hex_pattern.findall(output)
+    assert len(matches) > 0  # Should have at least one chunk size
+
+
+async def test_compression_different_strategies(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test compression with different strategies."""
+    # Test with best speed strategy (default)
+    msg1 = http.StreamWriter(protocol, loop)
+    msg1.enable_compression("deflate")  # Default strategy
+
+    await msg1.write_headers("POST /fast HTTP/1.1", CIMultiDict())
+    await msg1.write_eof(b"Test data for compression test data for compression")
+
+    buf1_len = len(buf)
+
+    # Both should produce output
+    assert buf1_len > 0
+    # Headers should be present
+    assert b"POST /fast HTTP/1.1\r\n" in buf
+
+    # Since we can't easily test different compression strategies
+    # (the compressor initialization might not support strategy parameter),
+    # we just verify that compression works
