@@ -28,6 +28,7 @@ async def retry_middleware(
         resp = await handler(req)
         if resp.ok:
             return resp
+    assert False  # Unreachable
 
 
 async def api_logging_middleware(
@@ -61,6 +62,7 @@ class TokenRefresh401Middleware:
                 url = "https://api.example/refresh"
                 async with req.session.post(url, data=self.refresh_token) as resp:
                     self.access_token = await resp.json()
+        return resp
 
 
 class TokenRefreshExpiryMiddleware:
@@ -125,4 +127,5 @@ class SSRFConnector(TCPConnector):
     ) -> list[ResolveResult]:
         res = await super()._resolve_host(host, port, traces)
         if any(r["host"] in {"127.0.0.1"} for r in res):
-            raise ClientConnectorDNSError()
+            raise SSRFError()
+        return res
