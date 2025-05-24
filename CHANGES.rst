@@ -10,6 +10,1690 @@
 
 .. towncrier release notes start
 
+3.12.0 (2025-05-24)
+===================
+
+Bug fixes
+---------
+
+- Fixed :py:attr:`~aiohttp.web.WebSocketResponse.prepared` property to correctly reflect the prepared state, especially during timeout scenarios -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6009`, :issue:`10988`.
+
+
+
+- Response is now always True, instead of using MutableMapping behaviour (False when map is empty)
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10119`.
+
+
+
+- Fixed connection reuse for file-like data payloads by ensuring buffer
+  truncation respects content-length boundaries and preventing premature
+  connection closure race -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10325`, :issue:`10915`, :issue:`10941`, :issue:`10943`.
+
+
+
+- Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Fixed :py:class:`~aiohttp.resolver.AsyncResolver` not using the ``loop`` argument in versions 3.x where it should still be supported -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10951`.
+
+
+
+
+Features
+--------
+
+- Added a comprehensive HTTP Digest Authentication client middleware (DigestAuthMiddleware)
+  that implements RFC 7616. The middleware supports all standard hash algorithms
+  (MD5, SHA, SHA-256, SHA-512) with session variants, handles both 'auth' and
+  'auth-int' quality of protection options, and automatically manages the
+  authentication flow by intercepting 401 responses and retrying with proper
+  credentials -- by :user:`feus4177`, :user:`TimMenninger`, and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2213`, :issue:`10725`.
+
+
+
+- Added client middleware support -- by :user:`bdraco` and :user:`Dreamsorcerer`.
+
+  This change allows users to add middleware to the client session and requests, enabling features like
+  authentication, logging, and request/response modification without modifying the core
+  request logic. Additionally, the ``session`` attribute was added to ``ClientRequest``,
+  allowing middleware to access the session for making additional requests.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9732`, :issue:`10902`, :issue:`10945`, :issue:`10952`, :issue:`10959`, :issue:`10968`.
+
+
+
+- Allow user setting zlib compression backend -- by :user:`TimMenninger`
+
+  This change allows the user to call :func:`aiohttp.set_zlib_backend()` with the
+  zlib compression module of their choice. Default behavior continues to use
+  the builtin ``zlib`` library.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9798`.
+
+
+
+- Added support for overriding the base URL with an absolute one in client sessions
+  -- by :user:`vivodi`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10074`.
+
+
+
+- Added ``host`` parameter to ``aiohttp_server`` fixture -- by :user:`christianwbrock`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10120`.
+
+
+
+- Detect blocking calls in coroutines using BlockBuster -- by :user:`cbornet`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10433`.
+
+
+
+- Added ``socket_factory`` to :py:class:`aiohttp.TCPConnector` to allow specifying custom socket options
+  -- by :user:`TimMenninger`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10474`, :issue:`10520`, :issue:`10961`, :issue:`10962`.
+
+
+
+- Started building armv7l manylinux wheels -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10797`.
+
+
+
+- Implemented shared DNS resolver management to fix excessive resolver object creation
+  when using multiple client sessions. The new ``_DNSResolverManager`` singleton ensures
+  only one ``DNSResolver`` object is created for default configurations, significantly
+  reducing resource usage and improving performance for applications using multiple
+  client sessions simultaneously -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10847`, :issue:`10923`, :issue:`10946`.
+
+
+
+- Upgraded to LLHTTP 9.3.0 -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10972`.
+
+
+
+- Optimized small HTTP requests/responses by coalescing headers and body into a single TCP packet -- by :user:`bdraco`.
+
+  This change enhances network efficiency by reducing the number of packets sent for small HTTP payloads, improving latency and reducing overhead. Most importantly, this fixes compatibility with memory-constrained IoT devices that can only perform a single read operation and expect HTTP requests in one packet. The optimization uses zero-copy ``writelines`` when coalescing data and works with both regular and chunked transfer encoding.
+
+  When ``aiohttp`` uses client middleware to communicate with an ``aiohttp`` server, connection reuse is more likely to occur since complete responses arrive in a single packet for small payloads.
+
+  This aligns ``aiohttp`` with other popular HTTP clients that already coalesce small requests.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10991`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Improved documentation for middleware by adding warnings and examples about
+  request body stream consumption. The documentation now clearly explains that
+  request body streams can only be read once and provides best practices for
+  sharing parsed request data between middleware and handlers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2914`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Removed non SPDX-license description from ``setup.cfg`` -- by :user:`devanshu-ziphq`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10662`.
+
+
+
+- Added support for building against system ``llhttp`` library -- by :user:`mgorny`.
+
+  This change adds support for :envvar:`AIOHTTP_USE_SYSTEM_DEPS` environment variable that
+  can be used to build aiohttp against the system install of the ``llhttp`` library rather
+  than the vendored one.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10759`.
+
+
+
+- ``aiodns`` is now installed on Windows with speedups extra -- by :user:`bdraco`.
+
+  As of ``aiodns`` 3.3.0, ``SelectorEventLoop`` is no longer required when using ``pycares`` 4.7.0 or later.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10823`.
+
+
+
+- Fixed compatibility issue with Cython 3.1.1 -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10877`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Sped up tests by disabling ``blockbuster`` fixture for ``test_static_file_huge`` and ``test_static_file_huge_cancel`` tests -- by :user:`dikos1337`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9705`, :issue:`10761`.
+
+
+
+- Updated tests to avoid using deprecated :py:mod:`asyncio` policy APIs and
+  make it compatible with Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Added Winloop to test suite to support in the future -- by :user:`Vizonex`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10922`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added support for the ``partitioned`` attribute in the ``set_cookie`` method.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9870`.
+
+
+
+- Setting :attr:`aiohttp.web.StreamResponse.last_modified` to an unsupported type will now raise :exc:`TypeError` instead of silently failing -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10146`.
+
+
+
+
+----
+
+
+3.12.0rc1 (2025-05-24)
+======================
+
+Bug fixes
+---------
+
+- Fixed :py:attr:`~aiohttp.web.WebSocketResponse.prepared` property to correctly reflect the prepared state, especially during timeout scenarios -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6009`, :issue:`10988`.
+
+
+
+- Response is now always True, instead of using MutableMapping behaviour (False when map is empty)
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10119`.
+
+
+
+- Fixed connection reuse for file-like data payloads by ensuring buffer
+  truncation respects content-length boundaries and preventing premature
+  connection closure race -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10325`, :issue:`10915`, :issue:`10941`, :issue:`10943`.
+
+
+
+- Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Fixed :py:class:`~aiohttp.resolver.AsyncResolver` not using the ``loop`` argument in versions 3.x where it should still be supported -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10951`.
+
+
+
+
+Features
+--------
+
+- Added a comprehensive HTTP Digest Authentication client middleware (DigestAuthMiddleware)
+  that implements RFC 7616. The middleware supports all standard hash algorithms
+  (MD5, SHA, SHA-256, SHA-512) with session variants, handles both 'auth' and
+  'auth-int' quality of protection options, and automatically manages the
+  authentication flow by intercepting 401 responses and retrying with proper
+  credentials -- by :user:`feus4177`, :user:`TimMenninger`, and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2213`, :issue:`10725`.
+
+
+
+- Added client middleware support -- by :user:`bdraco` and :user:`Dreamsorcerer`.
+
+  This change allows users to add middleware to the client session and requests, enabling features like
+  authentication, logging, and request/response modification without modifying the core
+  request logic. Additionally, the ``session`` attribute was added to ``ClientRequest``,
+  allowing middleware to access the session for making additional requests.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9732`, :issue:`10902`, :issue:`10945`, :issue:`10952`, :issue:`10959`, :issue:`10968`.
+
+
+
+- Allow user setting zlib compression backend -- by :user:`TimMenninger`
+
+  This change allows the user to call :func:`aiohttp.set_zlib_backend()` with the
+  zlib compression module of their choice. Default behavior continues to use
+  the builtin ``zlib`` library.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9798`.
+
+
+
+- Added support for overriding the base URL with an absolute one in client sessions
+  -- by :user:`vivodi`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10074`.
+
+
+
+- Added ``host`` parameter to ``aiohttp_server`` fixture -- by :user:`christianwbrock`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10120`.
+
+
+
+- Detect blocking calls in coroutines using BlockBuster -- by :user:`cbornet`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10433`.
+
+
+
+- Added ``socket_factory`` to :py:class:`aiohttp.TCPConnector` to allow specifying custom socket options
+  -- by :user:`TimMenninger`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10474`, :issue:`10520`, :issue:`10961`, :issue:`10962`.
+
+
+
+- Started building armv7l manylinux wheels -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10797`.
+
+
+
+- Implemented shared DNS resolver management to fix excessive resolver object creation
+  when using multiple client sessions. The new ``_DNSResolverManager`` singleton ensures
+  only one ``DNSResolver`` object is created for default configurations, significantly
+  reducing resource usage and improving performance for applications using multiple
+  client sessions simultaneously -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10847`, :issue:`10923`, :issue:`10946`.
+
+
+
+- Upgraded to LLHTTP 9.3.0 -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10972`.
+
+
+
+- Optimized small HTTP requests/responses by coalescing headers and body into a single TCP packet -- by :user:`bdraco`.
+
+  This change enhances network efficiency by reducing the number of packets sent for small HTTP payloads, improving latency and reducing overhead. Most importantly, this fixes compatibility with memory-constrained IoT devices that can only perform a single read operation and expect HTTP requests in one packet. The optimization uses zero-copy ``writelines`` when coalescing data and works with both regular and chunked transfer encoding.
+
+  When ``aiohttp`` uses client middleware to communicate with an ``aiohttp`` server, connection reuse is more likely to occur since complete responses arrive in a single packet for small payloads.
+
+  This aligns ``aiohttp`` with other popular HTTP clients that already coalesce small requests.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10991`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Improved documentation for middleware by adding warnings and examples about
+  request body stream consumption. The documentation now clearly explains that
+  request body streams can only be read once and provides best practices for
+  sharing parsed request data between middleware and handlers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2914`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Removed non SPDX-license description from ``setup.cfg`` -- by :user:`devanshu-ziphq`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10662`.
+
+
+
+- Added support for building against system ``llhttp`` library -- by :user:`mgorny`.
+
+  This change adds support for :envvar:`AIOHTTP_USE_SYSTEM_DEPS` environment variable that
+  can be used to build aiohttp against the system install of the ``llhttp`` library rather
+  than the vendored one.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10759`.
+
+
+
+- ``aiodns`` is now installed on Windows with speedups extra -- by :user:`bdraco`.
+
+  As of ``aiodns`` 3.3.0, ``SelectorEventLoop`` is no longer required when using ``pycares`` 4.7.0 or later.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10823`.
+
+
+
+- Fixed compatibility issue with Cython 3.1.1 -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10877`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Sped up tests by disabling ``blockbuster`` fixture for ``test_static_file_huge`` and ``test_static_file_huge_cancel`` tests -- by :user:`dikos1337`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9705`, :issue:`10761`.
+
+
+
+- Updated tests to avoid using deprecated :py:mod:`asyncio` policy APIs and
+  make it compatible with Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Added Winloop to test suite to support in the future -- by :user:`Vizonex`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10922`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added support for the ``partitioned`` attribute in the ``set_cookie`` method.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9870`.
+
+
+
+- Setting :attr:`aiohttp.web.StreamResponse.last_modified` to an unsupported type will now raise :exc:`TypeError` instead of silently failing -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10146`.
+
+
+
+
+----
+
+
+3.12.0rc0 (2025-05-23)
+======================
+
+Bug fixes
+---------
+
+- Fixed :py:attr:`~aiohttp.web.WebSocketResponse.prepared` property to correctly reflect the prepared state, especially during timeout scenarios -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6009`, :issue:`10988`.
+
+
+
+- Response is now always True, instead of using MutableMapping behaviour (False when map is empty)
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10119`.
+
+
+
+- Fixed connection reuse for file-like data payloads by ensuring buffer
+  truncation respects content-length boundaries and preventing premature
+  connection closure race -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10325`, :issue:`10915`, :issue:`10941`, :issue:`10943`.
+
+
+
+- Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Fixed :py:class:`~aiohttp.resolver.AsyncResolver` not using the ``loop`` argument in versions 3.x where it should still be supported -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10951`.
+
+
+
+
+Features
+--------
+
+- Added a comprehensive HTTP Digest Authentication client middleware (DigestAuthMiddleware)
+  that implements RFC 7616. The middleware supports all standard hash algorithms
+  (MD5, SHA, SHA-256, SHA-512) with session variants, handles both 'auth' and
+  'auth-int' quality of protection options, and automatically manages the
+  authentication flow by intercepting 401 responses and retrying with proper
+  credentials -- by :user:`feus4177`, :user:`TimMenninger`, and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2213`, :issue:`10725`.
+
+
+
+- Added client middleware support -- by :user:`bdraco` and :user:`Dreamsorcerer`.
+
+  This change allows users to add middleware to the client session and requests, enabling features like
+  authentication, logging, and request/response modification without modifying the core
+  request logic. Additionally, the ``session`` attribute was added to ``ClientRequest``,
+  allowing middleware to access the session for making additional requests.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9732`, :issue:`10902`, :issue:`10945`, :issue:`10952`, :issue:`10959`, :issue:`10968`.
+
+
+
+- Allow user setting zlib compression backend -- by :user:`TimMenninger`
+
+  This change allows the user to call :func:`aiohttp.set_zlib_backend()` with the
+  zlib compression module of their choice. Default behavior continues to use
+  the builtin ``zlib`` library.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9798`.
+
+
+
+- Added support for overriding the base URL with an absolute one in client sessions
+  -- by :user:`vivodi`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10074`.
+
+
+
+- Added ``host`` parameter to ``aiohttp_server`` fixture -- by :user:`christianwbrock`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10120`.
+
+
+
+- Detect blocking calls in coroutines using BlockBuster -- by :user:`cbornet`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10433`.
+
+
+
+- Added ``socket_factory`` to :py:class:`aiohttp.TCPConnector` to allow specifying custom socket options
+  -- by :user:`TimMenninger`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10474`, :issue:`10520`, :issue:`10961`, :issue:`10962`.
+
+
+
+- Started building armv7l manylinux wheels -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10797`.
+
+
+
+- Implemented shared DNS resolver management to fix excessive resolver object creation
+  when using multiple client sessions. The new ``_DNSResolverManager`` singleton ensures
+  only one ``DNSResolver`` object is created for default configurations, significantly
+  reducing resource usage and improving performance for applications using multiple
+  client sessions simultaneously -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10847`, :issue:`10923`, :issue:`10946`.
+
+
+
+- Upgraded to LLHTTP 9.3.0 -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10972`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Improved documentation for middleware by adding warnings and examples about
+  request body stream consumption. The documentation now clearly explains that
+  request body streams can only be read once and provides best practices for
+  sharing parsed request data between middleware and handlers -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2914`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Removed non SPDX-license description from ``setup.cfg`` -- by :user:`devanshu-ziphq`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10662`.
+
+
+
+- Added support for building against system ``llhttp`` library -- by :user:`mgorny`.
+
+  This change adds support for :envvar:`AIOHTTP_USE_SYSTEM_DEPS` environment variable that
+  can be used to build aiohttp against the system install of the ``llhttp`` library rather
+  than the vendored one.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10759`.
+
+
+
+- ``aiodns`` is now installed on Windows with speedups extra -- by :user:`bdraco`.
+
+  As of ``aiodns`` 3.3.0, ``SelectorEventLoop`` is no longer required when using ``pycares`` 4.7.0 or later.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10823`.
+
+
+
+- Fixed compatibility issue with Cython 3.1.1 -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10877`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Sped up tests by disabling ``blockbuster`` fixture for ``test_static_file_huge`` and ``test_static_file_huge_cancel`` tests -- by :user:`dikos1337`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9705`, :issue:`10761`.
+
+
+
+- Updated tests to avoid using deprecated :py:mod:`asyncio` policy APIs and
+  make it compatible with Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Added Winloop to test suite to support in the future -- by :user:`Vizonex`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10922`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added support for the ``partitioned`` attribute in the ``set_cookie`` method.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9870`.
+
+
+
+- Setting :attr:`aiohttp.web.StreamResponse.last_modified` to an unsupported type will now raise :exc:`TypeError` instead of silently failing -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10146`.
+
+
+
+
+----
+
+
+3.12.0b3 (2025-05-22)
+=====================
+
+Bug fixes
+---------
+
+- Response is now always True, instead of using MutableMapping behaviour (False when map is empty)
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10119`.
+
+
+
+- Fixed connection reuse for file-like data payloads by ensuring buffer
+  truncation respects content-length boundaries and preventing premature
+  connection closure race -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10325`, :issue:`10915`, :issue:`10941`, :issue:`10943`.
+
+
+
+- Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Fixed :py:class:`~aiohttp.resolver.AsyncResolver` not using the ``loop`` argument in versions 3.x where it should still be supported -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10951`.
+
+
+
+
+Features
+--------
+
+- Added a comprehensive HTTP Digest Authentication client middleware (DigestAuthMiddleware)
+  that implements RFC 7616. The middleware supports all standard hash algorithms
+  (MD5, SHA, SHA-256, SHA-512) with session variants, handles both 'auth' and
+  'auth-int' quality of protection options, and automatically manages the
+  authentication flow by intercepting 401 responses and retrying with proper
+  credentials -- by :user:`feus4177`, :user:`TimMenninger`, and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2213`, :issue:`10725`.
+
+
+
+- Added client middleware support -- by :user:`bdraco` and :user:`Dreamsorcerer`.
+
+  This change allows users to add middleware to the client session and requests, enabling features like
+  authentication, logging, and request/response modification without modifying the core
+  request logic. Additionally, the ``session`` attribute was added to ``ClientRequest``,
+  allowing middleware to access the session for making additional requests.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9732`, :issue:`10902`, :issue:`10952`.
+
+
+
+- Allow user setting zlib compression backend -- by :user:`TimMenninger`
+
+  This change allows the user to call :func:`aiohttp.set_zlib_backend()` with the
+  zlib compression module of their choice. Default behavior continues to use
+  the builtin ``zlib`` library.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9798`.
+
+
+
+- Added support for overriding the base URL with an absolute one in client sessions
+  -- by :user:`vivodi`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10074`.
+
+
+
+- Added ``host`` parameter to ``aiohttp_server`` fixture -- by :user:`christianwbrock`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10120`.
+
+
+
+- Detect blocking calls in coroutines using BlockBuster -- by :user:`cbornet`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10433`.
+
+
+
+- Added ``socket_factory`` to :py:class:`aiohttp.TCPConnector` to allow specifying custom socket options
+  -- by :user:`TimMenninger`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10474`, :issue:`10520`.
+
+
+
+- Started building armv7l manylinux wheels -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10797`.
+
+
+
+- Implemented shared DNS resolver management to fix excessive resolver object creation
+  when using multiple client sessions. The new ``_DNSResolverManager`` singleton ensures
+  only one ``DNSResolver`` object is created for default configurations, significantly
+  reducing resource usage and improving performance for applications using multiple
+  client sessions simultaneously -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10847`, :issue:`10923`, :issue:`10946`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Removed non SPDX-license description from ``setup.cfg`` -- by :user:`devanshu-ziphq`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10662`.
+
+
+
+- Added support for building against system ``llhttp`` library -- by :user:`mgorny`.
+
+  This change adds support for :envvar:`AIOHTTP_USE_SYSTEM_DEPS` environment variable that
+  can be used to build aiohttp against the system install of the ``llhttp`` library rather
+  than the vendored one.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10759`.
+
+
+
+- ``aiodns`` is now installed on Windows with speedups extra -- by :user:`bdraco`.
+
+  As of ``aiodns`` 3.3.0, ``SelectorEventLoop`` is no longer required when using ``pycares`` 4.7.0 or later.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10823`.
+
+
+
+- Fixed compatibility issue with Cython 3.1.1 -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10877`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Sped up tests by disabling ``blockbuster`` fixture for ``test_static_file_huge`` and ``test_static_file_huge_cancel`` tests -- by :user:`dikos1337`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9705`, :issue:`10761`.
+
+
+
+- Updated tests to avoid using deprecated :py:mod:`asyncio` policy APIs and
+  make it compatible with Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Added Winloop to test suite to support in the future -- by :user:`Vizonex`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10922`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added support for the ``partitioned`` attribute in the ``set_cookie`` method.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9870`.
+
+
+
+- Setting :attr:`aiohttp.web.StreamResponse.last_modified` to an unsupported type will now raise :exc:`TypeError` instead of silently failing -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10146`.
+
+
+
+
+----
+
+
+3.12.0b2 (2025-05-22)
+=====================
+
+Bug fixes
+---------
+
+- Response is now always True, instead of using MutableMapping behaviour (False when map is empty)
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10119`.
+
+
+
+- Fixed connection reuse for file-like data payloads by ensuring buffer
+  truncation respects content-length boundaries and preventing premature
+  connection closure race -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10325`, :issue:`10915`, :issue:`10941`, :issue:`10943`.
+
+
+
+- Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+
+Features
+--------
+
+- Added a comprehensive HTTP Digest Authentication client middleware (DigestAuthMiddleware)
+  that implements RFC 7616. The middleware supports all standard hash algorithms
+  (MD5, SHA, SHA-256, SHA-512) with session variants, handles both 'auth' and
+  'auth-int' quality of protection options, and automatically manages the
+  authentication flow by intercepting 401 responses and retrying with proper
+  credentials -- by :user:`feus4177`, :user:`TimMenninger`, and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2213`, :issue:`10725`.
+
+
+
+- Added client middleware support -- by :user:`bdraco` and :user:`Dreamsorcerer`.
+
+  This change allows users to add middleware to the client session and requests, enabling features like
+  authentication, logging, and request/response modification without modifying the core
+  request logic. Additionally, the ``session`` attribute was added to ``ClientRequest``,
+  allowing middleware to access the session for making additional requests.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9732`, :issue:`10902`.
+
+
+
+- Allow user setting zlib compression backend -- by :user:`TimMenninger`
+
+  This change allows the user to call :func:`aiohttp.set_zlib_backend()` with the
+  zlib compression module of their choice. Default behavior continues to use
+  the builtin ``zlib`` library.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9798`.
+
+
+
+- Added support for overriding the base URL with an absolute one in client sessions
+  -- by :user:`vivodi`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10074`.
+
+
+
+- Added ``host`` parameter to ``aiohttp_server`` fixture -- by :user:`christianwbrock`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10120`.
+
+
+
+- Detect blocking calls in coroutines using BlockBuster -- by :user:`cbornet`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10433`.
+
+
+
+- Added ``socket_factory`` to :py:class:`aiohttp.TCPConnector` to allow specifying custom socket options
+  -- by :user:`TimMenninger`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10474`, :issue:`10520`.
+
+
+
+- Started building armv7l manylinux wheels -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10797`.
+
+
+
+- Implemented shared DNS resolver management to fix excessive resolver object creation
+  when using multiple client sessions. The new ``_DNSResolverManager`` singleton ensures
+  only one ``DNSResolver`` object is created for default configurations, significantly
+  reducing resource usage and improving performance for applications using multiple
+  client sessions simultaneously -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10847`, :issue:`10923`, :issue:`10946`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Removed non SPDX-license description from ``setup.cfg`` -- by :user:`devanshu-ziphq`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10662`.
+
+
+
+- Added support for building against system ``llhttp`` library -- by :user:`mgorny`.
+
+  This change adds support for :envvar:`AIOHTTP_USE_SYSTEM_DEPS` environment variable that
+  can be used to build aiohttp against the system install of the ``llhttp`` library rather
+  than the vendored one.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10759`.
+
+
+
+- ``aiodns`` is now installed on Windows with speedups extra -- by :user:`bdraco`.
+
+  As of ``aiodns`` 3.3.0, ``SelectorEventLoop`` is no longer required when using ``pycares`` 4.7.0 or later.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10823`.
+
+
+
+- Fixed compatibility issue with Cython 3.1.1 -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10877`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Sped up tests by disabling ``blockbuster`` fixture for ``test_static_file_huge`` and ``test_static_file_huge_cancel`` tests -- by :user:`dikos1337`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9705`, :issue:`10761`.
+
+
+
+- Updated tests to avoid using deprecated :py:mod:`asyncio` policy APIs and
+  make it compatible with Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Added Winloop to test suite to support in the future -- by :user:`Vizonex`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10922`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added support for the ``partitioned`` attribute in the ``set_cookie`` method.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9870`.
+
+
+
+- Setting :attr:`aiohttp.web.StreamResponse.last_modified` to an unsupported type will now raise :exc:`TypeError` instead of silently failing -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10146`.
+
+
+
+
+----
+
+
+3.12.0b1 (2025-05-22)
+=====================
+
+Bug fixes
+---------
+
+- Response is now always True, instead of using MutableMapping behaviour (False when map is empty)
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10119`.
+
+
+
+- Fixed connection reuse for file-like data payloads by ensuring buffer
+  truncation respects content-length boundaries and preventing premature
+  connection closure race -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10325`, :issue:`10915`.
+
+
+
+- Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+
+Features
+--------
+
+- Added a comprehensive HTTP Digest Authentication client middleware (DigestAuthMiddleware)
+  that implements RFC 7616. The middleware supports all standard hash algorithms
+  (MD5, SHA, SHA-256, SHA-512) with session variants, handles both 'auth' and
+  'auth-int' quality of protection options, and automatically manages the
+  authentication flow by intercepting 401 responses and retrying with proper
+  credentials -- by :user:`feus4177`, :user:`TimMenninger`, and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2213`, :issue:`10725`.
+
+
+
+- Added client middleware support -- by :user:`bdraco` and :user:`Dreamsorcerer`.
+
+  This change allows users to add middleware to the client session and requests, enabling features like
+  authentication, logging, and request/response modification without modifying the core
+  request logic. Additionally, the ``session`` attribute was added to ``ClientRequest``,
+  allowing middleware to access the session for making additional requests.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9732`, :issue:`10902`.
+
+
+
+- Allow user setting zlib compression backend -- by :user:`TimMenninger`
+
+  This change allows the user to call :func:`aiohttp.set_zlib_backend()` with the
+  zlib compression module of their choice. Default behavior continues to use
+  the builtin ``zlib`` library.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9798`.
+
+
+
+- Added support for overriding the base URL with an absolute one in client sessions
+  -- by :user:`vivodi`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10074`.
+
+
+
+- Added ``host`` parameter to ``aiohttp_server`` fixture -- by :user:`christianwbrock`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10120`.
+
+
+
+- Detect blocking calls in coroutines using BlockBuster -- by :user:`cbornet`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10433`.
+
+
+
+- Added ``socket_factory`` to :py:class:`aiohttp.TCPConnector` to allow specifying custom socket options
+  -- by :user:`TimMenninger`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10474`, :issue:`10520`.
+
+
+
+- Started building armv7l manylinux wheels -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10797`.
+
+
+
+- Implemented shared DNS resolver management to fix excessive resolver object creation
+  when using multiple client sessions. The new ``_DNSResolverManager`` singleton ensures
+  only one ``DNSResolver`` object is created for default configurations, significantly
+  reducing resource usage and improving performance for applications using multiple
+  client sessions simultaneously -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10847`, :issue:`10923`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Removed non SPDX-license description from ``setup.cfg`` -- by :user:`devanshu-ziphq`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10662`.
+
+
+
+- Added support for building against system ``llhttp`` library -- by :user:`mgorny`.
+
+  This change adds support for :envvar:`AIOHTTP_USE_SYSTEM_DEPS` environment variable that
+  can be used to build aiohttp against the system install of the ``llhttp`` library rather
+  than the vendored one.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10759`.
+
+
+
+- ``aiodns`` is now installed on Windows with speedups extra -- by :user:`bdraco`.
+
+  As of ``aiodns`` 3.3.0, ``SelectorEventLoop`` is no longer required when using ``pycares`` 4.7.0 or later.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10823`.
+
+
+
+- Fixed compatibility issue with Cython 3.1.1 -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10877`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Sped up tests by disabling ``blockbuster`` fixture for ``test_static_file_huge`` and ``test_static_file_huge_cancel`` tests -- by :user:`dikos1337`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9705`, :issue:`10761`.
+
+
+
+- Updated tests to avoid using deprecated :py:mod:`asyncio` policy APIs and
+  make it compatible with Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Added Winloop to test suite to support in the future -- by :user:`Vizonex`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10922`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added support for the ``partitioned`` attribute in the ``set_cookie`` method.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9870`.
+
+
+
+- Setting :attr:`aiohttp.web.StreamResponse.last_modified` to an unsupported type will now raise :exc:`TypeError` instead of silently failing -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10146`.
+
+
+
+
+----
+
+
+3.12.0b0 (2025-05-20)
+=====================
+
+Bug fixes
+---------
+
+- Response is now always True, instead of using MutableMapping behaviour (False when map is empty)
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10119`.
+
+
+
+- Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+
+Features
+--------
+
+- Added a comprehensive HTTP Digest Authentication client middleware (DigestAuthMiddleware)
+  that implements RFC 7616. The middleware supports all standard hash algorithms
+  (MD5, SHA, SHA-256, SHA-512) with session variants, handles both 'auth' and
+  'auth-int' quality of protection options, and automatically manages the
+  authentication flow by intercepting 401 responses and retrying with proper
+  credentials -- by :user:`feus4177`, :user:`TimMenninger`, and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2213`, :issue:`10725`.
+
+
+
+- Added client middleware support -- by :user:`bdraco` and :user:`Dreamsorcerer`.
+
+  This change allows users to add middleware to the client session and requests, enabling features like
+  authentication, logging, and request/response modification without modifying the core
+  request logic. Additionally, the ``session`` attribute was added to ``ClientRequest``,
+  allowing middleware to access the session for making additional requests.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9732`, :issue:`10902`.
+
+
+
+- Allow user setting zlib compression backend -- by :user:`TimMenninger`
+
+  This change allows the user to call :func:`aiohttp.set_zlib_backend()` with the
+  zlib compression module of their choice. Default behavior continues to use
+  the builtin ``zlib`` library.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9798`.
+
+
+
+- Added support for overriding the base URL with an absolute one in client sessions
+  -- by :user:`vivodi`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10074`.
+
+
+
+- Added ``host`` parameter to ``aiohttp_server`` fixture -- by :user:`christianwbrock`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10120`.
+
+
+
+- Detect blocking calls in coroutines using BlockBuster -- by :user:`cbornet`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10433`.
+
+
+
+- Added ``socket_factory`` to :py:class:`aiohttp.TCPConnector` to allow specifying custom socket options
+  -- by :user:`TimMenninger`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10474`, :issue:`10520`.
+
+
+
+- Started building armv7l manylinux wheels -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10797`.
+
+
+
+- Implemented shared DNS resolver management to fix excessive resolver object creation
+  when using multiple client sessions. The new ``_DNSResolverManager`` singleton ensures
+  only one ``DNSResolver`` object is created for default configurations, significantly
+  reducing resource usage and improving performance for applications using multiple
+  client sessions simultaneously -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10847`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Removed non SPDX-license description from ``setup.cfg`` -- by :user:`devanshu-ziphq`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10662`.
+
+
+
+- ``aiodns`` is now installed on Windows with speedups extra -- by :user:`bdraco`.
+
+  As of ``aiodns`` 3.3.0, ``SelectorEventLoop`` is no longer required when using ``pycares`` 4.7.0 or later.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10823`.
+
+
+
+- Fixed compatibility issue with Cython 3.1.1 -- by :user:`bdraco`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10877`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Sped up tests by disabling ``blockbuster`` fixture for ``test_static_file_huge`` and ``test_static_file_huge_cancel`` tests -- by :user:`dikos1337`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9705`, :issue:`10761`.
+
+
+
+- Updated tests to avoid using deprecated :py:mod:`asyncio` policy APIs and
+  make it compatible with Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Added support for the ``partitioned`` attribute in the ``set_cookie`` method.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9870`.
+
+
+
+- Setting :attr:`aiohttp.web.StreamResponse.last_modified` to an unsupported type will now raise :exc:`TypeError` instead of silently failing -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10146`.
+
+
+
+
+----
+
+
 3.11.18 (2025-04-20)
 ====================
 

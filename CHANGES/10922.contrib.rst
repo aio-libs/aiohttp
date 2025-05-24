@@ -1,1 +1,0 @@
-Added Winloop to test suite to support in the future -- by :user:`Vizonex`.
