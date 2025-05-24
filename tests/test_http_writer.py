@@ -1020,6 +1020,32 @@ async def test_write_headers_does_not_write_immediately(
     assert transport.write.called
 
 
+async def test_write_headers_with_compression_coalescing(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    headers = CIMultiDict({"Content-Encoding": "deflate", "Host": "example.com"})
+
+    # Write headers - should be buffered
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+    assert len(buf) == 0
+
+    # Write compressed data via write_eof - should coalesce
+    await msg.write_eof(b"Hello World")
+
+    # Verify headers are present
+    assert b"POST /data HTTP/1.1\r\n" in buf
+    assert b"Content-Encoding: deflate\r\n" in buf
+
+    # Verify compressed data is present
+    # The data should contain headers + compressed payload
+    assert len(buf) > 50  # Should have headers + some compressed data
+
+
 @pytest.mark.parametrize(
     "char",
     [
