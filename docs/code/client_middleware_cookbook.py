@@ -63,7 +63,7 @@ class TokenRefresh401Middleware:
                 url = "https://api.example/refresh"
                 async with req.session.post(url, data=self.refresh_token) as resp:
                     self.access_token = await resp.json()
-        return resp
+        return resp  # type: ignore[possibly-undefined]
 
 
 class TokenRefreshExpiryMiddleware:
