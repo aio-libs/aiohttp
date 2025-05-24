@@ -1853,85 +1853,148 @@ ClientRequest
 
 .. class:: ClientRequest
 
-   A request object that holds the parts relevant to a given request.
+   Represents an HTTP request to be sent by the client.
 
-   The most likely place a user will interact with a ClientRequest is
-   within a middleware.
+   This object encapsulates all the details of an HTTP request before it is sent.
+   It is primarily used within client middleware to inspect or modify requests.
 
-   .. attribute:: body
-      :type: Payload | FormData
+   .. note::
 
-      The payload that will be used to write the request body.
+      Users typically don't create ``ClientRequest`` instances directly. They are
+      created internally by :class:`ClientSession` methods and passed to middleware.
 
-   .. attribute:: chunked
-      :type: bool | None
+   **Common Middleware Use Cases:**
 
-      True if the request will use chunked encoding.
+   - Adding authentication headers
+   - Logging request details
+   - Modifying request parameters
+   - Implementing retry logic
 
-   .. attribute:: compress
-      :type: str | None
+   **Example:**
 
-      The compression method that will be used for this request.
+   .. code-block:: python
 
-   .. attribute:: headers
-      :type: multidict.CIMultiDict
+      async def auth_middleware(request: ClientRequest, handler) -> ClientResponse:
+          # Add authentication header
+          request.headers['Authorization'] = 'Bearer token'
 
-      The HTTP headers that will be used for this request.
+          # Log request details
+          print(f"{request.method} {request.url}")
 
-   .. attribute:: is_ssl
-      :type: bool
-
-      True if this request is for a secure scheme.
+          # Continue with the request
+          return await handler(request)
 
    .. attribute:: method
       :type: str
 
-      The method of the request (e.g. ``GET``).
-
-   .. attribute:: original_url
-      :type: yarl.URL
-
-      The original URL of the request, before any further processing.
-
-   .. attribute:: proxy
-      :type: yarl.URL | None
-
-      The proxy URL to use for this request.
-
-   .. attribute:: proxy_headers
-      :type: multidict.CIMultiDict | None
-
-      The headers that will be used for the proxy.
-
-   .. attribute:: response_class
-      :type: type[ClientResponse]
-
-      The class that will be used for the response object of this request.
-
-   .. attribute:: server_hostname
-      :type: str | None
-
-      The ``server_hostname`` parameter passed to the session/request call.
-
-   .. attribute:: session
-      :type: ClientSession
-
-      The session that is being used for the request.
-
-   .. attribute:: ssl
-      :type: ssl.SSLContext | bool | Fingerprint
-
-      The ``ssl`` parameter passed to the session/request call.
+      The HTTP method of the request (e.g., ``'GET'``, ``'POST'``, ``'PUT'``, etc.).
 
    .. attribute:: url
       :type: yarl.URL
 
-      The URL of the request, with any fragment stripped.
+      The target URL of the request with the fragment (``#...``) part stripped.
+      This is the actual URL that will be used for the connection.
+
+      .. note::
+         To access the original URL with fragment, use :attr:`original_url`.
+
+   .. attribute:: original_url
+      :type: yarl.URL
+
+      The original URL passed to the request method, including any fragment.
+      This preserves the exact URL as provided by the user.
+
+   .. attribute:: headers
+      :type: multidict.CIMultiDict
+
+      The HTTP headers that will be sent with the request. This is a case-insensitive
+      multidict that can be modified by middleware.
+
+      .. code-block:: python
+
+         # Add or modify headers
+         request.headers['X-Custom-Header'] = 'value'
+         request.headers['User-Agent'] = 'MyApp/1.0'
+
+   .. attribute:: body
+      :type: Payload | FormData | None
+
+      The request body payload. This can be:
+
+      - ``None`` for requests without a body (e.g., GET requests)
+      - A :class:`Payload` object for raw data
+      - A :class:`FormData` object for form submissions
+
+   .. attribute:: session
+      :type: ClientSession
+
+      The client session that created this request. Useful for accessing
+      session-level configuration or making additional requests within middleware.
+
+      .. warning::
+         Be careful when making requests with the same session inside middleware
+         to avoid infinite recursion. Use ``middlewares=()`` parameter when needed.
+
+   .. attribute:: is_ssl
+      :type: bool
+
+      ``True`` if the request uses HTTPS, ``False`` for HTTP.
+
+   .. attribute:: ssl
+      :type: ssl.SSLContext | bool | Fingerprint | None
+
+      SSL validation configuration for this request:
+
+      - ``None`` or ``True``: Use default SSL verification
+      - ``False``: Skip SSL verification
+      - :class:`ssl.SSLContext`: Custom SSL context
+      - :class:`Fingerprint`: Verify specific certificate fingerprint
+
+   .. attribute:: proxy
+      :type: yarl.URL | None
+
+      The proxy URL if the request will be sent through a proxy, ``None`` otherwise.
+
+   .. attribute:: proxy_headers
+      :type: multidict.CIMultiDict | None
+
+      Headers to be sent to the proxy server (e.g., ``Proxy-Authorization``).
+      Only set when :attr:`proxy` is not ``None``.
 
    .. attribute:: version
       :type: HttpVersion
 
-      The HTTP version that will be used for the request.
+      The HTTP version to use for the request (e.g., ``HttpVersion(1, 1)`` for HTTP/1.1).
+
+   .. attribute:: compress
+      :type: str | None
+
+      The compression encoding for the request body:
+
+      - ``'gzip'`` for gzip compression
+      - ``'deflate'`` for deflate compression
+      - ``None`` for no compression
+
+   .. attribute:: chunked
+      :type: bool | None
+
+      Whether to use chunked transfer encoding:
+
+      - ``True``: Use chunked encoding
+      - ``False``: Don't use chunked encoding
+      - ``None``: Automatically determine based on body
+
+   .. attribute:: response_class
+      :type: type[ClientResponse]
+
+      The class to use for creating the response object. Defaults to
+      :class:`ClientResponse` but can be customized for special handling.
+
+   .. attribute:: server_hostname
+      :type: str | None
+
+      Override the hostname for SSL certificate verification. Useful when
+      connecting through proxies or to IP addresses.
 
 
 
