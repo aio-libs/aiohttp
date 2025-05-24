@@ -15,6 +15,11 @@ It's very easy to create middlewares that can retry a connection on a given cond
 .. literalinclude:: ../examples/client_middleware_cookbook.py
    :pyobject: retry_middleware
 
+.. warning::
+
+    It is recommended to ensure loops are bounded (e.g. using a `for` loop) to avoid
+    creating an infinite loop.
+
 Logging to an external service
 ------------------------------
 
@@ -23,6 +28,16 @@ create a simple middleware like this:
 
 .. literalinclude:: ../examples/client_middleware_cookbook.py
    :pyobject: api_logging_middleware
+
+.. warning::
+
+    Using the same session from within middleware can cause infinite recursion if
+    that request gets processed again by the middleware.
+    
+    To avoid such recursion a middleware should typically make requests with
+    ``middlewares=()`` or else contain some condition to stop the request triggering
+    the same logic when it is processed again by the middleware (e.g by whitelisting
+    the API domain of the request).
 
 Token Refresh Middleware
 ------------------------
