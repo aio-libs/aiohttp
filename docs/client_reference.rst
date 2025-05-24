@@ -1848,6 +1848,95 @@ manually.
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
 
+ClientRequest
+-------------
+
+.. class:: ClientRequest
+
+   A request object that holds the parts relevant to a given request.
+
+   The most likely place a user will interact with a ClientRequest is
+   within a middleware.
+
+   .. attribute:: body
+      :type: Payload | FormData
+
+      The payload that will be used to write the request body.
+
+   .. attribute:: chunked
+      :type: bool | None
+
+      True if the request will use chunked encoding.
+
+   .. attribute:: compress
+      :type: str | None
+
+      The compression method that will be used for this request.
+
+   .. attribute:: headers
+      :type: multidict.CIMultiDict
+
+      The HTTP headers that will be used for this request.
+
+   .. attribute:: is_ssl
+      :type: bool
+
+      True if this request is for a secure scheme.
+
+   .. attribute:: length
+      :type: 
+
+   .. attribute:: method
+      :type: str
+
+      The method of the request (e.g. ``GET``).
+
+   .. attribute:: original_url
+      :type: yarl.URL
+
+      The original URL of the request, before any further processing.
+
+   .. attribute:: proxy
+      :type: yarl.URL | None
+
+      The proxy URL to use for this request.
+
+   .. attribute:: proxy_headers
+      :type: multidict.CIMultiDict | None
+
+      The headers that will be used for the proxy.
+
+   .. attribute:: response_class
+      :type: type[ClientResponse]
+
+      The class that will be used for the response object of this request.
+
+   .. attribute:: server_hostname
+      :type: str | None
+
+      The ``server_hostname`` parameter passed to the session/request call.
+
+   .. attribute:: session
+      :type: ClientSession
+
+      The session that is being used for the request.
+
+   .. attribute:: ssl
+      :type: SSLContext | bool | Fingerprint
+
+      The ``ssl`` parameter passed to the session/request call.
+
+   .. attribute:: url
+      :type: yarl.URL
+
+      The URL of the request, with any fragment stripped.
+
+   .. attribute:: version
+      :type: http.HttpVersion
+
+      The HTTP version that will be used for the request.
+
+
 
 Utilities
 ---------
