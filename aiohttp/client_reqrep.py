@@ -22,6 +22,7 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    TypedDict,
     Union,
 )
 
@@ -96,6 +97,28 @@ if TYPE_CHECKING:
 
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+
+
+@frozen_dataclass_decorator
+class ClientTimeout:
+    total: Optional[float] = None
+    connect: Optional[float] = None
+    sock_read: Optional[float] = None
+    sock_connect: Optional[float] = None
+    ceil_threshold: float = 5
+
+    # pool_queue_timeout: Optional[float] = None
+    # dns_resolution_timeout: Optional[float] = None
+    # socket_connect_timeout: Optional[float] = None
+    # connection_acquiring_timeout: Optional[float] = None
+    # new_connection_timeout: Optional[float] = None
+    # http_header_timeout: Optional[float] = None
+    # response_body_timeout: Optional[float] = None
+
+    # to create a timeout specific for a single request, either
+    # - create a completely new one to overwrite the default
+    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
+    # to overwrite the defaults
 
 
 def _gen_default_accept_encoding() -> str:
@@ -190,6 +213,18 @@ class ConnectionKey(NamedTuple):
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
 
 
+class ResponseParams(TypedDict):
+    timer: Optional[BaseTimerContext]
+    skip_payload: bool
+    read_until_eof: bool
+    auto_decompress: bool
+    read_timeout: Optional[float]
+    read_bufsize: int
+    timeout_ceil_threshold: float
+    max_line_size: int
+    max_field_size: int
+
+
 class ClientRequest:
     GET_METHODS = {
         hdrs.METH_GET,
@@ -209,11 +244,13 @@ class ClientRequest:
     body: Any = b""
     auth = None
     response = None
+    _response_params = None
 
     # These class defaults help create_autospec() work correctly.
     # If autospec is improved in future, maybe these can be removed.
     url = URL()
     method = "GET"
+    _timeout: Optional[ClientTimeout] = ClientTimeout()
 
     __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
@@ -251,6 +288,8 @@ class ClientRequest:
         traces: Optional[List["Trace"]] = None,
         trust_env: bool = False,
         server_hostname: Optional[str] = None,
+        response_params: Optional[ResponseParams] = None,
+        timeout: Optional[ClientTimeout] = None,
     ):
         if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
@@ -281,6 +320,8 @@ class ClientRequest:
         self.response_class: Type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
         self._ssl = ssl
+        self._response_params = response_params
+        self._timeout = timeout
         self.server_hostname = server_hostname
 
         if loop.get_debug():
