@@ -1606,7 +1606,7 @@ async def test_chunked_headers_sent_with_empty_chunk_not_eof(
     headers = CIMultiDict({"Transfer-Encoding": "chunked"})
     await msg.write_headers("POST /upload HTTP/1.1", headers)
 
-    # This should trigger the else case in _send_headers_with_payload (line 165)
+    # This should trigger the else case in _send_headers_with_payload
     # by having no chunk data and is_eof=False
     await msg.write(b"")
 
@@ -1634,7 +1634,7 @@ async def test_chunked_set_eof_after_headers_sent(
     await msg.write(b"test data")
     buf.clear()  # Clear buffer to check only what set_eof writes
 
-    # This should trigger line 269 - writing chunked EOF when headers already sent
+    # This should trigger writing chunked EOF when headers already sent
     msg.set_eof()
 
     # Should only have the chunked EOF marker
@@ -1660,7 +1660,7 @@ async def test_write_eof_chunked_with_data_using_writelines(
     await msg.write(b"initial")
     transport.writelines.reset_mock()  # type: ignore[attr-defined]
 
-    # This should trigger line 336 - writelines for final chunk with EOF
+    # This should trigger writelines for final chunk with EOF
     await msg.write_eof(b"final chunk data")
 
     # Should have used writelines
@@ -1688,7 +1688,7 @@ async def test_send_headers_with_payload_chunked_eof_no_data(
     headers = CIMultiDict({"Transfer-Encoding": "chunked"})
     await msg.write_headers("GET /test HTTP/1.1", headers)
 
-    # This triggers the elif is_eof branch (line 162-163) in _send_headers_with_payload
+    # This triggers the elif is_eof branch in _send_headers_with_payload
     # by calling write_eof with empty chunk
     await msg.write_eof(b"")
 
