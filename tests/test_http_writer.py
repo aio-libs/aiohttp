@@ -1359,3 +1359,161 @@ async def test_chunked_headers_single_write_with_set_eof(
     assert b"GET /test HTTP/1.1\r\n" in buf
     assert b"Transfer-Encoding: chunked\r\n" in buf
     assert buf.endswith(b"0\r\n\r\n")
+
+
+async def test_send_headers_forces_header_write(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that send_headers() forces writing buffered headers."""
+    msg = http.StreamWriter(protocol, loop)
+    headers = CIMultiDict({"Content-Length": "10", "Host": "example.com"})
+
+    # Write headers (should be buffered)
+    await msg.write_headers("GET /test HTTP/1.1", headers)
+    assert len(buf) == 0  # Headers buffered
+
+    # Force send headers
+    msg.send_headers()
+
+    # Headers should now be written
+    assert b"GET /test HTTP/1.1\r\n" in buf
+    assert b"Content-Length: 10\r\n" in buf
+    assert b"Host: example.com\r\n" in buf
+
+    # Writing body should not resend headers
+    buf.clear()
+    await msg.write(b"0123456789")
+    assert b"GET /test" not in buf  # Headers not repeated
+    assert buf == b"0123456789"  # Just the body
+
+
+async def test_send_headers_idempotent(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that send_headers() is idempotent and safe to call multiple times."""
+    msg = http.StreamWriter(protocol, loop)
+    headers = CIMultiDict({"Content-Length": "5", "Host": "example.com"})
+
+    # Write headers (should be buffered)
+    await msg.write_headers("GET /test HTTP/1.1", headers)
+    assert len(buf) == 0  # Headers buffered
+
+    # Force send headers
+    msg.send_headers()
+    headers_output = bytes(buf)
+
+    # Call send_headers again - should be no-op
+    msg.send_headers()
+    assert bytes(buf) == headers_output  # No additional output
+
+    # Call send_headers after headers already sent - should be no-op
+    await msg.write(b"hello")
+    msg.send_headers()
+    assert buf[len(headers_output) :] == b"hello"  # Only body added
+
+
+async def test_send_headers_no_buffered_headers(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that send_headers() is safe when no headers are buffered."""
+    msg = http.StreamWriter(protocol, loop)
+
+    # Call send_headers without writing headers first
+    msg.send_headers()  # Should not crash
+    assert len(buf) == 0  # No output
+
+
+async def test_write_drain_condition_with_small_buffer(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that drain is not called when buffer_size <= LIMIT."""
+    msg = http.StreamWriter(protocol, loop)
+
+    # Write headers first
+    await msg.write_headers("GET /test HTTP/1.1", CIMultiDict())
+    msg.send_headers()  # Send headers to start with clean state
+
+    # Reset buffer size manually since send_headers doesn't do it
+    msg.buffer_size = 0
+
+    # Reset drain helper mock
+    protocol._drain_helper.reset_mock()  # type: ignore[attr-defined]
+
+    # Write small amount of data with drain=True but buffer under limit
+    small_data = b"x" * 100  # Much less than LIMIT (2**16)
+    await msg.write(small_data, drain=True)
+
+    # Drain should NOT be called because buffer_size <= LIMIT
+    assert not protocol._drain_helper.called  # type: ignore[attr-defined]
+    assert msg.buffer_size == 100
+    assert small_data in buf
+
+
+async def test_write_drain_condition_with_large_buffer(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that drain is called only when drain=True AND buffer_size > LIMIT."""
+    msg = http.StreamWriter(protocol, loop)
+
+    # Write headers first
+    await msg.write_headers("GET /test HTTP/1.1", CIMultiDict())
+    msg.send_headers()  # Send headers to start with clean state
+
+    # Reset buffer size manually since send_headers doesn't do it
+    msg.buffer_size = 0
+
+    # Reset drain helper mock
+    protocol._drain_helper.reset_mock()  # type: ignore[attr-defined]
+
+    # Write large amount of data with drain=True
+    large_data = b"x" * (2**16 + 1)  # Just over LIMIT
+    await msg.write(large_data, drain=True)
+
+    # Drain should be called because drain=True AND buffer_size > LIMIT
+    assert protocol._drain_helper.called  # type: ignore[attr-defined]
+    assert msg.buffer_size == 0  # Buffer reset after drain
+    assert large_data in buf
+
+
+async def test_write_no_drain_with_large_buffer(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that drain is not called when drain=False even with large buffer."""
+    msg = http.StreamWriter(protocol, loop)
+
+    # Write headers first
+    await msg.write_headers("GET /test HTTP/1.1", CIMultiDict())
+    msg.send_headers()  # Send headers to start with clean state
+
+    # Reset buffer size manually since send_headers doesn't do it
+    msg.buffer_size = 0
+
+    # Reset drain helper mock
+    protocol._drain_helper.reset_mock()  # type: ignore[attr-defined]
+
+    # Write large amount of data with drain=False
+    large_data = b"x" * (2**16 + 1)  # Just over LIMIT
+    await msg.write(large_data, drain=False)
+
+    # Drain should NOT be called because drain=False
+    assert not protocol._drain_helper.called  # type: ignore[attr-defined]
+    assert msg.buffer_size == (2**16 + 1)  # Buffer not reset
+    assert large_data in buf
