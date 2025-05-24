@@ -230,9 +230,12 @@ class AbstractStreamWriter(ABC):
     ) -> None:
         """Write HTTP headers"""
 
-    @abstractmethod
     def send_headers(self) -> None:
-        """Force sending buffered headers if not already sent."""
+        """Force sending buffered headers if not already sent.
+
+        Required only if write_headers() buffers headers instead of sending immediately.
+        For backwards compatibility, this method does nothing by default.
+        """
 
 
 class AbstractAccessLogger(ABC):
