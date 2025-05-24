@@ -827,10 +827,9 @@ async def test_cannot_write_eof_before_headers() -> None:
 
 async def test_cannot_write_eof_twice() -> None:
     resp = web.StreamResponse()
-    writer = mock.create_autospec(StreamWriter, spec_set=True)
+    writer = mock.create_autospec(AbstractStreamWriter, spec_set=True)
     writer.write.return_value = None
     writer.write_eof.return_value = None
-    writer.send_headers.return_value = None
     resp_impl = await resp.prepare(make_request("GET", "/", writer=writer))
 
     await resp.write(b"data")
