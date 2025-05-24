@@ -186,11 +186,10 @@ class StreamWriter(AbstractStreamWriter):
         # Handle buffered headers for small payload optimization
         if self._headers_buf and not self._headers_written:
             self._send_headers_with_payload(chunk, False)
-            if chunk:
-                if drain and self.buffer_size > LIMIT:
-                    self.buffer_size = 0
-                    await self.drain()
-                return
+            if drain and self.buffer_size > LIMIT:
+                self.buffer_size = 0
+                await self.drain()
+            return
 
         if chunk:
             if self.chunked:
