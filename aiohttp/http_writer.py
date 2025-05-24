@@ -71,6 +71,8 @@ class StreamWriter(AbstractStreamWriter):
         self.loop = loop
         self._on_chunk_sent: _T_OnChunkSent = on_chunk_sent
         self._on_headers_sent: _T_OnHeadersSent = on_headers_sent
+        self._headers_buf: Optional[bytes] = None
+        self._headers_written: bool = False
 
     @property
     def transport(self) -> Optional[asyncio.Transport]:
@@ -154,6 +156,34 @@ class StreamWriter(AbstractStreamWriter):
                 if not chunk:
                     return
 
+        # Handle buffered headers for small payload optimization
+        if self._headers_buf and not self._headers_written:
+            if chunk:
+                if self.chunked:
+                    # Coalesce headers and first chunk into single writelines call
+                    self._writelines(
+                        (
+                            self._headers_buf,
+                            f"{len(chunk):x}\r\n".encode("ascii"),
+                            chunk,
+                            b"\r\n",
+                        )
+                    )
+                else:
+                    # Coalesce headers and body into single writelines call
+                    self._writelines((self._headers_buf, chunk))
+                self._headers_written = True
+                self._headers_buf = None
+                if self.buffer_size > LIMIT and drain:
+                    self.buffer_size = 0
+                    await self.drain()
+                return
+            else:
+                # No body, send headers now
+                self._write(self._headers_buf)
+                self._headers_written = True
+                self._headers_buf = None
+
         if chunk:
             if self.chunked:
                 self._writelines(
@@ -169,16 +199,47 @@ class StreamWriter(AbstractStreamWriter):
     async def write_headers(
         self, status_line: str, headers: "CIMultiDict[str]"
     ) -> None:
-        """Write request/response status and headers."""
+        """Write request/response status and headers.
+
+        This method buffers headers for potential coalescing with body.
+        """
+        await self._write_headers(status_line, headers, False)
+
+    async def write_headers_immediately(
+        self, status_line: str, headers: "CIMultiDict[str]"
+    ) -> None:
+        """Write headers immediately without buffering."""
+        await self._write_headers(status_line, headers, True)
+
+    async def _write_headers(
+        self, status_line: str, headers: "CIMultiDict[str]", write_immediately: bool
+    ) -> None:
+        """Write headers to the stream.
+
+        If `write_immediately` is True, headers are sent immediately.
+        If False, headers are buffered for potential coalescing with body.
+        """
         if self._on_headers_sent is not None:
             await self._on_headers_sent(headers)
-
         # status + headers
         buf = _serialize_headers(status_line, headers)
-        self._write(buf)
+        self._headers_written = write_immediately
+        if write_immediately:
+            # Send headers immediately
+            self._write(buf)
+            self._headers_buf = None
+        else:
+            # Store headers buffer for potential coalescing with small body
+            self._headers_buf = buf
 
     def set_eof(self) -> None:
         """Indicate that the message is complete."""
+        # If headers haven't been sent yet, send them now
+        # This handles the case where there's no body at all
+        if self._headers_buf and not self._headers_written:
+            self._write(self._headers_buf)
+            self._headers_written = True
+            self._headers_buf = None
         self._eof = True
 
     async def write_eof(self, chunk: bytes = b"") -> None:
@@ -187,6 +248,47 @@ class StreamWriter(AbstractStreamWriter):
 
         if chunk and self._on_chunk_sent is not None:
             await self._on_chunk_sent(chunk)
+
+        # Send buffered headers if not yet sent
+        if self._headers_buf and not self._headers_written:
+            if self._compress:
+                # Can't combine compressed chunks easily, send headers first
+                self._write(self._headers_buf)
+                self._headers_written = True
+                self._headers_buf = None
+            elif self.chunked:
+                if chunk:
+                    # Combine headers with final chunk
+                    chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
+                    self._writelines(
+                        (self._headers_buf, chunk_len_pre, chunk, b"\r\n0\r\n\r\n")
+                    )
+                    self._headers_written = True
+                    self._headers_buf = None
+                    await self.drain()
+                    self._eof = True
+                    return
+                else:
+                    # Send headers with empty final chunk
+                    self._writelines((self._headers_buf, b"0\r\n\r\n"))
+                    self._headers_written = True
+                    self._headers_buf = None
+                    await self.drain()
+                    self._eof = True
+                    return
+            elif chunk:
+                # Combine headers with body
+                self._writelines((self._headers_buf, chunk))
+                self._headers_written = True
+                self._headers_buf = None
+                await self.drain()
+                self._eof = True
+                return
+            else:
+                # Just headers, no body
+                self._write(self._headers_buf)
+                self._headers_written = True
+                self._headers_buf = None
 
         if self._compress:
             chunks: List[bytes] = []

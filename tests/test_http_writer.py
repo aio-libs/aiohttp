@@ -91,6 +91,113 @@ def test_payloadwriter_properties(
     assert writer.transport == transport
 
 
+async def test_write_headers_buffered_small_payload(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    headers = CIMultiDict({"Content-Length": "11", "Host": "example.com"})
+
+    # Write headers - should be buffered
+    await msg.write_headers("GET / HTTP/1.1", headers)
+    assert len(buf) == 0  # Headers not sent yet
+
+    # Write small body - should coalesce with headers
+    await msg.write(b"Hello World", drain=False)
+
+    # Verify content
+    assert b"GET / HTTP/1.1\r\n" in buf
+    assert b"Host: example.com\r\n" in buf
+    assert b"Content-Length: 11\r\n" in buf
+    assert b"\r\n\r\nHello World" in buf
+
+
+async def test_write_headers_immediate_no_body(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    headers = CIMultiDict({"Host": "example.com"})
+
+    # Write headers immediately
+    await msg.write_headers_immediately("GET /status HTTP/1.1", headers)
+
+    # Headers should be sent immediately
+    assert len(buf) > 0
+    assert b"GET /status HTTP/1.1\r\n" in buf
+    assert b"Host: example.com\r\n" in buf
+
+
+async def test_write_headers_chunked_coalescing(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+    headers = CIMultiDict({"Transfer-Encoding": "chunked", "Host": "example.com"})
+
+    # Write headers - should be buffered
+    await msg.write_headers("POST /upload HTTP/1.1", headers)
+    assert len(buf) == 0  # Headers not sent yet
+
+    # Write first chunk - should coalesce with headers
+    await msg.write(b"First chunk", drain=False)
+
+    # Verify content
+    assert b"POST /upload HTTP/1.1\r\n" in buf
+    assert b"Transfer-Encoding: chunked\r\n" in buf
+    # "b" is hex for 11 (length of "First chunk")
+    assert b"\r\n\r\nb\r\nFirst chunk\r\n" in buf
+
+
+async def test_write_eof_with_buffered_headers(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    headers = CIMultiDict({"Content-Length": "9", "Host": "example.com"})
+
+    # Write headers - should be buffered
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+    assert len(buf) == 0
+
+    # Call write_eof with body - should coalesce
+    await msg.write_eof(b"Last data")
+
+    # Verify content
+    assert b"POST /data HTTP/1.1\r\n" in buf
+    assert b"\r\n\r\nLast data" in buf
+
+
+async def test_set_eof_sends_buffered_headers(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    headers = CIMultiDict({"Host": "example.com"})
+
+    # Write headers - should be buffered
+    await msg.write_headers("GET /empty HTTP/1.1", headers)
+    assert len(buf) == 0
+
+    # Call set_eof without body - headers should be sent
+    msg.set_eof()
+
+    # Headers should be sent
+    assert len(buf) > 0
+    assert b"GET /empty HTTP/1.1\r\n" in buf
+
+
 async def test_write_payload_eof(
     transport: asyncio.Transport,
     protocol: BaseProtocol,
