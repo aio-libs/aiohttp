@@ -1591,3 +1591,108 @@ async def test_non_chunked_write_empty_body(
     # Check the output
     assert b"GET /empty HTTP/1.1\r\n" in buf
     assert b"Content-Length: 0\r\n" in buf
+
+
+async def test_chunked_headers_sent_with_empty_chunk_not_eof(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test chunked encoding where headers are sent without data and not EOF."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+
+    headers = CIMultiDict({"Transfer-Encoding": "chunked"})
+    await msg.write_headers("POST /upload HTTP/1.1", headers)
+
+    # This should trigger the else case in _send_headers_with_payload (line 165)
+    # by having no chunk data and is_eof=False
+    await msg.write(b"")
+
+    # Headers should be sent alone
+    assert b"POST /upload HTTP/1.1\r\n" in buf
+    assert b"Transfer-Encoding: chunked\r\n" in buf
+    # Should not have any chunk markers yet
+    assert b"0\r\n" not in buf
+
+
+async def test_chunked_set_eof_after_headers_sent(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test chunked encoding where set_eof is called after headers already sent."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+
+    headers = CIMultiDict({"Transfer-Encoding": "chunked"})
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+
+    # Send headers by writing some data
+    await msg.write(b"test data")
+    buf.clear()  # Clear buffer to check only what set_eof writes
+
+    # This should trigger line 269 - writing chunked EOF when headers already sent
+    msg.set_eof()
+
+    # Should only have the chunked EOF marker
+    assert buf == b"0\r\n\r\n"
+
+
+@pytest.mark.usefixtures("enable_writelines")
+@pytest.mark.usefixtures("force_writelines_small_payloads")
+async def test_write_eof_chunked_with_data_using_writelines(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test write_eof with chunked data that uses writelines (line 336)."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+
+    headers = CIMultiDict({"Transfer-Encoding": "chunked"})
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+
+    # Send headers first
+    await msg.write(b"initial")
+    transport.writelines.reset_mock()  # type: ignore[attr-defined]
+
+    # This should trigger line 336 - writelines for final chunk with EOF
+    await msg.write_eof(b"final chunk data")
+
+    # Should have used writelines
+    assert transport.writelines.called  # type: ignore[attr-defined]
+    # Get the data from writelines call
+    writelines_data = transport.writelines.call_args[0][0]  # type: ignore[attr-defined]
+    combined = b"".join(writelines_data)
+
+    # Should have chunk size, data, and EOF marker
+    assert b"10\r\n" in combined  # hex for 16 (length of "final chunk data")
+    assert b"final chunk data" in combined
+    assert b"0\r\n\r\n" in combined
+
+
+async def test_send_headers_with_payload_chunked_eof_no_data(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test _send_headers_with_payload with chunked, is_eof=True but no chunk data."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+
+    headers = CIMultiDict({"Transfer-Encoding": "chunked"})
+    await msg.write_headers("GET /test HTTP/1.1", headers)
+
+    # This triggers the elif is_eof branch (line 162-163) in _send_headers_with_payload
+    # by calling write_eof with empty chunk
+    await msg.write_eof(b"")
+
+    # Should have headers and chunked EOF marker together
+    assert b"GET /test HTTP/1.1\r\n" in buf
+    assert b"Transfer-Encoding: chunked\r\n" in buf
+    assert buf.endswith(b"0\r\n\r\n")
