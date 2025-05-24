@@ -253,74 +253,20 @@ If you need to refresh access tokens to continue accessing an API, this is also 
 candidate for a middleware. For example, you could check for a 401 response, then
 refresh the token and retry:
 
-.. code-block:: python
-
-    class TokenRefreshMiddleware:
-        def __init__(self, refresh_token: str, access_token: str):
-            self.access_token = access_token
-            self.refresh_token = refresh_token
-            self.lock = asyncio.Lock()
-
-        def __call__(self, req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
-            for _ in range(2):  # Retry at most one time
-                token = self.access_token
-                req.headers["Authorization"] = f"Bearer {token}"
-                resp = await handler(req)
-                if resp.status != 401:
-                    return resp
-                async with self.lock:
-                    if token != self.access_token:  # Already refreshed
-                        continue
-                    async with req.session.post("https://api.example/refresh", data=self.refresh_token) as resp:
-                        self.access_token = await resp.json()
+.. literalinclude:: examples/client_middleware_cookbook.py
+   :pyobject: TokenRefresh401Middleware
 
 If you have an expiry time for the token, you could refresh at the expiry time, to avoid the
 failed request:
 
-.. code-block:: python
-
-    class TokenRefreshMiddleware:
-        def __init__(self, refresh_token: str):
-            self.access_token = ""
-            self.expires_at = 0
-            self.refresh_token = refresh_token
-            self.lock = asyncio.Lock()
-
-        def __call__(self, req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
-            if self.expires_at <= time.time():
-                token = self.access_token
-                async with self.lock:
-                    if token != self.access_token:  # Already refreshed
-                        continue
-                    async with req.session.post("https://api.example/refresh", data=self.refresh_token) as resp:
-                        self.access_token = await resp.json()
-
-            req.headers["Authorization"] = f"Bearer {self.access_token}"
-            return await handler(req)
+.. literalinclude:: examples/client_middleware_cookbook.py
+   :pyobject: TokenRefreshExpiryMiddleware
 
 Or you could even refresh pre-emptively in a background task to avoid any API delays. This is probably most
 efficient to implement without a middleware:
 
-.. code-block:: python
-
-    async def set_token(session, event):
-        while True:
-            async with session.post("/refresh") as resp:
-                token = await resp.json()
-                session.headers["Authorization"] = f"Bearer {token['auth']}"
-                event.set()
-                await asyncio.sleep(token["valid_duration"])
-
-    @asynccontextmanager
-    async def client():
-        async with ClientSession() as session:
-            ready = asyncio.Event()
-            t = asyncio.create_task(set_token(session, event))
-            await ready.wait()
-            yield session
-            t.cancel()
-            with suppress(asyncio.CancelledError):
-                await t
+.. literalinclude:: examples/client_middleware_cookbook.py
+   :pyobject: token_refresh_preemptively_example
 
 Or combine the above approaches to create a more robust solution.
 
@@ -335,27 +281,18 @@ Server-side Request Forgery Protection
 To provide protection against server-side request forgery, we could blacklist any internal
 IPs or domains. We could create a middleware that rejects requests made to a blacklist:
 
-.. code-block:: python
-
-    async def ssrf_middleware(req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
-        if req.url.host in {"127.0.0.1", "localhost"}:
-            raise SSRFError(req.url.host)
-        return await handler(req)
+.. literalinclude:: examples/client_middleware_cookbook.py
+   :pyobject: ssrf_middleware
 
 If you know that your services correctly reject requests with an incorrect `Host` header, then
 that may provide sufficient protection. Otherwise, we still have a concern with an attacker's
 own domain resolving to a blacklisted IP. To provide complete protection, we can include also
 create a custom resolver:
 
-.. code-black:: python
+.. literalinclude:: examples/client_middleware_cookbook.py
+   :pyobject: SSRFConnector
 
-    class SSRFConnector(TCPConnector):
-        async def _resolve_host(
-            self, host: str, port: int, traces: Sequence["Trace"] | None = None
-        ) -> list[ResolveResult]:
-            res = await super()._resolve_host(host, port, traces)
-            if any(r["host"] in {"127.0.0.1"} for r in res):
-                raise ClientConnectorDNSError()
+Using both of these together in a session should provide full SSRF protection.
 
 
 Best Practices
