@@ -1884,7 +1884,7 @@ ClientRequest
       True if this request is for a secure scheme.
 
    .. attribute:: length
-      :type: 
+      :type:
 
    .. attribute:: method
       :type: str
