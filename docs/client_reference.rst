@@ -1929,7 +1929,7 @@ ClientRequest
       The URL of the request, with any fragment stripped.
 
    .. attribute:: version
-      :type: http.HttpVersion
+      :type: HttpVersion
 
       The HTTP version that will be used for the request.
 
