@@ -77,6 +77,13 @@ IPs or domains. We could create a middleware that rejects requests made to a bla
 .. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: ssrf_middleware
 
+.. warning::
+
+   The above example is simplified for demonstration purposes. A production-ready
+   implementation should also check IPv6 addresses (``::1``), private IP ranges,
+   link-local addresses, and other internal hostnames. Consider using a well-tested
+   library for SSRF protection in production environments.
+
 If you know that your services correctly reject requests with an incorrect `Host` header, then
 that may provide sufficient protection. Otherwise, we still have a concern with an attacker's
 own domain resolving to a blacklisted IP. To provide complete protection, we can also
