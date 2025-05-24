@@ -1,10 +1,16 @@
 """This is a collection of semi-complete examples that get included into the cookbook page."""
 
 import asyncio
+import time
 from collections.abc import AsyncIterator, Sequence
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
-from aiohttp import ClientHandlerType, ClientRequest, ClientResponse
+from aiohttp import ClientConnectorDNSError, ClientHandlerType, ClientRequest, ClientResponse, ClientSession, TCPConnector, Trace
+from aiohttp.abc import ResolveResult
+
+
+class SSRFError(Exception):
+    """A request was made to a blacklisted host."""
 
 
 class TokenRefresh401Middleware:
@@ -13,7 +19,7 @@ class TokenRefresh401Middleware:
         self.refresh_token = refresh_token
         self.lock = asyncio.Lock()
 
-    def __call__(
+    async def __call__(
         self, req: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         for _ in range(2):  # Retry at most one time
@@ -37,7 +43,7 @@ class TokenRefreshExpiryMiddleware:
         self.refresh_token = refresh_token
         self.lock = asyncio.Lock()
 
-    def __call__(
+    async def __call__(
         self, req: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         if self.expires_at <= time.time():
@@ -53,7 +59,7 @@ class TokenRefreshExpiryMiddleware:
         return await handler(req)
 
 
-def token_refresh_preemptively_example() -> None:
+async def token_refresh_preemptively_example() -> None:
     async def set_token(session: ClientSession, event: asyncio.Event) -> None:
         while True:
             async with session.post("/refresh") as resp:
@@ -66,7 +72,7 @@ def token_refresh_preemptively_example() -> None:
     async def auto_refresh_client() -> AsyncIterator[ClientSession]:
         async with ClientSession() as session:
             ready = asyncio.Event()
-            t = asyncio.create_task(set_token(session, event))
+            t = asyncio.create_task(set_token(session, ready))
             await ready.wait()
             yield session
             t.cancel()
@@ -87,7 +93,7 @@ async def ssrf_middleware(
 
 class SSRFConnector(TCPConnector):
     async def _resolve_host(
-        self, host: str, port: int, traces: Sequence["Trace"] | None = None
+        self, host: str, port: int, traces: Sequence[Trace] | None = None
     ) -> list[ResolveResult]:
         res = await super()._resolve_host(host, port, traces)
         if any(r["host"] in {"127.0.0.1"} for r in res):
