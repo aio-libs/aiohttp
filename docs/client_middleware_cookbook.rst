@@ -259,13 +259,13 @@ refresh the token and retry:
 If you have an expiry time for the token, you could refresh at the expiry time, to avoid the
 failed request:
 
-.. literalinclude:: examples/client_middleware_cookbook.py
+.. literalinclude:: ../examples/client_middleware_cookbook.py
    :pyobject: TokenRefreshExpiryMiddleware
 
 Or you could even refresh pre-emptively in a background task to avoid any API delays. This is probably most
 efficient to implement without a middleware:
 
-.. literalinclude:: examples/client_middleware_cookbook.py
+.. literalinclude:: ../examples/client_middleware_cookbook.py
    :pyobject: token_refresh_preemptively_example
 
 Or combine the above approaches to create a more robust solution.
@@ -281,7 +281,7 @@ Server-side Request Forgery Protection
 To provide protection against server-side request forgery, we could blacklist any internal
 IPs or domains. We could create a middleware that rejects requests made to a blacklist:
 
-.. literalinclude:: examples/client_middleware_cookbook.py
+.. literalinclude:: ../examples/client_middleware_cookbook.py
    :pyobject: ssrf_middleware
 
 If you know that your services correctly reject requests with an incorrect `Host` header, then
@@ -289,7 +289,7 @@ that may provide sufficient protection. Otherwise, we still have a concern with 
 own domain resolving to a blacklisted IP. To provide complete protection, we can include also
 create a custom resolver:
 
-.. literalinclude:: examples/client_middleware_cookbook.py
+.. literalinclude:: ../examples/client_middleware_cookbook.py
    :pyobject: SSRFConnector
 
 Using both of these together in a session should provide full SSRF protection.
