@@ -1919,7 +1919,7 @@ ClientRequest
       The session that is being used for the request.
 
    .. attribute:: ssl
-      :type: SSLContext | bool | Fingerprint
+      :type: ssl.SSLContext | bool | Fingerprint
 
       The ``ssl`` parameter passed to the session/request call.
 
