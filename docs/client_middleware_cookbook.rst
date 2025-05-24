@@ -66,7 +66,7 @@ Or combine the above approaches to create a more robust solution.
 .. note::
 
     These can also be adjusted to handle proxy auth by modifying
-    :attr:`ClientRequest.proxy_headers` or :attr:`ClientSession.proxy_headers`.
+    :attr:`ClientRequest.proxy_headers`.
 
 Server-side Request Forgery Protection
 --------------------------------------
