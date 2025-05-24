@@ -154,7 +154,7 @@ initializer
 inline
 intaking
 io
-iot
+IoT
 ip
 IP
 ipdb
