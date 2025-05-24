@@ -219,8 +219,6 @@ class WebSocketResponse(StreamResponse):
         payload_writer = await super().prepare(request)
         assert payload_writer is not None
         self._post_start(request, protocol, writer)
-        # Force sending the 101 response headers for WebSocket handshake
-        payload_writer.send_headers()
         await payload_writer.drain()
         return payload_writer
 
