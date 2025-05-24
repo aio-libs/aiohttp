@@ -1327,17 +1327,17 @@ async def test_chunked_headers_single_write_with_set_eof(
     headers = CIMultiDict({"Transfer-Encoding": "chunked", "Host": "example.com"})
     await msg.write_headers("GET /test HTTP/1.1", headers)
     assert len(buf) == 0  # Headers not sent yet
-    assert not transport.writelines.called  # No writelines calls yet
+    assert not transport.writelines.called  # type: ignore[attr-defined]  # No writelines calls yet
 
     # Call set_eof - should send headers + chunked EOF in single write call
     msg.set_eof()
 
     # Should have exactly one write call (since payload is small, writelines falls back to write)
-    assert transport.write.call_count == 1
-    assert transport.writelines.call_count == 0  # Not called for small payloads
+    assert transport.write.call_count == 1  # type: ignore[attr-defined]
+    assert transport.writelines.call_count == 0  # type: ignore[attr-defined]  # Not called for small payloads
 
     # The write call should have the combined headers and chunked EOF marker
-    write_data = transport.write.call_args[0][0]
+    write_data = transport.write.call_args[0][0]  # type: ignore[attr-defined]
     assert write_data.startswith(b"GET /test HTTP/1.1\r\n")
     assert b"Transfer-Encoding: chunked\r\n" in write_data
     assert write_data.endswith(b"\r\n\r\n0\r\n\r\n")  # Headers end + chunked EOF

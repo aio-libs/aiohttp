@@ -1629,14 +1629,14 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
     # may be written as part of the coalescing optimization.
     # If _write was called, it should only be for headers ending with \r\n\r\n
     # and not any body content
-    for call in write_mock.call_args_list:
+    for call in write_mock.call_args_list:  # type: ignore[union-attr]
         data = call[0][0]
         assert data.endswith(
             b"\r\n\r\n"
         ), "Only headers should be written, not body chunks"
 
     # No body data should be written via writelines either
-    writelines_mock.assert_not_called()
+    writelines_mock.assert_not_called()  # type: ignore[union-attr]
 
 
 async def test_GET_DEFLATE_no_body(aiohttp_client: AiohttpClient) -> None:

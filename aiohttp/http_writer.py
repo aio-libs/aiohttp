@@ -3,6 +3,7 @@
 import asyncio
 import sys
 from typing import (  # noqa
+    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
@@ -120,17 +121,28 @@ class StreamWriter(AbstractStreamWriter):
         else:
             transport.writelines(chunks)  # type: ignore[arg-type]
 
-    def _write_chunked_payload(self, chunk: bytes) -> None:
+    def _write_chunked_payload(
+        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+    ) -> None:
         """Write a chunk with proper chunked encoding."""
         chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
         self._writelines((chunk_len_pre, chunk, b"\r\n"))
 
-    def _send_headers_with_payload(self, chunk: bytes, is_eof: bool) -> None:
+    def _send_headers_with_payload(
+        self,
+        chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"],
+        is_eof: bool,
+    ) -> None:
         """Send buffered headers with payload, coalescing into single write."""
         # Mark headers as written
         self._headers_written = True
         headers_buf = self._headers_buf
         self._headers_buf = None
+
+        if TYPE_CHECKING:
+            # Safe because callers (write() and write_eof()) only invoke this method
+            # after checking that self._headers_buf is truthy
+            assert headers_buf is not None
 
         if not self.chunked:
             # Non-chunked: coalesce headers with body
@@ -224,6 +236,11 @@ class StreamWriter(AbstractStreamWriter):
             self._headers_written = True
             headers_buf = self._headers_buf
             self._headers_buf = None
+
+            if TYPE_CHECKING:
+                # Safe because we only enter this block when self._headers_buf is truthy
+                assert headers_buf is not None
+
             self._write(headers_buf)
 
     def set_eof(self) -> None:
@@ -237,6 +254,10 @@ class StreamWriter(AbstractStreamWriter):
             self._headers_written = True
             headers_buf = self._headers_buf
             self._headers_buf = None
+
+            if TYPE_CHECKING:
+                # Safe because we only enter this block when self._headers_buf is truthy
+                assert headers_buf is not None
 
             # Combine headers and chunked EOF marker in a single write
             if self.chunked:
