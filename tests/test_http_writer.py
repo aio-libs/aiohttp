@@ -115,7 +115,7 @@ async def test_write_headers_buffered_small_payload(
     assert b"\r\n\r\nHello World" in buf
 
 
-async def test_write_headers_immediate_no_body(
+async def test_write_headers_no_body_with_set_eof(
     buf: bytearray,
     protocol: BaseProtocol,
     transport: asyncio.Transport,
@@ -124,10 +124,14 @@ async def test_write_headers_immediate_no_body(
     msg = http.StreamWriter(protocol, loop)
     headers = CIMultiDict({"Host": "example.com"})
 
-    # Write headers immediately
-    await msg.write_headers_immediately("GET /status HTTP/1.1", headers)
+    # Write headers - should be buffered
+    await msg.write_headers("GET /status HTTP/1.1", headers)
+    assert len(buf) == 0  # Headers should be buffered
 
-    # Headers should be sent immediately
+    # Call set_eof to send headers when no body
+    msg.set_eof()
+
+    # Headers should be sent by set_eof
     assert len(buf) > 0
     assert b"GET /status HTTP/1.1\r\n" in buf
     assert b"Host: example.com\r\n" in buf
@@ -994,10 +998,17 @@ async def test_set_eof_after_write_headers(
     msg = http.StreamWriter(protocol, loop)
     status_line = "HTTP/1.1 200 OK"
     good_headers = CIMultiDict({"Set-Cookie": "abc=123"})
-    await msg.write_headers_immediately(status_line, good_headers)
-    assert transport.write.called
-    transport.write.reset_mock()
+
+    # Write headers - should be buffered
+    await msg.write_headers(status_line, good_headers)
+    assert not transport.write.called  # Headers are buffered
+
+    # set_eof should send the buffered headers
     msg.set_eof()
+    assert transport.write.called
+
+    # Subsequent write_eof should do nothing
+    transport.write.reset_mock()
     await msg.write_eof()
     assert not transport.write.called
 
@@ -1138,15 +1149,14 @@ async def test_write_multiple_compressed_chunks_after_headers_sent(
     msg.enable_compression("deflate")
     headers = CIMultiDict({"Content-Encoding": "deflate"})
 
-    # Write headers immediately
-    await msg.write_headers_immediately("POST /data HTTP/1.1", headers)
-    initial_len = len(buf)
-    assert initial_len > 0  # Headers written
+    # Write headers and send them immediately by writing first chunk
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+    assert len(buf) == 0  # Headers buffered
 
-    # Write multiple compressed chunks
+    # Write first chunk - this will send headers + compressed data
     await msg.write(b"First chunk of data that should compress")
     len_after_first = len(buf)
-    assert len_after_first > initial_len
+    assert len_after_first > 0  # Headers + first chunk written
 
     # Write second chunk and force flush via EOF
     await msg.write(b"Second chunk of data that should also compress well")
@@ -1219,7 +1229,9 @@ async def test_compression_with_content_length_constraint(
     msg.length = 5  # Set small content length
     headers = CIMultiDict({"Content-Length": "5"})
 
-    await msg.write_headers_immediately("POST /data HTTP/1.1", headers)
+    await msg.write_headers("POST /data HTTP/1.1", headers)
+    # Write something to trigger headers to be sent
+    await msg.write(b"")  # This will trigger header send
     buf.clear()
 
     # Write more data than content length allows
@@ -1240,7 +1252,9 @@ async def test_write_compressed_zero_length_chunk(
     msg = http.StreamWriter(protocol, loop)
     msg.enable_compression("deflate")
 
-    await msg.write_headers_immediately("POST /data HTTP/1.1", CIMultiDict())
+    await msg.write_headers("POST /data HTTP/1.1", CIMultiDict())
+    # Force headers to be sent by writing something
+    await msg.write(b"x")  # Write something to trigger header send
     buf.clear()
 
     # Write empty chunk - compression may still produce output

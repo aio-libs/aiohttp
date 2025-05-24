@@ -764,16 +764,11 @@ class ClientRequest:
         # status + headers
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
 
-        # Send headers immediately if no body, otherwise buffer for coalescing
-        if has_body := (
-            self.body or self._continue is not None or protocol.writing_paused
-        ):
-            await writer.write_headers(status_line, self.headers)
-        else:
-            await writer.write_headers_immediately(status_line, self.headers)
+        # Buffer headers for potential coalescing with body
+        await writer.write_headers(status_line, self.headers)
 
         task: Optional["asyncio.Task[None]"]
-        if has_body:
+        if self.body or self._continue is not None or protocol.writing_paused:
             coro = self.write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write
