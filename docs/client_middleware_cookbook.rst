@@ -33,7 +33,7 @@ create a simple middleware like this:
 
     Using the same session from within middleware can cause infinite recursion if
     that request gets processed again by the middleware.
-    
+
     To avoid such recursion a middleware should typically make requests with
     ``middlewares=()`` or else contain some condition to stop the request triggering
     the same logic when it is processed again by the middleware (e.g by whitelisting
