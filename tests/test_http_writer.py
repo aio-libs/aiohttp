@@ -1230,16 +1230,16 @@ async def test_compression_with_content_length_constraint(
     headers = CIMultiDict({"Content-Length": "5"})
 
     await msg.write_headers("POST /data HTTP/1.1", headers)
-    # Write something to trigger headers to be sent
-    await msg.write(b"")  # This will trigger header send
-    buf.clear()
+    # Write some initial data to trigger headers to be sent
+    await msg.write(b"12345")  # This matches our content length of 5
+    headers_and_first_chunk_len = len(buf)
 
-    # Write more data than content length allows
+    # Try to write more data than content length allows
     await msg.write(b"This is a longer message")
 
-    # Due to compression, we can't predict exact size, but it should be limited
-    # The write should respect the content length before compression
-    assert len(buf) > 0  # Some compressed data written
+    # The second write should not add any data since content length is exhausted
+    # After writing 5 bytes, length becomes 0, so additional writes are ignored
+    assert len(buf) == headers_and_first_chunk_len  # No additional data written
 
 
 async def test_write_compressed_zero_length_chunk(
@@ -1324,3 +1324,38 @@ async def test_compression_different_strategies(
     # Since we can't easily test different compression strategies
     # (the compressor initialization might not support strategy parameter),
     # we just verify that compression works
+
+
+async def test_chunked_headers_single_write_with_set_eof(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that set_eof combines headers and chunked EOF in single write."""
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_chunking()
+
+    # Write headers - should be buffered
+    headers = CIMultiDict({"Transfer-Encoding": "chunked", "Host": "example.com"})
+    await msg.write_headers("GET /test HTTP/1.1", headers)
+    assert len(buf) == 0  # Headers not sent yet
+    assert not transport.writelines.called  # No writelines calls yet
+
+    # Call set_eof - should send headers + chunked EOF in single write call
+    msg.set_eof()
+
+    # Should have exactly one write call (since payload is small, writelines falls back to write)
+    assert transport.write.call_count == 1
+    assert transport.writelines.call_count == 0  # Not called for small payloads
+
+    # The write call should have the combined headers and chunked EOF marker
+    write_data = transport.write.call_args[0][0]
+    assert write_data.startswith(b"GET /test HTTP/1.1\r\n")
+    assert b"Transfer-Encoding: chunked\r\n" in write_data
+    assert write_data.endswith(b"\r\n\r\n0\r\n\r\n")  # Headers end + chunked EOF
+
+    # Verify final output
+    assert b"GET /test HTTP/1.1\r\n" in buf
+    assert b"Transfer-Encoding: chunked\r\n" in buf
+    assert buf.endswith(b"0\r\n\r\n")
