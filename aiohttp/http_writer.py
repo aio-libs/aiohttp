@@ -187,7 +187,7 @@ class StreamWriter(AbstractStreamWriter):
         if self._headers_buf and not self._headers_written:
             self._send_headers_with_payload(chunk, False)
             if chunk:
-                if self.buffer_size > LIMIT and drain:
+                if drain and self.buffer_size > LIMIT:
                     self.buffer_size = 0
                     await self.drain()
                 return
@@ -198,7 +198,7 @@ class StreamWriter(AbstractStreamWriter):
             else:
                 self._write(chunk)
 
-            if self.buffer_size > LIMIT and drain:
+            if drain and self.buffer_size > LIMIT:
                 self.buffer_size = 0
                 await self.drain()
 
@@ -304,10 +304,9 @@ class StreamWriter(AbstractStreamWriter):
         if self._headers_buf and not self._headers_written:
             # Use helper to send headers with payload
             self._send_headers_with_payload(chunk, True)
-            if self.chunked or chunk:
-                await self.drain()
-                self._eof = True
-                return
+            await self.drain()
+            self._eof = True
+            return
 
         # Handle remaining body
         if self.chunked:
@@ -318,9 +317,14 @@ class StreamWriter(AbstractStreamWriter):
                 )
             else:
                 self._write(b"0\r\n\r\n")
-        elif chunk:
+            await self.drain()
+            self._eof = True
+            return
+
+        if chunk:
             self._write(chunk)
-        await self.drain()
+            await self.drain()
+
         self._eof = True
 
     async def drain(self) -> None:
