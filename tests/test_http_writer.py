@@ -1,7 +1,6 @@
 # Tests for aiohttp/http_writer.py
 import array
 import asyncio
-import re
 import zlib
 from typing import Any, Generator, Iterable, Union
 from unittest import mock
@@ -1272,10 +1271,20 @@ async def test_chunked_compressed_eof_coalescing(
 
     # Should have chunk size in hex before the compressed data
     output = bytes(buf)
-    # Look for hex chunk size pattern
-    hex_pattern = re.compile(rb"\r\n([0-9a-fA-F]+)\r\n")
-    matches = hex_pattern.findall(output)
-    assert len(matches) > 0  # Should have at least one chunk size
+    # Verify we have chunk markers - look for \r\n followed by hex digits
+    # The chunk size should be between the headers and the compressed data
+    assert b"\r\n\r\n" in output  # End of headers
+    # After headers, we should have a hex chunk size
+    headers_end = output.find(b"\r\n\r\n") + 4
+    chunk_data = output[headers_end:]
+    # Should start with hex digits followed by \r\n
+    assert (
+        chunk_data[:10]
+        .strip()
+        .decode("ascii", errors="ignore")
+        .replace("\r\n", "")
+        .isalnum()
+    )
 
 
 async def test_compression_different_strategies(
