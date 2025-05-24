@@ -120,6 +120,33 @@ class StreamWriter(AbstractStreamWriter):
         else:
             transport.writelines(chunks)  # type: ignore[arg-type]
 
+    def _write_chunked_payload(self, chunk: bytes) -> None:
+        """Write a chunk with proper chunked encoding."""
+        chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
+        self._writelines((chunk_len_pre, chunk, b"\r\n"))
+
+    def _send_headers_with_payload(self, chunk: bytes, is_eof: bool) -> None:
+        """Send buffered headers with payload, coalescing into single write."""
+        # Mark headers as written
+        self._headers_written = True
+        headers_buf = self._headers_buf
+        self._headers_buf = None
+
+        if self.chunked:
+            # Coalesce headers with chunked data
+            chunks = [headers_buf]
+            if chunk:
+                chunks.extend([f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n"])
+            if is_eof:
+                chunks.append(b"0\r\n\r\n")
+            self._writelines(chunks)
+        else:
+            # Non-chunked: coalesce headers with body
+            if chunk:
+                self._writelines((headers_buf, chunk))
+            else:
+                self._write(headers_buf)
+
     async def write(
         self,
         chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"],
@@ -158,37 +185,16 @@ class StreamWriter(AbstractStreamWriter):
 
         # Handle buffered headers for small payload optimization
         if self._headers_buf and not self._headers_written:
+            self._send_headers_with_payload(chunk, False)
             if chunk:
-                if self.chunked:
-                    # Coalesce headers and first chunk into single writelines call
-                    self._writelines(
-                        (
-                            self._headers_buf,
-                            f"{len(chunk):x}\r\n".encode("ascii"),
-                            chunk,
-                            b"\r\n",
-                        )
-                    )
-                else:
-                    # Coalesce headers and body into single writelines call
-                    self._writelines((self._headers_buf, chunk))
-                self._headers_written = True
-                self._headers_buf = None
                 if self.buffer_size > LIMIT and drain:
                     self.buffer_size = 0
                     await self.drain()
                 return
-            else:
-                # No body, send headers now
-                self._write(self._headers_buf)
-                self._headers_written = True
-                self._headers_buf = None
 
         if chunk:
             if self.chunked:
-                self._writelines(
-                    (f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n")
-                )
+                self._write_chunked_payload(chunk)
             else:
                 self._write(chunk)
 
@@ -256,40 +262,15 @@ class StreamWriter(AbstractStreamWriter):
                 self._write(self._headers_buf)
                 self._headers_written = True
                 self._headers_buf = None
-            elif self.chunked:
-                if chunk:
-                    # Combine headers with final chunk
-                    chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
-                    self._writelines(
-                        (self._headers_buf, chunk_len_pre, chunk, b"\r\n0\r\n\r\n")
-                    )
-                    self._headers_written = True
-                    self._headers_buf = None
-                    await self.drain()
-                    self._eof = True
-                    return
-                else:
-                    # Send headers with empty final chunk
-                    self._writelines((self._headers_buf, b"0\r\n\r\n"))
-                    self._headers_written = True
-                    self._headers_buf = None
-                    await self.drain()
-                    self._eof = True
-                    return
-            elif chunk:
-                # Combine headers with body
-                self._writelines((self._headers_buf, chunk))
-                self._headers_written = True
-                self._headers_buf = None
-                await self.drain()
-                self._eof = True
-                return
             else:
-                # Just headers, no body
-                self._write(self._headers_buf)
-                self._headers_written = True
-                self._headers_buf = None
+                # Use helper to send headers with payload
+                self._send_headers_with_payload(chunk, True)
+                if self.chunked or chunk:
+                    await self.drain()
+                    self._eof = True
+                    return
 
+        # Handle body/compression
         if self._compress:
             chunks: List[bytes] = []
             chunks_len = 0
@@ -311,15 +292,16 @@ class StreamWriter(AbstractStreamWriter):
                 self._write(chunks[0])
         elif self.chunked:
             if chunk:
-                chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
-                self._writelines((chunk_len_pre, chunk, b"\r\n0\r\n\r\n"))
+                # Write final chunk with EOF marker
+                self._writelines(
+                    (f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n0\r\n\r\n")
+                )
             else:
                 self._write(b"0\r\n\r\n")
         elif chunk:
             self._write(chunk)
 
         await self.drain()
-
         self._eof = True
 
     async def drain(self) -> None:

@@ -993,12 +993,31 @@ async def test_set_eof_after_write_headers(
     msg = http.StreamWriter(protocol, loop)
     status_line = "HTTP/1.1 200 OK"
     good_headers = CIMultiDict({"Set-Cookie": "abc=123"})
-    await msg.write_headers(status_line, good_headers)
+    await msg.write_headers_immediately(status_line, good_headers)
     assert transport.write.called
     transport.write.reset_mock()
     msg.set_eof()
     await msg.write_eof()
     assert not transport.write.called
+
+
+async def test_write_headers_does_not_write_immediately(
+    protocol: BaseProtocol,
+    transport: mock.Mock,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    msg = http.StreamWriter(protocol, loop)
+    status_line = "HTTP/1.1 200 OK"
+    headers = CIMultiDict({"Content-Type": "text/plain"})
+
+    # write_headers should buffer, not write immediately
+    await msg.write_headers(status_line, headers)
+    assert not transport.write.called
+    assert not transport.writelines.called
+
+    # Headers should be sent when set_eof is called
+    msg.set_eof()
+    assert transport.write.called
 
 
 @pytest.mark.parametrize(
