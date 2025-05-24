@@ -29,7 +29,7 @@ async def retry_middleware(
         resp = await handler(req)
         if resp.ok:
             return resp
-    assert False  # Unreachable - adjust as needed for your use case
+    return resp  # type: ignore[possibly-undefined]
 
 
 async def api_logging_middleware(
