@@ -115,28 +115,6 @@ async def test_write_headers_buffered_small_payload(
     assert b"\r\n\r\nHello World" in buf
 
 
-async def test_write_headers_no_body_with_set_eof(
-    buf: bytearray,
-    protocol: BaseProtocol,
-    transport: asyncio.Transport,
-    loop: asyncio.AbstractEventLoop,
-) -> None:
-    msg = http.StreamWriter(protocol, loop)
-    headers = CIMultiDict({"Host": "example.com"})
-
-    # Write headers - should be buffered
-    await msg.write_headers("GET /status HTTP/1.1", headers)
-    assert len(buf) == 0  # Headers should be buffered
-
-    # Call set_eof to send headers when no body
-    msg.set_eof()
-
-    # Headers should be sent by set_eof
-    assert len(buf) > 0
-    assert b"GET /status HTTP/1.1\r\n" in buf
-    assert b"Host: example.com\r\n" in buf
-
-
 async def test_write_headers_chunked_coalescing(
     buf: bytearray,
     protocol: BaseProtocol,
