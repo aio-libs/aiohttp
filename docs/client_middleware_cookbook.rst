@@ -356,7 +356,7 @@ create a custom resolver:
             res = await super()._resolve_host(host, port, traces)
             if any(r["host"] in {"127.0.0.1"} for r in res):
                 raise ClientConnectorDNSError()
-        
+
 
 Best Practices
 --------------
