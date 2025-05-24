@@ -21,6 +21,13 @@ class SSRFError(Exception):
     """A request was made to a blacklisted host."""
 
 
+async def retry_middleware(req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
+    for _ in range(3):  # Try upto 3 times
+        resp = await handler(req)
+        if resp.ok:
+            return resp
+
+
 class TokenRefresh401Middleware:
     def __init__(self, refresh_token: str, access_token: str):
         self.access_token = access_token
