@@ -1,2 +1,0 @@
-Added support for overriding the base URL with an absolute one in client sessions
--- by :user:`vivodi`.

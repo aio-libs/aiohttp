@@ -1,4 +1,0 @@
-Improved documentation for middleware by adding warnings and examples about
-request body stream consumption. The documentation now clearly explains that
-request body streams can only be read once and provides best practices for
-sharing parsed request data between middleware and handlers -- by :user:`bdraco`.
