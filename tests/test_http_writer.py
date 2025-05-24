@@ -1517,3 +1517,69 @@ async def test_write_no_drain_with_large_buffer(
     assert not protocol._drain_helper.called  # type: ignore[attr-defined]
     assert msg.buffer_size == (2**16 + 1)  # Buffer not reset
     assert large_data in buf
+
+
+async def test_set_eof_idempotent(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that set_eof() is idempotent and can be called multiple times safely."""
+    msg = http.StreamWriter(protocol, loop)
+
+    # Test 1: Multiple set_eof calls with buffered headers
+    headers = CIMultiDict({"Content-Length": "0"})
+    await msg.write_headers("GET /test HTTP/1.1", headers)
+
+    # First set_eof should send headers
+    msg.set_eof()
+    first_output = bytes(buf)
+    assert b"GET /test HTTP/1.1\r\n" in first_output
+    assert b"Content-Length: 0\r\n" in first_output
+
+    # Second set_eof should be no-op
+    msg.set_eof()
+    assert bytes(buf) == first_output  # No additional output
+
+    # Third set_eof should also be no-op
+    msg.set_eof()
+    assert bytes(buf) == first_output  # Still no additional output
+
+    # Test 2: set_eof with chunked encoding
+    buf.clear()
+    msg2 = http.StreamWriter(protocol, loop)
+    msg2.enable_chunking()
+
+    headers2 = CIMultiDict({"Transfer-Encoding": "chunked"})
+    await msg2.write_headers("POST /data HTTP/1.1", headers2)
+
+    # First set_eof should send headers + chunked EOF
+    msg2.set_eof()
+    chunked_output = bytes(buf)
+    assert b"POST /data HTTP/1.1\r\n" in chunked_output
+    assert b"Transfer-Encoding: chunked\r\n" in chunked_output
+    assert b"0\r\n\r\n" in chunked_output  # Chunked EOF marker
+
+    # Second set_eof should be no-op
+    msg2.set_eof()
+    assert bytes(buf) == chunked_output  # No additional output
+
+    # Test 3: set_eof after headers already sent
+    buf.clear()
+    msg3 = http.StreamWriter(protocol, loop)
+
+    headers3 = CIMultiDict({"Content-Length": "5"})
+    await msg3.write_headers("PUT /update HTTP/1.1", headers3)
+
+    # Send headers by writing some data
+    await msg3.write(b"hello")
+    headers_and_body = bytes(buf)
+
+    # set_eof after headers sent should be no-op
+    msg3.set_eof()
+    assert bytes(buf) == headers_and_body  # No additional output
+
+    # Another set_eof should still be no-op
+    msg3.set_eof()
+    assert bytes(buf) == headers_and_body  # Still no additional output

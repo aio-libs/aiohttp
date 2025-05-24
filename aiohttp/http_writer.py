@@ -141,12 +141,16 @@ class StreamWriter(AbstractStreamWriter):
             return
 
         # Coalesce headers with chunked data
-        chunks = [headers_buf]
         if chunk:
-            chunks.extend([f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n"])
-        if is_eof:
-            chunks.append(b"0\r\n\r\n")
-        self._writelines(chunks)
+            chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
+            if is_eof:
+                self._writelines((headers_buf, chunk_len_pre, chunk, b"\r\n0\r\n\r\n"))
+            else:
+                self._writelines((headers_buf, chunk_len_pre, chunk, b"\r\n"))
+        elif is_eof:
+            self._writelines((headers_buf, b"0\r\n\r\n"))
+        else:
+            self._write(headers_buf)
 
     async def write(
         self,
