@@ -1,7 +1,0 @@
-Optimized small HTTP requests/responses by coalescing headers and body into a single TCP packet -- by :user:`bdraco`.
-
-This change enhances network efficiency by reducing the number of packets sent for small HTTP payloads, improving latency and reducing overhead. Most importantly, this fixes compatibility with memory-constrained IoT devices that can only perform a single read operation and expect HTTP requests in one packet. The optimization uses zero-copy ``writelines`` when coalescing data and works with both regular and chunked transfer encoding.
-
-When ``aiohttp`` uses client middleware to communicate with an ``aiohttp`` server, connection reuse is more likely to occur since complete responses arrive in a single packet for small payloads.
-
-This aligns ``aiohttp`` with other popular HTTP clients that already coalesce small requests.
