@@ -232,16 +232,18 @@ class StreamWriter(AbstractStreamWriter):
 
     def send_headers(self) -> None:
         """Force sending buffered headers if not already sent."""
-        if self._headers_buf and not self._headers_written:
-            self._headers_written = True
-            headers_buf = self._headers_buf
-            self._headers_buf = None
+        if not self._headers_buf or self._headers_written:
+            return
 
-            if TYPE_CHECKING:
-                # Safe because we only enter this block when self._headers_buf is truthy
-                assert headers_buf is not None
+        self._headers_written = True
+        headers_buf = self._headers_buf
+        self._headers_buf = None
 
-            self._write(headers_buf)
+        if TYPE_CHECKING:
+            # Safe because we only enter this block when self._headers_buf is truthy
+            assert headers_buf is not None
+
+        self._write(headers_buf)
 
     def set_eof(self) -> None:
         """Indicate that the message is complete."""
