@@ -296,28 +296,30 @@ class StreamWriter(AbstractStreamWriter):
                 self._writelines(chunks)
             else:
                 self._write(chunks[0])
-        else:
-            # No compression - send buffered headers if not yet sent
-            if self._headers_buf and not self._headers_written:
-                # Use helper to send headers with payload
-                self._send_headers_with_payload(chunk, True)
-                if self.chunked or chunk:
-                    await self.drain()
-                    self._eof = True
-                    return
+            await self.drain()
+            self._eof = True
+            return
 
-            # Handle remaining body
-            if self.chunked:
-                if chunk:
-                    # Write final chunk with EOF marker
-                    self._writelines(
-                        (f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n0\r\n\r\n")
-                    )
-                else:
-                    self._write(b"0\r\n\r\n")
-            elif chunk:
-                self._write(chunk)
+        # No compression - send buffered headers if not yet sent
+        if self._headers_buf and not self._headers_written:
+            # Use helper to send headers with payload
+            self._send_headers_with_payload(chunk, True)
+            if self.chunked or chunk:
+                await self.drain()
+                self._eof = True
+                return
 
+        # Handle remaining body
+        if self.chunked:
+            if chunk:
+                # Write final chunk with EOF marker
+                self._writelines(
+                    (f"{len(chunk):x}\r\n".encode("ascii"), chunk, b"\r\n0\r\n\r\n")
+                )
+            else:
+                self._write(b"0\r\n\r\n")
+        elif chunk:
+            self._write(chunk)
         await self.drain()
         self._eof = True
 
