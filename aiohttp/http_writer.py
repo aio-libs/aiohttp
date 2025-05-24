@@ -220,7 +220,8 @@ class StreamWriter(AbstractStreamWriter):
     async def _write_headers(
         self, status_line: str, headers: "CIMultiDict[str]", write_immediately: bool
     ) -> None:
-        """Write headers to the stream.
+        """
+        Write headers to the stream.
 
         If `write_immediately` is True, headers are sent immediately.
         If False, headers are buffered for potential coalescing with body.
@@ -230,13 +231,13 @@ class StreamWriter(AbstractStreamWriter):
         # status + headers
         buf = _serialize_headers(status_line, headers)
         self._headers_written = write_immediately
-        if write_immediately:
-            # Send headers immediately
-            self._write(buf)
-            self._headers_buf = None
-        else:
+        if not write_immediately:
             # Store headers buffer for potential coalescing with small body
             self._headers_buf = buf
+            return
+        # Send headers immediately
+        self._write(buf)
+        self._headers_buf = None
 
     def set_eof(self) -> None:
         """Indicate that the message is complete."""
