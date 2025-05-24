@@ -5,7 +5,15 @@ import time
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager, suppress
 
-from aiohttp import ClientConnectorDNSError, ClientHandlerType, ClientRequest, ClientResponse, ClientSession, TCPConnector, Trace
+from aiohttp import (
+    ClientConnectorDNSError,
+    ClientHandlerType,
+    ClientRequest,
+    ClientResponse,
+    ClientSession,
+    TCPConnector,
+    Trace,
+)
 from aiohttp.abc import ResolveResult
 
 
