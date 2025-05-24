@@ -89,6 +89,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
     _eof_sent: bool = False
     _must_be_empty_body: Optional[bool] = None
     _body_length = 0
+    _send_headers_immediately = True
 
     def __init__(
         self,
@@ -441,6 +442,10 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         status_line = f"HTTP/{version[0]}.{version[1]} {self._status} {self._reason}"
         await writer.write_headers(status_line, self._headers)
 
+        # Send headers immediately if not opted into buffering
+        if self._send_headers_immediately:
+            writer.send_headers()
+
     async def write(
         self, data: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
     ) -> None:
@@ -519,6 +524,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 class Response(StreamResponse):
 
     _compressed_body: Optional[bytes] = None
+    _send_headers_immediately = False
 
     def __init__(
         self,

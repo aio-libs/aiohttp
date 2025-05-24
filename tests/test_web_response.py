@@ -1444,3 +1444,46 @@ async def test_passing_cimultidict_to_web_response_not_mutated(
     await resp.prepare(req)
     assert resp.content_length == 6
     assert not headers
+
+
+async def test_stream_response_sends_headers_immediately() -> None:
+    """Test that StreamResponse sends headers immediately."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True)
+    writer.write_headers = mock.AsyncMock()
+    writer.send_headers = mock.Mock()
+    writer.write_eof = mock.AsyncMock()
+
+    req = make_request("GET", "/", writer=writer)
+    resp = web.StreamResponse()
+
+    # StreamResponse should have _send_headers_immediately = True
+    assert resp._send_headers_immediately is True
+
+    # Prepare the response
+    await resp.prepare(req)
+
+    # Headers should be sent immediately
+    writer.send_headers.assert_called_once()
+
+
+async def test_response_buffers_headers() -> None:
+    """Test that Response buffers headers for packet coalescing."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True)
+    writer.write_headers = mock.AsyncMock()
+    writer.send_headers = mock.Mock()
+    writer.write_eof = mock.AsyncMock()
+
+    req = make_request("GET", "/", writer=writer)
+    resp = web.Response(body=b"hello")
+
+    # Response should have _send_headers_immediately = False
+    assert resp._send_headers_immediately is False
+
+    # Prepare the response
+    await resp.prepare(req)
+
+    # Headers should NOT be sent immediately
+    writer.send_headers.assert_not_called()
+
+    # But write_headers should have been called
+    writer.write_headers.assert_called_once()
