@@ -145,6 +145,7 @@ HTTPException
 HttpProcessingError
 httpretty
 https
+hostname
 impl
 incapsulates
 Indices

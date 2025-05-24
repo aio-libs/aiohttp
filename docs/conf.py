@@ -397,8 +397,9 @@ nitpick_ignore = [
     ("py:class", "aiohttp.web.RequestHandler"),  # undocumented
     ("py:class", "aiohttp.NamedPipeConnector"),  # undocumented
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
-    ("py:class", "aiohttp.ClientRequest"),  # undocumented
+    ("py:class", "HttpVersion"),  # undocumented
     ("py:class", "aiohttp.payload.Payload"),  # undocumented
+    ("py:class", "Payload"),  # undocumented
     ("py:class", "aiohttp.resolver.AsyncResolver"),  # undocumented
     ("py:class", "aiohttp.resolver.ThreadedResolver"),  # undocumented
     ("py:func", "aiohttp.ws_connect"),  # undocumented
