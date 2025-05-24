@@ -1863,46 +1863,31 @@ ClientRequest
       Users typically don't create ``ClientRequest`` instances directly. They are
       created internally by :class:`ClientSession` methods and passed to middleware.
 
-   **Common Middleware Use Cases:**
+   For more information about using middleware, see :ref:`aiohttp-client-middleware`.
 
-   - Adding authentication headers
-   - Logging request details
-   - Modifying request parameters
-   - Implementing retry logic
+   .. attribute:: body
+      :type: Payload | FormData
 
-   **Example:**
+      The request body payload. This can be:
 
-   .. code-block:: python
+      - A :class:`Payload` object for raw data (default is empty bytes ``b""``)
+      - A :class:`FormData` object for form submissions
 
-      async def auth_middleware(request: ClientRequest, handler) -> ClientResponse:
-          # Add authentication header
-          request.headers['Authorization'] = 'Bearer token'
+   .. attribute:: chunked
+      :type: bool | None
 
-          # Log request details
-          print(f"{request.method} {request.url}")
+      Whether to use chunked transfer encoding:
 
-          # Continue with the request
-          return await handler(request)
+      - ``True``: Use chunked encoding
+      - ``False``: Don't use chunked encoding
+      - ``None``: Automatically determine based on body
 
-   .. attribute:: method
-      :type: str
+   .. attribute:: compress
+      :type: str | None
 
-      The HTTP method of the request (e.g., ``'GET'``, ``'POST'``, ``'PUT'``, etc.).
-
-   .. attribute:: url
-      :type: yarl.URL
-
-      The target URL of the request with the fragment (``#...``) part stripped.
-      This is the actual URL that will be used for the connection.
-
-      .. note::
-         To access the original URL with fragment, use :attr:`original_url`.
-
-   .. attribute:: original_url
-      :type: yarl.URL
-
-      The original URL passed to the request method, including any fragment.
-      This preserves the exact URL as provided by the user.
+      The compression encoding for the request body. Common values include
+      ``'gzip'`` and ``'deflate'``, but any string value is technically allowed.
+      ``None`` means no compression.
 
    .. attribute:: headers
       :type: multidict.CIMultiDict
@@ -1916,39 +1901,21 @@ ClientRequest
          request.headers['X-Custom-Header'] = 'value'
          request.headers['User-Agent'] = 'MyApp/1.0'
 
-   .. attribute:: body
-      :type: Payload | FormData | None
-
-      The request body payload. This can be:
-
-      - ``None`` for requests without a body (e.g., GET requests)
-      - A :class:`Payload` object for raw data
-      - A :class:`FormData` object for form submissions
-
-   .. attribute:: session
-      :type: ClientSession
-
-      The client session that created this request. Useful for accessing
-      session-level configuration or making additional requests within middleware.
-
-      .. warning::
-         Be careful when making requests with the same session inside middleware
-         to avoid infinite recursion. Use ``middlewares=()`` parameter when needed.
-
    .. attribute:: is_ssl
       :type: bool
 
-      ``True`` if the request uses HTTPS, ``False`` for HTTP.
+      ``True`` if the request uses a secure scheme (e.g., HTTPS, WSS), ``False`` otherwise.
 
-   .. attribute:: ssl
-      :type: ssl.SSLContext | bool | Fingerprint | None
+   .. attribute:: method
+      :type: str
 
-      SSL validation configuration for this request:
+      The HTTP method of the request (e.g., ``'GET'``, ``'POST'``, ``'PUT'``, etc.).
 
-      - ``None`` or ``True``: Use default SSL verification
-      - ``False``: Skip SSL verification
-      - :class:`ssl.SSLContext`: Custom SSL context
-      - :class:`Fingerprint`: Verify specific certificate fingerprint
+   .. attribute:: original_url
+      :type: yarl.URL
+
+      The original URL passed to the request method, including any fragment.
+      This preserves the exact URL as provided by the user.
 
    .. attribute:: proxy
       :type: yarl.URL | None
@@ -1961,29 +1928,6 @@ ClientRequest
       Headers to be sent to the proxy server (e.g., ``Proxy-Authorization``).
       Only set when :attr:`proxy` is not ``None``.
 
-   .. attribute:: version
-      :type: HttpVersion
-
-      The HTTP version to use for the request (e.g., ``HttpVersion(1, 1)`` for HTTP/1.1).
-
-   .. attribute:: compress
-      :type: str | None
-
-      The compression encoding for the request body:
-
-      - ``'gzip'`` for gzip compression
-      - ``'deflate'`` for deflate compression
-      - ``None`` for no compression
-
-   .. attribute:: chunked
-      :type: bool | None
-
-      Whether to use chunked transfer encoding:
-
-      - ``True``: Use chunked encoding
-      - ``False``: Don't use chunked encoding
-      - ``None``: Automatically determine based on body
-
    .. attribute:: response_class
       :type: type[ClientResponse]
 
@@ -1995,6 +1939,40 @@ ClientRequest
 
       Override the hostname for SSL certificate verification. Useful when
       connecting through proxies or to IP addresses.
+
+   .. attribute:: session
+      :type: ClientSession
+
+      The client session that created this request. Useful for accessing
+      session-level configuration or making additional requests within middleware.
+
+      .. warning::
+         Be careful when making requests with the same session inside middleware
+         to avoid infinite recursion. Use ``middlewares=()`` parameter when needed.
+
+   .. attribute:: ssl
+      :type: ssl.SSLContext | bool | Fingerprint
+
+      SSL validation configuration for this request:
+
+      - ``True``: Use default SSL verification
+      - ``False``: Skip SSL verification
+      - :class:`ssl.SSLContext`: Custom SSL context
+      - :class:`Fingerprint`: Verify specific certificate fingerprint
+
+   .. attribute:: url
+      :type: yarl.URL
+
+      The target URL of the request with the fragment (``#...``) part stripped.
+      This is the actual URL that will be used for the connection.
+
+      .. note::
+         To access the original URL with fragment, use :attr:`original_url`.
+
+   .. attribute:: version
+      :type: HttpVersion
+
+      The HTTP version to use for the request (e.g., ``HttpVersion(1, 1)`` for HTTP/1.1).
 
 
 
