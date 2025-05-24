@@ -162,6 +162,9 @@ class MockStreamWriter(AbstractStreamWriter):
     async def write_headers(self, status_line: str, headers: CIMultiDict[str]) -> None:
         """Write headers - no-op for tests."""
 
+    def send_headers(self) -> None:
+        """Send headers - no-op for tests."""
+
     def get_written_bytes(self) -> bytes:
         """Return all written bytes as a single bytes object."""
         return b"".join(self.written)
