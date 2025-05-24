@@ -253,7 +253,7 @@ If you need to refresh access tokens to continue accessing an API, this is also 
 candidate for a middleware. For example, you could check for a 401 response, then
 refresh the token and retry:
 
-.. literalinclude:: examples/client_middleware_cookbook.py
+.. literalinclude:: ../examples/client_middleware_cookbook.py
    :pyobject: TokenRefresh401Middleware
 
 If you have an expiry time for the token, you could refresh at the expiry time, to avoid the
