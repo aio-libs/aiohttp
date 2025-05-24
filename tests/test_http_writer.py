@@ -1521,7 +1521,7 @@ async def test_set_eof_idempotent(
 
     # First set_eof should send headers
     msg.set_eof()
-    first_output = bytes(buf)
+    first_output = buf
     assert b"GET /test HTTP/1.1\r\n" in first_output
     assert b"Content-Length: 0\r\n" in first_output
 
@@ -1543,14 +1543,14 @@ async def test_set_eof_idempotent(
 
     # First set_eof should send headers + chunked EOF
     msg2.set_eof()
-    chunked_output = bytes(buf)
-    assert b"POST /data HTTP/1.1\r\n" in chunked_output
-    assert b"Transfer-Encoding: chunked\r\n" in chunked_output
-    assert b"0\r\n\r\n" in chunked_output  # Chunked EOF marker
+    chunked_output = buf
+    assert b"POST /data HTTP/1.1\r\n" in buf
+    assert b"Transfer-Encoding: chunked\r\n" in buf
+    assert b"0\r\n\r\n" in buf  # Chunked EOF marker
 
     # Second set_eof should be no-op
     msg2.set_eof()
-    assert bytes(buf) == chunked_output  # No additional output
+    assert buf == chunked_output  # No additional output
 
     # Test 3: set_eof after headers already sent
     buf.clear()
@@ -1565,8 +1565,8 @@ async def test_set_eof_idempotent(
 
     # set_eof after headers sent should be no-op
     msg3.set_eof()
-    assert bytes(buf) == headers_and_body  # No additional output
+    assert buf == headers_and_body  # No additional output
 
     # Another set_eof should still be no-op
     msg3.set_eof()
-    assert bytes(buf) == headers_and_body  # Still no additional output
+    assert buf == headers_and_body  # Still no additional output
