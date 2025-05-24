@@ -1860,7 +1860,7 @@ ClientRequest
 
    .. note::
 
-      Users typically don't create ``ClientRequest`` instances directly. They are
+      You typically don't create ``ClientRequest`` instances directly. They are
       created internally by :class:`ClientSession` methods and passed to middleware.
 
    For more information about using middleware, see :ref:`aiohttp-client-middleware`.
