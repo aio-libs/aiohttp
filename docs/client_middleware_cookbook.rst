@@ -55,7 +55,7 @@ failed request:
 .. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: TokenRefreshExpiryMiddleware
 
-Or you could even refresh pre-emptively in a background task to avoid any API delays. This is probably more
+Or you could even refresh preemptively in a background task to avoid any API delays. This is probably more
 efficient to implement without a middleware:
 
 .. literalinclude:: code/client_middleware_cookbook.py
