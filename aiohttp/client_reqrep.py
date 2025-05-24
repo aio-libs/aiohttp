@@ -709,6 +709,8 @@ class ClientRequest:
         """
         # 100 response
         if self._continue is not None:
+            # Force headers to be sent before waiting for 100-continue
+            writer.send_headers()
             await writer.drain()
             await self._continue
 
@@ -826,7 +828,10 @@ class ClientRequest:
 
         # status + headers
         status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
+
+        # Buffer headers for potential coalescing with body
         await writer.write_headers(status_line, self.headers)
+
         task: Optional["asyncio.Task[None]"]
         if self.body or self._continue is not None or protocol.writing_paused:
             coro = self.write_bytes(writer, conn, self._get_content_length())
