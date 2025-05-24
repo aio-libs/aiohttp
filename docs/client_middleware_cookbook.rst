@@ -17,7 +17,7 @@ It's very easy to create middlewares that can retry a connection on a given cond
 
 .. warning::
 
-    It is recommended to ensure loops are bounded (e.g. using a `for` loop) to avoid
+    It is recommended to ensure loops are bounded (e.g. using a ``for`` loop) to avoid
     creating an infinite loop.
 
 Logging to an external service
