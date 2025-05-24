@@ -30,6 +30,16 @@ async def retry_middleware(
             return resp
 
 
+async def api_logging_middleware(
+    req: ClientRequest, handler: ClientHandlerType
+) -> ClientResponse:
+    # We use middlewares=() to avoid infinite recursion.
+    async with req.session.post("/log", data=req.url.host, middlewares=()) as resp:
+        pass
+
+    return await handler(req)
+
+
 class TokenRefresh401Middleware:
     def __init__(self, refresh_token: str, access_token: str):
         self.access_token = access_token
