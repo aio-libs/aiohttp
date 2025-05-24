@@ -12,7 +12,7 @@ Simple Retry Middleware
 
 It's very easy to create middlewares that can retry a connection on a given condition:
 
-.. literalinclude:: ../examples/client_middleware_cookbook.py
+.. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: retry_middleware
 
 .. warning::
@@ -26,7 +26,7 @@ Logging to an external service
 If we needed to log our requests via an API call to an external server or similar, we could
 create a simple middleware like this:
 
-.. literalinclude:: ../examples/client_middleware_cookbook.py
+.. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: api_logging_middleware
 
 .. warning::
@@ -46,19 +46,19 @@ If you need to refresh access tokens to continue accessing an API, this is also 
 candidate for a middleware. For example, you could check for a 401 response, then
 refresh the token and retry:
 
-.. literalinclude:: ../examples/client_middleware_cookbook.py
+.. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: TokenRefresh401Middleware
 
 If you have an expiry time for the token, you could refresh at the expiry time, to avoid the
 failed request:
 
-.. literalinclude:: ../examples/client_middleware_cookbook.py
+.. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: TokenRefreshExpiryMiddleware
 
 Or you could even refresh pre-emptively in a background task to avoid any API delays. This is probably more
 efficient to implement without a middleware:
 
-.. literalinclude:: ../examples/client_middleware_cookbook.py
+.. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: token_refresh_preemptively_example
 
 Or combine the above approaches to create a more robust solution.
@@ -74,7 +74,7 @@ Server-side Request Forgery Protection
 To provide protection against server-side request forgery, we could blacklist any internal
 IPs or domains. We could create a middleware that rejects requests made to a blacklist:
 
-.. literalinclude:: ../examples/client_middleware_cookbook.py
+.. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: ssrf_middleware
 
 If you know that your services correctly reject requests with an incorrect `Host` header, then
@@ -82,7 +82,7 @@ that may provide sufficient protection. Otherwise, we still have a concern with 
 own domain resolving to a blacklisted IP. To provide complete protection, we can also
 create a custom resolver:
 
-.. literalinclude:: ../examples/client_middleware_cookbook.py
+.. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: SSRFConnector
 
 Using both of these together in a session should provide full SSRF protection.
