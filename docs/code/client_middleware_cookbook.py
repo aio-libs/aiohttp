@@ -29,7 +29,7 @@ async def retry_middleware(
         resp = await handler(req)
         if resp.ok:
             return resp
-    return resp  # type: ignore[possibly-undefined]
+    return resp
 
 
 async def api_logging_middleware(
@@ -66,7 +66,7 @@ class TokenRefresh401Middleware:
                     # Add error handling as needed
                     data = await resp.json()
                     self.access_token = data["access_token"]
-        return resp  # type: ignore[possibly-undefined]
+        return resp
 
 
 class TokenRefreshExpiryMiddleware:
