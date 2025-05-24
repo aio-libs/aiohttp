@@ -1575,6 +1575,7 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
         return web.json_response({"ok": True})
 
     write_mock = None
+    writelines_mock = None
     original_write_bytes = ClientRequest.write_bytes
 
     async def write_bytes(
@@ -1583,12 +1584,26 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
         conn: Connection,
         content_length: Optional[int] = None,
     ) -> None:
-        nonlocal write_mock
+        nonlocal write_mock, writelines_mock
         original_write = writer._write
+        original_writelines = writer._writelines
 
-        with mock.patch.object(
-            writer, "_write", autospec=True, spec_set=True, side_effect=original_write
-        ) as write_mock:
+        with (
+            mock.patch.object(
+                writer,
+                "_write",
+                autospec=True,
+                spec_set=True,
+                side_effect=original_write,
+            ) as write_mock,
+            mock.patch.object(
+                writer,
+                "_writelines",
+                autospec=True,
+                spec_set=True,
+                side_effect=original_writelines,
+            ) as writelines_mock,
+        ):
             await original_write_bytes(self, writer, conn, content_length)
 
     with mock.patch.object(ClientRequest, "write_bytes", write_bytes):
@@ -1601,9 +1616,20 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
             content = await resp.json()
             assert content == {"ok": True}
 
-    assert write_mock is not None
-    # No chunks should have been sent for an empty body.
-    write_mock.assert_not_called()
+    # With packet coalescing, headers are buffered and may be written
+    # during write_bytes if there's an empty body to process.
+    # The test should verify no body chunks are written, but headers
+    # may be written as part of the coalescing optimization.
+    # If _write was called, it should only be for headers ending with \r\n\r\n
+    # and not any body content
+    for call in write_mock.call_args_list:  # type: ignore[union-attr]
+        data = call[0][0]
+        assert data.endswith(
+            b"\r\n\r\n"
+        ), "Only headers should be written, not body chunks"
+
+    # No body data should be written via writelines either
+    writelines_mock.assert_not_called()  # type: ignore[union-attr]
 
 
 async def test_GET_DEFLATE_no_body(aiohttp_client: AiohttpClient) -> None:
@@ -4439,3 +4465,40 @@ async def test_client_side_network_error_connection_closed(
     assert client._session.connector is not None
     # Connection should be closed due to client-side network error
     assert len(client._session.connector._conns) == 0
+
+
+async def test_empty_response_non_chunked(aiohttp_client: AiohttpClient) -> None:
+    """Test non-chunked response with empty body."""
+
+    async def handler(request: web.Request) -> web.Response:
+        # Return empty response with Content-Length: 0
+        return web.Response(body=b"", headers={"Content-Length": "0"})
+
+    app = web.Application()
+    app.router.add_get("/empty", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/empty")
+    assert resp.status == 200
+    assert resp.headers.get("Content-Length") == "0"
+    data = await resp.read()
+    assert data == b""
+    resp.close()
+
+
+async def test_set_eof_on_empty_response(aiohttp_client: AiohttpClient) -> None:
+    """Test that triggers set_eof() method."""
+
+    async def handler(request: web.Request) -> web.Response:
+        # Return response that completes immediately
+        return web.Response(status=204)  # No Content
+
+    app = web.Application()
+    app.router.add_get("/no-content", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/no-content")
+    assert resp.status == 204
+    data = await resp.read()
+    assert data == b""
+    resp.close()
