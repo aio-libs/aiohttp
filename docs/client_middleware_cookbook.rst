@@ -298,43 +298,65 @@ failed request:
             req.headers["Authorization"] = f"Bearer {self.access_token}"
             return await handler(req)
 
-Or you could even refresh pre-emptively in a background task to avoid any API delays:
+Or you could even refresh pre-emptively in a background task to avoid any API delays. This is probably most
+efficient to implement without a middleware:
 
 .. code-block:: python
 
-    class TokenRefreshMiddleware:
-        def __init__(self, refresh_token: str):
-            self.access_token = access_token
-            self.refresh_token = refresh_token
+    async def set_token(session, event):
+        while True:
+            async with session.post("/refresh") as resp:
+                token = await resp.json()
+                session.headers["Authorization"] = f"Bearer {token['auth']}"
+                event.set()
+                await asyncio.sleep(token["valid_duration"])
 
-        async def __aenter__(self) -> Self:
-            await self._refresh(0)
-
-        async def __aexit__(self, ...):
-            self.task.cancel()
+    @asynccontextmanager
+    async def client():
+        async with ClientSession() as session:
+            ready = asyncio.Event()
+            t = asyncio.create_task(set_token(session, event))
+            await ready.wait()
+            yield session
+            t.cancel()
             with suppress(asyncio.CancelledError):
-                await self.task
+                await t
 
-        async def refresh(self, delay: float) -> None:
-            await asyncio.sleep(delay)
+Or combine the above approaches to create a more robust solution.
 
-            async with session.post("https://api.example/refresh", data=self.refresh_token) as resp:
-                data = await resp.json()
+.. note::
 
-            self.access_token = data["access_token"]
-            # Reschedule refresh for 10 seconds before expiry
-            self.task = asyncio.create_task(self.refresh(data["expires_in"] - 10))
+    These can also be adjusted to handle proxy auth by modifying
+    :attr:`ClientRequest.proxy_headers` or :attr:`ClientSession.proxy_headers`.
 
+Server-side Request Forgery Protection
+--------------------------------------
 
-        def __call__(self, req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
-            req.headers["Authorization"] = f"Bearer {self.access_token}"
-            return await handler(req)
+To provide protection against server-side request forgery, we could blacklist any internal
+IPs or domains. We could create a middleware that rejects requests made to a blacklist:
 
-    # Use async with to manage our background task properly.
-    async with TokenRefreshMiddleware("...") as mw:
-        async with ClientSession(middlewares=(mw,)) as session:
-            ...
+.. code-block:: python
 
+    async def ssrf_middleware(req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
+        if req.url.host in {"127.0.0.1", "localhost"}:
+            raise SSRFError(req.url.host)
+        return await handler(req)
+
+If you know that your services correctly reject requests with an incorrect `Host` header, then
+that may provide sufficient protection. Otherwise, we still have a concern with an attacker's
+own domain resolving to a blacklisted IP. To provide complete protection, we can include also
+create a custom resolver:
+
+.. code-black:: python
+
+    class SSRFConnector(TCPConnector):
+        async def _resolve_host(
+            self, host: str, port: int, traces: Sequence["Trace"] | None = None
+        ) -> list[ResolveResult]:
+            res = await super()._resolve_host(host, port, traces)
+            if any(r["host"] in {"127.0.0.1"} for r in res):
+                raise ClientConnectorDNSError()
+        
 
 Best Practices
 --------------
