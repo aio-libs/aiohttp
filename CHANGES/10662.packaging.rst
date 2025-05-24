@@ -1,1 +1,0 @@
-Removed non SPDX-license description from ``setup.cfg`` -- by :user:`devanshu-ziphq`.
