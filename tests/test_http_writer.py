@@ -1270,7 +1270,7 @@ async def test_chunked_compressed_eof_coalescing(
     assert buf.endswith(b"0\r\n\r\n")
 
     # Should have chunk size in hex before the compressed data
-    output = bytes(buf)
+    output = buf
     # Verify we have chunk markers - look for \r\n followed by hex digits
     # The chunk size should be between the headers and the compressed data
     assert b"\r\n\r\n" in output  # End of headers
@@ -1397,7 +1397,7 @@ async def test_send_headers_idempotent(
 
     # Call send_headers again - should be no-op
     msg.send_headers()
-    assert bytes(buf) == headers_output  # No additional output
+    assert buf == headers_output  # No additional output
 
     # Call send_headers after headers already sent - should be no-op
     await msg.write(b"hello")
@@ -1561,7 +1561,7 @@ async def test_set_eof_idempotent(
 
     # Send headers by writing some data
     await msg3.write(b"hello")
-    headers_and_body = bytes(buf)
+    headers_and_body = buf
 
     # set_eof after headers sent should be no-op
     msg3.set_eof()
@@ -1570,3 +1570,24 @@ async def test_set_eof_idempotent(
     # Another set_eof should still be no-op
     msg3.set_eof()
     assert buf == headers_and_body  # Still no additional output
+
+
+async def test_non_chunked_write_empty_body(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: mock.Mock,
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test non-chunked response with empty body."""
+    msg = http.StreamWriter(protocol, loop)
+
+    # Non-chunked response with Content-Length: 0
+    headers = CIMultiDict({"Content-Length": "0"})
+    await msg.write_headers("GET /empty HTTP/1.1", headers)
+
+    # Write empty body
+    await msg.write(b"")
+
+    # Check the output
+    assert b"GET /empty HTTP/1.1\r\n" in buf
+    assert b"Content-Length: 0\r\n" in buf

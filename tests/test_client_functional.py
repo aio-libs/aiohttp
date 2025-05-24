@@ -4536,3 +4536,40 @@ async def test_client_side_network_error_connection_closed(
     assert client._session.connector is not None
     # Connection should be closed due to client-side network error
     assert len(client._session.connector._conns) == 0
+
+
+async def test_empty_response_non_chunked(aiohttp_client: AiohttpClient) -> None:
+    """Test non-chunked response with empty body."""
+
+    async def handler(request: web.Request) -> web.Response:
+        # Return empty response with Content-Length: 0
+        return web.Response(body=b"", headers={"Content-Length": "0"})
+
+    app = web.Application()
+    app.router.add_get("/empty", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/empty")
+    assert resp.status == 200
+    assert resp.headers.get("Content-Length") == "0"
+    data = await resp.read()
+    assert data == b""
+    resp.close()
+
+
+async def test_set_eof_on_empty_response(aiohttp_client: AiohttpClient) -> None:
+    """Test that triggers set_eof() method."""
+
+    async def handler(request: web.Request) -> web.Response:
+        # Return response that completes immediately
+        return web.Response(status=204)  # No Content
+
+    app = web.Application()
+    app.router.add_get("/no-content", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/no-content")
+    assert resp.status == 204
+    data = await resp.read()
+    assert data == b""
+    resp.close()
