@@ -1,12 +1,12 @@
 """This is a collection of semi-complete examples that get included into the cookbook page."""
 
 import asyncio
+import logging
 import time
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager, suppress
 
 from aiohttp import (
-    ClientConnectorDNSError,
     ClientHandlerType,
     ClientRequest,
     ClientResponse,
@@ -36,7 +36,8 @@ async def api_logging_middleware(
 ) -> ClientResponse:
     # We use middlewares=() to avoid infinite recursion.
     async with req.session.post("/log", data=req.url.host, middlewares=()) as resp:
-        pass
+        if not resp.ok:
+            logging.warning("Log endpoint failed")
 
     return await handler(req)
 
