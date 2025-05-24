@@ -154,7 +154,8 @@ class StreamWriter(AbstractStreamWriter):
         drain: bool = True,
         LIMIT: int = 0x10000,
     ) -> None:
-        """Writes chunk of data to a stream.
+        """
+        Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
         writer can't be used after write_eof() method being called.
