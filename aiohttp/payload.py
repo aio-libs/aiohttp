@@ -307,6 +307,15 @@ class Payload(ABC):
         actual_encoding = self._encoding or encoding
         return self.decode(actual_encoding, errors).encode(actual_encoding)
 
+    async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Return string representation of the value.
+
+        This is an async wrapper around decode() for consistency with as_bytes().
+        """
+        # Use instance encoding if available, otherwise use parameter
+        actual_encoding = self._encoding or encoding
+        return self.decode(actual_encoding, errors)
+
     async def close(self) -> None:
         """Close the payload if it holds any resources."""
         # This is a no-op by default, but subclasses can override it
@@ -361,6 +370,13 @@ class BytesPayload(Payload):
         It is equivalent to accessing the _value attribute directly.
         """
         return self._value
+
+    async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Return string representation of the value.
+
+        This is an async wrapper around decode() for consistency with as_bytes().
+        """
+        return self.decode(encoding, errors)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         """Write the entire bytes payload to the writer stream.
@@ -662,6 +678,15 @@ class IOBasePayload(Payload):
 
         return await loop.run_in_executor(None, _read_all)
 
+    async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Return string representation of the value.
+
+        This method reads the entire file content and returns it as a string.
+        The file reading is performed in an executor to avoid blocking the event loop.
+        """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.decode, encoding, errors)
+
 
 class TextIOPayload(IOBasePayload):
     _value: io.TextIOBase
@@ -756,6 +781,10 @@ class TextIOPayload(IOBasePayload):
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Return string representation of the value.
+
+        WARNING: This method does blocking I/O and should not be called in the event loop.
+        """
         self._set_or_restore_start_position()
         return self._value.read()
 
@@ -1010,6 +1039,14 @@ class AsyncIterablePayload(Payload):
         async for chunk in self._iter:
             chunks.append(chunk)
         return b"".join(chunks)
+
+    async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Return string representation of the value.
+
+        This method reads the entire async iterable content and decodes it to a string.
+        """
+        data = await self.as_bytes(encoding, errors)
+        return data.decode(encoding, errors)
 
 
 class StreamReaderPayload(AsyncIterablePayload):
