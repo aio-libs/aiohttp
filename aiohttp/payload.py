@@ -563,38 +563,31 @@ class IOBasePayload(Payload):
         total_written_len = 0
         remaining_content_len = content_length
 
-        try:
-            # Get initial data and available length
-            available_len, chunk = await loop.run_in_executor(
-                None, self._read_and_available_len, remaining_content_len
-            )
-            # Process data chunks until done
-            while chunk:
-                chunk_len = len(chunk)
+        # Get initial data and available length
+        available_len, chunk = await loop.run_in_executor(
+            None, self._read_and_available_len, remaining_content_len
+        )
+        # Process data chunks until done
+        while chunk:
+            chunk_len = len(chunk)
 
-                # Write data with or without length constraint
-                if remaining_content_len is None:
-                    await writer.write(chunk)
-                else:
-                    await writer.write(chunk[:remaining_content_len])
-                    remaining_content_len -= chunk_len
+            # Write data with or without length constraint
+            if remaining_content_len is None:
+                await writer.write(chunk)
+            else:
+                await writer.write(chunk[:remaining_content_len])
+                remaining_content_len -= chunk_len
 
-                total_written_len += chunk_len
+            total_written_len += chunk_len
 
-                # Check if we're done writing
-                if self._should_stop_writing(
-                    available_len, total_written_len, remaining_content_len
-                ):
-                    return
+            # Check if we're done writing
+            if self._should_stop_writing(
+                available_len, total_written_len, remaining_content_len
+            ):
+                return
 
-                # Read next chunk
-                chunk = await loop.run_in_executor(
-                    None, self._read, remaining_content_len
-                )
-        finally:
-            # Handle closing the file without awaiting to prevent cancellation issues
-            # when the StreamReader reaches EOF
-            self._schedule_file_close(loop)
+            # Read next chunk
+            chunk = await loop.run_in_executor(None, self._read, remaining_content_len)
 
     def _should_stop_writing(
         self,
@@ -625,10 +618,10 @@ class IOBasePayload(Payload):
         # Skip if already consumed
         if self._consumed:
             return
-        # Schedule file closing without awaiting to prevent cancellation issues
         self._consumed = True  # Mark as consumed to prevent further writes
+        # Schedule file closing without awaiting to prevent cancellation issues
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._value.close)
+        self._schedule_file_close(loop)
 
     def _schedule_file_close(self, loop: asyncio.AbstractEventLoop) -> None:
         """Schedule file closing without awaiting to prevent cancellation issues."""
@@ -827,24 +820,21 @@ class BytesIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         loop_count = 0
         remaining_bytes = content_length
-        try:
-            while chunk := self._value.read(READ_SIZE):
-                if loop_count > 0:
-                    # Avoid blocking the event loop
-                    # if they pass a large BytesIO object
-                    # and we are not in the first iteration
-                    # of the loop
-                    await asyncio.sleep(0)
-                if remaining_bytes is None:
-                    await writer.write(chunk)
-                else:
-                    await writer.write(chunk[:remaining_bytes])
-                    remaining_bytes -= len(chunk)
-                    if remaining_bytes <= 0:
-                        return
-                loop_count += 1
-        finally:
-            self._value.close()
+        while chunk := self._value.read(READ_SIZE):
+            if loop_count > 0:
+                # Avoid blocking the event loop
+                # if they pass a large BytesIO object
+                # and we are not in the first iteration
+                # of the loop
+                await asyncio.sleep(0)
+            if remaining_bytes is None:
+                await writer.write(chunk)
+            else:
+                await writer.write(chunk[:remaining_bytes])
+                remaining_bytes -= len(chunk)
+                if remaining_bytes <= 0:
+                    return
+            loop_count += 1
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """Return bytes representation of the value.

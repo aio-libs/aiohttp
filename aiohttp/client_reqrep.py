@@ -206,7 +206,8 @@ class ClientRequest:
     }
 
     # Type of body depends on PAYLOAD_REGISTRY, which is dynamic.
-    body: Any = b""
+    _body: Any = b""
+    _body_is_payload: bool = False
     auth = None
     response = None
 
@@ -374,6 +375,30 @@ class ClientRequest:
         return self.url.port
 
     @property
+    def body(self) -> Any:
+        """Request body."""
+        return self._body
+
+    @body.setter
+    def body(self, value: Any) -> None:
+        """Set request body with warning for non-autoclose payloads."""
+        # Warn if we're replacing an existing payload that needs manual closing
+        if (
+            self._body_is_payload
+            and not self._body.autoclose
+            and not self._body.consumed
+        ):
+            warnings.warn(
+                "Replacing a payload that needs manual closing. "
+                "The previous payload should be closed with await payload.close(). "
+                "Consider using await request.update_body() instead.",
+                ResourceWarning,
+                stacklevel=2,
+            )
+        self._body = value
+        self._body_is_payload = isinstance(value, payload.Payload)
+
+    @property
     def request_info(self) -> RequestInfo:
         headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
         # These are created on every request, so we use a NamedTuple
@@ -524,7 +549,7 @@ class ClientRequest:
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
         else:
             if hdrs.CONTENT_LENGTH not in self.headers:
-                self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
+                self.headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
 
     def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
@@ -560,7 +585,9 @@ class ClientRequest:
                 )
             body = FormData(body, boundary=boundary)()
 
-        self.body = body
+        self._body = body
+        # At this point, body is always a Payload (either from PAYLOAD_REGISTRY or FormData())
+        self._body_is_payload = True
 
         # enable chunked encoding if needed
         if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
@@ -577,6 +604,23 @@ class ClientRequest:
             if key in headers or (skip_headers is not None and key in skip_headers):
                 continue
             headers[key] = value
+
+    async def update_body(self, body: Any) -> None:
+        """Update request body and close previous payload if needed.
+
+        This method is like setting self.body directly, but it properly
+        closes any existing payload before setting the new one.
+        """
+        # Close existing payload if it exists and needs closing
+        if (
+            self._body_is_payload
+            and not self._body.autoclose
+            and not self._body.consumed
+        ):
+            await self._body.close()
+
+        # Now update the body using the existing method
+        self.update_body_from_data(body)
 
     def update_expect_continue(self, expect: bool = False) -> None:
         if expect:
@@ -654,23 +698,23 @@ class ClientRequest:
         protocol = conn.protocol
         assert protocol is not None
         try:
-            if isinstance(self.body, payload.Payload):
+            if self._body_is_payload:
                 # Specialized handling for Payload objects that know how to write themselves
-                await self.body.write_with_length(writer, content_length)
+                await self._body.write_with_length(writer, content_length)
             else:
                 # Handle bytes/bytearray by converting to an iterable for consistent handling
-                if isinstance(self.body, (bytes, bytearray)):
-                    self.body = (self.body,)
+                if isinstance(self._body, (bytes, bytearray)):
+                    self._body = (self._body,)
 
                 if content_length is None:
                     # Write the entire body without length constraint
-                    for chunk in self.body:
+                    for chunk in self._body:
                         await writer.write(chunk)
                 else:
                     # Write with length constraint, respecting content_length limit
                     # If the body is larger than content_length, we truncate it
                     remaining_bytes = content_length
-                    for chunk in self.body:
+                    for chunk in self._body:
                         await writer.write(chunk[:remaining_bytes])
                         remaining_bytes -= len(chunk)
                         if remaining_bytes <= 0:
@@ -770,7 +814,7 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
 
         task: Optional["asyncio.Task[None]"]
-        if self.body or self._continue is not None or protocol.writing_paused:
+        if self._body or self._continue is not None or protocol.writing_paused:
             coro = self.write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write
