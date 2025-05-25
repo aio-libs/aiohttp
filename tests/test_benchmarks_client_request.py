@@ -36,7 +36,7 @@ def ClientRequest(method: str, url: URL, **kwargs: Any) -> RawClientRequest:
         "trust_env": False,
         "server_hostname": None,
     }
-    return ClientRequest(method, url, **(default_args | kwargs))
+    return RawClientRequest(method, url, **(default_args | kwargs))
 
 
 def test_client_request_update_cookies(
