@@ -211,7 +211,6 @@ class ClientRequest:
         bytes,
         bytearray,
         memoryview,
-        Iterable[Union[bytes, bytearray, memoryview]],
     ] = b""
     _body_is_payload: bool = False
     auth = None
@@ -381,12 +380,12 @@ class ClientRequest:
         return self.url.port
 
     @property
-    def body(self) -> Any:
+    def body(self) -> Union[bytes, bytearray, memoryview, payload.Payload]:
         """Request body."""
         return self._body
 
     @body.setter
-    def body(self, value: Any) -> None:
+    def body(self, value: Union[bytes, bytearray, memoryview, payload.Payload]) -> None:
         """Set request body with warning for non-autoclose payloads."""
         # Warn if we're replacing an existing payload that needs manual closing
         if (
@@ -710,17 +709,20 @@ class ClientRequest:
             else:
                 # Handle bytes/bytearray by converting to an iterable for consistent handling
                 if isinstance(self._body, (bytes, bytearray)):
-                    self._body = (self._body,)
+                    body_iter = (self._body,)
+                else:
+                    # Assume _body is an iterable (e.g., a list of bytes)
+                    body_iter = self._body
 
                 if content_length is None:
                     # Write the entire body without length constraint
-                    for chunk in self._body:
+                    for chunk in body_iter:
                         await writer.write(chunk)
                 else:
                     # Write with length constraint, respecting content_length limit
                     # If the body is larger than content_length, we truncate it
                     remaining_bytes = content_length
-                    for chunk in self._body:
+                    for chunk in body_iter:
                         await writer.write(chunk[:remaining_bytes])
                         remaining_bytes -= len(chunk)
                         if remaining_bytes <= 0:
