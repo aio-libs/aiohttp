@@ -1,7 +1,7 @@
 """codspeed benchmarks for client requests."""
 
 import asyncio
-from http.cookies import BaseCookie, Morsel
+from http.cookies import BaseCookie
 from typing import Union
 
 from multidict import CIMultiDict
