@@ -48,9 +48,12 @@ __all__ = (
     "ContentTypeError",
     "ClientPayloadError",
     "InvalidURL",
+    "InvalidAuthClientError",
+    "InvalidUrlAuthClientError",
     "InvalidUrlClientError",
     "RedirectClientError",
     "NonHttpUrlClientError",
+    "InvalidRedirectUrlAuthClientError",
     "InvalidUrlRedirectClientError",
     "NonHttpUrlRedirectClientError",
     "WSMessageTypeError",
@@ -306,6 +309,14 @@ class InvalidUrlClientError(InvalidURL):
     """Invalid URL client error."""
 
 
+class InvalidAuthClientError(ClientError):
+    """Invalid auth client error."""
+
+
+class InvalidUrlAuthClientError(InvalidURL):
+    """Invalid URL auth client error."""
+
+
 class RedirectClientError(ClientError):
     """Client redirect error."""
 
@@ -316,6 +327,10 @@ class NonHttpUrlClientError(ClientError):
 
 class InvalidUrlRedirectClientError(InvalidUrlClientError, RedirectClientError):
     """Invalid URL redirect client error."""
+
+
+class InvalidRedirectUrlAuthClientError(InvalidUrlRedirectClientError):
+    """Invalid redirect URL auth client error."""
 
 
 class NonHttpUrlRedirectClientError(NonHttpUrlClientError, RedirectClientError):
