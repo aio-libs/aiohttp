@@ -1003,6 +1003,62 @@ async def test_precompressed_data_stays_intact(
     await req.close()
 
 
+async def test_body_with_size_sets_content_length(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that when body has a size and no Content-Length header is set, it gets added."""
+    # Create a BytesPayload which has a size property
+    data = b"test data"
+
+    # Create request with data that will create a BytesPayload
+    req = ClientRequest(
+        "post",
+        URL("http://python.org/"),
+        data=data,
+        loop=loop,
+    )
+
+    # Verify Content-Length was set from body.size
+    assert req.headers["CONTENT-LENGTH"] == str(len(data))
+    assert req.body is not None
+    assert req.body.size == len(data)
+    await req.close()
+
+
+async def test_body_payload_with_size_no_content_length(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that when a body payload with size is set directly, Content-Length is added."""
+    # Create a payload with a known size
+    data = b"payload data"
+    bytes_payload = payload.BytesPayload(data)
+
+    # Create request with no data initially
+    req = ClientRequest(
+        "post",
+        URL("http://python.org/"),
+        loop=loop,
+    )
+
+    # Set body directly (bypassing update_body_from_data to avoid it setting Content-Length)
+    req._body = bytes_payload
+
+    # Ensure conditions for the code path we want to test
+    assert req._body is not None
+    assert hdrs.CONTENT_LENGTH not in req.headers
+    assert req._body.size is not None
+    assert not req.chunked
+
+    # Now trigger update_transfer_encoding which should set Content-Length
+    req.update_transfer_encoding()
+
+    # Verify Content-Length was set from body.size
+    assert req.headers["CONTENT-LENGTH"] == str(len(data))
+    assert req.body is bytes_payload
+    assert req.body.size == len(data)
+    await req.close()
+
+
 async def test_file_upload_not_chunked_seek(loop: asyncio.AbstractEventLoop) -> None:
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
@@ -1665,7 +1721,7 @@ async def test_write_bytes_empty_iterable_with_content_length(
     # Create an empty async generator
     async def gen() -> AsyncIterator[bytes]:
         return
-        yield  # This makes it a generator but never executes
+        yield  # pragma: no cover  # This makes it a generator but never executes
 
     req.body = gen()  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
 

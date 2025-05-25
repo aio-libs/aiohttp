@@ -627,6 +627,63 @@ async def test_post_data_tarfile_filelike(aiohttp_client: AiohttpClient) -> None
             assert resp.status == 200
 
 
+async def test_post_bytes_data_content_length_from_body(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that Content-Length is set from body payload size when sending bytes."""
+    data = b"test payload data"
+
+    async def handler(request: web.Request) -> web.Response:
+        # Verify Content-Length header was set correctly
+        assert request.content_length == len(data)
+        assert request.headers.get("Content-Length") == str(len(data))
+
+        # Verify we can read the data
+        val = await request.read()
+        assert data == val
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    # Send bytes data - this should trigger the code path where
+    # Content-Length is set from body.size in update_transfer_encoding
+    async with client.post("/", data=data) as resp:
+        assert resp.status == 200
+
+
+async def test_post_custom_payload_without_content_length(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that Content-Length is set from payload.size when not explicitly provided."""
+    from aiohttp import payload
+
+    data = b"custom payload data"
+
+    async def handler(request: web.Request) -> web.Response:
+        # Verify Content-Length header was set from payload size
+        assert request.content_length == len(data)
+        assert request.headers.get("Content-Length") == str(len(data))
+
+        # Verify we can read the data
+        val = await request.read()
+        assert data == val
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    # Create a BytesPayload directly - this ensures we test the path
+    # where update_transfer_encoding sets Content-Length from body.size
+    bytes_payload = payload.BytesPayload(data)
+
+    # Don't set Content-Length header explicitly
+    async with client.post("/", data=bytes_payload) as resp:
+        assert resp.status == 200
+
+
 async def test_ssl_client(
     aiohttp_server: AiohttpServer,
     ssl_ctx: ssl.SSLContext,
