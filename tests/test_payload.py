@@ -5,7 +5,7 @@ import json
 import unittest.mock
 from io import StringIO
 from pathlib import Path
-from typing import AsyncIterator, Iterator, List, Optional, Union
+from typing import AsyncIterator, Iterator, List, Optional, TextIO, Union
 
 import pytest
 from multidict import CIMultiDict
@@ -17,10 +17,12 @@ from aiohttp.abc import AbstractStreamWriter
 class BufferWriter(AbstractStreamWriter):
     """Test writer that captures written bytes in a buffer."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.buffer = bytearray()
 
-    async def write(self, chunk: bytes) -> None:
+    async def write(
+        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+    ) -> None:
         self.buffer.extend(chunk)
 
     async def write_eof(self, chunk: bytes = b"") -> None:
@@ -29,13 +31,15 @@ class BufferWriter(AbstractStreamWriter):
     async def drain(self) -> None:
         """No-op for test writer."""
 
-    def enable_compression(self, encoding: str = "deflate") -> None:
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: Optional[int] = None
+    ) -> None:
         """Compression not implemented for test writer."""
 
     def enable_chunking(self) -> None:
         """Chunking not implemented for test writer."""
 
-    async def write_headers(self, status_line: str, headers) -> None:
+    async def write_headers(self, status_line: str, headers: CIMultiDict[str]) -> None:
         """Headers not captured for payload tests."""
 
 
@@ -1011,7 +1015,7 @@ async def test_text_io_payload_size_matches_file_encoding(tmp_path: Path) -> Non
     await loop.run_in_executor(None, utf8_file.write_text, content, "utf-8")
 
     # Open file in executor
-    def open_file():
+    def open_file() -> TextIO:
         return open(utf8_file, encoding="utf-8")
 
     f = await loop.run_in_executor(None, open_file)
@@ -1039,7 +1043,7 @@ async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
     )
 
     # Open file in executor
-    def open_file():
+    def open_file() -> TextIO:
         return open(utf16_file, encoding="utf-16")
 
     f = await loop.run_in_executor(None, open_file)
