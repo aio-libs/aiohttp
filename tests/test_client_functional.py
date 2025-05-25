@@ -33,7 +33,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, payload, web
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.client_exceptions import (
     ClientResponseError,
@@ -657,8 +657,6 @@ async def test_post_custom_payload_without_content_length(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Test that Content-Length is set from payload.size when not explicitly provided."""
-    from aiohttp import payload
-
     data = b"custom payload data"
 
     async def handler(request: web.Request) -> web.Response:

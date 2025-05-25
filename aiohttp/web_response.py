@@ -679,8 +679,8 @@ class Response(StreamResponse):
             await super().write_eof()
         elif isinstance(self._body, Payload):
             await self._body.write(self._payload_writer)
-            await super().write_eof()
             await self._body.close()
+            await super().write_eof()
         else:
             await super().write_eof(cast(bytes, body))
 
