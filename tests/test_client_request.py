@@ -1607,7 +1607,7 @@ async def test_write_bytes_with_content_length_limit(
     data = b"Hello World"
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
 
-    req.body = data  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+    req.body = data
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=5 to truncate data
