@@ -1974,6 +1974,56 @@ ClientRequest
 
       The HTTP version to use for the request (e.g., ``HttpVersion(1, 1)`` for HTTP/1.1).
 
+   .. method:: async update_body(body)
+
+      Update the request body and close any existing payload to prevent resource leaks.
+
+      This method is particularly useful in middleware when you need to modify the
+      request body after the request has been created but before it's sent.
+
+      :param body: The new body content. Can be:
+
+                   - ``bytes``/``bytearray``: Raw binary data
+                   - ``str``: Text data (encoded using charset from Content-Type)
+                   - :class:`FormData`: Form data encoded as multipart/form-data
+                   - :class:`Payload`: A pre-configured payload object
+                   - ``AsyncIterable[bytes]``: Async iterable of bytes chunks
+                   - File-like object: Will be read and sent as binary data
+                   - ``None``: Clears the body
+
+      .. code-block:: python
+
+         async def middleware(request, handler):
+             # Modify request body in middleware
+             if request.method == 'POST':
+                 # Replace body with new data
+                 await request.update_body(b'{"modified": true}')
+
+             # Or add authentication data to form
+             if isinstance(request.body, FormData):
+                 form = FormData()
+                 # Copy existing fields and add auth token
+                 form.add_field('auth_token', 'secret123')
+                 await request.update_body(form)
+
+             return await handler(request)
+
+      .. note::
+
+         This method is async because it may need to close file handles or
+         other resources associated with the previous payload. Always await
+         this method to ensure proper cleanup.
+
+      .. warning::
+
+         When updating the body, ensure that Content-Type and Content-Length
+         headers are appropriate for the new body content. The method will
+         update headers automatically when using :class:`FormData` or
+         :class:`Payload` objects, but you may need to update them manually
+         for raw bytes or text.
+
+      .. versionadded:: 3.12
+
 
 
 Utilities
