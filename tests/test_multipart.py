@@ -20,7 +20,12 @@ from aiohttp.hdrs import (
     CONTENT_TYPE,
 )
 from aiohttp.helpers import parse_mimetype
-from aiohttp.multipart import BodyPartReader, MultipartReader, MultipartResponseWrapper
+from aiohttp.multipart import (
+    BodyPartReader,
+    BodyPartReaderPayload,
+    MultipartReader,
+    MultipartResponseWrapper,
+)
 from aiohttp.streams import StreamReader
 
 if sys.version_info >= (3, 11):
@@ -1618,3 +1623,23 @@ async def test_multipart_writer_reusability_with_io_payloads(
     # Test as_bytes after writes (IO objects should auto-reset)
     bytes3 = await writer.as_bytes()
     assert bytes1 == bytes3
+
+
+async def test_body_part_reader_payload_as_bytes() -> None:
+    """Test that BodyPartReaderPayload.as_bytes raises TypeError."""
+    # Create a mock BodyPartReader
+    headers = {CONTENT_TYPE: "text/plain"}
+    protocol = mock.Mock(_reading_paused=False)
+    stream = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    body_part = BodyPartReader(BOUNDARY, headers, stream)
+
+    # Create the payload
+    payload = BodyPartReaderPayload(body_part)
+
+    # Test that as_bytes raises TypeError
+    with pytest.raises(TypeError, match="Unable to read body part as bytes"):
+        await payload.as_bytes()
+
+    # Test that decode also raises TypeError
+    with pytest.raises(TypeError, match="Unable to decode"):
+        payload.decode()

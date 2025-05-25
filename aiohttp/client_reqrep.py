@@ -609,7 +609,8 @@ class ClientRequest:
             headers[key] = value
 
     async def update_body(self, body: Any) -> None:
-        """Update request body and close previous payload if needed.
+        """
+        Update request body and close previous payload if needed.
 
         This method safely updates the request body by first closing any existing
         payload to prevent resource leaks, then setting the new body.
@@ -657,6 +658,7 @@ class ClientRequest:
         See Also:
             - update_body_from_data: Synchronous body update without cleanup
             - body property: Direct body access (STRONGLY DISCOURAGED)
+
         """
         # Close existing payload if it exists and needs closing
         if self._body is not None:

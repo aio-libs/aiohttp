@@ -3,6 +3,7 @@ import hashlib
 import io
 import pathlib
 import sys
+import warnings
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (
     Any,
@@ -1674,4 +1675,153 @@ async def test_write_bytes_empty_iterable_with_content_length(
 
     # Verify nothing was written
     assert len(buf) == 0
+    await req.close()
+
+
+async def test_warn_if_unclosed_payload_via_body_setter(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that _warn_if_unclosed_payload is called when setting body with unclosed payload."""
+    req = make_request("POST", "http://python.org/")
+
+    # First set a payload that needs manual closing (autoclose=False)
+    file_payload = payload.BufferedReaderPayload(
+        io.BufferedReader(io.BytesIO(b"test data")),  # type: ignore[arg-type]
+        encoding="utf-8",
+    )
+    req.body = file_payload
+
+    # Setting body again should trigger the warning for the previous payload
+    with pytest.warns(
+        ResourceWarning,
+        match="The request body is a payload that needs manual closing",
+    ):
+        req.body = b"new data"
+
+    await req.close()
+
+
+async def test_no_warn_for_autoclose_payload_via_body_setter(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that no warning is issued for payloads with autoclose=True."""
+    req = make_request("POST", "http://python.org/")
+
+    # First set BytesIOPayload which has autoclose=True
+    bytes_payload = payload.BytesIOPayload(io.BytesIO(b"test data"))
+    req.body = bytes_payload
+
+    # Setting body again should not trigger warning since previous payload has autoclose=True
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")
+        req.body = b"new data"
+
+    # Filter out any non-ResourceWarning warnings
+    resource_warnings = [
+        w for w in warning_list if issubclass(w.category, ResourceWarning)
+    ]
+    assert len(resource_warnings) == 0
+
+    await req.close()
+
+
+async def test_no_warn_for_consumed_payload_via_body_setter(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that no warning is issued for already consumed payloads."""
+    req = make_request("POST", "http://python.org/")
+
+    # Create a payload that needs manual closing
+    file_payload = payload.BufferedReaderPayload(
+        io.BufferedReader(io.BytesIO(b"test data")),  # type: ignore[arg-type]
+        encoding="utf-8",
+    )
+    req.body = file_payload
+
+    # Consume the payload by reading it
+    data = b""
+    async for chunk in file_payload:
+        data += chunk
+    assert data == b"test data"
+
+    # Setting body again should not trigger warning since previous payload is consumed
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")
+        req.body = b"new data"
+
+    # Filter out any non-ResourceWarning warnings
+    resource_warnings = [
+        w for w in warning_list if issubclass(w.category, ResourceWarning)
+    ]
+    assert len(resource_warnings) == 0
+
+    await req.close()
+
+
+async def test_warn_if_unclosed_payload_via_update_body_from_data(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that _warn_if_unclosed_payload is called via update_body_from_data."""
+    req = make_request("POST", "http://python.org/")
+
+    # First set a payload that needs manual closing
+    file_payload = payload.BufferedReaderPayload(
+        io.BufferedReader(io.BytesIO(b"initial data")),  # type: ignore[arg-type]
+        encoding="utf-8",
+    )
+    req.update_body_from_data(file_payload)
+
+    # Create FormData for second update
+    form = aiohttp.FormData()
+    form.add_field("test", "value")
+
+    # update_body_from_data should trigger the warning for the previous payload
+    with pytest.warns(
+        ResourceWarning,
+        match="The request body is a payload that needs manual closing",
+    ):
+        req.update_body_from_data(form)
+
+    await req.close()
+
+
+async def test_warn_via_update_with_file_payload(
+    make_request: _RequestMaker,
+) -> None:
+    """Test warning via update_body_from_data with file-like object."""
+    req = make_request("POST", "http://python.org/")
+
+    # First create a file-like object that results in BufferedReaderPayload
+    buffered1 = io.BufferedReader(io.BytesIO(b"file content 1"))  # type: ignore[arg-type]
+    req.update_body_from_data(buffered1)
+
+    # Second update should warn about the first payload
+    buffered2 = io.BufferedReader(io.BytesIO(b"file content 2"))  # type: ignore[arg-type]
+
+    with pytest.warns(
+        ResourceWarning,
+        match="The request body is a payload that needs manual closing",
+    ):
+        req.update_body_from_data(buffered2)
+
+    await req.close()
+
+
+async def test_no_warn_for_simple_data_via_update_body_from_data(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that no warning is issued for simple data types."""
+    req = make_request("POST", "http://python.org/")
+
+    # Simple bytes data should not trigger warning
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")
+        req.update_body_from_data(b"simple data")
+
+    # Filter out any non-ResourceWarning warnings
+    resource_warnings = [
+        w for w in warning_list if issubclass(w.category, ResourceWarning)
+    ]
+    assert len(resource_warnings) == 0
+
     await req.close()
