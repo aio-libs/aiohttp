@@ -890,7 +890,8 @@ else:
 class AsyncIterablePayload(Payload):
     _iter: Optional[_AsyncIterator] = None
     _value: _AsyncIterable
-    # _consumed changes from False to True when iterator is exhausted
+    _cached_chunks: Optional[List[bytes]] = None
+    # _consumed stays False to allow reuse with cached content
     _autoclose = True  # Iterator doesn't need explicit closing
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
@@ -937,17 +938,30 @@ class AsyncIterablePayload(Payload):
 
         This implementation handles streaming of async iterable content with length constraints:
 
-        1. Iterates through the async iterable one chunk at a time
-        2. Respects content_length constraints when specified
-        3. Handles the case when the iterable might be used twice
-
-        Since async iterables are consumed as they're iterated, there is no way to
-        restart the iteration if it's already in progress or completed.
+        1. If cached chunks are available, writes from them
+        2. Otherwise iterates through the async iterable one chunk at a time
+        3. Respects content_length constraints when specified
+        4. Does NOT generate cache - that's done by as_bytes()
 
         """
+        # If we have cached chunks, use them
+        if self._cached_chunks is not None:
+            remaining_bytes = content_length
+            for chunk in self._cached_chunks:
+                if remaining_bytes is None:
+                    await writer.write(chunk)
+                elif remaining_bytes > 0:
+                    await writer.write(chunk[:remaining_bytes])
+                    remaining_bytes -= len(chunk)
+                else:
+                    break
+            return
+
+        # If iterator is exhausted and we don't have cached chunks, nothing to write
         if self._iter is None:
             return
 
+        # Stream from the iterator
         remaining_bytes = content_length
 
         try:
@@ -969,25 +983,38 @@ class AsyncIterablePayload(Payload):
         except StopAsyncIteration:
             # Iterator is exhausted
             self._iter = None
-            self._consumed = True  # Iterator has been consumed
+            self._consumed = True  # Mark as consumed when streamed without caching
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        raise TypeError("Unable to decode.")
+        """Decode the payload content as a string if cached chunks are available."""
+        if self._cached_chunks is not None:
+            return b"".join(self._cached_chunks).decode(encoding, errors)
+        raise TypeError("Unable to decode - content not cached. Call as_bytes() first.")
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """Return bytes representation of the value.
 
         This method reads the entire async iterable content and returns it as bytes.
-        It is equivalent to iterating through the async iterable and concatenating the results.
+        It generates and caches the chunks for future reuse.
         """
+        # If we have cached chunks, return them joined
+        if self._cached_chunks is not None:
+            return b"".join(self._cached_chunks)
+
+        # If iterator is exhausted and no cache, return empty
         if self._iter is None:
             return b""
+
+        # Read all chunks and cache them
         chunks: List[bytes] = []
         async for chunk in self._iter:
             chunks.append(chunk)
-        # Iterator is exhausted after consuming
+
+        # Iterator is exhausted, cache the chunks
         self._iter = None
-        self._consumed = True  # Iterator has been consumed
+        self._cached_chunks = chunks
+        # Keep _consumed as False to allow reuse with cached chunks
+
         return b"".join(chunks)
 
 
