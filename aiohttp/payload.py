@@ -825,6 +825,12 @@ class BytesIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         return self._value.read()
 
+    async def close(self) -> None:
+        """Close the BytesIO payload.
+
+        This does nothing since BytesIO is in-memory and does not require explicit closing.
+        """
+
 
 class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
