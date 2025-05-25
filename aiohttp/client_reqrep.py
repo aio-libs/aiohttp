@@ -701,7 +701,6 @@ class ClientRequest:
         try:
             if TYPE_CHECKING:
                 assert self._body is not None
-            # Specialized handling for Payload objects that know how to write themselves
             await self._body.write_with_length(writer, content_length)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
