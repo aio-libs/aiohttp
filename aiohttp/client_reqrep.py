@@ -616,11 +616,8 @@ class ClientRequest:
             del self.headers[hdrs.CONTENT_LENGTH]
 
         # Remove existing Transfer-Encoding header to avoid conflicts
-        if hdrs.TRANSFER_ENCODING in self.headers:
+        if self.chunked and hdrs.TRANSFER_ENCODING in self.headers:
             del self.headers[hdrs.TRANSFER_ENCODING]
-
-        # Reset chunked state to allow update_transfer_encoding to recalculate
-        self.chunked = None
 
         # Now update the body using the existing method
         self.update_body_from_data(body)
