@@ -396,8 +396,6 @@ class ClientRequest:
     @body.setter
     def body(self, value: Any) -> None:
         """Set request body with warning for non-autoclose payloads."""
-        if self._body is not None:
-            _warn_if_unclosed_payload(self._body)
         self.update_body_from_data(value)
 
     @property
@@ -574,11 +572,11 @@ class ClientRequest:
 
     def update_body_from_data(self, body: Any) -> None:
         """Update request body from data."""
-        if body is None:
-            return
-
         if self._body is not None:
             _warn_if_unclosed_payload(self._body)
+
+        if body is None:
+            return
 
         # FormData
         maybe_payload = body() if isinstance(body, FormData) else body
