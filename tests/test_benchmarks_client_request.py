@@ -103,6 +103,7 @@ def test_create_client_request_with_headers(
     timer = TimerNoop()
     traces = []
     headers = CIMultiDict({"header": "value", "another": "header"})
+    cookies = BaseCookie[str]()
 
     @benchmark
     def _run() -> None:
@@ -124,7 +125,7 @@ def test_create_client_request_with_headers(
             server_hostname=None,
             headers=headers,
             data=None,
-            cookies=None,
+            cookies=cookies,
             auth=None,
             version=HttpVersion11,
             compress=False,
