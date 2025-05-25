@@ -3,6 +3,11 @@ codecov:
   notify:
     after_n_builds: 13
 
+comment:
+  layout: "header, diff, flags, files, footer"
+  require_base: false
+  require_head: false
+
 coverage:
   range: "95..100"
 
