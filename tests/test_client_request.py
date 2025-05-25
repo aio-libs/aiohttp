@@ -1958,6 +1958,28 @@ async def test_update_body_with_chunked_encoding(
     await req.close()
 
 
+async def test_update_body_get_method_with_none_body(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that update_body with GET method and None body doesn't call update_transfer_encoding."""
+    # Create GET request
+    req = make_request("GET", "http://python.org/")
+
+    # GET requests shouldn't have Transfer-Encoding or Content-Length initially
+    assert "Transfer-Encoding" not in req.headers
+    assert "Content-Length" not in req.headers
+
+    # Update body to None - should not trigger update_transfer_encoding
+    # This covers the branch where body is None AND method is in GET_METHODS
+    await req.update_body(None)
+
+    # Headers should remain unchanged
+    assert "Transfer-Encoding" not in req.headers
+    assert "Content-Length" not in req.headers
+
+    await req.close()
+
+
 async def test_update_body_updates_content_length(
     make_request: _RequestMaker,
 ) -> None:
