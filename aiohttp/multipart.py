@@ -802,7 +802,7 @@ class MultipartWriter(Payload):
     """Multipart body writer."""
 
     _value: None
-    _reusable = True
+    # _consumed = False (inherited) - Can be encoded multiple times
     _autoclose = True  # No file handles, just collects parts in memory
 
     def __init__(self, subtype: str = "mixed", boundary: Optional[str] = None) -> None:
@@ -1000,12 +1000,39 @@ class MultipartWriter(Payload):
         )
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Return bytes representation of the multipart data."""
-        return self.decode(encoding, errors).encode(encoding)
+        """Return bytes representation of the multipart data.
+
+        This method is async-safe and calls as_bytes on underlying payloads.
+        """
+        parts: List[bytes] = []
+
+        # Process each part
+        for part, _e, _te in self._parts:
+            # Add boundary
+            parts.append(b"--" + self._boundary + b"\r\n")
+
+            # Add headers
+            parts.append(part._binary_headers)
+
+            # Add payload content using as_bytes for async safety
+            part_bytes = await part.as_bytes(encoding, errors)
+            parts.append(part_bytes)
+
+            # Add trailing CRLF
+            parts.append(b"\r\n")
+
+        # Add closing boundary
+        parts.append(b"--" + self._boundary + b"--\r\n")
+
+        return b"".join(parts)
 
     async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        """Return string representation of the multipart data."""
-        return self.decode(encoding, errors)
+        """Return string representation of the multipart data.
+
+        This method is async-safe and calls as_bytes to get the data.
+        """
+        data = await self.as_bytes(encoding, errors)
+        return data.decode(encoding, errors)
 
     async def write(self, writer: Any, close_boundary: bool = True) -> None:
         """Write body."""

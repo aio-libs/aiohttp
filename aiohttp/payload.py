@@ -154,7 +154,7 @@ class PayloadRegistry:
 class Payload(ABC):
     _default_content_type: str = "application/octet-stream"
     _size: Optional[int] = None
-    _reusable: bool = False
+    _consumed: bool = False  # Default: payload has not been consumed yet
     _autoclose: bool = False  # Default: assume resource needs explicit closing
 
     def __init__(
@@ -224,9 +224,9 @@ class Payload(ABC):
         return self._headers[hdrs.CONTENT_TYPE]
 
     @property
-    def reusable(self) -> bool:
-        """Whether the payload can be reused."""
-        return self._reusable
+    def consumed(self) -> bool:
+        """Whether the payload has been consumed and cannot be reused."""
+        return self._consumed
 
     @property
     def autoclose(self) -> bool:
@@ -326,7 +326,7 @@ class Payload(ABC):
 
 class BytesPayload(Payload):
     _value: bytes
-    _reusable = True
+    # _consumed = False (inherited) - Bytes are immutable and can be reused
     _autoclose = True  # No file handle, just bytes in memory
 
     def __init__(
@@ -444,7 +444,7 @@ class StringIOPayload(StringPayload):
 
 class IOBasePayload(Payload):
     _value: io.IOBase
-    _reusable = True
+    # _consumed = False (inherited) - File can be re-read from the same position
     _start_position: Optional[int] = None
     # _autoclose = False (inherited) - Has file handle that needs explicit closing
 
@@ -623,13 +623,13 @@ class IOBasePayload(Payload):
     async def close(self) -> None:
         """Close the payload if it holds any resources."""
         # Schedule file closing without awaiting to prevent cancellation issues
-        self._reusable = False  # Mark as non-reusable to prevent further writes
+        self._consumed = True  # Mark as consumed to prevent further writes
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._value.close)
 
     def _schedule_file_close(self, loop: asyncio.AbstractEventLoop) -> None:
         """Schedule file closing without awaiting to prevent cancellation issues."""
-        self._reusable = False  # Mark as non-reusable to prevent further writes
+        self._consumed = True  # Mark as consumed to prevent further writes
         close_future = loop.run_in_executor(None, self._value.close)
         # Hold a strong reference to the future to prevent it from being
         # garbage collected before it completes.
@@ -854,7 +854,7 @@ class BytesIOPayload(IOBasePayload):
 
     async def close(self) -> None:
         """Close the payload if it holds any resources."""
-        self._reusable = False  # Mark as non-reusable to prevent further writes
+        self._consumed = True  # Mark as consumed to prevent further writes
         self._value.close()
 
 
@@ -901,6 +901,7 @@ else:
 class AsyncIterablePayload(Payload):
     _iter: Optional[_AsyncIterator] = None
     _value: _AsyncIterable
+    # _consumed changes from False to True when iterator is exhausted
     _autoclose = True  # Iterator doesn't need explicit closing
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
@@ -979,7 +980,7 @@ class AsyncIterablePayload(Payload):
         except StopAsyncIteration:
             # Iterator is exhausted
             self._iter = None
-            self._reusable = False
+            self._consumed = True  # Iterator has been consumed
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         raise TypeError("Unable to decode.")
@@ -997,7 +998,7 @@ class AsyncIterablePayload(Payload):
             chunks.append(chunk)
         # Iterator is exhausted after consuming
         self._iter = None
-        self._reusable = False
+        self._consumed = True  # Iterator has been consumed
         return b"".join(chunks)
 
     async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
