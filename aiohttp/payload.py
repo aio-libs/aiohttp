@@ -228,7 +228,8 @@ class Payload(ABC):
 
     @property
     def autoclose(self) -> bool:
-        """Whether the payload can close itself automatically.
+        """
+        Whether the payload can close itself automatically.
 
         Returns True if the payload has no file handles or resources that need
         explicit closing. If False, callers must await close() to release resources.
@@ -249,14 +250,16 @@ class Payload(ABC):
 
     @abstractmethod
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        """Return string representation of the value.
+        """
+        Return string representation of the value.
 
         This is named decode() to allow compatibility with bytes objects.
         """
 
     @abstractmethod
     async def write(self, writer: AbstractStreamWriter) -> None:
-        """Write payload to the writer stream.
+        """
+        Write payload to the writer stream.
 
         Args:
             writer: An AbstractStreamWriter instance that handles the actual writing
@@ -298,7 +301,8 @@ class Payload(ABC):
         await self.write(writer)
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Return bytes representation of the value.
+        """
+        Return bytes representation of the value.
 
         This is a convenience method that calls decode() and encodes the result
         to bytes using the specified encoding.
@@ -351,7 +355,8 @@ class BytesPayload(Payload):
         return self._value.decode(encoding, errors)
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Return bytes representation of the value.
+        """
+        Return bytes representation of the value.
 
         This method returns the raw bytes content of the payload.
         It is equivalent to accessing the _value attribute directly.
@@ -359,7 +364,8 @@ class BytesPayload(Payload):
         return self._value
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        """Write the entire bytes payload to the writer stream.
+        """
+        Write the entire bytes payload to the writer stream.
 
         Args:
             writer: An AbstractStreamWriter instance that handles the actual writing
@@ -604,7 +610,8 @@ class IOBasePayload(Payload):
         )
 
     async def close(self) -> None:
-        """Close the payload if it holds any resources.
+        """
+        Close the payload if it holds any resources.
 
         IMPORTANT: This method must not await anything that might not finish
         immediately, as it may be called during cleanup/cancellation. Schedule
@@ -623,7 +630,8 @@ class IOBasePayload(Payload):
         close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        """Return string representation of the value.
+        """
+        Return string representation of the value.
 
         WARNING: This method does blocking I/O and should not be called in the event loop.
         """
@@ -631,7 +639,8 @@ class IOBasePayload(Payload):
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Return bytes representation of the value.
+        """
+        Return bytes representation of the value.
 
         This method reads the entire file content and returns it as bytes.
         It is equivalent to reading the file-like object directly.
@@ -731,7 +740,8 @@ class TextIOPayload(IOBasePayload):
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        """Return string representation of the value.
+        """
+        Return string representation of the value.
 
         WARNING: This method does blocking I/O and should not be called in the event loop.
         """
@@ -739,7 +749,8 @@ class TextIOPayload(IOBasePayload):
         return self._value.read()
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Return bytes representation of the value.
+        """
+        Return bytes representation of the value.
 
         This method reads the entire text file content and returns it as bytes.
         It encodes the text content using the specified encoding.
@@ -815,7 +826,8 @@ class BytesIOPayload(IOBasePayload):
             loop_count += 1
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Return bytes representation of the value.
+        """
+        Return bytes representation of the value.
 
         This method reads the entire BytesIO content and returns it as bytes.
         It is equivalent to accessing the _value attribute directly.
@@ -824,7 +836,8 @@ class BytesIOPayload(IOBasePayload):
         return self._value.read()
 
     async def close(self) -> None:
-        """Close the BytesIO payload.
+        """
+        Close the BytesIO payload.
 
         This does nothing since BytesIO is in-memory and does not require explicit closing.
         """
@@ -975,7 +988,8 @@ class AsyncIterablePayload(Payload):
         raise TypeError("Unable to decode - content not cached. Call as_bytes() first.")
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Return bytes representation of the value.
+        """
+        Return bytes representation of the value.
 
         This method reads the entire async iterable content and returns it as bytes.
         It generates and caches the chunks for future reuse.
