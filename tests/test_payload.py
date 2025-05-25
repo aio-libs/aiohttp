@@ -535,3 +535,223 @@ async def test_async_iterable_payload_write_then_cache() -> None:
     writer2 = MockStreamWriter()
     await p.write_with_length(writer2, None)
     assert writer2.get_written_bytes() == b""
+
+
+async def test_bytes_payload_reusability() -> None:
+    """Test that BytesPayload can be written and read multiple times."""
+    data = b"test payload data"
+    p = payload.BytesPayload(data)
+
+    # First write_with_length
+    writer1 = MockStreamWriter()
+    await p.write_with_length(writer1, None)
+    assert writer1.get_written_bytes() == data
+
+    # Second write_with_length (simulating redirect)
+    writer2 = MockStreamWriter()
+    await p.write_with_length(writer2, None)
+    assert writer2.get_written_bytes() == data
+
+    # Write with partial length
+    writer3 = MockStreamWriter()
+    await p.write_with_length(writer3, 5)
+    assert writer3.get_written_bytes() == b"test "
+
+    # Test as_bytes multiple times
+    bytes1 = await p.as_bytes()
+    bytes2 = await p.as_bytes()
+    bytes3 = await p.as_bytes()
+    assert bytes1 == bytes2 == bytes3 == data
+
+
+async def test_string_payload_reusability() -> None:
+    """Test that StringPayload can be written and read multiple times."""
+    text = "test string data"
+    expected_bytes = text.encode("utf-8")
+    p = payload.StringPayload(text)
+
+    # First write_with_length
+    writer1 = MockStreamWriter()
+    await p.write_with_length(writer1, None)
+    assert writer1.get_written_bytes() == expected_bytes
+
+    # Second write_with_length (simulating redirect)
+    writer2 = MockStreamWriter()
+    await p.write_with_length(writer2, None)
+    assert writer2.get_written_bytes() == expected_bytes
+
+    # Write with partial length
+    writer3 = MockStreamWriter()
+    await p.write_with_length(writer3, 5)
+    assert writer3.get_written_bytes() == b"test "
+
+    # Test as_bytes multiple times
+    bytes1 = await p.as_bytes()
+    bytes2 = await p.as_bytes()
+    bytes3 = await p.as_bytes()
+    assert bytes1 == bytes2 == bytes3 == expected_bytes
+
+
+async def test_bytes_io_payload_reusability() -> None:
+    """Test that BytesIOPayload can be written and read multiple times."""
+    data = b"test bytesio payload"
+    bytes_io = io.BytesIO(data)
+    p = payload.BytesIOPayload(bytes_io)
+
+    # First write_with_length
+    writer1 = MockStreamWriter()
+    await p.write_with_length(writer1, None)
+    assert writer1.get_written_bytes() == data
+
+    # Second write_with_length (simulating redirect)
+    writer2 = MockStreamWriter()
+    await p.write_with_length(writer2, None)
+    assert writer2.get_written_bytes() == data
+
+    # Write with partial length
+    writer3 = MockStreamWriter()
+    await p.write_with_length(writer3, 5)
+    assert writer3.get_written_bytes() == b"test "
+
+    # Test as_bytes multiple times
+    bytes1 = await p.as_bytes()
+    bytes2 = await p.as_bytes()
+    bytes3 = await p.as_bytes()
+    assert bytes1 == bytes2 == bytes3 == data
+
+
+async def test_string_io_payload_reusability() -> None:
+    """Test that StringIOPayload can be written and read multiple times."""
+    text = "test stringio payload"
+    expected_bytes = text.encode("utf-8")
+    string_io = io.StringIO(text)
+    p = payload.StringIOPayload(string_io)
+
+    # Note: StringIOPayload reads all content in __init__ and becomes a StringPayload
+    # So it should be fully reusable
+
+    # First write_with_length
+    writer1 = MockStreamWriter()
+    await p.write_with_length(writer1, None)
+    assert writer1.get_written_bytes() == expected_bytes
+
+    # Second write_with_length (simulating redirect)
+    writer2 = MockStreamWriter()
+    await p.write_with_length(writer2, None)
+    assert writer2.get_written_bytes() == expected_bytes
+
+    # Write with partial length
+    writer3 = MockStreamWriter()
+    await p.write_with_length(writer3, 5)
+    assert writer3.get_written_bytes() == b"test "
+
+    # Test as_bytes multiple times
+    bytes1 = await p.as_bytes()
+    bytes2 = await p.as_bytes()
+    bytes3 = await p.as_bytes()
+    assert bytes1 == bytes2 == bytes3 == expected_bytes
+
+
+async def test_buffered_reader_payload_reusability() -> None:
+    """Test that BufferedReaderPayload can be written and read multiple times."""
+    data = b"test buffered reader payload"
+    buffer = io.BufferedReader(io.BytesIO(data))  # type: ignore[arg-type]
+    p = payload.BufferedReaderPayload(buffer)
+
+    # First write_with_length
+    writer1 = MockStreamWriter()
+    await p.write_with_length(writer1, None)
+    assert writer1.get_written_bytes() == data
+
+    # Second write_with_length (simulating redirect)
+    writer2 = MockStreamWriter()
+    await p.write_with_length(writer2, None)
+    assert writer2.get_written_bytes() == data
+
+    # Write with partial length
+    writer3 = MockStreamWriter()
+    await p.write_with_length(writer3, 5)
+    assert writer3.get_written_bytes() == b"test "
+
+    # Test as_bytes multiple times
+    bytes1 = await p.as_bytes()
+    bytes2 = await p.as_bytes()
+    bytes3 = await p.as_bytes()
+    assert bytes1 == bytes2 == bytes3 == data
+
+
+async def test_async_iterable_payload_reusability_with_cache() -> None:
+    """Test that AsyncIterablePayload can be reused when cached via as_bytes."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"async "
+        yield b"iterable "
+        yield b"payload"
+
+    expected_data = b"async iterable payload"
+    p = payload.AsyncIterablePayload(gen())
+
+    # First call to as_bytes should cache the data
+    bytes1 = await p.as_bytes()
+    assert bytes1 == expected_data
+    assert p._cached_chunks is not None
+    assert p._iter is None  # Iterator exhausted
+
+    # Subsequent as_bytes calls should use cache
+    bytes2 = await p.as_bytes()
+    bytes3 = await p.as_bytes()
+    assert bytes1 == bytes2 == bytes3 == expected_data
+
+    # Now writes should also use the cached data
+    writer1 = MockStreamWriter()
+    await p.write_with_length(writer1, None)
+    assert writer1.get_written_bytes() == expected_data
+
+    # Second write should also work
+    writer2 = MockStreamWriter()
+    await p.write_with_length(writer2, None)
+    assert writer2.get_written_bytes() == expected_data
+
+    # Write with partial length
+    writer3 = MockStreamWriter()
+    await p.write_with_length(writer3, 5)
+    assert writer3.get_written_bytes() == b"async"
+
+
+async def test_async_iterable_payload_no_reuse_without_cache() -> None:
+    """Test that AsyncIterablePayload cannot be reused without caching."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"test "
+        yield b"data"
+
+    p = payload.AsyncIterablePayload(gen())
+
+    # First write exhausts the iterator
+    writer1 = MockStreamWriter()
+    await p.write_with_length(writer1, None)
+    assert writer1.get_written_bytes() == b"test data"
+    assert p._iter is None  # Iterator exhausted
+    assert p._consumed is True
+
+    # Second write should produce empty result
+    writer2 = MockStreamWriter()
+    await p.write_with_length(writer2, None)
+    assert writer2.get_written_bytes() == b""
+
+
+async def test_bytes_io_payload_close_does_not_close_io() -> None:
+    """Test that BytesIOPayload close() does not close the underlying BytesIO."""
+    bytes_io = io.BytesIO(b"data")
+    bytes_io_payload = payload.BytesIOPayload(bytes_io)
+
+    # Close the payload
+    await bytes_io_payload.close()
+
+    # BytesIO should NOT be closed
+    assert not bytes_io.closed
+
+    # Can still write after close
+    writer = MockStreamWriter()
+    await bytes_io_payload.write_with_length(writer, None)
+    assert writer.get_written_bytes() == b"data"
