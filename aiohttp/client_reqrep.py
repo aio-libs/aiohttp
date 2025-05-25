@@ -586,6 +586,7 @@ class ClientRequest:
         try:
             body_payload = payload.PAYLOAD_REGISTRY.get(maybe_payload, disposition=None)
         except payload.LookupError:
+            boundary: Optional[str] = None
             if CONTENT_TYPE in self.headers:
                 boundary = parse_mimetype(self.headers[CONTENT_TYPE]).parameters.get(
                     "boundary"
