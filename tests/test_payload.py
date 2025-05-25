@@ -963,6 +963,52 @@ def test_string_io_payload_size() -> None:
     siop_custom = payload.StringIOPayload(sio_custom, encoding="utf-16")
     assert siop_custom.size == len("Hello".encode("utf-16"))
 
+    # Test with emoji to ensure correct byte count
+    sio_emoji = StringIO("Hello 👋🌍")
+    siop_emoji = payload.StringIOPayload(sio_emoji)
+    assert siop_emoji.size == len("Hello 👋🌍".encode())
+    # Verify it's not the string length
+    assert siop_emoji.size != len("Hello 👋🌍")
+
+
+def test_all_string_payloads_size_is_bytes() -> None:
+    """Test that all string-like payload classes report size in bytes, not string length."""
+    # Test string with multibyte characters
+    test_str = "Hello 👋 世界 🌍"  # Contains emoji and Chinese characters
+
+    # StringPayload
+    sp = payload.StringPayload(test_str)
+    assert sp.size == len(test_str.encode("utf-8"))
+    assert sp.size != len(test_str)  # Ensure it's not string length
+
+    # StringIOPayload
+    sio = StringIO(test_str)
+    siop = payload.StringIOPayload(sio)
+    assert siop.size == len(test_str.encode("utf-8"))
+    assert siop.size != len(test_str)
+
+    # Test with different encoding
+    sp_utf16 = payload.StringPayload(test_str, encoding="utf-16")
+    assert sp_utf16.size == len(test_str.encode("utf-16"))
+    assert sp_utf16.size != sp.size  # Different encoding = different size
+
+    # JsonPayload (which extends BytesPayload)
+    json_data = {"message": test_str}
+    jp = payload.JsonPayload(json_data)
+    # JSON escapes Unicode, so we need to check the actual encoded size
+    json_str = json.dumps(json_data)
+    assert jp.size == len(json_str.encode("utf-8"))
+
+    # Test JsonPayload with ensure_ascii=False to get actual UTF-8 encoding
+    jp_utf8 = payload.JsonPayload(
+        json_data, dumps=lambda x: json.dumps(x, ensure_ascii=False)
+    )
+    json_str_utf8 = json.dumps(json_data, ensure_ascii=False)
+    assert jp_utf8.size == len(json_str_utf8.encode("utf-8"))
+    assert jp_utf8.size != len(
+        json_str_utf8
+    )  # Now it's different due to multibyte chars
+
 
 def test_bytes_io_payload_size() -> None:
     """Test BytesIOPayload.size property."""

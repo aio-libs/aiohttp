@@ -780,6 +780,7 @@ class TextIOPayload(IOBasePayload):
 
 class BytesIOPayload(IOBasePayload):
     _value: io.BytesIO
+    _size: int  # Always initialized in __init__
     _autoclose = True  # BytesIO is in-memory, safe to auto-close
 
     def __init__(self, value: io.BytesIO, *args: Any, **kwargs: Any) -> None:
