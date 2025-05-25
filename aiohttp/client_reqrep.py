@@ -576,6 +576,7 @@ class ClientRequest:
             _warn_if_unclosed_payload(self._body)
 
         if body is None:
+            self._body = None
             return
 
         # FormData

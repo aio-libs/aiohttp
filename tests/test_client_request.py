@@ -1880,3 +1880,49 @@ async def test_no_warn_for_simple_data_via_update_body_from_data(
     assert len(resource_warnings) == 0
 
     await req.close()
+
+
+async def test_update_body_closes_previous_payload(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that update_body properly closes the previous payload."""
+    req = make_request("POST", "http://python.org/")
+
+    # Create a mock payload that tracks if it was closed
+    mock_payload = mock.Mock(spec=payload.Payload)
+    mock_payload.close = mock.AsyncMock()
+
+    # Set initial payload
+    req._body = mock_payload
+
+    # Update body with new data
+    await req.update_body(b"new body data")
+
+    # Verify the previous payload was closed
+    mock_payload.close.assert_called_once()
+
+    # Verify new body is set (it's a BytesPayload now)
+    assert isinstance(req.body, payload.BytesPayload)
+
+    await req.close()
+
+
+async def test_update_body_with_different_types(
+    make_request: _RequestMaker,
+) -> None:
+    """Test update_body with various data types."""
+    req = make_request("POST", "http://python.org/")
+
+    # Test with bytes
+    await req.update_body(b"bytes data")
+    assert isinstance(req.body, payload.BytesPayload)
+
+    # Test with string
+    await req.update_body("string data")
+    assert isinstance(req.body, payload.BytesPayload)
+
+    # Test with None (clears body)
+    await req.update_body(None)
+    assert req.body == b""  # empty body is represented as b""
+
+    await req.close()

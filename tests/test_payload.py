@@ -862,3 +862,17 @@ async def test_custom_payload_with_encoding_backwards_compat() -> None:
     result_latin1 = await p2.as_bytes()
     assert result_latin1 == "café".encode("latin-1")
     assert result_latin1 != "café".encode()  # Should be different bytes
+
+
+async def test_iobase_payload_close_idempotent() -> None:
+    """Test that IOBasePayload.close() is idempotent and covers the _consumed check."""
+    file_like = io.BytesIO(b"test data")
+    p = payload.IOBasePayload(file_like)
+
+    # First close should set _consumed to True
+    await p.close()
+    assert p._consumed is True
+
+    # Second close should be a no-op due to _consumed check (line 621)
+    await p.close()
+    assert p._consumed is True
