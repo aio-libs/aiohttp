@@ -718,16 +718,6 @@ class TextIOPayload(IOBasePayload):
             **kwargs,
         )
 
-    @property
-    def autoclose(self) -> bool:
-        """Whether the payload can close itself automatically.
-
-        For TextIOPayload, this is always True since it does not hold
-        any resources that need to be closed explicitly. It is safe to reuse this
-        payload without worrying about resource cleanup.
-        """
-        return True
-
     def _read_and_available_len(
         self, remaining_content_len: Optional[int]
     ) -> Tuple[Optional[int], bytes]:
