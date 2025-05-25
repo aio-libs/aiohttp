@@ -453,3 +453,85 @@ async def test_async_iterable_payload_with_none_iterator() -> None:
     # Should return early without writing anything
     await p.write_with_length(writer, 10)
     assert writer.get_written_bytes() == b""
+
+
+async def test_async_iterable_payload_caching() -> None:
+    """Test AsyncIterablePayload caching behavior."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"Hello"
+        yield b" "
+        yield b"World"
+
+    p = payload.AsyncIterablePayload(gen())
+
+    # First call to as_bytes should consume iterator and cache
+    result1 = await p.as_bytes()
+    assert result1 == b"Hello World"
+    assert p._iter is None  # Iterator exhausted
+    assert p._cached_chunks == [b"Hello", b" ", b"World"]  # Chunks cached
+    assert p._consumed is False  # Not marked as consumed to allow reuse
+
+    # Second call should use cache
+    result2 = await p.as_bytes()
+    assert result2 == b"Hello World"
+    assert p._cached_chunks == [b"Hello", b" ", b"World"]  # Still cached
+
+    # decode should work with cached chunks
+    decoded = p.decode()
+    assert decoded == "Hello World"
+
+    # write_with_length should use cached chunks
+    writer = MockStreamWriter()
+    await p.write_with_length(writer, None)
+    assert writer.get_written_bytes() == b"Hello World"
+
+    # write_with_length with limit should respect it
+    writer2 = MockStreamWriter()
+    await p.write_with_length(writer2, 5)
+    assert writer2.get_written_bytes() == b"Hello"
+
+
+async def test_async_iterable_payload_decode_without_cache() -> None:
+    """Test AsyncIterablePayload decode raises error without cache."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"test"
+
+    p = payload.AsyncIterablePayload(gen())
+
+    # decode should raise without cache
+    with pytest.raises(TypeError) as excinfo:
+        p.decode()
+    assert "Unable to decode - content not cached" in str(excinfo.value)
+
+    # After as_bytes, decode should work
+    await p.as_bytes()
+    assert p.decode() == "test"
+
+
+async def test_async_iterable_payload_write_then_cache() -> None:
+    """Test AsyncIterablePayload behavior when written before caching."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"Hello"
+        yield b"World"
+
+    p = payload.AsyncIterablePayload(gen())
+
+    # First write without caching (streaming)
+    writer1 = MockStreamWriter()
+    await p.write_with_length(writer1, None)
+    assert writer1.get_written_bytes() == b"HelloWorld"
+    assert p._iter is None  # Iterator exhausted
+    assert p._cached_chunks is None  # No cache created
+    assert p._consumed is True  # Marked as consumed
+
+    # Subsequent operations should handle exhausted iterator
+    result = await p.as_bytes()
+    assert result == b""  # Empty since iterator exhausted without cache
+
+    # Write should also be empty
+    writer2 = MockStreamWriter()
+    await p.write_with_length(writer2, None)
+    assert writer2.get_written_bytes() == b""

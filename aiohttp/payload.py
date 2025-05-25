@@ -15,6 +15,7 @@ from typing import (
     Dict,
     Final,
     Iterable,
+    List,
     Optional,
     Set,
     TextIO,
@@ -58,12 +59,8 @@ READ_SIZE: Final[int] = 2**16  # 64 KB
 _CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
 
 
-if TYPE_CHECKING:
-    from typing import List
-
-
 class LookupError(Exception):
-    pass
+    """Raised when no payload factory is found for the given data type."""
 
 
 class Order(str, enum.Enum):
