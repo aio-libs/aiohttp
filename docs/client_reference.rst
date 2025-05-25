@@ -2015,8 +2015,11 @@ ClientRequest
          async def middleware(request, handler):
              # Modify request body in middleware
              if request.method == 'POST':
-                 # Replace body with new data
+                 # CORRECT: Always use update_body
                  await request.update_body(b'{"modified": true}')
+
+                 # WRONG: Never set body directly!
+                 # request.body = b'{"modified": true}'  # This leaks resources!
 
              # Or add authentication data to form
              if isinstance(request.body, FormData):
@@ -2032,6 +2035,16 @@ ClientRequest
          This method is async because it may need to close file handles or
          other resources associated with the previous payload. Always await
          this method to ensure proper cleanup.
+
+      .. danger::
+
+         **Never set request.body directly!** Direct assignment will cause resource
+         leaks. Always use this method instead. Setting the body attribute directly:
+
+         - Bypasses cleanup of the previous payload
+         - Leaves file handles and streams open
+         - Can cause memory leaks
+         - May result in unexpected behavior with async iterables
 
       .. warning::
 
