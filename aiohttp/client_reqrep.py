@@ -174,6 +174,7 @@ else:  # pragma: no cover
     SSL_ALLOWED_TYPES = (bool,)  # type: ignore[unreachable]
 
 
+_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _SSL_SCHEMES = frozenset(("https", "wss"))
 
 
@@ -190,702 +191,6 @@ class ConnectionKey(NamedTuple):
     proxy: Optional[URL]
     proxy_auth: Optional[BasicAuth]
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
-
-
-class ClientRequestBase:
-    """An internal class for proxy requests."""
-
-    POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
-
-    # Flag to set Content-Length to 0 if the class doesn't support a body.
-    _supports_body = False
-
-    auth = None
-    proxy: Optional[URL] = None
-    response_class = ClientResponse
-    server_hostname: Optional[str] = None  # Needed in connector.py
-    version = HttpVersion11
-    _response = None
-
-    # These class defaults help create_autospec() work correctly.
-    # If autospec is improved in future, maybe these can be removed.
-    url = URL()
-    method = "GET"
-
-    __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
-
-    _skip_auto_headers: Optional["CIMultiDict[None]"] = None
-
-    # N.B.
-    # Adding __del__ method with self._writer closing doesn't make sense
-    # because _writer is instance method, thus it keeps a reference to self.
-    # Until writer has finished finalizer will not be called.
-
-    def __init__(
-        self,
-        method: str,
-        url: URL,
-        *,
-        headers: CIMultiDict[str],
-        auth: Optional[BasicAuth],
-        loop: asyncio.AbstractEventLoop,
-        ssl: Union[SSLContext, bool, Fingerprint],
-        trust_env: bool = False,
-    ):
-        if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
-            raise ValueError(
-                f"Method cannot contain non-token characters {method!r} "
-                f"(found at least {match.group()!r})"
-            )
-        # URL forbids subclasses, so a simple type check is enough.
-        assert type(url) is URL, url
-        self.original_url = url
-        self.url = url.with_fragment(None) if url.raw_fragment else url
-        self.method = method.upper()
-        self.loop = loop
-        self._ssl = ssl
-
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
-
-        self._update_host(url)
-        self._update_headers(headers)
-        self._update_auth(auth, trust_env)
-
-    def __reset_writer(self, _: object = None) -> None:
-        self.__writer = None
-
-    @property
-    def _writer(self) -> Optional["asyncio.Task[None]"]:
-        return self.__writer
-
-    @_writer.setter
-    def _writer(self, writer: "asyncio.Task[None]") -> None:
-        if self.__writer is not None:
-            self.__writer.remove_done_callback(self.__reset_writer)
-        self.__writer = writer
-        writer.add_done_callback(self.__reset_writer)
-
-    @property
-    def connection_key(self) -> ConnectionKey:  # type: ignore[misc]
-        url = self.url
-        return tuple.__new__(
-            ConnectionKey,
-            (
-                url.raw_host or "",
-                url.port,
-                url.scheme in _SSL_SCHEMES,
-                self._ssl,
-                None,
-                None,
-                None,
-            ),
-        )
-
-    @property
-    def _request_info(self) -> RequestInfo:
-        headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
-        # These are created on every request, so we use a NamedTuple
-        # for performance reasons. We don't use the RequestInfo.__new__
-        # method because it has a different signature which is provided
-        # for backwards compatibility only.
-        return tuple.__new__(
-            RequestInfo, (self.url, self.method, headers, self.original_url)
-        )
-
-    def is_ssl(self) -> bool:
-        return self.url.scheme in _SSL_SCHEMES
-
-    @property
-    def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
-        return self._ssl
-
-    def _update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
-        """Set basic auth."""
-        if auth is None:
-            auth = self.auth
-        if auth is None and trust_env and self.url.host is not None:
-            netrc_obj = netrc_from_env()
-            with contextlib.suppress(LookupError):
-                auth = basicauth_from_netrc(netrc_obj, self.url.host)
-        if auth is None:
-            return
-
-        if not isinstance(auth, BasicAuth):
-            raise TypeError("BasicAuth() tuple is required instead")
-
-        self.headers[hdrs.AUTHORIZATION] = auth.encode()
-
-    def _update_headers(self, headers: Optional[LooseHeaders]) -> None:
-        """Update request headers."""
-        self.headers: CIMultiDict[str] = CIMultiDict()
-
-        # Build the host header
-        host = self.url.host_port_subcomponent
-
-        # host_port_subcomponent is None when the URL is a relative URL.
-        # but we know we do not have a relative URL here.
-        assert host is not None
-        self.headers[hdrs.HOST] = host
-        if not self._supports_body:
-            self.headers[hdrs.CONTENT_LENGTH] = "0"
-
-        if not headers:
-            return
-
-        if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-            headers = headers.items()
-
-        for key, value in headers:  # type: ignore[misc]
-            # A special case for Host header
-            if key in hdrs.HOST_ALL:
-                self.headers[key] = value
-            else:
-                self.headers.add(key, value)
-
-    def _update_host(self, url: URL) -> None:
-        """Update destination host, port and connection type (ssl)."""
-        # get host/port
-        if not url.raw_host:
-            raise InvalidURL(url)
-
-        # basic auth info
-        if url.raw_user or url.raw_password:
-            self.auth = BasicAuth(url.user or "", url.password or "")
-
-    def _get_content_length(self) -> Optional[int]:
-        """Extract and validate Content-Length header value.
-
-        Returns parsed Content-Length value or None if not set.
-        Raises ValueError if header exists but cannot be parsed as an integer.
-        """
-        if hdrs.CONTENT_LENGTH not in self.headers:
-            return None
-
-        content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
-        try:
-            return int(content_length_hdr)
-        except ValueError:
-            raise ValueError(
-                f"Invalid Content-Length header: {content_length_hdr}"
-            ) from None
-
-    def _create_response(self, task: Optional[asyncio.Task[None]]) -> ClientResponse:
-        return self.response_class(
-            self.method,
-            self.original_url,
-            writer=task,
-            continue100=None,
-            timer=TimerNoop(),
-            request_info=self._request_info,
-            traces=(),
-            loop=self.loop,
-            session=None,
-        )
-
-    def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
-        return StreamWriter(protocol, self.loop)
-
-    def _should_write(self, protocol: BaseProtocol) -> bool:
-        return protocol.writing_paused
-
-    async def _send(self, conn: "Connection") -> "ClientResponse":
-        # Specify request target:
-        # - CONNECT request must send authority form URI
-        # - not CONNECT proxy must send absolute form URI
-        # - most common is origin form URI
-        if self.method == hdrs.METH_CONNECT:
-            connect_host = self.url.host_subcomponent
-            assert connect_host is not None
-            path = f"{connect_host}:{self.url.port}"
-        elif self.proxy and not self.is_ssl():
-            path = str(self.url)
-        else:
-            path = self.url.raw_path_qs
-
-        protocol = conn.protocol
-        assert protocol is not None
-        writer = self._create_writer(protocol)
-
-        # set default content-type
-        if (
-            self.method in self.POST_METHODS
-            and (
-                self._skip_auto_headers is None
-                or hdrs.CONTENT_TYPE not in self._skip_auto_headers
-            )
-            and hdrs.CONTENT_TYPE not in self.headers
-        ):
-            self.headers[hdrs.CONTENT_TYPE] = "application/octet-stream"
-
-        v = self.version
-        if hdrs.CONNECTION not in self.headers:
-            if conn._connector.force_close:
-                if v == HttpVersion11:
-                    self.headers[hdrs.CONNECTION] = "close"
-            elif v == HttpVersion10:
-                self.headers[hdrs.CONNECTION] = "keep-alive"
-
-        # status + headers
-        status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
-
-        # Buffer headers for potential coalescing with body
-        await writer.write_headers(status_line, self.headers)
-
-        task: Optional["asyncio.Task[None]"]
-        if self._should_write(protocol):
-            coro = self._write_bytes(writer, conn, self._get_content_length())
-            if sys.version_info >= (3, 12):
-                # Optimization for Python 3.12, try to write
-                # bytes immediately to avoid having to schedule
-                # the task on the event loop.
-                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
-            else:
-                task = self.loop.create_task(coro)
-            if task.done():
-                task = None
-            else:
-                self._writer = task
-        else:
-            # We have nothing to write because
-            # - there is no body
-            # - the protocol does not have writing paused
-            # - we are not waiting for a 100-continue response
-            protocol.start_timeout()
-            writer.set_eof()
-            task = None
-        self._response = self._create_response(task)
-        return self._response
-
-    async def _write_bytes(
-        self,
-        writer: AbstractStreamWriter,
-        conn: "Connection",
-        content_length: Optional[int],
-    ) -> None:
-        # Base class never has a body, this will never be run.
-        assert False
-
-
-class ClientRequest(ClientRequestBase):
-    _supports_body = True
-
-    body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
-    _continue = None  # waiter future for '100 Continue' response
-
-    GET_METHODS = {
-        hdrs.METH_GET,
-        hdrs.METH_HEAD,
-        hdrs.METH_OPTIONS,
-        hdrs.METH_TRACE,
-    }
-    DEFAULT_HEADERS = {
-        hdrs.ACCEPT: "*/*",
-        hdrs.ACCEPT_ENCODING: _gen_default_accept_encoding(),
-    }
-
-    def __init__(
-        self,
-        method: str,
-        url: URL,
-        *,
-        params: Query,
-        headers: CIMultiDict[str],
-        skip_auto_headers: Optional[Iterable[str]],
-        data: Any,
-        cookies: BaseCookie[str],
-        auth: Optional[BasicAuth],
-        version: HttpVersion,
-        compress: Union[str, bool],
-        chunked: Optional[bool],
-        expect100: bool,
-        loop: asyncio.AbstractEventLoop,
-        response_class: type["ClientResponse"],
-        proxy: Optional[URL],
-        proxy_auth: Optional[BasicAuth],
-        timer: BaseTimerContext,
-        session: "ClientSession",
-        ssl: Union[SSLContext, bool, Fingerprint],
-        proxy_headers: Optional[CIMultiDict[str]],
-        traces: list["Trace"],
-        trust_env: bool,
-        server_hostname: Optional[str],
-        **kwargs: object,
-    ):
-        # kwargs exists so authors of subclasses should expect to pass through unknown
-        # arguments. This allows us to safely add now arguments in future releases.
-        # But, we should never receive unknown arguments here in the parent class, this
-        # would indicate an argument has been named wrong or similar in the subclass.
-        assert not kwargs, "Unexpected arguments to ClientRequest"
-
-        super().__init__(method, url, headers=headers, auth=auth, loop=loop, ssl=ssl)
-
-        if proxy is not None:
-            assert type(proxy) is URL, proxy
-        self._session = session
-        if params:
-            url = url.extend_query(params)
-        self.chunked = chunked
-        self.response_class = response_class
-        self._timer = timer
-        self.server_hostname = server_hostname
-
-        self._update_version(version)
-        self._update_auto_headers(skip_auto_headers)
-        self._update_cookies(cookies)
-        self._update_content_encoding(data, compress)
-        self._update_proxy(proxy, proxy_auth, proxy_headers)
-
-        self._update_body_from_data(data)
-        if data is not None or self.method not in self.GET_METHODS:
-            self._update_transfer_encoding()
-        self._update_expect_continue(expect100)
-        self._traces = traces
-
-    @property
-    def skip_auto_headers(self) -> CIMultiDict[None]:
-        return self._skip_auto_headers or CIMultiDict()
-
-    @property
-    def connection_key(self) -> ConnectionKey:  # type: ignore[misc]
-        if proxy_headers := self.proxy_headers:
-            h: Optional[int] = hash(tuple(proxy_headers.items()))
-        else:
-            h = None
-        url = self.url
-        return tuple.__new__(
-            ConnectionKey,
-            (
-                url.raw_host or "",
-                url.port,
-                url.scheme in _SSL_SCHEMES,
-                self._ssl,
-                self.proxy,
-                self.proxy_auth,
-                h,
-            ),
-        )
-
-    @property
-    def session(self) -> "ClientSession":
-        """Return the ClientSession instance.
-
-        This property provides access to the ClientSession that initiated
-        this request, allowing middleware to make additional requests
-        using the same session.
-        """
-        return self._session
-
-    def _update_version(self, version: Union[HttpVersion, str]) -> None:
-        """Convert request version to two elements tuple.
-
-        parser HTTP version '1.1' => (1, 1)
-        """
-        if isinstance(version, str):
-            v = [part.strip() for part in version.split(".", 1)]
-            try:
-                version = HttpVersion(int(v[0]), int(v[1]))
-            except ValueError:
-                raise ValueError(
-                    f"Can not parse http version number: {version}"
-                ) from None
-        self.version = version
-
-    def _update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
-        if skip_auto_headers is not None:
-            self._skip_auto_headers = CIMultiDict(
-                (hdr, None) for hdr in sorted(skip_auto_headers)
-            )
-            used_headers = self.headers.copy()
-            used_headers.extend(self._skip_auto_headers)  # type: ignore[arg-type]
-        else:
-            # Fast path when there are no headers to skip
-            # which is the most common case.
-            used_headers = self.headers
-
-        for hdr, val in self.DEFAULT_HEADERS.items():
-            if hdr not in used_headers:
-                self.headers[hdr] = val
-
-        if hdrs.USER_AGENT not in used_headers:
-            self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
-
-    def _update_cookies(self, cookies: Optional[LooseCookies]) -> None:
-        """Update request cookies header."""
-        if not cookies:
-            return
-
-        c = SimpleCookie()
-        if hdrs.COOKIE in self.headers:
-            c.load(self.headers.get(hdrs.COOKIE, ""))
-            del self.headers[hdrs.COOKIE]
-
-        if isinstance(cookies, Mapping):
-            iter_cookies = cookies.items()
-        else:
-            iter_cookies = cookies  # type: ignore[assignment]
-        for name, value in iter_cookies:
-            if isinstance(value, Morsel):
-                # Preserve coded_value
-                mrsl_val = value.get(value.key, Morsel())
-                mrsl_val.set(value.key, value.value, value.coded_value)
-                c[name] = mrsl_val
-            else:
-                c[name] = value  # type: ignore[assignment]
-
-        self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
-
-    def _update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
-        """Set request content encoding."""
-        self.compress = None
-        if not data:
-            return
-
-        if self.headers.get(hdrs.CONTENT_ENCODING):
-            if compress:
-                raise ValueError(
-                    "compress can not be set if Content-Encoding header is set"
-                )
-        elif compress:
-            self.compress = compress if isinstance(compress, str) else "deflate"
-            self.headers[hdrs.CONTENT_ENCODING] = self.compress
-            self.chunked = True  # enable chunked, no need to deal with length
-
-    def _update_transfer_encoding(self) -> None:
-        """Analyze transfer-encoding header."""
-        te = self.headers.get(hdrs.TRANSFER_ENCODING, "").lower()
-
-        if "chunked" in te:
-            if self.chunked:
-                raise ValueError(
-                    "chunked can not be set "
-                    'if "Transfer-Encoding: chunked" header is set'
-                )
-
-        elif self.chunked:
-            if hdrs.CONTENT_LENGTH in self.headers:
-                raise ValueError(
-                    "chunked can not be set if Content-Length header is set"
-                )
-
-            self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
-
-    def _update_body_from_data(self, body: Any) -> None:
-        if body is None:
-            self.headers[hdrs.CONTENT_LENGTH] = "0"
-            return
-
-        # FormData
-        if isinstance(body, FormData):
-            body = body()
-
-        try:
-            body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
-        except payload.LookupError:
-            boundary = None
-            if hdrs.CONTENT_TYPE in self.headers:
-                boundary = parse_mimetype(
-                    self.headers[hdrs.CONTENT_TYPE]
-                ).parameters.get("boundary")
-            body = FormData(body, boundary=boundary)()
-
-        self.body = body
-
-        # enable chunked encoding if needed
-        if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
-            if (size := body.size) is not None:
-                self.headers[hdrs.CONTENT_LENGTH] = str(size)
-            else:
-                self.chunked = True
-
-        # copy payload headers
-        assert body.headers
-        headers = self.headers
-        skip_headers = self._skip_auto_headers
-        for key, value in body.headers.items():
-            if key in headers or (skip_headers is not None and key in skip_headers):
-                continue
-            headers[key] = value
-
-    def _update_expect_continue(self, expect: bool = False) -> None:
-        if expect:
-            self.headers[hdrs.EXPECT] = "100-continue"
-        elif (
-            hdrs.EXPECT in self.headers
-            and self.headers[hdrs.EXPECT].lower() == "100-continue"
-        ):
-            expect = True
-
-        if expect:
-            self._continue = self.loop.create_future()
-
-    def _update_proxy(
-        self,
-        proxy: Optional[URL],
-        proxy_auth: Optional[BasicAuth],
-        proxy_headers: Optional[LooseHeaders],
-    ) -> None:
-        self.proxy = proxy
-        if proxy is None:
-            self.proxy_auth = None
-            self.proxy_headers = None
-            return
-
-        if proxy_auth and not isinstance(proxy_auth, BasicAuth):
-            raise ValueError("proxy_auth must be None or BasicAuth() tuple")
-        self.proxy_auth = proxy_auth
-
-        if proxy_headers is not None and not isinstance(proxy_headers, CIMultiDict):
-            proxy_headers = CIMultiDict(proxy_headers)
-        self.proxy_headers = proxy_headers
-
-    def _create_response(self, task: Optional[asyncio.Task[None]]) -> ClientResponse:
-        return self.response_class(
-            self.method,
-            self.original_url,
-            writer=task,
-            continue100=self._continue,
-            timer=self._timer,
-            request_info=self._request_info,
-            traces=self._traces,
-            loop=self.loop,
-            session=self._session,
-        )
-
-    def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
-        writer = StreamWriter(
-            protocol,
-            self.loop,
-            on_chunk_sent=(
-                functools.partial(self._on_chunk_request_sent, self.method, self.url)
-                if self._traces
-                else None
-            ),
-            on_headers_sent=(
-                functools.partial(self._on_headers_request_sent, self.method, self.url)
-                if self._traces
-                else None
-            ),
-        )
-
-        if self.compress:
-            writer.enable_compression(self.compress)
-
-        if self.chunked is not None:
-            writer.enable_chunking()
-        return writer
-
-    def _should_write(self, protocol: BaseProtocol) -> bool:
-        return (
-            self.body.size != 0 or self._continue is not None or protocol.writing_paused
-        )
-
-    async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
-        for trace in self._traces:
-            await trace.send_request_chunk_sent(method, url, chunk)
-
-    async def _on_headers_request_sent(
-        self, method: str, url: URL, headers: "CIMultiDict[str]"
-    ) -> None:
-        for trace in self._traces:
-            await trace.send_request_headers(method, url, headers)
-
-    async def _write_bytes(
-        self,
-        writer: AbstractStreamWriter,
-        conn: "Connection",
-        content_length: Optional[int],
-    ) -> None:
-        """
-        Write the request body to the connection stream.
-
-        This method handles writing different types of request bodies:
-        1. Payload objects (using their specialized write_with_length method)
-        2. Bytes/bytearray objects
-        3. Iterable body content
-
-        Args:
-            writer: The stream writer to write the body to
-            conn: The connection being used for this request
-            content_length: Optional maximum number of bytes to write from the body
-                            (None means write the entire body)
-
-        The method properly handles:
-        - Waiting for 100-Continue responses if required
-        - Content length constraints for chunked encoding
-        - Error handling for network issues, cancellation, and other exceptions
-        - Signaling EOF and timeout management
-
-        Raises:
-            ClientOSError: When there's an OS-level error writing the body
-            ClientConnectionError: When there's a general connection error
-            asyncio.CancelledError: When the operation is cancelled
-
-        """
-        # 100 response
-        if self._continue is not None:
-            # Force headers to be sent before waiting for 100-continue
-            writer.send_headers()
-            await writer.drain()
-            await self._continue
-
-        protocol = conn.protocol
-        assert protocol is not None
-        try:
-            await self.body.write_with_length(writer, content_length)
-        except OSError as underlying_exc:
-            reraised_exc = underlying_exc
-
-            # Distinguish between timeout and other OS errors for better error reporting
-            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
-                underlying_exc, asyncio.TimeoutError
-            )
-            if exc_is_not_timeout:
-                reraised_exc = ClientOSError(
-                    underlying_exc.errno,
-                    f"Can not write request body for {self.url !s}",
-                )
-
-            set_exception(protocol, reraised_exc, underlying_exc)
-        except asyncio.CancelledError:
-            # Body hasn't been fully sent, so connection can't be reused
-            conn.close()
-            raise
-        except Exception as underlying_exc:
-            set_exception(
-                protocol,
-                ClientConnectionError(
-                    "Failed to send bytes into the underlying connection "
-                    f"{conn !s}: {underlying_exc!r}",
-                ),
-                underlying_exc,
-            )
-        else:
-            # Successfully wrote the body, signal EOF and start response timeout
-            await writer.write_eof()
-            protocol.start_timeout()
-
-    async def _close(self) -> None:
-        if self.__writer is not None:
-            try:
-                await self.__writer
-            except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
-                    raise
-
-    def _terminate(self) -> None:
-        if self.__writer is not None:
-            if not self.loop.is_closed():
-                self.__writer.cancel()
-            self.__writer.remove_done_callback(self.__reset_writer)
-            self.__writer = None
-
-
-_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 
 
 class ClientResponse(HeadersMixin):
@@ -1367,3 +672,696 @@ class ClientResponse(HeadersMixin):
         # if state is broken
         self.release()
         await self.wait_for_close()
+
+
+class ClientRequestBase:
+    """An internal class for proxy requests."""
+
+    POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
+
+    # Flag to set Content-Length to 0 if the class doesn't support a body.
+    _supports_body = False
+
+    auth = None
+    proxy: Optional[URL] = None
+    response_class = ClientResponse
+    server_hostname: Optional[str] = None  # Needed in connector.py
+    version = HttpVersion11
+    _response = None
+
+    # These class defaults help create_autospec() work correctly.
+    # If autospec is improved in future, maybe these can be removed.
+    url = URL()
+    method = "GET"
+
+    __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
+
+    _skip_auto_headers: Optional["CIMultiDict[None]"] = None
+
+    # N.B.
+    # Adding __del__ method with self._writer closing doesn't make sense
+    # because _writer is instance method, thus it keeps a reference to self.
+    # Until writer has finished finalizer will not be called.
+
+    def __init__(
+        self,
+        method: str,
+        url: URL,
+        *,
+        headers: CIMultiDict[str],
+        auth: Optional[BasicAuth],
+        loop: asyncio.AbstractEventLoop,
+        ssl: Union[SSLContext, bool, Fingerprint],
+        trust_env: bool = False,
+    ):
+        if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
+            raise ValueError(
+                f"Method cannot contain non-token characters {method!r} "
+                f"(found at least {match.group()!r})"
+            )
+        # URL forbids subclasses, so a simple type check is enough.
+        assert type(url) is URL, url
+        if params:
+            url = url.extend_query(params)
+        self.original_url = url
+        self.url = url.with_fragment(None) if url.raw_fragment else url
+        self.method = method.upper()
+        self.loop = loop
+        self._ssl = ssl
+
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
+        self._update_host(url)
+        self._update_headers(headers)
+        self._update_auth(auth, trust_env)
+
+    def __reset_writer(self, _: object = None) -> None:
+        self.__writer = None
+
+    @property
+    def _writer(self) -> Optional["asyncio.Task[None]"]:
+        return self.__writer
+
+    @_writer.setter
+    def _writer(self, writer: "asyncio.Task[None]") -> None:
+        if self.__writer is not None:
+            self.__writer.remove_done_callback(self.__reset_writer)
+        self.__writer = writer
+        writer.add_done_callback(self.__reset_writer)
+
+    @property
+    def connection_key(self) -> ConnectionKey:  # type: ignore[misc]
+        url = self.url
+        return tuple.__new__(
+            ConnectionKey,
+            (
+                url.raw_host or "",
+                url.port,
+                url.scheme in _SSL_SCHEMES,
+                self._ssl,
+                None,
+                None,
+                None,
+            ),
+        )
+
+    @property
+    def _request_info(self) -> RequestInfo:
+        headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
+        # These are created on every request, so we use a NamedTuple
+        # for performance reasons. We don't use the RequestInfo.__new__
+        # method because it has a different signature which is provided
+        # for backwards compatibility only.
+        return tuple.__new__(
+            RequestInfo, (self.url, self.method, headers, self.original_url)
+        )
+
+    def is_ssl(self) -> bool:
+        return self.url.scheme in _SSL_SCHEMES
+
+    @property
+    def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
+        return self._ssl
+
+    def _update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
+        """Set basic auth."""
+        if auth is None:
+            auth = self.auth
+        if auth is None and trust_env and self.url.host is not None:
+            netrc_obj = netrc_from_env()
+            with contextlib.suppress(LookupError):
+                auth = basicauth_from_netrc(netrc_obj, self.url.host)
+        if auth is None:
+            return
+
+        if not isinstance(auth, BasicAuth):
+            raise TypeError("BasicAuth() tuple is required instead")
+
+        self.headers[hdrs.AUTHORIZATION] = auth.encode()
+
+    def _update_headers(self, headers: Optional[LooseHeaders]) -> None:
+        """Update request headers."""
+        self.headers: CIMultiDict[str] = CIMultiDict()
+
+        # Build the host header
+        host = self.url.host_port_subcomponent
+
+        # host_port_subcomponent is None when the URL is a relative URL.
+        # but we know we do not have a relative URL here.
+        assert host is not None
+        self.headers[hdrs.HOST] = host
+        if not self._supports_body:
+            self.headers[hdrs.CONTENT_LENGTH] = "0"
+
+        if not headers:
+            return
+
+        if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
+            headers = headers.items()
+
+        for key, value in headers:  # type: ignore[misc]
+            # A special case for Host header
+            if key in hdrs.HOST_ALL:
+                self.headers[key] = value
+            else:
+                self.headers.add(key, value)
+
+    def _update_host(self, url: URL) -> None:
+        """Update destination host, port and connection type (ssl)."""
+        # get host/port
+        if not url.raw_host:
+            raise InvalidURL(url)
+
+        # basic auth info
+        if url.raw_user or url.raw_password:
+            self.auth = BasicAuth(url.user or "", url.password or "")
+
+    def _get_content_length(self) -> Optional[int]:
+        """Extract and validate Content-Length header value.
+
+        Returns parsed Content-Length value or None if not set.
+        Raises ValueError if header exists but cannot be parsed as an integer.
+        """
+        if hdrs.CONTENT_LENGTH not in self.headers:
+            return None
+
+        content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
+        try:
+            return int(content_length_hdr)
+        except ValueError:
+            raise ValueError(
+                f"Invalid Content-Length header: {content_length_hdr}"
+            ) from None
+
+    def _create_response(self, task: Optional[asyncio.Task[None]]) -> ClientResponse:
+        return self.response_class(
+            self.method,
+            self.original_url,
+            writer=task,
+            continue100=None,
+            timer=TimerNoop(),
+            request_info=self._request_info,
+            traces=(),
+            loop=self.loop,
+            session=None,
+        )
+
+    def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
+        return StreamWriter(protocol, self.loop)
+
+    def _should_write(self, protocol: BaseProtocol) -> bool:
+        return protocol.writing_paused
+
+    async def _send(self, conn: "Connection") -> "ClientResponse":
+        # Specify request target:
+        # - CONNECT request must send authority form URI
+        # - not CONNECT proxy must send absolute form URI
+        # - most common is origin form URI
+        if self.method == hdrs.METH_CONNECT:
+            connect_host = self.url.host_subcomponent
+            assert connect_host is not None
+            path = f"{connect_host}:{self.url.port}"
+        elif self.proxy and not self.is_ssl():
+            path = str(self.url)
+        else:
+            path = self.url.raw_path_qs
+
+        protocol = conn.protocol
+        assert protocol is not None
+        writer = self._create_writer(protocol)
+
+        # set default content-type
+        if (
+            self.method in self.POST_METHODS
+            and (
+                self._skip_auto_headers is None
+                or hdrs.CONTENT_TYPE not in self._skip_auto_headers
+            )
+            and hdrs.CONTENT_TYPE not in self.headers
+        ):
+            self.headers[hdrs.CONTENT_TYPE] = "application/octet-stream"
+
+        v = self.version
+        if hdrs.CONNECTION not in self.headers:
+            if conn._connector.force_close:
+                if v == HttpVersion11:
+                    self.headers[hdrs.CONNECTION] = "close"
+            elif v == HttpVersion10:
+                self.headers[hdrs.CONNECTION] = "keep-alive"
+
+        # status + headers
+        status_line = f"{self.method} {path} HTTP/{v.major}.{v.minor}"
+
+        # Buffer headers for potential coalescing with body
+        await writer.write_headers(status_line, self.headers)
+
+        task: Optional["asyncio.Task[None]"]
+        if self._should_write(protocol):
+            coro = self._write_bytes(writer, conn, self._get_content_length())
+            if sys.version_info >= (3, 12):
+                # Optimization for Python 3.12, try to write
+                # bytes immediately to avoid having to schedule
+                # the task on the event loop.
+                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+            else:
+                task = self.loop.create_task(coro)
+            if task.done():
+                task = None
+            else:
+                self._writer = task
+        else:
+            # We have nothing to write because
+            # - there is no body
+            # - the protocol does not have writing paused
+            # - we are not waiting for a 100-continue response
+            protocol.start_timeout()
+            writer.set_eof()
+            task = None
+        self._response = self._create_response(task)
+        return self._response
+
+    async def _write_bytes(
+        self,
+        writer: AbstractStreamWriter,
+        conn: "Connection",
+        content_length: Optional[int],
+    ) -> None:
+        # Base class never has a body, this will never be run.
+        assert False
+
+
+class ClientRequest(ClientRequestBase):
+    _supports_body = True
+
+    body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
+    _continue = None  # waiter future for '100 Continue' response
+
+    GET_METHODS = {
+        hdrs.METH_GET,
+        hdrs.METH_HEAD,
+        hdrs.METH_OPTIONS,
+        hdrs.METH_TRACE,
+    }
+    DEFAULT_HEADERS = {
+        hdrs.ACCEPT: "*/*",
+        hdrs.ACCEPT_ENCODING: _gen_default_accept_encoding(),
+    }
+
+    def __init__(
+        self,
+        method: str,
+        url: URL,
+        *,
+        params: Query,
+        headers: CIMultiDict[str],
+        skip_auto_headers: Optional[Iterable[str]],
+        data: Any,
+        cookies: BaseCookie[str],
+        auth: Optional[BasicAuth],
+        version: HttpVersion,
+        compress: Union[str, bool],
+        chunked: Optional[bool],
+        expect100: bool,
+        loop: asyncio.AbstractEventLoop,
+        response_class: type["ClientResponse"],
+        proxy: Optional[URL],
+        proxy_auth: Optional[BasicAuth],
+        timer: BaseTimerContext,
+        session: "ClientSession",
+        ssl: Union[SSLContext, bool, Fingerprint],
+        proxy_headers: Optional[CIMultiDict[str]],
+        traces: list["Trace"],
+        trust_env: bool,
+        server_hostname: Optional[str],
+        **kwargs: object,
+    ):
+        # kwargs exists so authors of subclasses should expect to pass through unknown
+        # arguments. This allows us to safely add new arguments in future releases.
+        # But, we should never receive unknown arguments here in the parent class, this
+        # would indicate an argument has been named wrong or similar in the subclass.
+        assert not kwargs, "Unexpected arguments to ClientRequest"
+
+        super().__init__(method, url, headers=headers, auth=auth, loop=loop, ssl=ssl)
+
+        if proxy is not None:
+            assert type(proxy) is URL, proxy
+        self._session = session
+        self.chunked = chunked
+        self.response_class = response_class
+        self._timer = timer
+        self.server_hostname = server_hostname
+
+        self._update_version(version)
+        self._update_auto_headers(skip_auto_headers)
+        self._update_cookies(cookies)
+        self._update_content_encoding(data, compress)
+        self._update_proxy(proxy, proxy_auth, proxy_headers)
+
+        self._update_body_from_data(data)
+        if data is not None or self.method not in self.GET_METHODS:
+            self._update_transfer_encoding()
+        self._update_expect_continue(expect100)
+        self._traces = traces
+
+    @property
+    def skip_auto_headers(self) -> CIMultiDict[None]:
+        return self._skip_auto_headers or CIMultiDict()
+
+    @property
+    def connection_key(self) -> ConnectionKey:  # type: ignore[misc]
+        if proxy_headers := self.proxy_headers:
+            h: Optional[int] = hash(tuple(proxy_headers.items()))
+        else:
+            h = None
+        url = self.url
+        return tuple.__new__(
+            ConnectionKey,
+            (
+                url.raw_host or "",
+                url.port,
+                url.scheme in _SSL_SCHEMES,
+                self._ssl,
+                self.proxy,
+                self.proxy_auth,
+                h,
+            ),
+        )
+
+    @property
+    def session(self) -> "ClientSession":
+        """Return the ClientSession instance.
+
+        This property provides access to the ClientSession that initiated
+        this request, allowing middleware to make additional requests
+        using the same session.
+        """
+        return self._session
+
+    def _update_version(self, version: Union[HttpVersion, str]) -> None:
+        """Convert request version to two elements tuple.
+
+        parser HTTP version '1.1' => (1, 1)
+        """
+        if isinstance(version, str):
+            v = [part.strip() for part in version.split(".", 1)]
+            try:
+                version = HttpVersion(int(v[0]), int(v[1]))
+            except ValueError:
+                raise ValueError(
+                    f"Can not parse http version number: {version}"
+                ) from None
+        self.version = version
+
+    def _update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
+        if skip_auto_headers is not None:
+            self._skip_auto_headers = CIMultiDict(
+                (hdr, None) for hdr in sorted(skip_auto_headers)
+            )
+            used_headers = self.headers.copy()
+            used_headers.extend(self._skip_auto_headers)  # type: ignore[arg-type]
+        else:
+            # Fast path when there are no headers to skip
+            # which is the most common case.
+            used_headers = self.headers
+
+        for hdr, val in self.DEFAULT_HEADERS.items():
+            if hdr not in used_headers:
+                self.headers[hdr] = val
+
+        if hdrs.USER_AGENT not in used_headers:
+            self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
+
+    def _update_cookies(self, cookies: Optional[LooseCookies]) -> None:
+        """Update request cookies header."""
+        if not cookies:
+            return
+
+        c = SimpleCookie()
+        if hdrs.COOKIE in self.headers:
+            c.load(self.headers.get(hdrs.COOKIE, ""))
+            del self.headers[hdrs.COOKIE]
+
+        if isinstance(cookies, Mapping):
+            iter_cookies = cookies.items()
+        else:
+            iter_cookies = cookies  # type: ignore[assignment]
+        for name, value in iter_cookies:
+            if isinstance(value, Morsel):
+                # Preserve coded_value
+                mrsl_val = value.get(value.key, Morsel())
+                mrsl_val.set(value.key, value.value, value.coded_value)
+                c[name] = mrsl_val
+            else:
+                c[name] = value  # type: ignore[assignment]
+
+        self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
+
+    def _update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
+        """Set request content encoding."""
+        self.compress = None
+        if not data:
+            return
+
+        if self.headers.get(hdrs.CONTENT_ENCODING):
+            if compress:
+                raise ValueError(
+                    "compress can not be set if Content-Encoding header is set"
+                )
+        elif compress:
+            self.compress = compress if isinstance(compress, str) else "deflate"
+            self.headers[hdrs.CONTENT_ENCODING] = self.compress
+            self.chunked = True  # enable chunked, no need to deal with length
+
+    def _update_transfer_encoding(self) -> None:
+        """Analyze transfer-encoding header."""
+        te = self.headers.get(hdrs.TRANSFER_ENCODING, "").lower()
+
+        if "chunked" in te:
+            if self.chunked:
+                raise ValueError(
+                    "chunked can not be set "
+                    'if "Transfer-Encoding: chunked" header is set'
+                )
+
+        elif self.chunked:
+            if hdrs.CONTENT_LENGTH in self.headers:
+                raise ValueError(
+                    "chunked can not be set if Content-Length header is set"
+                )
+
+            self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
+
+    def _update_body_from_data(self, body: Any) -> None:
+        if body is None:
+            self.headers[hdrs.CONTENT_LENGTH] = "0"
+            return
+
+        # FormData
+        if isinstance(body, FormData):
+            body = body()
+
+        try:
+            body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
+        except payload.LookupError:
+            boundary = None
+            if hdrs.CONTENT_TYPE in self.headers:
+                boundary = parse_mimetype(
+                    self.headers[hdrs.CONTENT_TYPE]
+                ).parameters.get("boundary")
+            body = FormData(body, boundary=boundary)()
+
+        self.body = body
+
+        # enable chunked encoding if needed
+        if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
+            if (size := body.size) is not None:
+                self.headers[hdrs.CONTENT_LENGTH] = str(size)
+            else:
+                self.chunked = True
+
+        # copy payload headers
+        assert body.headers
+        headers = self.headers
+        skip_headers = self._skip_auto_headers
+        for key, value in body.headers.items():
+            if key in headers or (skip_headers is not None and key in skip_headers):
+                continue
+            headers[key] = value
+
+    def _update_expect_continue(self, expect: bool = False) -> None:
+        if expect:
+            self.headers[hdrs.EXPECT] = "100-continue"
+        elif (
+            hdrs.EXPECT in self.headers
+            and self.headers[hdrs.EXPECT].lower() == "100-continue"
+        ):
+            expect = True
+
+        if expect:
+            self._continue = self.loop.create_future()
+
+    def _update_proxy(
+        self,
+        proxy: Optional[URL],
+        proxy_auth: Optional[BasicAuth],
+        proxy_headers: Optional[LooseHeaders],
+    ) -> None:
+        self.proxy = proxy
+        if proxy is None:
+            self.proxy_auth = None
+            self.proxy_headers = None
+            return
+
+        if proxy_auth and not isinstance(proxy_auth, BasicAuth):
+            raise ValueError("proxy_auth must be None or BasicAuth() tuple")
+        self.proxy_auth = proxy_auth
+
+        if proxy_headers is not None and not isinstance(proxy_headers, CIMultiDict):
+            proxy_headers = CIMultiDict(proxy_headers)
+        self.proxy_headers = proxy_headers
+
+    def _create_response(self, task: Optional[asyncio.Task[None]]) -> ClientResponse:
+        return self.response_class(
+            self.method,
+            self.original_url,
+            writer=task,
+            continue100=self._continue,
+            timer=self._timer,
+            request_info=self._request_info,
+            traces=self._traces,
+            loop=self.loop,
+            session=self._session,
+        )
+
+    def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
+        writer = StreamWriter(
+            protocol,
+            self.loop,
+            on_chunk_sent=(
+                functools.partial(self._on_chunk_request_sent, self.method, self.url)
+                if self._traces
+                else None
+            ),
+            on_headers_sent=(
+                functools.partial(self._on_headers_request_sent, self.method, self.url)
+                if self._traces
+                else None
+            ),
+        )
+
+        if self.compress:
+            writer.enable_compression(self.compress)
+
+        if self.chunked is not None:
+            writer.enable_chunking()
+        return writer
+
+    def _should_write(self, protocol: BaseProtocol) -> bool:
+        return (
+            self.body.size != 0 or self._continue is not None or protocol.writing_paused
+        )
+
+    async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
+        for trace in self._traces:
+            await trace.send_request_chunk_sent(method, url, chunk)
+
+    async def _on_headers_request_sent(
+        self, method: str, url: URL, headers: "CIMultiDict[str]"
+    ) -> None:
+        for trace in self._traces:
+            await trace.send_request_headers(method, url, headers)
+
+    async def _write_bytes(
+        self,
+        writer: AbstractStreamWriter,
+        conn: "Connection",
+        content_length: Optional[int],
+    ) -> None:
+        """
+        Write the request body to the connection stream.
+
+        This method handles writing different types of request bodies:
+        1. Payload objects (using their specialized write_with_length method)
+        2. Bytes/bytearray objects
+        3. Iterable body content
+
+        Args:
+            writer: The stream writer to write the body to
+            conn: The connection being used for this request
+            content_length: Optional maximum number of bytes to write from the body
+                            (None means write the entire body)
+
+        The method properly handles:
+        - Waiting for 100-Continue responses if required
+        - Content length constraints for chunked encoding
+        - Error handling for network issues, cancellation, and other exceptions
+        - Signaling EOF and timeout management
+
+        Raises:
+            ClientOSError: When there's an OS-level error writing the body
+            ClientConnectionError: When there's a general connection error
+            asyncio.CancelledError: When the operation is cancelled
+
+        """
+        # 100 response
+        if self._continue is not None:
+            # Force headers to be sent before waiting for 100-continue
+            writer.send_headers()
+            await writer.drain()
+            await self._continue
+
+        protocol = conn.protocol
+        assert protocol is not None
+        try:
+            await self.body.write_with_length(writer, content_length)
+        except OSError as underlying_exc:
+            reraised_exc = underlying_exc
+
+            # Distinguish between timeout and other OS errors for better error reporting
+            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
+                underlying_exc, asyncio.TimeoutError
+            )
+            if exc_is_not_timeout:
+                reraised_exc = ClientOSError(
+                    underlying_exc.errno,
+                    f"Can not write request body for {self.url !s}",
+                )
+
+            set_exception(protocol, reraised_exc, underlying_exc)
+        except asyncio.CancelledError:
+            # Body hasn't been fully sent, so connection can't be reused
+            conn.close()
+            raise
+        except Exception as underlying_exc:
+            set_exception(
+                protocol,
+                ClientConnectionError(
+                    "Failed to send bytes into the underlying connection "
+                    f"{conn !s}: {underlying_exc!r}",
+                ),
+                underlying_exc,
+            )
+        else:
+            # Successfully wrote the body, signal EOF and start response timeout
+            await writer.write_eof()
+            protocol.start_timeout()
+
+    async def _close(self) -> None:
+        if self.__writer is not None:
+            try:
+                await self.__writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
+
+    def _terminate(self) -> None:
+        if self.__writer is not None:
+            if not self.loop.is_closed():
+                self.__writer.cancel()
+            self.__writer.remove_done_callback(self.__reset_writer)
+            self.__writer = None
