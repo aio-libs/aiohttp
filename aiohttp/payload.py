@@ -240,6 +240,14 @@ class Payload(ABC):
         This is named decode() to allow compatibility with bytes objects.
         """
 
+    async def bytes(self) -> bytes:
+        """Return bytes representation of the value.
+
+        This is a convenience method that calls decode() and encodes the result
+        to bytes using the specified encoding.
+        """
+        return self.decode(self._encoding or "utf-8").encode(self._encoding or "utf-8")
+
     @abstractmethod
     async def write(self, writer: AbstractStreamWriter) -> None:
         """Write payload to the writer stream.
@@ -313,6 +321,14 @@ class BytesPayload(Payload):
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.decode(encoding, errors)
+
+    async def bytes(self) -> bytes:
+        """Return bytes representation of the value.
+
+        This method returns the raw bytes content of the payload.
+        It is equivalent to accessing the _value attribute directly.
+        """
+        return self._value
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         """Write the entire bytes payload to the writer stream.
@@ -563,6 +579,15 @@ class IOBasePayload(Payload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
 
+    async def bytes(self) -> bytes:
+        """Return bytes representation of the value.
+
+        This method reads the entire file content and returns it as bytes.
+        It is equivalent to reading the file-like object directly.
+        """
+        # TODO, write a more efficient implementation
+        return await self.write_with_length(sentinel, None)
+
 
 class TextIOPayload(IOBasePayload):
     _value: io.TextIOBase
@@ -648,6 +673,14 @@ class TextIOPayload(IOBasePayload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read()
 
+    async def bytes(self) -> bytes:
+        """Return bytes representation of the value.
+
+        This method reads the entire text file content and returns it as bytes.
+        It encodes the text content using the specified encoding (or UTF-8 if none was provided).
+        """
+        return self._value.read().encode(self._encoding or "utf-8")
+
 
 class BytesIOPayload(IOBasePayload):
     _value: io.BytesIO
@@ -707,6 +740,14 @@ class BytesIOPayload(IOBasePayload):
                 loop_count += 1
         finally:
             self._value.close()
+
+    async def bytes(self) -> bytes:
+        """Return bytes representation of the value.
+
+        This method reads the entire BytesIO content and returns it as bytes.
+        It is equivalent to accessing the _value attribute directly.
+        """
+        return self._value.getvalue()
 
 
 class BufferedReaderPayload(IOBasePayload):
