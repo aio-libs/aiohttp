@@ -227,6 +227,14 @@ class Payload(ABC):
         """Whether the payload can be reused."""
         return self._reusable
 
+    @property
+    def autoclose(self) -> bool:
+        """Whether the payload can close itself automatically.
+
+        If False, callers must await close() to release resources.
+        """
+        return False
+
     def set_content_disposition(
         self,
         disptype: str,
@@ -330,6 +338,16 @@ class BytesPayload(Payload):
                 ResourceWarning,
                 source=self,
             )
+
+    @property
+    def autoclose(self) -> bool:
+        """Whether the payload can close itself automatically.
+
+        For BytesPayload, this is always True since it does not hold
+        any resources that need to be closed. It is safe to reuse this
+        payload without worrying about resource cleanup.
+        """
+        return True
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.decode(encoding, errors)
@@ -478,6 +496,18 @@ class IOBasePayload(Payload):
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except (AttributeError, OSError):
             return None
+
+    @property
+    def autoclose(self) -> bool:
+        """Whether the payload can close itself automatically.
+
+        For IOBasePayload, this is always False since it holds a file-like object
+        that needs to be closed explicitly by the caller. This is to prevent
+        accidental resource leaks when the payload is used multiple times or
+        when the file-like object is reused elsewhere.
+        Callers must await close() to release resources properly.
+        """
+        return False
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         """
@@ -640,6 +670,16 @@ class TextIOPayload(IOBasePayload):
             **kwargs,
         )
 
+    @property
+    def autoclose(self) -> bool:
+        """Whether the payload can close itself automatically.
+
+        For TextIOPayload, this is always True since it does not hold
+        any resources that need to be closed explicitly. It is safe to reuse this
+        payload without worrying about resource cleanup.
+        """
+        return True
+
     def _read_and_available_len(
         self, remaining_content_len: Optional[int]
     ) -> Tuple[Optional[int], bytes]:
@@ -712,6 +752,16 @@ class BytesIOPayload(IOBasePayload):
         end = self._value.seek(0, os.SEEK_END)
         self._value.seek(position)
         return end - position
+
+    @property
+    def autoclose(self) -> bool:
+        """Whether the payload can close itself automatically.
+
+        For BytesIOPayload, this is always True since it does not hold
+        any resources that need to be closed explicitly. It is safe to reuse this
+        payload without worrying about resource cleanup.
+        """
+        return True
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.read().decode(encoding, errors)
@@ -832,6 +882,16 @@ class AsyncIterablePayload(Payload):
         super().__init__(value, *args, **kwargs)
 
         self._iter = value.__aiter__()
+
+    @property
+    def autoclose(self) -> bool:
+        """Whether the payload can close itself automatically.
+
+        For AsyncIterablePayload, this is always True since it does not hold
+        any resources that need to be closed explicitly. It is safe to reuse this
+        payload without worrying about resource cleanup.
+        """
+        return True
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         """
