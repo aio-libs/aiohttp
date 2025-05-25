@@ -220,7 +220,7 @@ class ClientRequest:
     }
 
     # Type of body depends on PAYLOAD_REGISTRY, which is dynamic.
-    _body: Union[bytes, payload.Payload] = b""
+    _body: Union[None, payload.Payload] = None
     auth = None
     response = None
 
@@ -395,9 +395,7 @@ class ClientRequest:
     @body.setter
     def body(self, value: Any) -> None:
         """Set request body with warning for non-autoclose payloads."""
-        if self._body != b"":
-            if TYPE_CHECKING:
-                assert isinstance(self._body, payload.Payload)
+        if self._body is not None:
             _warn_if_unclosed_payload(self._body)
         self.update_body_from_data(value)
 
@@ -575,9 +573,7 @@ class ClientRequest:
         if body is None:
             return
 
-        if self._body != b"":
-            if TYPE_CHECKING:
-                assert isinstance(self._body, payload.Payload)
+        if self._body is not None:
             _warn_if_unclosed_payload(self._body)
 
         # FormData
@@ -618,9 +614,7 @@ class ClientRequest:
         closes any existing payload before setting the new one.
         """
         # Close existing payload if it exists and needs closing
-        if self._body != b"":
-            if TYPE_CHECKING:
-                assert isinstance(self._body, payload.Payload)
+        if self._body is not None:
             await self._body.close()
 
         # Now update the body using the existing method
@@ -703,7 +697,7 @@ class ClientRequest:
         assert protocol is not None
         try:
             if TYPE_CHECKING:
-                assert isinstance(self._body, payload.Payload)
+                assert self._body is not None
             # Specialized handling for Payload objects that know how to write themselves
             await self._body.write_with_length(writer, content_length)
         except OSError as underlying_exc:

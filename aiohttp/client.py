@@ -687,9 +687,7 @@ class ClientSession:
                             raise
                         finally:
                             # Close the request payload if needed
-                            if req._body != b"":
-                                if TYPE_CHECKING:
-                                    assert isinstance(req._body, payload.Payload)
+                            if req._body is not None:
                                 await req._body.close()
                         return resp
 
