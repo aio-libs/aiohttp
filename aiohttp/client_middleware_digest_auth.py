@@ -275,7 +275,7 @@ class DigestAuthMiddleware:
         A2 = f"{method.upper()}:{path}".encode()
         if qop == "auth-int":
             if isinstance(body, Payload):
-                entity_bytes = await body.bytes()  # Get bytes from Payload
+                entity_bytes = await body.as_bytes()  # Get bytes from Payload
             else:
                 entity_bytes = body
             entity_hash = H(entity_bytes)
