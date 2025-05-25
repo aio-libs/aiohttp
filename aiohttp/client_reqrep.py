@@ -97,8 +97,6 @@ if TYPE_CHECKING:
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
-BodyType = Union[payload.Payload, bytes, bytearray, memoryview]
-
 
 def _gen_default_accept_encoding() -> str:
     return "gzip, deflate, br" if HAS_BROTLI else "gzip, deflate"
@@ -192,6 +190,20 @@ class ConnectionKey(NamedTuple):
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
 
 
+def _warn_if_unclosed_payload(payload: payload.Payload) -> None:
+    """Warn if the payload is not closed.
+
+    Callers must check that the body is a Payload before calling this method.
+    """
+    if not payload.autoclose and not payload.consumed:
+        warnings.warn(
+            "The request body is a payload that needs manual closing. "
+            "It should be closed with await payload.close() to avoid resource leaks.",
+            ResourceWarning,
+            stacklevel=2,
+        )
+
+
 class ClientRequest:
     GET_METHODS = {
         hdrs.METH_GET,
@@ -208,8 +220,7 @@ class ClientRequest:
     }
 
     # Type of body depends on PAYLOAD_REGISTRY, which is dynamic.
-    _body: BodyType = b""
-    _body_is_payload: bool = False
+    _body: Union[bytes, payload.Payload] = b""
     auth = None
     response = None
 
@@ -377,17 +388,18 @@ class ClientRequest:
         return self.url.port
 
     @property
-    def body(self) -> BodyType:
+    def body(self) -> Union[bytes, payload.Payload]:
         """Request body."""
         return self._body
 
     @body.setter
-    def body(self, value: BodyType) -> None:
+    def body(self, value: Any) -> None:
         """Set request body with warning for non-autoclose payloads."""
-        if self._body_is_payload:
-            self._warn_if_unclosed_payload()
-        self._body = value
-        self._body_is_payload = isinstance(value, payload.Payload)
+        if self._body != b"":
+            if TYPE_CHECKING:
+                assert isinstance(self._body, payload.Payload)
+            _warn_if_unclosed_payload(self._body)
+        self.update_body_from_data(value)
 
     @property
     def request_info(self) -> RequestInfo:
@@ -558,28 +570,15 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def _warn_if_unclosed_payload(self) -> None:
-        """Warn if the payload is not closed.
-
-        Callers must check _body_is_payload before calling this method.
-        """
-        if TYPE_CHECKING:
-            assert isinstance(self._body, payload.Payload)
-        if not self._body.autoclose and not self._body.consumed:
-            warnings.warn(
-                "The request body is a payload that needs manual closing. "
-                "It should be closed with await payload.close() to avoid resource leaks.",
-                ResourceWarning,
-                stacklevel=2,
-            )
-
     def update_body_from_data(self, body: Any) -> None:
         """Update request body from data."""
         if body is None:
             return
 
-        if self._body_is_payload:
-            self._warn_if_unclosed_payload()
+        if self._body != b"":
+            if TYPE_CHECKING:
+                assert isinstance(self._body, payload.Payload)
+            _warn_if_unclosed_payload(self._body)
 
         # FormData
         if isinstance(body, FormData):
@@ -596,9 +595,6 @@ class ClientRequest:
             body = FormData(body, boundary=boundary)()
 
         self._body = body
-        # At this point, body is always a Payload (either from PAYLOAD_REGISTRY or FormData())
-        self._body_is_payload = True
-
         # enable chunked encoding if needed
         if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
             if (size := body.size) is not None:
@@ -622,7 +618,7 @@ class ClientRequest:
         closes any existing payload before setting the new one.
         """
         # Close existing payload if it exists and needs closing
-        if self._body_is_payload:
+        if self._body != b"":
             await self._body.close()
 
         # Now update the body using the existing method
@@ -704,27 +700,10 @@ class ClientRequest:
         protocol = conn.protocol
         assert protocol is not None
         try:
-            if self._body_is_payload:
-                # Specialized handling for Payload objects that know how to write themselves
-                await self._body.write_with_length(writer, content_length)
-            else:
-                if TYPE_CHECKING:
-                    assert not isinstance(self._body, payload.Payload)
-                # Handle bytes/bytearray/memoryview by converting to an iterable for consistent handling
-                body_iter = (self._body,)
-                if content_length is None:
-                    # Write the entire body without length constraint
-                    for chunk in body_iter:
-                        await writer.write(chunk)
-                else:
-                    # Write with length constraint, respecting content_length limit
-                    # If the body is larger than content_length, we truncate it
-                    remaining_bytes = content_length
-                    for chunk in body_iter:
-                        await writer.write(chunk[:remaining_bytes])
-                        remaining_bytes -= len(chunk)
-                        if remaining_bytes <= 0:
-                            break
+            if TYPE_CHECKING:
+                assert isinstance(self._body, payload.Payload)
+            # Specialized handling for Payload objects that know how to write themselves
+            await self._body.write_with_length(writer, content_length)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 

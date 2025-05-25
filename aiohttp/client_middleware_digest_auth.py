@@ -11,14 +11,24 @@ import hashlib
 import os
 import re
 import time
-from typing import Callable, Dict, Final, FrozenSet, List, Literal, Tuple, TypedDict
+from typing import (
+    Callable,
+    Dict,
+    Final,
+    FrozenSet,
+    List,
+    Literal,
+    Tuple,
+    TypedDict,
+    Union,
+)
 
 from yarl import URL
 
 from . import hdrs
 from .client_exceptions import ClientError
 from .client_middlewares import ClientHandlerType
-from .client_reqrep import BodyType, ClientRequest, ClientResponse
+from .client_reqrep import ClientRequest, ClientResponse
 from .payload import Payload
 
 
@@ -183,7 +193,7 @@ class DigestAuthMiddleware:
         self._nonce_count = 0
         self._challenge: DigestAuthChallenge = {}
 
-    async def _encode(self, method: str, url: URL, body: BodyType) -> str:
+    async def _encode(self, method: str, url: URL, body: Union[bytes, Payload]) -> str:
         """
         Build digest authorization header for the current challenge.
 
@@ -264,10 +274,10 @@ class DigestAuthMiddleware:
         A1 = b":".join((self._login_bytes, realm_bytes, self._password_bytes))
         A2 = f"{method.upper()}:{path}".encode()
         if qop == "auth-int":
-            if isinstance(body, Payload):
-                entity_bytes = await body.as_bytes()  # Get bytes from Payload
-            else:
+            if isinstance(body, bytes):
                 entity_bytes = body
+            else:
+                entity_bytes = await body.as_bytes()  # Get bytes from Payload
             entity_hash = H(entity_bytes)
             A2 = b":".join((A2, entity_hash))
 
