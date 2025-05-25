@@ -1738,11 +1738,8 @@ async def test_no_warn_for_consumed_payload_via_body_setter(
     )
     req.body = file_payload
 
-    # Consume the payload by reading it
-    data = b""
-    async for chunk in file_payload:
-        data += chunk
-    assert data == b"test data"
+    # Properly close the payload to mark it as consumed
+    await file_payload.close()
 
     # Setting body again should not trigger warning since previous payload is consumed
     with warnings.catch_warnings(record=True) as warning_list:
