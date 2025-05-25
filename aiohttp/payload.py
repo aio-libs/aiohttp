@@ -25,7 +25,6 @@ from typing import (
 )
 
 from multidict import CIMultiDict
-from propcache import cached_property
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -773,9 +772,15 @@ class BytesIOPayload(IOBasePayload):
     _value: io.BytesIO
     _autoclose = True  # BytesIO is in-memory, safe to auto-close
 
-    @cached_property
+    def __init__(self, value: io.BytesIO, *args: Any, **kwargs: Any) -> None:
+        super().__init__(value, *args, **kwargs)
+        # Calculate size once during initialization
+        self._size = len(self._value.getbuffer()) - self._value.tell()
+
+    @property
     def size(self) -> int:
-        return len(self._value.getbuffer()) - self._value.tell()
+        """Size of the payload."""
+        return self._size
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         self._set_or_restore_start_position()
