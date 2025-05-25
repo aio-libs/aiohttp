@@ -8,8 +8,8 @@ from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
-from aiohttp.cookiejar import CookieJar
 from aiohttp.client_reqrep import ClientRequest as RawClientRequest, ClientResponse
+from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
 
