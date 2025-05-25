@@ -581,17 +581,16 @@ class ClientRequest:
             _warn_if_unclosed_payload(self._body)
 
         # FormData
-        if isinstance(body, FormData):
-            body_payload = body()
+        maybe_payload = body() if isinstance(body, FormData) else body
 
         try:
-            body_payload = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
+            body_payload = payload.PAYLOAD_REGISTRY.get(maybe_payload, disposition=None)
         except payload.LookupError:
             if CONTENT_TYPE in self.headers:
                 boundary = parse_mimetype(self.headers[CONTENT_TYPE]).parameters.get(
                     "boundary"
                 )
-            body_payload = FormData(body, boundary=boundary)()
+            body_payload = FormData(maybe_payload, boundary=boundary)()
 
         self._body = body_payload
         # enable chunked encoding if needed
