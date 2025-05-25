@@ -462,6 +462,8 @@ async def test_reraise_os_error(
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(side_effect=err)
+    req._body = mock.Mock()
+    req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
 
     async def create_connection(
@@ -492,6 +494,8 @@ async def test_close_conn_on_error(
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(side_effect=err)
+    req._body = mock.Mock()
+    req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
 
     connections = []
