@@ -1023,6 +1023,7 @@ class AsyncIterablePayload(Payload):
         except StopAsyncIteration:
             # Iterator is exhausted
             self._iter = None
+            self._reusable = False
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         raise TypeError("Unable to decode.")
@@ -1038,6 +1039,9 @@ class AsyncIterablePayload(Payload):
         chunks: List[bytes] = []
         async for chunk in self._iter:
             chunks.append(chunk)
+        # Iterator is exhausted after consuming
+        self._iter = None
+        self._reusable = False
         return b"".join(chunks)
 
     async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
