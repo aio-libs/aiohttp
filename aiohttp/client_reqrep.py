@@ -798,9 +798,9 @@ class ClientRequestBase:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def _update_headers(self, headers: Optional[LooseHeaders]) -> None:
+    def _update_headers(self, headers: CIMultiDict[str]) -> None:
         """Update request headers."""
-        self.headers: CIMultiDict[str] = CIMultiDict()
+        self.headers = CIMultiDict[str]()
 
         # Build the host header
         host = self.url.host_port_subcomponent
@@ -808,22 +808,11 @@ class ClientRequestBase:
         # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
         assert host is not None
-        self.headers[hdrs.HOST] = host
+        self.headers[hdrs.HOST] = headers.pop(hdrs.HOST, host)
         if not self._supports_body:
             self.headers[hdrs.CONTENT_LENGTH] = "0"
 
-        if not headers:
-            return
-
-        if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-            headers = headers.items()
-
-        for key, value in headers:  # type: ignore[misc]
-            # A special case for Host header
-            if key in hdrs.HOST_ALL:
-                self.headers[key] = value
-            else:
-                self.headers.add(key, value)
+        self.headers.extend(headers)
 
     def _update_host(self, url: URL) -> None:
         """Update destination host, port and connection type (ssl)."""
@@ -1011,8 +1000,8 @@ class ClientRequest(ClientRequestBase):
         self.response_class = response_class
         self._timer = timer
         self.server_hostname = server_hostname
+        self.version = version
 
-        self._update_version(version)
         self._update_auto_headers(skip_auto_headers)
         self._update_cookies(cookies)
         self._update_content_encoding(data, compress)
@@ -1058,21 +1047,6 @@ class ClientRequest(ClientRequestBase):
         """
         return self._session
 
-    def _update_version(self, version: Union[HttpVersion, str]) -> None:
-        """Convert request version to two elements tuple.
-
-        parser HTTP version '1.1' => (1, 1)
-        """
-        if isinstance(version, str):
-            v = [part.strip() for part in version.split(".", 1)]
-            try:
-                version = HttpVersion(int(v[0]), int(v[1]))
-            except ValueError:
-                raise ValueError(
-                    f"Can not parse http version number: {version}"
-                ) from None
-        self.version = version
-
     def _update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
         if skip_auto_headers is not None:
             self._skip_auto_headers = CIMultiDict(
@@ -1092,28 +1066,18 @@ class ClientRequest(ClientRequestBase):
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
 
-    def _update_cookies(self, cookies: Optional[LooseCookies]) -> None:
+    def _update_cookies(self, cookies: BaseCookie[str]) -> None:
         """Update request cookies header."""
-        if not cookies:
-            return
-
         c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ""))
             del self.headers[hdrs.COOKIE]
 
-        if isinstance(cookies, Mapping):
-            iter_cookies = cookies.items()
-        else:
-            iter_cookies = cookies  # type: ignore[assignment]
-        for name, value in iter_cookies:
-            if isinstance(value, Morsel):
-                # Preserve coded_value
-                mrsl_val = value.get(value.key, Morsel())
-                mrsl_val.set(value.key, value.value, value.coded_value)
-                c[name] = mrsl_val
-            else:
-                c[name] = value  # type: ignore[assignment]
+        for name, value in cookies.items():
+            # Preserve coded_value
+            mrsl_val = value.get(value.key, Morsel())
+            mrsl_val.set(value.key, value.value, value.coded_value)
+            c[name] = mrsl_val
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
@@ -1205,7 +1169,7 @@ class ClientRequest(ClientRequestBase):
         self,
         proxy: Optional[URL],
         proxy_auth: Optional[BasicAuth],
-        proxy_headers: Optional[LooseHeaders],
+        proxy_headers: Optional[CIMultiDict[str]],
     ) -> None:
         self.proxy = proxy
         if proxy is None:
@@ -1216,9 +1180,6 @@ class ClientRequest(ClientRequestBase):
         if proxy_auth and not isinstance(proxy_auth, BasicAuth):
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
         self.proxy_auth = proxy_auth
-
-        if proxy_headers is not None and not isinstance(proxy_headers, CIMultiDict):
-            proxy_headers = CIMultiDict(proxy_headers)
         self.proxy_headers = proxy_headers
 
     def _create_response(self, task: Optional[asyncio.Task[None]]) -> ClientResponse:

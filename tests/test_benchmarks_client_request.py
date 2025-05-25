@@ -8,6 +8,7 @@ from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
+from aiohttp.cookiejar import CookieJar
 from aiohttp.client_reqrep import ClientRequest as RawClientRequest, ClientResponse
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
@@ -42,30 +43,51 @@ def ClientRequest(method: str, url: URL, **kwargs: Any) -> RawClientRequest:
 def test_client_request_update_cookies(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    morsel: "Morsel[str]" = Morsel()
-    morsel.set(key="string", val="Another string", coded_val="really")
-    morsel_cookie = {"str": morsel}
+    url = URL("http://python.org")
+    req = ClientRequest("get", url, loop=loop)
+    cookie_jar = CookieJar()
+    cookie_jar.update_cookies({"string": "Another string"})
+    cookies = cookie_jar.filter_cookies(url)
+    assert cookies["string"].value == "Another string"
 
     @benchmark
     def _run() -> None:
-        req._update_cookies(cookies=morsel_cookie)
+        req._update_cookies(cookies=cookies)
 
 
 def test_create_client_request_with_cookies(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
+    cookie_jar = CookieJar()
+    cookie_jar.update_cookies({"cookie": "value"})
+    cookies = cookie_jar.filter_cookies(url)
+    assert cookies["cookie"].value == "value"
+    timer = TimerNoop()
+    traces = []
+    headers = CIMultiDict[str]()
 
     @benchmark
     def _run() -> None:
-        ClientRequest(
+        RawClientRequest(
             method="get",
             url=url,
             loop=loop,
-            headers=None,
+            params=None,
+            skip_auto_headers=None,
+            response_class=ClientResponse,
+            proxy=None,
+            proxy_auth=None,
+            proxy_headers=None,
+            timer=timer,
+            session=None,
+            ssl=True,
+            traces=traces,
+            trust_env=False,
+            server_hostname=None,
+            headers=headers,
             data=None,
-            cookies={"cookie": "value"},
+            cookies=cookies,
             auth=None,
             version=HttpVersion11,
             compress=False,
@@ -78,14 +100,29 @@ def test_create_client_request_with_headers(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
+    timer = TimerNoop()
+    traces = []
+    headers = CIMultiDict({"header": "value", "another": "header"})
 
     @benchmark
     def _run() -> None:
-        ClientRequest(
+        RawClientRequest(
             method="get",
             url=url,
             loop=loop,
-            headers={"header": "value", "another": "header"},
+            params=None,
+            skip_auto_headers=None,
+            response_class=ClientResponse,
+            proxy=None,
+            proxy_auth=None,
+            proxy_headers=None,
+            timer=timer,
+            session=None,
+            ssl=True,
+            traces=traces,
+            trust_env=False,
+            server_hostname=None,
+            headers=headers,
             data=None,
             cookies=None,
             auth=None,
