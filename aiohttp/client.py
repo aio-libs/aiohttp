@@ -78,8 +78,10 @@ from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientResponse,
+    ClientTimeout,
     Fingerprint,
     RequestInfo,
+    ResponseParams,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
@@ -99,7 +101,6 @@ from .helpers import (
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
-    frozen_dataclass_decorator,
     get_env_proxy_for_url,
     sentinel,
     strip_auth_from_url,
@@ -196,28 +197,6 @@ class _RequestOptions(TypedDict, total=False):
     max_line_size: Union[int, None]
     max_field_size: Union[int, None]
     middlewares: Optional[Sequence[ClientMiddlewareType]]
-
-
-@frozen_dataclass_decorator
-class ClientTimeout:
-    total: Optional[float] = None
-    connect: Optional[float] = None
-    sock_read: Optional[float] = None
-    sock_connect: Optional[float] = None
-    ceil_threshold: float = 5
-
-    # pool_queue_timeout: Optional[float] = None
-    # dns_resolution_timeout: Optional[float] = None
-    # socket_connect_timeout: Optional[float] = None
-    # connection_acquiring_timeout: Optional[float] = None
-    # new_connection_timeout: Optional[float] = None
-    # http_header_timeout: Optional[float] = None
-    # response_body_timeout: Optional[float] = None
-
-    # to create a timeout specific for a single request, either
-    # - create a completely new one to overwrite the default
-    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
-    # to overwrite the defaults
 
 
 # 5 Minute default read timeout
@@ -623,9 +602,23 @@ class ClientSession:
                                 get_env_proxy_for_url, url
                             )
 
+                    response_params: ResponseParams = {
+                        "timer": timer,
+                        "skip_payload": method in EMPTY_BODY_METHODS,
+                        "read_until_eof": read_until_eof,
+                        "auto_decompress": auto_decompress,
+                        "read_timeout": real_timeout.sock_read,
+                        "read_bufsize": read_bufsize,
+                        "timeout_ceil_threshold": self._connector._timeout_ceil_threshold,
+                        "max_line_size": max_line_size,
+                        "max_field_size": max_field_size,
+                    }
+
                     req = self._request_class(
                         method,
                         url,
+                        response_params=response_params,
+                        timeout=real_timeout,
                         params=params,
                         headers=headers,
                         skip_auto_headers=skip_headers,
@@ -654,9 +647,10 @@ class ClientSession:
                     ) -> ClientResponse:
                         # connection timeout
                         assert self._connector is not None
+                        assert req._timeout is not None
                         try:
                             conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
+                                req, traces=traces, timeout=req._timeout
                             )
                         except asyncio.TimeoutError as exc:
                             raise ConnectionTimeoutError(
@@ -664,17 +658,8 @@ class ClientSession:
                             ) from exc
 
                         assert conn.protocol is not None
-                        conn.protocol.set_response_params(
-                            timer=timer,
-                            skip_payload=req.method in EMPTY_BODY_METHODS,
-                            read_until_eof=read_until_eof,
-                            auto_decompress=auto_decompress,
-                            read_timeout=real_timeout.sock_read,
-                            read_bufsize=read_bufsize,
-                            timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
-                            max_line_size=max_line_size,
-                            max_field_size=max_field_size,
-                        )
+                        assert req._response_params is not None
+                        conn.protocol.set_response_params(**req._response_params)
                         try:
                             resp = await req.send(conn)
                             try:
