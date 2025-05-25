@@ -1,0 +1,24 @@
+Made ``ClientRequest.body`` setter and ``update_*`` methods protected -- by :user:`bdraco`.
+
+The ``body`` setter on ``ClientRequest`` has been removed, and all ``update_*`` methods
+(except ``update_body``) have been made protected by adding a leading underscore.
+
+These methods were never documented and were not intended to be part of the public API.
+They only recently became reachable in client middleware (introduced in 3.12.0), but
+this was not intentional. Direct assignment to ``request.body`` could cause resource
+leaks when the previous body contained file handles or other resources requiring cleanup.
+
+Users should use the public ``update_body()`` async method instead, which properly
+handles resource cleanup:
+
+.. code-block:: python
+
+   # Wrong - DO NOT use direct assignment
+   request.body = new_data  # This no longer works
+
+   # Correct - use update_body()
+   await request.update_body(new_data)
+
+Since client middleware was only introduced in version 3.12.0 this week, it was an
+explicit choice to not increment the major version number for this change, as it prevents
+resource leaks and enforces the intended API boundaries.

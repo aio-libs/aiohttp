@@ -773,7 +773,7 @@ async def test_post_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
 
 
 async def test_pass_falsy_data(loop: asyncio.AbstractEventLoop) -> None:
-    with mock.patch("aiohttp.client_reqrep.ClientRequest.update_body_from_data") as m:
+    with mock.patch("aiohttp.client_reqrep.ClientRequest._update_body_from_data") as m:
         req = ClientRequest("post", URL("http://python.org/"), data={}, loop=loop)
         m.assert_called_once_with({})
     await req.close()
@@ -1260,7 +1260,7 @@ async def test_oserror_on_write_bytes(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
-    req.body = b"test data"
+    req._update_body_from_data(b"test data")
 
     writer = WriterMock()
     writer.write.side_effect = OSError
@@ -1608,7 +1608,7 @@ async def test_write_bytes_with_content_length_limit(
     data = b"Hello World"
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
 
-    req.body = data
+    req._update_body_from_data(data)
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=5 to truncate data
@@ -1643,9 +1643,9 @@ async def test_write_bytes_with_iterable_content_length_limit(
             for chunk in data:
                 yield chunk
 
-        req.body = gen()  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+        req._update_body_from_data(gen())
     else:
-        req.body = data
+        req._update_body_from_data(data)
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=7 to truncate at the middle of Part2
@@ -1666,7 +1666,7 @@ async def test_write_bytes_empty_iterable_with_content_length(
         return
         yield  # This makes it a generator but never executes
 
-    req.body = gen()  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+    req._update_body_from_data(gen())
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=10 with empty body

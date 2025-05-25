@@ -4573,3 +4573,334 @@ async def test_set_eof_on_empty_response(aiohttp_client: AiohttpClient) -> None:
     data = await resp.read()
     assert data == b""
     resp.close()
+
+
+async def test_bytes_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that BytesPayload can be reused across redirects."""
+    from aiohttp.payload import BytesPayload
+
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = b"test payload data"
+    payload = BytesPayload(payload_data)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: test payload data"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_string_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that StringPayload can be reused across redirects."""
+    from aiohttp.payload import StringPayload
+
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.text()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.text()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = "test string payload"
+    payload = StringPayload(payload_data)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: test string payload"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that AsyncIterablePayload raises error on reuse across redirects."""
+    from aiohttp.payload import AsyncIterablePayload
+
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        # This should never be reached
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    chunks = [b"chunk1", b"chunk2", b"chunk3"]
+
+    async def async_gen() -> AsyncIterator[bytes]:
+        for chunk in chunks:
+            yield chunk
+
+    payload = AsyncIterablePayload(async_gen())
+
+    # Should raise RuntimeError when trying to reuse after redirect
+    with pytest.raises(
+        aiohttp.ClientPayloadError, match="AsyncIterablePayload cannot be reused"
+    ):
+        await client.post("/redirect", data=payload)
+
+    # Only the first endpoint should have received data
+    expected_data = b"".join(chunks)
+    assert len(data_received) == 1
+    assert data_received[0] == ("redirect", expected_data)
+
+
+async def test_buffered_reader_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that BufferedReaderPayload can be reused across redirects."""
+    import io
+
+    from aiohttp.payload import BufferedReaderPayload
+
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = b"buffered reader payload"
+    buffer = io.BufferedReader(io.BytesIO(payload_data))  # type: ignore[arg-type]
+    payload = BufferedReaderPayload(buffer)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: buffered reader payload"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_string_io_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that StringIOPayload can be reused across redirects."""
+    import io
+
+    from aiohttp.payload import StringIOPayload
+
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.text()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.text()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = "string io payload"
+    string_io = io.StringIO(payload_data)
+    payload = StringIOPayload(string_io)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: string io payload"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_bytes_io_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that BytesIOPayload can be reused across redirects."""
+    import io
+
+    from aiohttp.payload import BytesIOPayload
+
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = b"bytes io payload"
+    bytes_io = io.BytesIO(payload_data)
+    payload = BytesIOPayload(bytes_io)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: bytes io payload"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_multiple_redirects_with_bytes_payload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test BytesPayload with multiple redirects."""
+    from aiohttp.payload import BytesPayload
+
+    data_received = []
+
+    async def redirect1_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect1", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/redirect2")
+
+    async def redirect2_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect2", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received after 2 redirects: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect1_handler)
+    app.router.add_post("/redirect2", redirect2_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = b"multi-redirect-test"
+    payload = BytesPayload(payload_data)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == f"Received after 2 redirects: {payload_data.decode()}"
+    # All 3 endpoints should have received the same data
+    assert data_received == [
+        ("redirect1", payload_data),
+        ("redirect2", payload_data),
+        ("final", payload_data),
+    ]
+
+
+async def test_redirect_with_empty_payload(aiohttp_client: AiohttpClient) -> None:
+    """Test redirects with empty payloads."""
+    from aiohttp.payload import BytesPayload
+
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text="Done")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    # Test with empty BytesPayload
+    payload = BytesPayload(b"")
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    assert data_received == [("redirect", b""), ("final", b"")]
+
+
+async def test_redirect_preserves_content_type(aiohttp_client: AiohttpClient) -> None:
+    """Test that content-type is preserved across redirects."""
+    from aiohttp.payload import StringPayload
+
+    content_types = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        content_types.append(("redirect", request.content_type))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        content_types.append(("final", request.content_type))
+        return web.Response(text="Done")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    # StringPayload should set content-type with charset
+    payload = StringPayload("test data")
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    # Both requests should have the same content type
+    assert len(content_types) == 2
+    assert content_types[0][1] == "text/plain"
+    assert content_types[1][1] == "text/plain"
