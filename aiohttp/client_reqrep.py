@@ -619,6 +619,8 @@ class ClientRequest:
         """
         # Close existing payload if it exists and needs closing
         if self._body != b"":
+            if TYPE_CHECKING:
+                assert isinstance(self._body, payload.Payload)
             await self._body.close()
 
         # Now update the body using the existing method
