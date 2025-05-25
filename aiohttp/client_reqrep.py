@@ -609,6 +609,10 @@ class ClientRequest:
         This method safely updates the request body by first closing any existing
         payload to prevent resource leaks, then setting the new body.
 
+        IMPORTANT: Always use this method instead of setting request.body directly.
+        Direct assignment to request.body will leak resources if the previous body
+        contains file handles, streams, or other resources that need cleanup.
+
         Args:
             body: The new body content. Can be:
                 - bytes/bytearray: Raw binary data
@@ -620,8 +624,11 @@ class ClientRequest:
                 - None: Clears the body
 
         Usage:
-            # Update body with raw bytes
+            # CORRECT: Use update_body
             await request.update_body(b"new request data")
+
+            # WRONG: Don't set body directly
+            # request.body = b"new request data"  # This will leak resources!
 
             # Update with form data
             form_data = FormData()
