@@ -817,7 +817,7 @@ async def test_bytes_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> N
         resp = await req.send(conn)
         assert "/" == req.url.path
         assert isinstance(req.body, payload.BytesPayload)
-        assert b"binary data" == req.body._value  # type: ignore[union-attr]
+        assert b"binary data" == req.body._value
         assert "application/octet-stream" == req.headers["CONTENT-TYPE"]
         await req.close()
         resp.close()
@@ -1607,7 +1607,7 @@ async def test_write_bytes_with_content_length_limit(
     data = b"Hello World"
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
 
-    req.body = data  # type: ignore[assignment]
+    req.body = data
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=5 to truncate data
@@ -1634,7 +1634,7 @@ async def test_write_bytes_with_iterable_content_length_limit(
     """Test that write_bytes respects content_length limit for iterable data."""
     # Test with iterable data
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
-    req.body = data  # type: ignore[assignment]
+    req.body = data
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=7 to truncate at the middle of Part2

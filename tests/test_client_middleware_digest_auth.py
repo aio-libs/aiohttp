@@ -299,7 +299,8 @@ async def test_digest_response_exact_match(
     auth._last_nonce_bytes = nonce.encode("utf-8")
     auth._nonce_count = nc
 
-    header = await auth._encode(method, URL(f"http://host{uri}"), body)
+    body_bytes = body if isinstance(body, bytes) else body.encode()
+    header = await auth._encode(method, URL(f"http://host{uri}"), body_bytes)
 
     # Get expected digest
     expected = compute_expected_digest(
