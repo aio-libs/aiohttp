@@ -721,8 +721,6 @@ class ClientRequestBase:
             )
         # URL forbids subclasses, so a simple type check is enough.
         assert type(url) is URL, url
-        if params:
-            url = url.extend_query(params)
         self.original_url = url
         self.url = url.with_fragment(None) if url.raw_fragment else url
         self.method = method.upper()
@@ -1002,6 +1000,8 @@ class ClientRequest(ClientRequestBase):
         # would indicate an argument has been named wrong or similar in the subclass.
         assert not kwargs, "Unexpected arguments to ClientRequest"
 
+        if params:
+            url = url.extend_query(params)
         super().__init__(method, url, headers=headers, auth=auth, loop=loop, ssl=ssl)
 
         if proxy is not None:
