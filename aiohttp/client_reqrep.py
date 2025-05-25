@@ -1068,6 +1068,9 @@ class ClientRequest(ClientRequestBase):
 
     def _update_cookies(self, cookies: BaseCookie[str]) -> None:
         """Update request cookies header."""
+        if not cookies:
+            return
+
         c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ""))
