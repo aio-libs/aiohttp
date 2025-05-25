@@ -1643,7 +1643,7 @@ async def test_write_bytes_with_iterable_content_length_limit(
             for chunk in data:
                 yield chunk
 
-        req.body = gen()
+        req.body = gen()  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
     else:
         req.body = data
 
@@ -1666,7 +1666,7 @@ async def test_write_bytes_empty_iterable_with_content_length(
         return
         yield  # This makes it a generator but never executes
 
-    req.body = gen()
+    req.body = gen()  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=10 with empty body
