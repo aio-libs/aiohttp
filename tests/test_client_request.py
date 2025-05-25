@@ -1607,7 +1607,7 @@ async def test_write_bytes_with_content_length_limit(
     data = b"Hello World"
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
 
-    req.body = data
+    req.body = data  # type: ignore[assignment]
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=5 to truncate data
@@ -1634,7 +1634,7 @@ async def test_write_bytes_with_iterable_content_length_limit(
     """Test that write_bytes respects content_length limit for iterable data."""
     # Test with iterable data
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
-    req.body = data
+    req.body = data  # type: ignore[assignment]
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=7 to truncate at the middle of Part2
@@ -1649,7 +1649,7 @@ async def test_write_bytes_empty_iterable_with_content_length(
 ) -> None:
     """Test that write_bytes handles empty iterable body with content_length."""
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
-    req.body = []  # Empty iterable
+    req.body = []  # type: ignore[assignment]  # Empty iterable
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=10 with empty body
