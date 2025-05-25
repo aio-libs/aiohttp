@@ -637,6 +637,10 @@ class IOBasePayload(Payload):
         close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Return string representation of the value.
+
+        WARNING: This method does blocking I/O and should not be called in the event loop.
+        """
         self._set_or_restore_start_position()
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
 
@@ -646,8 +650,6 @@ class IOBasePayload(Payload):
         This method reads the entire file content and returns it as bytes.
         It is equivalent to reading the file-like object directly.
         """
-        # TODO, write a more efficient implementation
-        return await self.write_with_length(sentinel, None)
 
 
 class TextIOPayload(IOBasePayload):
@@ -845,6 +847,7 @@ class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        self._set_or_restore_start_position()
         return self._value.read().decode(encoding, errors)
 
 
