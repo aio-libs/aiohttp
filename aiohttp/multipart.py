@@ -560,6 +560,7 @@ class BodyPartReader:
 @payload_type(BodyPartReader, order=Order.try_first)
 class BodyPartReaderPayload(Payload):
     _value: BodyPartReader
+    # _autoclose = False (inherited) - Streaming reader that may have resources
 
     def __init__(self, value: BodyPartReader, *args: Any, **kwargs: Any) -> None:
         super().__init__(value, *args, **kwargs)
@@ -802,6 +803,7 @@ class MultipartWriter(Payload):
 
     _value: None
     _reusable = True
+    _autoclose = True  # No file handles, just collects parts in memory
 
     def __init__(self, subtype: str = "mixed", boundary: Optional[str] = None) -> None:
         boundary = boundary if boundary is not None else uuid.uuid4().hex
@@ -986,15 +988,6 @@ class MultipartWriter(Payload):
 
         total += 2 + len(self._boundary) + 4  # b'--'+self._boundary+b'--\r\n'
         return total
-
-    @property
-    def autoclose(self) -> bool:
-        """Whether the payload can close itself automatically.
-
-        For MultipartWriter, this is always True since it does not hold
-        any file handles or resources that need to be closed.
-        """
-        return True
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(

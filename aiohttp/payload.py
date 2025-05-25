@@ -155,6 +155,7 @@ class Payload(ABC):
     _default_content_type: str = "application/octet-stream"
     _size: Optional[int] = None
     _reusable: bool = False
+    _autoclose: bool = False  # Default: assume resource needs explicit closing
 
     def __init__(
         self,
@@ -231,9 +232,10 @@ class Payload(ABC):
     def autoclose(self) -> bool:
         """Whether the payload can close itself automatically.
 
-        If False, callers must await close() to release resources.
+        Returns True if the payload has no file handles or resources that need
+        explicit closing. If False, callers must await close() to release resources.
         """
-        return False
+        return self._autoclose
 
     def set_content_disposition(
         self,
@@ -325,6 +327,7 @@ class Payload(ABC):
 class BytesPayload(Payload):
     _value: bytes
     _reusable = True
+    _autoclose = True  # No file handle, just bytes in memory
 
     def __init__(
         self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
@@ -349,16 +352,6 @@ class BytesPayload(Payload):
                 ResourceWarning,
                 source=self,
             )
-
-    @property
-    def autoclose(self) -> bool:
-        """Whether the payload can close itself automatically.
-
-        For BytesPayload, this is always True since it does not hold
-        any resources that need to be closed. It is safe to reuse this
-        payload without worrying about resource cleanup.
-        """
-        return True
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.decode(encoding, errors)
@@ -453,6 +446,7 @@ class IOBasePayload(Payload):
     _value: io.IOBase
     _reusable = True
     _start_position: Optional[int] = None
+    # _autoclose = False (inherited) - Has file handle that needs explicit closing
 
     def __init__(
         self, value: IO[Any], disposition: str = "attachment", *args: Any, **kwargs: Any
@@ -523,18 +517,6 @@ class IOBasePayload(Payload):
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except (AttributeError, OSError):
             return None
-
-    @property
-    def autoclose(self) -> bool:
-        """Whether the payload can close itself automatically.
-
-        For IOBasePayload, this is always False since it holds a file-like object
-        that needs to be closed explicitly by the caller. This is to prevent
-        accidental resource leaks when the payload is used multiple times or
-        when the file-like object is reused elsewhere.
-        Callers must await close() to release resources properly.
-        """
-        return False
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         """
@@ -690,6 +672,7 @@ class IOBasePayload(Payload):
 
 class TextIOPayload(IOBasePayload):
     _value: io.TextIOBase
+    # _autoclose = False (inherited) - Has text file handle that needs explicit closing
 
     def __init__(
         self,
@@ -800,6 +783,7 @@ class TextIOPayload(IOBasePayload):
 
 class BytesIOPayload(IOBasePayload):
     _value: io.BytesIO
+    _autoclose = True  # BytesIO is in-memory, safe to auto-close
 
     @property
     def size(self) -> int:
@@ -807,16 +791,6 @@ class BytesIOPayload(IOBasePayload):
         end = self._value.seek(0, os.SEEK_END)
         self._value.seek(position)
         return end - position
-
-    @property
-    def autoclose(self) -> bool:
-        """Whether the payload can close itself automatically.
-
-        For BytesIOPayload, this is always True since it does not hold
-        any resources that need to be closed explicitly. It is safe to reuse this
-        payload without worrying about resource cleanup.
-        """
-        return True
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         self._set_or_restore_start_position()
@@ -886,6 +860,7 @@ class BytesIOPayload(IOBasePayload):
 
 class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
+    # _autoclose = False (inherited) - Has buffered file handle that needs explicit closing
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         self._set_or_restore_start_position()
@@ -926,6 +901,7 @@ else:
 class AsyncIterablePayload(Payload):
     _iter: Optional[_AsyncIterator] = None
     _value: _AsyncIterable
+    _autoclose = True  # Iterator doesn't need explicit closing
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
@@ -941,16 +917,6 @@ class AsyncIterablePayload(Payload):
         super().__init__(value, *args, **kwargs)
 
         self._iter = value.__aiter__()
-
-    @property
-    def autoclose(self) -> bool:
-        """Whether the payload can close itself automatically.
-
-        For AsyncIterablePayload, this is always True since it does not hold
-        any resources that need to be closed explicitly. It is safe to reuse this
-        payload without worrying about resource cleanup.
-        """
-        return True
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         """
