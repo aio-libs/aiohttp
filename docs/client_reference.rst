@@ -1994,6 +1994,9 @@ ClientRequest
 
       Update the request body and close any existing payload to prevent resource leaks.
 
+      **This is the ONLY correct way to modify a request body.** Never set the
+      :attr:`body` attribute directly.
+
       This method is particularly useful in middleware when you need to modify the
       request body after the request has been created but before it's sent.
 
