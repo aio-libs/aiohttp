@@ -2038,7 +2038,7 @@ ClientRequest
 
       .. danger::
 
-         **Never set request.body directly!** Direct assignment will cause resource
+         **Never set :attr:`ClientRequest.body` directly!** Direct assignment will cause resource
          leaks. Always use this method instead. Setting the body attribute directly:
 
          - Bypasses cleanup of the previous payload
