@@ -581,10 +581,6 @@ class BodyPartReaderPayload(Payload):
         """Raises TypeError as body parts should be consumed via write()."""
         raise TypeError("Unable to read body part as bytes. Use write() to consume.")
 
-    async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        """Raises TypeError as body parts should be consumed via write()."""
-        raise TypeError("Unable to read body part as string. Use write() to consume.")
-
     async def write(self, writer: Any) -> None:
         field = self._value
         chunk = await field.read_chunk(size=2**16)
@@ -1030,14 +1026,6 @@ class MultipartWriter(Payload):
         parts.append(b"--" + self._boundary + b"--\r\n")
 
         return b"".join(parts)
-
-    async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        """Return string representation of the multipart data.
-
-        This method is async-safe and calls as_bytes to get the data.
-        """
-        data = await self.as_bytes(encoding, errors)
-        return data.decode(encoding, errors)
 
     async def write(self, writer: Any, close_boundary: bool = True) -> None:
         """Write body."""

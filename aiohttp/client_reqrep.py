@@ -707,13 +707,10 @@ class ClientRequest:
                 # Specialized handling for Payload objects that know how to write themselves
                 await self._body.write_with_length(writer, content_length)
             else:
-                # Handle bytes/bytearray by converting to an iterable for consistent handling
-                if isinstance(self._body, (bytes, bytearray)):
-                    body_iter = (self._body,)
-                else:
-                    # Assume _body is an iterable (e.g., a list of bytes)
-                    body_iter = self._body
-
+                if TYPE_CHECKING:
+                    assert not isinstance(self._body, payload.Payload)
+                # Handle bytes/bytearray/memoryview by converting to an iterable for consistent handling
+                body_iter = (self._body,)
                 if content_length is None:
                     # Write the entire body without length constraint
                     for chunk in body_iter:
