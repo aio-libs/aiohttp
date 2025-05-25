@@ -97,6 +97,8 @@ if TYPE_CHECKING:
 
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
+BodyType = Union[payload.Payload, bytes, bytearray, memoryview]
+
 
 def _gen_default_accept_encoding() -> str:
     return "gzip, deflate, br" if HAS_BROTLI else "gzip, deflate"
@@ -206,12 +208,7 @@ class ClientRequest:
     }
 
     # Type of body depends on PAYLOAD_REGISTRY, which is dynamic.
-    _body: Union[
-        payload.Payload,
-        bytes,
-        bytearray,
-        memoryview,
-    ] = b""
+    _body: BodyType = b""
     _body_is_payload: bool = False
     auth = None
     response = None
@@ -380,12 +377,12 @@ class ClientRequest:
         return self.url.port
 
     @property
-    def body(self) -> Union[bytes, bytearray, memoryview, payload.Payload]:
+    def body(self) -> BodyType:
         """Request body."""
         return self._body
 
     @body.setter
-    def body(self, value: Union[bytes, bytearray, memoryview, payload.Payload]) -> None:
+    def body(self, value: BodyType) -> None:
         """Set request body with warning for non-autoclose payloads."""
         # Warn if we're replacing an existing payload that needs manual closing
         if (

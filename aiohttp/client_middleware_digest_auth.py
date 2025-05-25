@@ -11,24 +11,14 @@ import hashlib
 import os
 import re
 import time
-from typing import (
-    Callable,
-    Dict,
-    Final,
-    FrozenSet,
-    List,
-    Literal,
-    Tuple,
-    TypedDict,
-    Union,
-)
+from typing import Callable, Dict, Final, FrozenSet, List, Literal, Tuple, TypedDict
 
 from yarl import URL
 
 from . import hdrs
 from .client_exceptions import ClientError
 from .client_middlewares import ClientHandlerType
-from .client_reqrep import ClientRequest, ClientResponse
+from .client_reqrep import BodyType, ClientRequest, ClientResponse
 from .payload import Payload
 
 
@@ -193,7 +183,7 @@ class DigestAuthMiddleware:
         self._nonce_count = 0
         self._challenge: DigestAuthChallenge = {}
 
-    async def _encode(self, method: str, url: URL, body: Union[bytes, Payload]) -> str:
+    async def _encode(self, method: str, url: URL, body: BodyType) -> str:
         """
         Build digest authorization header for the current challenge.
 
