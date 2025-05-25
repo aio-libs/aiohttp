@@ -756,7 +756,7 @@ async def test_formdata_boundary_from_headers(
         )
         async with await req.send(conn):
             await asyncio.sleep(0)
-        assert req.body._boundary == boundary.encode()
+        assert req.body._boundary == boundary.encode()  # type: ignore[union-attr]
 
 
 async def test_post_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:

@@ -591,7 +591,7 @@ class ClientRequest:
                 boundary = parse_mimetype(self.headers[CONTENT_TYPE]).parameters.get(
                     "boundary"
                 )
-            body_payload = FormData(maybe_payload, boundary=boundary)()
+            body_payload = FormData(maybe_payload, boundary=boundary)()  # type: ignore[arg-type]
 
         self._body = body_payload
         # enable chunked encoding if needed
