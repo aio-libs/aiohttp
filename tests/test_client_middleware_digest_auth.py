@@ -221,7 +221,7 @@ async def test_invalid_qop_rejected(
 
     # This should raise an error about unsupported QoP
     with pytest.raises(ClientError, match="Unsupported Quality of Protection"):
-        await digest_auth_mw._encode("GET", URL("http://example.com"), "")
+        await digest_auth_mw._encode("GET", URL("http://example.com"), b"")
 
 
 def compute_expected_digest(
