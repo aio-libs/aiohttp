@@ -825,19 +825,6 @@ class BytesIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         return self._value.read()
 
-    async def close(self) -> None:
-        """Close the payload if it holds any resources.
-
-        IMPORTANT: This method must not await anything that might not finish
-        immediately, as it may be called during cleanup/cancellation. Schedule
-        any long-running operations without awaiting them.
-        """
-        # Skip if already consumed
-        if self._consumed:
-            return
-        self._consumed = True  # Mark as consumed to prevent further writes
-        self._value.close()
-
 
 class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
