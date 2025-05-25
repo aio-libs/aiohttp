@@ -188,7 +188,12 @@ class Payload(ABC):
 
     @property
     def size(self) -> Optional[int]:
-        """Size of the payload."""
+        """Size of the payload in bytes.
+
+        Returns the number of bytes that will be transmitted when the payload
+        is written. For string payloads, this is the size after encoding to bytes,
+        not the length of the string.
+        """
         return self._size
 
     @property
@@ -508,6 +513,11 @@ class IOBasePayload(Payload):
 
     @property
     def size(self) -> Optional[int]:
+        """Size of the payload in bytes.
+
+        Returns the number of bytes remaining to be read from the file.
+        Returns None if the size cannot be determined (e.g., for unseekable streams).
+        """
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except (AttributeError, OSError):
@@ -779,7 +789,11 @@ class BytesIOPayload(IOBasePayload):
 
     @property
     def size(self) -> int:
-        """Size of the payload."""
+        """Size of the payload in bytes.
+
+        Returns the number of bytes in the BytesIO buffer that will be transmitted.
+        This is calculated once during initialization for efficiency.
+        """
         return self._size
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
