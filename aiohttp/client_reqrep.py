@@ -613,8 +613,39 @@ class ClientRequest:
     async def update_body(self, body: Any) -> None:
         """Update request body and close previous payload if needed.
 
-        This method is like setting self.body directly, but it properly
-        closes any existing payload before setting the new one.
+        This method safely updates the request body by first closing any existing
+        payload to prevent resource leaks, then setting the new body.
+
+        Args:
+            body: The new body content. Can be:
+                - bytes/bytearray: Raw binary data
+                - str: Text data (will be encoded using charset from Content-Type)
+                - FormData: Form data that will be encoded as multipart/form-data
+                - Payload: A pre-configured payload object
+                - AsyncIterable: An async iterable of bytes chunks
+                - File-like object: Will be read and sent as binary data
+                - None: Clears the body
+
+        Usage:
+            # Update body with new data
+            await request.update_body(b"new request data")
+
+            # Update with form data
+            form_data = FormData()
+            form_data.add_field('field', 'value')
+            await request.update_body(form_data)
+
+            # Clear body
+            await request.update_body(None)
+
+        Note:
+            This method is async because it may need to close file handles or
+            other resources associated with the previous payload. Always await
+            this method to ensure proper cleanup.
+
+        See Also:
+            - update_body_from_data: Synchronous body update without cleanup
+            - body property: Direct body access (use with caution)
         """
         # Close existing payload if it exists and needs closing
         if self._body is not None:
