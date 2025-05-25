@@ -25,7 +25,7 @@ cffi==1.17.1
     #   pytest-codspeed
 click==8.1.8
     # via wait-for-it
-coverage==7.8.1
+coverage==7.8.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -37,7 +37,7 @@ execnet==2.1.1
     # via pytest-xdist
 forbiddenfruit==0.1.4
     # via blockbuster
-freezegun==1.5.1
+freezegun==1.5.2
     # via -r requirements/test.in
 frozenlist==1.6.0
     # via

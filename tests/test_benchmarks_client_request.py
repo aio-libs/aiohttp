@@ -1,7 +1,7 @@
 """codspeed benchmarks for client requests."""
 
 import asyncio
-from http.cookies import BaseCookie, Morsel
+from http.cookies import BaseCookie
 from typing import Any, Union
 
 from multidict import CIMultiDict
@@ -12,6 +12,7 @@ from aiohttp.client_reqrep import ClientRequest as RawClientRequest, ClientRespo
 from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
+from aiohttp.tracing import Trace
 
 
 def ClientRequest(method: str, url: URL, **kwargs: Any) -> RawClientRequest:
@@ -64,7 +65,7 @@ def test_create_client_request_with_cookies(
     cookies = cookie_jar.filter_cookies(url)
     assert cookies["cookie"].value == "value"
     timer = TimerNoop()
-    traces = []
+    traces: list[Trace] = []
     headers = CIMultiDict[str]()
 
     @benchmark
@@ -101,7 +102,7 @@ def test_create_client_request_with_headers(
 ) -> None:
     url = URL("http://python.org")
     timer = TimerNoop()
-    traces = []
+    traces: list[Trace] = []
     headers = CIMultiDict({"header": "value", "another": "header"})
     cookies = BaseCookie[str]()
 
