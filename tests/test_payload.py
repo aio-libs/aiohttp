@@ -26,7 +26,7 @@ class BufferWriter(AbstractStreamWriter):
         self.buffer.extend(bytes(chunk))
 
     async def write_eof(self, chunk: bytes = b"") -> None:
-        self.buffer.extend(chunk)
+        """No-op for test writer."""
 
     async def drain(self) -> None:
         """No-op for test writer."""
