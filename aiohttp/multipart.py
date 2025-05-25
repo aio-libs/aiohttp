@@ -576,6 +576,14 @@ class BodyPartReaderPayload(Payload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         raise TypeError("Unable to decode.")
 
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """Raises TypeError as body parts should be consumed via write()."""
+        raise TypeError("Unable to read body part as bytes. Use write() to consume.")
+
+    async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Raises TypeError as body parts should be consumed via write()."""
+        raise TypeError("Unable to read body part as string. Use write() to consume.")
+
     async def write(self, writer: Any) -> None:
         field = self._value
         chunk = await field.read_chunk(size=2**16)
@@ -793,6 +801,7 @@ class MultipartWriter(Payload):
     """Multipart body writer."""
 
     _value: None
+    _reusable = True
 
     def __init__(self, subtype: str = "mixed", boundary: Optional[str] = None) -> None:
         boundary = boundary if boundary is not None else uuid.uuid4().hex
@@ -978,6 +987,15 @@ class MultipartWriter(Payload):
         total += 2 + len(self._boundary) + 4  # b'--'+self._boundary+b'--\r\n'
         return total
 
+    @property
+    def autoclose(self) -> bool:
+        """Whether the payload can close itself automatically.
+
+        For MultipartWriter, this is always True since it does not hold
+        any file handles or resources that need to be closed.
+        """
+        return True
+
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return "".join(
             "--"
@@ -987,6 +1005,14 @@ class MultipartWriter(Payload):
             + part.decode()
             for part, _e, _te in self._parts
         )
+
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """Return bytes representation of the multipart data."""
+        return self.decode(encoding, errors).encode(encoding)
+
+    async def as_str(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Return string representation of the multipart data."""
+        return self.decode(encoding, errors)
 
     async def write(self, writer: Any, close_boundary: bool = True) -> None:
         """Write body."""
