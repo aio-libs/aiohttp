@@ -1628,7 +1628,7 @@ async def test_multipart_writer_reusability_with_io_payloads(
 async def test_body_part_reader_payload_as_bytes() -> None:
     """Test that BodyPartReaderPayload.as_bytes raises TypeError."""
     # Create a mock BodyPartReader
-    headers = {CONTENT_TYPE: "text/plain"}
+    headers = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
     protocol = mock.Mock(_reading_paused=False)
     stream = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     body_part = BodyPartReader(BOUNDARY, headers, stream)

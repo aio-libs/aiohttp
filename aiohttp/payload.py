@@ -636,7 +636,13 @@ class IOBasePayload(Payload):
         WARNING: This method does blocking I/O and should not be called in the event loop.
         """
         self._set_or_restore_start_position()
-        return "".join(r.decode(encoding, errors) for r in self._value.readlines())
+        return "".join(self._read_all().decode(encoding, errors))
+
+    def _read_all(self) -> bytes:
+        """Read the entire file-like object and return its content as bytes."""
+        self._set_or_restore_start_position()
+        # Use readlines() to ensure we get all content
+        return b"".join(self._value.readlines())
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """
@@ -647,13 +653,7 @@ class IOBasePayload(Payload):
         The file reading is performed in an executor to avoid blocking the event loop.
         """
         loop = asyncio.get_running_loop()
-
-        def _read_all() -> bytes:
-            self._set_or_restore_start_position()
-            # Use readlines() to ensure we get all content
-            return b"".join(self._value.readlines())
-
-        return await loop.run_in_executor(None, _read_all)
+        return await loop.run_in_executor(None, self._read_all)
 
 
 class TextIOPayload(IOBasePayload):

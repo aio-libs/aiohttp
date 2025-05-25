@@ -415,6 +415,43 @@ async def test_textio_payload_with_encoding() -> None:
     assert writer.get_written_bytes() == b"hello wo"
 
 
+async def test_textio_payload_as_bytes() -> None:
+    """Test TextIOPayload.as_bytes method with different encodings."""
+    # Test with UTF-8 encoding
+    data = io.StringIO("Hello 世界")
+    p = payload.TextIOPayload(data, encoding="utf-8")
+
+    # Test as_bytes() method
+    result = await p.as_bytes()
+    assert result == "Hello 世界".encode()
+
+    # Test that position is restored for multiple reads
+    result2 = await p.as_bytes()
+    assert result2 == "Hello 世界".encode()
+
+    # Test with different encoding parameter (should use instance encoding)
+    result3 = await p.as_bytes(encoding="latin-1")
+    assert result3 == "Hello 世界".encode()  # Should still use utf-8
+
+    # Test with different encoding in payload
+    data2 = io.StringIO("Hello World")
+    p2 = payload.TextIOPayload(data2, encoding="latin-1")
+    result4 = await p2.as_bytes()
+    assert result4 == b"Hello World"  # latin-1 encoding
+
+    # Test with no explicit encoding (defaults to utf-8)
+    data3 = io.StringIO("Test データ")
+    p3 = payload.TextIOPayload(data3)
+    result5 = await p3.as_bytes()
+    assert result5 == "Test データ".encode()
+
+    # Test with encoding errors parameter
+    data4 = io.StringIO("Test")
+    p4 = payload.TextIOPayload(data4, encoding="ascii")
+    result6 = await p4.as_bytes(errors="strict")
+    assert result6 == b"Test"
+
+
 async def test_bytesio_payload_backwards_compatibility() -> None:
     """Test BytesIOPayload.write() backwards compatibility delegates to write_with_length()."""
     data = io.BytesIO(b"test data")
@@ -755,3 +792,73 @@ async def test_bytes_io_payload_close_does_not_close_io() -> None:
     writer = MockStreamWriter()
     await bytes_io_payload.write_with_length(writer, None)
     assert writer.get_written_bytes() == b"data"
+
+
+async def test_custom_payload_backwards_compat_as_bytes() -> None:
+    """Test backwards compatibility for custom Payload that only implements decode()."""
+
+    class LegacyPayload(payload.Payload):
+        """A custom payload that only implements decode() like old code might do."""
+
+        def __init__(self, data: str) -> None:
+            super().__init__(data, headers=CIMultiDict())
+            self._data = data
+
+        def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+            """Custom decode implementation."""
+            return self._data
+
+        async def write(self, writer: AbstractStreamWriter) -> None:
+            """Write implementation."""
+            await writer.write(self._data.encode())
+
+    # Create instance with test data
+    p = LegacyPayload("Hello, World!")
+
+    # Test that as_bytes() works even though it's not explicitly implemented
+    # The base class should call decode() and encode the result
+    result = await p.as_bytes()
+    assert result == b"Hello, World!"
+
+    # Test with different text
+    p2 = LegacyPayload("Test with special chars: café")
+    result_utf8 = await p2.as_bytes(encoding="utf-8")
+    assert result_utf8 == "Test with special chars: café".encode()
+
+    # Test that decode() still works as expected
+    assert p.decode() == "Hello, World!"
+    assert p2.decode() == "Test with special chars: café"
+
+
+async def test_custom_payload_with_encoding_backwards_compat() -> None:
+    """Test custom Payload with encoding set uses instance encoding for as_bytes()."""
+
+    class EncodedPayload(payload.Payload):
+        """A custom payload with specific encoding."""
+
+        def __init__(self, data: str, encoding: str) -> None:
+            super().__init__(data, headers=CIMultiDict(), encoding=encoding)
+            self._data = data
+
+        def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+            """Custom decode implementation."""
+            return self._data
+
+        async def write(self, writer: AbstractStreamWriter) -> None:
+            """Write implementation."""
+            # Use instance encoding if set
+            enc = self._encoding or "utf-8"
+            await writer.write(self._data.encode(enc))
+
+    # Create instance with specific encoding
+    p = EncodedPayload("Test data", encoding="latin-1")
+
+    # as_bytes() should use the instance encoding (latin-1) not the default utf-8
+    result = await p.as_bytes()
+    assert result == b"Test data"  # ASCII chars are same in latin-1
+
+    # Test with non-ASCII that differs between encodings
+    p2 = EncodedPayload("café", encoding="latin-1")
+    result_latin1 = await p2.as_bytes()
+    assert result_latin1 == "café".encode("latin-1")
+    assert result_latin1 != "café".encode()  # Should be different bytes
