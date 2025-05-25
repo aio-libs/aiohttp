@@ -1,14 +1,18 @@
 """codspeed benchmarks for client requests."""
 
 import asyncio
-from http.cookies import Morsel
+from http.cookies import BaseCookie, Morsel
 from typing import Union
 
+from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
-from aiohttp.client_reqrep import ClientRequest
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.cookiejar import CookieJar
+from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
+from aiohttp.tracing import Trace
 
 
 def test_client_request_update_cookies(
@@ -35,7 +39,7 @@ def test_create_client_request_with_cookies(
     cookies = cookie_jar.filter_cookies(url)
     assert cookies["cookie"].value == "value"
     timer = TimerNoop()
-    traces = []
+    traces: list[Trace] = []
     headers = CIMultiDict[str]()
 
     @benchmark
@@ -51,7 +55,7 @@ def test_create_client_request_with_cookies(
             proxy_auth=None,
             proxy_headers=None,
             timer=timer,
-            session=None,  # type: ignore[arg-type]
+            session=None,
             ssl=True,
             traces=traces,
             trust_env=False,
@@ -72,7 +76,7 @@ def test_create_client_request_with_headers(
 ) -> None:
     url = URL("http://python.org")
     timer = TimerNoop()
-    traces = []
+    traces: list[Trace] = []
     headers = CIMultiDict({"header": "value", "another": "header"})
     cookies = BaseCookie[str]()
 
@@ -89,7 +93,7 @@ def test_create_client_request_with_headers(
             proxy_auth=None,
             proxy_headers=None,
             timer=timer,
-            session=None,  # type: ignore[arg-type]
+            session=None,
             ssl=True,
             traces=traces,
             trust_env=False,
