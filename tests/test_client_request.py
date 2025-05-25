@@ -52,7 +52,9 @@ class WriterMock(mock.AsyncMock):
         """Dummy method."""
 
 
-ALL_METHODS = frozenset((*ClientRequest.GET_METHODS, *ClientRequest.POST_METHODS, METH_DELETE))
+ALL_METHODS = frozenset(
+    (*ClientRequest.GET_METHODS, *ClientRequest.POST_METHODS, METH_DELETE)
+)
 
 
 @pytest.fixture
