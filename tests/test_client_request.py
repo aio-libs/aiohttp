@@ -593,7 +593,7 @@ def test_cookie_coded_value_preserved(loop: asyncio.AbstractEventLoop) -> None:
     """Verify the coded value of a cookie is preserved."""
     # https://github.com/aio-libs/aiohttp/pull/1453
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    req.update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
+    req._update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
     assert req.headers["COOKIE"] == 'ip-cookie="second"'
 
 
@@ -1450,7 +1450,7 @@ def test_loose_cookies_types(loop: asyncio.AbstractEventLoop) -> None:
     ]
 
     for loose_cookies_type in accepted_types:
-        req.update_cookies(cookies=loose_cookies_type)
+        req._update_cookies(cookies=loose_cookies_type)
 
 
 @pytest.mark.parametrize(

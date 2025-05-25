@@ -27,7 +27,7 @@ def test_client_request_update_cookies(
 
     @benchmark
     def _run() -> None:
-        req.update_cookies(cookies=cookies)
+        req._update_cookies(cookies=cookies)
 
 
 def test_create_client_request_with_cookies(
