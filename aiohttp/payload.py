@@ -452,9 +452,12 @@ class IOBasePayload(Payload):
     def _set_or_restore_start_position(self) -> None:
         """Set or restore the start position of the file-like object."""
         if self._start_position is None:
-            self._start_position = self._value.tell()
-        else:
-            self._value.seek(self._start_position)
+            try:
+                self._start_position = self._value.tell()
+            except OSError:
+                self._consumed = True  # Cannot seek, mark as consumed
+            return
+        self._value.seek(self._start_position)
 
     def _read_and_available_len(
         self, remaining_content_len: Optional[int]

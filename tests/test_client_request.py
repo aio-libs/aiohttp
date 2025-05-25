@@ -1260,6 +1260,7 @@ async def test_oserror_on_write_bytes(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
+    req.body = b"test data"
 
     writer = WriterMock()
     writer.write.side_effect = OSError
