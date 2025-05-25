@@ -1868,7 +1868,7 @@ ClientRequest
    .. attribute:: body
       :type: Payload | Literal[b""]
 
-      The request body payload (defaults to ``b""``, if no body passed).
+      The request body payload (defaults to ``b""`` if no body passed).
 
    .. attribute:: chunked
       :type: bool | None
