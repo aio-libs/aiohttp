@@ -434,6 +434,7 @@ class StringIOPayload(StringPayload):
 class IOBasePayload(Payload):
     _value: io.IOBase
     _reusable = True
+    _start_position: Optional[int] = None
 
     def __init__(
         self, value: IO[Any], disposition: str = "attachment", *args: Any, **kwargs: Any
@@ -446,6 +447,13 @@ class IOBasePayload(Payload):
         if self._filename is not None and disposition is not None:
             if hdrs.CONTENT_DISPOSITION not in self.headers:
                 self.set_content_disposition(disposition, filename=self._filename)
+
+    def _set_or_restore_start_position(self) -> None:
+        """Set or restore the start position of the file-like object."""
+        if self._start_position is None:
+            self._start_position = self._value.tell()
+        else:
+            self._value.seek(self._start_position)
 
     def _read_and_available_len(
         self, remaining_content_len: Optional[int]
@@ -467,6 +475,7 @@ class IOBasePayload(Payload):
         context switches and file operations when streaming content.
 
         """
+        self._set_or_restore_start_position()
         size = self.size  # Call size only once since it does I/O
         return size, self._value.read(
             min(size or READ_SIZE, remaining_content_len or READ_SIZE)
@@ -628,6 +637,7 @@ class IOBasePayload(Payload):
         close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        self._set_or_restore_start_position()
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
 
     async def bytes(self) -> bytes:
@@ -704,6 +714,7 @@ class TextIOPayload(IOBasePayload):
             to the stream. If no encoding is specified, UTF-8 is used as the default.
 
         """
+        self._set_or_restore_start_position()
         size = self.size
         chunk = self._value.read(
             min(size or READ_SIZE, remaining_content_len or READ_SIZE)
@@ -732,6 +743,7 @@ class TextIOPayload(IOBasePayload):
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        self._set_or_restore_start_position()
         return self._value.read()
 
     async def bytes(self) -> bytes:
@@ -764,6 +776,7 @@ class BytesIOPayload(IOBasePayload):
         return True
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        self._set_or_restore_start_position()
         return self._value.read().decode(encoding, errors)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
@@ -791,6 +804,7 @@ class BytesIOPayload(IOBasePayload):
         responsiveness when processing large in-memory buffers.
 
         """
+        self._set_or_restore_start_position()
         loop_count = 0
         remaining_bytes = content_length
         try:
@@ -818,7 +832,8 @@ class BytesIOPayload(IOBasePayload):
         This method reads the entire BytesIO content and returns it as bytes.
         It is equivalent to accessing the _value attribute directly.
         """
-        return self._value.getvalue()
+        self._set_or_restore_start_position()
+        return self._value.read()
 
     async def close(self) -> None:
         """Close the payload if it holds any resources."""
