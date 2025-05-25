@@ -582,19 +582,18 @@ class ClientRequest:
 
         # FormData
         if isinstance(body, FormData):
-            body = body()
+            body_payload = body()
 
         try:
-            body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
+            body_payload = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
         except payload.LookupError:
-            boundary = None
             if CONTENT_TYPE in self.headers:
                 boundary = parse_mimetype(self.headers[CONTENT_TYPE]).parameters.get(
                     "boundary"
                 )
-            body = FormData(body, boundary=boundary)()
+            body_payload = FormData(body, boundary=boundary)()
 
-        self._body = body
+        self._body = body_payload
         # enable chunked encoding if needed
         if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
             if (size := body.size) is not None:
@@ -603,10 +602,10 @@ class ClientRequest:
                 self.chunked = True
 
         # copy payload headers
-        assert body.headers
+        assert body_payload.headers
         headers = self.headers
         skip_headers = self._skip_auto_headers
-        for key, value in body.headers.items():
+        for key, value in body_payload.headers.items():
             if key in headers or (skip_headers is not None and key in skip_headers):
                 continue
             headers[key] = value
