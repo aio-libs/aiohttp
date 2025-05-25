@@ -549,9 +549,12 @@ class ClientRequest:
                 )
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
-        else:
-            if hdrs.CONTENT_LENGTH not in self.headers:
-                self.headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
+        elif (
+            self._body is not None
+            and hdrs.CONTENT_LENGTH not in self.headers
+            and (size := self._body.size) is not None
+        ):
+            self.headers[hdrs.CONTENT_LENGTH] = str(size)
 
     def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
