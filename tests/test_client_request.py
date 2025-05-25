@@ -35,6 +35,7 @@ from aiohttp.client_reqrep import (
 )
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
+from aiohttp.hdrs import METH_DELETE
 from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.typedefs import LooseCookies
 
@@ -49,6 +50,9 @@ class WriterMock(mock.AsyncMock):
 
     def remove_done_callback(self, cb: Callable[[], None]) -> None:
         """Dummy method."""
+
+
+ALL_METHODS = frozenset((*ClientRequest.GET_METHODS, *ClientRequest.POST_METHODS, METH_DELETE))
 
 
 @pytest.fixture
@@ -524,7 +528,7 @@ def test_cookies_merge_with_headers(make_request: _RequestMaker) -> None:
 
 
 def test_query_multivalued_param(make_request: _RequestMaker) -> None:
-    for meth in ClientRequest.ALL_METHODS:
+    for meth in ALL_METHODS:
         req = make_request(
             meth, "http://python.org", params=(("test", "foo"), ("test", "baz"))
         )
@@ -533,19 +537,19 @@ def test_query_multivalued_param(make_request: _RequestMaker) -> None:
 
 
 def test_query_str_param(make_request: _RequestMaker) -> None:
-    for meth in ClientRequest.ALL_METHODS:
+    for meth in ALL_METHODS:
         req = make_request(meth, "http://python.org", params="test=foo")
         assert str(req.url) == "http://python.org/?test=foo"
 
 
 def test_query_bytes_param_raises(make_request: _RequestMaker) -> None:
-    for meth in ClientRequest.ALL_METHODS:
+    for meth in ALL_METHODS:
         with pytest.raises(TypeError):
             make_request(meth, "http://python.org", params=b"test=foo")
 
 
 def test_query_str_param_is_not_encoded(make_request: _RequestMaker) -> None:
-    for meth in ClientRequest.ALL_METHODS:
+    for meth in ALL_METHODS:
         req = make_request(meth, "http://python.org", params="test=f+oo")
         assert str(req.url) == "http://python.org/?test=f+oo"
 
