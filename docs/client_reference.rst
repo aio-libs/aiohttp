@@ -2048,11 +2048,11 @@ ClientRequest
 
       .. warning::
 
-         When updating the body, ensure that Content-Type and Content-Length
-         headers are appropriate for the new body content. The method will
-         update headers automatically when using :class:`FormData` or
-         :class:`Payload` objects, but you may need to update them manually
-         for raw bytes or text.
+         When updating the body, ensure that the Content-Type header is
+         appropriate for the new body content. The Content-Length header
+         will be updated automatically. When using :class:`FormData` or
+         :class:`Payload` objects, headers are updated automatically,
+         but you may need to set Content-Type manually for raw bytes or text.
 
       .. versionadded:: 3.12
 

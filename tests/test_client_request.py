@@ -1926,3 +1926,31 @@ async def test_update_body_with_different_types(
     assert req.body == b""  # type: ignore[comparison-overlap]  # empty body is represented as b""
 
     await req.close()
+
+
+async def test_update_body_updates_content_length(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that update_body properly updates Content-Length header when body size changes."""
+    req = make_request("POST", "http://python.org/")
+
+    # Set initial body with known size
+    await req.update_body(b"initial data")
+    initial_content_length = req.headers.get("Content-Length")
+    assert initial_content_length == "12"  # len(b"initial data") = 12
+
+    # Update body with different size
+    await req.update_body(b"much longer data than before")
+    new_content_length = req.headers.get("Content-Length")
+    assert new_content_length == "28"  # len(b"much longer data than before") = 28
+
+    # Update body with shorter data
+    await req.update_body(b"short")
+    assert req.headers.get("Content-Length") == "5"  # len(b"short") = 5
+
+    # Clear body
+    await req.update_body(None)
+    # For None body, Content-Length should not be set
+    assert "Content-Length" not in req.headers
+
+    await req.close()

@@ -396,7 +396,7 @@ class ClientRequest:
     @body.setter
     def body(self, value: Any) -> None:
         """Set request body with warning for non-autoclose payloads."""
-        self.update_body_from_data(value)
+        self._update_body(value)
 
     @property
     def request_info(self) -> RequestInfo:
@@ -609,6 +609,26 @@ class ClientRequest:
                 continue
             headers[key] = value
 
+    def _update_body(self, body: Any) -> None:
+        """Update request body after its already been set."""
+        # Remove existing Content-Length header since body is changing
+        if hdrs.CONTENT_LENGTH in self.headers:
+            del self.headers[hdrs.CONTENT_LENGTH]
+
+        # Remove existing Transfer-Encoding header to avoid conflicts
+        if hdrs.TRANSFER_ENCODING in self.headers:
+            del self.headers[hdrs.TRANSFER_ENCODING]
+
+        # Reset chunked state to allow update_transfer_encoding to recalculate
+        self.chunked = False
+
+        # Now update the body using the existing method
+        self.update_body_from_data(body)
+
+        # Update transfer encoding headers if needed (same logic as __init__)
+        if body is not None or self.method not in self.GET_METHODS:
+            self.update_transfer_encoding()
+
     async def update_body(self, body: Any) -> None:
         """
         Update request body and close previous payload if needed.
@@ -664,9 +684,7 @@ class ClientRequest:
         # Close existing payload if it exists and needs closing
         if self._body is not None:
             await self._body.close()
-
-        # Now update the body using the existing method
-        self.update_body_from_data(body)
+        self._update_body(body)
 
     def update_expect_continue(self, expect: bool = False) -> None:
         if expect:
