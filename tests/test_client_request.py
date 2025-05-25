@@ -1923,6 +1923,6 @@ async def test_update_body_with_different_types(
 
     # Test with None (clears body)
     await req.update_body(None)
-    assert req.body == b""  # empty body is represented as b""
+    assert req.body == b""  # type: ignore[comparison-overlap]  # empty body is represented as b""
 
     await req.close()
