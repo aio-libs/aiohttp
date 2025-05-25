@@ -877,10 +877,7 @@ async def test_custom_payload_with_encoding_backwards_compat() -> None:
             return self._data
 
         async def write(self, writer: AbstractStreamWriter) -> None:
-            """Write implementation."""
-            # Use instance encoding if set
-            enc = self._encoding or "utf-8"
-            await writer.write(self._data.encode(enc))
+            """Write implementation is a no-op."""
 
     # Create instance with specific encoding
     p = EncodedPayload("Test data", encoding="latin-1")
