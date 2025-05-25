@@ -111,7 +111,7 @@ async def test_formdata_field_name_is_not_quoted(
     assert b'name="email 1"' in buf
 
 
-async def test_mark_formdata_as_processed(aiohttp_client: AiohttpClient) -> None:
+async def test_formdata_is_reusable(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -123,13 +123,20 @@ async def test_mark_formdata_as_processed(aiohttp_client: AiohttpClient) -> None
     data = FormData()
     data.add_field("test", "test_value", content_type="application/json")
 
-    resp = await client.post("/", data=data)
-    assert len(data._writer._parts) == 1
+    # First request
+    resp1 = await client.post("/", data=data)
+    assert resp1.status == 200
+    resp1.release()
 
-    with pytest.raises(RuntimeError):
-        await client.post("/", data=data)
+    # Second request - should work without RuntimeError
+    resp2 = await client.post("/", data=data)
+    assert resp2.status == 200
+    resp2.release()
 
-    resp.release()
+    # Third request to ensure continued reusability
+    resp3 = await client.post("/", data=data)
+    assert resp3.status == 200
+    resp3.release()
 
 
 async def test_formdata_boundary_param() -> None:
