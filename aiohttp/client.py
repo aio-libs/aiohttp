@@ -760,8 +760,6 @@ class ClientSession:
                         else:
                             # reading from correct redirection
                             # response is forbidden
-                            if req._body is not None:
-                                await req._body.close()
                             resp.release()
 
                         try:
