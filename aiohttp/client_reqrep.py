@@ -390,9 +390,8 @@ class ClientRequest:
     @property
     def body(self) -> Union[bytes, payload.Payload]:
         """Request body."""
-        return (
-            self._body or b""
-        )  # empty body is represented as bytes for backwards compatibility
+        # empty body is represented as bytes for backwards compatibility
+        return self._body or b""
 
     @body.setter
     def body(self, value: Any) -> None:
