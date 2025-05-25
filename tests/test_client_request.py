@@ -1635,7 +1635,17 @@ async def test_write_bytes_with_iterable_content_length_limit(
     """Test that write_bytes respects content_length limit for iterable data."""
     # Test with iterable data
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
-    req.body = data  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+
+    # Convert list to async generator if needed
+    if isinstance(data, list):
+
+        async def gen() -> AsyncIterator[bytes]:
+            for chunk in data:
+                yield chunk
+
+        req.body = gen()
+    else:
+        req.body = data
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=7 to truncate at the middle of Part2
