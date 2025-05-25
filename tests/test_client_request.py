@@ -817,7 +817,7 @@ async def test_bytes_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> N
         resp = await req.send(conn)
         assert "/" == req.url.path
         assert isinstance(req.body, payload.BytesPayload)
-        assert b"binary data" == req.body._value
+        assert b"binary data" == req.body._value  # type: ignore[union-attr]
         assert "application/octet-stream" == req.headers["CONTENT-TYPE"]
         await req.close()
         resp.close()
