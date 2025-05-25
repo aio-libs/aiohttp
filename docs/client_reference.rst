@@ -1990,7 +1990,7 @@ ClientRequest
 
       The HTTP version to use for the request (e.g., ``HttpVersion(1, 1)`` for HTTP/1.1).
 
-   .. method:: async update_body(body)
+   .. method:: update_body(body)
 
       Update the request body and close any existing payload to prevent resource leaks.
 
