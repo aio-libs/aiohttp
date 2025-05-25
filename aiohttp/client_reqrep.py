@@ -384,19 +384,8 @@ class ClientRequest:
     @body.setter
     def body(self, value: BodyType) -> None:
         """Set request body with warning for non-autoclose payloads."""
-        # Warn if we're replacing an existing payload that needs manual closing
-        if (
-            self._body_is_payload
-            and not self._body.autoclose
-            and not self._body.consumed
-        ):
-            warnings.warn(
-                "Replacing a payload that needs manual closing. "
-                "The previous payload should be closed with await payload.close(). "
-                "Consider using await request.update_body() instead.",
-                ResourceWarning,
-                stacklevel=2,
-            )
+        if self._body_is_payload:
+            self._warn_if_unclosed_payload()
         self._body = value
         self._body_is_payload = isinstance(value, payload.Payload)
 
@@ -569,9 +558,28 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
+    def _warn_if_unclosed_payload(self) -> None:
+        """Warn if the payload is not closed.
+
+        Callers must check _body_is_payload before calling this method.
+        """
+        if TYPE_CHECKING:
+            assert isinstance(self._body, payload.Payload)
+        if not self._body.autoclose and not self._body.consumed:
+            warnings.warn(
+                "The request body is a payload that needs manual closing. "
+                "It should be closed with await payload.close() to avoid resource leaks.",
+                ResourceWarning,
+                stacklevel=2,
+            )
+
     def update_body_from_data(self, body: Any) -> None:
+        """Update request body from data."""
         if body is None:
             return
+
+        if self._body_is_payload:
+            self._warn_if_unclosed_payload()
 
         # FormData
         if isinstance(body, FormData):

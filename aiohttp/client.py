@@ -687,11 +687,7 @@ class ClientSession:
                             raise
                         finally:
                             # Close the request payload if needed
-                            if (
-                                req._body_is_payload
-                                and not req._body.autoclose
-                                and not req._body.consumed
-                            ):
+                            if req._body_is_payload:
                                 await req._body.close()
                         return resp
 

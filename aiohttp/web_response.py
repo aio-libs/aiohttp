@@ -680,9 +680,7 @@ class Response(StreamResponse):
         elif isinstance(self._body, Payload):
             await self._body.write(self._payload_writer)
             await super().write_eof()
-            # Close the payload if it needs explicit closing
-            if not self._body.autoclose and not self._body.consumed:
-                await self._body.close()
+            await self._body.close()
         else:
             await super().write_eof(cast(bytes, body))
 
