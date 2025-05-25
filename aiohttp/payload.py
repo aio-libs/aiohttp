@@ -615,11 +615,6 @@ class IOBasePayload(Payload):
         self._consumed = True  # Mark as consumed to prevent further writes
         # Schedule file closing without awaiting to prevent cancellation issues
         loop = asyncio.get_running_loop()
-        self._schedule_file_close(loop)
-
-    def _schedule_file_close(self, loop: asyncio.AbstractEventLoop) -> None:
-        """Schedule file closing without awaiting to prevent cancellation issues."""
-        self._consumed = True  # Mark as consumed to prevent further writes
         close_future = loop.run_in_executor(None, self._value.close)
         # Hold a strong reference to the future to prevent it from being
         # garbage collected before it completes.
