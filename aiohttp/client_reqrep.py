@@ -307,7 +307,7 @@ class ClientRequest:
         self._update_cookies(cookies)
         self._update_content_encoding(data, compress)
         self._update_auth(auth, trust_env)
-        self.update_proxy(proxy, proxy_auth, proxy_headers)
+        self._update_proxy(proxy, proxy_auth, proxy_headers)
 
         self._update_body_from_data(data)
         if data is not None or self.method not in self.GET_METHODS:
@@ -672,7 +672,7 @@ class ClientRequest:
         if expect:
             self._continue = self.loop.create_future()
 
-    def update_proxy(  # Kept public for aiohttp-proxy compatibility
+    def _update_proxy(
         self,
         proxy: Optional[URL],
         proxy_auth: Optional[BasicAuth],
