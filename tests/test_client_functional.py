@@ -4888,3 +4888,132 @@ async def test_redirect_preserves_content_type(aiohttp_client: AiohttpClient) ->
     assert len(content_types) == 2
     assert content_types[0][1] == "text/plain"
     assert content_types[1][1] == "text/plain"
+
+
+class MockedBytesPayload(BytesPayload):
+    """A BytesPayload that tracks whether close() was called."""
+
+    def __init__(self, data: bytes) -> None:
+        super().__init__(data)
+        self.close_called = False
+
+    async def close(self) -> None:
+        self.close_called = True
+        await super().close()
+
+
+async def test_too_many_redirects_closes_payload(aiohttp_client: AiohttpClient) -> None:
+    """Test that TooManyRedirects exception closes the request payload."""
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        # Read the payload to simulate server processing
+        await request.read()
+        count = int(request.match_info.get("count", 0))
+        # Use 307 to preserve POST method
+        return web.Response(
+            status=307, headers={hdrs.LOCATION: f"/redirect/{count + 1}"}
+        )
+
+    app = web.Application()
+    app.router.add_post(r"/redirect/{count:\d+}", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a mocked payload to verify close() is called
+    payload = MockedBytesPayload(b"test payload")
+
+    with pytest.raises(TooManyRedirects):
+        await client.post("/redirect/0", data=payload, max_redirects=2)
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called when TooManyRedirects was raised"
+
+
+async def test_invalid_url_redirect_closes_payload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that InvalidUrlRedirectClientError exception closes the request payload."""
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        # Read the payload to simulate server processing
+        await request.read()
+        # Return an invalid URL that will cause ValueError in URL parsing
+        # Using a URL with invalid port that's out of range
+        return web.Response(
+            status=307, headers={hdrs.LOCATION: "http://example.com:999999/path"}
+        )
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a mocked payload to verify close() is called
+    payload = MockedBytesPayload(b"test payload")
+
+    with pytest.raises(
+        InvalidUrlRedirectClientError,
+        match="Server attempted redirecting to a location that does not look like a URL",
+    ):
+        await client.post("/redirect", data=payload)
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called when InvalidUrlRedirectClientError was raised"
+
+
+async def test_non_http_redirect_closes_payload(aiohttp_client: AiohttpClient) -> None:
+    """Test that NonHttpUrlRedirectClientError exception closes the request payload."""
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        # Read the payload to simulate server processing
+        await request.read()
+        # Return a non-HTTP scheme URL
+        return web.Response(
+            status=307, headers={hdrs.LOCATION: "ftp://example.com/file"}
+        )
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a mocked payload to verify close() is called
+    payload = MockedBytesPayload(b"test payload")
+
+    with pytest.raises(NonHttpUrlRedirectClientError):
+        await client.post("/redirect", data=payload)
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called when NonHttpUrlRedirectClientError was raised"
+
+
+async def test_invalid_redirect_origin_closes_payload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that InvalidUrlRedirectClientError exception (invalid origin) closes the request payload."""
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        # Read the payload to simulate server processing
+        await request.read()
+        # Return a URL that will fail origin() check - using a relative URL without host
+        return web.Response(status=307, headers={hdrs.LOCATION: "http:///path"})
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a mocked payload to verify close() is called
+    payload = MockedBytesPayload(b"test payload")
+
+    with pytest.raises(
+        InvalidUrlRedirectClientError, match="Invalid redirect URL origin"
+    ):
+        await client.post("/redirect", data=payload)
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called when InvalidUrlRedirectClientError (invalid origin) was raised"
