@@ -1161,3 +1161,28 @@ async def test_middleware_can_check_request_body(
     assert received_bodies[1] == json_str2
     assert received_bodies[2] == ""  # GET request has no body
     assert received_bodies[3] == text_data
+
+
+async def test_client_middleware_update_body(aiohttp_server: AiohttpServer) -> None:
+    """Test that middleware can update request body using update_body method."""
+
+    async def handler(request: web.Request) -> web.Response:
+        body = await request.text()
+        return web.Response(text=body)
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    async def update_body_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        # Update the request body
+        await request.update_body(b"updated body")
+        return await handler(request)
+
+    async with ClientSession(middlewares=(update_body_middleware,)) as session:
+        async with session.post(server.make_url("/"), data=b"original body") as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "updated body"
