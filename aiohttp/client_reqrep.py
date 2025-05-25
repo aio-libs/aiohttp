@@ -622,11 +622,7 @@ class ClientRequest:
         closes any existing payload before setting the new one.
         """
         # Close existing payload if it exists and needs closing
-        if (
-            self._body_is_payload
-            and not self._body.autoclose
-            and not self._body.consumed
-        ):
+        if self._body_is_payload:
             await self._body.close()
 
         # Now update the body using the existing method
