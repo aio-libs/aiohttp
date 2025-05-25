@@ -684,9 +684,9 @@ class ClientRequest(ClientRequestBase):
         except payload.LookupError:
             boundary = None
             if hdrs.CONTENT_TYPE in self.headers:
-                boundary = parse_mimetype(self.headers[hdrs.CONTENT_TYPE]).parameters.get(
-                    "boundary"
-                )
+                boundary = parse_mimetype(
+                    self.headers[hdrs.CONTENT_TYPE]
+                ).parameters.get("boundary")
             body = FormData(body, boundary=boundary)()
 
         self.body = body
@@ -776,7 +776,9 @@ class ClientRequest(ClientRequestBase):
         return writer
 
     def _should_write(self, protocol: BaseProtocol) -> bool:
-        return self.body.size != 0 or self._continue is not None or protocol.writing_paused
+        return (
+            self.body.size != 0 or self._continue is not None or protocol.writing_paused
+        )
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
         for trace in self._traces:

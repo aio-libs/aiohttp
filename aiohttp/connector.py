@@ -52,7 +52,12 @@ from .client_exceptions import (
     ssl_errors,
 )
 from .client_proto import ResponseHandler
-from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, ClientRequestBase, Fingerprint
+from .client_reqrep import (
+    SSL_ALLOWED_TYPES,
+    ClientRequest,
+    ClientRequestBase,
+    Fingerprint,
+)
 from .helpers import (
     _SENTINEL,
     ceil_timeout,
