@@ -433,7 +433,7 @@ async def test_template_based_header_construction(
 ) -> None:
     """Test that the template-based header construction works correctly."""
     header = await auth_mw_with_challenge._encode(
-        "GET", URL("http://example.com/test"), ""
+        "GET", URL("http://example.com/test"), b""
     )
 
     # Split the header into scheme and parameters
