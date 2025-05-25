@@ -685,6 +685,23 @@ class ClientSession:
                         except BaseException:
                             conn.close()
                             raise
+                        finally:
+                            # Close the request payload if needed
+                            if (
+                                req._body_is_payload
+                                and not req._body.autoclose
+                                and not req._body.consumed
+                            ):
+                                # Create a task to close the payload
+                                if sys.version_info >= (3, 12):
+                                    task = asyncio.Task(
+                                        req._body.close(),
+                                        loop=self._loop,
+                                        eager_start=True,
+                                    )
+                                else:
+                                    task = self._loop.create_task(req._body.close())
+                                await asyncio.shield(task)
                         return resp
 
                     # Apply middleware (if any) - per-request middleware overrides session middleware

@@ -206,7 +206,13 @@ class ClientRequest:
     }
 
     # Type of body depends on PAYLOAD_REGISTRY, which is dynamic.
-    _body: Any = b""
+    _body: Union[
+        payload.Payload,
+        bytes,
+        bytearray,
+        memoryview,
+        Iterable[Union[bytes, bytearray, memoryview]],
+    ] = b""
     _body_is_payload: bool = False
     auth = None
     response = None
