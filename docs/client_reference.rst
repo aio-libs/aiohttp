@@ -1866,12 +1866,11 @@ ClientRequest
    For more information about using middleware, see :ref:`aiohttp-client-middleware`.
 
    .. attribute:: body
-      :type: Payload | FormData
+      :type: Payload
 
       The request body payload. This can be:
 
       - A :class:`Payload` object for raw data (default is empty bytes ``b""``)
-      - A :class:`FormData` object for form submissions
 
    .. attribute:: chunked
       :type: bool | None
