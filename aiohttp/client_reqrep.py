@@ -679,9 +679,6 @@ class ClientRequestBase:
 
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
 
-    # Flag to set Content-Length to 0 if the class doesn't support a body.
-    _supports_body = False
-
     auth = None
     proxy: Optional[URL] = None
     response_class = ClientResponse
@@ -800,7 +797,7 @@ class ClientRequestBase:
 
     def _update_headers(self, headers: CIMultiDict[str]) -> None:
         """Update request headers."""
-        self.headers = CIMultiDict[str]()
+        self.headers: CIMultiDict[str] = CIMultiDict()
 
         # Build the host header
         host = self.url.host_port_subcomponent
@@ -809,9 +806,6 @@ class ClientRequestBase:
         # but we know we do not have a relative URL here.
         assert host is not None
         self.headers[hdrs.HOST] = headers.pop(hdrs.HOST, host)
-        if not self._supports_body:
-            self.headers[hdrs.CONTENT_LENGTH] = "0"
-
         self.headers.extend(headers)
 
     def _update_host(self, url: URL) -> None:
@@ -939,8 +933,6 @@ class ClientRequestBase:
 
 
 class ClientRequest(ClientRequestBase):
-    _supports_body = True
-
     body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
     _continue = None  # waiter future for '100 Continue' response
 
@@ -1127,16 +1119,16 @@ class ClientRequest(ClientRequestBase):
         # FormData
         if isinstance(body, FormData):
             body = body()
-
-        try:
-            body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
-        except payload.LookupError:
-            boundary = None
-            if hdrs.CONTENT_TYPE in self.headers:
-                boundary = parse_mimetype(
-                    self.headers[hdrs.CONTENT_TYPE]
-                ).parameters.get("boundary")
-            body = FormData(body, boundary=boundary)()
+        else:
+            try:
+                body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
+            except payload.LookupError:
+                boundary = None
+                if hdrs.CONTENT_TYPE in self.headers:
+                    boundary = parse_mimetype(
+                        self.headers[hdrs.CONTENT_TYPE]
+                    ).parameters.get("boundary")
+                body = FormData(body, boundary=boundary)()
 
         self.body = body
 
