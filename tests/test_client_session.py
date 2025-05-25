@@ -549,6 +549,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
     # BaseConnector allows all high level protocols by default
@@ -611,6 +612,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
     # UnixConnector allows all high level protocols by default and unix sockets
