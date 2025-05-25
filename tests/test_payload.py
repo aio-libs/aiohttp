@@ -23,7 +23,7 @@ class BufferWriter(AbstractStreamWriter):
     async def write(
         self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
     ) -> None:
-        self.buffer.extend(chunk)
+        self.buffer.extend(bytes(chunk))
 
     async def write_eof(self, chunk: bytes = b"") -> None:
         self.buffer.extend(chunk)
