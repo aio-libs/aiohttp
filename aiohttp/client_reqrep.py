@@ -234,7 +234,7 @@ class ClientResponse(HeadersMixin):
         request_info: RequestInfo,
         traces: Sequence["Trace"],
         loop: asyncio.AbstractEventLoop,
-        session: Optional[ClientSession],
+        session: Optional["ClientSession"],
     ) -> None:
         # URL forbids subclasses, so a simple type check is enough.
         assert type(url) is URL
