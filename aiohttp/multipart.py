@@ -1066,6 +1066,22 @@ class MultipartWriter(Payload):
         if close_boundary:
             await writer.write(b"--" + self._boundary + b"--\r\n")
 
+    async def close(self) -> None:
+        """Close all part payloads that need explicit closing.
+
+        IMPORTANT: This method must not await anything that might not finish
+        immediately, as it may be called during cleanup/cancellation. Schedule
+        any long-running operations without awaiting them.
+        """
+        if self._consumed:
+            return
+        self._consumed = True
+
+        # Close all parts that need explicit closing
+        for part, _, _ in self._parts:
+            if not part.autoclose and not part.consumed:
+                await part.close()
+
 
 class MultipartPayloadWriter:
     def __init__(self, writer: Any) -> None:
