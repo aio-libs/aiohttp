@@ -25,6 +25,7 @@ from typing import (
 )
 
 from multidict import CIMultiDict
+from propcache import cached_property
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -186,7 +187,7 @@ class Payload(ABC):
         if headers:
             self._headers.update(headers)
 
-    @property
+    @cached_property
     def size(self) -> Optional[int]:
         """Size of the payload."""
         return self._size
@@ -500,7 +501,7 @@ class IOBasePayload(Payload):
         """
         return self._value.read(remaining_content_len or READ_SIZE)  # type: ignore[no-any-return]
 
-    @property
+    @cached_property
     def size(self) -> Optional[int]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
@@ -761,12 +762,9 @@ class BytesIOPayload(IOBasePayload):
     _value: io.BytesIO
     _autoclose = True  # BytesIO is in-memory, safe to auto-close
 
-    @property
+    @cached_property
     def size(self) -> int:
-        position = self._value.tell()
-        end = self._value.seek(0, os.SEEK_END)
-        self._value.seek(position)
-        return end - position
+        return len(self._value.getbuffer()) - self._value.tell()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         self._set_or_restore_start_position()
