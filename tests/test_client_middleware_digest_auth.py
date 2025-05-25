@@ -417,7 +417,7 @@ async def test_escaping_quotes_in_auth_header() -> None:
         opaque='opaque"with"quotes',
     )
 
-    header = await auth._encode("GET", URL("http://example.com/path"), "")
+    header = await auth._encode("GET", URL("http://example.com/path"), b"")
 
     # Check that quotes are escaped in the header
     assert 'username="user\\"with\\"quotes"' in header
