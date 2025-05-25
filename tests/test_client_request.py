@@ -1021,7 +1021,8 @@ async def test_body_with_size_sets_content_length(
     # Verify Content-Length was set from body.size
     assert req.headers["CONTENT-LENGTH"] == str(len(data))
     assert req.body is not None
-    assert req.body.size == len(data)
+    assert req._body is not None  # When _body is set, body returns it
+    assert req._body.size == len(data)
     await req.close()
 
 
@@ -1055,7 +1056,8 @@ async def test_body_payload_with_size_no_content_length(
     # Verify Content-Length was set from body.size
     assert req.headers["CONTENT-LENGTH"] == str(len(data))
     assert req.body is bytes_payload
-    assert req.body.size == len(data)
+    assert req._body is bytes_payload  # Access _body which is the Payload
+    assert req._body.size == len(data)
     await req.close()
 
 
