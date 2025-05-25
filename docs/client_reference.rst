@@ -2054,6 +2054,11 @@ ClientRequest
          :class:`Payload` objects, headers are updated automatically,
          but you may need to set Content-Type manually for raw bytes or text.
 
+         It is not recommended to change the payload type in middleware. If the
+         body was already set (e.g., as bytes), it's best to keep the same type
+         rather than converting it (e.g., to str) as this may result in unexpected
+         behavior.
+
       .. versionadded:: 3.12
 
 

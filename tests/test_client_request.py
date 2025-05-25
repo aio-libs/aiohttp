@@ -1928,6 +1928,36 @@ async def test_update_body_with_different_types(
     await req.close()
 
 
+async def test_update_body_with_chunked_encoding(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that update_body properly handles chunked transfer encoding."""
+    # Create request with chunked=True
+    req = make_request("POST", "http://python.org/", chunked=True)
+
+    # Verify Transfer-Encoding header is set
+    assert req.headers["Transfer-Encoding"] == "chunked"
+    assert "Content-Length" not in req.headers
+
+    # Update body - should maintain chunked encoding
+    await req.update_body(b"chunked data")
+    assert req.headers["Transfer-Encoding"] == "chunked"
+    assert "Content-Length" not in req.headers
+    assert isinstance(req.body, payload.BytesPayload)
+
+    # Update with different body - chunked should remain
+    await req.update_body(b"different chunked data")
+    assert req.headers["Transfer-Encoding"] == "chunked"
+    assert "Content-Length" not in req.headers
+
+    # Clear body - chunked header should remain
+    await req.update_body(None)
+    assert req.headers["Transfer-Encoding"] == "chunked"
+    assert "Content-Length" not in req.headers
+
+    await req.close()
+
+
 async def test_update_body_updates_content_length(
     make_request: _RequestMaker,
 ) -> None:
