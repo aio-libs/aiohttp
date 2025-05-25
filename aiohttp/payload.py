@@ -297,13 +297,15 @@ class Payload(ABC):
         # and for the default implementation
         await self.write(writer)
 
-    async def bytes(self) -> bytes:
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """Return bytes representation of the value.
 
         This is a convenience method that calls decode() and encodes the result
         to bytes using the specified encoding.
         """
-        return self.decode(self._encoding or "utf-8").encode(self._encoding or "utf-8")
+        # Use instance encoding if available, otherwise use parameter
+        actual_encoding = self._encoding or encoding
+        return self.decode(actual_encoding, errors).encode(actual_encoding)
 
     async def close(self) -> None:
         """Close the payload if it holds any resources."""
@@ -352,7 +354,7 @@ class BytesPayload(Payload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.decode(encoding, errors)
 
-    async def bytes(self) -> bytes:
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """Return bytes representation of the value.
 
         This method returns the raw bytes content of the payload.
@@ -644,12 +646,21 @@ class IOBasePayload(Payload):
         self._set_or_restore_start_position()
         return "".join(r.decode(encoding, errors) for r in self._value.readlines())
 
-    async def bytes(self) -> bytes:
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """Return bytes representation of the value.
 
         This method reads the entire file content and returns it as bytes.
         It is equivalent to reading the file-like object directly.
+        The file reading is performed in an executor to avoid blocking the event loop.
         """
+        loop = asyncio.get_running_loop()
+
+        def _read_all() -> bytes:
+            self._set_or_restore_start_position()
+            # Use readlines() to ensure we get all content
+            return b"".join(self._value.readlines())
+
+        return await loop.run_in_executor(None, _read_all)
 
 
 class TextIOPayload(IOBasePayload):
@@ -748,13 +759,24 @@ class TextIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         return self._value.read()
 
-    async def bytes(self) -> bytes:
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """Return bytes representation of the value.
 
         This method reads the entire text file content and returns it as bytes.
-        It encodes the text content using the specified encoding (or UTF-8 if none was provided).
+        It encodes the text content using the specified encoding.
+        The file reading is performed in an executor to avoid blocking the event loop.
         """
-        return self._value.read().encode(self._encoding or "utf-8")
+        loop = asyncio.get_running_loop()
+
+        # Use instance encoding if available, otherwise use parameter
+        actual_encoding = self._encoding or encoding
+
+        def _read_and_encode() -> bytes:
+            self._set_or_restore_start_position()
+            # TextIO read() always returns the full content
+            return self._value.read().encode(actual_encoding, errors)
+
+        return await loop.run_in_executor(None, _read_and_encode)
 
 
 class BytesIOPayload(IOBasePayload):
@@ -828,7 +850,7 @@ class BytesIOPayload(IOBasePayload):
         finally:
             self._value.close()
 
-    async def bytes(self) -> bytes:
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """Return bytes representation of the value.
 
         This method reads the entire BytesIO content and returns it as bytes.
@@ -976,7 +998,7 @@ class AsyncIterablePayload(Payload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         raise TypeError("Unable to decode.")
 
-    async def bytes(self) -> bytes:
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """Return bytes representation of the value.
 
         This method reads the entire async iterable content and returns it as bytes.
