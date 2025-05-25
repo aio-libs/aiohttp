@@ -1660,7 +1660,13 @@ async def test_write_bytes_empty_iterable_with_content_length(
 ) -> None:
     """Test that write_bytes handles empty iterable body with content_length."""
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
-    req.body = []  # type: ignore[assignment]  # Empty iterable
+
+    # Create an empty async generator
+    async def gen() -> AsyncIterator[bytes]:
+        return
+        yield  # This makes it a generator but never executes
+
+    req.body = gen()
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=10 with empty body
