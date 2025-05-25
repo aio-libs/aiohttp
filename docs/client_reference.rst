@@ -1873,6 +1873,22 @@ ClientRequest
       - A :class:`Payload` object for raw data (default is empty bytes ``b""``)
       - A :class:`FormData` object for form submissions
 
+      .. danger::
+
+         **DO NOT set this attribute directly!** Direct assignment will cause resource
+         leaks. Always use :meth:`update_body` instead:
+
+         .. code-block:: python
+
+            # WRONG - This will leak resources!
+            request.body = b"new data"
+
+            # CORRECT - Use update_body
+            await request.update_body(b"new data")
+
+         Setting body directly bypasses cleanup of the previous payload, which can
+         leave file handles open, streams unclosed, and buffers unreleased.
+
    .. attribute:: chunked
       :type: bool | None
 
