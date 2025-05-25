@@ -622,6 +622,9 @@ class IOBasePayload(Payload):
 
     async def close(self) -> None:
         """Close the payload if it holds any resources."""
+        # Skip if already consumed
+        if self._consumed:
+            return
         # Schedule file closing without awaiting to prevent cancellation issues
         self._consumed = True  # Mark as consumed to prevent further writes
         loop = asyncio.get_running_loop()
@@ -854,6 +857,9 @@ class BytesIOPayload(IOBasePayload):
 
     async def close(self) -> None:
         """Close the payload if it holds any resources."""
+        # Skip if already consumed
+        if self._consumed:
+            return
         self._consumed = True  # Mark as consumed to prevent further writes
         self._value.close()
 
