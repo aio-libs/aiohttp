@@ -162,14 +162,14 @@ async def test_encode_validation_errors(
     """Test validation errors when encoding digest auth headers."""
     digest_auth_mw._challenge = challenge
     with pytest.raises(ClientError, match=expected_error):
-        await digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+        await digest_auth_mw._encode("GET", URL("http://example.com/resource"), b"")
 
 
 async def test_encode_digest_with_md5(
     auth_mw_with_challenge: DigestAuthMiddleware,
 ) -> None:
     header = await auth_mw_with_challenge._encode(
-        "GET", URL("http://example.com/resource"), ""
+        "GET", URL("http://example.com/resource"), b""
     )
     assert header.startswith("Digest ")
     assert 'username="user"' in header
@@ -190,7 +190,9 @@ async def test_encode_digest_with_sess_algorithms(
     challenge["algorithm"] = algorithm
     digest_auth_mw._challenge = challenge
 
-    header = await digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
     assert f"algorithm={algorithm}" in header
 
 
@@ -204,7 +206,7 @@ async def test_encode_unsupported_algorithm(
     digest_auth_mw._challenge = challenge
 
     with pytest.raises(ClientError, match="Unsupported hash algorithm"):
-        await digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+        await digest_auth_mw._encode("GET", URL("http://example.com/resource"), b"")
 
 
 async def test_invalid_qop_rejected(
