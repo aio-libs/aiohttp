@@ -1,7 +1,10 @@
 import array
+import asyncio
 import io
+import json
 import unittest.mock
 from io import StringIO
+from pathlib import Path
 from typing import AsyncIterator, Iterator, List, Optional, Union
 
 import pytest
@@ -9,6 +12,31 @@ from multidict import CIMultiDict
 
 from aiohttp import payload
 from aiohttp.abc import AbstractStreamWriter
+
+
+class BufferWriter(AbstractStreamWriter):
+    """Test writer that captures written bytes in a buffer."""
+
+    def __init__(self):
+        self.buffer = bytearray()
+
+    async def write(self, chunk: bytes) -> None:
+        self.buffer.extend(chunk)
+
+    async def write_eof(self, chunk: bytes = b"") -> None:
+        self.buffer.extend(chunk)
+
+    async def drain(self) -> None:
+        """No-op for test writer."""
+
+    def enable_compression(self, encoding: str = "deflate") -> None:
+        """Compression not implemented for test writer."""
+
+    def enable_chunking(self) -> None:
+        """Chunking not implemented for test writer."""
+
+    async def write_headers(self, status_line: str, headers) -> None:
+        """Headers not captured for payload tests."""
 
 
 @pytest.fixture(autouse=True)
@@ -876,3 +904,155 @@ async def test_iobase_payload_close_idempotent() -> None:
     # Second close should be a no-op due to _consumed check (line 621)
     await p.close()
     assert p._consumed is True
+
+
+def test_bytes_payload_size() -> None:
+    """Test BytesPayload.size property returns correct byte length."""
+    # Test with bytes
+    bp = payload.BytesPayload(b"Hello World")
+    assert bp.size == 11
+
+    # Test with empty bytes
+    bp_empty = payload.BytesPayload(b"")
+    assert bp_empty.size == 0
+
+    # Test with bytearray
+    ba = bytearray(b"Hello World")
+    bp_array = payload.BytesPayload(ba)
+    assert bp_array.size == 11
+
+
+def test_string_payload_size() -> None:
+    """Test StringPayload.size property with different encodings."""
+    # Test ASCII string with default UTF-8 encoding
+    sp = payload.StringPayload("Hello World")
+    assert sp.size == 11
+
+    # Test Unicode string with default UTF-8 encoding
+    unicode_str = "Hello 世界"
+    sp_unicode = payload.StringPayload(unicode_str)
+    assert sp_unicode.size == len(unicode_str.encode("utf-8"))
+
+    # Test with UTF-16 encoding
+    sp_utf16 = payload.StringPayload("Hello World", encoding="utf-16")
+    assert sp_utf16.size == len("Hello World".encode("utf-16"))
+
+    # Test with latin-1 encoding
+    sp_latin1 = payload.StringPayload("café", encoding="latin-1")
+    assert sp_latin1.size == len("café".encode("latin-1"))
+
+
+def test_string_io_payload_size() -> None:
+    """Test StringIOPayload.size property."""
+    # Test normal string
+    sio = StringIO("Hello World")
+    siop = payload.StringIOPayload(sio)
+    assert siop.size == 11
+
+    # Test Unicode string
+    sio_unicode = StringIO("Hello 世界")
+    siop_unicode = payload.StringIOPayload(sio_unicode)
+    assert siop_unicode.size == len("Hello 世界".encode())
+
+    # Test with custom encoding
+    sio_custom = StringIO("Hello")
+    siop_custom = payload.StringIOPayload(sio_custom, encoding="utf-16")
+    assert siop_custom.size == len("Hello".encode("utf-16"))
+
+
+def test_bytes_io_payload_size() -> None:
+    """Test BytesIOPayload.size property."""
+    # Test normal bytes
+    bio = io.BytesIO(b"Hello World")
+    biop = payload.BytesIOPayload(bio)
+    assert biop.size == 11
+
+    # Test empty BytesIO
+    bio_empty = io.BytesIO(b"")
+    biop_empty = payload.BytesIOPayload(bio_empty)
+    assert biop_empty.size == 0
+
+    # Test with position not at start
+    bio_pos = io.BytesIO(b"Hello World")
+    bio_pos.seek(5)
+    biop_pos = payload.BytesIOPayload(bio_pos)
+    assert biop_pos.size == 6  # Size should be from position to end
+
+
+def test_json_payload_size() -> None:
+    """Test JsonPayload.size property."""
+    # Test simple dict
+    data = {"hello": "world"}
+    jp = payload.JsonPayload(data)
+    expected_json = json.dumps(data)  # Use actual json.dumps output
+    assert jp.size == len(expected_json.encode("utf-8"))
+
+    # Test with Unicode
+    data_unicode = {"message": "Hello 世界"}
+    jp_unicode = payload.JsonPayload(data_unicode)
+    expected_unicode = json.dumps(data_unicode)
+    assert jp_unicode.size == len(expected_unicode.encode("utf-8"))
+
+    # Test with custom encoding
+    data_custom = {"test": "data"}
+    jp_custom = payload.JsonPayload(data_custom, encoding="utf-16")
+    expected_custom = json.dumps(data_custom)
+    assert jp_custom.size == len(expected_custom.encode("utf-16"))
+
+
+async def test_text_io_payload_size_matches_file_encoding(tmp_path: Path) -> None:
+    """Test TextIOPayload.size when file encoding matches payload encoding."""
+    # Create UTF-8 file
+    utf8_file = tmp_path / "test_utf8.txt"
+    content = "Hello 世界"
+
+    # Write file in executor
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, utf8_file.write_text, content, "utf-8")
+
+    # Open file in executor
+    def open_file():
+        return open(utf8_file, encoding="utf-8")
+
+    f = await loop.run_in_executor(None, open_file)
+    try:
+        tiop = payload.TextIOPayload(f)
+        # Size should match the actual UTF-8 encoded size
+        assert tiop.size == len(content.encode("utf-8"))
+    finally:
+        await loop.run_in_executor(None, f.close)
+
+
+async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
+    """Test TextIOPayload.size reports correct size with utf-16."""
+    # Create UTF-16 file
+    utf16_file = tmp_path / "test_utf16.txt"
+    content = "Hello World"
+
+    loop = asyncio.get_running_loop()
+    # Write file in executor
+    await loop.run_in_executor(None, utf16_file.write_text, content, "utf-16")
+
+    # Get file size in executor
+    utf16_file_size = await loop.run_in_executor(
+        None, lambda: utf16_file.stat().st_size
+    )
+
+    # Open file in executor
+    def open_file():
+        return open(utf16_file, encoding="utf-16")
+
+    f = await loop.run_in_executor(None, open_file)
+    try:
+        tiop = payload.TextIOPayload(f, encoding="utf-16")
+        # Payload reports file size on disk (UTF-16)
+        assert tiop.size == utf16_file_size
+
+        # Write to a buffer to see what actually gets sent
+        writer = BufferWriter()
+        await tiop.write(writer)
+
+        # Check that the actual written bytes match file size
+        assert len(writer.buffer) == utf16_file_size
+    finally:
+        await loop.run_in_executor(None, f.close)
