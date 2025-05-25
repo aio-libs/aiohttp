@@ -319,7 +319,12 @@ class Payload(ABC):
         return self.decode(actual_encoding, errors)
 
     async def close(self) -> None:
-        """Close the payload if it holds any resources."""
+        """Close the payload if it holds any resources.
+
+        IMPORTANT: This method must not await anything that might not finish
+        immediately, as it may be called during cleanup/cancellation. Schedule
+        any long-running operations without awaiting them.
+        """
         # This is a no-op by default, but subclasses can override it
         # to release resources like file handles or network connections.
 
@@ -614,7 +619,12 @@ class IOBasePayload(Payload):
         )
 
     async def close(self) -> None:
-        """Close the payload if it holds any resources."""
+        """Close the payload if it holds any resources.
+
+        IMPORTANT: This method must not await anything that might not finish
+        immediately, as it may be called during cleanup/cancellation. Schedule
+        any long-running operations without awaiting them.
+        """
         # Skip if already consumed
         if self._consumed:
             return
@@ -846,7 +856,12 @@ class BytesIOPayload(IOBasePayload):
         return self._value.read()
 
     async def close(self) -> None:
-        """Close the payload if it holds any resources."""
+        """Close the payload if it holds any resources.
+
+        IMPORTANT: This method must not await anything that might not finish
+        immediately, as it may be called during cleanup/cancellation. Schedule
+        any long-running operations without awaiting them.
+        """
         # Skip if already consumed
         if self._consumed:
             return
