@@ -1,5 +1,6 @@
 """Test digest authentication middleware for aiohttp client."""
 
+import io
 from hashlib import md5, sha1
 from typing import Generator, Union
 from unittest import mock
@@ -18,6 +19,7 @@ from aiohttp.client_middleware_digest_auth import (
     unescape_quotes,
 )
 from aiohttp.client_reqrep import ClientResponse
+from aiohttp.payload import BytesIOPayload
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 
@@ -268,14 +270,17 @@ def compute_expected_digest(
 @pytest.mark.parametrize(
     ("body", "body_str"),
     [
-        ("this is a body", "this is a body"),  # String case
         (b"this is a body", "this is a body"),  # Bytes case
+        (
+            BytesIOPayload(io.BytesIO(b"this is a body")),
+            "this is a body",
+        ),  # BytesIOPayload case
     ],
 )
 async def test_digest_response_exact_match(
     qop: str,
     algorithm: str,
-    body: Union[str, bytes],
+    body: Union[bytes, BytesIOPayload],
     body_str: str,
     mock_sha1_digest: mock.MagicMock,
 ) -> None:
@@ -299,8 +304,7 @@ async def test_digest_response_exact_match(
     auth._last_nonce_bytes = nonce.encode("utf-8")
     auth._nonce_count = nc
 
-    body_bytes = body if isinstance(body, bytes) else body.encode()
-    header = await auth._encode(method, URL(f"http://host{uri}"), body_bytes)
+    header = await auth._encode(method, URL(f"http://host{uri}"), body)
 
     # Get expected digest
     expected = compute_expected_digest(
