@@ -300,19 +300,19 @@ class ClientRequest:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._update_version(version)
-        self._update_host(url)
-        self._update_headers(headers)
-        self._update_auto_headers(skip_auto_headers)
-        self._update_cookies(cookies)
-        self._update_content_encoding(data, compress)
-        self._update_auth(auth, trust_env)
-        self._update_proxy(proxy, proxy_auth, proxy_headers)
+        self.update_version(version)
+        self.update_host(url)
+        self.update_headers(headers)
+        self.update_auto_headers(skip_auto_headers)
+        self.update_cookies(cookies)
+        self.update_content_encoding(data, compress)
+        self.update_auth(auth, trust_env)
+        self.update_proxy(proxy, proxy_auth, proxy_headers)
 
-        self._update_body_from_data(data)
+        self.update_body_from_data(data)
         if data is not None or self.method not in self.GET_METHODS:
-            self._update_transfer_encoding()
-        self._update_expect_continue(expect100)
+            self.update_transfer_encoding()
+        self.update_expect_continue(expect100)
         self._traces = [] if traces is None else traces
 
     def __reset_writer(self, _: object = None) -> None:
@@ -393,6 +393,13 @@ class ClientRequest:
         # empty body is represented as bytes for backwards compatibility
         return self._body or b""
 
+    @body.setter
+    def body(self, value: Any) -> None:
+        """Set request body with warning for non-autoclose payloads."""
+        if self._body is not None:
+            _warn_if_unclosed_payload(self._body)
+        self.update_body_from_data(value)
+
     @property
     def request_info(self) -> RequestInfo:
         headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
@@ -414,7 +421,7 @@ class ClientRequest:
         """
         return self._session
 
-    def _update_host(self, url: URL) -> None:
+    def update_host(self, url: URL) -> None:
         """Update destination host, port and connection type (ssl)."""
         # get host/port
         if not url.raw_host:
@@ -424,7 +431,7 @@ class ClientRequest:
         if url.raw_user or url.raw_password:
             self.auth = helpers.BasicAuth(url.user or "", url.password or "")
 
-    def _update_version(self, version: Union[http.HttpVersion, str]) -> None:
+    def update_version(self, version: Union[http.HttpVersion, str]) -> None:
         """Convert request version to two elements tuple.
 
         parser HTTP version '1.1' => (1, 1)
@@ -439,7 +446,7 @@ class ClientRequest:
                 ) from None
         self.version = version
 
-    def _update_headers(self, headers: Optional[LooseHeaders]) -> None:
+    def update_headers(self, headers: Optional[LooseHeaders]) -> None:
         """Update request headers."""
         self.headers: CIMultiDict[str] = CIMultiDict()
 
@@ -464,7 +471,7 @@ class ClientRequest:
             else:
                 self.headers.add(key, value)
 
-    def _update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
+    def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
         if skip_auto_headers is not None:
             self._skip_auto_headers = CIMultiDict(
                 (hdr, None) for hdr in sorted(skip_auto_headers)
@@ -483,7 +490,7 @@ class ClientRequest:
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
 
-    def _update_cookies(self, cookies: Optional[LooseCookies]) -> None:
+    def update_cookies(self, cookies: Optional[LooseCookies]) -> None:
         """Update request cookies header."""
         if not cookies:
             return
@@ -508,7 +515,7 @@ class ClientRequest:
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
-    def _update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
+    def update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
         """Set request content encoding."""
         self.compress = None
         if not data:
@@ -524,7 +531,7 @@ class ClientRequest:
             self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
 
-    def _update_transfer_encoding(self) -> None:
+    def update_transfer_encoding(self) -> None:
         """Analyze transfer-encoding header."""
         te = self.headers.get(hdrs.TRANSFER_ENCODING, "").lower()
 
@@ -549,7 +556,7 @@ class ClientRequest:
         ):
             self.headers[hdrs.CONTENT_LENGTH] = str(size)
 
-    def _update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
+    def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
@@ -565,7 +572,7 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def _update_body_from_data(self, body: Any) -> None:
+    def update_body_from_data(self, body: Any) -> None:
         """Update request body from data."""
         if body is None:
             return
@@ -658,9 +665,9 @@ class ClientRequest:
             await self._body.close()
 
         # Now update the body using the existing method
-        self._update_body_from_data(body)
+        self.update_body_from_data(body)
 
-    def _update_expect_continue(self, expect: bool = False) -> None:
+    def update_expect_continue(self, expect: bool = False) -> None:
         if expect:
             self.headers[hdrs.EXPECT] = "100-continue"
         elif (
@@ -672,7 +679,7 @@ class ClientRequest:
         if expect:
             self._continue = self.loop.create_future()
 
-    def _update_proxy(
+    def update_proxy(
         self,
         proxy: Optional[URL],
         proxy_auth: Optional[BasicAuth],

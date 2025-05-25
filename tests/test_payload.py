@@ -531,32 +531,7 @@ async def test_async_iterable_payload_write_then_cache() -> None:
     result = await p.as_bytes()
     assert result == b""  # Empty since iterator exhausted without cache
 
-    # Write should raise error when trying to reuse
+    # Write should also be empty
     writer2 = MockStreamWriter()
-    with pytest.raises(RuntimeError, match="AsyncIterablePayload cannot be reused"):
-        await p.write_with_length(writer2, None)
-
-
-async def test_async_iterable_payload_reuse_error() -> None:
-    """Test that AsyncIterablePayload raises error on reuse after being consumed."""
-
-    async def gen() -> AsyncIterator[bytes]:
-        yield b"Test"
-        yield b"Data"
-
-    p = payload.AsyncIterablePayload(gen())
-
-    # First write consumes the payload
-    writer1 = MockStreamWriter()
-    await p.write_with_length(writer1, None)
-    assert writer1.get_written_bytes() == b"TestData"
-
-    # Second write should raise error
-    writer2 = MockStreamWriter()
-    with pytest.raises(RuntimeError, match="AsyncIterablePayload cannot be reused"):
-        await p.write_with_length(writer2, None)
-
-    # Even with a length limit
-    writer3 = MockStreamWriter()
-    with pytest.raises(RuntimeError, match="AsyncIterablePayload cannot be reused"):
-        await p.write_with_length(writer3, 5)
+    await p.write_with_length(writer2, None)
+    assert writer2.get_written_bytes() == b""

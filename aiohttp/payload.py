@@ -954,12 +954,9 @@ class AsyncIterablePayload(Payload):
                     break
             return
 
-        # If iterator is exhausted and we don't have cached chunks, raise error
+        # If iterator is exhausted and we don't have cached chunks, nothing to write
         if self._iter is None:
-            raise RuntimeError(
-                "AsyncIterablePayload cannot be reused after being consumed. "
-                "Consider using BytesPayload or StringPayload for reusable content."
-            )
+            return
 
         # Stream from the iterator
         remaining_bytes = content_length
