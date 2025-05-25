@@ -510,7 +510,14 @@ class ClientRequest(ClientRequestBase):
         traces: list["Trace"],
         trust_env: bool,
         server_hostname: Optional[str],
+        **kwargs: object,
     ):
+        # kwargs exists so authors of subclasses should expect to pass through unknown
+        # arguments. This allows us to safely add now arguments in future releases.
+        # But, we should never receive unknown arguments here in the parent class, this
+        # would indicate an argument has been named wrong or similar in the subclass.
+        assert not kwargs, "Unexpected arguments to ClientRequest"
+
         super().__init__(method, url, headers=headers, auth=auth, loop=loop, ssl=ssl)
 
         if proxy is not None:
