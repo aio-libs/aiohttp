@@ -187,7 +187,7 @@ class Payload(ABC):
         if headers:
             self._headers.update(headers)
 
-    @cached_property
+    @property
     def size(self) -> Optional[int]:
         """Size of the payload."""
         return self._size
@@ -501,7 +501,7 @@ class IOBasePayload(Payload):
         """
         return self._value.read(remaining_content_len or READ_SIZE)  # type: ignore[no-any-return]
 
-    @cached_property
+    @property
     def size(self) -> Optional[int]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
