@@ -1,7 +1,7 @@
 Made ``ClientRequest.body`` setter and ``update_*`` methods protected -- by :user:`bdraco`.
 
 The ``body`` setter on ``ClientRequest`` has been removed, and all ``update_*`` methods
-(except ``update_body``) have been made protected by adding a leading underscore.
+(except ``update_body`` and ``update_proxy``) have been made protected by adding a leading underscore.
 
 These methods were never documented and were not intended to be part of the public API.
 They only recently became reachable in client middleware (introduced in 3.12.0), but

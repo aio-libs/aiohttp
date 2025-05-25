@@ -1868,26 +1868,15 @@ ClientRequest
    .. attribute:: body
       :type: Payload | FormData
 
-      The request body payload. This can be:
+      The request body payload (read-only). This can be:
 
       - A :class:`Payload` object for raw data (default is empty bytes ``b""``)
       - A :class:`FormData` object for form submissions
 
-      .. danger::
+      .. note::
 
-         **DO NOT set this attribute directly!** Direct assignment will cause resource
-         leaks. Always use :meth:`update_body` instead:
-
-         .. code-block:: python
-
-            # WRONG - This will leak resources!
-            request.body = b"new data"
-
-            # CORRECT - Use update_body
-            await request.update_body(b"new data")
-
-         Setting body directly bypasses cleanup of the previous payload, which can
-         leave file handles open, streams unclosed, and buffers unreleased.
+         This attribute is read-only. To modify the request body, use the
+         :meth:`update_body` method.
 
    .. attribute:: chunked
       :type: bool | None
@@ -1994,9 +1983,6 @@ ClientRequest
 
       Update the request body and close any existing payload to prevent resource leaks.
 
-      **This is the ONLY correct way to modify a request body.** Never set the
-      :attr:`body` attribute directly.
-
       This method is particularly useful in middleware when you need to modify the
       request body after the request has been created but before it's sent.
 
@@ -2015,11 +2001,8 @@ ClientRequest
          async def middleware(request, handler):
              # Modify request body in middleware
              if request.method == 'POST':
-                 # CORRECT: Always use update_body
+                 # Use update_body to modify the request body
                  await request.update_body(b'{"modified": true}')
-
-                 # WRONG: Never set body directly!
-                 # request.body = b'{"modified": true}'  # This leaks resources!
 
              # Or add authentication data to form
              if isinstance(request.body, FormData):
@@ -2036,15 +2019,6 @@ ClientRequest
          other resources associated with the previous payload. Always await
          this method to ensure proper cleanup.
 
-      .. danger::
-
-         **Never set request.body directly!** Direct assignment will cause resource
-         leaks. Always use this method instead. Setting the body attribute directly:
-
-         - Bypasses cleanup of the previous payload
-         - Leaves file handles and streams open
-         - Can cause memory leaks
-         - May result in unexpected behavior with async iterables
 
       .. warning::
 
