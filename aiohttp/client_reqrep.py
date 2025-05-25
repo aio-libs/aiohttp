@@ -596,7 +596,7 @@ class ClientRequest:
         self._body = body_payload
         # enable chunked encoding if needed
         if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
-            if (size := body.size) is not None:
+            if (size := body_payload.size) is not None:
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
             else:
                 self.chunked = True
