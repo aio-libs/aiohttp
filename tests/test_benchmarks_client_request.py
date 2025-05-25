@@ -2,17 +2,43 @@
 
 import asyncio
 from http.cookies import BaseCookie
-from typing import Union
+from typing import Any, Union
 
 from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.client_reqrep import ClientRequest as RawClientRequest, ClientResponse
 from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
 from aiohttp.tracing import Trace
+
+
+def ClientRequest(method: str, url: URL, **kwargs: Any) -> RawClientRequest:
+    default_args = {
+        "params": {},
+        "headers": CIMultiDict[str](),
+        "skip_auto_headers": None,
+        "data": None,
+        "cookies": BaseCookie[str](),
+        "auth": None,
+        "version": HttpVersion11,
+        "compress": False,
+        "chunked": None,
+        "expect100": False,
+        "response_class": ClientResponse,
+        "proxy": None,
+        "proxy_auth": None,
+        "timer": TimerNoop(),
+        "session": None,  # Shouldn't be None, but we don't have an async context.
+        "ssl": True,
+        "proxy_headers": None,
+        "traces": [],
+        "trust_env": False,
+        "server_hostname": None,
+    }
+    return RawClientRequest(method, url, **(default_args | kwargs))
 
 
 def test_client_request_update_cookies(
@@ -27,7 +53,7 @@ def test_client_request_update_cookies(
 
     @benchmark
     def _run() -> None:
-        req.update_cookies(cookies=cookies)
+        req._update_cookies(cookies=cookies)
 
 
 def test_create_client_request_with_cookies(
@@ -44,7 +70,7 @@ def test_create_client_request_with_cookies(
 
     @benchmark
     def _run() -> None:
-        ClientRequest(
+        RawClientRequest(
             method="get",
             url=url,
             loop=loop,
@@ -82,7 +108,7 @@ def test_create_client_request_with_headers(
 
     @benchmark
     def _run() -> None:
-        ClientRequest(
+        RawClientRequest(
             method="get",
             url=url,
             loop=loop,
@@ -155,7 +181,7 @@ def test_send_client_request_one_hundred(
 
     async def send_requests() -> None:
         for _ in range(100):
-            await req.send(conn)  # type: ignore[arg-type]
+            await req._send(conn)  # type: ignore[arg-type]
 
     @benchmark
     def _run() -> None:

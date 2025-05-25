@@ -235,7 +235,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self.__class__(
             message,
             self._payload,
-            self._protocol,  # type: ignore[arg-type]
+            self._protocol,
             self._payload_writer,
             self._task,
             self._loop,
