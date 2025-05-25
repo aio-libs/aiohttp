@@ -154,6 +154,7 @@ class PayloadRegistry:
 class Payload(ABC):
     _default_content_type: str = "application/octet-stream"
     _size: Optional[int] = None
+    _reusable: bool = False
 
     def __init__(
         self,
@@ -221,6 +222,11 @@ class Payload(ABC):
         """Content type"""
         return self._headers[hdrs.CONTENT_TYPE]
 
+    @property
+    def reusable(self) -> bool:
+        """Whether the payload can be reused."""
+        return self._reusable
+
     def set_content_disposition(
         self,
         disptype: str,
@@ -239,14 +245,6 @@ class Payload(ABC):
 
         This is named decode() to allow compatibility with bytes objects.
         """
-
-    async def bytes(self) -> bytes:
-        """Return bytes representation of the value.
-
-        This is a convenience method that calls decode() and encodes the result
-        to bytes using the specified encoding.
-        """
-        return self.decode(self._encoding or "utf-8").encode(self._encoding or "utf-8")
 
     @abstractmethod
     async def write(self, writer: AbstractStreamWriter) -> None:
@@ -291,9 +289,23 @@ class Payload(ABC):
         # and for the default implementation
         await self.write(writer)
 
+    async def bytes(self) -> bytes:
+        """Return bytes representation of the value.
+
+        This is a convenience method that calls decode() and encodes the result
+        to bytes using the specified encoding.
+        """
+        return self.decode(self._encoding or "utf-8").encode(self._encoding or "utf-8")
+
+    async def close(self) -> None:
+        """Close the payload if it holds any resources."""
+        # This is a no-op by default, but subclasses can override it
+        # to release resources like file handles or network connections.
+
 
 class BytesPayload(Payload):
     _value: bytes
+    _reusable = True
 
     def __init__(
         self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
@@ -403,6 +415,7 @@ class StringIOPayload(StringPayload):
 
 class IOBasePayload(Payload):
     _value: io.IOBase
+    _reusable = True
 
     def __init__(
         self, value: IO[Any], disposition: str = "attachment", *args: Any, **kwargs: Any
@@ -568,8 +581,16 @@ class IOBasePayload(Payload):
             remaining_content_len is not None and remaining_content_len <= 0
         )
 
+    async def close(self) -> None:
+        """Close the payload if it holds any resources."""
+        # Schedule file closing without awaiting to prevent cancellation issues
+        self._reusable = False  # Mark as non-reusable to prevent further writes
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._value.close)
+
     def _schedule_file_close(self, loop: asyncio.AbstractEventLoop) -> None:
         """Schedule file closing without awaiting to prevent cancellation issues."""
+        self._reusable = False  # Mark as non-reusable to prevent further writes
         close_future = loop.run_in_executor(None, self._value.close)
         # Hold a strong reference to the future to prevent it from being
         # garbage collected before it completes.
@@ -749,6 +770,11 @@ class BytesIOPayload(IOBasePayload):
         """
         return self._value.getvalue()
 
+    async def close(self) -> None:
+        """Close the payload if it holds any resources."""
+        self._reusable = False  # Mark as non-reusable to prevent further writes
+        self._value.close()
+
 
 class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
@@ -871,6 +897,19 @@ class AsyncIterablePayload(Payload):
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         raise TypeError("Unable to decode.")
+
+    async def bytes(self) -> bytes:
+        """Return bytes representation of the value.
+
+        This method reads the entire async iterable content and returns it as bytes.
+        It is equivalent to iterating through the async iterable and concatenating the results.
+        """
+        if self._iter is None:
+            return b""
+        chunks: List[bytes] = []
+        async for chunk in self._iter:
+            chunks.append(chunk)
+        return b"".join(chunks)
 
 
 class StreamReaderPayload(AsyncIterablePayload):
