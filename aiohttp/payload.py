@@ -277,6 +277,7 @@ class Payload(ABC):
 
         All payload subclasses must override this method for backwards compatibility,
         but new code should use write_with_length for more flexibility and control.
+
         """
 
     # write_with_length is new in aiohttp 3.12
@@ -380,6 +381,7 @@ class BytesPayload(Payload):
             For new implementations that need length control, use write_with_length().
             This method is maintained for backwards compatibility and is equivalent
             to write_with_length(writer, None).
+
         """
         await writer.write(self._value)
 
@@ -513,7 +515,8 @@ class IOBasePayload(Payload):
 
     @property
     def size(self) -> Optional[int]:
-        """Size of the payload in bytes.
+        """
+        Size of the payload in bytes.
 
         Returns the number of bytes remaining to be read from the file.
         Returns None if the size cannot be determined (e.g., for unseekable streams).
