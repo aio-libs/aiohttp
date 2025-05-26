@@ -1,7 +1,6 @@
 import base64
 import binascii
 import json
-import logging
 import re
 import sys
 import uuid
@@ -37,6 +36,7 @@ from .hdrs import (
 )
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
+from .log import internal_logger
 from .payload import (
     JsonPayload,
     LookupError,
@@ -65,7 +65,6 @@ __all__ = (
     "content_disposition_filename",
 )
 
-_LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse
@@ -1083,7 +1082,7 @@ class MultipartWriter(Payload):
                 try:
                     await part.close()
                 except Exception as exc:
-                    _LOGGER.error(
+                    internal_logger.error(
                         "Failed to close multipart part %d: %s", idx, exc, exc_info=True
                     )
 
