@@ -594,10 +594,10 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, body: Any) -> None:
+    def update_body_from_data(self, body: Any, _stacklevel: int = 3) -> None:
         """Update request body from data."""
         if self._body is not None:
-            _warn_if_unclosed_payload(self._body)
+            _warn_if_unclosed_payload(self._body, stacklevel=_stacklevel)
 
         if body is None:
             self._body = None
@@ -644,7 +644,8 @@ class ClientRequest:
             del self.headers[hdrs.TRANSFER_ENCODING]
 
         # Now update the body using the existing method
-        self.update_body_from_data(body)
+        # Called from _update_body, add 1 to stacklevel from caller
+        self.update_body_from_data(body, _stacklevel=4)
 
         # Update transfer encoding headers if needed (same logic as __init__)
         if body is not None or self.method not in self.GET_METHODS:

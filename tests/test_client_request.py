@@ -2031,3 +2031,72 @@ async def test_update_body_updates_content_length(
     assert "Content-Length" not in req.headers
 
     await req.close()
+
+
+async def test_warn_stacklevel_points_to_user_code(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that the warning stacklevel correctly points to user code."""
+    req = make_request("POST", "http://python.org/")
+
+    # First set a payload that needs manual closing (autoclose=False)
+    file_payload = payload.BufferedReaderPayload(
+        io.BufferedReader(io.BytesIO(b"test data")),  # type: ignore[arg-type]
+        encoding="utf-8",
+    )
+    req.body = file_payload
+
+    # Capture warnings with their details
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always", ResourceWarning)
+        # This line should be reported as the warning source
+        req.body = b"new data"  # LINE TO BE REPORTED
+
+    # Find the ResourceWarning
+    resource_warnings = [
+        w for w in warning_list if issubclass(w.category, ResourceWarning)
+    ]
+    assert len(resource_warnings) == 1
+
+    warning = resource_warnings[0]
+    # The warning should point to the line where we set req.body, not inside the library
+    assert warning.filename == __file__
+    # The line number should be the line with "req.body = b'new data'"
+    # We can't hardcode the line number, but we can verify it's not pointing
+    # to client_reqrep.py (the library code)
+    assert "client_reqrep.py" not in warning.filename
+
+    await req.close()
+
+
+async def test_warn_stacklevel_update_body_from_data(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that warning stacklevel is correct when called from update_body_from_data."""
+    req = make_request("POST", "http://python.org/")
+
+    # First set a payload that needs manual closing (autoclose=False)
+    file_payload = payload.BufferedReaderPayload(
+        io.BufferedReader(io.BytesIO(b"test data")),  # type: ignore[arg-type]
+        encoding="utf-8",
+    )
+    req.update_body_from_data(file_payload)
+
+    # Capture warnings with their details
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always", ResourceWarning)
+        # This line should be reported as the warning source
+        req.update_body_from_data(b"new data")  # LINE TO BE REPORTED
+
+    # Find the ResourceWarning
+    resource_warnings = [
+        w for w in warning_list if issubclass(w.category, ResourceWarning)
+    ]
+    assert len(resource_warnings) == 1
+
+    warning = resource_warnings[0]
+    # For update_body_from_data, stacklevel=2 points to this test file
+    assert warning.filename == __file__
+    assert "client_reqrep.py" not in warning.filename
+
+    await req.close()
