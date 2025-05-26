@@ -37,6 +37,7 @@ from aiohttp.client_reqrep import (
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
 from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
+from aiohttp.multipart import MultipartWriter
 from aiohttp.typedefs import LooseCookies
 
 
@@ -757,7 +758,7 @@ async def test_formdata_boundary_from_headers(
         )
         async with await req.send(conn):
             await asyncio.sleep(0)
-        assert isinstance(req.body, payload.Payload)
+        assert isinstance(req.body, MultipartWriter)
         assert req.body._boundary == boundary.encode()
 
 
