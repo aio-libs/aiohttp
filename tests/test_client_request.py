@@ -2104,3 +2104,23 @@ async def test_warn_stacklevel_update_body_from_data(
     assert "client_reqrep.py" not in warning.filename
 
     await req.close()
+
+
+async def test_expect100_with_body_becomes_none() -> None:
+    """Test that write_bytes handles body becoming None after expect100 handling."""
+    # Create a mock writer and connection
+    mock_writer = mock.AsyncMock()
+    mock_conn = mock.Mock()
+
+    # Create a request
+    req = ClientRequest(
+        "POST", URL("http://test.example.com/"), loop=asyncio.get_event_loop()
+    )
+    req._body = mock.Mock()  # Start with a body
+
+    # Now set body to None to simulate a race condition
+    # where req._body is set to None after expect100 handling
+    req._body = None
+
+    await req.write_bytes(mock_writer, mock_conn, None)
+    await req.close()

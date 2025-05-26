@@ -2170,33 +2170,6 @@ async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
     assert expect_called
 
 
-async def test_expect100_with_body_becomes_none() -> None:
-    """Test that write_bytes handles body becoming None after expect100 handling."""
-
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response(body=b"OK")
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-
-    # Create a mock writer and connection
-    mock_writer = mock.AsyncMock()
-    mock_conn = mock.Mock()
-
-    # Create a request
-    req = ClientRequest(
-        "POST", URL("http://test.example.com/"), loop=asyncio.get_event_loop()
-    )
-    req._body = mock.Mock()  # Start with a body
-
-    # Now set body to None to simulate a race condition
-    # where req._body is set to None after expect100 handling
-    req._body = None
-
-    await req.write_bytes(mock_writer, mock_conn, None)
-    await req.close()
-
-
 async def test_expect100_with_no_body(aiohttp_client: AiohttpClient) -> None:
     """Test expect100 with GET request that has no body."""
 
@@ -2211,6 +2184,35 @@ async def test_expect100_with_no_body(aiohttp_client: AiohttpClient) -> None:
     async with client.get("/", expect100=True) as resp:
         assert resp.status == 200
         assert await resp.text() == "OK"
+
+
+async def test_expect100_continue_with_none_payload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test expect100 continue handling when payload is None from the start."""
+    expect_received = False
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"OK")
+
+    async def expect_handler(request: web.Request) -> None:
+        nonlocal expect_received
+        expect_received = True
+        # Send 100 Continue
+        assert request.transport is not None
+        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    # POST request with expect100=True but no body (data=None)
+    async with client.post("/", expect100=True, data=None) as resp:
+        assert resp.status == 200
+        assert await resp.read() == b"OK"
+
+    # Expect handler should still be called even with no body
+    assert expect_received
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
