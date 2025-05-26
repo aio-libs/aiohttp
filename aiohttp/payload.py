@@ -685,7 +685,7 @@ class IOBasePayload(Payload):
         """Read the entire file-like object and return its content as bytes."""
         self._set_or_restore_start_position()
         # Read all content until EOF
-        return self._value.read()
+        return self._value.read()  # type: ignore[no-any-return]
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """

@@ -1676,10 +1676,10 @@ async def test_multipart_writer_close_with_exceptions() -> None:
 
     # Add parts to writer's internal list
     writer._parts = [
-        (part1, None, None),
-        (part2, None, None),
-        (part3, None, None),
-        (part4, None, None),
+        (part1, "", ""),
+        (part2, "", ""),
+        (part3, "", ""),
+        (part4, "", ""),
     ]
 
     # Close the writer - should not raise despite part1 failing
