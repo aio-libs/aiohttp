@@ -1,6 +1,7 @@
 import base64
 import binascii
 import json
+import logging
 import re
 import sys
 import uuid
@@ -64,6 +65,7 @@ __all__ = (
     "content_disposition_filename",
 )
 
+_LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse
@@ -1061,7 +1063,8 @@ class MultipartWriter(Payload):
             await writer.write(b"--" + self._boundary + b"--\r\n")
 
     async def close(self) -> None:
-        """Close all part payloads that need explicit closing.
+        """
+        Close all part payloads that need explicit closing.
 
         IMPORTANT: This method must not await anything that might not finish
         immediately, as it may be called during cleanup/cancellation. Schedule
@@ -1072,9 +1075,17 @@ class MultipartWriter(Payload):
         self._consumed = True
 
         # Close all parts that need explicit closing
-        for part, _, _ in self._parts:
+        # We catch and log exceptions to ensure all parts get a chance to close
+        # we do not use asyncio.gather() here because we are not allowed
+        # to suspend given we may be called during cleanup
+        for idx, (part, _, _) in enumerate(self._parts):
             if not part.autoclose and not part.consumed:
-                await part.close()
+                try:
+                    await part.close()
+                except Exception as exc:
+                    _LOGGER.error(
+                        "Failed to close multipart part %d: %s", idx, exc, exc_info=True
+                    )
 
 
 class MultipartPayloadWriter:
