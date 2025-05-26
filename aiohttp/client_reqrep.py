@@ -793,6 +793,8 @@ class ClientRequest:
             # self._body can be set to None while
             # the task is being started or we wait above
             # for the 100-continue response.
+            # The more likely case is we have an empty
+            # payload, but 100-continue is still expected.
             if self._body is not None:
                 await self._body.write_with_length(writer, content_length)
         except OSError as underlying_exc:
