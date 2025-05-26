@@ -4,6 +4,8 @@ from unittest import mock
 import pytest
 
 from aiohttp import FormData, web
+from aiohttp.http_writer import StreamWriter
+from aiohttp.pytest_plugin import AiohttpClient
 
 
 @pytest.fixture
@@ -105,8 +107,8 @@ async def test_formdata_field_name_is_not_quoted(buf, writer) -> None:
     assert b'name="email 1"' in buf
 
 
-async def test_mark_formdata_as_processed(aiohttp_client) -> None:
-    async def handler(request):
+async def test_formdata_is_reusable(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
     app = web.Application()
@@ -117,10 +119,170 @@ async def test_mark_formdata_as_processed(aiohttp_client) -> None:
     data = FormData()
     data.add_field("test", "test_value", content_type="application/json")
 
-    resp = await client.post("/", data=data)
-    assert len(data._writer._parts) == 1
+    # First request
+    resp1 = await client.post("/", data=data)
+    assert resp1.status == 200
+    resp1.release()
 
-    with pytest.raises(RuntimeError):
-        await client.post("/", data=data)
+    # Second request - should work without RuntimeError
+    resp2 = await client.post("/", data=data)
+    assert resp2.status == 200
+    resp2.release()
 
-    resp.release()
+    # Third request to ensure continued reusability
+    resp3 = await client.post("/", data=data)
+    assert resp3.status == 200
+    resp3.release()
+
+
+async def test_formdata_reusability_multipart(
+    writer: StreamWriter, buf: bytearray
+) -> None:
+    form = FormData()
+    form.add_field("name", "value")
+    form.add_field("file", b"content", filename="test.txt", content_type="text/plain")
+
+    # First call - should generate multipart payload
+    payload1 = form()
+    assert form.is_multipart
+    buf.clear()
+    await payload1.write(writer)
+    result1 = bytes(buf)
+
+    # Verify first result contains expected content
+    assert b"name" in result1
+    assert b"value" in result1
+    assert b"test.txt" in result1
+    assert b"content" in result1
+    assert b"text/plain" in result1
+
+    # Second call - should generate identical multipart payload
+    payload2 = form()
+    buf.clear()
+    await payload2.write(writer)
+    result2 = bytes(buf)
+
+    # Results should be identical (same boundary and content)
+    assert result1 == result2
+
+    # Third call to ensure continued reusability
+    payload3 = form()
+    buf.clear()
+    await payload3.write(writer)
+    result3 = bytes(buf)
+
+    assert result1 == result3
+
+
+async def test_formdata_reusability_urlencoded(
+    writer: StreamWriter, buf: bytearray
+) -> None:
+    form = FormData()
+    form.add_field("key1", "value1")
+    form.add_field("key2", "value2")
+
+    # First call - should generate urlencoded payload
+    payload1 = form()
+    assert not form.is_multipart
+    buf.clear()
+    await payload1.write(writer)
+    result1 = bytes(buf)
+
+    # Verify first result contains expected content
+    assert b"key1=value1" in result1
+    assert b"key2=value2" in result1
+
+    # Second call - should generate identical urlencoded payload
+    payload2 = form()
+    buf.clear()
+    await payload2.write(writer)
+    result2 = bytes(buf)
+
+    # Results should be identical
+    assert result1 == result2
+
+    # Third call to ensure continued reusability
+    payload3 = form()
+    buf.clear()
+    await payload3.write(writer)
+    result3 = bytes(buf)
+
+    assert result1 == result3
+
+
+async def test_formdata_reusability_after_adding_fields(
+    writer: StreamWriter, buf: bytearray
+) -> None:
+    form = FormData()
+    form.add_field("field1", "value1")
+
+    # First call
+    payload1 = form()
+    buf.clear()
+    await payload1.write(writer)
+    result1 = bytes(buf)
+
+    # Add more fields after first call
+    form.add_field("field2", "value2")
+
+    # Second call should include new field
+    payload2 = form()
+    buf.clear()
+    await payload2.write(writer)
+    result2 = bytes(buf)
+
+    # Results should be different
+    assert result1 != result2
+    assert b"field1=value1" in result2
+    assert b"field2=value2" in result2
+    assert b"field2=value2" not in result1
+
+    # Third call should be same as second
+    payload3 = form()
+    buf.clear()
+    await payload3.write(writer)
+    result3 = bytes(buf)
+
+    assert result2 == result3
+
+
+async def test_formdata_reusability_with_io_fields(
+    writer: StreamWriter, buf: bytearray
+) -> None:
+    form = FormData()
+
+    # Create BytesIO and StringIO objects
+    bytes_io = io.BytesIO(b"bytes content")
+    string_io = io.StringIO("string content")
+
+    form.add_field(
+        "bytes_field",
+        bytes_io,
+        filename="bytes.bin",
+        content_type="application/octet-stream",
+    )
+    form.add_field(
+        "string_field", string_io, filename="text.txt", content_type="text/plain"
+    )
+
+    # First call
+    payload1 = form()
+    buf.clear()
+    await payload1.write(writer)
+    result1 = bytes(buf)
+
+    assert b"bytes content" in result1
+    assert b"string content" in result1
+
+    # Reset IO objects for reuse
+    bytes_io.seek(0)
+    string_io.seek(0)
+
+    # Second call - should work with reset IO objects
+    payload2 = form()
+    buf.clear()
+    await payload2.write(writer)
+    result2 = bytes(buf)
+
+    # Should produce identical results
+    assert result1 == result2
