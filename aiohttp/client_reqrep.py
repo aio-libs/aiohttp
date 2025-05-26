@@ -789,9 +789,8 @@ class ClientRequest:
         protocol = conn.protocol
         assert protocol is not None
         try:
-            if TYPE_CHECKING:
-                assert self._body is not None
-            await self._body.write_with_length(writer, content_length)
+            if self._body is not None:
+                await self._body.write_with_length(writer, content_length)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 

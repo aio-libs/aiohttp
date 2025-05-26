@@ -45,7 +45,7 @@ from aiohttp.client_exceptions import (
     SocketTimeoutError,
     TooManyRedirects,
 )
-from aiohttp.client_reqrep import ClientRequest
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
 from aiohttp.payload import (
@@ -2168,6 +2168,72 @@ async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
     async with client.post("/", data={"some": "data"}, expect100=True) as resp:
         assert 200 == resp.status
     assert expect_called
+
+
+async def test_expect100_with_body_becomes_none(aiohttp_client: AiohttpClient) -> None:
+    """Test that write_bytes handles body becoming None after expect100 handling."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response(body=b"OK")
+
+    async def expect_handler(request: web.Request) -> None:
+        # Send 100 Continue
+        assert request.transport is not None
+        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    body_cleared: bool = False
+    original_send = ClientRequest.send
+
+    async def instrumented_send(
+        self: ClientRequest, conn: Connection
+    ) -> ClientResponse:
+        # Call original send to set up the request
+        resp = await original_send(self, conn)
+
+        # If there's a continue future, wrap it to clear body afterwards
+        if hasattr(self, "_continue") and self._continue is not None:
+            original_continue: asyncio.Future[None] = self._continue
+
+            async def instrumented_continue() -> None:
+                # Wait for the 100-continue response
+                await original_continue
+                # Simulate race condition: body becomes None after continue
+                self._body = None
+                nonlocal body_cleared
+                body_cleared = True
+
+            # Create a new task with our instrumented continue
+            self._continue = asyncio.create_task(instrumented_continue())
+
+        return resp
+
+    # Use mock.patch.object for cleaner patching
+    with mock.patch.object(ClientRequest, "send", instrumented_send):
+        # This should not raise AttributeError even though body becomes None
+        async with client.post("/", data=b"test", expect100=True) as resp:
+            assert resp.status == 200
+            assert body_cleared, "Body should have been cleared after continue"
+
+
+async def test_expect100_with_no_body(aiohttp_client: AiohttpClient) -> None:
+    """Test expect100 with GET request that has no body."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="OK")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    # GET request with expect100=True but no body
+    async with client.get("/", expect100=True) as resp:
+        assert resp.status == 200
+        assert await resp.text() == "OK"
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
