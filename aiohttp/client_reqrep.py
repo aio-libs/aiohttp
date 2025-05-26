@@ -1136,12 +1136,6 @@ class ClientRequest:
                 )
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
-        elif (
-            self._body is not None
-            and hdrs.CONTENT_LENGTH not in self.headers
-            and (size := self._body.size) is not None
-        ):
-            self.headers[hdrs.CONTENT_LENGTH] = str(size)
 
     def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
@@ -1166,6 +1160,13 @@ class ClientRequest:
 
         if body is None:
             self._body = None
+            # Set Content-Length to 0 when body is None for methods that expect a body
+            if (
+                self.method not in self.GET_METHODS
+                and not self.chunked
+                and hdrs.CONTENT_LENGTH not in self.headers
+            ):
+                self.headers[hdrs.CONTENT_LENGTH] = "0"
             return
 
         # FormData
