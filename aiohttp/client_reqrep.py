@@ -17,6 +17,7 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Literal,
     Mapping,
     NamedTuple,
     Optional,
@@ -459,7 +460,7 @@ class ClientRequest:
         return self.url.port
 
     @property
-    def body(self) -> Union[bytes, payload.Payload]:
+    def body(self) -> Union[payload.Payload, Literal[b""]]:
         """Request body."""
         # empty body is represented as bytes for backwards compatibility
         return self._body or b""
