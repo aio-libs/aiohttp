@@ -1882,12 +1882,9 @@ ClientRequest
    For more information about using middleware, see :ref:`aiohttp-client-middleware`.
 
    .. attribute:: body
-      :type: Payload | FormData
+      :type: Payload | Literal[b""]
 
-      The request body payload. This can be:
-
-      - A :class:`Payload` object for raw data (default is empty bytes ``b""``)
-      - A :class:`FormData` object for form submissions
+      The request body payload (defaults to ``b""`` if no body passed).
 
       .. danger::
 
