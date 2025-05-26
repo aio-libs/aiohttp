@@ -2,7 +2,7 @@
 
 import io
 from hashlib import md5, sha1
-from typing import Generator, Union
+from typing import Generator, Literal, Union
 from unittest import mock
 
 import pytest
@@ -270,7 +270,7 @@ def compute_expected_digest(
 @pytest.mark.parametrize(
     ("body", "body_str"),
     [
-        (b"this is a body", "this is a body"),  # Bytes case
+        (b"", ""),  # Bytes case
         (
             BytesIOPayload(io.BytesIO(b"this is a body")),
             "this is a body",
@@ -280,7 +280,7 @@ def compute_expected_digest(
 async def test_digest_response_exact_match(
     qop: str,
     algorithm: str,
-    body: Union[bytes, BytesIOPayload],
+    body: Union[Literal[b""], BytesIOPayload],
     body_str: str,
     mock_sha1_digest: mock.MagicMock,
 ) -> None:
