@@ -943,6 +943,7 @@ async def test_chunked_explicit(
     req = ClientRequest("post", URL("http://python.org/"), chunked=True, loop=loop)
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
         m_writer.return_value.write_headers = mock.AsyncMock()
+        m_writer.return_value.write_eof = mock.AsyncMock()
         resp = await req.send(conn)
 
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
