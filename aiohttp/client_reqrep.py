@@ -94,6 +94,7 @@ if TYPE_CHECKING:
     from .tracing import Trace
 
 
+_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
 
@@ -270,6 +271,501 @@ def _warn_if_unclosed_payload(payload: payload.Payload, stacklevel: int = 2) -> 
             ResourceWarning,
             stacklevel=stacklevel,
         )
+
+
+class ClientResponse(HeadersMixin):
+
+    # Some of these attributes are None when created,
+    # but will be set by the start() method.
+    # As the end user will likely never see the None values, we cheat the types below.
+    # from the Status-Line of the response
+    version: Optional[HttpVersion] = None  # HTTP-Version
+    status: int = None  # type: ignore[assignment] # Status-Code
+    reason: Optional[str] = None  # Reason-Phrase
+
+    content: StreamReader = None  # type: ignore[assignment] # Payload stream
+    _body: Optional[bytes] = None
+    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _history: Tuple["ClientResponse", ...] = ()
+    _raw_headers: RawHeaders = None  # type: ignore[assignment]
+
+    _connection: Optional["Connection"] = None  # current connection
+    _cookies: Optional[SimpleCookie] = None
+    _continue: Optional["asyncio.Future[bool]"] = None
+    _source_traceback: Optional[traceback.StackSummary] = None
+    _session: Optional["ClientSession"] = None
+    # set up by ClientRequest after ClientResponse object creation
+    # post-init stage allows to not change ctor signature
+    _closed = True  # to allow __del__ for non-initialized properly response
+    _released = False
+    _in_context = False
+
+    _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
+
+    __writer: Optional["asyncio.Task[None]"] = None
+
+    def __init__(
+        self,
+        method: str,
+        url: URL,
+        *,
+        writer: "Optional[asyncio.Task[None]]",
+        continue100: Optional["asyncio.Future[bool]"],
+        timer: BaseTimerContext,
+        request_info: RequestInfo,
+        traces: List["Trace"],
+        loop: asyncio.AbstractEventLoop,
+        session: "ClientSession",
+    ) -> None:
+        # URL forbids subclasses, so a simple type check is enough.
+        assert type(url) is URL
+
+        self.method = method
+
+        self._real_url = url
+        self._url = url.with_fragment(None) if url.raw_fragment else url
+        if writer is not None:
+            self._writer = writer
+        if continue100 is not None:
+            self._continue = continue100
+        self._request_info = request_info
+        self._timer = timer if timer is not None else TimerNoop()
+        self._cache: Dict[str, Any] = {}
+        self._traces = traces
+        self._loop = loop
+        # Save reference to _resolve_charset, so that get_encoding() will still
+        # work after the response has finished reading the body.
+        # TODO: Fix session=None in tests (see ClientRequest.__init__).
+        if session is not None:
+            # store a reference to session #1985
+            self._session = session
+            self._resolve_charset = session._resolve_charset
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
+    def __reset_writer(self, _: object = None) -> None:
+        self.__writer = None
+
+    @property
+    def _writer(self) -> Optional["asyncio.Task[None]"]:
+        """The writer task for streaming data.
+
+        _writer is only provided for backwards compatibility
+        for subclasses that may need to access it.
+        """
+        return self.__writer
+
+    @_writer.setter
+    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+        """Set the writer task for streaming data."""
+        if self.__writer is not None:
+            self.__writer.remove_done_callback(self.__reset_writer)
+        self.__writer = writer
+        if writer is None:
+            return
+        if writer.done():
+            # The writer is already done, so we can clear it immediately.
+            self.__writer = None
+        else:
+            writer.add_done_callback(self.__reset_writer)
+
+    @property
+    def cookies(self) -> SimpleCookie:
+        if self._cookies is None:
+            self._cookies = SimpleCookie()
+        return self._cookies
+
+    @cookies.setter
+    def cookies(self, cookies: SimpleCookie) -> None:
+        self._cookies = cookies
+
+    @reify
+    def url(self) -> URL:
+        return self._url
+
+    @reify
+    def url_obj(self) -> URL:
+        warnings.warn("Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
+        return self._url
+
+    @reify
+    def real_url(self) -> URL:
+        return self._real_url
+
+    @reify
+    def host(self) -> str:
+        assert self._url.host is not None
+        return self._url.host
+
+    @reify
+    def headers(self) -> "CIMultiDictProxy[str]":
+        return self._headers
+
+    @reify
+    def raw_headers(self) -> RawHeaders:
+        return self._raw_headers
+
+    @reify
+    def request_info(self) -> RequestInfo:
+        return self._request_info
+
+    @reify
+    def content_disposition(self) -> Optional[ContentDisposition]:
+        raw = self._headers.get(hdrs.CONTENT_DISPOSITION)
+        if raw is None:
+            return None
+        disposition_type, params_dct = multipart.parse_content_disposition(raw)
+        params = MappingProxyType(params_dct)
+        filename = multipart.content_disposition_filename(params)
+        return ContentDisposition(disposition_type, params, filename)
+
+    def __del__(self, _warnings: Any = warnings) -> None:
+        if self._closed:
+            return
+
+        if self._connection is not None:
+            self._connection.release()
+            self._cleanup_writer()
+
+            if self._loop.get_debug():
+                kwargs = {"source": self}
+                _warnings.warn(f"Unclosed response {self!r}", ResourceWarning, **kwargs)
+                context = {"client_response": self, "message": "Unclosed response"}
+                if self._source_traceback:
+                    context["source_traceback"] = self._source_traceback
+                self._loop.call_exception_handler(context)
+
+    def __repr__(self) -> str:
+        out = io.StringIO()
+        ascii_encodable_url = str(self.url)
+        if self.reason:
+            ascii_encodable_reason = self.reason.encode(
+                "ascii", "backslashreplace"
+            ).decode("ascii")
+        else:
+            ascii_encodable_reason = "None"
+        print(
+            "<ClientResponse({}) [{} {}]>".format(
+                ascii_encodable_url, self.status, ascii_encodable_reason
+            ),
+            file=out,
+        )
+        print(self.headers, file=out)
+        return out.getvalue()
+
+    @property
+    def connection(self) -> Optional["Connection"]:
+        return self._connection
+
+    @reify
+    def history(self) -> Tuple["ClientResponse", ...]:
+        """A sequence of of responses, if redirects occurred."""
+        return self._history
+
+    @reify
+    def links(self) -> "MultiDictProxy[MultiDictProxy[Union[str, URL]]]":
+        links_str = ", ".join(self.headers.getall("link", []))
+
+        if not links_str:
+            return MultiDictProxy(MultiDict())
+
+        links: MultiDict[MultiDictProxy[Union[str, URL]]] = MultiDict()
+
+        for val in re.split(r",(?=\s*<)", links_str):
+            match = re.match(r"\s*<(.*)>(.*)", val)
+            if match is None:  # pragma: no cover
+                # the check exists to suppress mypy error
+                continue
+            url, params_str = match.groups()
+            params = params_str.split(";")[1:]
+
+            link: MultiDict[Union[str, URL]] = MultiDict()
+
+            for param in params:
+                match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
+                if match is None:  # pragma: no cover
+                    # the check exists to suppress mypy error
+                    continue
+                key, _, value, _ = match.groups()
+
+                link.add(key, value)
+
+            key = link.get("rel", url)
+
+            link.add("url", self.url.join(URL(url)))
+
+            links.add(str(key), MultiDictProxy(link))
+
+        return MultiDictProxy(links)
+
+    async def start(self, connection: "Connection") -> "ClientResponse":
+        """Start response processing."""
+        self._closed = False
+        self._protocol = connection.protocol
+        self._connection = connection
+
+        with self._timer:
+            while True:
+                # read response
+                try:
+                    protocol = self._protocol
+                    message, payload = await protocol.read()  # type: ignore[union-attr]
+                except http.HttpProcessingError as exc:
+                    raise ClientResponseError(
+                        self.request_info,
+                        self.history,
+                        status=exc.code,
+                        message=exc.message,
+                        headers=exc.headers,
+                    ) from exc
+
+                if message.code < 100 or message.code > 199 or message.code == 101:
+                    break
+
+                if self._continue is not None:
+                    set_result(self._continue, True)
+                    self._continue = None
+
+        # payload eof handler
+        payload.on_eof(self._response_eof)
+
+        # response status
+        self.version = message.version
+        self.status = message.code
+        self.reason = message.reason
+
+        # headers
+        self._headers = message.headers  # type is CIMultiDictProxy
+        self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
+
+        # payload
+        self.content = payload
+
+        # cookies
+        if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
+            cookies = SimpleCookie()
+            for hdr in cookie_hdrs:
+                try:
+                    cookies.load(hdr)
+                except CookieError as exc:
+                    client_logger.warning("Can not load response cookies: %s", exc)
+            self._cookies = cookies
+        return self
+
+    def _response_eof(self) -> None:
+        if self._closed:
+            return
+
+        # protocol could be None because connection could be detached
+        protocol = self._connection and self._connection.protocol
+        if protocol is not None and protocol.upgraded:
+            return
+
+        self._closed = True
+        self._cleanup_writer()
+        self._release_connection()
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    def close(self) -> None:
+        if not self._released:
+            self._notify_content()
+
+        self._closed = True
+        if self._loop is None or self._loop.is_closed():
+            return
+
+        self._cleanup_writer()
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
+
+    def release(self) -> Any:
+        if not self._released:
+            self._notify_content()
+
+        self._closed = True
+
+        self._cleanup_writer()
+        self._release_connection()
+        return noop()
+
+    @property
+    def ok(self) -> bool:
+        """Returns ``True`` if ``status`` is less than ``400``, ``False`` if not.
+
+        This is **not** a check for ``200 OK`` but a check that the response
+        status is under 400.
+        """
+        return 400 > self.status
+
+    def raise_for_status(self) -> None:
+        if not self.ok:
+            # reason should always be not None for a started response
+            assert self.reason is not None
+
+            # If we're in a context we can rely on __aexit__() to release as the
+            # exception propagates.
+            if not self._in_context:
+                self.release()
+
+            raise ClientResponseError(
+                self.request_info,
+                self.history,
+                status=self.status,
+                message=self.reason,
+                headers=self.headers,
+            )
+
+    def _release_connection(self) -> None:
+        if self._connection is not None:
+            if self.__writer is None:
+                self._connection.release()
+                self._connection = None
+            else:
+                self.__writer.add_done_callback(lambda f: self._release_connection())
+
+    async def _wait_released(self) -> None:
+        if self.__writer is not None:
+            try:
+                await self.__writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
+        self._release_connection()
+
+    def _cleanup_writer(self) -> None:
+        if self.__writer is not None:
+            self.__writer.cancel()
+        self._session = None
+
+    def _notify_content(self) -> None:
+        content = self.content
+        if content and content.exception() is None:
+            set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
+        self._released = True
+
+    async def wait_for_close(self) -> None:
+        if self.__writer is not None:
+            try:
+                await self.__writer
+            except asyncio.CancelledError:
+                if (
+                    sys.version_info >= (3, 11)
+                    and (task := asyncio.current_task())
+                    and task.cancelling()
+                ):
+                    raise
+        self.release()
+
+    async def read(self) -> bytes:
+        """Read response payload."""
+        if self._body is None:
+            try:
+                self._body = await self.content.read()
+                for trace in self._traces:
+                    await trace.send_response_chunk_received(
+                        self.method, self.url, self._body
+                    )
+            except BaseException:
+                self.close()
+                raise
+        elif self._released:  # Response explicitly released
+            raise ClientConnectionError("Connection closed")
+
+        protocol = self._connection and self._connection.protocol
+        if protocol is None or not protocol.upgraded:
+            await self._wait_released()  # Underlying connection released
+        return self._body
+
+    def get_encoding(self) -> str:
+        ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
+        mimetype = helpers.parse_mimetype(ctype)
+
+        encoding = mimetype.parameters.get("charset")
+        if encoding:
+            with contextlib.suppress(LookupError, ValueError):
+                return codecs.lookup(encoding).name
+
+        if mimetype.type == "application" and (
+            mimetype.subtype == "json" or mimetype.subtype == "rdap"
+        ):
+            # RFC 7159 states that the default encoding is UTF-8.
+            # RFC 7483 defines application/rdap+json
+            return "utf-8"
+
+        if self._body is None:
+            raise RuntimeError(
+                "Cannot compute fallback encoding of a not yet read body"
+            )
+
+        return self._resolve_charset(self, self._body)
+
+    async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
+        """Read response payload and decode."""
+        if self._body is None:
+            await self.read()
+
+        if encoding is None:
+            encoding = self.get_encoding()
+
+        return self._body.decode(encoding, errors=errors)  # type: ignore[union-attr]
+
+    async def json(
+        self,
+        *,
+        encoding: Optional[str] = None,
+        loads: JSONDecoder = DEFAULT_JSON_DECODER,
+        content_type: Optional[str] = "application/json",
+    ) -> Any:
+        """Read and decodes JSON response."""
+        if self._body is None:
+            await self.read()
+
+        if content_type:
+            ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
+            if not _is_expected_content_type(ctype, content_type):
+                raise ContentTypeError(
+                    self.request_info,
+                    self.history,
+                    status=self.status,
+                    message=(
+                        "Attempt to decode JSON with unexpected mimetype: %s" % ctype
+                    ),
+                    headers=self.headers,
+                )
+
+        stripped = self._body.strip()  # type: ignore[union-attr]
+        if not stripped:
+            return None
+
+        if encoding is None:
+            encoding = self.get_encoding()
+
+        return loads(stripped.decode(encoding))
+
+    async def __aenter__(self) -> "ClientResponse":
+        self._in_context = True
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        self._in_context = False
+        # similar to _RequestContextManager, we do not need to check
+        # for exceptions, response object can close connection
+        # if state is broken
+        self.release()
+        await self.wait_for_close()
 
 
 class ClientRequest:
@@ -1020,501 +1516,3 @@ class ClientRequest:
     ) -> None:
         for trace in self._traces:
             await trace.send_request_headers(method, url, headers)
-
-
-_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
-
-
-class ClientResponse(HeadersMixin):
-
-    # Some of these attributes are None when created,
-    # but will be set by the start() method.
-    # As the end user will likely never see the None values, we cheat the types below.
-    # from the Status-Line of the response
-    version: Optional[HttpVersion] = None  # HTTP-Version
-    status: int = None  # type: ignore[assignment] # Status-Code
-    reason: Optional[str] = None  # Reason-Phrase
-
-    content: StreamReader = None  # type: ignore[assignment] # Payload stream
-    _body: Optional[bytes] = None
-    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
-    _history: Tuple["ClientResponse", ...] = ()
-    _raw_headers: RawHeaders = None  # type: ignore[assignment]
-
-    _connection: Optional["Connection"] = None  # current connection
-    _cookies: Optional[SimpleCookie] = None
-    _continue: Optional["asyncio.Future[bool]"] = None
-    _source_traceback: Optional[traceback.StackSummary] = None
-    _session: Optional["ClientSession"] = None
-    # set up by ClientRequest after ClientResponse object creation
-    # post-init stage allows to not change ctor signature
-    _closed = True  # to allow __del__ for non-initialized properly response
-    _released = False
-    _in_context = False
-
-    _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
-
-    __writer: Optional["asyncio.Task[None]"] = None
-
-    def __init__(
-        self,
-        method: str,
-        url: URL,
-        *,
-        writer: "Optional[asyncio.Task[None]]",
-        continue100: Optional["asyncio.Future[bool]"],
-        timer: BaseTimerContext,
-        request_info: RequestInfo,
-        traces: List["Trace"],
-        loop: asyncio.AbstractEventLoop,
-        session: "ClientSession",
-    ) -> None:
-        # URL forbids subclasses, so a simple type check is enough.
-        assert type(url) is URL
-
-        self.method = method
-
-        self._real_url = url
-        self._url = url.with_fragment(None) if url.raw_fragment else url
-        if writer is not None:
-            self._writer = writer
-        if continue100 is not None:
-            self._continue = continue100
-        self._request_info = request_info
-        self._timer = timer if timer is not None else TimerNoop()
-        self._cache: Dict[str, Any] = {}
-        self._traces = traces
-        self._loop = loop
-        # Save reference to _resolve_charset, so that get_encoding() will still
-        # work after the response has finished reading the body.
-        # TODO: Fix session=None in tests (see ClientRequest.__init__).
-        if session is not None:
-            # store a reference to session #1985
-            self._session = session
-            self._resolve_charset = session._resolve_charset
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
-
-    def __reset_writer(self, _: object = None) -> None:
-        self.__writer = None
-
-    @property
-    def _writer(self) -> Optional["asyncio.Task[None]"]:
-        """The writer task for streaming data.
-
-        _writer is only provided for backwards compatibility
-        for subclasses that may need to access it.
-        """
-        return self.__writer
-
-    @_writer.setter
-    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
-        """Set the writer task for streaming data."""
-        if self.__writer is not None:
-            self.__writer.remove_done_callback(self.__reset_writer)
-        self.__writer = writer
-        if writer is None:
-            return
-        if writer.done():
-            # The writer is already done, so we can clear it immediately.
-            self.__writer = None
-        else:
-            writer.add_done_callback(self.__reset_writer)
-
-    @property
-    def cookies(self) -> SimpleCookie:
-        if self._cookies is None:
-            self._cookies = SimpleCookie()
-        return self._cookies
-
-    @cookies.setter
-    def cookies(self, cookies: SimpleCookie) -> None:
-        self._cookies = cookies
-
-    @reify
-    def url(self) -> URL:
-        return self._url
-
-    @reify
-    def url_obj(self) -> URL:
-        warnings.warn("Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
-        return self._url
-
-    @reify
-    def real_url(self) -> URL:
-        return self._real_url
-
-    @reify
-    def host(self) -> str:
-        assert self._url.host is not None
-        return self._url.host
-
-    @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
-        return self._headers
-
-    @reify
-    def raw_headers(self) -> RawHeaders:
-        return self._raw_headers
-
-    @reify
-    def request_info(self) -> RequestInfo:
-        return self._request_info
-
-    @reify
-    def content_disposition(self) -> Optional[ContentDisposition]:
-        raw = self._headers.get(hdrs.CONTENT_DISPOSITION)
-        if raw is None:
-            return None
-        disposition_type, params_dct = multipart.parse_content_disposition(raw)
-        params = MappingProxyType(params_dct)
-        filename = multipart.content_disposition_filename(params)
-        return ContentDisposition(disposition_type, params, filename)
-
-    def __del__(self, _warnings: Any = warnings) -> None:
-        if self._closed:
-            return
-
-        if self._connection is not None:
-            self._connection.release()
-            self._cleanup_writer()
-
-            if self._loop.get_debug():
-                kwargs = {"source": self}
-                _warnings.warn(f"Unclosed response {self!r}", ResourceWarning, **kwargs)
-                context = {"client_response": self, "message": "Unclosed response"}
-                if self._source_traceback:
-                    context["source_traceback"] = self._source_traceback
-                self._loop.call_exception_handler(context)
-
-    def __repr__(self) -> str:
-        out = io.StringIO()
-        ascii_encodable_url = str(self.url)
-        if self.reason:
-            ascii_encodable_reason = self.reason.encode(
-                "ascii", "backslashreplace"
-            ).decode("ascii")
-        else:
-            ascii_encodable_reason = "None"
-        print(
-            "<ClientResponse({}) [{} {}]>".format(
-                ascii_encodable_url, self.status, ascii_encodable_reason
-            ),
-            file=out,
-        )
-        print(self.headers, file=out)
-        return out.getvalue()
-
-    @property
-    def connection(self) -> Optional["Connection"]:
-        return self._connection
-
-    @reify
-    def history(self) -> Tuple["ClientResponse", ...]:
-        """A sequence of of responses, if redirects occurred."""
-        return self._history
-
-    @reify
-    def links(self) -> "MultiDictProxy[MultiDictProxy[Union[str, URL]]]":
-        links_str = ", ".join(self.headers.getall("link", []))
-
-        if not links_str:
-            return MultiDictProxy(MultiDict())
-
-        links: MultiDict[MultiDictProxy[Union[str, URL]]] = MultiDict()
-
-        for val in re.split(r",(?=\s*<)", links_str):
-            match = re.match(r"\s*<(.*)>(.*)", val)
-            if match is None:  # pragma: no cover
-                # the check exists to suppress mypy error
-                continue
-            url, params_str = match.groups()
-            params = params_str.split(";")[1:]
-
-            link: MultiDict[Union[str, URL]] = MultiDict()
-
-            for param in params:
-                match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
-                if match is None:  # pragma: no cover
-                    # the check exists to suppress mypy error
-                    continue
-                key, _, value, _ = match.groups()
-
-                link.add(key, value)
-
-            key = link.get("rel", url)
-
-            link.add("url", self.url.join(URL(url)))
-
-            links.add(str(key), MultiDictProxy(link))
-
-        return MultiDictProxy(links)
-
-    async def start(self, connection: "Connection") -> "ClientResponse":
-        """Start response processing."""
-        self._closed = False
-        self._protocol = connection.protocol
-        self._connection = connection
-
-        with self._timer:
-            while True:
-                # read response
-                try:
-                    protocol = self._protocol
-                    message, payload = await protocol.read()  # type: ignore[union-attr]
-                except http.HttpProcessingError as exc:
-                    raise ClientResponseError(
-                        self.request_info,
-                        self.history,
-                        status=exc.code,
-                        message=exc.message,
-                        headers=exc.headers,
-                    ) from exc
-
-                if message.code < 100 or message.code > 199 or message.code == 101:
-                    break
-
-                if self._continue is not None:
-                    set_result(self._continue, True)
-                    self._continue = None
-
-        # payload eof handler
-        payload.on_eof(self._response_eof)
-
-        # response status
-        self.version = message.version
-        self.status = message.code
-        self.reason = message.reason
-
-        # headers
-        self._headers = message.headers  # type is CIMultiDictProxy
-        self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
-
-        # payload
-        self.content = payload
-
-        # cookies
-        if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
-            cookies = SimpleCookie()
-            for hdr in cookie_hdrs:
-                try:
-                    cookies.load(hdr)
-                except CookieError as exc:
-                    client_logger.warning("Can not load response cookies: %s", exc)
-            self._cookies = cookies
-        return self
-
-    def _response_eof(self) -> None:
-        if self._closed:
-            return
-
-        # protocol could be None because connection could be detached
-        protocol = self._connection and self._connection.protocol
-        if protocol is not None and protocol.upgraded:
-            return
-
-        self._closed = True
-        self._cleanup_writer()
-        self._release_connection()
-
-    @property
-    def closed(self) -> bool:
-        return self._closed
-
-    def close(self) -> None:
-        if not self._released:
-            self._notify_content()
-
-        self._closed = True
-        if self._loop is None or self._loop.is_closed():
-            return
-
-        self._cleanup_writer()
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None
-
-    def release(self) -> Any:
-        if not self._released:
-            self._notify_content()
-
-        self._closed = True
-
-        self._cleanup_writer()
-        self._release_connection()
-        return noop()
-
-    @property
-    def ok(self) -> bool:
-        """Returns ``True`` if ``status`` is less than ``400``, ``False`` if not.
-
-        This is **not** a check for ``200 OK`` but a check that the response
-        status is under 400.
-        """
-        return 400 > self.status
-
-    def raise_for_status(self) -> None:
-        if not self.ok:
-            # reason should always be not None for a started response
-            assert self.reason is not None
-
-            # If we're in a context we can rely on __aexit__() to release as the
-            # exception propagates.
-            if not self._in_context:
-                self.release()
-
-            raise ClientResponseError(
-                self.request_info,
-                self.history,
-                status=self.status,
-                message=self.reason,
-                headers=self.headers,
-            )
-
-    def _release_connection(self) -> None:
-        if self._connection is not None:
-            if self.__writer is None:
-                self._connection.release()
-                self._connection = None
-            else:
-                self.__writer.add_done_callback(lambda f: self._release_connection())
-
-    async def _wait_released(self) -> None:
-        if self.__writer is not None:
-            try:
-                await self.__writer
-            except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
-                    raise
-        self._release_connection()
-
-    def _cleanup_writer(self) -> None:
-        if self.__writer is not None:
-            self.__writer.cancel()
-        self._session = None
-
-    def _notify_content(self) -> None:
-        content = self.content
-        if content and content.exception() is None:
-            set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
-        self._released = True
-
-    async def wait_for_close(self) -> None:
-        if self.__writer is not None:
-            try:
-                await self.__writer
-            except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
-                    raise
-        self.release()
-
-    async def read(self) -> bytes:
-        """Read response payload."""
-        if self._body is None:
-            try:
-                self._body = await self.content.read()
-                for trace in self._traces:
-                    await trace.send_response_chunk_received(
-                        self.method, self.url, self._body
-                    )
-            except BaseException:
-                self.close()
-                raise
-        elif self._released:  # Response explicitly released
-            raise ClientConnectionError("Connection closed")
-
-        protocol = self._connection and self._connection.protocol
-        if protocol is None or not protocol.upgraded:
-            await self._wait_released()  # Underlying connection released
-        return self._body
-
-    def get_encoding(self) -> str:
-        ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
-        mimetype = helpers.parse_mimetype(ctype)
-
-        encoding = mimetype.parameters.get("charset")
-        if encoding:
-            with contextlib.suppress(LookupError, ValueError):
-                return codecs.lookup(encoding).name
-
-        if mimetype.type == "application" and (
-            mimetype.subtype == "json" or mimetype.subtype == "rdap"
-        ):
-            # RFC 7159 states that the default encoding is UTF-8.
-            # RFC 7483 defines application/rdap+json
-            return "utf-8"
-
-        if self._body is None:
-            raise RuntimeError(
-                "Cannot compute fallback encoding of a not yet read body"
-            )
-
-        return self._resolve_charset(self, self._body)
-
-    async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
-        """Read response payload and decode."""
-        if self._body is None:
-            await self.read()
-
-        if encoding is None:
-            encoding = self.get_encoding()
-
-        return self._body.decode(encoding, errors=errors)  # type: ignore[union-attr]
-
-    async def json(
-        self,
-        *,
-        encoding: Optional[str] = None,
-        loads: JSONDecoder = DEFAULT_JSON_DECODER,
-        content_type: Optional[str] = "application/json",
-    ) -> Any:
-        """Read and decodes JSON response."""
-        if self._body is None:
-            await self.read()
-
-        if content_type:
-            ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
-            if not _is_expected_content_type(ctype, content_type):
-                raise ContentTypeError(
-                    self.request_info,
-                    self.history,
-                    status=self.status,
-                    message=(
-                        "Attempt to decode JSON with unexpected mimetype: %s" % ctype
-                    ),
-                    headers=self.headers,
-                )
-
-        stripped = self._body.strip()  # type: ignore[union-attr]
-        if not stripped:
-            return None
-
-        if encoding is None:
-            encoding = self.get_encoding()
-
-        return loads(stripped.decode(encoding))
-
-    async def __aenter__(self) -> "ClientResponse":
-        self._in_context = True
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> None:
-        self._in_context = False
-        # similar to _RequestContextManager, we do not need to check
-        # for exceptions, response object can close connection
-        # if state is broken
-        self.release()
-        await self.wait_for_close()
