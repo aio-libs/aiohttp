@@ -1058,6 +1058,7 @@ async def test_body_payload_with_size_no_content_length(
     assert req.headers[hdrs.CONTENT_LENGTH] == str(len(data))
     assert req.body is bytes_payload
     assert req._body is bytes_payload  # Access _body which is the Payload
+    assert req._body is not None
     assert req._body.size == len(data)
 
     # Set body back to None
