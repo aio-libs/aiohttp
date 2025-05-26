@@ -10,6 +10,26 @@
 
 .. towncrier release notes start
 
+3.12.1rc0 (2025-05-26)
+======================
+
+Features
+--------
+
+- Added support for reusable request bodies to enable retries, redirects, and digest authentication -- by :user:`bdraco` and :user:`GLGDLY`.
+
+  Most payloads can now be safely reused multiple times, fixing long-standing issues where POST requests with form data or file uploads would fail on redirects with errors like "Form data has been processed already" or "I/O operation on closed file". This also enables digest authentication to work with request bodies and allows retry mechanisms to resend requests without consuming the payload. Note that payloads derived from async iterables may still not be reusable in some cases.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`5530`, :issue:`5577`, :issue:`9201`, :issue:`11017`.
+
+
+
+
+----
+
+
 3.12.0 (2025-05-24)
 ===================
 
