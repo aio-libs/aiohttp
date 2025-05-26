@@ -2199,8 +2199,7 @@ async def test_content_length_with_async_iterable(
     """Test that async iterables use chunked encoding, not Content-Length."""
 
     async def data_gen() -> AsyncIterator[bytes]:
-        yield b"chunk1"
-        yield b"chunk2"
+        yield b"chunk1"  # pragma: no cover
 
     req = ClientRequest("POST", URL("http://python.org/"), data=data_gen(), loop=loop)
     assert hdrs.CONTENT_LENGTH not in req.headers
