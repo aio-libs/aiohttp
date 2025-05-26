@@ -989,7 +989,7 @@ class MultipartWriter(Payload):
         """Return string representation of the multipart data.
 
         WARNING: This method may do blocking I/O if parts contain file payloads.
-        It should not be called in the event loop. Use as_str() instead.
+        It should not be called in the event loop. Use as_bytes().decode() instead.
         """
         return "".join(
             "--"
