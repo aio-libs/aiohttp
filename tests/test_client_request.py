@@ -2060,6 +2060,8 @@ async def test_warn_stacklevel_points_to_user_code(
 
     warning = resource_warnings[0]
     # The warning should point to the line where we set req.body, not inside the library
+    # Call chain: user code -> body setter -> _warn_if_unclosed_payload
+    # stacklevel=3 is used in body setter to skip the setter and _warn_if_unclosed_payload
     assert warning.filename == __file__
     # The line number should be the line with "req.body = b'new data'"
     # We can't hardcode the line number, but we can verify it's not pointing
@@ -2095,7 +2097,8 @@ async def test_warn_stacklevel_update_body_from_data(
     assert len(resource_warnings) == 1
 
     warning = resource_warnings[0]
-    # For update_body_from_data, stacklevel=2 points to this test file
+    # For update_body_from_data, stacklevel=3 points to this test file
+    # Call chain: user code -> update_body_from_data -> _warn_if_unclosed_payload
     assert warning.filename == __file__
     assert "client_reqrep.py" not in warning.filename
 
