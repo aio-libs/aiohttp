@@ -1922,7 +1922,7 @@ async def test_body_setter_closes_previous_payload(
     req._body = mock_payload
 
     # Update body with new data using setter
-    req.body = b"new body data"
+    req.body = b"new body data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
 
     # Verify the previous payload was closed using _close
     mock_payload._close.assert_called_once()
