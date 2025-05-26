@@ -37,6 +37,7 @@ from aiohttp.client_reqrep import (
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
 from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
+from aiohttp.multipart import MultipartWriter
 from aiohttp.typedefs import LooseCookies
 
 
@@ -757,7 +758,8 @@ async def test_formdata_boundary_from_headers(
         )
         async with await req.send(conn):
             await asyncio.sleep(0)
-        assert req.body._boundary == boundary.encode()  # type: ignore[union-attr]
+        assert isinstance(req.body, MultipartWriter)
+        assert req.body._boundary == boundary.encode()
 
 
 async def test_post_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
@@ -767,7 +769,8 @@ async def test_post_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
         )
         resp = await req.send(conn)
         assert "/" == req.url.path
-        assert b"life=42" == req.body._value  # type: ignore[union-attr]
+        assert isinstance(req.body, payload.Payload)
+        assert b"life=42" == req.body._value
         assert "application/x-www-form-urlencoded" == req.headers["CONTENT-TYPE"]
         await req.close()
         resp.close()
@@ -806,7 +809,8 @@ async def test_get_with_data(loop: asyncio.AbstractEventLoop) -> None:
             meth, URL("http://python.org/"), data={"life": "42"}, loop=loop
         )
         assert "/" == req.url.path
-        assert b"life=42" == req.body._value  # type: ignore[union-attr]
+        assert isinstance(req.body, payload.Payload)
+        assert b"life=42" == req.body._value
         await req.close()
 
 
