@@ -10,6 +10,26 @@
 
 .. towncrier release notes start
 
+3.12.2 (2025-05-26)
+===================
+
+Bug fixes
+---------
+
+- Fixed ``Content-Length`` header not being set to ``0`` for non-GET requests with ``None`` body -- by :user:`bdraco`.
+
+  Non-GET requests (``POST``, ``PUT``, ``PATCH``, ``DELETE``) with ``None`` as the body now correctly set the ``Content-Length`` header to ``0``, matching the behavior of requests with empty bytes (``b""``). This regression was introduced in aiohttp 3.12.1.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11035`.
+
+
+
+
+----
+
+
 3.12.1 (2025-05-26)
 ===================
 
