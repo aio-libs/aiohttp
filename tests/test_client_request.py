@@ -217,7 +217,7 @@ def test_host_port_nondefault_wss(make_request: _RequestMaker) -> None:
 
 def test_host_port_none_port(make_request: _RequestMaker) -> None:
     req = make_request("get", "unix://localhost/path")
-    assert req.headers["Host"] == "localhost"
+    assert req.headers[hdrs.HOST] == "localhost"
 
 
 def test_host_port_err(make_request: _RequestMaker) -> None:
@@ -232,17 +232,17 @@ def test_hostname_err(make_request: _RequestMaker) -> None:
 
 def test_host_header_host_first(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org/")
-    assert list(req.headers)[0] == "Host"
+    assert list(req.headers)[0] == hdrs.HOST
 
 
 def test_host_header_host_without_port(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org/")
-    assert req.headers["HOST"] == "python.org"
+    assert req.headers[hdrs.HOST] == "python.org"
 
 
 def test_host_header_host_with_default_port(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org:80/")
-    assert req.headers["HOST"] == "python.org"
+    assert req.headers[hdrs.HOST] == "python.org"
 
 
 def test_host_header_host_with_nondefault_port(make_request: _RequestMaker) -> None:
@@ -353,12 +353,12 @@ def test_skip_default_useragent_header(make_request: _RequestMaker) -> None:
 
 def test_headers(make_request: _RequestMaker) -> None:
     req = make_request(
-        "post", "http://python.org/", headers={"Content-Type": "text/plain"}
+        "post", "http://python.org/", headers={hdrs.CONTENT_TYPE: "text/plain"}
     )
 
-    assert "CONTENT-TYPE" in req.headers
-    assert req.headers["CONTENT-TYPE"] == "text/plain"
-    assert req.headers["ACCEPT-ENCODING"] == "gzip, deflate, br"
+    assert hdrs.CONTENT_TYPE in req.headers
+    assert req.headers[hdrs.CONTENT_TYPE] == "text/plain"
+    assert req.headers[hdrs.ACCEPT_ENCODING] == "gzip, deflate, br"
 
 
 def test_headers_list(make_request: _RequestMaker) -> None:
@@ -1034,7 +1034,7 @@ async def test_body_with_size_sets_content_length(
 async def test_body_payload_with_size_no_content_length(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    """Test that when a body payload with size is set directly, Content-Length is added."""
+    """Test that when a body payload is set via update_body, Content-Length is added."""
     # Create a payload with a known size
     data = b"payload data"
     bytes_payload = payload.BytesPayload(data)
@@ -1046,23 +1046,28 @@ async def test_body_payload_with_size_no_content_length(
         loop=loop,
     )
 
-    # Set body directly (bypassing update_body_from_data to avoid it setting Content-Length)
-    req._body = bytes_payload
+    # Initially no body should be set
+    assert req._body is None
+    # POST method with None body should have Content-Length: 0
+    assert req.headers[hdrs.CONTENT_LENGTH] == "0"
 
-    # Ensure conditions for the code path we want to test
-    assert req._body is not None
-    assert hdrs.CONTENT_LENGTH not in req.headers
-    assert req._body.size is not None
-    assert not req.chunked
-
-    # Now trigger update_transfer_encoding which should set Content-Length
-    req.update_transfer_encoding()
+    # Update body using the public method
+    await req.update_body(bytes_payload)
 
     # Verify Content-Length was set from body.size
-    assert req.headers["CONTENT-LENGTH"] == str(len(data))
+    assert req.headers[hdrs.CONTENT_LENGTH] == str(len(data))
     assert req.body is bytes_payload
     assert req._body is bytes_payload  # Access _body which is the Payload
+    assert req._body is not None  # type: ignore[unreachable]
     assert req._body.size == len(data)
+
+    # Set body back to None
+    await req.update_body(None)
+
+    # Verify Content-Length is back to 0 for POST with None body
+    assert req.headers[hdrs.CONTENT_LENGTH] == "0"
+    assert req._body is None
+
     await req.close()
 
 
@@ -2032,8 +2037,8 @@ async def test_update_body_updates_content_length(
 
     # Clear body
     await req.update_body(None)
-    # For None body, Content-Length should not be set
-    assert "Content-Length" not in req.headers
+    # For None body with POST method, Content-Length should be set to 0
+    assert req.headers[hdrs.CONTENT_LENGTH] == "0"
 
     await req.close()
 
@@ -2127,4 +2132,149 @@ async def test_expect100_with_body_becomes_none() -> None:
     req._body = None
 
     await req.write_bytes(mock_writer, mock_conn, None)
+
+
+@pytest.mark.parametrize(
+    ("method", "data", "expected_content_length"),
+    [
+        # GET methods should not have Content-Length with None body
+        ("GET", None, None),
+        ("HEAD", None, None),
+        ("OPTIONS", None, None),
+        ("TRACE", None, None),
+        # POST methods should have Content-Length: 0 with None body
+        ("POST", None, "0"),
+        ("PUT", None, "0"),
+        ("PATCH", None, "0"),
+        ("DELETE", None, "0"),
+        # Empty bytes should always set Content-Length: 0
+        ("GET", b"", "0"),
+        ("HEAD", b"", "0"),
+        ("POST", b"", "0"),
+        ("PUT", b"", "0"),
+        # Non-empty bytes should set appropriate Content-Length
+        ("GET", b"test", "4"),
+        ("POST", b"test", "4"),
+        ("PUT", b"hello world", "11"),
+        ("PATCH", b"data", "4"),
+        ("DELETE", b"x", "1"),
+    ],
+)
+def test_content_length_for_methods(
+    method: str,
+    data: Optional[bytes],
+    expected_content_length: Optional[str],
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that Content-Length header is set correctly for all HTTP methods."""
+    req = ClientRequest(method, URL("http://python.org/"), data=data, loop=loop)
+
+    actual_content_length = req.headers.get(hdrs.CONTENT_LENGTH)
+    assert actual_content_length == expected_content_length
+
+
+@pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
+def test_get_methods_classification(method: str) -> None:
+    """Test that GET-like methods are correctly classified."""
+    assert method in ClientRequest.GET_METHODS
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
+def test_non_get_methods_classification(method: str) -> None:
+    """Test that POST-like methods are not in GET_METHODS."""
+    assert method not in ClientRequest.GET_METHODS
+
+
+async def test_content_length_with_string_data(loop: asyncio.AbstractEventLoop) -> None:
+    """Test Content-Length when data is a string."""
+    data = "Hello, World!"
+    req = ClientRequest("POST", URL("http://python.org/"), data=data, loop=loop)
+    # String should be encoded to bytes, default encoding is utf-8
+    assert req.headers[hdrs.CONTENT_LENGTH] == str(len(data.encode("utf-8")))
+    await req.close()
+
+
+async def test_content_length_with_async_iterable(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that async iterables use chunked encoding, not Content-Length."""
+
+    async def data_gen() -> AsyncIterator[bytes]:
+        yield b"chunk1"  # pragma: no cover
+
+    req = ClientRequest("POST", URL("http://python.org/"), data=data_gen(), loop=loop)
+    assert hdrs.CONTENT_LENGTH not in req.headers
+    assert req.chunked
+    assert req.headers[hdrs.TRANSFER_ENCODING] == "chunked"
+    await req.close()
+
+
+async def test_content_length_not_overridden(loop: asyncio.AbstractEventLoop) -> None:
+    """Test that explicitly set Content-Length is not overridden."""
+    req = ClientRequest(
+        "POST",
+        URL("http://python.org/"),
+        data=b"test",
+        headers={hdrs.CONTENT_LENGTH: "100"},
+        loop=loop,
+    )
+    # Should keep the explicitly set value
+    assert req.headers[hdrs.CONTENT_LENGTH] == "100"
+    await req.close()
+
+
+async def test_content_length_with_formdata(loop: asyncio.AbstractEventLoop) -> None:
+    """Test Content-Length with FormData."""
+    form = aiohttp.FormData()
+    form.add_field("field", "value")
+
+    req = ClientRequest("POST", URL("http://python.org/"), data=form, loop=loop)
+    # FormData with known size should set Content-Length
+    assert hdrs.CONTENT_LENGTH in req.headers
+    await req.close()
+
+
+async def test_no_content_length_with_chunked(loop: asyncio.AbstractEventLoop) -> None:
+    """Test that chunked encoding prevents Content-Length header."""
+    req = ClientRequest(
+        "POST",
+        URL("http://python.org/"),
+        data=b"test",
+        chunked=True,
+        loop=loop,
+    )
+    assert hdrs.CONTENT_LENGTH not in req.headers
+    assert req.headers[hdrs.TRANSFER_ENCODING] == "chunked"
+    await req.close()
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
+async def test_update_body_none_sets_content_length_zero(
+    method: str, loop: asyncio.AbstractEventLoop
+) -> None:
+    """Test that updating body to None sets Content-Length: 0 for POST-like methods."""
+    # Create request with initial body
+    req = ClientRequest(method, URL("http://python.org/"), data=b"initial", loop=loop)
+    assert req.headers[hdrs.CONTENT_LENGTH] == "7"
+
+    # Update body to None
+    await req.update_body(None)
+    assert req.headers[hdrs.CONTENT_LENGTH] == "0"
+    assert req._body is None
+    await req.close()
+
+
+@pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
+async def test_update_body_none_no_content_length_for_get_methods(
+    method: str, loop: asyncio.AbstractEventLoop
+) -> None:
+    """Test that updating body to None doesn't set Content-Length for GET-like methods."""
+    # Create request with initial body
+    req = ClientRequest(method, URL("http://python.org/"), data=b"initial", loop=loop)
+    assert req.headers[hdrs.CONTENT_LENGTH] == "7"
+
+    # Update body to None
+    await req.update_body(None)
+    assert hdrs.CONTENT_LENGTH not in req.headers
+    assert req._body is None
     await req.close()
