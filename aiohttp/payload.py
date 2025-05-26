@@ -15,6 +15,7 @@ from typing import (
     Dict,
     Final,
     Iterable,
+    List,
     Optional,
     Set,
     TextIO,
@@ -58,12 +59,8 @@ READ_SIZE: Final[int] = 2**16  # 64 KB
 _CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
 
 
-if TYPE_CHECKING:
-    from typing import List
-
-
 class LookupError(Exception):
-    pass
+    """Raised when no payload factory is found for the given data type."""
 
 
 class Order(str, enum.Enum):
@@ -155,6 +152,8 @@ class Payload(ABC):
 
     _default_content_type: str = "application/octet-stream"
     _size: Optional[int] = None
+    _consumed: bool = False  # Default: payload has not been consumed yet
+    _autoclose: bool = False  # Default: assume resource needs explicit closing
 
     def __init__(
         self,
@@ -189,7 +188,12 @@ class Payload(ABC):
 
     @property
     def size(self) -> Optional[int]:
-        """Size of the payload."""
+        """Size of the payload in bytes.
+
+        Returns the number of bytes that will be transmitted when the payload
+        is written. For string payloads, this is the size after encoding to bytes,
+        not the length of the string.
+        """
         return self._size
 
     @property
@@ -221,6 +225,21 @@ class Payload(ABC):
         """Content type"""
         return self._headers[hdrs.CONTENT_TYPE]
 
+    @property
+    def consumed(self) -> bool:
+        """Whether the payload has been consumed and cannot be reused."""
+        return self._consumed
+
+    @property
+    def autoclose(self) -> bool:
+        """
+        Whether the payload can close itself automatically.
+
+        Returns True if the payload has no file handles or resources that need
+        explicit closing. If False, callers must await close() to release resources.
+        """
+        return self._autoclose
+
     def set_content_disposition(
         self,
         disptype: str,
@@ -235,14 +254,16 @@ class Payload(ABC):
 
     @abstractmethod
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        """Return string representation of the value.
+        """
+        Return string representation of the value.
 
         This is named decode() to allow compatibility with bytes objects.
         """
 
     @abstractmethod
     async def write(self, writer: AbstractStreamWriter) -> None:
-        """Write payload to the writer stream.
+        """
+        Write payload to the writer stream.
 
         Args:
             writer: An AbstractStreamWriter instance that handles the actual writing
@@ -256,6 +277,7 @@ class Payload(ABC):
 
         All payload subclasses must override this method for backwards compatibility,
         but new code should use write_with_length for more flexibility and control.
+
         """
 
     # write_with_length is new in aiohttp 3.12
@@ -283,9 +305,52 @@ class Payload(ABC):
         # and for the default implementation
         await self.write(writer)
 
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """
+        Return bytes representation of the value.
+
+        This is a convenience method that calls decode() and encodes the result
+        to bytes using the specified encoding.
+        """
+        # Use instance encoding if available, otherwise use parameter
+        actual_encoding = self._encoding or encoding
+        return self.decode(actual_encoding, errors).encode(actual_encoding)
+
+    def _close(self) -> None:
+        """
+        Async safe synchronous close operations for backwards compatibility.
+
+        This method exists only for backwards compatibility with code that
+        needs to clean up payloads synchronously. In the future, we will
+        drop this method and only support the async close() method.
+
+        WARNING: This method must be safe to call from within the event loop
+        without blocking. Subclasses should not perform any blocking I/O here.
+
+        WARNING: This method must be called from within an event loop for
+        certain payload types (e.g., IOBasePayload). Calling it outside an
+        event loop may raise RuntimeError.
+        """
+        # This is a no-op by default, but subclasses can override it
+        # for non-blocking cleanup operations.
+
+    async def close(self) -> None:
+        """
+        Close the payload if it holds any resources.
+
+        IMPORTANT: This method must not await anything that might not finish
+        immediately, as it may be called during cleanup/cancellation. Schedule
+        any long-running operations without awaiting them.
+
+        In the future, this will be the only close method supported.
+        """
+        self._close()
+
 
 class BytesPayload(Payload):
     _value: bytes
+    # _consumed = False (inherited) - Bytes are immutable and can be reused
+    _autoclose = True  # No file handle, just bytes in memory
 
     def __init__(
         self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
@@ -315,8 +380,18 @@ class BytesPayload(Payload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         return self._value.decode(encoding, errors)
 
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """
+        Return bytes representation of the value.
+
+        This method returns the raw bytes content of the payload.
+        It is equivalent to accessing the _value attribute directly.
+        """
+        return self._value
+
     async def write(self, writer: AbstractStreamWriter) -> None:
-        """Write the entire bytes payload to the writer stream.
+        """
+        Write the entire bytes payload to the writer stream.
 
         Args:
             writer: An AbstractStreamWriter instance that handles the actual writing
@@ -327,6 +402,7 @@ class BytesPayload(Payload):
             For new implementations that need length control, use write_with_length().
             This method is maintained for backwards compatibility and is equivalent
             to write_with_length(writer, None).
+
         """
         await writer.write(self._value)
 
@@ -389,6 +465,9 @@ class StringIOPayload(StringPayload):
 
 class IOBasePayload(Payload):
     _value: io.IOBase
+    # _consumed = False (inherited) - File can be re-read from the same position
+    _start_position: Optional[int] = None
+    # _autoclose = False (inherited) - Has file handle that needs explicit closing
 
     def __init__(
         self, value: IO[Any], disposition: str = "attachment", *args: Any, **kwargs: Any
@@ -401,6 +480,16 @@ class IOBasePayload(Payload):
         if self._filename is not None and disposition is not None:
             if hdrs.CONTENT_DISPOSITION not in self.headers:
                 self.set_content_disposition(disposition, filename=self._filename)
+
+    def _set_or_restore_start_position(self) -> None:
+        """Set or restore the start position of the file-like object."""
+        if self._start_position is None:
+            try:
+                self._start_position = self._value.tell()
+            except OSError:
+                self._consumed = True  # Cannot seek, mark as consumed
+            return
+        self._value.seek(self._start_position)
 
     def _read_and_available_len(
         self, remaining_content_len: Optional[int]
@@ -422,6 +511,7 @@ class IOBasePayload(Payload):
         context switches and file operations when streaming content.
 
         """
+        self._set_or_restore_start_position()
         size = self.size  # Call size only once since it does I/O
         return size, self._value.read(
             min(size or READ_SIZE, remaining_content_len or READ_SIZE)
@@ -447,6 +537,12 @@ class IOBasePayload(Payload):
 
     @property
     def size(self) -> Optional[int]:
+        """
+        Size of the payload in bytes.
+
+        Returns the number of bytes remaining to be read from the file.
+        Returns None if the size cannot be determined (e.g., for unseekable streams).
+        """
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except (AttributeError, OSError):
@@ -497,38 +593,31 @@ class IOBasePayload(Payload):
         total_written_len = 0
         remaining_content_len = content_length
 
-        try:
-            # Get initial data and available length
-            available_len, chunk = await loop.run_in_executor(
-                None, self._read_and_available_len, remaining_content_len
-            )
-            # Process data chunks until done
-            while chunk:
-                chunk_len = len(chunk)
+        # Get initial data and available length
+        available_len, chunk = await loop.run_in_executor(
+            None, self._read_and_available_len, remaining_content_len
+        )
+        # Process data chunks until done
+        while chunk:
+            chunk_len = len(chunk)
 
-                # Write data with or without length constraint
-                if remaining_content_len is None:
-                    await writer.write(chunk)
-                else:
-                    await writer.write(chunk[:remaining_content_len])
-                    remaining_content_len -= chunk_len
+            # Write data with or without length constraint
+            if remaining_content_len is None:
+                await writer.write(chunk)
+            else:
+                await writer.write(chunk[:remaining_content_len])
+                remaining_content_len -= chunk_len
 
-                total_written_len += chunk_len
+            total_written_len += chunk_len
 
-                # Check if we're done writing
-                if self._should_stop_writing(
-                    available_len, total_written_len, remaining_content_len
-                ):
-                    return
+            # Check if we're done writing
+            if self._should_stop_writing(
+                available_len, total_written_len, remaining_content_len
+            ):
+                return
 
-                # Read next chunk
-                chunk = await loop.run_in_executor(
-                    None, self._read, remaining_content_len
-                )
-        finally:
-            # Handle closing the file without awaiting to prevent cancellation issues
-            # when the StreamReader reaches EOF
-            self._schedule_file_close(loop)
+            # Read next chunk
+            chunk = await loop.run_in_executor(None, self._read, remaining_content_len)
 
     def _should_stop_writing(
         self,
@@ -554,20 +643,67 @@ class IOBasePayload(Payload):
             remaining_content_len is not None and remaining_content_len <= 0
         )
 
-    def _schedule_file_close(self, loop: asyncio.AbstractEventLoop) -> None:
-        """Schedule file closing without awaiting to prevent cancellation issues."""
+    def _close(self) -> None:
+        """
+        Async safe synchronous close operations for backwards compatibility.
+
+        This method exists only for backwards
+        compatibility. Use the async close() method instead.
+
+        WARNING: This method MUST be called from within an event loop.
+        Calling it outside an event loop will raise RuntimeError.
+        """
+        # Skip if already consumed
+        if self._consumed:
+            return
+        self._consumed = True  # Mark as consumed to prevent further writes
+        # Schedule file closing without awaiting to prevent cancellation issues
+        loop = asyncio.get_running_loop()
         close_future = loop.run_in_executor(None, self._value.close)
         # Hold a strong reference to the future to prevent it from being
         # garbage collected before it completes.
         _CLOSE_FUTURES.add(close_future)
         close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
+    async def close(self) -> None:
+        """
+        Close the payload if it holds any resources.
+
+        IMPORTANT: This method must not await anything that might not finish
+        immediately, as it may be called during cleanup/cancellation. Schedule
+        any long-running operations without awaiting them.
+        """
+        self._close()
+
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        return "".join(r.decode(encoding, errors) for r in self._value.readlines())
+        """
+        Return string representation of the value.
+
+        WARNING: This method does blocking I/O and should not be called in the event loop.
+        """
+        return self._read_all().decode(encoding, errors)
+
+    def _read_all(self) -> bytes:
+        """Read the entire file-like object and return its content as bytes."""
+        self._set_or_restore_start_position()
+        # Use readlines() to ensure we get all content
+        return b"".join(self._value.readlines())
+
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """
+        Return bytes representation of the value.
+
+        This method reads the entire file content and returns it as bytes.
+        It is equivalent to reading the file-like object directly.
+        The file reading is performed in an executor to avoid blocking the event loop.
+        """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self._read_all)
 
 
 class TextIOPayload(IOBasePayload):
     _value: io.TextIOBase
+    # _autoclose = False (inherited) - Has text file handle that needs explicit closing
 
     def __init__(
         self,
@@ -621,6 +757,7 @@ class TextIOPayload(IOBasePayload):
             to the stream. If no encoding is specified, UTF-8 is used as the default.
 
         """
+        self._set_or_restore_start_position()
         size = self.size
         chunk = self._value.read(
             min(size or READ_SIZE, remaining_content_len or READ_SIZE)
@@ -649,20 +786,56 @@ class TextIOPayload(IOBasePayload):
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """
+        Return string representation of the value.
+
+        WARNING: This method does blocking I/O and should not be called in the event loop.
+        """
+        self._set_or_restore_start_position()
         return self._value.read()
+
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """
+        Return bytes representation of the value.
+
+        This method reads the entire text file content and returns it as bytes.
+        It encodes the text content using the specified encoding.
+        The file reading is performed in an executor to avoid blocking the event loop.
+        """
+        loop = asyncio.get_running_loop()
+
+        # Use instance encoding if available, otherwise use parameter
+        actual_encoding = self._encoding or encoding
+
+        def _read_and_encode() -> bytes:
+            self._set_or_restore_start_position()
+            # TextIO read() always returns the full content
+            return self._value.read().encode(actual_encoding, errors)
+
+        return await loop.run_in_executor(None, _read_and_encode)
 
 
 class BytesIOPayload(IOBasePayload):
     _value: io.BytesIO
+    _size: int  # Always initialized in __init__
+    _autoclose = True  # BytesIO is in-memory, safe to auto-close
+
+    def __init__(self, value: io.BytesIO, *args: Any, **kwargs: Any) -> None:
+        super().__init__(value, *args, **kwargs)
+        # Calculate size once during initialization
+        self._size = len(self._value.getbuffer()) - self._value.tell()
 
     @property
     def size(self) -> int:
-        position = self._value.tell()
-        end = self._value.seek(0, os.SEEK_END)
-        self._value.seek(position)
-        return end - position
+        """Size of the payload in bytes.
+
+        Returns the number of bytes in the BytesIO buffer that will be transmitted.
+        This is calculated once during initialization for efficiency.
+        """
+        return self._size
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        self._set_or_restore_start_position()
         return self._value.read().decode(encoding, errors)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
@@ -690,32 +863,49 @@ class BytesIOPayload(IOBasePayload):
         responsiveness when processing large in-memory buffers.
 
         """
+        self._set_or_restore_start_position()
         loop_count = 0
         remaining_bytes = content_length
-        try:
-            while chunk := self._value.read(READ_SIZE):
-                if loop_count > 0:
-                    # Avoid blocking the event loop
-                    # if they pass a large BytesIO object
-                    # and we are not in the first iteration
-                    # of the loop
-                    await asyncio.sleep(0)
-                if remaining_bytes is None:
-                    await writer.write(chunk)
-                else:
-                    await writer.write(chunk[:remaining_bytes])
-                    remaining_bytes -= len(chunk)
-                    if remaining_bytes <= 0:
-                        return
-                loop_count += 1
-        finally:
-            self._value.close()
+        while chunk := self._value.read(READ_SIZE):
+            if loop_count > 0:
+                # Avoid blocking the event loop
+                # if they pass a large BytesIO object
+                # and we are not in the first iteration
+                # of the loop
+                await asyncio.sleep(0)
+            if remaining_bytes is None:
+                await writer.write(chunk)
+            else:
+                await writer.write(chunk[:remaining_bytes])
+                remaining_bytes -= len(chunk)
+                if remaining_bytes <= 0:
+                    return
+            loop_count += 1
+
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """
+        Return bytes representation of the value.
+
+        This method reads the entire BytesIO content and returns it as bytes.
+        It is equivalent to accessing the _value attribute directly.
+        """
+        self._set_or_restore_start_position()
+        return self._value.read()
+
+    async def close(self) -> None:
+        """
+        Close the BytesIO payload.
+
+        This does nothing since BytesIO is in-memory and does not require explicit closing.
+        """
 
 
 class BufferedReaderPayload(IOBasePayload):
     _value: io.BufferedIOBase
+    # _autoclose = False (inherited) - Has buffered file handle that needs explicit closing
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        self._set_or_restore_start_position()
         return self._value.read().decode(encoding, errors)
 
 
@@ -755,6 +945,9 @@ class AsyncIterablePayload(Payload):
 
     _iter: Optional[_AsyncIterator] = None
     _value: _AsyncIterable
+    _cached_chunks: Optional[List[bytes]] = None
+    # _consumed stays False to allow reuse with cached content
+    _autoclose = True  # Iterator doesn't need explicit closing
 
     def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
@@ -800,17 +993,30 @@ class AsyncIterablePayload(Payload):
 
         This implementation handles streaming of async iterable content with length constraints:
 
-        1. Iterates through the async iterable one chunk at a time
-        2. Respects content_length constraints when specified
-        3. Handles the case when the iterable might be used twice
-
-        Since async iterables are consumed as they're iterated, there is no way to
-        restart the iteration if it's already in progress or completed.
+        1. If cached chunks are available, writes from them
+        2. Otherwise iterates through the async iterable one chunk at a time
+        3. Respects content_length constraints when specified
+        4. Does NOT generate cache - that's done by as_bytes()
 
         """
+        # If we have cached chunks, use them
+        if self._cached_chunks is not None:
+            remaining_bytes = content_length
+            for chunk in self._cached_chunks:
+                if remaining_bytes is None:
+                    await writer.write(chunk)
+                elif remaining_bytes > 0:
+                    await writer.write(chunk[:remaining_bytes])
+                    remaining_bytes -= len(chunk)
+                else:
+                    break
+            return
+
+        # If iterator is exhausted and we don't have cached chunks, nothing to write
         if self._iter is None:
             return
 
+        # Stream from the iterator
         remaining_bytes = content_length
 
         try:
@@ -832,9 +1038,40 @@ class AsyncIterablePayload(Payload):
         except StopAsyncIteration:
             # Iterator is exhausted
             self._iter = None
+            self._consumed = True  # Mark as consumed when streamed without caching
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        raise TypeError("Unable to decode.")
+        """Decode the payload content as a string if cached chunks are available."""
+        if self._cached_chunks is not None:
+            return b"".join(self._cached_chunks).decode(encoding, errors)
+        raise TypeError("Unable to decode - content not cached. Call as_bytes() first.")
+
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """
+        Return bytes representation of the value.
+
+        This method reads the entire async iterable content and returns it as bytes.
+        It generates and caches the chunks for future reuse.
+        """
+        # If we have cached chunks, return them joined
+        if self._cached_chunks is not None:
+            return b"".join(self._cached_chunks)
+
+        # If iterator is exhausted and no cache, return empty
+        if self._iter is None:
+            return b""
+
+        # Read all chunks and cache them
+        chunks: List[bytes] = []
+        async for chunk in self._iter:
+            chunks.append(chunk)
+
+        # Iterator is exhausted, cache the chunks
+        self._iter = None
+        self._cached_chunks = chunks
+        # Keep _consumed as False to allow reuse with cached chunks
+
+        return b"".join(chunks)
 
 
 class StreamReaderPayload(AsyncIterablePayload):
@@ -852,5 +1089,5 @@ PAYLOAD_REGISTRY.register(BufferedReaderPayload, (io.BufferedReader, io.Buffered
 PAYLOAD_REGISTRY.register(IOBasePayload, io.IOBase)
 PAYLOAD_REGISTRY.register(StreamReaderPayload, StreamReader)
 # try_last for giving a chance to more specialized async interables like
-# multidict.BodyPartReaderPayload override the default
+# multipart.BodyPartReaderPayload override the default
 PAYLOAD_REGISTRY.register(AsyncIterablePayload, AsyncIterable, order=Order.try_last)
