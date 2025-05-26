@@ -252,6 +252,25 @@ def _is_expected_content_type(
     return expected_content_type in response_content_type
 
 
+def _warn_if_unclosed_payload(payload: payload.Payload, stacklevel: int = 2) -> None:
+    """Warn if the payload is not closed.
+
+    Callers must check that the body is a Payload before calling this method.
+
+    Args:
+        payload: The payload to check
+        stacklevel: Stack level for the warning (default 2 for direct callers)
+    """
+    if not payload.autoclose and not payload.consumed:
+        warnings.warn(
+            "The previous request body contains unclosed resources. "
+            "Use await request.update_body() instead of setting request.body "
+            "directly to properly close resources and avoid leaks.",
+            ResourceWarning,
+            stacklevel=stacklevel,
+        )
+
+
 class ClientRequest:
     GET_METHODS = {
         hdrs.METH_GET,
@@ -268,7 +287,7 @@ class ClientRequest:
     }
 
     # Type of body depends on PAYLOAD_REGISTRY, which is dynamic.
-    body: Any = b""
+    _body: Union[None, payload.Payload] = None
     auth = None
     response = None
 
@@ -440,6 +459,36 @@ class ClientRequest:
         return self.url.port
 
     @property
+    def body(self) -> Union[bytes, payload.Payload]:
+        """Request body."""
+        # empty body is represented as bytes for backwards compatibility
+        return self._body or b""
+
+    @body.setter
+    def body(self, value: Any) -> None:
+        """Set request body with warning for non-autoclose payloads.
+
+        WARNING: This setter must be called from within an event loop and is not
+        thread-safe. Setting body outside of an event loop may raise RuntimeError
+        when closing file-based payloads.
+
+        DEPRECATED: Direct assignment to body is deprecated and will be removed
+        in a future version. Use await update_body() instead for proper resource
+        management.
+        """
+        # Close existing payload if present
+        if self._body is not None:
+            # Warn if the payload needs manual closing
+            # stacklevel=3: user code -> body setter -> _warn_if_unclosed_payload
+            _warn_if_unclosed_payload(self._body, stacklevel=3)
+            # NOTE: In the future, when we remove sync close support,
+            # this setter will need to be removed and only the async
+            # update_body() method will be available. For now, we call
+            # _close() for backwards compatibility.
+            self._body._close()
+        self._update_body(value)
+
+    @property
     def request_info(self) -> RequestInfo:
         headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
         # These are created on every request, so we use a NamedTuple
@@ -590,9 +639,12 @@ class ClientRequest:
                 )
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
-        else:
-            if hdrs.CONTENT_LENGTH not in self.headers:
-                self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
+        elif (
+            self._body is not None
+            and hdrs.CONTENT_LENGTH not in self.headers
+            and (size := self._body.size) is not None
+        ):
+            self.headers[hdrs.CONTENT_LENGTH] = str(size)
 
     def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
@@ -610,36 +662,119 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, body: Any) -> None:
+    def update_body_from_data(self, body: Any, _stacklevel: int = 3) -> None:
+        """Update request body from data."""
+        if self._body is not None:
+            _warn_if_unclosed_payload(self._body, stacklevel=_stacklevel)
+
         if body is None:
+            self._body = None
             return
 
         # FormData
-        if isinstance(body, FormData):
-            body = body()
+        maybe_payload = body() if isinstance(body, FormData) else body
 
         try:
-            body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
+            body_payload = payload.PAYLOAD_REGISTRY.get(maybe_payload, disposition=None)
         except payload.LookupError:
-            body = FormData(body)()
+            body_payload = FormData(maybe_payload)()  # type: ignore[arg-type]
 
-        self.body = body
-
+        self._body = body_payload
         # enable chunked encoding if needed
         if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
-            if (size := body.size) is not None:
+            if (size := body_payload.size) is not None:
                 self.headers[hdrs.CONTENT_LENGTH] = str(size)
             else:
                 self.chunked = True
 
         # copy payload headers
-        assert body.headers
+        assert body_payload.headers
         headers = self.headers
         skip_headers = self._skip_auto_headers
-        for key, value in body.headers.items():
+        for key, value in body_payload.headers.items():
             if key in headers or (skip_headers is not None and key in skip_headers):
                 continue
             headers[key] = value
+
+    def _update_body(self, body: Any) -> None:
+        """Update request body after its already been set."""
+        # Remove existing Content-Length header since body is changing
+        if hdrs.CONTENT_LENGTH in self.headers:
+            del self.headers[hdrs.CONTENT_LENGTH]
+
+        # Remove existing Transfer-Encoding header to avoid conflicts
+        if self.chunked and hdrs.TRANSFER_ENCODING in self.headers:
+            del self.headers[hdrs.TRANSFER_ENCODING]
+
+        # Now update the body using the existing method
+        # Called from _update_body, add 1 to stacklevel from caller
+        self.update_body_from_data(body, _stacklevel=4)
+
+        # Update transfer encoding headers if needed (same logic as __init__)
+        if body is not None or self.method not in self.GET_METHODS:
+            self.update_transfer_encoding()
+
+    async def update_body(self, body: Any) -> None:
+        """
+        Update request body and close previous payload if needed.
+
+        This method safely updates the request body by first closing any existing
+        payload to prevent resource leaks, then setting the new body.
+
+        IMPORTANT: Always use this method instead of setting request.body directly.
+        Direct assignment to request.body will leak resources if the previous body
+        contains file handles, streams, or other resources that need cleanup.
+
+        Args:
+            body: The new body content. Can be:
+                - bytes/bytearray: Raw binary data
+                - str: Text data (will be encoded using charset from Content-Type)
+                - FormData: Form data that will be encoded as multipart/form-data
+                - Payload: A pre-configured payload object
+                - AsyncIterable: An async iterable of bytes chunks
+                - File-like object: Will be read and sent as binary data
+                - None: Clears the body
+
+        Usage:
+            # CORRECT: Use update_body
+            await request.update_body(b"new request data")
+
+            # WRONG: Don't set body directly
+            # request.body = b"new request data"  # This will leak resources!
+
+            # Update with form data
+            form_data = FormData()
+            form_data.add_field('field', 'value')
+            await request.update_body(form_data)
+
+            # Clear body
+            await request.update_body(None)
+
+        Note:
+            This method is async because it may need to close file handles or
+            other resources associated with the previous payload. Always await
+            this method to ensure proper cleanup.
+
+        Warning:
+            Setting request.body directly is highly discouraged and can lead to:
+            - Resource leaks (unclosed file handles, streams)
+            - Memory leaks (unreleased buffers)
+            - Unexpected behavior with streaming payloads
+
+            It is not recommended to change the payload type in middleware. If the
+            body was already set (e.g., as bytes), it's best to keep the same type
+            rather than converting it (e.g., to str) as this may result in unexpected
+            behavior.
+
+        See Also:
+            - update_body_from_data: Synchronous body update without cleanup
+            - body property: Direct body access (STRONGLY DISCOURAGED)
+
+        """
+        # Close existing payload if it exists and needs closing
+        if self._body is not None:
+            await self._body.close()
+        self._update_body(body)
 
     def update_expect_continue(self, expect: bool = False) -> None:
         if expect:
@@ -717,27 +852,14 @@ class ClientRequest:
         protocol = conn.protocol
         assert protocol is not None
         try:
-            if isinstance(self.body, payload.Payload):
-                # Specialized handling for Payload objects that know how to write themselves
-                await self.body.write_with_length(writer, content_length)
-            else:
-                # Handle bytes/bytearray by converting to an iterable for consistent handling
-                if isinstance(self.body, (bytes, bytearray)):
-                    self.body = (self.body,)
-
-                if content_length is None:
-                    # Write the entire body without length constraint
-                    for chunk in self.body:
-                        await writer.write(chunk)
-                else:
-                    # Write with length constraint, respecting content_length limit
-                    # If the body is larger than content_length, we truncate it
-                    remaining_bytes = content_length
-                    for chunk in self.body:
-                        await writer.write(chunk[:remaining_bytes])
-                        remaining_bytes -= len(chunk)
-                        if remaining_bytes <= 0:
-                            break
+            # This should be a rare case but the
+            # self._body can be set to None while
+            # the task is being started or we wait above
+            # for the 100-continue response.
+            # The more likely case is we have an empty
+            # payload, but 100-continue is still expected.
+            if self._body is not None:
+                await self._body.write_with_length(writer, content_length)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
@@ -833,7 +955,7 @@ class ClientRequest:
         await writer.write_headers(status_line, self.headers)
 
         task: Optional["asyncio.Task[None]"]
-        if self.body or self._continue is not None or protocol.writing_paused:
+        if self._body or self._continue is not None or protocol.writing_paused:
             coro = self.write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write
