@@ -413,7 +413,8 @@ class ClientRequest:
         # Close existing payload if present
         if self._body is not None:
             # Warn if the payload needs manual closing
-            _warn_if_unclosed_payload(self._body)
+            # stacklevel=3: user code -> body setter -> _warn_if_unclosed_payload
+            _warn_if_unclosed_payload(self._body, stacklevel=3)
             # NOTE: In the future, when we remove sync close support,
             # this setter will need to be removed and only the async
             # update_body() method will be available. For now, we call
