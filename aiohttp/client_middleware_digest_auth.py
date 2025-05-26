@@ -276,10 +276,10 @@ class DigestAuthMiddleware:
         A1 = b":".join((self._login_bytes, realm_bytes, self._password_bytes))
         A2 = f"{method.upper()}:{path}".encode()
         if qop == "auth-int":
-            if body == b"":  # will always be empty bytes unless Payload
-                entity_bytes = body
-            else:
+            if isinstance(body, Payload):  # will always be empty bytes unless Payload
                 entity_bytes = await body.as_bytes()  # Get bytes from Payload
+            else:
+                entity_bytes = body
             entity_hash = H(entity_bytes)
             A2 = b":".join((A2, entity_hash))
 
