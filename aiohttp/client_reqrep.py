@@ -789,6 +789,10 @@ class ClientRequest:
         protocol = conn.protocol
         assert protocol is not None
         try:
+            # This should be a rare case but the
+            # self._body can be set to None while
+            # the task is being started or we wait above
+            # for the 100-continue response.
             if self._body is not None:
                 await self._body.write_with_length(writer, content_length)
         except OSError as underlying_exc:
