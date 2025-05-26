@@ -19,11 +19,16 @@ def test_client_request_update_cookies(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
-    req = ClientRequest("get", url, loop=loop)
-    cookie_jar = CookieJar()
-    cookie_jar.update_cookies({"string": "Another string"})
-    cookies = cookie_jar.filter_cookies(url)
-    assert cookies["string"].value == "Another string"
+
+    async def setup():
+        cookie_jar = CookieJar()
+        cookie_jar.update_cookies({"string": "Another string"})
+        cookies = cookie_jar.filter_cookies(url)
+        assert cookies["string"].value == "Another string"
+        req = ClientRequest("get", url, loop=loop)
+        return req, cookies
+
+    req, cookies = loop.run_until_complete(setup())
 
     @benchmark
     def _run() -> None:
@@ -34,10 +39,15 @@ def test_create_client_request_with_cookies(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
-    cookie_jar = CookieJar()
-    cookie_jar.update_cookies({"cookie": "value"})
-    cookies = cookie_jar.filter_cookies(url)
-    assert cookies["cookie"].value == "value"
+
+    async def setup():
+        cookie_jar = CookieJar()
+        cookie_jar.update_cookies({"cookie": "value"})
+        cookies = cookie_jar.filter_cookies(url)
+        assert cookies["cookie"].value == "value"
+        return cookies
+
+    cookies = loop.run_until_complete(setup())
     timer = TimerNoop()
     traces: list[Trace] = []
     headers = CIMultiDict[str]()
