@@ -1907,6 +1907,31 @@ async def test_update_body_closes_previous_payload(
     await req.close()
 
 
+async def test_body_setter_closes_previous_payload(
+    make_request: _RequestMaker,
+) -> None:
+    """Test that body setter properly closes the previous payload."""
+    req = make_request("POST", "http://python.org/")
+
+    # Create a mock payload that tracks if it was closed
+    # We need to use create_autospec to ensure all methods are available
+    mock_payload = mock.create_autospec(payload.Payload, instance=True)
+
+    # Set initial payload
+    req._body = mock_payload
+
+    # Update body with new data using setter
+    req.body = b"new body data"
+
+    # Verify the previous payload was closed using _close
+    mock_payload._close.assert_called_once()
+
+    # Verify new body is set (it's a BytesPayload now)
+    assert isinstance(req.body, payload.BytesPayload)
+
+    await req.close()
+
+
 async def test_update_body_with_different_types(
     make_request: _RequestMaker,
 ) -> None:
