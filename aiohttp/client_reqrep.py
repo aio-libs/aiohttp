@@ -197,8 +197,9 @@ def _warn_if_unclosed_payload(payload: payload.Payload) -> None:
     """
     if not payload.autoclose and not payload.consumed:
         warnings.warn(
-            "The request body is a payload that needs manual closing. "
-            "It should be closed with await payload.close() to avoid resource leaks.",
+            "The previous request body contains unclosed resources. "
+            "Use await request.update_body() instead of setting request.body "
+            "directly to properly close resources and avoid leaks.",
             ResourceWarning,
             stacklevel=2,
         )

@@ -1752,7 +1752,7 @@ async def test_warn_if_unclosed_payload_via_body_setter(
     # Setting body again should trigger the warning for the previous payload
     with pytest.warns(
         ResourceWarning,
-        match="The request body is a payload that needs manual closing",
+        match="The previous request body contains unclosed resources",
     ):
         req.body = b"new data"
 
@@ -1833,7 +1833,7 @@ async def test_warn_if_unclosed_payload_via_update_body_from_data(
     # update_body_from_data should trigger the warning for the previous payload
     with pytest.warns(
         ResourceWarning,
-        match="The request body is a payload that needs manual closing",
+        match="The previous request body contains unclosed resources",
     ):
         req.update_body_from_data(form)
 
@@ -1855,7 +1855,7 @@ async def test_warn_via_update_with_file_payload(
 
     with pytest.warns(
         ResourceWarning,
-        match="The request body is a payload that needs manual closing",
+        match="The previous request body contains unclosed resources",
     ):
         req.update_body_from_data(buffered2)
 
