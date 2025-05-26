@@ -1755,7 +1755,7 @@ async def test_warn_if_unclosed_payload_via_body_setter(
         ResourceWarning,
         match="The previous request body contains unclosed resources",
     ):
-        req.body = b"new data"
+        req.body = b"new data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
 
     await req.close()
 
@@ -1773,7 +1773,7 @@ async def test_no_warn_for_autoclose_payload_via_body_setter(
     # Setting body again should not trigger warning since previous payload has autoclose=True
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always")
-        req.body = b"new data"
+        req.body = b"new data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
 
     # Filter out any non-ResourceWarning warnings
     resource_warnings = [
@@ -1803,7 +1803,7 @@ async def test_no_warn_for_consumed_payload_via_body_setter(
     # Setting body again should not trigger warning since previous payload is consumed
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always")
-        req.body = b"new data"
+        req.body = b"new data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
 
     # Filter out any non-ResourceWarning warnings
     resource_warnings = [
@@ -2051,7 +2051,7 @@ async def test_warn_stacklevel_points_to_user_code(
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always", ResourceWarning)
         # This line should be reported as the warning source
-        req.body = b"new data"  # LINE TO BE REPORTED
+        req.body = b"new data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892  # LINE TO BE REPORTED
 
     # Find the ResourceWarning
     resource_warnings = [
