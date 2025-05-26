@@ -1078,5 +1078,5 @@ PAYLOAD_REGISTRY.register(BufferedReaderPayload, (io.BufferedReader, io.Buffered
 PAYLOAD_REGISTRY.register(IOBasePayload, io.IOBase)
 PAYLOAD_REGISTRY.register(StreamReaderPayload, StreamReader)
 # try_last for giving a chance to more specialized async interables like
-# multidict.BodyPartReaderPayload override the default
+# multipart.BodyPartReaderPayload override the default
 PAYLOAD_REGISTRY.register(AsyncIterablePayload, AsyncIterable, order=Order.try_last)
