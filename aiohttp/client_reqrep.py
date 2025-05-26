@@ -396,6 +396,13 @@ class ClientRequest:
     @body.setter
     def body(self, value: Any) -> None:
         """Set request body with warning for non-autoclose payloads."""
+        # Close existing payload if present
+        if self._body is not None:
+            # NOTE: In the future, when we remove sync close support,
+            # this setter will need to be removed and only the async
+            # update_body() method will be available. For now, we call
+            # _close() for backwards compatibility.
+            self._body._close()
         self._update_body(value)
 
     @property

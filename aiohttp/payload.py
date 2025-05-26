@@ -316,15 +316,31 @@ class Payload(ABC):
         actual_encoding = self._encoding or encoding
         return self.decode(actual_encoding, errors).encode(actual_encoding)
 
+    def _close(self) -> None:
+        """
+        Async safe synchronous close operations for backwards compatibility.
+
+        This method exists only for backwards compatibility with code that
+        needs to clean up payloads synchronously. In the future, we will
+        drop this method and only support the async close() method.
+
+        WARNING: This method must be safe to call from within the event loop
+        without blocking. Subclasses should not perform any blocking I/O here.
+        """
+        # This is a no-op by default, but subclasses can override it
+        # for non-blocking cleanup operations.
+
     async def close(self) -> None:
-        """Close the payload if it holds any resources.
+        """
+        Close the payload if it holds any resources.
 
         IMPORTANT: This method must not await anything that might not finish
         immediately, as it may be called during cleanup/cancellation. Schedule
         any long-running operations without awaiting them.
+
+        In the future, this will be the only close method supported.
         """
-        # This is a no-op by default, but subclasses can override it
-        # to release resources like file handles or network connections.
+        self._close()
 
 
 class BytesPayload(Payload):
@@ -621,13 +637,12 @@ class IOBasePayload(Payload):
             remaining_content_len is not None and remaining_content_len <= 0
         )
 
-    async def close(self) -> None:
+    def _close(self) -> None:
         """
-        Close the payload if it holds any resources.
+        Async safe synchronous close operations for backwards compatibility.
 
-        IMPORTANT: This method must not await anything that might not finish
-        immediately, as it may be called during cleanup/cancellation. Schedule
-        any long-running operations without awaiting them.
+        This method exists only for backwards
+        compatibility. Use the async close() method instead.
         """
         # Skip if already consumed
         if self._consumed:
@@ -640,6 +655,16 @@ class IOBasePayload(Payload):
         # garbage collected before it completes.
         _CLOSE_FUTURES.add(close_future)
         close_future.add_done_callback(_CLOSE_FUTURES.remove)
+
+    async def close(self) -> None:
+        """
+        Close the payload if it holds any resources.
+
+        IMPORTANT: This method must not await anything that might not finish
+        immediately, as it may be called during cleanup/cancellation. Schedule
+        any long-running operations without awaiting them.
+        """
+        self._close()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         """
