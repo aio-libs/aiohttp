@@ -20,7 +20,12 @@ from aiohttp.hdrs import (
     CONTENT_TYPE,
 )
 from aiohttp.helpers import parse_mimetype
-from aiohttp.multipart import BodyPartReader, MultipartReader, MultipartResponseWrapper
+from aiohttp.multipart import (
+    BodyPartReader,
+    BodyPartReaderPayload,
+    MultipartReader,
+    MultipartResponseWrapper,
+)
 from aiohttp.streams import StreamReader
 
 if sys.version_info >= (3, 11):
@@ -44,6 +49,22 @@ def stream(buf: bytearray) -> mock.Mock:
 
     async def write(chunk: bytes) -> None:
         buf.extend(chunk)
+
+    writer.write.side_effect = write
+    return writer
+
+
+@pytest.fixture
+def buf2() -> bytearray:
+    return bytearray()
+
+
+@pytest.fixture
+def stream2(buf2: bytearray) -> mock.Mock:
+    writer = mock.Mock()
+
+    async def write(chunk: bytes) -> None:
+        buf2.extend(chunk)
 
     writer.write.side_effect = write
     return writer
@@ -1501,3 +1522,179 @@ async def test_async_for_bodypart() -> None:
         part = aiohttp.BodyPartReader(boundary=b"--:", headers=h, content=stream)
         async for data in part:
             assert data == b"foobarbaz"
+
+
+async def test_multipart_writer_reusability(
+    buf: bytearray,
+    stream: mock.Mock,
+    buf2: bytearray,
+    stream2: mock.Mock,
+    writer: aiohttp.MultipartWriter,
+) -> None:
+    """Test that MultipartWriter can be written multiple times."""
+    # Add some parts
+    writer.append("text content")
+    writer.append(b"binary content", {"Content-Type": "application/octet-stream"})
+    writer.append_json({"key": "value"})
+
+    # Test as_bytes multiple times
+    bytes1 = await writer.as_bytes()
+    bytes2 = await writer.as_bytes()
+    bytes3 = await writer.as_bytes()
+
+    # All as_bytes calls should return identical data
+    assert bytes1 == bytes2 == bytes3
+
+    # Verify content is there
+    assert b"text content" in bytes1
+    assert b"binary content" in bytes1
+    assert b'"key": "value"' in bytes1
+
+    # First write
+    buf.clear()
+    await writer.write(stream)
+    result1 = bytes(buf)
+
+    # Second write - should produce identical output
+    buf2.clear()
+    await writer.write(stream2)
+    result2 = bytes(buf2)
+
+    # Results should be identical
+    assert result1 == result2
+
+    # Third write to ensure continued reusability
+    buf.clear()
+    await writer.write(stream)
+    result3 = bytes(buf)
+
+    assert result1 == result3
+
+    # as_bytes should still work after writes
+    bytes4 = await writer.as_bytes()
+    assert bytes1 == bytes4
+
+
+async def test_multipart_writer_reusability_with_io_payloads(
+    buf: bytearray,
+    stream: mock.Mock,
+    buf2: bytearray,
+    stream2: mock.Mock,
+    writer: aiohttp.MultipartWriter,
+) -> None:
+    """Test that MultipartWriter with IO payloads can be reused."""
+    # Create IO objects
+    bytes_io = io.BytesIO(b"bytes io content")
+    string_io = io.StringIO("string io content")
+
+    # Add IO payloads
+    writer.append(bytes_io, {"Content-Type": "application/octet-stream"})
+    writer.append(string_io, {"Content-Type": "text/plain"})
+
+    # Test as_bytes multiple times
+    bytes1 = await writer.as_bytes()
+    bytes2 = await writer.as_bytes()
+
+    # All as_bytes calls should return identical data
+    assert bytes1 == bytes2
+    assert b"bytes io content" in bytes1
+    assert b"string io content" in bytes1
+
+    # First write
+    buf.clear()
+    await writer.write(stream)
+    result1 = bytes(buf)
+
+    assert b"bytes io content" in result1
+    assert b"string io content" in result1
+
+    # Reset IO objects for reuse
+    bytes_io.seek(0)
+    string_io.seek(0)
+
+    # Second write
+    buf2.clear()
+    await writer.write(stream2)
+    result2 = bytes(buf2)
+
+    # Should produce identical results
+    assert result1 == result2
+
+    # Test as_bytes after writes (IO objects should auto-reset)
+    bytes3 = await writer.as_bytes()
+    assert bytes1 == bytes3
+
+
+async def test_body_part_reader_payload_as_bytes() -> None:
+    """Test that BodyPartReaderPayload.as_bytes raises TypeError."""
+    # Create a mock BodyPartReader
+    headers = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
+    protocol = mock.Mock(_reading_paused=False)
+    stream = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    body_part = BodyPartReader(BOUNDARY, headers, stream)
+
+    # Create the payload
+    payload = BodyPartReaderPayload(body_part)
+
+    # Test that as_bytes raises TypeError
+    with pytest.raises(TypeError, match="Unable to read body part as bytes"):
+        await payload.as_bytes()
+
+    # Test that decode also raises TypeError
+    with pytest.raises(TypeError, match="Unable to decode"):
+        payload.decode()
+
+
+async def test_multipart_writer_close_with_exceptions() -> None:
+    """Test that MultipartWriter.close() continues closing all parts even if one raises."""
+    writer = aiohttp.MultipartWriter()
+
+    # Create mock payloads
+    # First part will raise during close
+    part1 = mock.Mock()
+    part1.autoclose = False
+    part1.consumed = False
+    part1.close = mock.AsyncMock(side_effect=RuntimeError("Part 1 close failed"))
+
+    # Second part should still get closed
+    part2 = mock.Mock()
+    part2.autoclose = False
+    part2.consumed = False
+    part2.close = mock.AsyncMock()
+
+    # Third part with autoclose=True should not be closed
+    part3 = mock.Mock()
+    part3.autoclose = True
+    part3.consumed = False
+    part3.close = mock.AsyncMock()
+
+    # Fourth part already consumed should not be closed
+    part4 = mock.Mock()
+    part4.autoclose = False
+    part4.consumed = True
+    part4.close = mock.AsyncMock()
+
+    # Add parts to writer's internal list
+    writer._parts = [
+        (part1, "", ""),
+        (part2, "", ""),
+        (part3, "", ""),
+        (part4, "", ""),
+    ]
+
+    # Close the writer - should not raise despite part1 failing
+    await writer.close()
+
+    # Verify close was called on appropriate parts
+    part1.close.assert_called_once()
+    part2.close.assert_called_once()  # Should still be called despite part1 failing
+    part3.close.assert_not_called()  # autoclose=True
+    part4.close.assert_not_called()  # consumed=True
+
+    # Verify writer is marked as consumed
+    assert writer._consumed is True
+
+    # Calling close again should do nothing
+    await writer.close()
+    assert part1.close.call_count == 1
+    assert part2.close.call_count == 1

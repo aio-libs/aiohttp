@@ -1,5 +1,6 @@
 """Test digest authentication middleware for aiohttp client."""
 
+import io
 from hashlib import md5, sha1
 from typing import Generator, Union
 from unittest import mock
@@ -18,6 +19,7 @@ from aiohttp.client_middleware_digest_auth import (
     unescape_quotes,
 )
 from aiohttp.client_reqrep import ClientResponse
+from aiohttp.payload import BytesIOPayload
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 
@@ -154,7 +156,7 @@ async def test_authenticate_scenarios(
         ),
     ],
 )
-def test_encode_validation_errors(
+async def test_encode_validation_errors(
     digest_auth_mw: DigestAuthMiddleware,
     challenge: DigestAuthChallenge,
     expected_error: str,
@@ -162,12 +164,14 @@ def test_encode_validation_errors(
     """Test validation errors when encoding digest auth headers."""
     digest_auth_mw._challenge = challenge
     with pytest.raises(ClientError, match=expected_error):
-        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+        await digest_auth_mw._encode("GET", URL("http://example.com/resource"), b"")
 
 
-def test_encode_digest_with_md5(auth_mw_with_challenge: DigestAuthMiddleware) -> None:
-    header = auth_mw_with_challenge._encode(
-        "GET", URL("http://example.com/resource"), ""
+async def test_encode_digest_with_md5(
+    auth_mw_with_challenge: DigestAuthMiddleware,
+) -> None:
+    header = await auth_mw_with_challenge._encode(
+        "GET", URL("http://example.com/resource"), b""
     )
     assert header.startswith("Digest ")
     assert 'username="user"' in header
@@ -177,7 +181,7 @@ def test_encode_digest_with_md5(auth_mw_with_challenge: DigestAuthMiddleware) ->
 @pytest.mark.parametrize(
     "algorithm", ["MD5-SESS", "SHA-SESS", "SHA-256-SESS", "SHA-512-SESS"]
 )
-def test_encode_digest_with_sess_algorithms(
+async def test_encode_digest_with_sess_algorithms(
     digest_auth_mw: DigestAuthMiddleware,
     qop_challenge: DigestAuthChallenge,
     algorithm: str,
@@ -188,11 +192,13 @@ def test_encode_digest_with_sess_algorithms(
     challenge["algorithm"] = algorithm
     digest_auth_mw._challenge = challenge
 
-    header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
     assert f"algorithm={algorithm}" in header
 
 
-def test_encode_unsupported_algorithm(
+async def test_encode_unsupported_algorithm(
     digest_auth_mw: DigestAuthMiddleware, basic_challenge: DigestAuthChallenge
 ) -> None:
     """Test that unsupported algorithm raises ClientError."""
@@ -202,10 +208,10 @@ def test_encode_unsupported_algorithm(
     digest_auth_mw._challenge = challenge
 
     with pytest.raises(ClientError, match="Unsupported hash algorithm"):
-        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+        await digest_auth_mw._encode("GET", URL("http://example.com/resource"), b"")
 
 
-def test_invalid_qop_rejected(
+async def test_invalid_qop_rejected(
     digest_auth_mw: DigestAuthMiddleware, basic_challenge: DigestAuthChallenge
 ) -> None:
     """Test that invalid Quality of Protection values are rejected."""
@@ -217,7 +223,7 @@ def test_invalid_qop_rejected(
 
     # This should raise an error about unsupported QoP
     with pytest.raises(ClientError, match="Unsupported Quality of Protection"):
-        digest_auth_mw._encode("GET", URL("http://example.com"), "")
+        await digest_auth_mw._encode("GET", URL("http://example.com"), b"")
 
 
 def compute_expected_digest(
@@ -264,14 +270,17 @@ def compute_expected_digest(
 @pytest.mark.parametrize(
     ("body", "body_str"),
     [
-        ("this is a body", "this is a body"),  # String case
         (b"this is a body", "this is a body"),  # Bytes case
+        (
+            BytesIOPayload(io.BytesIO(b"this is a body")),
+            "this is a body",
+        ),  # BytesIOPayload case
     ],
 )
-def test_digest_response_exact_match(
+async def test_digest_response_exact_match(
     qop: str,
     algorithm: str,
-    body: Union[str, bytes],
+    body: Union[bytes, BytesIOPayload],
     body_str: str,
     mock_sha1_digest: mock.MagicMock,
 ) -> None:
@@ -295,7 +304,7 @@ def test_digest_response_exact_match(
     auth._last_nonce_bytes = nonce.encode("utf-8")
     auth._nonce_count = nc
 
-    header = auth._encode(method, URL(f"http://host{uri}"), body)
+    header = await auth._encode(method, URL(f"http://host{uri}"), body)
 
     # Get expected digest
     expected = compute_expected_digest(
@@ -402,7 +411,7 @@ def test_middleware_invalid_login() -> None:
         DigestAuthMiddleware("user:name", "pass")
 
 
-def test_escaping_quotes_in_auth_header() -> None:
+async def test_escaping_quotes_in_auth_header() -> None:
     """Test that double quotes are properly escaped in auth header."""
     auth = DigestAuthMiddleware('user"with"quotes', "pass")
     auth._challenge = DigestAuthChallenge(
@@ -413,7 +422,7 @@ def test_escaping_quotes_in_auth_header() -> None:
         opaque='opaque"with"quotes',
     )
 
-    header = auth._encode("GET", URL("http://example.com/path"), "")
+    header = await auth._encode("GET", URL("http://example.com/path"), b"")
 
     # Check that quotes are escaped in the header
     assert 'username="user\\"with\\"quotes"' in header
@@ -422,13 +431,15 @@ def test_escaping_quotes_in_auth_header() -> None:
     assert 'opaque="opaque\\"with\\"quotes"' in header
 
 
-def test_template_based_header_construction(
+async def test_template_based_header_construction(
     auth_mw_with_challenge: DigestAuthMiddleware,
     mock_sha1_digest: mock.MagicMock,
     mock_md5_digest: mock.MagicMock,
 ) -> None:
     """Test that the template-based header construction works correctly."""
-    header = auth_mw_with_challenge._encode("GET", URL("http://example.com/test"), "")
+    header = await auth_mw_with_challenge._encode(
+        "GET", URL("http://example.com/test"), b""
+    )
 
     # Split the header into scheme and parameters
     scheme, params_str = header.split(" ", 1)
