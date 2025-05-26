@@ -841,8 +841,7 @@ async def test_custom_payload_backwards_compat_as_bytes() -> None:
             return self._data
 
         async def write(self, writer: AbstractStreamWriter) -> None:
-            """Write implementation."""
-            await writer.write(self._data.encode())
+            """Write implementation which is a no-op for this test."""
 
     # Create instance with test data
     p = LegacyPayload("Hello, World!")
