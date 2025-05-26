@@ -751,7 +751,8 @@ async def test_post_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
         )
         resp = await req.send(conn)
         assert "/" == req.url.path
-        assert b"life=42" == req.body._value  # type: ignore[union-attr]
+        assert isinstance(req.body, payload.Payload)
+        assert b"life=42" == req.body._value
         assert "application/x-www-form-urlencoded" == req.headers["CONTENT-TYPE"]
         await req.close()
         resp.close()
@@ -788,7 +789,8 @@ async def test_get_with_data(loop) -> None:
             meth, URL("http://python.org/"), data={"life": "42"}, loop=loop
         )
         assert "/" == req.url.path
-        assert b"life=42" == req.body._value  # type: ignore[union-attr]
+        assert isinstance(req.body, payload.Payload)
+        assert b"life=42" == req.body._value
         await req.close()
 
 
