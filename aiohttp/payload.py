@@ -326,6 +326,10 @@ class Payload(ABC):
 
         WARNING: This method must be safe to call from within the event loop
         without blocking. Subclasses should not perform any blocking I/O here.
+
+        WARNING: This method must be called from within an event loop for
+        certain payload types (e.g., IOBasePayload). Calling it outside an
+        event loop may raise RuntimeError.
         """
         # This is a no-op by default, but subclasses can override it
         # for non-blocking cleanup operations.
@@ -643,6 +647,9 @@ class IOBasePayload(Payload):
 
         This method exists only for backwards
         compatibility. Use the async close() method instead.
+
+        WARNING: This method MUST be called from within an event loop.
+        Calling it outside an event loop will raise RuntimeError.
         """
         # Skip if already consumed
         if self._consumed:
@@ -672,14 +679,13 @@ class IOBasePayload(Payload):
 
         WARNING: This method does blocking I/O and should not be called in the event loop.
         """
-        self._set_or_restore_start_position()
-        return "".join(self._read_all().decode(encoding, errors))
+        return self._read_all().decode(encoding, errors)
 
     def _read_all(self) -> bytes:
         """Read the entire file-like object and return its content as bytes."""
         self._set_or_restore_start_position()
-        # Use readlines() to ensure we get all content
-        return b"".join(self._value.readlines())
+        # Read all content until EOF
+        return self._value.read()
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """

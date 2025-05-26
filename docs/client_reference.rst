@@ -1889,6 +1889,10 @@ ClientRequest
          Setting body directly bypasses cleanup of the previous payload, which can
          leave file handles open, streams unclosed, and buffers unreleased.
 
+         Additionally, setting body directly must be done from within an event loop
+         and is not thread-safe. Setting body outside of an event loop may raise
+         RuntimeError when closing file-based payloads.
+
    .. attribute:: chunked
       :type: bool | None
 

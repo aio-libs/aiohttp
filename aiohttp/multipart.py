@@ -578,7 +578,13 @@ class BodyPartReaderPayload(Payload):
         raise TypeError("Unable to decode.")
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Raises TypeError as body parts should be consumed via write()."""
+        """Raises TypeError as body parts should be consumed via write().
+
+        This is intentional: BodyPartReader payloads are designed for streaming
+        large data (potentially gigabytes) and must be consumed only once via
+        the write() method to avoid memory exhaustion. They cannot be buffered
+        in memory for reuse.
+        """
         raise TypeError("Unable to read body part as bytes. Use write() to consume.")
 
     async def write(self, writer: Any) -> None:

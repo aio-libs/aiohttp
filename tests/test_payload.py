@@ -906,6 +906,30 @@ async def test_iobase_payload_close_idempotent() -> None:
     assert p._consumed is True
 
 
+def test_iobase_payload_decode() -> None:
+    """Test IOBasePayload.decode() returns correct string."""
+    # Test with UTF-8 encoded text
+    text = "Hello, 世界! 🌍"
+    file_like = io.BytesIO(text.encode("utf-8"))
+    p = payload.IOBasePayload(file_like)
+
+    # decode() should return the original string
+    assert p.decode() == text
+
+    # Test with different encoding
+    latin1_text = "café"
+    file_like2 = io.BytesIO(latin1_text.encode("latin-1"))
+    p2 = payload.IOBasePayload(file_like2)
+    assert p2.decode("latin-1") == latin1_text
+
+    # Test that file position is restored
+    file_like3 = io.BytesIO(b"test data")
+    file_like3.read(4)  # Move position forward
+    p3 = payload.IOBasePayload(file_like3)
+    # decode() should read from the stored start position (4)
+    assert p3.decode() == " data"
+
+
 def test_bytes_payload_size() -> None:
     """Test BytesPayload.size property returns correct byte length."""
     # Test with bytes

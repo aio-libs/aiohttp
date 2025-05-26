@@ -396,7 +396,16 @@ class ClientRequest:
 
     @body.setter
     def body(self, value: Any) -> None:
-        """Set request body with warning for non-autoclose payloads."""
+        """Set request body with warning for non-autoclose payloads.
+
+        WARNING: This setter must be called from within an event loop and is not
+        thread-safe. Setting body outside of an event loop may raise RuntimeError
+        when closing file-based payloads.
+
+        DEPRECATED: Direct assignment to body is deprecated and will be removed
+        in a future version. Use await update_body() instead for proper resource
+        management.
+        """
         # Close existing payload if present
         if self._body is not None:
             # Warn if the payload needs manual closing
