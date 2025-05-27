@@ -77,6 +77,10 @@ jobs:
         # can be scanned by slotscheck.
         pip install -r requirements/base.in -c requirements/base.txt
         slotscheck -v -m aiohttp
+    - name: Disable man-db to speed up apt
+      run: |
+        echo 'set man-db/auto-update false' | sudo debconf-communicate >/dev/null
+        sudo dpkg-reconfigure man-db
     - name: Install libenchant
       run: |
         sudo apt install libenchant-2-dev
