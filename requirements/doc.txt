@@ -69,5 +69,5 @@ urllib3==2.4.0
     # via requests
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==80.8.0
+setuptools==80.9.0
     # via incremental
