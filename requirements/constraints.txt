@@ -191,7 +191,7 @@ pytest-mock==3.14.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytest-xdist==3.6.1
+pytest-xdist==3.7.0
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
