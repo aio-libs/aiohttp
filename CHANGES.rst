@@ -10,6 +10,25 @@
 
 .. towncrier release notes start
 
+3.12.3 (2025-05-28)
+===================
+
+Bug fixes
+---------
+
+- Fixed memory leak in :py:meth:`~aiohttp.CookieJar.filter_cookies` that caused unbounded memory growth
+  when making requests to different URL paths -- by :user:`bdraco` and :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11052`, :issue:`11054`.
+
+
+
+
+----
+
+
 3.12.2 (2025-05-26)
 ===================
 
