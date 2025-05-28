@@ -49,7 +49,7 @@ jobs:
     - name: Cache PyPI
       uses: actions/cache@v4.2.3
       with:
-        key: pip-lint-${{ hashFiles('requirements/*.txt') }}-v3
+        key: pip-lint-${{ hashFiles('requirements/*.txt') }}-v4
         path: ~/.cache/pip
         restore-keys: |
             pip-lint-
@@ -67,10 +67,6 @@ jobs:
     - name: Run linters
       run: |
         make mypy
-    - name: Install libenchant
-      run: |
-        sudo apt-get update
-        sudo apt install libenchant-2-dev
     - name: Install spell checker
       run: |
         pip install -r requirements/doc-spelling.in -c requirements/doc-spelling.txt
