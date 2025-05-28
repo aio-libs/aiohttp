@@ -53,7 +53,7 @@ jobs:
     - name: Cache PyPI
       uses: actions/cache@v4.2.3
       with:
-        key: pip-lint-${{ hashFiles('requirements/*.txt') }}-v2
+        key: pip-lint-${{ hashFiles('requirements/*.txt') }}-v3
         path: ~/.cache/pip
         restore-keys: |
             pip-lint-
@@ -79,6 +79,7 @@ jobs:
         slotscheck -v -m aiohttp
     - name: Install libenchant
       run: |
+        sudo apt-get update
         sudo apt install libenchant-2-dev
     - name: Install spell checker
       run: |
