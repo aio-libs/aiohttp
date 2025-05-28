@@ -1151,3 +1151,46 @@ async def test_treat_as_secure_origin() -> None:
     assert len(jar) == 1
     filtered_cookies = jar.filter_cookies(request_url=endpoint)
     assert len(filtered_cookies) == 1
+
+
+async def test_filter_cookies_does_not_leak_memory() -> None:
+    """Test that filter_cookies doesn't create empty cookie entries.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/11052
+    """
+    jar = CookieJar()
+
+    # Set a cookie with Path=/
+    jar.update_cookies({"test_cookie": "value; Path=/"}, URL("http://example.com/"))
+
+    # Check initial state
+    assert len(jar) == 1
+    initial_storage_size = len(jar._cookies)
+
+    # Make multiple requests with different paths
+    paths = [
+        "/",
+        "/api",
+        "/api/v1",
+        "/api/v1/users",
+        "/api/v1/users/123",
+        "/static/css/style.css",
+        "/images/logo.png",
+    ]
+
+    for path in paths:
+        url = URL(f"http://example.com{path}")
+        filtered = jar.filter_cookies(url)
+        # Should still get the cookie
+        assert len(filtered) == 1
+        assert "test_cookie" in filtered
+
+    # Storage size should not grow significantly
+    # Only the shared cookie entry ('', '') may be added
+    final_storage_size = len(jar._cookies)
+    assert final_storage_size <= initial_storage_size + 1
+
+    # Verify no empty entries were created for domain-path combinations
+    for key, cookies in jar._cookies.items():
+        if key != ("", ""):  # Skip the shared cookie entry
+            assert len(cookies) > 0, f"Empty cookie entry found for {key}"
