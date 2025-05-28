@@ -305,6 +305,35 @@ async def test_close(loop) -> None:
     assert conn.closed
 
 
+async def test_close_with_exception_during_closing(
+    loop: asyncio.AbstractEventLoop, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that exceptions during connection closing are logged."""
+    proto = create_mocked_conn()
+
+    # Make the closed future raise an exception when awaited
+    exc_future = loop.create_future()
+    exc_future.set_exception(RuntimeError("Connection close failed"))
+    proto.closed = exc_future
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._conns[("host", 8080, False)] = deque([(proto, object())])
+
+    # Clear any existing log records
+    caplog.clear()
+
+    # Close should complete even with the exception
+    await conn.close()
+
+    # Check that the error was logged
+    assert len(caplog.records) == 1
+    assert caplog.records[0].levelname == "ERROR"
+    assert "Error while closing connector" in caplog.records[0].message
+    assert "RuntimeError('Connection close failed')" in caplog.records[0].message
+
+    assert conn.closed
+
+
 async def test_get(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     conn = aiohttp.BaseConnector()
     try:

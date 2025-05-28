@@ -137,8 +137,7 @@ async def _wait_for_close(waiters: List[Awaitable[object]]) -> None:
     results = await asyncio.gather(*waiters, return_exceptions=True)
     for res in results:
         if isinstance(res, Exception):
-            err_msg = "Error while closing connector: " + repr(res)
-            logging.error(err_msg)
+            logging.error("Error while closing connector: %r", res)
 
 
 class Connection:
