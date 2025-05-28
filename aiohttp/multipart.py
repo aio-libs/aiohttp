@@ -894,6 +894,7 @@ class MultipartWriter(Payload):
             headers = CIMultiDict()
 
         if isinstance(obj, Payload):
+            obj._make_mutable()
             obj.headers.update(headers)
             return self.append_payload(obj)
         else:
@@ -937,6 +938,7 @@ class MultipartWriter(Payload):
             # size
             size = payload.size
             if size is not None and not (encoding or te_encoding):
+                payload._make_mutable()
                 payload.headers[CONTENT_LENGTH] = str(size)
 
         self._parts.append((payload, encoding, te_encoding))  # type: ignore[arg-type]

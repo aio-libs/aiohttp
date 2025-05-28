@@ -146,6 +146,8 @@ class FormData:
                 # FIXME cgi.FieldStorage doesn't likes body parts with
                 # Content-Length which were sent via chunked transfer encoding
                 assert part.headers is not None
+                # Ensure headers are mutable before using popall
+                part._make_mutable()
                 part.headers.popall(hdrs.CONTENT_LENGTH, None)
 
             self._writer.append_payload(part)

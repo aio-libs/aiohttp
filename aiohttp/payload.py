@@ -63,7 +63,7 @@ _CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
 @functools.lru_cache(maxsize=16)
 def _create_headers_proxy(content_type: str) -> _CIMultiDictProxy:
     """Create a CIMultiDictProxy with just the content-type header."""
-    headers = CIMultiDict()
+    headers: CIMultiDict[str] = CIMultiDict()
     headers[hdrs.CONTENT_TYPE] = content_type
     return CIMultiDictProxy(headers)
 
@@ -201,7 +201,7 @@ class Payload(ABC):
             )
         else:
             # Need mutable headers
-            mutable_headers = CIMultiDict()
+            mutable_headers: CIMultiDict[str] = CIMultiDict()
             mutable_headers[hdrs.CONTENT_TYPE] = resolved_content_type
             mutable_headers.update(headers)
             self._headers = mutable_headers
@@ -260,6 +260,11 @@ class Payload(ABC):
         """
         return self._autoclose
 
+    def _make_mutable(self) -> None:
+        """Convert headers to mutable CIMultiDict if needed."""
+        if isinstance(self._headers, CIMultiDictProxy):
+            self._headers = CIMultiDict(self._headers)
+
     def set_content_disposition(
         self,
         disptype: str,
@@ -268,10 +273,7 @@ class Payload(ABC):
         **params: str,
     ) -> None:
         """Sets ``Content-Disposition`` header."""
-        # Convert to mutable headers if needed
-        if isinstance(self._headers, _CIMultiDictProxy):
-            mutable_headers = CIMultiDict(self._headers)
-            self._headers = mutable_headers
+        self._make_mutable()
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
             disptype, quote_fields=quote_fields, _charset=_charset, params=params
         )
@@ -499,11 +501,7 @@ class IOBasePayload(Payload):
 
         super().__init__(value, *args, **kwargs)
 
-        if (
-            self._filename is not None
-            and disposition is not None
-            and hdrs.CONTENT_DISPOSITION not in self.headers
-        ):
+        if self._filename is not None and hdrs.CONTENT_DISPOSITION not in self.headers:
             self.set_content_disposition(disposition, filename=self._filename)
 
     def _set_or_restore_start_position(self) -> None:
