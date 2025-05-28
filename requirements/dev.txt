@@ -52,11 +52,11 @@ click==8.1.8
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.8.0
+coverage==7.8.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==44.0.3
+cryptography==45.0.3
     # via
     #   pyjwt
     #   trustme
@@ -72,7 +72,7 @@ filelock==3.18.0
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
-freezegun==1.5.1
+freezegun==1.5.2
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -84,7 +84,7 @@ gidgethub==5.3.0
     # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.6.10
+identify==2.6.12
     # via pre-commit
 idna==3.6
     # via
@@ -111,7 +111,7 @@ markupsafe==3.0.2
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.4.3
+multidict==6.4.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -132,6 +132,8 @@ packaging==25.0
     #   wheel
 pip-tools==7.4.1
     # via -r requirements/dev.in
+pkgconfig==1.5.5
+    # via -r requirements/test.in
 platformdirs==4.3.8
     # via virtualenv
 pluggy==1.6.0
@@ -150,7 +152,7 @@ pycares==4.8.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.11.4
+pydantic==2.11.5
     # via python-on-whales
 pydantic-core==2.33.2
     # via pydantic
@@ -178,11 +180,11 @@ pytest-codspeed==3.2.0
     #   -r requirements/test.in
 pytest-cov==6.1.1
     # via -r requirements/test.in
-pytest-mock==3.14.0
+pytest-mock==3.14.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytest-xdist==3.6.1
+pytest-xdist==3.7.0
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
@@ -258,7 +260,7 @@ typing-extensions==4.13.2
     #   python-on-whales
     #   rich
     #   typing-inspection
-typing-inspection==0.4.0
+typing-inspection==0.4.1
     # via pydantic
 uritemplate==4.1.1
     # via gidgethub
@@ -286,7 +288,7 @@ zlib-ng==0.5.1
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.1.1
     # via pip-tools
-setuptools==80.7.1
+setuptools==80.9.0
     # via
     #   incremental
     #   pip-tools

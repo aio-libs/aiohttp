@@ -33,7 +33,6 @@ from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConne
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.test_utils import make_mocked_coro
 from aiohttp.tracing import Trace
 
 
@@ -462,7 +461,9 @@ async def test_reraise_os_error(
     err = OSError(1, "permission error")
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.Mock(side_effect=err)
+    req.send = mock.AsyncMock(side_effect=err)
+    req._body = mock.Mock()
+    req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
 
     async def create_connection(
@@ -492,7 +493,9 @@ async def test_close_conn_on_error(
     err = UnexpectedException("permission error")
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.Mock(side_effect=err)
+    req.send = mock.AsyncMock(side_effect=err)
+    req._body = mock.Mock()
+    req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
 
     connections = []
@@ -550,6 +553,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
     # BaseConnector allows all high level protocols by default
@@ -612,6 +616,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
     # UnixConnector allows all high level protocols by default and unix sockets
@@ -791,9 +796,9 @@ async def test_request_tracing(
     trace_config_ctx = mock.Mock()
     body = "This is request body"
     gathered_req_headers: CIMultiDict[str] = CIMultiDict()
-    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_start = mock.AsyncMock()
+    on_request_redirect = mock.AsyncMock()
+    on_request_end = mock.AsyncMock()
 
     with io.BytesIO() as gathered_req_body, io.BytesIO() as gathered_res_body:
 
@@ -872,7 +877,7 @@ async def test_request_tracing_url_params(
     app.router.add_get("/", root_handler)
     app.router.add_get("/redirect", redirect_handler)
 
-    mocks = [mock.Mock(side_effect=make_mocked_coro(mock.Mock())) for _ in range(7)]
+    mocks = [mock.AsyncMock() for _ in range(7)]
     (
         on_request_start,
         on_request_redirect,
@@ -963,8 +968,8 @@ async def test_request_tracing_url_params(
 
 
 async def test_request_tracing_exception() -> None:
-    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_exception = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_end = mock.AsyncMock()
+    on_request_exception = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_end.append(on_request_end)

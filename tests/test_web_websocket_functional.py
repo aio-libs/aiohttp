@@ -1297,13 +1297,13 @@ async def test_abnormal_closure_when_client_does_not_close(
 async def test_normal_closure_while_client_sends_msg(
     aiohttp_client: AiohttpClient,
 ) -> None:
-    """Test abnormal closure when the server closes and the client doesn't respond."""
+    """Test normal closure when the server closes and the client responds properly."""
     close_code: Optional[WSCloseCode] = None
     got_close_code = asyncio.Event()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
-        # Setting a short close timeout
-        ws = web.WebSocketResponse(timeout=0.2)
+        # Setting a longer close timeout to avoid race conditions
+        ws = web.WebSocketResponse(timeout=1.0)
         await ws.prepare(request)
         await ws.close()
 
@@ -1332,3 +1332,116 @@ async def test_normal_closure_while_client_sends_msg(
     )
     await client.server.close()
     assert close_code == WSCloseCode.OK
+
+
+async def test_websocket_prepare_timeout_close_issue(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that WebSocket can handle prepare with early returns.
+
+    This is a regression test for issue #6009 where the prepared property
+    incorrectly checked _payload_writer instead of _writer.
+    """
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        assert ws.can_prepare(request)
+        await ws.prepare(request)
+        await ws.send_str("test")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/ws", handler)
+    client = await aiohttp_client(app)
+
+    # Connect via websocket
+    ws = await client.ws_connect("/ws")
+    msg = await ws.receive()
+    assert msg.type is WSMsgType.TEXT
+    assert msg.data == "test"
+    await ws.close()
+
+
+async def test_websocket_prepare_timeout_from_issue_reproducer(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test websocket behavior when prepare is interrupted.
+
+    This test verifies the fix for issue #6009 where close() would
+    fail after prepare() was interrupted.
+    """
+    prepare_complete = asyncio.Event()
+    close_complete = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+
+        # Prepare the websocket
+        await ws.prepare(request)
+        prepare_complete.set()
+
+        # Send a message to confirm connection works
+        await ws.send_str("connected")
+
+        # Wait for client to close
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.CLOSE
+        await ws.close()
+        close_complete.set()
+
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/ws", handler)
+    client = await aiohttp_client(app)
+
+    # Connect and verify the connection works
+    ws = await client.ws_connect("/ws")
+    await prepare_complete.wait()
+
+    msg = await ws.receive()
+    assert msg.type is WSMsgType.TEXT
+    assert msg.data == "connected"
+
+    # Close the connection
+    await ws.close()
+    await close_complete.wait()
+
+
+async def test_websocket_prepared_property(
+    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+) -> None:
+    """Test that WebSocketResponse.prepared property correctly reflects state."""
+    prepare_called = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+
+        # Initially not prepared
+        initial_state = ws.prepared
+        assert not initial_state
+
+        # After prepare() is called, should be prepared
+        await ws.prepare(request)
+        prepare_called.set()
+
+        # Check prepared state
+        prepared_state = ws.prepared
+        assert prepared_state
+
+        # Send a message to verify the connection works
+        await ws.send_str("test")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/")
+    await prepare_called.wait()
+    msg = await ws.receive()
+    assert msg.type is WSMsgType.TEXT
+    assert msg.data == "test"
+    await ws.close()

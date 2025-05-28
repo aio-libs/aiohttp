@@ -8,13 +8,14 @@ import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Generator, Iterator
+from typing import Any, AsyncIterator, Callable, Generator, Iterator
 from unittest import mock
 from uuid import uuid4
 
 import pytest
 from blockbuster import blockbuster_ctx
 
+from aiohttp import payload
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
@@ -32,7 +33,10 @@ except ImportError:
 
 
 try:
-    import uvloop
+    if sys.platform == "win32":
+        import winloop as uvloop
+    else:
+        import uvloop
 except ImportError:
     uvloop = None  # type: ignore[assignment]
 
@@ -341,3 +345,16 @@ def parametrize_zlib_backend(
     yield
 
     set_zlib_backend(original_backend)
+
+
+@pytest.fixture()
+async def cleanup_payload_pending_file_closes(
+    loop: asyncio.AbstractEventLoop,
+) -> AsyncIterator[None]:
+    """Ensure all pending file close operations complete during test teardown."""
+    yield
+    if payload._CLOSE_FUTURES:
+        # Only wait for futures from the current loop
+        loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
+        if loop_futures:
+            await asyncio.gather(*loop_futures, return_exceptions=True)
