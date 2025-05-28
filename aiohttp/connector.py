@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import logging
 import random
 import socket
 import sys
@@ -131,6 +132,15 @@ class _DeprecationWaiter:
             )
 
 
+async def _wait_for_close(waiters: List[Awaitable[object]]) -> None:
+    """Wait for all waiters to finish closing."""
+    results = await asyncio.gather(*waiters, return_exceptions=True)
+    for res in results:
+        if isinstance(res, Exception):
+            err_msg = "Error while closing connector: " + repr(res)
+            logging.error(err_msg)
+
+
 class Connection:
 
     _source_traceback = None
@@ -222,10 +232,14 @@ class Connection:
 class _TransportPlaceholder:
     """placeholder for BaseConnector.connect function"""
 
-    __slots__ = ()
+    __slots__ = ("closed",)
+
+    def __init__(self, closed_future: asyncio.Future[Optional[Exception]]) -> None:
+        """Initialize a placeholder for a transport."""
+        self.closed = closed_future
 
     def close(self) -> None:
-        """Close the placeholder transport."""
+        """Close the placeholder."""
 
 
 class BaseConnector:
@@ -322,6 +336,10 @@ class BaseConnector:
 
         self._cleanup_closed_disabled = not enable_cleanup_closed
         self._cleanup_closed_transports: List[Optional[asyncio.Transport]] = []
+        self._placeholder_future: asyncio.Future[Optional[Exception]] = (
+            loop.create_future()
+        )
+        self._placeholder_future.set_result(None)
         self._cleanup_closed()
 
     def __del__(self, _warnings: Any = warnings) -> None:
@@ -454,12 +472,24 @@ class BaseConnector:
 
     def close(self) -> Awaitable[None]:
         """Close all opened transports."""
-        self._close()
-        return _DeprecationWaiter(noop())
+        if not (waiters := self._close()):
+            # If there are no connections to close, we can return a noop
+            # awaitable to avoid scheduling a task on the event loop.
+            return _DeprecationWaiter(noop())
+        coro = _wait_for_close(waiters)
+        if sys.version_info >= (3, 12):
+            # Optimization for Python 3.12, try to close connections
+            # immediately to avoid having to schedule the task on the event loop.
+            task = asyncio.Task(coro, loop=self._loop, eager_start=True)
+        else:
+            task = self._loop.create_task(coro)
+        return _DeprecationWaiter(task)
 
-    def _close(self) -> None:
+    def _close(self) -> List[Awaitable[object]]:
+        waiters: List[Awaitable[object]] = []
+
         if self._closed:
-            return
+            return waiters
 
         self._closed = True
 
@@ -476,15 +506,19 @@ class BaseConnector:
                 self._cleanup_closed_handle.cancel()
 
             for data in self._conns.values():
-                for proto, t0 in data:
+                for proto, _ in data:
                     proto.close()
+                    waiters.append(proto.closed)
 
             for proto in self._acquired:
                 proto.close()
+                waiters.append(proto.closed)
 
             for transport in self._cleanup_closed_transports:
                 if transport is not None:
                     transport.abort()
+
+            return waiters
 
         finally:
             self._conns.clear()
@@ -546,7 +580,9 @@ class BaseConnector:
                 if (conn := await self._get(key, traces)) is not None:
                     return conn
 
-            placeholder = cast(ResponseHandler, _TransportPlaceholder())
+            placeholder = cast(
+                ResponseHandler, _TransportPlaceholder(self._placeholder_future)
+            )
             self._acquired.add(placeholder)
             if self._limit_per_host:
                 self._acquired_per_host[key].add(placeholder)
@@ -898,15 +934,18 @@ class TCPConnector(BaseConnector):
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
         self._socket_factory = socket_factory
 
-    def close(self) -> Awaitable[None]:
+    def _close(self) -> List[Awaitable[object]]:
         """Close all ongoing DNS calls."""
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
             fut.cancel()
 
+        waiters = super()._close()
+
         for t in self._resolve_host_tasks:
             t.cancel()
+            waiters.append(t)
 
-        return super().close()
+        return waiters
 
     @property
     def family(self) -> int:

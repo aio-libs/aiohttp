@@ -4,6 +4,7 @@ from typing import Any, Optional, Tuple
 
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
+    ClientConnectionError,
     ClientOSError,
     ClientPayloadError,
     ServerDisconnectedError,
@@ -14,6 +15,7 @@ from .helpers import (
     EMPTY_BODY_STATUS_CODES,
     BaseTimerContext,
     set_exception,
+    set_result,
 )
 from .http import HttpResponseParser, RawResponseMessage
 from .http_exceptions import HttpProcessingError
@@ -43,6 +45,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         self._read_timeout_handle: Optional[asyncio.TimerHandle] = None
 
         self._timeout_ceil_threshold: Optional[float] = 5
+        self.closed: asyncio.Future[None] = self._loop.create_future()
 
     @property
     def upgraded(self) -> bool:
@@ -82,6 +85,18 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         reraised_exc = original_connection_error
 
         connection_closed_cleanly = original_connection_error is None
+
+        if connection_closed_cleanly:
+            set_result(self.closed, None)
+        else:
+            assert original_connection_error is not None
+            set_exception(
+                self.closed,
+                ClientConnectionError(
+                    f"Connection lost: {original_connection_error !s}",
+                ),
+                original_connection_error,
+            )
 
         if self._payload_parser is not None:
             with suppress(Exception):  # FIXME: log this somehow?
