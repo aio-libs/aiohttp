@@ -339,7 +339,7 @@ def parametrize_zlib_backend(
 ) -> Generator[None, None, None]:
     original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
     if request.param is None:
-        pytest.xfail("zlib backend not available")
+        pytest.skip("zlib backend not available")
     set_zlib_backend(request.param)
 
     yield
