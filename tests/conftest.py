@@ -88,7 +88,7 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
         # by accident in this codebase as we primarily use asyncio.Lock for
         # synchronization in async code.
         # Allow lock.acquire calls to prevent these false positives
-        bb.functions["lock.acquire"].deactivate()
+        bb.functions["threading.Lock.acquire"].deactivate()
         yield
 
 
