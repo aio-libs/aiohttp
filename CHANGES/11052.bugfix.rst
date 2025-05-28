@@ -1,0 +1,2 @@
+Fixed memory leak in :py:meth:`~aiohttp.CookieJar.filter_cookies` that caused unbounded memory growth
+when making requests to different URL paths -- by :user:`bdraco` and :user:`Cycloctane`.
