@@ -354,6 +354,8 @@ class CookieJar(AbstractCookieJar):
         path_len = len(request_url.path)
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
         for p in pairs:
+            if p not in self._cookies:
+                continue
             for name, cookie in self._cookies[p].items():
                 domain = cookie["domain"]
 
