@@ -495,7 +495,7 @@ class BaseConnector:
 
         try:
             if self._loop.is_closed():
-                return
+                return waiters
 
             # cancel cleanup task
             if self._cleanup_handle:
