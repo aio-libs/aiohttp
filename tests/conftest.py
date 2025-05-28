@@ -81,6 +81,14 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             bb.functions[func].can_block_in(
                 "aiohttp/web_urldispatcher.py", "add_static"
             )
+        # Note: coverage.py uses locking internally which can cause false positives
+        # in blockbuster when it instruments code. This is particularly problematic
+        # on Windows where it can lead to flaky test failures.
+        # Additionally, we're not particularly worried about threading.Lock.acquire happening
+        # by accident in this codebase as we primarily use asyncio.Lock for
+        # synchronization in async code.
+        # Allow lock.acquire calls to prevent these false positives
+        bb.functions["threading.Lock.acquire"].deactivate()
         yield
 
 
