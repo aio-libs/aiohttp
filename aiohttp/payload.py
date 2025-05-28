@@ -1,5 +1,6 @@
 import asyncio
 import enum
+import functools
 import io
 import json
 import mimetypes
@@ -24,7 +25,7 @@ from typing import (
     Union,
 )
 
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -36,7 +37,7 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import JSONEncoder, _CIMultiDict
+from .typedefs import JSONEncoder, _CIMultiDict, _CIMultiDictProxy
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -57,6 +58,14 @@ __all__ = (
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
 READ_SIZE: Final[int] = 2**16  # 64 KB
 _CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
+
+
+@functools.lru_cache(maxsize=16)
+def _create_headers_proxy(content_type: str) -> _CIMultiDictProxy:
+    """Create a CIMultiDictProxy with just the content-type header."""
+    headers = CIMultiDict()
+    headers[hdrs.CONTENT_TYPE] = content_type
+    return CIMultiDictProxy(headers)
 
 
 class LookupError(Exception):
@@ -167,11 +176,12 @@ class Payload(ABC):
     ) -> None:
         self._encoding = encoding
         self._filename = filename
-        self._headers: _CIMultiDict = CIMultiDict()
         self._value = value
+
+        # Determine the content type
         if content_type is not sentinel and content_type is not None:
             assert isinstance(content_type, str)
-            self._headers[hdrs.CONTENT_TYPE] = content_type
+            resolved_content_type = content_type
         elif self._filename is not None:
             if sys.version_info >= (3, 13):
                 guesser = mimetypes.guess_file_type
@@ -180,11 +190,21 @@ class Payload(ABC):
             content_type = guesser(self._filename)[0]
             if content_type is None:
                 content_type = self._default_content_type
-            self._headers[hdrs.CONTENT_TYPE] = content_type
+            resolved_content_type = content_type
         else:
-            self._headers[hdrs.CONTENT_TYPE] = self._default_content_type
-        if headers:
-            self._headers.update(headers)
+            resolved_content_type = self._default_content_type
+
+        # Use cached proxy if no additional headers provided
+        if headers is None:
+            self._headers: Union[_CIMultiDict, _CIMultiDictProxy] = (
+                _create_headers_proxy(resolved_content_type)
+            )
+        else:
+            # Need mutable headers
+            mutable_headers = CIMultiDict()
+            mutable_headers[hdrs.CONTENT_TYPE] = resolved_content_type
+            mutable_headers.update(headers)
+            self._headers = mutable_headers
 
     @property
     def size(self) -> Optional[int]:
@@ -202,7 +222,7 @@ class Payload(ABC):
         return self._filename
 
     @property
-    def headers(self) -> _CIMultiDict:
+    def headers(self) -> Union[_CIMultiDict, _CIMultiDictProxy]:
         """Custom item headers"""
         return self._headers
 
@@ -248,6 +268,10 @@ class Payload(ABC):
         **params: str,
     ) -> None:
         """Sets ``Content-Disposition`` header."""
+        # Convert to mutable headers if needed
+        if isinstance(self._headers, _CIMultiDictProxy):
+            mutable_headers = CIMultiDict(self._headers)
+            self._headers = mutable_headers
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
             disptype, quote_fields=quote_fields, _charset=_charset, params=params
         )
@@ -475,9 +499,12 @@ class IOBasePayload(Payload):
 
         super().__init__(value, *args, **kwargs)
 
-        if self._filename is not None and disposition is not None:
-            if hdrs.CONTENT_DISPOSITION not in self.headers:
-                self.set_content_disposition(disposition, filename=self._filename)
+        if (
+            self._filename is not None
+            and disposition is not None
+            and hdrs.CONTENT_DISPOSITION not in self.headers
+        ):
+            self.set_content_disposition(disposition, filename=self._filename)
 
     def _set_or_restore_start_position(self) -> None:
         """Set or restore the start position of the file-like object."""

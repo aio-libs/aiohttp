@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import AsyncIterator, Iterator, List, Optional, TextIO, Union
 
 import pytest
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from aiohttp import payload
 from aiohttp.abc import AbstractStreamWriter
@@ -1126,3 +1126,114 @@ async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
         assert len(writer.buffer) == utf16_file_size
     finally:
         await loop.run_in_executor(None, f.close)
+
+
+def test_cached_headers_proxy_creation() -> None:
+    """Test that _create_headers_proxy returns cached instances."""
+    # Clear the cache first
+    payload._create_headers_proxy.cache_clear()
+
+    # First call should create new proxy
+    proxy1 = payload._create_headers_proxy("text/plain")
+    assert isinstance(proxy1, CIMultiDictProxy)
+    assert proxy1["Content-Type"] == "text/plain"
+
+    # Second call with same content-type should return cached instance
+    proxy2 = payload._create_headers_proxy("text/plain")
+    assert proxy1 is proxy2
+
+    # Different content-type should create new proxy
+    proxy3 = payload._create_headers_proxy("application/json")
+    assert proxy3 is not proxy1
+    assert proxy3["Content-Type"] == "application/json"
+
+    # Check cache statistics
+    cache_info = payload._create_headers_proxy.cache_info()
+    assert cache_info.hits == 1  # One cache hit for second "text/plain"
+    assert cache_info.misses == 2  # Two cache misses for initial calls
+
+    # Clear cache for other tests
+    payload._create_headers_proxy.cache_clear()
+
+
+def test_payload_headers_uses_cached_proxy() -> None:
+    """Test that payloads use cached proxy when no extra headers provided."""
+    # Clear the cache first
+    payload._create_headers_proxy.cache_clear()
+
+    # Create payload without extra headers
+    p = payload.BytesPayload(b"test")
+    assert isinstance(p._headers, CIMultiDictProxy)
+    assert p.content_type == "application/octet-stream"
+
+    # Create another with same content type
+    p2 = payload.BytesPayload(b"test2")
+    # Should use the same cached proxy instance
+    assert p._headers is p2._headers
+
+    # Clear cache for other tests
+    payload._create_headers_proxy.cache_clear()
+
+
+def test_payload_headers_mutable_with_extra_headers() -> None:
+    """Test that payloads use mutable headers when extra headers provided."""
+    # Create payload with extra headers
+    p = payload.BytesPayload(b"test", headers={"X-Custom": "value"})
+    assert isinstance(p._headers, CIMultiDict)
+    assert not isinstance(p._headers, CIMultiDictProxy)
+    assert p.content_type == "application/octet-stream"
+    assert p.headers["X-Custom"] == "value"
+
+
+def test_set_content_disposition_converts_proxy_to_mutable() -> None:
+    """Test that set_content_disposition converts proxy to mutable headers."""
+    # Create payload without extra headers (uses proxy)
+    p = payload.BytesPayload(b"test")
+    assert isinstance(p._headers, CIMultiDictProxy)
+
+    # Set content disposition
+    p.set_content_disposition("attachment", filename="test.txt")
+
+    # Headers should now be mutable
+    assert isinstance(p._headers, CIMultiDict)
+    assert not isinstance(p._headers, CIMultiDictProxy)
+    assert p.headers["Content-Disposition"] == 'attachment; filename="test.txt"'
+    assert p.content_type == "application/octet-stream"
+
+
+def test_io_payload_with_disposition_uses_mutable_headers() -> None:
+    """Test that IOBasePayload with disposition uses mutable headers."""
+    # Create file-like object
+    file_obj = io.BytesIO(b"file content")
+
+    # IOBasePayload with filename triggers set_content_disposition
+    p = payload.IOBasePayload(file_obj, filename="test.bin")
+
+    # Should have mutable headers due to content-disposition being set
+    assert isinstance(p._headers, CIMultiDict)
+    assert not isinstance(p._headers, CIMultiDictProxy)
+    assert "Content-Disposition" in p.headers
+    assert p.content_type == "application/octet-stream"
+
+
+def test_different_payload_types_use_cached_headers() -> None:
+    """Test that different payload types can use cached headers."""
+    # Clear the cache first
+    payload._create_headers_proxy.cache_clear()
+
+    # String payload with default content type
+    sp = payload.StringPayload("test")
+    assert isinstance(sp._headers, CIMultiDictProxy)
+    assert sp.content_type == "text/plain; charset=utf-8"
+
+    # JSON payload
+    jp = payload.JsonPayload({"key": "value"})
+    assert isinstance(jp._headers, CIMultiDictProxy)
+    assert jp.content_type == "application/json"
+
+    # Check that appropriate caching occurred
+    cache_info = payload._create_headers_proxy.cache_info()
+    assert cache_info.currsize >= 2  # At least 2 different content types cached
+
+    # Clear cache for other tests
+    payload._create_headers_proxy.cache_clear()
