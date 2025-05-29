@@ -6,6 +6,7 @@ import sys
 import uuid
 import warnings
 from collections import deque
+from collections.abc import Mapping as ABCMapping, Sequence as ABCSequence
 from types import TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -953,12 +954,12 @@ class MultipartWriter(Payload):
         headers: Optional[Mapping[str, str]] = None,
     ) -> Payload:
         """Helper to append form urlencoded part."""
-        assert isinstance(obj, (Sequence, Mapping))
+        assert isinstance(obj, (ABCSequence, ABCMapping))
 
         if headers is None:
             headers = CIMultiDict()
 
-        if isinstance(obj, Mapping):
+        if isinstance(obj, ABCMapping):
             obj = list(obj.items())
         data = urlencode(obj, doseq=True)
 
