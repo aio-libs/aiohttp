@@ -7,7 +7,7 @@ import re
 import sys
 import traceback
 import warnings
-from collections.abc import Mapping as ABCMapping
+from collections.abc import Mapping
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
@@ -1085,7 +1085,7 @@ class ClientRequest:
             c.load(self.headers.get(hdrs.COOKIE, ""))
             del self.headers[hdrs.COOKIE]
 
-        if isinstance(cookies, ABCMapping):
+        if isinstance(cookies, Mapping):
             iter_cookies = cookies.items()
         else:
             iter_cookies = cookies  # type: ignore[assignment]
