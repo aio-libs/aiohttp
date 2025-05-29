@@ -69,6 +69,8 @@ def protocol(loop, transport):
     protocol.transport = transport
     protocol._drain_helper.return_value = loop.create_future()
     protocol._drain_helper.return_value.set_result(None)
+    protocol.closed = loop.create_future()
+    protocol.closed.set_result(None)
     return protocol
 
 
@@ -1404,7 +1406,10 @@ async def test_custom_req_rep(loop) -> None:
 
     async def create_connection(req, traces, timeout):
         assert isinstance(req, CustomRequest)
-        return mock.Mock()
+        proto = mock.Mock()
+        proto.closed = loop.create_future()
+        proto.closed.set_result(None)
+        return proto
 
     connector = BaseConnector(loop=loop)
     connector._create_connection = create_connection
