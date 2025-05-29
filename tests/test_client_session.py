@@ -33,6 +33,8 @@ def connector(loop):
 
     conn = loop.run_until_complete(make_conn())
     proto = mock.Mock()
+    proto.closed = loop.create_future()
+    proto.closed.set_result(None)
     conn._conns["a"] = deque([(proto, 123)])
     yield conn
     loop.run_until_complete(conn.close())
@@ -429,7 +431,10 @@ async def test_reraise_os_error(create_session) -> None:
 
     async def create_connection(req, traces, timeout):
         # return self.transport, self.protocol
-        return mock.Mock()
+        proto = mock.Mock()
+        proto.closed = session._loop.create_future()
+        proto.closed.set_result(None)
+        return proto
 
     session._connector._create_connection = create_connection
     session._connector._release = mock.Mock()
@@ -464,6 +469,8 @@ async def test_close_conn_on_error(create_session) -> None:
     async def create_connection(req, traces, timeout):
         # return self.transport, self.protocol
         conn = mock.Mock()
+        conn.closed = session._loop.create_future()
+        conn.closed.set_result(None)
         return conn
 
     session._connector.connect = connect
