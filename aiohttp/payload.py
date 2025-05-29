@@ -7,6 +7,7 @@ import os
 import sys
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Iterable as ABCIterable
 from itertools import chain
 from typing import (
     IO,
@@ -137,7 +138,7 @@ class PayloadRegistry:
             self._first.append((factory, type))
         elif order is Order.normal:
             self._normal.append((factory, type))
-            if isinstance(type, Iterable):
+            if isinstance(type, ABCIterable):
                 for t in type:
                     self._normal_lookup[t] = factory
             else:
