@@ -11,7 +11,7 @@ import re
 import time
 import warnings
 from collections import defaultdict
-from collections.abc import Mapping as ABCMapping
+from collections.abc import Mapping
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (
     DefaultDict,
@@ -236,7 +236,7 @@ class CookieJar(AbstractCookieJar):
             # Don't accept cookies from IPs
             return
 
-        if isinstance(cookies, ABCMapping):
+        if isinstance(cookies, Mapping):
             cookies = cookies.items()
 
         for name, cookie in cookies:
