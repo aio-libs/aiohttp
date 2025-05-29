@@ -10,6 +10,24 @@
 
 .. towncrier release notes start
 
+3.12.4 (2025-05-28)
+===================
+
+Bug fixes
+---------
+
+- Fixed connector not waiting for connections to close before returning from :meth:`~aiohttp.BaseConnector.close` (partial backport of :pr:`3733`) -- by :user:`atemate` and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`1925`, :issue:`11074`.
+
+
+
+
+----
+
+
 3.12.3 (2025-05-28)
 ===================
 
