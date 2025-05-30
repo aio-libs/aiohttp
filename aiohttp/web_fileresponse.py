@@ -164,8 +164,8 @@ class FileResponse(StreamResponse):
     ) -> Optional[AbstractStreamWriter]:
         self.set_status(HTTPNotModified.status_code)
         self._length_check = False
-        self.etag = etag_value  # type: ignore[assignment]
-        self.last_modified = last_modified  # type: ignore[assignment]
+        self.etag = etag_value
+        self.last_modified = last_modified
         # Delete any Content-Length headers provided by user. HTTP 304
         # should always have empty response body
         return await super().prepare(request)
@@ -395,8 +395,8 @@ class FileResponse(StreamResponse):
             # compress.
             self._compression = False
 
-        self.etag = f"{st.st_mtime_ns:x}-{st.st_size:x}"  # type: ignore[assignment]
-        self.last_modified = file_mtime  # type: ignore[assignment]
+        self.etag = f"{st.st_mtime_ns:x}-{st.st_size:x}"
+        self.last_modified = file_mtime
         self.content_length = count
 
         self._headers[hdrs.ACCEPT_RANGES] = "bytes"
