@@ -10,7 +10,6 @@ import os
 import re
 import sys
 import warnings
-from collections.abc import Coroutine
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
@@ -968,7 +967,7 @@ class SystemRoute(AbstractRoute):
 
 
 class View(AbstractView):
-    async def _iter(self) -> StreamResponse:
+    async def __await__(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
         method: Optional[Callable[[], Awaitable[StreamResponse]]]
@@ -978,9 +977,6 @@ class View(AbstractView):
         ret = await method()
         assert isinstance(ret, StreamResponse)
         return ret
-
-    def __await__(self) -> Coroutine[None, None, StreamResponse]:
-        return self._iter().__await__()
 
     def _raise_allowed_methods(self) -> NoReturn:
         allowed_methods = {m for m in hdrs.METH_ALL if hasattr(self, m.lower())}
