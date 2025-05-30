@@ -194,6 +194,8 @@ class AbstractRoute(abc.ABC):
         ):
             pass
         elif inspect.isgeneratorfunction(handler):
+            if TYPE_CHECKING:
+                assert False
             warnings.warn(
                 "Bare generators are deprecated, use @coroutine wrapper",
                 DeprecationWarning,
