@@ -1223,7 +1223,7 @@ class TCPConnector(BaseConnector):
                             sslcontext,
                             server_hostname=req.server_hostname or req.host,
                             ssl_handshake_timeout=timeout.total,
-                            ssl_shutdown_timeout=self._ssl_shutdown_timeout,  # type: ignore[call-arg]
+                            ssl_shutdown_timeout=self._ssl_shutdown_timeout,
                         )
                     else:
                         tls_transport = await self._loop.start_tls(
