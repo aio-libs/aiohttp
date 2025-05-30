@@ -110,7 +110,7 @@ class FormData:
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:
                 k, fp = rec
-                self.add_field(k, fp)  # type: ignore[arg-type]
+                self.add_field(k, fp)
 
             else:
                 raise TypeError(
