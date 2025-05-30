@@ -155,7 +155,7 @@ class BaseTestServer(ABC, Generic[_Request]):
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod
-    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:  # type: ignore[misc]
+    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:
         """Return a new runner for the server."""
         # TODO(PY311): Use Unpack to specify Server kwargs.
 
@@ -265,7 +265,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
     __test__ = False
 
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self: "TestClient[Request, Application]",
         server: TestServer,
         *,
@@ -273,7 +273,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         **kwargs: Any,
     ) -> None: ...
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self: "TestClient[_Request, None]",
         server: BaseTestServer[_Request],
         *,
