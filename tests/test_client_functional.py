@@ -718,7 +718,7 @@ async def test_ssl_client_shutdown_timeout(
 
     connector = aiohttp.TCPConnector(ssl=client_ssl_ctx, ssl_shutdown_timeout=0.1)
 
-    async def streaming_handler(request: web.Request) -> web.StreamResponse:
+    async def streaming_handler(request: web.Request) -> NoReturn:
         # Create a streaming response that continuously sends data
         response = web.StreamResponse()
         await response.prepare(request)
@@ -728,7 +728,7 @@ async def test_ssl_client_shutdown_timeout(
             await response.write(b"data chunk\n")
             await asyncio.sleep(0.01)  # Small delay between chunks
 
-        return response
+        assert False, "not reached"
 
     app = web.Application()
     app.router.add_route("GET", "/stream", streaming_handler)
@@ -743,7 +743,7 @@ async def test_ssl_client_shutdown_timeout(
     assert resp.status == 200
 
     # Create a background task that continuously reads data
-    async def read_loop():
+    async def read_loop() -> None:
         while True:
             # Read "data chunk\n"
             if not await resp.content.read(11):

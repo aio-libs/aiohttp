@@ -1212,22 +1212,27 @@ class TCPConnector(BaseConnector):
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
                 try:
-                    start_tls_kwargs = {
-                        "server_hostname": req.server_hostname or req.host,
-                        "ssl_handshake_timeout": timeout.total,
-                    }
                     # ssl_shutdown_timeout is only available in Python 3.11+
                     if (
                         sys.version_info >= (3, 11)
                         and self._ssl_shutdown_timeout is not None
                     ):
-                        start_tls_kwargs["ssl_shutdown_timeout"] = (
-                            self._ssl_shutdown_timeout
+                        tls_transport = await self._loop.start_tls(
+                            underlying_transport,
+                            tls_proto,
+                            sslcontext,
+                            server_hostname=req.server_hostname or req.host,
+                            ssl_handshake_timeout=timeout.total,
+                            ssl_shutdown_timeout=self._ssl_shutdown_timeout,  # type: ignore[call-arg]
                         )
-
-                    tls_transport = await self._loop.start_tls(
-                        underlying_transport, tls_proto, sslcontext, **start_tls_kwargs
-                    )
+                    else:
+                        tls_transport = await self._loop.start_tls(
+                            underlying_transport,
+                            tls_proto,
+                            sslcontext,
+                            server_hostname=req.server_hostname or req.host,
+                            ssl_handshake_timeout=timeout.total,
+                        )
                 except BaseException:
                     # We need to close the underlying transport since
                     # `start_tls()` probably failed before it had a
