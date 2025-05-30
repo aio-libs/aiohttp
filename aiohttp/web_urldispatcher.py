@@ -10,6 +10,7 @@ import os
 import re
 import sys
 import warnings
+from collections.abc import Coroutine
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
@@ -978,7 +979,7 @@ class View(AbstractView):
         assert isinstance(ret, StreamResponse)
         return ret
 
-    def __await__(self) -> Generator[Any, None, StreamResponse]:
+    def __await__(self) -> Coroutine[None, None, StreamResponse]:
         return self._iter().__await__()
 
     def _raise_allowed_methods(self) -> NoReturn:
