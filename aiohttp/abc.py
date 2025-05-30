@@ -120,7 +120,7 @@ class AbstractView(ABC):
         return self._request
 
     @abstractmethod
-    def __await__(self) -> Generator[Any, None, StreamResponse]:
+    async def __await__(self) -> StreamResponse:
         """Execute the view handler."""
 
 
