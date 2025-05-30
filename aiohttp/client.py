@@ -1290,7 +1290,7 @@ class ClientSession:
         return self._skip_auto_headers
 
     @property
-    def auth(self) -> Optional[BasicAuth]:  # type: ignore[misc]
+    def auth(self) -> Optional[BasicAuth]:
         """An object that represents HTTP Basic Authorization"""
         return self._default_auth
 
@@ -1327,7 +1327,7 @@ class ClientSession:
         return self._trust_env
 
     @property
-    def trace_configs(self) -> List[TraceConfig[Any]]:  # type: ignore[misc]
+    def trace_configs(self) -> List[TraceConfig[Any]]:
         """A list of TraceConfig instances used for client tracing"""
         return self._trace_configs
 
