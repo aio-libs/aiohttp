@@ -120,7 +120,7 @@ multidict==6.4.4
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.15.0 ; implementation_name == "cpython"
+mypy==1.16.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -134,6 +134,8 @@ packaging==25.0
     #   gunicorn
     #   pytest
     #   sphinx
+pathspec==0.12.1
+    # via mypy
 pip-tools==7.4.1
     # via -r requirements/dev.in
 pkgconfig==1.5.5

@@ -194,6 +194,8 @@ class AbstractRoute(abc.ABC):
         ):
             pass
         elif inspect.isgeneratorfunction(handler):
+            if TYPE_CHECKING:
+                assert False
             warnings.warn(
                 "Bare generators are deprecated, use @coroutine wrapper",
                 DeprecationWarning,
@@ -978,7 +980,7 @@ class View(AbstractView):
         assert isinstance(ret, StreamResponse)
         return ret
 
-    def __await__(self) -> Generator[Any, None, StreamResponse]:
+    def __await__(self) -> Generator[None, None, StreamResponse]:
         return self._iter().__await__()
 
     def _raise_allowed_methods(self) -> NoReturn:
