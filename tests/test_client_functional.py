@@ -746,8 +746,7 @@ async def test_ssl_client_shutdown_timeout(
     async def read_loop() -> None:
         while True:
             # Read "data chunk\n"
-            if not await resp.content.read(11):
-                break
+            await resp.content.read(11)
 
     read_task = asyncio.create_task(read_loop())
     await asyncio.sleep(0)  # Yield control to ensure read_task starts
