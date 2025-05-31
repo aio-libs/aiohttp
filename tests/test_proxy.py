@@ -2,6 +2,7 @@ import asyncio
 import gc
 import socket
 import ssl
+import sys
 import unittest
 from unittest import mock
 
@@ -1044,13 +1045,23 @@ class TestProxy(unittest.TestCase):
                                 )
                             )
 
-                            tls_m.assert_called_with(
-                                mock.ANY,
-                                mock.ANY,
-                                _SSL_CONTEXT_VERIFIED,
-                                server_hostname="www.python.org",
-                                ssl_handshake_timeout=mock.ANY,
-                            )
+                            if sys.version_info >= (3, 11):
+                                tls_m.assert_called_with(
+                                    mock.ANY,
+                                    mock.ANY,
+                                    _SSL_CONTEXT_VERIFIED,
+                                    server_hostname="www.python.org",
+                                    ssl_handshake_timeout=mock.ANY,
+                                    ssl_shutdown_timeout=0.1,
+                                )
+                            else:
+                                tls_m.assert_called_with(
+                                    mock.ANY,
+                                    mock.ANY,
+                                    _SSL_CONTEXT_VERIFIED,
+                                    server_hostname="www.python.org",
+                                    ssl_handshake_timeout=mock.ANY,
+                                )
 
                             self.assertEqual(req.url.path, "/")
                             self.assertEqual(proxy_req.method, "CONNECT")

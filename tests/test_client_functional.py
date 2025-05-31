@@ -12,6 +12,7 @@ import sys
 import tarfile
 import time
 import zipfile
+from contextlib import suppress
 from typing import (
     Any,
     AsyncIterator,
@@ -702,6 +703,70 @@ async def test_ssl_client(
         assert resp.status == 200
         txt = await resp.text()
     assert txt == "Test message"
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
+)
+async def test_ssl_client_shutdown_timeout(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    # Test that ssl_shutdown_timeout is properly used during connection closure
+
+    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx, ssl_shutdown_timeout=0.1)
+
+    async def streaming_handler(request: web.Request) -> NoReturn:
+        # Create a streaming response that continuously sends data
+        response = web.StreamResponse()
+        await response.prepare(request)
+
+        # Keep sending data until connection is closed
+        while True:
+            await response.write(b"data chunk\n")
+            await asyncio.sleep(0.01)  # Small delay between chunks
+
+        assert False, "not reached"
+
+    app = web.Application()
+    app.router.add_route("GET", "/stream", streaming_handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)
+
+    # Verify the connector has the correct timeout
+    assert connector._ssl_shutdown_timeout == 0.1
+
+    # Start a streaming request to establish SSL connection with active data transfer
+    resp = await client.get("/stream")
+    assert resp.status == 200
+
+    # Create a background task that continuously reads data
+    async def read_loop() -> None:
+        while True:
+            # Read "data chunk\n"
+            await resp.content.read(11)
+
+    read_task = asyncio.create_task(read_loop())
+    await asyncio.sleep(0)  # Yield control to ensure read_task starts
+
+    # Record the time before closing
+    start_time = time.monotonic()
+
+    # Now close the connector while the stream is still active
+    # This will test the ssl_shutdown_timeout during an active connection
+    await connector.close()
+
+    # Verify the connection was closed within a reasonable time
+    # Should be close to ssl_shutdown_timeout (0.1s) but allow some margin
+    elapsed = time.monotonic() - start_time
+    assert elapsed < 0.3, f"Connection closure took too long: {elapsed}s"
+
+    read_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await read_task
+    assert read_task.done(), "Read task should be cancelled after connection closure"
 
 
 async def test_ssl_client_alpn(
