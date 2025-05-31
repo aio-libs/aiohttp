@@ -22,6 +22,7 @@ from typing import (
 from multidict import CIMultiDict
 from yarl import URL
 
+from .log import client_logger
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:
@@ -207,9 +208,8 @@ class AbstractCookieJar(Sized, IterableBase):
                 # Collect all cookies as tuples (name, morsel)
                 for name, morsel in tmp_cookie.items():
                     cookies_to_update.append((name, morsel))
-            except CookieError:
-                # Ignore invalid cookies
-                pass
+            except CookieError as exc:
+                client_logger.warning("Can not load response cookies: %s", exc)
 
         # Update all cookies at once for efficiency
         if cookies_to_update:
