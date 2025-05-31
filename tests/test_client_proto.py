@@ -252,3 +252,21 @@ async def test_connection_lost_sets_transport_to_none(
     proto.connection_lost(OSError())
 
     assert proto.transport is None
+
+
+async def test_connection_lost_exception_is_marked_retrieved(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that connection_lost properly handles exceptions without warnings."""
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mock.Mock())
+
+    # Simulate an SSL shutdown timeout error
+    ssl_error = TimeoutError("SSL shutdown timed out")
+    proto.connection_lost(ssl_error)
+
+    # Verify the exception was set on the closed future
+    assert proto.closed.done()
+    exc = proto.closed.exception()
+    assert "Connection lost: SSL shutdown timed out" in str(exc)
+    assert exc.__cause__ is ssl_error
