@@ -879,6 +879,12 @@ class TCPConnector(BaseConnector):
     socket_factory - A SocketFactoryType function that, if supplied,
                      will be used to create sockets given an
                      AddrInfoType.
+    ssl_shutdown_timeout - Grace period for SSL shutdown handshake on TLS
+                           connections. Default is 0.1 seconds. This usually
+                           allows for a clean SSL shutdown by notifying the
+                           remote peer of connection closure, while avoiding
+                           excessive delays during connector cleanup.
+                           Note: Only takes effect on Python 3.11+.
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
@@ -905,6 +911,7 @@ class TCPConnector(BaseConnector):
         happy_eyeballs_delay: Optional[float] = 0.25,
         interleave: Optional[int] = None,
         socket_factory: Optional[SocketFactoryType] = None,
+        ssl_shutdown_timeout: Optional[float] = 0.1,
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -932,6 +939,7 @@ class TCPConnector(BaseConnector):
         self._interleave = interleave
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
         self._socket_factory = socket_factory
+        self._ssl_shutdown_timeout = ssl_shutdown_timeout
 
     def _close(self) -> List[Awaitable[object]]:
         """Close all ongoing DNS calls."""
@@ -1176,6 +1184,13 @@ class TCPConnector(BaseConnector):
                     loop=self._loop,
                     socket_factory=self._socket_factory,
                 )
+                # Add ssl_shutdown_timeout for Python 3.11+ when SSL is used
+                if (
+                    kwargs.get("ssl")
+                    and self._ssl_shutdown_timeout is not None
+                    and sys.version_info >= (3, 11)
+                ):
+                    kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
                 return await self._loop.create_connection(*args, **kwargs, sock=sock)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
@@ -1314,13 +1329,27 @@ class TCPConnector(BaseConnector):
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
                 try:
-                    tls_transport = await self._loop.start_tls(
-                        underlying_transport,
-                        tls_proto,
-                        sslcontext,
-                        server_hostname=req.server_hostname or req.host,
-                        ssl_handshake_timeout=timeout.total,
-                    )
+                    # ssl_shutdown_timeout is only available in Python 3.11+
+                    if (
+                        sys.version_info >= (3, 11)
+                        and self._ssl_shutdown_timeout is not None
+                    ):
+                        tls_transport = await self._loop.start_tls(
+                            underlying_transport,
+                            tls_proto,
+                            sslcontext,
+                            server_hostname=req.server_hostname or req.host,
+                            ssl_handshake_timeout=timeout.total,
+                            ssl_shutdown_timeout=self._ssl_shutdown_timeout,
+                        )
+                    else:
+                        tls_transport = await self._loop.start_tls(
+                            underlying_transport,
+                            tls_proto,
+                            sslcontext,
+                            server_hostname=req.server_hostname or req.host,
+                            ssl_handshake_timeout=timeout.total,
+                        )
                 except BaseException:
                     # We need to close the underlying transport since
                     # `start_tls()` probably failed before it had a

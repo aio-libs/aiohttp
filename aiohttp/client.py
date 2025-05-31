@@ -303,6 +303,7 @@ class ClientSession:
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
+        ssl_shutdown_timeout: Optional[float] = 0.1,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -361,7 +362,7 @@ class ClientSession:
                 )
 
         if connector is None:
-            connector = TCPConnector(loop=loop)
+            connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
 
         if connector._loop is not loop:
             raise RuntimeError("Session and connector has to use same event loop")
