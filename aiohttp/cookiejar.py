@@ -304,9 +304,10 @@ class CookieJar(AbstractCookieJar):
         self._do_expiration()
 
     def update_cookies_from_headers(
-        self, headers: List[str], response_url: URL = URL()
+        self, headers: List[str], response_url: URL
     ) -> None:
-        """Update cookies from raw Set-Cookie headers.
+        """
+        Update cookies from raw Set-Cookie headers.
 
         This method preserves cookies with the same name but different
         domain/path by parsing each header separately.

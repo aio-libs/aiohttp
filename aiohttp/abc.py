@@ -189,9 +189,10 @@ class AbstractCookieJar(Sized, IterableBase):
         """Update cookies."""
 
     def update_cookies_from_headers(
-        self, headers: List[str], response_url: URL = URL()
+        self, headers: List[str], response_url: URL
     ) -> None:
-        """Update cookies from raw Set-Cookie headers.
+        """
+        Update cookies from raw Set-Cookie headers.
 
         Default implementation parses each header separately to preserve
         cookies with same name but different domain/path.
