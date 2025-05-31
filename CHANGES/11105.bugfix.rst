@@ -1,0 +1,4 @@
+Fixed an issue where cookies with duplicate names but different domains or paths were lost when updating the cookie jar.
+The ``ClientSession`` cookie jar now correctly stores all cookies even if they have the same name but different domain or path,
+following the RFC 6265 storage model. The ``response.cookies`` property still returns a ``SimpleCookie`` which may not
+include all cookies in the response, but the session's cookie jar will contain all of them -- by :user:`bdraco`.
