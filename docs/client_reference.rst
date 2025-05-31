@@ -57,7 +57,8 @@ The client session supports the context manager protocol for self closing.
                          read_bufsize=2**16, \
                          max_line_size=8190, \
                          max_field_size=8190, \
-                         fallback_charset_resolver=lambda r, b: "utf-8")
+                         fallback_charset_resolver=lambda r, b: "utf-8", \
+                         ssl_shutdown_timeout=0.1)
 
    The class for creating client sessions and making requests.
 
@@ -239,6 +240,16 @@ The client session supports the context manager protocol for self closing.
       Content-Type header). The default function simply defaults to ``utf-8``.
 
       .. versionadded:: 3.8.6
+
+   :param float ssl_shutdown_timeout: Grace period for SSL shutdown handshake on TLS
+      connections (``0.1`` seconds by default). This usually provides sufficient time
+      to notify the remote peer of connection closure, helping prevent broken
+      connections on the server side, while minimizing delays during connector
+      cleanup. This timeout is passed to the underlying :class:`TCPConnector`
+      when one is created automatically. Note: This parameter only takes effect
+      on Python 3.11+.
+
+      .. versionadded:: 3.12.5
 
    .. attribute:: closed
 
@@ -1169,7 +1180,7 @@ is controlled by *force_close* constructor's parameter).
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
                  happy_eyeballs_delay=0.25, interleave=None, loop=None, \
-                 socket_factory=None)
+                 socket_factory=None, ssl_shutdown_timeout=0.1)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1295,6 +1306,16 @@ is controlled by *force_close* constructor's parameter).
       :py:func:`socket.socket` when creating TCP connections.
 
         .. versionadded:: 3.12
+
+   :param float ssl_shutdown_timeout: Grace period for SSL shutdown on TLS
+      connections (``0.1`` seconds by default). This parameter balances two
+      important considerations: usually providing sufficient time to notify
+      the remote server (which helps prevent "connection reset" errors),
+      while avoiding unnecessary delays during connector cleanup.
+      The default value provides a reasonable compromise for most use cases.
+      Note: This parameter only takes effect on Python 3.11+.
+
+        .. versionadded:: 3.12.5
 
    .. attribute:: family
 
@@ -1866,12 +1887,29 @@ ClientRequest
    For more information about using middleware, see :ref:`aiohttp-client-middleware`.
 
    .. attribute:: body
-      :type: Payload | FormData
+      :type: Payload | Literal[b""]
 
-      The request body payload. This can be:
+      The request body payload (defaults to ``b""`` if no body passed).
 
-      - A :class:`Payload` object for raw data (default is empty bytes ``b""``)
-      - A :class:`FormData` object for form submissions
+      .. danger::
+
+         **DO NOT set this attribute directly!** Direct assignment will cause resource
+         leaks. Always use :meth:`update_body` instead:
+
+         .. code-block:: python
+
+            # WRONG - This will leak resources!
+            request.body = b"new data"
+
+            # CORRECT - Use update_body
+            await request.update_body(b"new data")
+
+         Setting body directly bypasses cleanup of the previous payload, which can
+         leave file handles open, streams unclosed, and buffers unreleased.
+
+         Additionally, setting body directly must be done from within an event loop
+         and is not thread-safe. Setting body outside of an event loop may raise
+         RuntimeError when closing file-based payloads.
 
    .. attribute:: chunked
       :type: bool | None
@@ -1973,6 +2011,77 @@ ClientRequest
       :type: HttpVersion
 
       The HTTP version to use for the request (e.g., ``HttpVersion(1, 1)`` for HTTP/1.1).
+
+   .. method:: update_body(body)
+
+      Update the request body and close any existing payload to prevent resource leaks.
+
+      **This is the ONLY correct way to modify a request body.** Never set the
+      :attr:`body` attribute directly.
+
+      This method is particularly useful in middleware when you need to modify the
+      request body after the request has been created but before it's sent.
+
+      :param body: The new body content. Can be:
+
+                   - ``bytes``/``bytearray``: Raw binary data
+                   - ``str``: Text data (encoded using charset from Content-Type)
+                   - :class:`FormData`: Form data encoded as multipart/form-data
+                   - :class:`Payload`: A pre-configured payload object
+                   - ``AsyncIterable[bytes]``: Async iterable of bytes chunks
+                   - File-like object: Will be read and sent as binary data
+                   - ``None``: Clears the body
+
+      .. code-block:: python
+
+         async def middleware(request, handler):
+             # Modify request body in middleware
+             if request.method == 'POST':
+                 # CORRECT: Always use update_body
+                 await request.update_body(b'{"modified": true}')
+
+                 # WRONG: Never set body directly!
+                 # request.body = b'{"modified": true}'  # This leaks resources!
+
+             # Or add authentication data to form
+             if isinstance(request.body, FormData):
+                 form = FormData()
+                 # Copy existing fields and add auth token
+                 form.add_field('auth_token', 'secret123')
+                 await request.update_body(form)
+
+             return await handler(request)
+
+      .. note::
+
+         This method is async because it may need to close file handles or
+         other resources associated with the previous payload. Always await
+         this method to ensure proper cleanup.
+
+      .. danger::
+
+         **Never set :attr:`ClientRequest.body` directly!** Direct assignment will cause resource
+         leaks. Always use this method instead. Setting the body attribute directly:
+
+         - Bypasses cleanup of the previous payload
+         - Leaves file handles and streams open
+         - Can cause memory leaks
+         - May result in unexpected behavior with async iterables
+
+      .. warning::
+
+         When updating the body, ensure that the Content-Type header is
+         appropriate for the new body content. The Content-Length header
+         will be updated automatically. When using :class:`FormData` or
+         :class:`Payload` objects, headers are updated automatically,
+         but you may need to set Content-Type manually for raw bytes or text.
+
+         It is not recommended to change the payload type in middleware. If the
+         body was already set (e.g., as bytes), it's best to keep the same type
+         rather than converting it (e.g., to str) as this may result in unexpected
+         behavior.
+
+      .. versionadded:: 3.12
 
 
 

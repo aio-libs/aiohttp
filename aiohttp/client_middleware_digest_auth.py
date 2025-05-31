@@ -29,6 +29,7 @@ from . import hdrs
 from .client_exceptions import ClientError
 from .client_middlewares import ClientHandlerType
 from .client_reqrep import ClientRequest, ClientResponse
+from .payload import Payload
 
 
 class DigestAuthChallenge(TypedDict, total=False):
@@ -192,7 +193,9 @@ class DigestAuthMiddleware:
         self._nonce_count = 0
         self._challenge: DigestAuthChallenge = {}
 
-    def _encode(self, method: str, url: URL, body: Union[bytes, str]) -> str:
+    async def _encode(
+        self, method: str, url: URL, body: Union[Payload, Literal[b""]]
+    ) -> str:
         """
         Build digest authorization header for the current challenge.
 
@@ -207,6 +210,7 @@ class DigestAuthMiddleware:
         Raises:
             ClientError: If the challenge is missing required parameters or
                          contains unsupported values
+
         """
         challenge = self._challenge
         if "realm" not in challenge:
@@ -272,11 +276,11 @@ class DigestAuthMiddleware:
         A1 = b":".join((self._login_bytes, realm_bytes, self._password_bytes))
         A2 = f"{method.upper()}:{path}".encode()
         if qop == "auth-int":
-            if isinstance(body, str):
-                entity_str = body.encode("utf-8", errors="replace")
+            if isinstance(body, Payload):  # will always be empty bytes unless Payload
+                entity_bytes = await body.as_bytes()  # Get bytes from Payload
             else:
-                entity_str = body
-            entity_hash = H(entity_str)
+                entity_bytes = body
+            entity_hash = H(entity_bytes)
             A2 = b":".join((A2, entity_hash))
 
         HA1 = H(A1)
@@ -398,7 +402,7 @@ class DigestAuthMiddleware:
         for retry_count in range(2):
             # Apply authorization header if we have a challenge (on second attempt)
             if retry_count > 0:
-                request.headers[hdrs.AUTHORIZATION] = self._encode(
+                request.headers[hdrs.AUTHORIZATION] = await self._encode(
                     request.method, request.url, request.body
                 )
 

@@ -10,6 +10,7 @@ import re
 import time
 import warnings
 from collections import defaultdict
+from collections.abc import Mapping
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (
     DefaultDict,
@@ -18,7 +19,6 @@ from typing import (
     Iterable,
     Iterator,
     List,
-    Mapping,
     Optional,
     Set,
     Tuple,
@@ -354,6 +354,8 @@ class CookieJar(AbstractCookieJar):
         path_len = len(request_url.path)
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
         for p in pairs:
+            if p not in self._cookies:
+                continue
             for name, cookie in self._cookies[p].items():
                 domain = cookie["domain"]
 

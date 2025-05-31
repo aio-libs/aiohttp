@@ -297,6 +297,7 @@ class ClientSession:
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
+        ssl_shutdown_timeout: Optional[float] = 0.1,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -323,7 +324,7 @@ class ClientSession:
         self._timeout = timeout
 
         if connector is None:
-            connector = TCPConnector()
+            connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector = connector
@@ -734,6 +735,8 @@ class ClientSession:
                         redirects += 1
                         history.append(resp)
                         if max_redirects and redirects >= max_redirects:
+                            if req._body is not None:
+                                await req._body.close()
                             resp.close()
                             raise TooManyRedirects(
                                 history[0].request_info, tuple(history)
@@ -765,6 +768,9 @@ class ClientSession:
                                 r_url, encoded=not self._requote_redirect_url
                             )
                         except ValueError as e:
+                            if req._body is not None:
+                                await req._body.close()
+                            resp.close()
                             raise InvalidUrlRedirectClientError(
                                 r_url,
                                 "Server attempted redirecting to a location that does not look like a URL",
@@ -772,6 +778,8 @@ class ClientSession:
 
                         scheme = parsed_redirect_url.scheme
                         if scheme not in HTTP_AND_EMPTY_SCHEMA_SET:
+                            if req._body is not None:
+                                await req._body.close()
                             resp.close()
                             raise NonHttpUrlRedirectClientError(r_url)
                         elif not scheme:
@@ -786,6 +794,9 @@ class ClientSession:
                         try:
                             redirect_origin = parsed_redirect_url.origin()
                         except ValueError as origin_val_err:
+                            if req._body is not None:
+                                await req._body.close()
+                            resp.close()
                             raise InvalidUrlRedirectClientError(
                                 parsed_redirect_url,
                                 "Invalid redirect URL origin",
@@ -805,6 +816,8 @@ class ClientSession:
 
                     break
 
+            if req._body is not None:
+                await req._body.close()
             # check response status
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status

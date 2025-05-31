@@ -347,6 +347,34 @@ async def test_create_connector(
     assert m.called
 
 
+async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
+    # Test default value
+    async with ClientSession() as session:
+        assert isinstance(session.connector, TCPConnector)
+        assert session.connector._ssl_shutdown_timeout == 0.1
+
+    # Test custom value
+    async with ClientSession(ssl_shutdown_timeout=1.0) as session:
+        assert isinstance(session.connector, TCPConnector)
+        assert session.connector._ssl_shutdown_timeout == 1.0
+
+    # Test None value
+    async with ClientSession(ssl_shutdown_timeout=None) as session:
+        assert isinstance(session.connector, TCPConnector)
+        assert session.connector._ssl_shutdown_timeout is None
+
+    # Test that it doesn't affect when custom connector is provided
+    custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+    async with ClientSession(
+        connector=custom_conn, ssl_shutdown_timeout=1.0
+    ) as session:
+        assert session.connector is not None
+        assert isinstance(session.connector, TCPConnector)
+        assert (
+            session.connector._ssl_shutdown_timeout == 2.0
+        )  # Should use connector's value
+
+
 def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
@@ -461,7 +489,9 @@ async def test_reraise_os_error(
     err = OSError(1, "permission error")
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.Mock(side_effect=err)
+    req.send = mock.AsyncMock(side_effect=err)
+    req._body = mock.Mock()
+    req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
 
     async def create_connection(
@@ -491,7 +521,9 @@ async def test_close_conn_on_error(
     err = UnexpectedException("permission error")
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.Mock(side_effect=err)
+    req.send = mock.AsyncMock(side_effect=err)
+    req._body = mock.Mock()
+    req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
 
     connections = []
@@ -549,6 +581,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
     # BaseConnector allows all high level protocols by default
@@ -611,6 +644,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req.send = mock.AsyncMock(return_value=resp)
     # UnixConnector allows all high level protocols by default and unix sockets

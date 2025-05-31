@@ -77,9 +77,6 @@ jobs:
         # can be scanned by slotscheck.
         pip install -r requirements/base.in -c requirements/base.txt
         slotscheck -v -m aiohttp
-    - name: Install libenchant
-      run: |
-        sudo apt install libenchant-2-dev
     - name: Install spell checker
       run: |
         pip install -r requirements/doc-spelling.in -c requirements/doc-spelling.txt

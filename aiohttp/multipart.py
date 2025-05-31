@@ -6,6 +6,7 @@ import sys
 import uuid
 import warnings
 from collections import deque
+from collections.abc import Mapping, Sequence
 from types import TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -14,9 +15,7 @@ from typing import (
     Dict,
     Iterator,
     List,
-    Mapping,
     Optional,
-    Sequence,
     Tuple,
     Type,
     Union,
@@ -36,6 +35,7 @@ from .hdrs import (
 )
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
+from .log import internal_logger
 from .payload import (
     JsonPayload,
     LookupError,
@@ -560,6 +560,7 @@ class BodyPartReader:
 @payload_type(BodyPartReader, order=Order.try_first)
 class BodyPartReaderPayload(Payload):
     _value: BodyPartReader
+    # _autoclose = False (inherited) - Streaming reader that may have resources
 
     def __init__(self, value: BodyPartReader, *args: Any, **kwargs: Any) -> None:
         super().__init__(value, *args, **kwargs)
@@ -575,6 +576,16 @@ class BodyPartReaderPayload(Payload):
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         raise TypeError("Unable to decode.")
+
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """Raises TypeError as body parts should be consumed via write().
+
+        This is intentional: BodyPartReader payloads are designed for streaming
+        large data (potentially gigabytes) and must be consumed only once via
+        the write() method to avoid memory exhaustion. They cannot be buffered
+        in memory for reuse.
+        """
+        raise TypeError("Unable to read body part as bytes. Use write() to consume.")
 
     async def write(self, writer: Any) -> None:
         field = self._value
@@ -793,6 +804,8 @@ class MultipartWriter(Payload):
     """Multipart body writer."""
 
     _value: None
+    # _consumed = False (inherited) - Can be encoded multiple times
+    _autoclose = True  # No file handles, just collects parts in memory
 
     def __init__(self, subtype: str = "mixed", boundary: Optional[str] = None) -> None:
         boundary = boundary if boundary is not None else uuid.uuid4().hex
@@ -979,6 +992,11 @@ class MultipartWriter(Payload):
         return total
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        """Return string representation of the multipart data.
+
+        WARNING: This method may do blocking I/O if parts contain file payloads.
+        It should not be called in the event loop. Use as_bytes().decode() instead.
+        """
         return "".join(
             "--"
             + self.boundary
@@ -987,6 +1005,33 @@ class MultipartWriter(Payload):
             + part.decode()
             for part, _e, _te in self._parts
         )
+
+    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
+        """Return bytes representation of the multipart data.
+
+        This method is async-safe and calls as_bytes on underlying payloads.
+        """
+        parts: List[bytes] = []
+
+        # Process each part
+        for part, _e, _te in self._parts:
+            # Add boundary
+            parts.append(b"--" + self._boundary + b"\r\n")
+
+            # Add headers
+            parts.append(part._binary_headers)
+
+            # Add payload content using as_bytes for async safety
+            part_bytes = await part.as_bytes(encoding, errors)
+            parts.append(part_bytes)
+
+            # Add trailing CRLF
+            parts.append(b"\r\n")
+
+        # Add closing boundary
+        parts.append(b"--" + self._boundary + b"--\r\n")
+
+        return b"".join(parts)
 
     async def write(self, writer: Any, close_boundary: bool = True) -> None:
         """Write body."""
@@ -1014,6 +1059,31 @@ class MultipartWriter(Payload):
 
         if close_boundary:
             await writer.write(b"--" + self._boundary + b"--\r\n")
+
+    async def close(self) -> None:
+        """
+        Close all part payloads that need explicit closing.
+
+        IMPORTANT: This method must not await anything that might not finish
+        immediately, as it may be called during cleanup/cancellation. Schedule
+        any long-running operations without awaiting them.
+        """
+        if self._consumed:
+            return
+        self._consumed = True
+
+        # Close all parts that need explicit closing
+        # We catch and log exceptions to ensure all parts get a chance to close
+        # we do not use asyncio.gather() here because we are not allowed
+        # to suspend given we may be called during cleanup
+        for idx, (part, _, _) in enumerate(self._parts):
+            if not part.autoclose and not part.consumed:
+                try:
+                    await part.close()
+                except Exception as exc:
+                    internal_logger.error(
+                        "Failed to close multipart part %d: %s", idx, exc, exc_info=True
+                    )
 
 
 class MultipartPayloadWriter:

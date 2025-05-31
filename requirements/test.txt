@@ -29,7 +29,7 @@ coverage==7.8.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==45.0.2
+cryptography==45.0.3
     # via trustme
 exceptiongroup==1.3.0
     # via pytest
@@ -100,13 +100,13 @@ pytest-codspeed==3.2.0
     # via -r requirements/test.in
 pytest-cov==6.1.1
     # via -r requirements/test.in
-pytest-mock==3.14.0
+pytest-mock==3.14.1
     # via -r requirements/test.in
-pytest-xdist==3.6.1
+pytest-xdist==3.7.0
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.76.1
+python-on-whales==0.77.0
     # via -r requirements/test.in
 rich==14.0.0
     # via pytest-codspeed
