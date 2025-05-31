@@ -1140,11 +1140,9 @@ class TCPConnector(BaseConnector):
                     socket_factory=self._socket_factory,
                 )
                 # Add ssl_shutdown_timeout for Python 3.11+ when SSL is used
-                if (
-                    sys.version_info >= (3, 11)
-                    and self._ssl_shutdown_timeout is not None
-                    and "ssl" in kwargs
-                    and kwargs["ssl"]
+                if self._ssl_shutdown_timeout is not None and sys.version_info >= (
+                    3,
+                    11,
                 ):
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
                 return await self._loop.create_connection(*args, **kwargs, sock=sock)
