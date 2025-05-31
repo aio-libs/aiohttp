@@ -268,5 +268,6 @@ async def test_connection_lost_exception_is_marked_retrieved(
     # Verify the exception was set on the closed future
     assert proto.closed.done()
     exc = proto.closed.exception()
+    assert exc is not None
     assert "Connection lost: SSL shutdown timed out" in str(exc)
     assert exc.__cause__ is ssl_error
