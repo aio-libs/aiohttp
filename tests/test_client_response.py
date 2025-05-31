@@ -1383,7 +1383,8 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
 def test_response_duplicate_cookie_names(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
-    """Test that response.cookies handles duplicate cookie names correctly.
+    """
+    Test that response.cookies handles duplicate cookie names correctly.
 
     Note: This behavior (losing cookies with same name but different domains/paths)
     is arguably undesirable, but we promise to return a SimpleCookie object, and
@@ -1418,15 +1419,8 @@ def test_response_duplicate_cookie_names(
         ]
     )
     response._headers = CIMultiDictProxy(headers)
-
-    # Simulate cookie parsing as done in ClientResponse._init()
-    cookies = SimpleCookie()
-    for cookie_hdr in headers.getall("Set-Cookie", []):
-        try:
-            cookies.load(cookie_hdr)
-        except CookieError:
-            pass
-    response.cookies = cookies
+    # Set raw cookie headers as done in ClientResponse._init()
+    response._raw_cookie_headers = list(headers.getall("Set-Cookie", []))
 
     # SimpleCookie only keeps the last cookie with each name
     # This is expected behavior since SimpleCookie uses name as the key
