@@ -1452,7 +1452,7 @@ def test_response_raw_cookie_headers_preserved(
         "tracking=xyz; Domain=.example.com; Path=/; HttpOnly",
     ]
 
-    headers = CIMultiDict()
+    headers: CIMultiDict[str] = CIMultiDict()
     for cookie_hdr in cookie_headers:
         headers.add("Set-Cookie", cookie_hdr)
 
