@@ -1,3 +1,0 @@
-Fixed spurious "Future exception was never retrieved" warnings for connection lost errors when the connector is not closed -- by :user:`bdraco`.
-
-When connections are lost, the exception is now marked as retrieved since it is always propagated through other means, preventing unnecessary warnings in logs.
