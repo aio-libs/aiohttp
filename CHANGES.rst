@@ -10,6 +10,36 @@
 
 .. towncrier release notes start
 
+3.12.5 (2025-05-30)
+===================
+
+Features
+--------
+
+- Added ``ssl_shutdown_timeout`` parameter to :py:class:`~aiohttp.ClientSession` and :py:class:`~aiohttp.TCPConnector` to control the grace period for SSL shutdown handshake on TLS connections. This helps prevent "connection reset" errors on the server side while avoiding excessive delays during connector cleanup. Note: This parameter only takes effect on Python 3.11+ -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11091`, :issue:`11094`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Improved performance of isinstance checks by using collections.abc types instead of typing module equivalents -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11085`, :issue:`11088`.
+
+
+
+
+----
+
+
 3.12.4 (2025-05-28)
 ===================
 

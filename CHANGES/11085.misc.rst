@@ -1,1 +1,0 @@
-Improved performance of isinstance checks by using collections.abc types instead of typing module equivalents -- by :user:`bdraco`.
