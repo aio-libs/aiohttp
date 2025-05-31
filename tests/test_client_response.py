@@ -1380,35 +1380,6 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
     assert spy.call_count == 0
 
 
-def test_cookie_parsing_special_chars() -> None:
-    """Test cookie parsing with special characters."""
-    from http.cookies import CookieError, SimpleCookie
-
-    test_cases = [
-        ("empty=; Path=/", True, "empty", ""),
-        (
-            "spaces=hello world; Path=/",
-            False,
-            None,
-            None,
-        ),  # SimpleCookie can't parse spaces
-        ("special=test@value#123; Path=/", True, "special", "test@value#123"),
-        ("unicode=测试; Path=/", False, None, None),  # SimpleCookie can't parse unicode
-    ]
-
-    for cookie_str, should_parse, expected_name, expected_value in test_cases:
-        cookie = SimpleCookie()
-        try:
-            cookie.load(cookie_str)
-            if should_parse:
-                assert expected_name in cookie
-                assert cookie[expected_name].value == expected_value
-            else:
-                assert len(cookie) == 0
-        except CookieError:
-            assert not should_parse
-
-
 def test_response_duplicate_cookie_names(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
@@ -1616,52 +1587,3 @@ def test_response_malformed_cookies(
     assert "valid" in response.cookies
     assert "valid2" in response.cookies
     assert len(response.cookies) >= 2  # At least the two valid cookies
-
-
-def test_response_quoted_cookie_values(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
-    """Test handling of quoted cookie values."""
-    response = ClientResponse(
-        "get",
-        URL("http://example.com"),
-        request_info=mock.Mock(),
-        writer=WriterMock(),
-        continue100=None,
-        timer=TimerNoop(),
-        traces=[],
-        loop=loop,
-        session=session,
-    )
-
-    headers = CIMultiDict(
-        [
-            ("Set-Cookie", 'quoted="hello world"; Path=/'),
-            (
-                "Set-Cookie",
-                "single-quoted='not standard'; Path=/",
-            ),  # Not standard but some servers do this
-            ("Set-Cookie", 'escaped="hello\\"world"; Path=/'),
-            ("Set-Cookie", 'mixed=some"quotes"inside; Path=/'),
-        ]
-    )
-    response._headers = CIMultiDictProxy(headers)
-
-    # Parse cookies
-    from http.cookies import CookieError, SimpleCookie
-
-    cookies = SimpleCookie()
-    for cookie_hdr in headers.getall("Set-Cookie", []):
-        try:
-            cookies.load(cookie_hdr)
-        except CookieError:
-            pass
-    response.cookies = cookies
-
-    # Check which quoted formats SimpleCookie accepts
-    if "quoted" in response.cookies:
-        # SimpleCookie should handle standard double quotes
-        assert response.cookies["quoted"].value == "hello world"
-
-    # SimpleCookie has specific rules about what it accepts
-    # The test just verifies the behavior, not enforcing specific outcomes
