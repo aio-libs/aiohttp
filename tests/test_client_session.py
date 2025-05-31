@@ -696,7 +696,7 @@ async def test_cookie_jar_usage(
     class MockCookieJar(abc.AbstractCookieJar):
         def __init__(self) -> None:
             self._update_cookies_mock = mock.Mock()
-            self._filter_cookies_mock = mock.Mock(return_value=None)
+            self._filter_cookies_mock = mock.Mock(return_value=BaseCookie())
             self._clear_mock = mock.Mock()
             self._clear_domain_mock = mock.Mock()
             self._items: List[Any] = []
