@@ -16,6 +16,7 @@ from typing import (
     Optional,
     TypedDict,
     Union,
+    cast,
 )
 from unittest import mock
 from uuid import uuid4
@@ -715,7 +716,7 @@ async def test_cookie_jar_usage(
             self._update_cookies_mock(cookies, response_url)
 
         def filter_cookies(self, request_url: URL) -> BaseCookie[str]:
-            return self._filter_cookies_mock(request_url)
+            return cast(BaseCookie[str], self._filter_cookies_mock(request_url))
 
         def __len__(self) -> int:
             return len(self._items)
@@ -724,6 +725,12 @@ async def test_cookie_jar_usage(
             return iter(self._items)
 
     jar = MockCookieJar()
+
+    assert jar.quote_cookie is True
+    assert len(jar) == 0
+    assert list(jar) == []
+    jar.clear()
+    jar.clear_domain("example.com")
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal req_url
