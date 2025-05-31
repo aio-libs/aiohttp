@@ -1420,8 +1420,6 @@ def test_response_duplicate_cookie_names(
     response._headers = CIMultiDictProxy(headers)
 
     # Simulate cookie parsing as done in ClientResponse._init()
-    from http.cookies import SimpleCookie
-
     cookies = SimpleCookie()
     for cookie_hdr in headers.getall("Set-Cookie", []):
         try:
