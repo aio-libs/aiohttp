@@ -10,6 +10,26 @@
 
 .. towncrier release notes start
 
+3.12.6 (2025-05-31)
+===================
+
+Bug fixes
+---------
+
+- Fixed spurious "Future exception was never retrieved" warnings for connection lost errors when the connector is not closed -- by :user:`bdraco`.
+
+  When connections are lost, the exception is now marked as retrieved since it is always propagated through other means, preventing unnecessary warnings in logs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11100`.
+
+
+
+
+----
+
+
 3.12.5 (2025-05-30)
 ===================
 
