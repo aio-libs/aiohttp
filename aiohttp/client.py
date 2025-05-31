@@ -727,9 +727,6 @@ class ClientSession:
                         self._cookie_jar.update_cookies_from_headers(
                             resp._raw_cookie_headers, resp.url
                         )
-                    elif cookies := resp._cookies:
-                        # Fallback for backward compatibility
-                        self._cookie_jar.update_cookies(cookies, resp.url)
 
                     # redirects
                     if resp.status in (301, 302, 303, 307, 308) and allow_redirects:

@@ -2712,6 +2712,7 @@ async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
         async with client.get("/") as resp:
             assert 200 == resp.status
             cookie_names = {c.key for c in client.session.cookie_jar}
+            _ = resp.cookies
         assert cookie_names == {"c1", "c2"}
 
         m_log.warning.assert_called_with("Can not load response cookies: %s", mock.ANY)
