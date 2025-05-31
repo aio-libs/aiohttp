@@ -228,6 +228,7 @@ class ClientResponse(HeadersMixin):
 
     _connection: Optional["Connection"] = None  # current connection
     _cookies: Optional[SimpleCookie] = None
+    _raw_cookie_headers: Optional[Tuple[str, ...]] = None
     _continue: Optional["asyncio.Future[bool]"] = None
     _source_traceback: Optional[traceback.StackSummary] = None
     _session: Optional["ClientSession"] = None
@@ -309,12 +310,29 @@ class ClientResponse(HeadersMixin):
     @property
     def cookies(self) -> SimpleCookie:
         if self._cookies is None:
-            self._cookies = SimpleCookie()
+            if self._raw_cookie_headers is not None:
+                # Parse cookies for response.cookies (SimpleCookie for backward compatibility)
+                cookies = SimpleCookie()
+                for hdr in self._raw_cookie_headers:
+                    try:
+                        cookies.load(hdr)
+                    except CookieError as exc:
+                        client_logger.warning("Can not load response cookies: %s", exc)
+                self._cookies = cookies
+            else:
+                self._cookies = SimpleCookie()
         return self._cookies
 
     @cookies.setter
     def cookies(self, cookies: SimpleCookie) -> None:
         self._cookies = cookies
+        # Generate raw cookie headers from the SimpleCookie
+        if cookies:
+            self._raw_cookie_headers = tuple(
+                morsel.OutputString() for morsel in cookies.values()
+            )
+        else:
+            self._raw_cookie_headers = None
 
     @reify
     def url(self) -> URL:
@@ -474,13 +492,8 @@ class ClientResponse(HeadersMixin):
 
         # cookies
         if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
-            cookies = SimpleCookie()
-            for hdr in cookie_hdrs:
-                try:
-                    cookies.load(hdr)
-                except CookieError as exc:
-                    client_logger.warning("Can not load response cookies: %s", exc)
-            self._cookies = cookies
+            # Store raw cookie headers for CookieJar
+            self._raw_cookie_headers = tuple(cookie_hdrs)
         return self
 
     def _response_eof(self) -> None:
