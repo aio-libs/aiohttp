@@ -2,7 +2,7 @@ import logging
 import socket
 from abc import ABC, abstractmethod
 from collections.abc import Sized
-from http.cookies import BaseCookie, Morsel
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -187,6 +187,25 @@ class AbstractCookieJar(Sized, IterableBase):
     @abstractmethod
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
+
+    def update_cookies_from_headers(
+        self, headers: List[str], response_url: URL = URL()
+    ) -> None:
+        """Update cookies from raw Set-Cookie headers.
+
+        Default implementation parses each header separately to preserve
+        cookies with same name but different domain/path.
+        """
+        # Default implementation for backward compatibility
+        for cookie_header in headers:
+            tmp_cookie = SimpleCookie()
+            try:
+                tmp_cookie.load(cookie_header)
+                if tmp_cookie:
+                    self.update_cookies(tmp_cookie, response_url)
+            except Exception:
+                # Ignore invalid cookies
+                pass
 
     @abstractmethod
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":

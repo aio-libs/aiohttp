@@ -722,7 +722,13 @@ class ClientSession:
                             raise
                         raise ClientOSError(*exc.args) from exc
 
-                    if cookies := resp._cookies:
+                    # Update cookies from raw headers to preserve duplicates
+                    if resp._raw_cookie_headers:
+                        self._cookie_jar.update_cookies_from_headers(
+                            resp._raw_cookie_headers, resp.url
+                        )
+                    elif cookies := resp._cookies:
+                        # Fallback for backward compatibility
                         self._cookie_jar.update_cookies(cookies, resp.url)
 
                     # redirects

@@ -303,6 +303,26 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
+    def update_cookies_from_headers(
+        self, headers: List[str], response_url: URL = URL()
+    ) -> None:
+        """Update cookies from raw Set-Cookie headers.
+
+        This method preserves cookies with the same name but different
+        domain/path by parsing each header separately.
+        """
+        for cookie_header in headers:
+            # Parse each header into a separate SimpleCookie to preserve duplicates
+            tmp_cookie = SimpleCookie()
+            try:
+                tmp_cookie.load(cookie_header)
+                # Update cookies one by one to preserve all cookies
+                if tmp_cookie:
+                    self.update_cookies(tmp_cookie, response_url)
+            except CookieError:
+                # Ignore invalid cookies
+                pass
+
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
         if not isinstance(request_url, URL):
