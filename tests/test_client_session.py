@@ -714,7 +714,7 @@ async def test_cookie_jar_usage(
         def update_cookies(self, cookies: Any, response_url: URL = URL()) -> None:
             self._update_cookies_mock(cookies, response_url)
 
-        def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
+        def filter_cookies(self, request_url: URL) -> BaseCookie[str]:
             return self._filter_cookies_mock(request_url)
 
         def __len__(self) -> int:
