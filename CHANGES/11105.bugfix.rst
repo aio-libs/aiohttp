@@ -1,4 +1,5 @@
 Fixed an issue where cookies with duplicate names but different domains or paths were lost when updating the cookie jar.
-The ``ClientSession`` cookie jar now correctly stores all cookies even if they have the same name but different domain or path,
-following the RFC 6265 storage model. The ``response.cookies`` property still returns a ``SimpleCookie`` which may not
-include all cookies in the response, but the session's cookie jar will contain all of them -- by :user:`bdraco`.
+The :class:`~aiohttp.ClientSession` cookie jar now correctly stores all cookies even if they have the same name but different domain or path,
+following the RFC 6265 storage model. Note that :attr:`ClientResponse.cookies <aiohttp.ClientResponse.cookies>` returns a :class:`~http.cookies.SimpleCookie` which uses the cookie name
+as a key, so only the last cookie with each name is accessible via this interface. Users can access all cookies via
+:meth:`ClientResponse.headers.getall('Set-Cookie') <multidict.MultiDictProxy.getall>` if needed -- by :user:`bdraco`.

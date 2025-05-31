@@ -1483,6 +1483,19 @@ Response object
       HTTP cookies of response (*Set-Cookie* HTTP header,
       :class:`~http.cookies.SimpleCookie`).
 
+      .. note::
+
+         Since :class:`~http.cookies.SimpleCookie` uses cookie name as the
+         key, cookies with the same name but different domains or paths will
+         be overwritten. Only the last cookie with a given name will be
+         accessible via this attribute.
+
+         To access all cookies, including duplicates with the same name,
+         use :meth:`response.headers.getall('Set-Cookie') <multidict.MultiDictProxy.getall>`.
+
+         The session's cookie jar will correctly store all cookies, even if
+         they are not accessible via this attribute.
+
    .. attribute:: headers
 
       A case-insensitive multidict proxy with HTTP headers of
