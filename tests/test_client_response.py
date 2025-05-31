@@ -1383,7 +1383,16 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
 def test_response_duplicate_cookie_names(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
-    """Test that response.cookies handles duplicate cookie names correctly."""
+    """Test that response.cookies handles duplicate cookie names correctly.
+
+    Note: This behavior (losing cookies with same name but different domains/paths)
+    is arguably undesirable, but we promise to return a SimpleCookie object, and
+    SimpleCookie uses cookie name as the key. This is documented behavior.
+
+    To access all cookies including duplicates, users should use:
+    - response.headers.getall('Set-Cookie') for raw headers
+    - The session's cookie jar correctly stores all cookies
+    """
     response = ClientResponse(
         "get",
         URL("http://example.com"),
@@ -1422,6 +1431,7 @@ def test_response_duplicate_cookie_names(
     response.cookies = cookies
 
     # SimpleCookie only keeps the last cookie with each name
+    # This is expected behavior since SimpleCookie uses name as the key
     assert len(response.cookies) == 2  # Only 'session-id' and 'user-pref'
     assert response.cookies["session-id"].value == "098-7654321"  # Last one wins
     assert response.cookies["user-pref"].value == "light"  # Last one wins
