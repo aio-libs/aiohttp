@@ -7,6 +7,7 @@ import re
 import sys
 import traceback
 import warnings
+from collections import defaultdict
 from collections.abc import Mapping
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
@@ -98,6 +99,52 @@ if TYPE_CHECKING:
 
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+
+
+class MultiDomainCookies(SimpleCookie):
+    """Cookie container that preserves all cookies, even with duplicate names.
+
+    This is needed because servers may send multiple cookies with the same name
+    but different domains or paths. SimpleCookie only keeps the last one.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Store all cookies as a list of (name, morsel) tuples
+        self._all_cookies: List[Tuple[str, Morsel]] = []
+
+    def __setitem__(self, key: str, morsel: Any) -> None:
+        """Override to store all cookies, not just the last one with each name."""
+        if not isinstance(morsel, Morsel):
+            # Let parent class handle conversion to Morsel
+            tmp = SimpleCookie()
+            tmp[key] = morsel
+            morsel = tmp[key]
+
+        # Always add to our list
+        self._all_cookies.append((key, morsel))
+
+        # Also update the parent dict (this will overwrite duplicates)
+        # This maintains compatibility with code expecting dict-like behavior
+        super().__setitem__(key, morsel)
+
+    def load(self, rawdata: str) -> None:
+        """Override load to use our custom __setitem__."""
+        # Create a temporary SimpleCookie to parse
+        tmp = SimpleCookie()
+        tmp.load(rawdata)
+        # Add each cookie through our __setitem__
+        for key, morsel in tmp.items():
+            self[key] = morsel
+
+    def items(self) -> List[Tuple[str, Morsel]]:
+        """Return all cookies, including duplicates."""
+        # Return our complete list instead of just the dict items
+        return self._all_cookies.copy()
+
+    def __len__(self) -> int:
+        """Return the total number of cookies, including duplicates."""
+        return len(self._all_cookies)
 
 
 def _gen_default_accept_encoding() -> str:
@@ -309,7 +356,7 @@ class ClientResponse(HeadersMixin):
     @property
     def cookies(self) -> SimpleCookie:
         if self._cookies is None:
-            self._cookies = SimpleCookie()
+            self._cookies = MultiDomainCookies()
         return self._cookies
 
     @cookies.setter
@@ -474,7 +521,7 @@ class ClientResponse(HeadersMixin):
 
         # cookies
         if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
-            cookies = SimpleCookie()
+            cookies = MultiDomainCookies()
             for hdr in cookie_hdrs:
                 try:
                     cookies.load(hdr)

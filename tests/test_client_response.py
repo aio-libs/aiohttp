@@ -1377,3 +1377,32 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
     assert not response.ok
     assert not response.closed
     assert spy.call_count == 0
+
+
+def test_cookie_parsing_special_chars() -> None:
+    """Test cookie parsing with special characters."""
+    from http.cookies import CookieError, SimpleCookie
+
+    test_cases = [
+        ("empty=; Path=/", True, "empty", ""),
+        (
+            "spaces=hello world; Path=/",
+            False,
+            None,
+            None,
+        ),  # SimpleCookie can't parse spaces
+        ("special=test@value#123; Path=/", True, "special", "test@value#123"),
+        ("unicode=测试; Path=/", False, None, None),  # SimpleCookie can't parse unicode
+    ]
+
+    for cookie_str, should_parse, expected_name, expected_value in test_cases:
+        cookie = SimpleCookie()
+        try:
+            cookie.load(cookie_str)
+            if should_parse:
+                assert expected_name in cookie
+                assert cookie[expected_name].value == expected_value
+            else:
+                assert len(cookie) == 0
+        except CookieError:
+            assert not should_parse
