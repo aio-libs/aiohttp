@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import heapq
 import itertools
+import logging
 import pickle
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
@@ -1205,3 +1206,218 @@ async def test_filter_cookies_does_not_leak_memory() -> None:
     for key, morsels in jar._morsel_cache.items():
         assert key in jar._cookies, f"Orphaned morsel cache entry for {key}"
         assert len(morsels) > 0, f"Empty morsel cache entry found for {key}"
+
+
+def test_update_cookies_from_headers() -> None:
+    """Test update_cookies_from_headers method."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/path")
+
+    # Test with simple cookies
+    headers: List[str] = [
+        "session-id=123456; Path=/",
+        "user-pref=dark-mode; Domain=.example.com",
+        "tracking=xyz789; Secure; HttpOnly",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # Verify all cookies were added to the jar
+    assert len(jar) == 3
+
+    # Check cookies available for HTTP URL (secure cookie should be filtered out)
+    filtered_http: BaseCookie[str] = jar.filter_cookies(url)
+    assert len(filtered_http) == 2
+    assert "session-id" in filtered_http
+    assert filtered_http["session-id"].value == "123456"
+    assert "user-pref" in filtered_http
+    assert filtered_http["user-pref"].value == "dark-mode"
+    assert "tracking" not in filtered_http  # Secure cookie not available on HTTP
+
+    # Check cookies available for HTTPS URL (all cookies should be available)
+    url_https: URL = URL("https://example.com/path")
+    filtered_https: BaseCookie[str] = jar.filter_cookies(url_https)
+    assert len(filtered_https) == 3
+    assert "tracking" in filtered_https
+    assert filtered_https["tracking"].value == "xyz789"
+
+
+def test_update_cookies_from_headers_duplicate_names() -> None:
+    """Test that duplicate cookie names with different domains are preserved."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://www.example.com/")
+
+    # Headers with duplicate names but different domains
+    headers: List[str] = [
+        "session-id=123456; Domain=.example.com; Path=/",
+        "session-id=789012; Domain=.www.example.com; Path=/",
+        "user-pref=light; Domain=.example.com",
+        "user-pref=dark; Domain=sub.example.com",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # Should have 3 cookies (user-pref=dark for sub.example.com is rejected)
+    assert len(jar) == 3
+
+    # Verify we have both session-id cookies
+    all_cookies: List[Morsel[str]] = list(jar)
+    session_ids: List[Morsel[str]] = [c for c in all_cookies if c.key == "session-id"]
+    assert len(session_ids) == 2
+
+    # Check their domains are different
+    domains: Set[str] = {c["domain"] for c in session_ids}
+    assert domains == {"example.com", "www.example.com"}
+
+
+def test_update_cookies_from_headers_invalid_cookies(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that invalid cookies are logged and skipped."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Mix of valid and invalid cookies
+    headers: List[str] = [
+        "valid-cookie=value123",
+        "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
+        "{925EC0B8-CB17-4BEB-8A35-1033813B0523}; "
+        "HttpOnly; Path=/",  # This cookie with curly braces causes CookieError
+        "another-valid=value456",
+    ]
+
+    # Enable logging for the client logger
+    with caplog.at_level(logging.WARNING, logger="aiohttp.client"):
+        jar.update_cookies_from_headers(headers, url)
+
+    # Check that we logged warnings for invalid cookies
+    assert "Can not load response cookies" in caplog.text
+
+    # Valid cookies should still be added
+    assert len(jar) >= 2  # At least the two clearly valid cookies
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "valid-cookie" in filtered
+    assert "another-valid" in filtered
+
+
+def test_update_cookies_from_headers_empty_list() -> None:
+    """Test that empty header list is handled gracefully."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Should not raise any errors
+    jar.update_cookies_from_headers([], url)
+
+    assert len(jar) == 0
+
+
+def test_update_cookies_from_headers_with_attributes() -> None:
+    """Test cookies with various attributes are handled correctly."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("https://secure.example.com/app/page")
+
+    headers: List[str] = [
+        "secure-cookie=value1; Secure; HttpOnly; SameSite=Strict",
+        "expiring-cookie=value2; Max-Age=3600; Path=/app",
+        "domain-cookie=value3; Domain=.example.com; Path=/",
+        "dated-cookie=value4; Expires=Wed, 09 Jun 2030 10:18:14 GMT",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # All cookies should be stored
+    assert len(jar) == 4
+
+    # Verify secure cookie (should work on HTTPS subdomain)
+    # Note: cookies without explicit path get path from URL (/app)
+    filtered_https_root: BaseCookie[str] = jar.filter_cookies(
+        URL("https://secure.example.com/")
+    )
+    assert len(filtered_https_root) == 1  # Only domain-cookie has Path=/
+    assert "domain-cookie" in filtered_https_root
+
+    # Check app path
+    filtered_https_app: BaseCookie[str] = jar.filter_cookies(
+        URL("https://secure.example.com/app/")
+    )
+    assert len(filtered_https_app) == 4  # All cookies match
+    assert "secure-cookie" in filtered_https_app
+    assert "expiring-cookie" in filtered_https_app
+    assert "domain-cookie" in filtered_https_app
+    assert "dated-cookie" in filtered_https_app
+
+    # Secure cookie should not be available on HTTP
+    filtered_http_app: BaseCookie[str] = jar.filter_cookies(
+        URL("http://secure.example.com/app/")
+    )
+    assert "secure-cookie" not in filtered_http_app
+    assert "expiring-cookie" in filtered_http_app  # Non-secure cookies still available
+    assert "domain-cookie" in filtered_http_app
+    assert "dated-cookie" in filtered_http_app
+
+
+def test_update_cookies_from_headers_preserves_existing() -> None:
+    """Test that update_cookies_from_headers preserves existing cookies."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Add some initial cookies
+    jar.update_cookies(
+        {
+            "existing1": "value1",
+            "existing2": "value2",
+        },
+        url,
+    )
+
+    # Add more cookies via headers
+    headers: List[str] = [
+        "new-cookie1=value3",
+        "new-cookie2=value4",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # Should have all 4 cookies
+    assert len(jar) == 4
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "existing1" in filtered
+    assert "existing2" in filtered
+    assert "new-cookie1" in filtered
+    assert "new-cookie2" in filtered
+
+
+def test_update_cookies_from_headers_overwrites_same_cookie() -> None:
+    """Test that cookies with same name/domain/path are overwritten."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Add initial cookie
+    jar.update_cookies({"session": "old-value"}, url)
+
+    # Update with new value via headers
+    headers: List[str] = ["session=new-value"]
+    jar.update_cookies_from_headers(headers, url)
+
+    # Should still have just 1 cookie with updated value
+    assert len(jar) == 1
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert filtered["session"].value == "new-value"
+
+
+def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
+    """Test that DummyCookieJar ignores update_cookies_from_headers."""
+    jar: DummyCookieJar = DummyCookieJar()
+    url: URL = URL("http://example.com/")
+
+    headers: List[str] = [
+        "cookie1=value1",
+        "cookie2=value2",
+    ]
+
+    # Should not raise and should not store anything
+    jar.update_cookies_from_headers(headers, url)
+
+    assert len(jar) == 0
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert len(filtered) == 0
