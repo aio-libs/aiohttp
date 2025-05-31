@@ -13,6 +13,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Sequence,
     Tuple,
     TypedDict,
     Union,
@@ -189,7 +190,7 @@ class AbstractCookieJar(Sized, IterableBase):
         """Update cookies."""
 
     def update_cookies_from_headers(
-        self, headers: List[str], response_url: URL
+        self, headers: Sequence[str], response_url: URL
     ) -> None:
         """
         Update cookies from raw Set-Cookie headers.

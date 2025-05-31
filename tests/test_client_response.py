@@ -3,7 +3,6 @@
 import asyncio
 import gc
 import sys
-from http.cookies import CookieError, SimpleCookie
 from json import JSONDecodeError
 from unittest import mock
 
@@ -13,7 +12,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientSession, http
+from aiohttp import ClientSession, hdrs, http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
 from aiohttp.connector import Connection
 from aiohttp.helpers import TimerNoop
@@ -1419,8 +1418,8 @@ def test_response_duplicate_cookie_names(
         ]
     )
     response._headers = CIMultiDictProxy(headers)
-    # Set raw cookie headers as done in ClientResponse._init()
-    response._raw_cookie_headers = list(headers.getall("Set-Cookie", []))
+    # Set raw cookie headers as done in ClientResponse.start()
+    response._raw_cookie_headers = tuple(headers.getall("Set-Cookie", []))
 
     # SimpleCookie only keeps the last cookie with each name
     # This is expected behavior since SimpleCookie uses name as the key
@@ -1458,17 +1457,8 @@ def test_response_raw_cookie_headers_preserved(
 
     response._headers = CIMultiDictProxy(headers)
 
-    # Simulate what happens in ClientResponse._init()
-    if cookie_hdrs := response.headers.getall("SET-COOKIE", []):
-        response._raw_cookie_headers = list(cookie_hdrs)
-
-        cookies = SimpleCookie()
-        for hdr in cookie_hdrs:
-            try:
-                cookies.load(hdr)
-            except CookieError:
-                pass
-        response.cookies = cookies
+    # Set raw cookie headers as done in ClientResponse.start()
+    response._raw_cookie_headers = tuple(response.headers.getall(hdrs.SET_COOKIE, []))
 
     # Verify raw headers are preserved
     assert response._raw_cookie_headers == cookie_headers

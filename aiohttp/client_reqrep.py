@@ -228,7 +228,9 @@ class ClientResponse(HeadersMixin):
 
     _connection: Optional["Connection"] = None  # current connection
     _cookies: Optional[SimpleCookie] = None
-    _raw_cookie_headers: Optional[List[str]] = None  # Store raw Set-Cookie headers
+    _raw_cookie_headers: Optional[Tuple[str, ...]] = (
+        None  # Store raw Set-Cookie headers
+    )
     _continue: Optional["asyncio.Future[bool]"] = None
     _source_traceback: Optional[traceback.StackSummary] = None
     _session: Optional["ClientSession"] = None
@@ -328,9 +330,9 @@ class ClientResponse(HeadersMixin):
         self._cookies = cookies
         # Generate raw cookie headers from the SimpleCookie
         if cookies:
-            self._raw_cookie_headers = [
+            self._raw_cookie_headers = tuple(
                 morsel.OutputString() for morsel in cookies.values()
-            ]
+            )
 
     @reify
     def url(self) -> URL:
@@ -491,7 +493,7 @@ class ClientResponse(HeadersMixin):
         # cookies
         if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
-            self._raw_cookie_headers = list(cookie_hdrs)
+            self._raw_cookie_headers = tuple(cookie_hdrs)
         return self
 
     def _response_eof(self) -> None:
