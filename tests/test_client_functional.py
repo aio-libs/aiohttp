@@ -5324,6 +5324,7 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
         ), f"Expected 2 session-id-time cookies, got {len(session_id_times)}"
 
         # Now test that the raw headers were properly preserved
+        assert resp._raw_cookie_headers is not None
         assert (
             len(resp._raw_cookie_headers) == 12
         ), "All raw headers should be preserved"
