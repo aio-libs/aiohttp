@@ -228,9 +228,7 @@ class ClientResponse(HeadersMixin):
 
     _connection: Optional["Connection"] = None  # current connection
     _cookies: Optional[SimpleCookie] = None
-    _raw_cookie_headers: Optional[Tuple[str, ...]] = (
-        None  # Store raw Set-Cookie headers
-    )
+    _raw_cookie_headers: Optional[Tuple[str, ...]] = None
     _continue: Optional["asyncio.Future[bool]"] = None
     _source_traceback: Optional[traceback.StackSummary] = None
     _session: Optional["ClientSession"] = None

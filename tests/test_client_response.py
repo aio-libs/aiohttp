@@ -1461,7 +1461,7 @@ def test_response_raw_cookie_headers_preserved(
     response._raw_cookie_headers = tuple(response.headers.getall(hdrs.SET_COOKIE, []))
 
     # Verify raw headers are preserved
-    assert response._raw_cookie_headers == cookie_headers
+    assert response._raw_cookie_headers == tuple(cookie_headers)
     assert len(response._raw_cookie_headers) == 3
 
     # But SimpleCookie only has unique names
