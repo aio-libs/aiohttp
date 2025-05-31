@@ -326,6 +326,11 @@ class ClientResponse(HeadersMixin):
     @cookies.setter
     def cookies(self, cookies: SimpleCookie) -> None:
         self._cookies = cookies
+        # Generate raw cookie headers from the SimpleCookie
+        if cookies:
+            self._raw_cookie_headers = [
+                morsel.OutputString() for morsel in cookies.values()
+            ]
 
     @reify
     def url(self) -> URL:
