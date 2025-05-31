@@ -3,6 +3,7 @@
 import asyncio
 import gc
 import sys
+from http.cookies import SimpleCookie
 from json import JSONDecodeError
 from unittest import mock
 
@@ -1466,3 +1467,55 @@ def test_response_raw_cookie_headers_preserved(
 
     # But SimpleCookie only has unique names
     assert len(response.cookies) == 2  # 'session-id' and 'tracking'
+
+
+def test_response_cookies_setter_updates_raw_headers(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test that setting cookies property updates _raw_cookie_headers."""
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    # Create a SimpleCookie with some cookies
+    cookies = SimpleCookie()
+    cookies["session-id"] = "123456"
+    cookies["session-id"]["domain"] = ".example.com"
+    cookies["session-id"]["path"] = "/"
+    cookies["session-id"]["secure"] = True
+
+    cookies["tracking"] = "xyz789"
+    cookies["tracking"]["domain"] = ".example.com"
+    cookies["tracking"]["httponly"] = True
+
+    # Set the cookies property
+    response.cookies = cookies
+
+    # Verify _raw_cookie_headers was updated
+    assert response._raw_cookie_headers is not None
+    assert len(response._raw_cookie_headers) == 2
+    assert isinstance(response._raw_cookie_headers, tuple)
+
+    # Check the raw headers contain the expected cookie strings
+    raw_headers = list(response._raw_cookie_headers)
+    assert any("session-id=123456" in h for h in raw_headers)
+    assert any("tracking=xyz789" in h for h in raw_headers)
+    assert any("Secure" in h for h in raw_headers)
+    assert any("HttpOnly" in h for h in raw_headers)
+
+    # Verify cookies property returns the same object
+    assert response.cookies is cookies
+
+    # Test setting empty cookies
+    empty_cookies = SimpleCookie()
+    response.cookies = empty_cookies
+    # Should not set _raw_cookie_headers for empty cookies
+    assert response._raw_cookie_headers is None

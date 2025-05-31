@@ -331,6 +331,8 @@ class ClientResponse(HeadersMixin):
             self._raw_cookie_headers = tuple(
                 morsel.OutputString() for morsel in cookies.values()
             )
+        else:
+            self._raw_cookie_headers = None
 
     @reify
     def url(self) -> URL:
