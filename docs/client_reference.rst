@@ -57,7 +57,8 @@ The client session supports the context manager protocol for self closing.
                          read_bufsize=2**16, \
                          max_line_size=8190, \
                          max_field_size=8190, \
-                         fallback_charset_resolver=lambda r, b: "utf-8")
+                         fallback_charset_resolver=lambda r, b: "utf-8", \
+                         ssl_shutdown_timeout=0.1)
 
    The class for creating client sessions and making requests.
 
@@ -239,6 +240,16 @@ The client session supports the context manager protocol for self closing.
       Content-Type header). The default function simply defaults to ``utf-8``.
 
       .. versionadded:: 3.8.6
+
+   :param float ssl_shutdown_timeout: Grace period for SSL shutdown handshake on TLS
+      connections (``0.1`` seconds by default). This usually provides sufficient time
+      to notify the remote peer of connection closure, helping prevent broken
+      connections on the server side, while minimizing delays during connector
+      cleanup. This timeout is passed to the underlying :class:`TCPConnector`
+      when one is created automatically. Note: This parameter only takes effect
+      on Python 3.11+.
+
+      .. versionadded:: 3.12.5
 
    .. attribute:: closed
 
@@ -1169,7 +1180,7 @@ is controlled by *force_close* constructor's parameter).
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
                  happy_eyeballs_delay=0.25, interleave=None, loop=None, \
-                 socket_factory=None)
+                 socket_factory=None, ssl_shutdown_timeout=0.1)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1295,6 +1306,16 @@ is controlled by *force_close* constructor's parameter).
       :py:func:`socket.socket` when creating TCP connections.
 
         .. versionadded:: 3.12
+
+   :param float ssl_shutdown_timeout: Grace period for SSL shutdown on TLS
+      connections (``0.1`` seconds by default). This parameter balances two
+      important considerations: usually providing sufficient time to notify
+      the remote server (which helps prevent "connection reset" errors),
+      while avoiding unnecessary delays during connector cleanup.
+      The default value provides a reasonable compromise for most use cases.
+      Note: This parameter only takes effect on Python 3.11+.
+
+        .. versionadded:: 3.12.5
 
    .. attribute:: family
 
