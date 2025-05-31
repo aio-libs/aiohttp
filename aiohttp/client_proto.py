@@ -97,6 +97,12 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                 ),
                 original_connection_error,
             )
+            # Mark the exception as retrieved to prevent
+            # "Future exception was never retrieved" warnings
+            # The exception is always passed on through
+            # other means, so this is safe
+            with suppress(Exception):
+                self.closed.exception()
 
         if self._payload_parser is not None:
             with suppress(Exception):  # FIXME: log this somehow?
