@@ -5186,7 +5186,10 @@ async def test_invalid_redirect_origin_closes_payload(
 
 
 async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> None:
-    """Test real-world cookie scenario similar to Amazon with duplicate cookie names."""
+    """Test real-world cookie scenario similar to Amazon.
+
+    Tests handling of duplicate cookie names with different domains.
+    """
     # Create a fake resolver that resolves amazon.it domains to 127.0.0.1
     from aiohttp.abc import ResolveResult
     from aiohttp.resolver import AbstractResolver
@@ -5219,18 +5222,33 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
 
         # Simulate Amazon-like cookies from the issue
         cookies = [
-            "session-id=146-7423990-7621939; Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure; HttpOnly",
-            "session-id=147-8529641-8642103; Domain=.www.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; HttpOnly",
-            "session-id-time=2082758401l; Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
-            "session-id-time=2082758402l; Domain=.www.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
-            "ubid-acbit=257-7531983-5395266; Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
-            'x-acbit="KdvJzu8W@Fx6Jj3EuNFLuP0N7OtkuCfs"; Version=1; Domain=.amazon.it; Path=/; Secure; HttpOnly',
-            "at-acbit=Atza|IwEBIM-gLr8; Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure; HttpOnly",
-            'sess-at-acbit="4+6VzSJPHIFD/OqO264hFxIng8Y="; Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure; HttpOnly',
-            "lc-acbit=it_IT; Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
-            "i18n-prefs=EUR; Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
-            "av-profile=null; Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
-            'user-pref-token="Am81ywsJ69xObBnuJ2FbilVH0mg="; Domain=.amazon.it; Path=/; Secure',
+            "session-id=146-7423990-7621939; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Secure; HttpOnly",
+            "session-id=147-8529641-8642103; Domain=.www.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; HttpOnly",
+            "session-id-time=2082758401l; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            "session-id-time=2082758402l; Domain=.www.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "ubid-acbit=257-7531983-5395266; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            'x-acbit="KdvJzu8W@Fx6Jj3EuNFLuP0N7OtkuCfs"; Version=1; '
+            "Domain=.amazon.it; Path=/; Secure; HttpOnly",
+            "at-acbit=Atza|IwEBIM-gLr8; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Secure; HttpOnly",
+            'sess-at-acbit="4+6VzSJPHIFD/OqO264hFxIng8Y="; '
+            "Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; "
+            "Path=/; Secure; HttpOnly",
+            "lc-acbit=it_IT; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "i18n-prefs=EUR; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "av-profile=null; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            'user-pref-token="Am81ywsJ69xObBnuJ2FbilVH0mg="; '
+            "Domain=.amazon.it; Path=/; Secure",
         ]
 
         for cookie in cookies:
@@ -5251,8 +5269,9 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
 
     try:
         async with aiohttp.ClientSession(connector=connector) as session:
-            # Make request to www.amazon.it which will resolve to 127.0.0.1:port
-            # This allows cookies for both .amazon.it and .www.amazon.it domains
+            # Make request to www.amazon.it which will resolve to
+            # 127.0.0.1:port. This allows cookies for both .amazon.it
+            # and .www.amazon.it domains
             resp = await session.get(f"http://www.amazon.it:{port}/")
 
             # Check headers
@@ -5261,8 +5280,9 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
                 len(cookie_headers) == 12
             ), f"Expected 12 headers, got {len(cookie_headers)}"
 
-            # Check parsed cookies - SimpleCookie only keeps the last cookie with each name
-            # So we expect 10 unique cookie names (not 12)
+            # Check parsed cookies - SimpleCookie only keeps the last
+            # cookie with each name. So we expect 10 unique cookie names
+            # (not 12)
             expected_cookie_names = {
                 "session-id",  # Will only have one
                 "session-id-time",  # Will only have one
@@ -5280,8 +5300,9 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
                 len(resp.cookies) == 10
             ), f"Expected 10 cookies in SimpleCookie, got {len(resp.cookies)}"
 
-            # The important part: verify the session's cookie jar has all cookies
-            # The cookie jar should have all 12 cookies, not just 10
+            # The important part: verify the session's cookie jar has
+            # all cookies. The cookie jar should have all 12 cookies,
+            # not just 10
             jar_cookies = list(session.cookie_jar)
             assert (
                 len(jar_cookies) == 12
@@ -5300,7 +5321,8 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
                 "www.amazon.it",
             }, f"Got domains: {session_id_domains}"
 
-            # Verify we have both session-id-time cookies with different domains
+            # Verify we have both session-id-time cookies with different
+            # domains
             session_id_times = [c for c in jar_cookies if c.key == "session-id-time"]
             assert (
                 len(session_id_times) == 2

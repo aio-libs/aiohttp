@@ -3,7 +3,7 @@
 import asyncio
 import gc
 import sys
-from http.cookies import CookieError
+from http.cookies import CookieError, SimpleCookie
 from json import JSONDecodeError
 from unittest import mock
 
@@ -1469,8 +1469,6 @@ def test_response_raw_cookie_headers_preserved(
     # Simulate what happens in ClientResponse._init()
     if cookie_hdrs := response.headers.getall("SET-COOKIE", []):
         response._raw_cookie_headers = list(cookie_hdrs)
-
-        from http.cookies import SimpleCookie
 
         cookies = SimpleCookie()
         for hdr in cookie_hdrs:
