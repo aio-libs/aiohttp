@@ -310,7 +310,17 @@ class ClientResponse(HeadersMixin):
     @property
     def cookies(self) -> SimpleCookie:
         if self._cookies is None:
-            self._cookies = SimpleCookie()
+            if self._raw_cookie_headers is not None:
+                # Parse cookies for response.cookies (SimpleCookie for backward compatibility)
+                cookies = SimpleCookie()
+                for hdr in self._raw_cookie_headers:
+                    try:
+                        cookies.load(hdr)
+                    except CookieError as exc:
+                        client_logger.warning("Can not load response cookies: %s", exc)
+                self._cookies = cookies
+            else:
+                self._cookies = SimpleCookie()
         return self._cookies
 
     @cookies.setter
@@ -477,15 +487,6 @@ class ClientResponse(HeadersMixin):
         if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
             self._raw_cookie_headers = list(cookie_hdrs)
-
-            # Parse cookies for response.cookies (SimpleCookie for backward compatibility)
-            cookies = SimpleCookie()
-            for hdr in cookie_hdrs:
-                try:
-                    cookies.load(hdr)
-                except CookieError as exc:
-                    client_logger.warning("Can not load response cookies: %s", exc)
-            self._cookies = cookies
         return self
 
     def _response_eof(self) -> None:

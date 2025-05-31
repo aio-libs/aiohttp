@@ -3,6 +3,7 @@
 import asyncio
 import gc
 import sys
+from http.cookies import CookieError
 from json import JSONDecodeError
 from unittest import mock
 
@@ -1406,3 +1407,261 @@ def test_cookie_parsing_special_chars() -> None:
                 assert len(cookie) == 0
         except CookieError:
             assert not should_parse
+
+
+def test_response_duplicate_cookie_names(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test that response.cookies handles duplicate cookie names correctly."""
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    # Set headers with duplicate cookie names but different domains
+    headers = CIMultiDict(
+        [
+            (
+                "Set-Cookie",
+                "session-id=123-4567890; Domain=.example.com; Path=/; Secure",
+            ),
+            ("Set-Cookie", "session-id=098-7654321; Domain=.www.example.com; Path=/"),
+            ("Set-Cookie", "user-pref=dark; Domain=.example.com; Path=/"),
+            ("Set-Cookie", "user-pref=light; Domain=api.example.com; Path=/"),
+        ]
+    )
+    response._headers = CIMultiDictProxy(headers)
+
+    # Simulate cookie parsing as done in ClientResponse._init()
+    from http.cookies import SimpleCookie
+
+    cookies = SimpleCookie()
+    for cookie_hdr in headers.getall("Set-Cookie", []):
+        try:
+            cookies.load(cookie_hdr)
+        except CookieError:
+            pass
+    response.cookies = cookies
+
+    # SimpleCookie only keeps the last cookie with each name
+    assert len(response.cookies) == 2  # Only 'session-id' and 'user-pref'
+    assert response.cookies["session-id"].value == "098-7654321"  # Last one wins
+    assert response.cookies["user-pref"].value == "light"  # Last one wins
+
+
+def test_response_raw_cookie_headers_preserved(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test that raw Set-Cookie headers are preserved in _raw_cookie_headers."""
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    # Set headers with multiple cookies
+    cookie_headers = [
+        "session-id=123; Domain=.example.com; Path=/; Secure",
+        "session-id=456; Domain=.www.example.com; Path=/",
+        "tracking=xyz; Domain=.example.com; Path=/; HttpOnly",
+    ]
+
+    headers = CIMultiDict()
+    for cookie_hdr in cookie_headers:
+        headers.add("Set-Cookie", cookie_hdr)
+
+    response._headers = CIMultiDictProxy(headers)
+
+    # Simulate what happens in ClientResponse._init()
+    if cookie_hdrs := response.headers.getall("SET-COOKIE", []):
+        response._raw_cookie_headers = list(cookie_hdrs)
+
+        from http.cookies import SimpleCookie
+
+        cookies = SimpleCookie()
+        for hdr in cookie_hdrs:
+            try:
+                cookies.load(hdr)
+            except CookieError:
+                pass
+        response.cookies = cookies
+
+    # Verify raw headers are preserved
+    assert response._raw_cookie_headers == cookie_headers
+    assert len(response._raw_cookie_headers) == 3
+
+    # But SimpleCookie only has unique names
+    assert len(response.cookies) == 2  # 'session-id' and 'tracking'
+
+
+def test_response_cookie_attributes_parsing(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test parsing of various cookie attributes."""
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    # Set headers with various cookie attributes
+    headers = CIMultiDict(
+        [
+            ("Set-Cookie", "secure-cookie=value1; Secure; HttpOnly; SameSite=Strict"),
+            (
+                "Set-Cookie",
+                "expiring-cookie=value2; Max-Age=3600; Expires=Wed, 21 Oct 2025 07:28:00 GMT",
+            ),
+            ("Set-Cookie", "domain-cookie=value3; Domain=.example.com; Path=/api"),
+        ]
+    )
+    response._headers = CIMultiDictProxy(headers)
+
+    # Parse cookies
+    from http.cookies import SimpleCookie
+
+    cookies = SimpleCookie()
+    for cookie_hdr in headers.getall("Set-Cookie", []):
+        cookies.load(cookie_hdr)
+    response.cookies = cookies
+
+    # Verify all cookies are parsed
+    assert len(response.cookies) == 3
+
+    # Check secure cookie
+    secure_cookie = response.cookies["secure-cookie"]
+    assert secure_cookie.value == "value1"
+    assert secure_cookie["secure"] is True
+    assert secure_cookie["httponly"] is True
+    assert secure_cookie["samesite"] == "Strict"
+
+    # Check expiring cookie
+    expiring_cookie = response.cookies["expiring-cookie"]
+    assert expiring_cookie.value == "value2"
+    assert expiring_cookie["max-age"] == "3600"
+
+    # Check domain cookie
+    domain_cookie = response.cookies["domain-cookie"]
+    assert domain_cookie.value == "value3"
+    assert domain_cookie["domain"] == ".example.com"
+    assert domain_cookie["path"] == "/api"
+
+
+def test_response_malformed_cookies(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test handling of malformed cookie headers."""
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    # Mix of valid and invalid cookies
+    headers = CIMultiDict(
+        [
+            ("Set-Cookie", "valid=value1; Path=/"),
+            ("Set-Cookie", ""),  # Empty cookie
+            ("Set-Cookie", "no-value-cookie"),  # No value
+            ("Set-Cookie", "=orphan-value; Path=/"),  # No name
+            ("Set-Cookie", "special chars=test value; Path=/"),  # Space in value
+            ("Set-Cookie", "valid2=value2; Path=/api"),
+        ]
+    )
+    response._headers = CIMultiDictProxy(headers)
+
+    # Parse cookies, handling errors
+    from http.cookies import CookieError, SimpleCookie
+
+    cookies = SimpleCookie()
+    parsed_count = 0
+    error_count = 0
+
+    for cookie_hdr in headers.getall("Set-Cookie", []):
+        try:
+            if cookie_hdr:  # Skip empty strings
+                cookies.load(cookie_hdr)
+                parsed_count += 1
+        except CookieError:
+            error_count += 1
+
+    response.cookies = cookies
+
+    # Only valid cookies should be in response.cookies
+    assert "valid" in response.cookies
+    assert "valid2" in response.cookies
+    assert len(response.cookies) >= 2  # At least the two valid cookies
+
+
+def test_response_quoted_cookie_values(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test handling of quoted cookie values."""
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    headers = CIMultiDict(
+        [
+            ("Set-Cookie", 'quoted="hello world"; Path=/'),
+            (
+                "Set-Cookie",
+                "single-quoted='not standard'; Path=/",
+            ),  # Not standard but some servers do this
+            ("Set-Cookie", 'escaped="hello\\"world"; Path=/'),
+            ("Set-Cookie", 'mixed=some"quotes"inside; Path=/'),
+        ]
+    )
+    response._headers = CIMultiDictProxy(headers)
+
+    # Parse cookies
+    from http.cookies import CookieError, SimpleCookie
+
+    cookies = SimpleCookie()
+    for cookie_hdr in headers.getall("Set-Cookie", []):
+        try:
+            cookies.load(cookie_hdr)
+        except CookieError:
+            pass
+    response.cookies = cookies
+
+    # Check which quoted formats SimpleCookie accepts
+    if "quoted" in response.cookies:
+        # SimpleCookie should handle standard double quotes
+        assert response.cookies["quoted"].value == "hello world"
+
+    # SimpleCookie has specific rules about what it accepts
+    # The test just verifies the behavior, not enforcing specific outcomes

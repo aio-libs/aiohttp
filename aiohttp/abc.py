@@ -2,7 +2,7 @@ import logging
 import socket
 from abc import ABC, abstractmethod
 from collections.abc import Sized
-from http.cookies import BaseCookie, Morsel, SimpleCookie
+from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -203,7 +203,7 @@ class AbstractCookieJar(Sized, IterableBase):
                 tmp_cookie.load(cookie_header)
                 if tmp_cookie:
                     self.update_cookies(tmp_cookie, response_url)
-            except Exception:
+            except CookieError:
                 # Ignore invalid cookies
                 pass
 

@@ -11,7 +11,7 @@ import time
 import warnings
 from collections import defaultdict
 from collections.abc import Mapping
-from http.cookies import BaseCookie, Morsel, SimpleCookie
+from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
 from typing import (
     DefaultDict,
     Dict,
