@@ -312,17 +312,22 @@ class CookieJar(AbstractCookieJar):
         This method preserves cookies with the same name but different
         domain/path by parsing each header separately.
         """
+        cookies_to_update: List[Tuple[str, Morsel[str]]] = []
         for cookie_header in headers:
             # Parse each header into a separate SimpleCookie to preserve duplicates
             tmp_cookie = SimpleCookie()
             try:
                 tmp_cookie.load(cookie_header)
-                # Update cookies one by one to preserve all cookies
-                if tmp_cookie:
-                    self.update_cookies(tmp_cookie, response_url)
+                # Collect all cookies as tuples (name, morsel)
+                for name, morsel in tmp_cookie.items():
+                    cookies_to_update.append((name, morsel))
             except CookieError:
                 # Ignore invalid cookies
                 pass
+
+        # Update all cookies at once for efficiency
+        if cookies_to_update:
+            self.update_cookies(cookies_to_update, response_url)
 
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
