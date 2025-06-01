@@ -1924,6 +1924,112 @@ def test_parse_cookie_headers_issue_7993_double_quotes() -> None:
     assert result[2][1].value == "bar2"
 
 
+def test_parse_cookie_headers_empty_headers() -> None:
+    """Test handling of empty headers in the sequence."""
+    # Empty header should be skipped
+    result = parse_cookie_headers(["", "name=value"])
+    assert len(result) == 1
+    assert result[0][0] == "name"
+    assert result[0][1].value == "value"
+
+    # Multiple empty headers
+    result = parse_cookie_headers(["", "", ""])
+    assert result == []
+
+    # Empty headers mixed with valid cookies
+    result = parse_cookie_headers(["", "a=1", "", "b=2", ""])
+    assert len(result) == 2
+    assert result[0][0] == "a"
+    assert result[1][0] == "b"
+
+
+def test_parse_cookie_headers_invalid_cookie_syntax() -> None:
+    """Test handling of invalid cookie syntax."""
+    # No valid cookie pattern
+    result = parse_cookie_headers(["@#$%^&*()"])
+    assert result == []
+
+    # Cookie name without value
+    result = parse_cookie_headers(["name"])
+    assert result == []
+
+    # Multiple invalid patterns
+    result = parse_cookie_headers(["!!!!", "????", "name", "@@@"])
+    assert result == []
+
+
+def test_parse_cookie_headers_attributes_before_cookie() -> None:
+    """Test that attributes before any cookie are invalid."""
+    # Path attribute before cookie
+    result = parse_cookie_headers(["Path=/; name=value"])
+    assert result == []
+
+    # Domain attribute before cookie
+    result = parse_cookie_headers(["Domain=.example.com; name=value"])
+    assert result == []
+
+    # Multiple attributes before cookie
+    result = parse_cookie_headers(["Path=/; Domain=.example.com; Secure; name=value"])
+    assert result == []
+
+
+def test_parse_cookie_headers_attributes_without_values() -> None:
+    """Test handling of attributes with missing values."""
+    # Boolean attribute without value (valid)
+    result = parse_cookie_headers(["name=value; Secure"])
+    assert len(result) == 1
+    assert result[0][1]["secure"] is True
+
+    # Non-boolean attribute without value (invalid, stops parsing)
+    result = parse_cookie_headers(["name=value; Path"])
+    assert len(result) == 1
+    # Path without value stops further attribute parsing
+
+    # Multiple cookies, invalid attribute in middle
+    result = parse_cookie_headers(["name=value; Path; Secure"])
+    assert len(result) == 1
+    # Secure is not parsed because Path without value stops parsing
+
+
+def test_parse_cookie_headers_dollar_prefixed_names() -> None:
+    """Test handling of cookie names starting with $."""
+    # $Version without preceding cookie (ignored)
+    result = parse_cookie_headers(["$Version=1; name=value"])
+    assert len(result) == 1
+    assert result[0][0] == "name"
+
+    # Multiple $ prefixed without cookie (all ignored)
+    result = parse_cookie_headers(["$Version=1; $Path=/; $Domain=.com; name=value"])
+    assert len(result) == 1
+    assert result[0][0] == "name"
+
+    # $ prefix at start is ignored, cookie follows
+    result = parse_cookie_headers(["$Unknown=123; valid=cookie"])
+    assert len(result) == 1
+    assert result[0][0] == "valid"
+
+
+def test_parse_cookie_headers_dollar_attributes() -> None:
+    """Test handling of $ prefixed attributes after cookies."""
+    # Test multiple $ attributes with cookie (case-insensitive like SimpleCookie)
+    result = parse_cookie_headers(["name=value; $Path=/test; $Domain=.example.com"])
+    assert len(result) == 1
+    assert result[0][0] == "name"
+    assert result[0][1]["path"] == "/test"
+    assert result[0][1]["domain"] == ".example.com"
+
+    # Test unknown $ attribute (should be ignored)
+    result = parse_cookie_headers(["name=value; $Unknown=test"])
+    assert len(result) == 1
+    assert result[0][0] == "name"
+    # $Unknown should not be set
+
+    # Test $ attribute with empty value
+    result = parse_cookie_headers(["name=value; $Path="])
+    assert len(result) == 1
+    assert result[0][1]["path"] == ""
+
+
 def test_parse_cookie_headers_unmatched_quotes_compatibility() -> None:
     """Test that most unmatched quote scenarios behave like SimpleCookie.
 

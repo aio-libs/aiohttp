@@ -1255,9 +1255,9 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
                     continue
                 # Process as attribute
                 if current_morsel is not None:
-                    attr_key = key[1:]
-                    if attr_key in _COOKIE_KNOWN_ATTRS:
-                        current_morsel[attr_key] = value or ""
+                    attr_lower_key = lower_key[1:]
+                    if attr_lower_key in _COOKIE_KNOWN_ATTRS:
+                        current_morsel[attr_lower_key] = value or ""
             elif lower_key in _COOKIE_KNOWN_ATTRS:
                 if not morsel_seen:
                     # Invalid cookie string - attribute before cookie
