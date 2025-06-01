@@ -1212,8 +1212,10 @@ def make_quoted_morsel(name: str, value: str) -> Morsel[str]:
 
     """
     morsel: Morsel[str] = Morsel()
-    unquoted_value = _unquote(value)
-    _set_validated_morsel_values(morsel, name, value, f'"{unquoted_value}"')
+    simple_cookie = SimpleCookie()
+    _set_validated_morsel_values(
+        morsel, name, *simple_cookie.value_encode(simple_cookie.value_decode(value))
+    )
     return morsel
 
 
