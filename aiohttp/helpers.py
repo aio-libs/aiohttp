@@ -135,10 +135,6 @@ _COOKIE_PATTERN = re.compile(
     re.VERBOSE | re.ASCII,
 )
 
-# Cookie parsing type constants
-_TYPE_ATTRIBUTE = 1
-_TYPE_KEYVALUE = 2
-
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 
