@@ -79,7 +79,7 @@ PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
 
-# Cookie parsing optimization constants
+# Cookie parsing constants
 # Allow more characters in cookie names to handle real-world cookies
 # that don't strictly follow RFC standards (fixes #2683)
 # RFC 6265 defines cookie-name token as per RFC 2616 Section 2.2,
@@ -1204,15 +1204,15 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
 
         # Parse remaining attributes
         for attr_name, attr_value in cookie_attrs[1:]:
-            attr_name_lower = attr_name.lower()
+            # parse_ns_headers already lowercases known attributes
             # Only process known attributes
-            if attr_name_lower in _KNOWN_ATTRS:
+            if attr_name in _KNOWN_ATTRS:
                 if attr_value is not None:
-                    morsel[attr_name_lower] = attr_value
+                    morsel[attr_name] = attr_value
                 # Valid boolean attributes
-                elif attr_name_lower == "secure":
+                elif attr_name == "secure":
                     morsel["secure"] = True
-                elif attr_name_lower == "httponly":
+                elif attr_name == "httponly":
                     morsel["httponly"] = True
 
         cookies_to_update.append((name, morsel))
