@@ -1126,9 +1126,11 @@ def _set_and_validate_morsel_values(
     This is a helper to ensure that the Morsel is set up correctly
     without triggering validation errors for non-standard cookie names.
     """
-    # Validate the name according to RFC 6265
     if name.lower() in _KNOWN_ATTRS:
         raise CookieError(f"Attempt to set a reserved key {name!r}")
+    # Validate the name according to RFC 6265
+    # with our modification to allow some non-standard characters
+    # which appear in real-world cookies.
     if not _COOKIE_NAME_RE.match(name):
         raise ValueError(f"Invalid cookie name: {name!r}")
     morsel._key = name

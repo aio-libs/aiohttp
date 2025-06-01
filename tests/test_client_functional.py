@@ -2718,7 +2718,7 @@ async def test_set_cookies(
         assert cookie_names == {"c1", "c2"}
 
     assert (
-        "Can not load response cookies: Illegal cookie name 'invalid\tcookie'"
+        "Can not load response cookies: Illegal cookie name 'invalid\\tcookie'"
         in caplog.text
     )
 
