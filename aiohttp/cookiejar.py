@@ -27,13 +27,13 @@ from typing import (
 
 from yarl import URL
 
-from .abc import AbstractCookieJar, ClearCookiePredicate
-from .helpers import (
-    is_ip_address,
+from ._cookie_helpers import (
     make_non_quoted_morsel,
     make_quoted_morsel,
     preserve_morsel_with_coded_value,
 )
+from .abc import AbstractCookieJar, ClearCookiePredicate
+from .helpers import is_ip_address
 from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ("CookieJar", "DummyCookieJar")
