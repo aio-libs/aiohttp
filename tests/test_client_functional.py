@@ -2698,8 +2698,7 @@ async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
         ret.set_cookie("c2", "cookie2")
         ret.headers.add(
             "Set-Cookie",
-            "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
-            "{925EC0B8-CB17-4BEB-8A35-1033813B0523}; "
+            "invalid\tcookie=value; "  # Tab character is not allowed
             "HttpOnly; Path=/",
         )
         return ret

@@ -1280,9 +1280,8 @@ def test_update_cookies_from_headers_invalid_cookies(
     # Mix of valid and invalid cookies
     headers: List[str] = [
         "valid-cookie=value123",
-        "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
-        "{925EC0B8-CB17-4BEB-8A35-1033813B0523}; "
-        "HttpOnly; Path=/",  # This cookie with curly braces causes CookieError
+        "invalid\tcookie=value; "  # Tab character is not allowed
+        "HttpOnly; Path=/",
         "another-valid=value456",
     ]
 

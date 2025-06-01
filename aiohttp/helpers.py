@@ -80,7 +80,13 @@ PY_310 = sys.version_info >= (3, 10)
 COOKIE_MAX_LENGTH = 4096
 
 # Cookie parsing optimization constants
-_COOKIE_NAME_RE = re.compile(r"^[!#$%&\'*+\-.0-9A-Z^_`a-z|~]+$")
+# Allow more characters in cookie names to handle real-world cookies
+# that don't strictly follow RFC standards (fixes #2683)
+# RFC 6265 defines cookie-name token as per RFC 2616 Section 2.2,
+# but many servers send cookies with characters like {} [] () etc.
+# This makes the cookie parser more tolerant of real-world cookies
+# while still providing some validation to catch obviously malformed names.
+_COOKIE_NAME_RE = re.compile(r"^[!#$%&\'()*+\-./0-9:;<=>?@A-Z\[\]^_`a-z{|}~]+$")
 _KNOWN_ATTRS = frozenset(
     ["path", "domain", "max-age", "expires", "secure", "httponly", "samesite"]
 )
