@@ -86,7 +86,7 @@ COOKIE_MAX_LENGTH = 4096
 # but many servers send cookies with characters like {} [] () etc.
 # This makes the cookie parser more tolerant of real-world cookies
 # while still providing some validation to catch obviously malformed names.
-_COOKIE_NAME_RE = re.compile(r"^[!#$%&\'()*+\-./0-9:;<=>?@A-Z\[\]^_`a-z{|}~]+$")
+_COOKIE_NAME_RE = re.compile(r"^[!#$%&\'()*+\-./0-9:<=>?@A-Z\[\]^_`a-z{|}~]+$")
 _KNOWN_ATTRS = frozenset(
     (
         "path",
@@ -102,6 +102,34 @@ _KNOWN_ATTRS = frozenset(
     )
 )
 _BOOL_ATTRS = frozenset(("secure", "httponly", "partitioned"))
+
+# SimpleCookie's pattern for parsing cookies with relaxed validation
+# Based on http.cookies pattern but extended to allow more characters in cookie names
+# to handle real-world cookies (fixes #2683)
+_COOKIE_PATTERN = re.compile(
+    r"""
+    \s*                            # Optional whitespace at start of cookie
+    (?P<key>                       # Start of group 'key'
+    # aiohttp has extended to include [] for compatibility with real-world cookies
+    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\=\[\]]+?   # Any word of at least one letter
+    )                              # End of group 'key'
+    (                              # Optional group: there may not be a value.
+    \s*=\s*                          # Equal Sign
+    (?P<val>                         # Start of group 'val'
+    "(?:[^\\"]|\\.)*"                  # Any double-quoted string
+    |                                  # or
+    # Special case for "expires" attr
+    (\w{3,6}day|\w{3}),\s              # Day of the week or abbreviated day
+    [\w\d\s-]{9,11}\s[\d:]{8}\sGMT     # Date and time in specific format
+    |                                  # or
+    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\=\[\]]*      # Any word or empty string
+    )                                # End of group 'val'
+    )?                             # End of optional value group
+    \s*                            # Any number of spaces.
+    (\s+|;|$)                      # Ending either at space, semicolon, or EOS.
+    """,
+    re.VERBOSE | re.ASCII,
+)
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -1163,6 +1191,21 @@ def _strip_quotes(text: str) -> str:
     return text
 
 
+def _unquote(text: str) -> str:
+    """Unquote a cookie value.
+
+    Vendored from http.cookies._unquote to ensure compatibility.
+    """
+    # If there are no quotes, return as-is
+    if len(text) < 2 or text[0] != '"' or text[-1] != '"':
+        return text
+    # Remove quotes and handle escaped characters
+    text = text[1:-1]
+    # Replace escaped quotes and backslashes
+    text = text.replace('\\"', '"').replace("\\\\", "\\")
+    return text
+
+
 def _parse_ns_headers(
     ns_headers: Sequence[str],
 ) -> List[List[Tuple[str, Optional[str]]]]:
@@ -1230,45 +1273,104 @@ def _parse_ns_headers(
 
 
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
-    """Parse cookie headers using our vendored parse_ns_headers."""
+    """Parse cookie headers using a vendored version of SimpleCookie parsing.
+
+    This implementation is based on SimpleCookie.__parse_string to ensure
+    compatibility with how SimpleCookie parses cookies, including handling
+    of malformed cookies with missing semicolons.
+    """
     cookies_to_update: List[Tuple[str, Morsel[str]]] = []
 
-    for cookie_attrs in _parse_ns_headers(headers):
-        if not cookie_attrs:
+    for header in headers:
+        if not header:
             continue
 
-        # First tuple should be the cookie name=value
-        first_attr = cookie_attrs[0]
-        if len(first_attr) != 2 or not first_attr[0]:
+        parsed_items = _parse_cookie_string(header)
+        if not parsed_items:
             continue
 
-        name, value = first_attr
-        if value is None:
-            # Skip cookies without values (like bare "test" without =)
-            continue
+        # Apply parsed items to create morsels
+        current_morsel: Optional[Morsel[str]] = None
 
-        # Validate the name according to RFC 6265
-        # with our modification to allow some non-standard characters
-        # which appear in real-world cookies.
-        if name.lower() in _KNOWN_ATTRS or not _COOKIE_NAME_RE.match(name):
-            client_logger.warning(
-                "Can not load response cookies: Illegal cookie name %r", name
-            )
-            continue
+        for item_type, key, value in parsed_items:
+            if item_type == 2:  # TYPE_KEYVALUE
+                # This is a new cookie
+                # Validate the name
+                if key.lower() in _KNOWN_ATTRS or not _COOKIE_NAME_RE.match(key):
+                    client_logger.warning(
+                        "Can not load response cookies: Illegal cookie name %r", key
+                    )
+                    current_morsel = None
+                    continue
 
-        morsel: Morsel[str] = Morsel()
-        _set_validated_morsel_values(morsel, name, value)
+                # Create new morsel
+                current_morsel = Morsel()
+                _set_validated_morsel_values(current_morsel, key, value)
+                cookies_to_update.append((key, current_morsel))
 
-        # Parse remaining attributes
-        for attr_name, attr_value in cookie_attrs[1:]:
-            # Our vendored _parse_ns_headers already lowercases known attributes
-            # Only process known attributes
-            if attr_name in _KNOWN_ATTRS:
-                if attr_name in _BOOL_ATTRS:
-                    morsel[attr_name] = True
-                elif attr_value is not None:
-                    morsel[attr_name] = attr_value
-
-        cookies_to_update.append((name, morsel))
+            elif item_type == 1 and current_morsel is not None:  # TYPE_ATTRIBUTE
+                # This is an attribute for the current cookie
+                attr_name = key.lower()
+                if attr_name in _KNOWN_ATTRS:
+                    if value is True or attr_name in _BOOL_ATTRS:
+                        # Boolean attribute
+                        current_morsel[attr_name] = True
+                    else:
+                        # Regular attribute with value
+                        current_morsel[attr_name] = value
 
     return cookies_to_update
+
+
+def _parse_cookie_string(cookie_str: str) -> List[Tuple[int, str, Union[str, bool]]]:
+    """Parse a cookie string using SimpleCookie's algorithm.
+
+    Returns a list of (type, key, value) tuples where:
+    - type 1 = attribute
+    - type 2 = key/value pair (actual cookie)
+    """
+    i = 0
+    n = len(cookie_str)
+    parsed_items: List[Tuple[int, str, Union[str, bool]]] = []
+    morsel_seen = False
+
+    TYPE_ATTRIBUTE = 1
+    TYPE_KEYVALUE = 2
+
+    while 0 <= i < n:
+        # Start looking for a cookie
+        match = _COOKIE_PATTERN.match(cookie_str, i)
+        if not match:
+            # No more cookies
+            break
+
+        key, value = match.group("key"), match.group("val")
+        i = match.end(0)
+
+        if key[0] == "$":
+            if not morsel_seen:
+                # We ignore attributes which pertain to the cookie
+                # mechanism as a whole, such as "$Version".
+                continue
+            parsed_items.append((TYPE_ATTRIBUTE, key[1:], value or ""))
+        elif key.lower() in _KNOWN_ATTRS:
+            if not morsel_seen:
+                # Invalid cookie string - attribute before cookie
+                return []
+            if value is None:
+                if key.lower() in _BOOL_ATTRS:
+                    parsed_items.append((TYPE_ATTRIBUTE, key, True))
+                else:
+                    # Invalid cookie string - non-boolean attribute without value
+                    return []
+            else:
+                parsed_items.append((TYPE_ATTRIBUTE, key, _unquote(value)))
+        elif value is not None:
+            # This is a cookie name=value pair
+            parsed_items.append((TYPE_KEYVALUE, key, _unquote(value)))
+            morsel_seen = True
+        else:
+            # Invalid cookie string - no value for non-attribute
+            return []
+
+    return parsed_items
