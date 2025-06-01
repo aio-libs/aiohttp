@@ -1223,7 +1223,52 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
         if not header:
             continue
 
-        parsed_items = _parse_cookie_string(header)
+        # Parse cookie string using SimpleCookie's algorithm
+        i = 0
+        n = len(header)
+        parsed_items: List[Tuple[int, str, Union[str, bool]]] = []
+        morsel_seen = False
+
+        while 0 <= i < n:
+            # Start looking for a cookie
+            match = _COOKIE_PATTERN.match(header, i)
+            if not match:
+                # No more cookies
+                break
+
+            key, value = match.group("key"), match.group("val")
+            i = match.end(0)
+            lower_key = key.lower()
+
+            if key[0] == "$":
+                if not morsel_seen:
+                    # We ignore attributes which pertain to the cookie
+                    # mechanism as a whole, such as "$Version".
+                    continue
+                parsed_items.append((_TYPE_ATTRIBUTE, key[1:], value or ""))
+            elif lower_key in _COOKIE_KNOWN_ATTRS:
+                if not morsel_seen:
+                    # Invalid cookie string - attribute before cookie
+                    parsed_items = []
+                    break
+                if value is None:
+                    if lower_key in _COOKIE_BOOL_ATTRS:
+                        parsed_items.append((_TYPE_ATTRIBUTE, lower_key, True))
+                    else:
+                        # Invalid cookie string - non-boolean attribute without value
+                        parsed_items = []
+                        break
+                else:
+                    parsed_items.append((_TYPE_ATTRIBUTE, lower_key, _unquote(value)))
+            elif value is not None:
+                # This is a cookie name=value pair
+                parsed_items.append((_TYPE_KEYVALUE, key, _unquote(value)))
+                morsel_seen = True
+            else:
+                # Invalid cookie string - no value for non-attribute
+                parsed_items = []
+                break
+
         if not parsed_items:
             continue
 
@@ -1260,56 +1305,3 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
                     current_morsel[key] = value
 
     return parsed_cookies
-
-
-def _parse_cookie_string(cookie_str: str) -> List[Tuple[int, str, Union[str, bool]]]:
-    """
-    Parse a cookie string using SimpleCookie's algorithm.
-
-    Returns a list of (type, key, value) tuples where:
-    - type _TYPE_ATTRIBUTE = attribute
-    - type _TYPE_KEYVALUE = key/value pair (actual cookie)
-    """
-    i = 0
-    n = len(cookie_str)
-    parsed_items: List[Tuple[int, str, Union[str, bool]]] = []
-    morsel_seen = False
-
-    while 0 <= i < n:
-        # Start looking for a cookie
-        match = _COOKIE_PATTERN.match(cookie_str, i)
-        if not match:
-            # No more cookies
-            break
-
-        key, value = match.group("key"), match.group("val")
-        i = match.end(0)
-        lower_key = key.lower()
-
-        if key[0] == "$":
-            if not morsel_seen:
-                # We ignore attributes which pertain to the cookie
-                # mechanism as a whole, such as "$Version".
-                continue
-            parsed_items.append((_TYPE_ATTRIBUTE, key[1:], value or ""))
-        elif lower_key in _COOKIE_KNOWN_ATTRS:
-            if not morsel_seen:
-                # Invalid cookie string - attribute before cookie
-                return []
-            if value is None:
-                if lower_key in _COOKIE_BOOL_ATTRS:
-                    parsed_items.append((_TYPE_ATTRIBUTE, lower_key, True))
-                else:
-                    # Invalid cookie string - non-boolean attribute without value
-                    return []
-            else:
-                parsed_items.append((_TYPE_ATTRIBUTE, lower_key, _unquote(value)))
-        elif value is not None:
-            # This is a cookie name=value pair
-            parsed_items.append((_TYPE_KEYVALUE, key, _unquote(value)))
-            morsel_seen = True
-        else:
-            # Invalid cookie string - no value for non-attribute
-            return []
-
-    return parsed_items
