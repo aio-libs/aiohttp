@@ -88,7 +88,16 @@ COOKIE_MAX_LENGTH = 4096
 # while still providing some validation to catch obviously malformed names.
 _COOKIE_NAME_RE = re.compile(r"^[!#$%&\'()*+\-./0-9:;<=>?@A-Z\[\]^_`a-z{|}~]+$")
 _KNOWN_ATTRS = frozenset(
-    ["path", "domain", "max-age", "expires", "secure", "httponly", "samesite"]
+    (
+        "path",
+        "domain",
+        "max-age",
+        "expires",
+        "secure",
+        "httponly",
+        "samesite",
+        "partitioned",
+    )
 )
 
 _T = TypeVar("_T")

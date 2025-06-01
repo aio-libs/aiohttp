@@ -2707,14 +2707,16 @@ async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    with mock.patch("aiohttp.client_reqrep.client_logger") as m_log:
+    with mock.patch("aiohttp.helpers.client_logger") as m_log:
         async with client.get("/") as resp:
             assert 200 == resp.status
             cookie_names = {c.key for c in client.session.cookie_jar}
             _ = resp.cookies
         assert cookie_names == {"c1", "c2"}
 
-        m_log.warning.assert_called_with("Can not load response cookies: %s", mock.ANY)
+        m_log.warning.assert_called_with(
+            "Can not load response cookies: Illegal cookie name %r", "invalid\tcookie"
+        )
 
 
 async def test_set_cookies_with_curly_braces(aiohttp_client: AiohttpClient) -> None:
