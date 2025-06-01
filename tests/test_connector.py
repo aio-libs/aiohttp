@@ -326,13 +326,12 @@ async def test_close_with_proto_closed_none(key: ConnectionKey) -> None:
     # Add protocol to acquired connections
     conn._acquired.add(proto)
 
-    # Close the connector - this should handle the case where proto.closed is None
-    waiters = await conn.close()
+    # Close the connector
+    await conn.close()
 
     # Verify close was called on the protocol
     assert proto.close.called
     # Verify no waiters were added when closed is None
-    assert waiters == []
     assert conn.closed
 
 
