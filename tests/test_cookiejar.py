@@ -1214,7 +1214,7 @@ def test_update_cookies_from_headers() -> None:
     url: URL = URL("http://example.com/path")
 
     # Test with simple cookies
-    headers: List[str] = [
+    headers = [
         "session-id=123456; Path=/",
         "user-pref=dark-mode; Domain=.example.com",
         "tracking=xyz789; Secure; HttpOnly",
