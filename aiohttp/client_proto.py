@@ -51,7 +51,18 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
     @property
     def closed(self) -> Union[None, asyncio.Future[None]]:
-        """Future that is set when the connection is closed."""
+        """Future that is set when the connection is closed.
+
+        This property returns a Future that will be completed when the connection
+        is closed. The Future is created lazily on first access to avoid creating
+        futures that will never be awaited.
+
+        Returns:
+            - A Future[None] if the connection is still open or was closed after
+              this property was accessed
+            - None if connection_lost() was already called before this property
+              was ever accessed (indicating no one is waiting for the closure)
+        """
         if self._closed is None and not self._connection_lost_called:
             self._closed = self._loop.create_future()
         return self._closed
@@ -100,7 +111,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             # If someone is waiting for the closed future,
             # we should set it to None or an exception. If
             # self._closed is None, it means that
-            # is means connection_lost() was called already
+            # connection_lost() was called already
             # or nobody is waiting for it.
             if connection_closed_cleanly:
                 set_result(self._closed, None)
