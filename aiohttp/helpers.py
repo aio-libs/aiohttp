@@ -22,7 +22,7 @@ from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
 from http.cookiejar import parse_ns_headers
-from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
+from http.cookies import CookieError, Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
 from types import MappingProxyType, TracebackType
@@ -1156,7 +1156,7 @@ def create_cookie_morsel(
     return morsel
 
 
-def get_or_create_cookie_morsel(cookie: "BaseCookie[str]", name: str) -> Morsel[str]:
+def get_or_create_cookie_morsel(cookie: Morsel[str], name: str) -> Morsel[str]:
     """
     Get an existing Morsel or create a new one with proper values.
 
