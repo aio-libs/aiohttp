@@ -1434,8 +1434,7 @@ def test_parse_cookie_headers_compatibility_with_simple_cookie(header: str) -> N
 
         # Compare attributes (only those that SimpleCookie would set)
         for attr in ["path", "domain", "max-age"]:
-            if sc_morsel.get(attr) is not None:
-                assert morsel.get(attr) == sc_morsel.get(attr)
+            assert morsel.get(attr) == sc_morsel.get(attr)
 
         # Boolean attributes are handled differently
         # SimpleCookie sets them to empty string when not present, True when present
@@ -1956,6 +1955,26 @@ def test_parse_cookie_headers_invalid_cookie_syntax() -> None:
     # Multiple invalid patterns
     result = parse_cookie_headers(["!!!!", "????", "name", "@@@"])
     assert result == []
+
+
+def test_parse_cookie_headers_illegal_cookie_names(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that illegal cookie names trigger warnings."""
+    # Cookie name that is a known attribute (illegal)
+    result = parse_cookie_headers(["path=value; domain=test"])
+    assert result == []
+    assert "Illegal cookie name 'path'" in caplog.text
+
+    # Cookie name that doesn't match the pattern
+    result = parse_cookie_headers(["=value"])
+    assert result == []
+
+    # Valid cookie after illegal one
+    result = parse_cookie_headers(["domain=bad; good=value"])
+    assert len(result) == 1
+    assert result[0][0] == "good"
+    assert "Illegal cookie name 'domain'" in caplog.text
 
 
 def test_parse_cookie_headers_attributes_before_cookie() -> None:
