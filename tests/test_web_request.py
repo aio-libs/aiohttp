@@ -366,6 +366,70 @@ def test_request_cookies_no_500_error() -> None:
     assert cookies["ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}"] == "test"
 
 
+def test_request_cookies_quoted_values() -> None:
+    """Test that quoted cookie values are handled consistently.
+
+    This tests the fix for issue #5397 where quoted cookie values were
+    handled inconsistently based on whether domain attributes were present.
+    The new parser should always unquote cookie values consistently.
+    """
+    # Test simple quoted cookie value
+    headers = CIMultiDict(COOKIE='sess="quoted_value"')
+    req = make_mocked_request("GET", "/", headers=headers)
+    # Quotes should be removed consistently
+    assert req.cookies == {"sess": "quoted_value"}
+
+    # Test quoted cookie with semicolon in value
+    headers = CIMultiDict(COOKIE='data="value;with;semicolons"')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"data": "value;with;semicolons"}
+
+    # Test mixed quoted and unquoted cookies
+    headers = CIMultiDict(
+        COOKIE='quoted="value1"; unquoted=value2; also_quoted="value3"'
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {
+        "quoted": "value1",
+        "unquoted": "value2",
+        "also_quoted": "value3",
+    }
+
+    # Test escaped quotes in cookie value
+    headers = CIMultiDict(COOKIE=r'escaped="value with \" quote"')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"escaped": 'value with " quote'}
+
+    # Test empty quoted value
+    headers = CIMultiDict(COOKIE='empty=""')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"empty": ""}
+
+
+def test_request_cookies_with_attributes() -> None:
+    """Test that cookie attributes don't affect value parsing.
+
+    Related to issue #5397 - ensures that the presence of domain or other
+    attributes doesn't change how cookie values are parsed.
+    """
+    # Cookie with domain attribute - quotes should still be removed
+    headers = CIMultiDict(COOKIE='sess="quoted_value"; Domain=.example.com')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"sess": "quoted_value"}
+
+    # Cookie with multiple attributes
+    headers = CIMultiDict(COOKIE='token="abc123"; Path=/; Secure; HttpOnly')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"token": "abc123"}
+
+    # Multiple cookies with different attributes
+    headers = CIMultiDict(
+        COOKIE='c1="v1"; Domain=.example.com; c2="v2"; Path=/api; c3=v3; Secure'
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"c1": "v1", "c2": "v2", "c3": "v3"}
+
+
 def test_match_info() -> None:
     req = make_mocked_request("GET", "/")
     assert req._match_info is req.match_info
