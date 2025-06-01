@@ -22,7 +22,7 @@ from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
 from http.cookiejar import parse_ns_headers
-from http.cookies import CookieError, Morsel, SimpleCookie
+from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
 from types import MappingProxyType, TracebackType
@@ -1116,29 +1116,6 @@ def should_remove_content_length(method: str, code: int) -> bool:
     )
 
 
-def _set_and_validate_morsel_values(
-    morsel: Morsel[str],
-    name: str,
-    value: str,
-    coded_value: Optional[str] = None,
-) -> None:
-    """
-    Set Morsel values with less strict validation.
-
-    This helper validates cookie names using our more permissive regex
-    that allows characters like {}, [], () etc. that appear in real-world
-    cookies but aren't allowed by the strict RFC standards.
-    """
-    if name.lower() in _KNOWN_ATTRS:
-        raise CookieError(f"Attempt to set a reserved key {name!r}")
-    # Validate the name according to RFC 6265
-    # with our modification to allow some non-standard characters
-    # which appear in real-world cookies.
-    if not _COOKIE_NAME_RE.match(name):
-        raise ValueError(f"Invalid cookie name: {name!r}")
-    _set_validated_morsel_values(morsel, name, value, coded_value)
-
-
 def _set_validated_morsel_values(
     morsel: Morsel[str],
     name: str,
@@ -1149,24 +1126,6 @@ def _set_validated_morsel_values(
     morsel._key = name
     morsel._value = value
     morsel._coded_value = coded_value if coded_value is not None else value
-
-
-def create_cookie_morsel(
-    name: str, value: str, coded_value: Optional[str] = None
-) -> Morsel[str]:
-    """
-    Create a Morsel with less strict name validation.
-
-    This function validates cookie names using our more permissive regex
-    that allows characters like {}, [], () etc. that appear in real-world
-    cookies. The standard library's Morsel.set() method is too strict for
-    real-world usage, so we bypass it by setting the internal attributes directly.
-
-    Note: Django uses a similar approach for the same reasons.
-    """
-    morsel: Morsel[str] = Morsel()
-    _set_and_validate_morsel_values(morsel, name, value, coded_value)
-    return morsel
 
 
 def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
@@ -1211,14 +1170,17 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
             # Skip cookies without values (like bare "test" without =)
             continue
 
-        # Create Morsel using helper to bypass validation
-        try:
-            morsel = create_cookie_morsel(name, value)
-        except (CookieError, ValueError) as exc:
+        # Validate the name according to RFC 6265
+        # with our modification to allow some non-standard characters
+        # which appear in real-world cookies.
+        if name.lower() in _KNOWN_ATTRS or not _COOKIE_NAME_RE.match(name):
             client_logger.warning(
-                "Can not load response cookies: Illegal cookie name %r: %r", name, exc
+                "Can not load response cookies: Illegal cookie name %r: %r", name
             )
             continue
+
+        morsel: Morsel[str] = Morsel()
+        _set_validated_morsel_values(morsel, name, value)
 
         # Parse remaining attributes
         for attr_name, attr_value in cookie_attrs[1:]:
