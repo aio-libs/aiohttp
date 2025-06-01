@@ -30,6 +30,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, helpers, http, multipart, payload
+from ._cookie_helpers import parse_cookie_headers, preserve_morsel_with_coded_value
 from .abc import AbstractStreamWriter
 from .client_exceptions import (
     ClientConnectionError,
@@ -52,9 +53,7 @@ from .helpers import (
     frozen_dataclass_decorator,
     is_expected_content_type,
     netrc_from_env,
-    parse_cookie_headers,
     parse_mimetype,
-    preserve_morsel_with_coded_value,
     reify,
     set_exception,
     set_result,

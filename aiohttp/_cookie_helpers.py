@@ -1,4 +1,5 @@
-"""Internal cookie handling helpers.
+"""
+Internal cookie handling helpers.
 
 This module contains internal utilities for cookie parsing and manipulation.
 These are not part of the public API and may change without notice.
@@ -11,7 +12,6 @@ from typing import List, Optional, Sequence, Tuple, cast
 from .log import internal_logger
 
 __all__ = (
-    "_set_validated_morsel_values",
     "make_non_quoted_morsel",
     "make_quoted_morsel",
     "parse_cookie_headers",

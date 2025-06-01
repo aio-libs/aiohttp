@@ -28,6 +28,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs
+from ._cookie_helpers import parse_cookie_headers
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
@@ -38,7 +39,6 @@ from .helpers import (
     HeadersMixin,
     frozen_dataclass_decorator,
     is_expected_content_type,
-    parse_cookie_headers,
     parse_http_date,
     reify,
     sentinel,
