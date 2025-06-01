@@ -1175,7 +1175,7 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
         # which appear in real-world cookies.
         if name.lower() in _KNOWN_ATTRS or not _COOKIE_NAME_RE.match(name):
             client_logger.warning(
-                "Can not load response cookies: Illegal cookie name %r: %r", name
+                "Can not load response cookies: Illegal cookie name %r", name
             )
             continue
 
