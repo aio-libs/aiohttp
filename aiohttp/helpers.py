@@ -1192,15 +1192,14 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
             # Skip cookies without values (like bare "test" without =)
             continue
 
-        # Validate cookie name
-        if not _COOKIE_NAME_RE.match(name):
+        # Create Morsel using helper to bypass validation
+        try:
+            morsel = create_cookie_morsel(name, value)
+        except CookieError as e:
             client_logger.warning(
-                "Can not load response cookies: Illegal cookie name %r", name
+                "Can not load response cookies: %s for cookie %r", e, name
             )
             continue
-
-        # Create Morsel using helper to bypass validation
-        morsel = create_cookie_morsel(name, value)
 
         # Parse remaining attributes
         for attr_name, attr_value in cookie_attrs[1:]:
