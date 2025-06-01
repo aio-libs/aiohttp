@@ -193,16 +193,8 @@ class AbstractCookieJar(Sized, IterableBase):
     def update_cookies_from_headers(
         self, headers: Sequence[str], response_url: URL
     ) -> None:
-        """
-        Update cookies from raw Set-Cookie headers.
-
-        Optimized implementation that parses cookies using http.cookiejar.parse_ns_headers.
-        """
-        if not headers:
-            return
-
-        # Update all cookies at once for efficiency
-        if cookies_to_update := parse_cookie_headers(headers):
+        """Update cookies from raw Set-Cookie headers."""
+        if headers and (cookies_to_update := parse_cookie_headers(headers)):
             self.update_cookies(cookies_to_update, response_url)
 
     @abstractmethod
