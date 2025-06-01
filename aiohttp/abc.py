@@ -22,7 +22,7 @@ from typing import (
 from multidict import CIMultiDict
 from yarl import URL
 
-from .helpers import parse_cookie_headers
+from ._cookie_helpers import parse_cookie_headers
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:
