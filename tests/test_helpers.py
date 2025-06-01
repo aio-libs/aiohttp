@@ -1628,32 +1628,48 @@ def test_parse_cookie_headers_boolean_attrs_with_partitioned_pre_314() -> None:
 @pytest.mark.skipif(sys.version_info < (3, 14), reason="Requires Python 3.14+")
 def test_parse_cookie_headers_boolean_attrs_with_partitioned() -> None:
     """Test that boolean attributes including partitioned work correctly on Python 3.14+."""
-    headers = [
+    # Test secure attribute variations
+    secure_headers = [
         "cookie1=value1; Secure",
         "cookie2=value2; Secure=",
         "cookie3=value3; Secure=true",  # Non-standard but might occur
+    ]
+
+    # Test httponly attribute variations
+    httponly_headers = [
         "cookie4=value4; HttpOnly",
         "cookie5=value5; HttpOnly=",
+    ]
+
+    # Test partitioned attribute variations
+    partitioned_headers = [
         "cookie6=value6; Partitioned",
         "cookie7=value7; Partitioned=",
         "cookie8=value8; Partitioned=yes",  # Non-standard but might occur
     ]
 
+    headers = secure_headers + httponly_headers + partitioned_headers
     result = parse_cookie_headers(headers)
 
-    # All should have the boolean attributes set
     assert len(result) == 8
-    for i, (name, morsel) in enumerate(result):
-        if i < 3:
-            assert morsel.get("secure") is True, f"Cookie {i+1} should have secure=True"
-        elif i < 5:
-            assert (
-                morsel.get("httponly") is True
-            ), f"Cookie {i+1} should have httponly=True"
-        else:
-            assert (
-                morsel.get("partitioned") is True
-            ), f"Cookie {i+1} should have partitioned=True"
+
+    # Check secure cookies
+    for i in range(3):
+        name, morsel = result[i]
+        assert name == f"cookie{i+1}"
+        assert morsel.get("secure") is True, f"{name} should have secure=True"
+
+    # Check httponly cookies
+    for i in range(3, 5):
+        name, morsel = result[i]
+        assert name == f"cookie{i+1}"
+        assert morsel.get("httponly") is True, f"{name} should have httponly=True"
+
+    # Check partitioned cookies
+    for i in range(5, 8):
+        name, morsel = result[i]
+        assert name == f"cookie{i+1}"
+        assert morsel.get("partitioned") is True, f"{name} should have partitioned=True"
 
 
 def test_parse_cookie_headers_encoded_values() -> None:
@@ -1675,7 +1691,8 @@ def test_parse_cookie_headers_encoded_values() -> None:
 
 @pytest.mark.skipif(sys.version_info >= (3, 14), reason="Test for Python < 3.14")
 def test_parse_cookie_headers_partitioned_pre_314() -> None:
-    """Test that parse_cookie_headers handles partitioned attribute correctly on Python < 3.14.
+    """
+    Test that parse_cookie_headers handles partitioned attribute correctly on Python < 3.14.
 
     This tests the fix for issue #10380 - partitioned cookies support.
     The partitioned attribute is a boolean flag like secure and httponly.
@@ -1683,8 +1700,6 @@ def test_parse_cookie_headers_partitioned_pre_314() -> None:
     On Python < 3.14, this test demonstrates that aiohttp's parser can handle
     partitioned cookies even though Python's SimpleCookie doesn't natively support them.
     """
-    from http.cookies import Morsel
-
     # Create patched reserved and flags with partitioned support
     patched_reserved = Morsel._reserved.copy()
     patched_reserved["partitioned"] = "partitioned"
@@ -1812,7 +1827,7 @@ def test_parse_cookie_headers_partitioned_case_insensitive() -> None:
     assert len(result) == 4
 
     # All should be recognized as partitioned
-    for i, (name, morsel) in enumerate(result):
+    for i, (_, morsel) in enumerate(result):
         assert (
             morsel.get("partitioned") is True
         ), f"Cookie {i+1} should have partitioned=True"
