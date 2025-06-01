@@ -1134,9 +1134,12 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
             )
             continue
 
-        # Create Morsel
+        # Create Morsel - bypass validation by setting internal attributes directly
+        # to allow non-RFC-compliant cookie names
         morsel = Morsel()
-        morsel.set(name, value, value)
+        morsel._key = name
+        morsel._value = value
+        morsel._coded_value = value
 
         # Parse remaining attributes
         for attr_name, attr_value in cookie_attrs[1:]:
