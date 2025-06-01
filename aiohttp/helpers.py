@@ -1121,7 +1121,8 @@ def _set_and_validate_morsel_values(
     value: str,
     coded_value: Optional[str] = None,
 ) -> None:
-    """Set Morsel values and validate them.
+    """
+    Set Morsel values and validate them.
 
     This is a helper to ensure that the Morsel is set up correctly
     without triggering validation errors for non-standard cookie names.
