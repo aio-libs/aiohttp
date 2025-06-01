@@ -78,6 +78,7 @@ __all__ = (
     "ChainMapProxy",
     "ETag",
     "frozen_dataclass_decorator",
+    "make_non_quoted_morsel",
     "make_quoted_morsel",
     "preserve_morsel_with_coded_value",
     "reify",
