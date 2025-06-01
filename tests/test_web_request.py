@@ -279,6 +279,93 @@ def test_request_cookie__set_item() -> None:
         req.cookies["my"] = "value"  # type: ignore[index]
 
 
+def test_request_cookies_with_special_characters() -> None:
+    """Test that cookies with special characters in names are accepted.
+
+    This tests the fix for issue #2683 where cookies with special characters
+    like {, }, / in their names would cause a 500 error. The fix makes the
+    cookie parser more tolerant to handle real-world cookies.
+    """
+    # Test cookie names with curly braces (e.g., ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E})
+    headers = CIMultiDict(COOKIE="{test}=value1; normal=value2")
+    req = make_mocked_request("GET", "/", headers=headers)
+    # Both cookies should be parsed successfully
+    assert req.cookies == {"{test}": "value1", "normal": "value2"}
+
+    # Test cookie names with forward slash
+    headers = CIMultiDict(COOKIE="test/name=value1; valid=value2")
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"test/name": "value1", "valid": "value2"}
+
+    # Test cookie names with various special characters
+    headers = CIMultiDict(
+        COOKIE="test{foo}bar=value1; test/path=value2; normal_cookie=value3"
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {
+        "test{foo}bar": "value1",
+        "test/path": "value2",
+        "normal_cookie": "value3",
+    }
+
+
+def test_request_cookies_real_world_examples() -> None:
+    """Test handling of real-world cookie examples from issue #2683."""
+    # Example from the issue: ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}
+    headers = CIMultiDict(
+        COOKIE="ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}=val1; normal_cookie=val2"
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    # All cookies should be parsed successfully
+    assert req.cookies == {
+        "ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}": "val1",
+        "normal_cookie": "val2",
+    }
+
+    # Multiple cookies with special characters
+    headers = CIMultiDict(
+        COOKIE="{cookie1}=val1; cookie/2=val2; cookie[3]=val3; cookie(4)=val4"
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {
+        "{cookie1}": "val1",
+        "cookie/2": "val2",
+        "cookie[3]": "val3",
+        "cookie(4)": "val4",
+    }
+
+
+def test_request_cookies_edge_cases() -> None:
+    """Test edge cases for cookie parsing."""
+    # Empty cookie value
+    headers = CIMultiDict(COOKIE="test=; normal=value")
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"test": "", "normal": "value"}
+
+    # Cookie with quoted value
+    headers = CIMultiDict(COOKIE='test="quoted value"; normal=unquoted')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"test": "quoted value", "normal": "unquoted"}
+
+
+def test_request_cookies_no_500_error() -> None:
+    """Test that cookies with special characters don't cause 500 errors.
+
+    This specifically tests that issue #2683 is fixed - previously cookies
+    with characters like { } would cause CookieError and 500 responses.
+    """
+    # This cookie format previously caused 500 errors
+    headers = CIMultiDict(COOKIE="ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}=test")
+
+    # Should not raise any exception when accessing cookies
+    req = make_mocked_request("GET", "/", headers=headers)
+    cookies = req.cookies  # This used to raise CookieError
+
+    # Verify the cookie was parsed successfully
+    assert "ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}" in cookies
+    assert cookies["ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}"] == "test"
+
+
 def test_match_info() -> None:
     req = make_mocked_request("GET", "/")
     assert req._match_info is req.match_info
