@@ -87,7 +87,7 @@ COOKIE_MAX_LENGTH = 4096
 # This makes the cookie parser more tolerant of real-world cookies
 # while still providing some validation to catch obviously malformed names.
 _COOKIE_NAME_RE = re.compile(r"^[!#$%&\'()*+\-./0-9:<=>?@A-Z\[\]^_`a-z{|}~]+$")
-_KNOWN_ATTRS = frozenset(  # AKA Morsel._reserved
+_COOKIE_KNOWN_ATTRS = frozenset(  # AKA Morsel._reserved
     (
         "path",
         "domain",
@@ -101,7 +101,9 @@ _KNOWN_ATTRS = frozenset(  # AKA Morsel._reserved
         "comment",
     )
 )
-_BOOL_ATTRS = frozenset(("secure", "httponly", "partitioned"))  # AKA Morsel._flags
+_COOKIE_BOOL_ATTRS = frozenset(
+    ("secure", "httponly", "partitioned")
+)  # AKA Morsel._flags
 
 # SimpleCookie's pattern for parsing cookies with relaxed validation
 # Based on http.cookies pattern but extended to allow more characters in cookie names
@@ -1227,7 +1229,7 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
             if item_type == _TYPE_KEYVALUE:
                 # This is a new cookie
                 # Validate the name
-                if key in _KNOWN_ATTRS or not _COOKIE_NAME_RE.match(key):
+                if key in _COOKIE_KNOWN_ATTRS or not _COOKIE_NAME_RE.match(key):
                     client_logger.warning(
                         "Can not load response cookies: Illegal cookie name %r", key
                     )
@@ -1242,10 +1244,10 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
             elif (
                 item_type == _TYPE_ATTRIBUTE
                 and current_morsel is not None
-                and key in _KNOWN_ATTRS
+                and key in _COOKIE_KNOWN_ATTRS
             ):
                 # This is an attribute for the current cookie
-                if value is True or key in _BOOL_ATTRS:
+                if value is True or key in _COOKIE_BOOL_ATTRS:
                     # Boolean attribute
                     current_morsel[key] = True
                 else:
@@ -1285,12 +1287,12 @@ def _parse_cookie_string(cookie_str: str) -> List[Tuple[int, str, Union[str, boo
                 # mechanism as a whole, such as "$Version".
                 continue
             parsed_items.append((_TYPE_ATTRIBUTE, key[1:], value or ""))
-        elif lower_key in _KNOWN_ATTRS:
+        elif lower_key in _COOKIE_KNOWN_ATTRS:
             if not morsel_seen:
                 # Invalid cookie string - attribute before cookie
                 return []
             if value is None:
-                if lower_key in _BOOL_ATTRS:
+                if lower_key in _COOKIE_BOOL_ATTRS:
                     parsed_items.append((_TYPE_ATTRIBUTE, lower_key, True))
                 else:
                     # Invalid cookie string - non-boolean attribute without value

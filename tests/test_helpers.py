@@ -1177,25 +1177,25 @@ def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
 
 
 def test_known_attrs_is_superset_of_morsel_reserved() -> None:
-    """Test that _KNOWN_ATTRS contains all Morsel._reserved attributes."""
+    """Test that _COOKIE_KNOWN_ATTRS contains all Morsel._reserved attributes."""
     # Get Morsel._reserved attributes (lowercase)
     morsel_reserved = {attr.lower() for attr in Morsel._reserved}
 
-    # _KNOWN_ATTRS should be a superset of morsel_reserved
+    # _COOKIE_KNOWN_ATTRS should be a superset of morsel_reserved
     assert (
-        helpers._KNOWN_ATTRS >= morsel_reserved
-    ), f"_KNOWN_ATTRS is missing: {morsel_reserved - helpers._KNOWN_ATTRS}"
+        helpers._COOKIE_KNOWN_ATTRS >= morsel_reserved
+    ), f"_COOKIE_KNOWN_ATTRS is missing: {morsel_reserved - helpers._COOKIE_KNOWN_ATTRS}"
 
 
 def test_bool_attrs_is_superset_of_morsel_flags() -> None:
-    """Test that _BOOL_ATTRS contains all Morsel._flags attributes."""
+    """Test that _COOKIE_BOOL_ATTRS contains all Morsel._flags attributes."""
     # Get Morsel._flags attributes (lowercase)
     morsel_flags = {attr.lower() for attr in Morsel._flags}
 
-    # _BOOL_ATTRS should be a superset of morsel_flags
+    # _COOKIE_BOOL_ATTRS should be a superset of morsel_flags
     assert (
-        helpers._BOOL_ATTRS >= morsel_flags
-    ), f"_BOOL_ATTRS is missing: {morsel_flags - helpers._BOOL_ATTRS}"
+        helpers._COOKIE_BOOL_ATTRS >= morsel_flags
+    ), f"_COOKIE_BOOL_ATTRS is missing: {morsel_flags - helpers._COOKIE_BOOL_ATTRS}"
 
 
 def test_preserve_morsel_with_coded_value() -> None:
