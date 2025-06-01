@@ -101,9 +101,9 @@ _COOKIE_KNOWN_ATTRS = frozenset(  # AKA Morsel._reserved
         "comment",
     )
 )
-_COOKIE_BOOL_ATTRS = frozenset(
+_COOKIE_BOOL_ATTRS = frozenset(  # AKA Morsel._flags
     ("secure", "httponly", "partitioned")
-)  # AKA Morsel._flags
+)
 
 # SimpleCookie's pattern for parsing cookies with relaxed validation
 # Based on http.cookies pattern but extended to allow more characters in cookie names
