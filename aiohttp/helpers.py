@@ -1175,10 +1175,7 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
     """Parse cookie headers using http.cookiejar.parse_ns_headers."""
     cookies_to_update: List[Tuple[str, Morsel[str]]] = []
 
-    # Parse all headers at once
-    parsed_cookies = parse_ns_headers(headers)
-
-    for cookie_attrs in parsed_cookies:
+    for cookie_attrs in parse_ns_headers(headers):
         if not cookie_attrs:
             continue
 
