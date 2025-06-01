@@ -28,7 +28,7 @@ from typing import (
 from yarl import URL
 
 from .abc import AbstractCookieJar, ClearCookiePredicate
-from .helpers import get_or_create_cookie_morsel, is_ip_address
+from .helpers import is_ip_address, preserve_morsel_with_coded_value
 from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ("CookieJar", "DummyCookieJar")
@@ -376,8 +376,8 @@ class CookieJar(AbstractCookieJar):
                     filtered[name] = self._morsel_cache[p][name]
                     continue
 
-                # Use helper to get or create Morsel with proper values
-                mrsl_val = get_or_create_cookie_morsel(cookie, name)
+                # Use helper to preserve coded_value exactly as sent by server
+                mrsl_val = preserve_morsel_with_coded_value(cookie, name)
                 self._morsel_cache[p][name] = mrsl_val
                 filtered[name] = mrsl_val
 

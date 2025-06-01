@@ -50,10 +50,10 @@ from .helpers import (
     TimerNoop,
     basicauth_from_netrc,
     frozen_dataclass_decorator,
-    get_or_create_cookie_morsel,
     is_expected_content_type,
     netrc_from_env,
     parse_mimetype,
+    preserve_morsel_with_coded_value,
     reify,
     set_exception,
     set_result,
@@ -1026,8 +1026,8 @@ class ClientRequest:
             iter_cookies = cookies  # type: ignore[assignment]
         for name, value in iter_cookies:
             if isinstance(value, Morsel):
-                # Use helper to preserve coded_value and bypass validation
-                c[name] = get_or_create_cookie_morsel(value, name)
+                # Use helper to preserve coded_value exactly as sent by server
+                c[name] = preserve_morsel_with_coded_value(value, name)
             else:
                 c[name] = value  # type: ignore[assignment]
 

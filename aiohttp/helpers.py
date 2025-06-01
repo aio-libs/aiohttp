@@ -1122,10 +1122,11 @@ def _set_and_validate_morsel_values(
     coded_value: Optional[str] = None,
 ) -> None:
     """
-    Set Morsel values and validate them.
+    Set Morsel values with less strict validation.
 
-    This is a helper to ensure that the Morsel is set up correctly
-    without triggering validation errors for non-standard cookie names.
+    This helper validates cookie names using our more permissive regex
+    that allows characters like {}, [], () etc. that appear in real-world
+    cookies but aren't allowed by the strict RFC standards.
     """
     if name.lower() in _KNOWN_ATTRS:
         raise CookieError(f"Attempt to set a reserved key {name!r}")
@@ -1134,6 +1135,16 @@ def _set_and_validate_morsel_values(
     # which appear in real-world cookies.
     if not _COOKIE_NAME_RE.match(name):
         raise ValueError(f"Invalid cookie name: {name!r}")
+    _set_validated_morsel_values(morsel, name, value, coded_value)
+
+
+def _set_validated_morsel_values(
+    morsel: Morsel[str],
+    name: str,
+    value: str,
+    coded_value: Optional[str] = None,
+) -> None:
+    """Set Morsel values with less strict validation."""
     morsel._key = name
     morsel._value = value
     morsel._coded_value = coded_value if coded_value is not None else value
@@ -1143,33 +1154,49 @@ def create_cookie_morsel(
     name: str, value: str, coded_value: Optional[str] = None
 ) -> Morsel[str]:
     """
-    Create a Morsel with pre-validated name, bypassing validation.
+    Create a Morsel with less strict name validation.
 
-    This is needed to support real-world cookies with names that don't
-    strictly follow RFC standards (e.g., containing {}, [], etc.).
+    This function validates cookie names using our more permissive regex
+    that allows characters like {}, [], () etc. that appear in real-world
+    cookies. The standard library's Morsel.set() method is too strict for
+    real-world usage, so we bypass it by setting the internal attributes directly.
 
-    Note: Django uses its own cookie parsing for similar reasons - the
-    standard library's cookie validation is too strict for real-world usage.
+    Note: Django uses a similar approach for the same reasons.
     """
     morsel = Morsel()
     _set_and_validate_morsel_values(morsel, name, value, coded_value)
     return morsel
 
 
-def get_or_create_cookie_morsel(cookie: Morsel[str], name: str) -> Morsel[str]:
+def preserve_morsel_with_coded_value(cookie: Morsel[str], name: str) -> Morsel[str]:
     """
-    Get an existing Morsel or create a new one with proper values.
+    Preserve a Morsel's coded_value exactly as received from the server.
 
-    This helper preserves the coded_value which is critical for
-    maintaining the cookie version.
+    This function ensures that cookie encoding is preserved exactly as sent by
+    the server, which is critical for compatibility with old servers that have
+    strict requirements about cookie formats.
+
+    This addresses the issue described in https://github.com/aio-libs/aiohttp/pull/1453
+    where Python's SimpleCookie would re-encode cookies, breaking authentication
+    with certain servers.
+
+    Args:
+        cookie: A Morsel object from SimpleCookie
+        name: The expected cookie name (for validation)
+
+    Returns:
+        The same Morsel object with preserved coded_value
+
     """
-    if mrsl_val := cookie.get(name):
-        _set_and_validate_morsel_values(
-            mrsl_val, cookie.key, cookie.value, cookie.coded_value
+    # Validate that the morsel's key matches the expected name
+    if cookie.key != name:
+        raise ValueError(
+            f"Morsel key {cookie.key!r} doesn't match expected name {name!r}"
         )
-        return mrsl_val
-    # Create new Morsel using helper to bypass validation
-    return create_cookie_morsel(cookie.key, cookie.value, cookie.coded_value)
+
+    # The morsel already has the correct coded_value from SimpleCookie,
+    # we just need to return it as-is to preserve the server's encoding
+    return cookie
 
 
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
