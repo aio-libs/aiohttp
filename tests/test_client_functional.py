@@ -5,6 +5,7 @@ import datetime
 import http.cookies
 import io
 import json
+import logging
 import pathlib
 import socket
 import ssl
@@ -2691,7 +2692,9 @@ async def test_morsel_with_attributes(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
 
 
-async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
+async def test_set_cookies(
+    aiohttp_client: AiohttpClient, caplog: pytest.LogCaptureFixture
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         ret = web.Response()
         ret.set_cookie("c1", "cookie1")
@@ -2707,16 +2710,17 @@ async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    with mock.patch("aiohttp.helpers.client_logger") as m_log:
+    with caplog.at_level(logging.WARNING):
         async with client.get("/") as resp:
             assert 200 == resp.status
             cookie_names = {c.key for c in client.session.cookie_jar}
             _ = resp.cookies
         assert cookie_names == {"c1", "c2"}
 
-        m_log.warning.assert_called_with(
-            "Can not load response cookies: Illegal cookie name %r", "invalid\tcookie"
-        )
+    assert (
+        "Can not load response cookies: Illegal cookie name 'invalid\tcookie'"
+        in caplog.text
+    )
 
 
 async def test_set_cookies_with_curly_braces(aiohttp_client: AiohttpClient) -> None:
