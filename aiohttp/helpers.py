@@ -1215,6 +1215,11 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
     compatibility with how SimpleCookie parses cookies, including handling
     of malformed cookies with missing semicolons.
 
+    This function is used for both Cookie and Set-Cookie headers in order to be
+    forgiving. Ideally we would have followed RFC 6265 Section 5.2 (for Cookie
+    headers) and RFC 6265 Section 4.2.1 (for Set-Cookie headers), but the
+    real world data makes it impossible since we need to be a bit more forgiving.
+
     NOTE: This implementation differs from SimpleCookie in handling unmatched quotes.
     SimpleCookie will stop parsing when it encounters a cookie value with an unmatched
     quote (e.g., 'cookie="value'), causing subsequent cookies to be silently dropped.
