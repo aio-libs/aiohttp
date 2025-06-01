@@ -38,7 +38,7 @@ from .helpers import (
     HeadersMixin,
     frozen_dataclass_decorator,
     is_expected_content_type,
-    parse_cookie_headers,
+    parse_cookie_header,
     parse_http_date,
     reify,
     sentinel,
@@ -557,10 +557,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, "")
-        # Use parse_cookie_headers for more lenient parsing that accepts
+        # Use parse_cookie_header for parsing Cookie headers that accepts
         # special characters in cookie names (fixes #2683)
-        parsed = parse_cookie_headers([raw])
-        return MappingProxyType({name: morsel.value for name, morsel in parsed})
+        parsed = parse_cookie_header(raw)
+        return MappingProxyType({name: value for name, value in parsed})
 
     @reify
     def http_range(self) -> "slice[int, int, int]":
