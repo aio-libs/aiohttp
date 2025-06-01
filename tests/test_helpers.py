@@ -1743,7 +1743,8 @@ def test_parse_cookie_headers_partitioned_pre_314() -> None:
 
 @pytest.mark.skipif(sys.version_info < (3, 14), reason="Requires Python 3.14+")
 def test_parse_cookie_headers_partitioned() -> None:
-    """Test that parse_cookie_headers handles partitioned attribute correctly on Python 3.14+.
+    """
+    Test that parse_cookie_headers handles partitioned attribute correctly on Python 3.14+.
 
     This tests the fix for issue #10380 - partitioned cookies support.
     The partitioned attribute is a boolean flag like secure and httponly.
@@ -1806,7 +1807,7 @@ def test_parse_cookie_headers_partitioned_case_insensitive_pre_314() -> None:
         assert len(result) == 4
 
         # All should be recognized as partitioned
-        for i, (name, morsel) in enumerate(result):
+        for i, (_, morsel) in enumerate(result):
             assert (
                 morsel.get("partitioned") is True
             ), f"Cookie {i+1} should have partitioned=True"
