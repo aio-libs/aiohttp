@@ -1699,10 +1699,10 @@ def test_parse_cookie_headers_partitioned_pre_314() -> None:
     partitioned cookies even though Python's SimpleCookie doesn't natively support them.
     """
     # Create patched reserved and flags with partitioned support
-    patched_reserved = Morsel._reserved.copy()
+    patched_reserved = Morsel._reserved.copy()  # type: ignore[attr-defined]
     patched_reserved["partitioned"] = "partitioned"
 
-    patched_flags = Morsel._flags.copy()
+    patched_flags = Morsel._flags.copy()  # type: ignore[attr-defined]
     patched_flags.add("partitioned")
 
     with (
