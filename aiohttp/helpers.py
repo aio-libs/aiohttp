@@ -1141,7 +1141,8 @@ def _set_and_validate_morsel_values(
 def create_cookie_morsel(
     name: str, value: str, *, coded_value: Optional[str] = None
 ) -> Morsel[str]:
-    """Create a Morsel with pre-validated name, bypassing validation.
+    """
+    Create a Morsel with pre-validated name, bypassing validation.
 
     This is needed to support real-world cookies with names that don't
     strictly follow RFC standards (e.g., containing {}, [], etc.).
@@ -1155,7 +1156,8 @@ def create_cookie_morsel(
 
 
 def get_or_create_cookie_morsel(cookie: "BaseCookie[str]", name: str) -> Morsel[str]:
-    """Get an existing Morsel or create a new one with proper values.
+    """
+    Get an existing Morsel or create a new one with proper values.
 
     This helper preserves the coded_value which is critical for
     maintaining the cookie version.
@@ -1166,9 +1168,7 @@ def get_or_create_cookie_morsel(cookie: "BaseCookie[str]", name: str) -> Morsel[
         )
         return mrsl_val
     # Create new Morsel using helper to bypass validation
-    return create_cookie_morsel(
-        cookie.key, cookie.value, coded_value=cookie.coded_value
-    )
+    return create_cookie_morsel(cookie.key, cookie.value, cookie.coded_value)
 
 
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
