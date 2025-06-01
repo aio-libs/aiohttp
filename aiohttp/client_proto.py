@@ -46,7 +46,15 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._timeout_ceil_threshold: Optional[float] = 5
 
-        self.closed: asyncio.Future[None] = self._loop.create_future()
+        self._closed: Union[None, asyncio.Future[None]] = None
+        self._connection_lost_called = False
+
+    @property
+    def closed(self) -> Union[None, asyncio.Future[None]]:
+        """Future that is set when the connection is closed."""
+        if self._closed is None and not self._connection_lost_called:
+            self._closed = self._loop.create_future()
+        return self._closed
 
     @property
     def upgraded(self) -> bool:
@@ -80,6 +88,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         return self.transport is not None and not self.transport.is_closing()
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
+        self._connection_lost_called = True
         self._drop_timeout()
 
         original_connection_error = exc
@@ -87,23 +96,23 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         connection_closed_cleanly = original_connection_error is None
 
-        if connection_closed_cleanly:
-            set_result(self.closed, None)
-        else:
-            assert original_connection_error is not None
-            set_exception(
-                self.closed,
-                ClientConnectionError(
-                    f"Connection lost: {original_connection_error !s}",
-                ),
-                original_connection_error,
-            )
-            # Mark the exception as retrieved to prevent
-            # "Future exception was never retrieved" warnings
-            # The exception is always passed on through
-            # other means, so this is safe
-            with suppress(Exception):
-                self.closed.exception()
+        if self._closed is not None:
+            # If someone is waiting for the closed future,
+            # we should set it to None or an exception. If
+            # self._closed is None, it means that
+            # is means connection_lost() was called already
+            # or nobody is waiting for it.
+            if connection_closed_cleanly:
+                set_result(self._closed, None)
+            else:
+                assert original_connection_error is not None
+                set_exception(
+                    self._closed,
+                    ClientConnectionError(
+                        f"Connection lost: {original_connection_error !s}",
+                    ),
+                    original_connection_error,
+                )
 
         if self._payload_parser is not None:
             with suppress(Exception):  # FIXME: log this somehow?
