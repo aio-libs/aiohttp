@@ -2712,6 +2712,7 @@ async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
         async with client.get("/") as resp:
             assert 200 == resp.status
             cookie_names = {c.key for c in client.session.cookie_jar}
+            _ = resp.cookies
         assert cookie_names == {"c1", "c2"}
 
         m_log.warning.assert_called_with("Can not load response cookies: %s", mock.ANY)
@@ -5182,3 +5183,148 @@ async def test_invalid_redirect_origin_closes_payload(
     assert (
         payload.close_called
     ), "Payload.close() was not called when InvalidUrlRedirectClientError (invalid origin) was raised"
+
+
+async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> None:
+    """Test real-world cookie scenario similar to Amazon."""
+
+    class FakeResolver(AbstractResolver):
+        def __init__(self, port: int):
+            self._port = port
+
+        async def resolve(
+            self, host: str, port: int = 0, family: int = 0
+        ) -> List[ResolveResult]:
+            if host in ("amazon.it", "www.amazon.it"):
+                return [
+                    {
+                        "hostname": host,
+                        "host": "127.0.0.1",
+                        "port": self._port,
+                        "family": socket.AF_INET,
+                        "proto": 0,
+                        "flags": 0,
+                    }
+                ]
+            assert False, f"Unexpected host: {host}"
+
+        async def close(self) -> None:
+            """Close the resolver if needed."""
+
+    async def handler(request: web.Request) -> web.Response:
+        response = web.Response(text="Login successful")
+
+        # Simulate Amazon-like cookies from the issue
+        cookies = [
+            "session-id=146-7423990-7621939; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Secure; HttpOnly",
+            "session-id=147-8529641-8642103; Domain=.www.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; HttpOnly",
+            "session-id-time=2082758401l; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            "session-id-time=2082758402l; Domain=.www.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "ubid-acbit=257-7531983-5395266; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            'x-acbit="KdvJzu8W@Fx6Jj3EuNFLuP0N7OtkuCfs"; Version=1; '
+            "Domain=.amazon.it; Path=/; Secure; HttpOnly",
+            "at-acbit=Atza|IwEBIM-gLr8; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Secure; HttpOnly",
+            'sess-at-acbit="4+6VzSJPHIFD/OqO264hFxIng8Y="; '
+            "Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; "
+            "Path=/; Secure; HttpOnly",
+            "lc-acbit=it_IT; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "i18n-prefs=EUR; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "av-profile=null; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            'user-pref-token="Am81ywsJ69xObBnuJ2FbilVH0mg="; '
+            "Domain=.amazon.it; Path=/; Secure",
+        ]
+
+        for cookie in cookies:
+            response.headers.add("Set-Cookie", cookie)
+
+        return response
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    # Get the test server
+    server = await aiohttp_client(app)
+    port = server.port
+
+    # Create a new client session with our fake resolver
+    resolver = FakeResolver(port)
+
+    async with (
+        aiohttp.TCPConnector(resolver=resolver, force_close=True) as connector,
+        aiohttp.ClientSession(connector=connector) as session,
+    ):
+        # Make request to www.amazon.it which will resolve to
+        # 127.0.0.1:port. This allows cookies for both .amazon.it
+        # and .www.amazon.it domains
+        resp = await session.get(f"http://www.amazon.it:{port}/")
+
+        # Check headers
+        cookie_headers = resp.headers.getall("Set-Cookie")
+        assert (
+            len(cookie_headers) == 12
+        ), f"Expected 12 headers, got {len(cookie_headers)}"
+
+        # Check parsed cookies - SimpleCookie only keeps the last
+        # cookie with each name. So we expect 10 unique cookie names
+        # (not 12)
+        expected_cookie_names = {
+            "session-id",  # Will only have one
+            "session-id-time",  # Will only have one
+            "ubid-acbit",
+            "x-acbit",
+            "at-acbit",
+            "sess-at-acbit",
+            "lc-acbit",
+            "i18n-prefs",
+            "av-profile",
+            "user-pref-token",
+        }
+        assert set(resp.cookies.keys()) == expected_cookie_names
+        assert (
+            len(resp.cookies) == 10
+        ), f"Expected 10 cookies in SimpleCookie, got {len(resp.cookies)}"
+
+        # The important part: verify the session's cookie jar has
+        # all cookies. The cookie jar should have all 12 cookies,
+        # not just 10
+        jar_cookies = list(session.cookie_jar)
+        assert (
+            len(jar_cookies) == 12
+        ), f"Expected 12 cookies in jar, got {len(jar_cookies)}"
+
+        # Verify we have both session-id cookies with different domains
+        session_ids = [c for c in jar_cookies if c.key == "session-id"]
+        assert (
+            len(session_ids) == 2
+        ), f"Expected 2 session-id cookies, got {len(session_ids)}"
+
+        # Verify the domains are different
+        session_id_domains = {c["domain"] for c in session_ids}
+        assert session_id_domains == {
+            "amazon.it",
+            "www.amazon.it",
+        }, f"Got domains: {session_id_domains}"
+
+        # Verify we have both session-id-time cookies with different
+        # domains
+        session_id_times = [c for c in jar_cookies if c.key == "session-id-time"]
+        assert (
+            len(session_id_times) == 2
+        ), f"Expected 2 session-id-time cookies, got {len(session_id_times)}"
+
+        # Now test that the raw headers were properly preserved
+        assert resp._raw_cookie_headers is not None
+        assert (
+            len(resp._raw_cookie_headers) == 12
+        ), "All raw headers should be preserved"
