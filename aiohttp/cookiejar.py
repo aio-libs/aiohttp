@@ -28,7 +28,12 @@ from typing import (
 from yarl import URL
 
 from .abc import AbstractCookieJar, ClearCookiePredicate
-from .helpers import is_ip_address, make_quoted_morsel, preserve_morsel_with_coded_value
+from .helpers import (
+    is_ip_address,
+    make_non_quoted_morsel,
+    make_quoted_morsel,
+    preserve_morsel_with_coded_value,
+)
 from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ("CookieJar", "DummyCookieJar")
@@ -392,13 +397,15 @@ class CookieJar(AbstractCookieJar):
 
     def _build_morsel(self, cookie: Morsel[str]) -> Morsel[str]:
         """Build a morsel for sending, respecting quote_cookie setting."""
-        if not self._quote_cookie or (
+        if not self._quote_cookie:
+            return make_non_quoted_morsel(cookie)
+        if (
             cookie.coded_value
             and cookie.coded_value[0] == '"'
             and cookie.coded_value[-1] == '"'
         ):
             return preserve_morsel_with_coded_value(cookie)
-        return make_quoted_morsel(cookie.key, cookie.value)
+        return make_quoted_morsel(cookie)
 
     @staticmethod
     def _is_domain_match(domain: str, hostname: str) -> bool:

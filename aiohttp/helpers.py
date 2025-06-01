@@ -1199,13 +1199,28 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
     return mrsl_val
 
 
-def make_quoted_morsel(name: str, value: str) -> Morsel[str]:
+def make_non_quoted_morsel(cookie: Morsel[str]) -> Morsel[str]:
     """
     Create a new Morsel from a cookie name and value.
 
     Args:
-        name: The cookie name
-        value: The cookie value
+        cookie: The source Morsel
+
+    Returns:
+        A new Morsel object that will have a non-quoted coded_value.
+
+    """
+    morsel: Morsel[str] = Morsel()
+    _set_validated_morsel_values(morsel, cookie.key, cookie.value)
+    return morsel
+
+
+def make_quoted_morsel(cookie: Morsel[str]) -> Morsel[str]:
+    """
+    Create a new Morsel from a cookie name and value.
+
+    Args:
+        cookie: The source Morsel
 
     Returns:
         A new Morsel object that will have a quoted coded_value.
@@ -1213,7 +1228,9 @@ def make_quoted_morsel(name: str, value: str) -> Morsel[str]:
     """
     morsel: Morsel[str] = Morsel()
     simple_cookie = SimpleCookie()
-    _set_validated_morsel_values(morsel, name, *simple_cookie.value_encode(value))
+    _set_validated_morsel_values(
+        morsel, cookie.key, *simple_cookie.value_encode(cookie.value)
+    )
     return morsel
 
 
