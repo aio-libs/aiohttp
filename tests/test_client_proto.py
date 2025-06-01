@@ -256,13 +256,50 @@ async def test_connection_lost_exception_is_marked_retrieved(
     proto = ResponseHandler(loop=loop)
     proto.connection_made(mock.Mock())
 
+    # Access closed property before connection_lost to ensure future is created
+    closed_future = proto.closed
+    assert closed_future is not None
+
     # Simulate an SSL shutdown timeout error
     ssl_error = TimeoutError("SSL shutdown timed out")
     proto.connection_lost(ssl_error)
 
     # Verify the exception was set on the closed future
-    assert proto.closed.done()
-    exc = proto.closed.exception()
+    assert closed_future.done()
+    exc = closed_future.exception()
     assert exc is not None
     assert "Connection lost: SSL shutdown timed out" in str(exc)
     assert exc.__cause__ is ssl_error
+
+
+async def test_closed_property_lazy_creation(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that closed future is created lazily."""
+    proto = ResponseHandler(loop=loop)
+
+    # Initially, the closed future should not be created
+    assert proto._closed is None
+
+    # Accessing the property should create the future
+    closed_future = proto.closed
+    assert closed_future is not None
+    assert isinstance(closed_future, asyncio.Future)
+    assert not closed_future.done()
+
+    # Subsequent access should return the same future
+    assert proto.closed is closed_future
+
+
+async def test_closed_property_after_connection_lost(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that closed property returns None after connection_lost if never accessed."""
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mock.Mock())
+
+    # Don't access proto.closed before connection_lost
+    proto.connection_lost(None)
+
+    # After connection_lost, closed should return None if it was never accessed
+    assert proto.closed is None
