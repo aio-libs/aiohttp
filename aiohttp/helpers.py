@@ -22,7 +22,7 @@ from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
 from http.cookiejar import parse_ns_headers
-from http.cookies import BaseCookie, Morsel, SimpleCookie
+from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
 from types import MappingProxyType, TracebackType
@@ -1115,6 +1115,27 @@ def should_remove_content_length(method: str, code: int) -> bool:
     )
 
 
+def _set_and_validate_morsel_values(
+    morsel: Morsel[str],
+    name: str,
+    value: str,
+    coded_value: Optional[str] = None,
+) -> None:
+    """Set Morsel values and validate them.
+
+    This is a helper to ensure that the Morsel is set up correctly
+    without triggering validation errors for non-standard cookie names.
+    """
+    # Validate the name according to RFC 6265
+    if name.lower() in _KNOWN_ATTRS:
+        raise CookieError(f"Attempt to set a reserved key {name!r}")
+    if not _COOKIE_NAME_RE.match(name):
+        raise ValueError(f"Invalid cookie name: {name!r}")
+    morsel._key = name
+    morsel._value = value
+    morsel._coded_value = coded_value if coded_value is not None else value
+
+
 def create_cookie_morsel(
     name: str, value: str, *, coded_value: Optional[str] = None
 ) -> Morsel[str]:
@@ -1127,10 +1148,7 @@ def create_cookie_morsel(
     standard library's cookie validation is too strict for real-world usage.
     """
     morsel = Morsel()
-    # Bypass validation by setting internal attributes directly
-    morsel._key = name
-    morsel._value = value
-    morsel._coded_value = coded_value if coded_value is not None else value
+    _set_and_validate_morsel_values(morsel, name, value, coded_value)
     return morsel
 
 
@@ -1141,10 +1159,9 @@ def get_or_create_cookie_morsel(cookie: "BaseCookie[str]", name: str) -> Morsel[
     maintaining the cookie version.
     """
     if mrsl_val := cookie.get(name):
-        # Update existing Morsel by setting internal attributes to bypass validation
-        mrsl_val._key = cookie.key
-        mrsl_val._value = cookie.value
-        mrsl_val._coded_value = cookie.coded_value
+        _set_and_validate_morsel_values(
+            mrsl_val, cookie.key, cookie.value, cookie.coded_value
+        )
         return mrsl_val
     # Create new Morsel using helper to bypass validation
     return create_cookie_morsel(
