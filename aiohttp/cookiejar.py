@@ -288,10 +288,7 @@ class CookieJar(AbstractCookieJar):
                     cookie["max-age"] = ""
 
             elif expires := cookie["expires"]:
-                if isinstance(expires, (int, float)):
-                    # parse_ns_headers returns expires as a timestamp
-                    self._expire_cookie(expires, domain, path, name)
-                elif expire_time := self._parse_date(expires):
+                if expire_time := self._parse_date(expires):
                     self._expire_cookie(expire_time, domain, path, name)
                 else:
                     cookie["expires"] = ""

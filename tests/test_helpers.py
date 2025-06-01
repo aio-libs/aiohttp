@@ -4,6 +4,7 @@ import datetime
 import gc
 import sys
 import weakref
+from http.cookies import Morsel, SimpleCookie
 from math import ceil, modf
 from pathlib import Path
 from typing import Dict, Iterator, Optional, Union
@@ -19,7 +20,9 @@ from aiohttp.helpers import (
     EMPTY_BODY_METHODS,
     is_expected_content_type,
     must_be_empty_body,
+    parse_cookie_headers,
     parse_http_date,
+    preserve_morsel_with_coded_value,
     should_remove_content_length,
 )
 
@@ -1168,3 +1171,389 @@ def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
 
     assert should_remove_content_length("CONNECT", 300) is False
     assert must_be_empty_body("CONNECT", 300) is False
+
+
+# ------------------- Cookie parsing tests ----------------------------------
+
+
+def test_known_attrs_is_superset_of_morsel_reserved() -> None:
+    """Test that _KNOWN_ATTRS contains all Morsel._reserved attributes."""
+    # Get Morsel._reserved attributes (lowercase)
+    morsel_reserved = {attr.lower() for attr in Morsel._reserved}
+
+    # _KNOWN_ATTRS should be a superset of morsel_reserved
+    assert (
+        helpers._KNOWN_ATTRS >= morsel_reserved
+    ), f"_KNOWN_ATTRS is missing: {morsel_reserved - helpers._KNOWN_ATTRS}"
+
+
+def test_preserve_morsel_with_coded_value() -> None:
+    """Test preserve_morsel_with_coded_value preserves coded_value exactly."""
+    # Create a cookie with a coded_value different from value
+    cookie = Morsel()
+    cookie.set("test_cookie", "decoded value", "encoded%20value")
+
+    # Preserve the coded_value
+    result = preserve_morsel_with_coded_value(cookie)
+
+    # Check that all values are preserved
+    assert result.key == "test_cookie"
+    assert result.value == "decoded value"
+    assert result.coded_value == "encoded%20value"
+
+    # Should be a different Morsel instance
+    assert result is not cookie
+
+
+def test_preserve_morsel_with_coded_value_no_coded_value() -> None:
+    """Test preserve_morsel_with_coded_value when coded_value is same as value."""
+    cookie = Morsel()
+    cookie.set("test_cookie", "simple_value", "simple_value")
+
+    result = preserve_morsel_with_coded_value(cookie)
+
+    assert result.key == "test_cookie"
+    assert result.value == "simple_value"
+    assert result.coded_value == "simple_value"
+
+
+def test_parse_cookie_headers_simple() -> None:
+    """Test parse_cookie_headers with simple cookies."""
+    headers = ["name=value", "session=abc123"]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 2
+    assert result[0][0] == "name"
+    assert result[0][1].key == "name"
+    assert result[0][1].value == "value"
+    assert result[1][0] == "session"
+    assert result[1][1].key == "session"
+    assert result[1][1].value == "abc123"
+
+
+def test_parse_cookie_headers_with_attributes() -> None:
+    """Test parse_cookie_headers with cookie attributes."""
+    headers = [
+        "sessionid=value123; Path=/; HttpOnly; Secure",
+        "user=john; Domain=.example.com; Max-Age=3600",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 2
+
+    # First cookie
+    name1, morsel1 = result[0]
+    assert name1 == "sessionid"
+    assert morsel1.value == "value123"
+    assert morsel1["path"] == "/"
+    assert morsel1["httponly"] is True
+    assert morsel1["secure"] is True
+
+    # Second cookie
+    name2, morsel2 = result[1]
+    assert name2 == "user"
+    assert morsel2.value == "john"
+    assert morsel2["domain"] == ".example.com"
+    assert morsel2["max-age"] == "3600"
+
+
+def test_parse_cookie_headers_special_chars_in_names() -> None:
+    """Test parse_cookie_headers accepts special characters in names (#2683)."""
+    # These should be accepted with relaxed validation
+    headers = [
+        "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}=value1",
+        "cookie[index]=value2",
+        "cookie(param)=value3",
+        "cookie:name=value4",
+        "cookie@domain=value5",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 5
+    expected_names = [
+        "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}",
+        "cookie[index]",
+        "cookie(param)",
+        "cookie:name",
+        "cookie@domain",
+    ]
+
+    for i, (name, morsel) in enumerate(result):
+        assert name == expected_names[i]
+        assert morsel.key == expected_names[i]
+        assert morsel.value == f"value{i+1}"
+
+
+def test_parse_cookie_headers_invalid_names() -> None:
+    """Test parse_cookie_headers rejects truly invalid cookie names."""
+    # These should be rejected even with relaxed validation
+    headers = [
+        "invalid\tcookie=value",  # Tab character
+        "invalid\ncookie=value",  # Newline
+        "invalid\rcookie=value",  # Carriage return
+        "\x00badname=value",  # Null character
+        "name with spaces=value",  # Spaces in name
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    # All should be skipped
+    assert len(result) == 0
+
+
+def test_parse_cookie_headers_empty_and_invalid() -> None:
+    """Test parse_cookie_headers handles empty and invalid formats."""
+    headers = [
+        "",  # Empty header
+        "   ",  # Whitespace only
+        "=value",  # No name
+        "name=",  # Empty value (should be accepted)
+        "justname",  # No value (should be skipped)
+        "path=/",  # Reserved attribute as name (should be skipped)
+        "Domain=.com",  # Reserved attribute as name (should be skipped)
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    # Only "name=" should be accepted
+    assert len(result) == 1
+    assert result[0][0] == "name"
+    assert result[0][1].value == ""
+
+
+def test_parse_cookie_headers_quoted_values() -> None:
+    """Test parse_cookie_headers handles quoted values correctly."""
+    headers = [
+        'name="quoted value"',
+        'session="with;semicolon"',
+        'data="with\\"escaped\\""',
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 3
+    assert result[0][1].value == "quoted value"
+    assert result[1][1].value == "with;semicolon"
+    assert result[2][1].value == 'with"escaped"'
+
+
+def test_parse_cookie_headers_multiple_cookies_same_header() -> None:
+    """Test parse_cookie_headers with multiple cookies in one header."""
+    # Note: parse_ns_headers should split on commas for cookies
+    headers = ["cookie1=value1, cookie2=value2"]
+
+    result = parse_cookie_headers(headers)
+
+    # Should parse as two separate cookies
+    assert len(result) == 2
+    assert result[0][0] == "cookie1"
+    assert result[0][1].value == "value1"
+    assert result[1][0] == "cookie2"
+    assert result[1][1].value == "value2"
+
+
+def test_parse_cookie_headers_expires_timestamp() -> None:
+    """Test parse_cookie_headers handles expires as timestamp from parse_ns_headers."""
+    # parse_ns_headers returns expires as a timestamp (float/int)
+    # We need to simulate what parse_ns_headers would return
+    from http.cookiejar import parse_ns_headers
+
+    # Real cookie header with Expires
+    header = "cookie=value; Expires=Wed, 09 Jun 2021 10:18:14 GMT"
+    parsed = parse_ns_headers([header])
+
+    # Check what parse_ns_headers returns
+    assert len(parsed) == 1
+    assert len(parsed[0]) > 1
+    # Find the expires attribute
+    expires_attr = None
+    for attr in parsed[0][1:]:
+        if attr[0] == "expires":
+            expires_attr = attr
+            break
+
+    assert expires_attr is not None
+    # parse_ns_headers returns expires as a timestamp
+    assert isinstance(expires_attr[1], (int, float))
+
+    # Now test our parse_cookie_headers handles it correctly
+    result = parse_cookie_headers([header])
+    assert len(result) == 1
+    assert result[0][0] == "cookie"
+    assert result[0][1]["expires"]  # Should be set
+
+
+def test_parse_cookie_headers_compatibility_with_simple_cookie() -> None:
+    """Test parse_cookie_headers is bug-for-bug compatible with SimpleCookie.load."""
+    test_cases = [
+        # Standard cookies
+        "session=abc123",
+        "user=john; Path=/",
+        "token=xyz; Secure; HttpOnly",
+        # Empty values
+        "empty=",
+        # Quoted values
+        'quoted="value with spaces"',
+        # Multiple attributes
+        "complex=value; Domain=.example.com; Path=/app; Max-Age=3600",
+    ]
+
+    for header in test_cases:
+        # Parse with SimpleCookie
+        sc = SimpleCookie()
+        sc.load(header)
+
+        # Parse with our function
+        result = parse_cookie_headers([header])
+
+        # Should have same number of cookies
+        assert len(result) == len(sc)
+
+        # Compare each cookie
+        for name, morsel in result:
+            assert name in sc
+            sc_morsel = sc[name]
+
+            # Compare values
+            assert morsel.value == sc_morsel.value
+            assert morsel.key == sc_morsel.key
+
+            # Compare attributes (only those that SimpleCookie would set)
+            for attr in ["path", "domain", "max-age"]:
+                if sc_morsel.get(attr) is not None:
+                    assert morsel.get(attr) == sc_morsel.get(attr)
+
+            # Boolean attributes are handled differently
+            # SimpleCookie sets them to empty string, we set to True
+            for bool_attr in ["secure", "httponly"]:
+                if sc_morsel.get(bool_attr) is not None:
+                    assert morsel.get(bool_attr) is True
+
+
+def test_parse_cookie_headers_relaxed_validation_differences() -> None:
+    """Test where parse_cookie_headers differs from SimpleCookie (relaxed validation)."""
+    # These should work with parse_cookie_headers but fail with SimpleCookie
+    special_cookies = [
+        "cookie{with}braces=value1",
+        "cookie[with]brackets=value2",
+        "cookie(with)parens=value3",
+        "cookie:with:colons=value4",
+        "cookie@with@at=value5",
+    ]
+
+    for header in special_cookies:
+        # SimpleCookie should reject these
+        sc = SimpleCookie()
+        sc.load(header)
+        assert len(sc) == 0  # SimpleCookie rejects
+
+        # Our parser should accept them
+        result = parse_cookie_headers([header])
+        assert len(result) == 1  # We accept
+        assert "value" in result[0][1].value
+
+
+def test_parse_cookie_headers_case_insensitive_attrs() -> None:
+    """Test that known attributes are handled case-insensitively."""
+    headers = [
+        "cookie1=value1; PATH=/test; DOMAIN=example.com",
+        "cookie2=value2; Secure; HTTPONLY; max-AGE=60",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 2
+
+    # First cookie - attributes should be recognized despite case
+    assert result[0][1]["path"] == "/test"
+    assert result[0][1]["domain"] == "example.com"
+
+    # Second cookie
+    assert result[1][1]["secure"] is True
+    assert result[1][1]["httponly"] is True
+    assert result[1][1]["max-age"] == "60"
+
+
+def test_parse_cookie_headers_unknown_attrs_ignored() -> None:
+    """Test that unknown attributes are ignored."""
+    headers = [
+        "cookie=value; Path=/; unknownattr=ignored; HttpOnly",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 1
+    morsel = result[0][1]
+    assert morsel["path"] == "/"
+    assert morsel["httponly"] is True
+    # Unknown attribute should not be set
+    assert "unknownattr" not in morsel
+
+
+def test_parse_cookie_headers_complex_real_world() -> None:
+    """Test parse_cookie_headers with complex real-world examples."""
+    headers = [
+        # AWS ELB cookie
+        "AWSELB=ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890; Path=/",
+        # Google Analytics
+        "_ga=GA1.2.1234567890.1234567890; Domain=.example.com; Path=/; Expires=Thu, 31-Dec-2025 23:59:59 GMT",
+        # Session with all attributes
+        "session_id=s%3AabcXYZ123.signature123; Path=/; Secure; HttpOnly; SameSite=Strict",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 3
+
+    # Check each cookie parsed correctly
+    assert result[0][0] == "AWSELB"
+    assert result[1][0] == "_ga"
+    assert result[2][0] == "session_id"
+
+    # Session cookie should have all attributes
+    session_morsel = result[2][1]
+    assert session_morsel["secure"] is True
+    assert session_morsel["httponly"] is True
+    assert session_morsel.get("samesite") == "Strict"
+
+
+def test_parse_cookie_headers_boolean_attrs() -> None:
+    """Test that boolean attributes (secure, httponly) work correctly."""
+    headers = [
+        "cookie1=value1; Secure",
+        "cookie2=value2; Secure=",
+        "cookie3=value3; Secure=true",  # Non-standard but might occur
+        "cookie4=value4; HttpOnly",
+        "cookie5=value5; HttpOnly=",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    # All should have the boolean attributes set
+    for i, (name, morsel) in enumerate(result):
+        if i < 3:
+            assert morsel.get("secure") is True, f"Cookie {i+1} should have secure=True"
+        else:
+            assert (
+                morsel.get("httponly") is True
+            ), f"Cookie {i+1} should have httponly=True"
+
+
+def test_parse_cookie_headers_encoded_values() -> None:
+    """Test that parse_cookie_headers preserves encoded values."""
+    headers = [
+        "encoded=hello%20world",
+        "url=https%3A%2F%2Fexample.com%2Fpath",
+        "special=%21%40%23%24%25%5E%26*%28%29",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 3
+    # Values should be preserved as-is (not decoded)
+    assert result[0][1].value == "hello%20world"
+    assert result[1][1].value == "https%3A%2F%2Fexample.com%2Fpath"
+    assert result[2][1].value == "%21%40%23%24%25%5E%26*%28%29"

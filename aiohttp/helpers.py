@@ -21,7 +21,7 @@ from collections import namedtuple
 from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
-from http.cookiejar import parse_ns_headers
+from http.cookiejar import strip_quotes
 from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
@@ -98,6 +98,8 @@ _KNOWN_ATTRS = frozenset(
         "httponly",
         "samesite",
         "partitioned",
+        "version",
+        "comment",
     )
 )
 
@@ -1152,11 +1154,77 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
     return mrsl_val
 
 
+def _parse_ns_headers(
+    ns_headers: Sequence[str],
+) -> List[List[Tuple[str, Optional[str]]]]:
+    """
+    Vendored version of http.cookiejar.parse_ns_headers that uses our _KNOWN_ATTRS.
+
+    Ad-hoc parser for Netscape protocol cookie-attributes.
+    The old Netscape cookie format for Set-Cookie can for instance contain
+    an unquoted "," in the expires field, so we have to use this ad-hoc
+    parser instead of split_header_words.
+
+    This is a modified version that:
+    - Uses our _KNOWN_ATTRS to ensure consistent lowercasing of all known attributes
+    - Returns expires dates as strings instead of converting them to timestamps,
+      allowing the caller to handle date parsing as needed
+    """
+    result: List[List[Tuple[str, Optional[str]]]] = []
+    for ns_header in ns_headers:
+        pairs: List[Tuple[str, Optional[str]]] = []
+        version_set = False
+
+        # XXX: The following does not strictly adhere to RFCs in that empty
+        # names and values are legal (the former will only appear once and will
+        # be overwritten if multiple occurrences are present). This is
+        # mostly to deal with backwards compatibility.
+        for ii, param in enumerate(ns_header.split(";")):
+            param = param.strip()
+
+            key, sep, val = param.partition("=")
+            key = key.strip()
+
+            if not key:
+                if ii == 0:
+                    break
+                else:
+                    continue
+
+            # allow for a distinction between present and empty and missing
+            # altogether
+            val = val.strip() if sep else None
+
+            if ii != 0:
+                lc = key.lower()
+                # Use our _KNOWN_ATTRS to check and lowercase known attributes
+                if lc in _KNOWN_ATTRS:
+                    key = lc
+
+                if key == "version":
+                    # This is an RFC 2109 cookie.
+                    if val is not None:
+                        val = strip_quotes(val)
+                    version_set = True
+                elif key == "expires":
+                    # Keep expires as string - let the caller handle parsing
+                    if val is not None:
+                        val = strip_quotes(val)
+            pairs.append((key, val))
+
+        if pairs:
+            if not version_set:
+                pairs.append(("version", "0"))
+            result.append(pairs)
+
+    return result
+
+
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
-    """Parse cookie headers using http.cookiejar.parse_ns_headers."""
+    """Parse cookie headers using our vendored parse_ns_headers."""
     cookies_to_update: List[Tuple[str, Morsel[str]]] = []
 
-    for cookie_attrs in parse_ns_headers(headers):
+    for cookie_attrs in _parse_ns_headers(headers):
         if not cookie_attrs:
             continue
 
@@ -1184,7 +1252,7 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
 
         # Parse remaining attributes
         for attr_name, attr_value in cookie_attrs[1:]:
-            # parse_ns_headers already lowercases known attributes
+            # Our vendored _parse_ns_headers already lowercases known attributes
             # Only process known attributes
             if attr_name in _KNOWN_ATTRS:
                 if attr_value is not None:
