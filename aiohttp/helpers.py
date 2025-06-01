@@ -21,7 +21,6 @@ from collections import namedtuple
 from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
-from http.cookiejar import strip_quotes
 from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
@@ -1155,6 +1154,15 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
     return mrsl_val
 
 
+def _strip_quotes(text: str) -> str:
+    """Strip quotes from the start and end of a string."""
+    if text.startswith('"'):
+        text = text[1:]
+    if text.endswith('"'):
+        text = text[:-1]
+    return text
+
+
 def _parse_ns_headers(
     ns_headers: Sequence[str],
 ) -> List[List[Tuple[str, Optional[str]]]]:
@@ -1205,12 +1213,12 @@ def _parse_ns_headers(
                 if key == "version":
                     # This is an RFC 2109 cookie.
                     if val is not None:
-                        val = strip_quotes(val)
+                        val = _strip_quotes(val)
                     version_set = True
                 elif key == "expires":
                     # Keep expires as string - let the caller handle parsing
                     if val is not None:
-                        val = strip_quotes(val)
+                        val = _strip_quotes(val)
             pairs.append((key, val))
 
         if pairs:
