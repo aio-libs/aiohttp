@@ -22,7 +22,7 @@ from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
 from http.cookiejar import parse_ns_headers
-from http.cookies import Morsel, SimpleCookie
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
 from types import MappingProxyType, TracebackType
@@ -1106,6 +1106,43 @@ def should_remove_content_length(method: str, code: int) -> bool:
     )
 
 
+def create_cookie_morsel(
+    name: str, value: str, *, coded_value: Optional[str] = None
+) -> Morsel[str]:
+    """Create a Morsel with pre-validated name, bypassing validation.
+
+    This is needed to support real-world cookies with names that don't
+    strictly follow RFC standards (e.g., containing {}, [], etc.).
+
+    Note: Django uses its own cookie parsing for similar reasons - the
+    standard library's cookie validation is too strict for real-world usage.
+    """
+    morsel = Morsel()
+    # Bypass validation by setting internal attributes directly
+    morsel._key = name
+    morsel._value = value
+    morsel._coded_value = coded_value if coded_value is not None else value
+    return morsel
+
+
+def get_or_create_cookie_morsel(cookie: "BaseCookie[str]", name: str) -> Morsel[str]:
+    """Get an existing Morsel or create a new one with proper values.
+
+    This helper preserves the coded_value which is critical for
+    maintaining the cookie version.
+    """
+    if mrsl_val := cookie.get(name):
+        # Update existing Morsel by setting internal attributes to bypass validation
+        mrsl_val._key = cookie.key
+        mrsl_val._value = cookie.value
+        mrsl_val._coded_value = cookie.coded_value
+        return mrsl_val
+    # Create new Morsel using helper to bypass validation
+    return create_cookie_morsel(
+        cookie.key, cookie.value, coded_value=cookie.coded_value
+    )
+
+
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
     """Parse cookie headers using http.cookiejar.parse_ns_headers."""
     cookies_to_update: List[Tuple[str, Morsel[str]]] = []
@@ -1134,12 +1171,8 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
             )
             continue
 
-        # Create Morsel - bypass validation by setting internal attributes directly
-        # to allow non-RFC-compliant cookie names
-        morsel = Morsel()
-        morsel._key = name
-        morsel._value = value
-        morsel._coded_value = value
+        # Create Morsel using helper to bypass validation
+        morsel = create_cookie_morsel(name, value)
 
         # Parse remaining attributes
         for attr_name, attr_value in cookie_attrs[1:]:

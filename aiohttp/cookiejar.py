@@ -23,13 +23,12 @@ from typing import (
     Set,
     Tuple,
     Union,
-    cast,
 )
 
 from yarl import URL
 
 from .abc import AbstractCookieJar, ClearCookiePredicate
-from .helpers import is_ip_address
+from .helpers import get_or_create_cookie_morsel, is_ip_address
 from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ("CookieJar", "DummyCookieJar")
@@ -377,10 +376,8 @@ class CookieJar(AbstractCookieJar):
                     filtered[name] = self._morsel_cache[p][name]
                     continue
 
-                # It's critical we use the Morsel so the coded_value
-                # (based on cookie version) is preserved
-                mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-                mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+                # Use helper to get or create Morsel with proper values
+                mrsl_val = get_or_create_cookie_morsel(cookie, name)
                 self._morsel_cache[p][name] = mrsl_val
                 filtered[name] = mrsl_val
 
