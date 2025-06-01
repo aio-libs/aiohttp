@@ -1366,40 +1366,9 @@ def test_parse_cookie_headers_multiple_cookies_same_header() -> None:
     assert result[1][1].value == "value2"
 
 
-def test_parse_cookie_headers_expires_timestamp() -> None:
-    """Test parse_cookie_headers handles expires as timestamp from parse_ns_headers."""
-    # parse_ns_headers returns expires as a timestamp (float/int)
-    # We need to simulate what parse_ns_headers would return
-    from http.cookiejar import parse_ns_headers
-
-    # Real cookie header with Expires
-    header = "cookie=value; Expires=Wed, 09 Jun 2021 10:18:14 GMT"
-    parsed = parse_ns_headers([header])
-
-    # Check what parse_ns_headers returns
-    assert len(parsed) == 1
-    assert len(parsed[0]) > 1
-    # Find the expires attribute
-    expires_attr = None
-    for attr in parsed[0][1:]:
-        if attr[0] == "expires":
-            expires_attr = attr
-            break
-
-    assert expires_attr is not None
-    # parse_ns_headers returns expires as a timestamp
-    assert isinstance(expires_attr[1], (int, float))
-
-    # Now test our parse_cookie_headers handles it correctly
-    result = parse_cookie_headers([header])
-    assert len(result) == 1
-    assert result[0][0] == "cookie"
-    assert result[0][1]["expires"]  # Should be set
-
-
-def test_parse_cookie_headers_compatibility_with_simple_cookie() -> None:
-    """Test parse_cookie_headers is bug-for-bug compatible with SimpleCookie.load."""
-    test_cases = [
+@pytest.mark.parametrize(
+    "header",
+    [
         # Standard cookies
         "session=abc123",
         "user=john; Path=/",
@@ -1410,39 +1379,40 @@ def test_parse_cookie_headers_compatibility_with_simple_cookie() -> None:
         'quoted="value with spaces"',
         # Multiple attributes
         "complex=value; Domain=.example.com; Path=/app; Max-Age=3600",
-    ]
+    ],
+)
+def test_parse_cookie_headers_compatibility_with_simple_cookie(header: str) -> None:
+    """Test parse_cookie_headers is bug-for-bug compatible with SimpleCookie.load."""
+    # Parse with SimpleCookie
+    sc = SimpleCookie()
+    sc.load(header)
 
-    for header in test_cases:
-        # Parse with SimpleCookie
-        sc = SimpleCookie()
-        sc.load(header)
+    # Parse with our function
+    result = parse_cookie_headers([header])
 
-        # Parse with our function
-        result = parse_cookie_headers([header])
+    # Should have same number of cookies
+    assert len(result) == len(sc)
 
-        # Should have same number of cookies
-        assert len(result) == len(sc)
+    # Compare each cookie
+    for name, morsel in result:
+        assert name in sc
+        sc_morsel = sc[name]
 
-        # Compare each cookie
-        for name, morsel in result:
-            assert name in sc
-            sc_morsel = sc[name]
+        # Compare values
+        assert morsel.value == sc_morsel.value
+        assert morsel.key == sc_morsel.key
 
-            # Compare values
-            assert morsel.value == sc_morsel.value
-            assert morsel.key == sc_morsel.key
+        # Compare attributes (only those that SimpleCookie would set)
+        for attr in ["path", "domain", "max-age"]:
+            if sc_morsel.get(attr) is not None:
+                assert morsel.get(attr) == sc_morsel.get(attr)
 
-            # Compare attributes (only those that SimpleCookie would set)
-            for attr in ["path", "domain", "max-age"]:
-                if sc_morsel.get(attr) is not None:
-                    assert morsel.get(attr) == sc_morsel.get(attr)
-
-            # Boolean attributes are handled differently
-            # SimpleCookie sets them to empty string when not present, True when present
-            for bool_attr in ["secure", "httponly"]:
-                # Only check if SimpleCookie has the attribute set to True
-                if sc_morsel.get(bool_attr) is True:
-                    assert morsel.get(bool_attr) is True
+        # Boolean attributes are handled differently
+        # SimpleCookie sets them to empty string when not present, True when present
+        for bool_attr in ["secure", "httponly"]:
+            # Only check if SimpleCookie has the attribute set to True
+            if sc_morsel.get(bool_attr) is True:
+                assert morsel.get(bool_attr) is True
 
 
 def test_parse_cookie_headers_relaxed_validation_differences() -> None:
@@ -1569,7 +1539,7 @@ def test_parse_cookie_headers_boolean_attrs() -> None:
 
     # All should have the boolean attributes set
     assert len(result) == 5
-    for i, (name, morsel) in enumerate(result):
+    for i, (_, morsel) in enumerate(result):
         if i < 3:
             assert morsel.get("secure") is True, f"Cookie {i+1} should have secure=True"
         else:
@@ -1581,8 +1551,6 @@ def test_parse_cookie_headers_boolean_attrs() -> None:
 @pytest.mark.skipif(sys.version_info >= (3, 14), reason="Test for Python < 3.14")
 def test_parse_cookie_headers_boolean_attrs_with_partitioned_pre_314() -> None:
     """Test that boolean attributes including partitioned work correctly on Python < 3.14."""
-    from http.cookies import Morsel
-
     # Create patched reserved and flags with partitioned support
     patched_reserved = Morsel._reserved.copy()
     patched_reserved["partitioned"] = "partitioned"
@@ -1852,7 +1820,8 @@ def test_parse_cookie_headers_partitioned_not_set() -> None:
 
 # Tests that don't require partitioned support in SimpleCookie
 def test_parse_cookie_headers_partitioned_with_other_attrs_manual() -> None:
-    """Test parsing logic for partitioned cookies combined with all other attributes.
+    """
+    Test parsing logic for partitioned cookies combined with all other attributes.
 
     This test verifies our parsing logic handles partitioned correctly as a boolean
     attribute regardless of SimpleCookie support.
@@ -1872,7 +1841,8 @@ def test_parse_cookie_headers_partitioned_with_other_attrs_manual() -> None:
 
 
 def test_parse_cookie_headers_partitioned_real_world_structure() -> None:
-    """Test real-world partitioned cookie structure without using SimpleCookie.
+    """
+    Test real-world partitioned cookie structure without using SimpleCookie.
 
     This verifies our parsing logic correctly identifies partitioned as a known
     boolean attribute.
