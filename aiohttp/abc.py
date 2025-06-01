@@ -2,7 +2,7 @@ import logging
 import socket
 from abc import ABC, abstractmethod
 from collections.abc import Sized
-from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
+from http.cookies import BaseCookie, Morsel
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -22,7 +22,7 @@ from typing import (
 from multidict import CIMultiDict
 from yarl import URL
 
-from .log import client_logger
+from .helpers import parse_cookie_headers
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:
@@ -196,23 +196,13 @@ class AbstractCookieJar(Sized, IterableBase):
         """
         Update cookies from raw Set-Cookie headers.
 
-        Default implementation parses each header separately to preserve
-        cookies with same name but different domain/path.
+        Optimized implementation that parses cookies using http.cookiejar.parse_ns_headers.
         """
-        # Default implementation for backward compatibility
-        cookies_to_update: List[Tuple[str, Morsel[str]]] = []
-        for cookie_header in headers:
-            tmp_cookie = SimpleCookie()
-            try:
-                tmp_cookie.load(cookie_header)
-                # Collect all cookies as tuples (name, morsel)
-                for name, morsel in tmp_cookie.items():
-                    cookies_to_update.append((name, morsel))
-            except CookieError as exc:
-                client_logger.warning("Can not load response cookies: %s", exc)
+        if not headers:
+            return
 
         # Update all cookies at once for efficiency
-        if cookies_to_update:
+        if cookies_to_update := parse_cookie_headers(headers):
             self.update_cookies(cookies_to_update, response_url)
 
     @abstractmethod

@@ -21,7 +21,8 @@ from collections import namedtuple
 from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
-from http.cookies import SimpleCookie
+from http.cookiejar import parse_ns_headers
+from http.cookies import Morsel, SimpleCookie
 from math import ceil
 from pathlib import Path
 from types import MappingProxyType, TracebackType
@@ -38,6 +39,7 @@ from typing import (
     Mapping,
     Optional,
     Protocol,
+    Sequence,
     Tuple,
     Type,
     TypeVar,
@@ -76,6 +78,12 @@ __all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "
 PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
+
+# Cookie parsing optimization constants
+_COOKIE_NAME_RE = re.compile(r"^[!#$%&\'*+\-.0-9A-Z^_`a-z|~]+$")
+_KNOWN_ATTRS = frozenset(
+    ["path", "domain", "max-age", "expires", "secure", "httponly", "samesite"]
+)
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -1090,3 +1098,60 @@ def should_remove_content_length(method: str, code: int) -> bool:
     return code in EMPTY_BODY_STATUS_CODES or (
         200 <= code < 300 and method in hdrs.METH_CONNECT_ALL
     )
+
+
+def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
+    """Parse cookie headers using http.cookiejar.parse_ns_headers."""
+    cookies_to_update: List[Tuple[str, Morsel[str]]] = []
+
+    # Parse all headers at once
+    parsed_cookies = parse_ns_headers(headers)
+
+    for cookie_attrs in parsed_cookies:
+        if not cookie_attrs:
+            continue
+
+        # First tuple should be the cookie name=value
+        first_attr = cookie_attrs[0]
+        if len(first_attr) != 2 or not first_attr[0]:
+            continue
+
+        name, value = first_attr
+        if value is None:
+            # Skip cookies without values (like bare "test" without =)
+            continue
+
+        # Validate cookie name
+        if not _COOKIE_NAME_RE.match(name):
+            client_logger.warning(
+                "Can not load response cookies: Illegal cookie name %r", name
+            )
+            continue
+
+        # Create Morsel
+        morsel = Morsel()
+        morsel.set(name, value, value)
+
+        # Parse remaining attributes
+        for attr_name, attr_value in cookie_attrs[1:]:
+            attr_name_lower = attr_name.lower()
+
+            # Skip version attribute added by parse_ns_headers
+            if attr_name_lower == "version":
+                continue
+
+            # Only process known attributes
+            if attr_name_lower in _KNOWN_ATTRS:
+                if attr_value is None:
+                    # Boolean attributes
+                    if attr_name_lower == "secure":
+                        morsel["secure"] = True
+                    elif attr_name_lower == "httponly":
+                        morsel["httponly"] = True
+                else:
+                    # Attributes with values
+                    morsel[attr_name_lower] = attr_value
+
+        cookies_to_update.append((name, morsel))
+
+    return cookies_to_update
