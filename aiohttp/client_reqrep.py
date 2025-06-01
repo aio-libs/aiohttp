@@ -9,7 +9,7 @@ import traceback
 import warnings
 from collections.abc import Mapping
 from hashlib import md5, sha1, sha256
-from http.cookies import CookieError, Morsel, SimpleCookie
+from http.cookies import Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -52,6 +52,7 @@ from .helpers import (
     frozen_dataclass_decorator,
     is_expected_content_type,
     netrc_from_env,
+    parse_cookie_headers,
     parse_mimetype,
     preserve_morsel_with_coded_value,
     reify,
@@ -65,7 +66,6 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
-from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -314,11 +314,10 @@ class ClientResponse(HeadersMixin):
             if self._raw_cookie_headers is not None:
                 # Parse cookies for response.cookies (SimpleCookie for backward compatibility)
                 cookies = SimpleCookie()
-                for hdr in self._raw_cookie_headers:
-                    try:
-                        cookies.load(hdr)
-                    except CookieError as exc:
-                        client_logger.warning("Can not load cookies: %s", exc)
+                # Use parse_cookie_headers for more lenient parsing that handles
+                # malformed cookies better than SimpleCookie.load
+                parsed = parse_cookie_headers(self._raw_cookie_headers)
+                cookies.update(parsed)
                 self._cookies = cookies
             else:
                 self._cookies = SimpleCookie()
