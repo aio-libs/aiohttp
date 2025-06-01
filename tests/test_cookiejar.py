@@ -1248,7 +1248,7 @@ def test_update_cookies_from_headers_duplicate_names() -> None:
     url: URL = URL("http://www.example.com/")
 
     # Headers with duplicate names but different domains
-    headers: List[str] = [
+    headers = [
         "session-id=123456; Domain=.example.com; Path=/",
         "session-id=789012; Domain=.www.example.com; Path=/",
         "user-pref=light; Domain=.example.com",
@@ -1278,7 +1278,7 @@ def test_update_cookies_from_headers_invalid_cookies(
     url: URL = URL("http://example.com/")
 
     # Mix of valid and invalid cookies
-    headers: List[str] = [
+    headers = [
         "valid-cookie=value123",
         "invalid\tcookie=value; "  # Tab character is not allowed
         "HttpOnly; Path=/",
@@ -1299,6 +1299,52 @@ def test_update_cookies_from_headers_invalid_cookies(
     assert "another-valid" in filtered
 
 
+def test_update_cookies_from_headers_with_curly_braces() -> None:
+    """Test that cookies with curly braces in names are now accepted (#2683)."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Cookie names with curly braces should now be accepted
+    headers = [
+        "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
+        "{925EC0B8-CB17-4BEB-8A35-1033813B0523}; "
+        "HttpOnly; Path=/",
+        "regular-cookie=value123",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # Both cookies should be added
+    assert len(jar) == 2
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}" in filtered
+    assert "regular-cookie" in filtered
+
+
+def test_update_cookies_from_headers_with_special_chars() -> None:
+    """Test that cookies with various special characters are accepted."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Various special characters that should now be accepted
+    headers = [
+        "cookie_with_parens=(value)=test123",
+        "cookie-with-brackets[index]=value456",
+        "cookie@with@at=value789",
+        "cookie:with:colons=value000",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # All cookies should be added
+    assert len(jar) == 4
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "cookie_with_parens" in filtered
+    assert "cookie-with-brackets[index]" in filtered
+    assert "cookie@with@at" in filtered
+    assert "cookie:with:colons" in filtered
+
+
 def test_update_cookies_from_headers_empty_list() -> None:
     """Test that empty header list is handled gracefully."""
     jar: CookieJar = CookieJar()
@@ -1315,7 +1361,7 @@ def test_update_cookies_from_headers_with_attributes() -> None:
     jar: CookieJar = CookieJar()
     url: URL = URL("https://secure.example.com/app/page")
 
-    headers: List[str] = [
+    headers = [
         "secure-cookie=value1; Secure; HttpOnly; SameSite=Strict",
         "expiring-cookie=value2; Max-Age=3600; Path=/app",
         "domain-cookie=value3; Domain=.example.com; Path=/",
@@ -1370,7 +1416,7 @@ def test_update_cookies_from_headers_preserves_existing() -> None:
     )
 
     # Add more cookies via headers
-    headers: List[str] = [
+    headers = [
         "new-cookie1=value3",
         "new-cookie2=value4",
     ]
@@ -1395,7 +1441,7 @@ def test_update_cookies_from_headers_overwrites_same_cookie() -> None:
     jar.update_cookies({"session": "old-value"}, url)
 
     # Update with new value via headers
-    headers: List[str] = ["session=new-value"]
+    headers = ["session=new-value"]
     jar.update_cookies_from_headers(headers, url)
 
     # Should still have just 1 cookie with updated value

@@ -2717,6 +2717,30 @@ async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
         m_log.warning.assert_called_with("Can not load response cookies: %s", mock.ANY)
 
 
+async def test_set_cookies_with_curly_braces(aiohttp_client: AiohttpClient) -> None:
+    """Test that cookies with curly braces in names are now accepted (#2683)."""
+
+    async def handler(request: web.Request) -> web.Response:
+        ret = web.Response()
+        ret.set_cookie("c1", "cookie1")
+        ret.headers.add(
+            "Set-Cookie",
+            "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
+            "{925EC0B8-CB17-4BEB-8A35-1033813B0523}; "
+            "HttpOnly; Path=/",
+        )
+        return ret
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        cookie_names = {c.key for c in client.session.cookie_jar}
+        assert cookie_names == {"c1", "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}"}
+
+
 async def test_set_cookies_expired(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         ret = web.Response()
