@@ -1582,10 +1582,10 @@ def test_parse_cookie_headers_boolean_attrs() -> None:
 def test_parse_cookie_headers_boolean_attrs_with_partitioned_pre_314() -> None:
     """Test that boolean attributes including partitioned work correctly on Python < 3.14."""
     # Create patched reserved and flags with partitioned support
-    patched_reserved = Morsel._reserved.copy()
+    patched_reserved = Morsel._reserved.copy()  # type: ignore[attr-defined]
     patched_reserved["partitioned"] = "partitioned"
 
-    patched_flags = Morsel._flags.copy()
+    patched_flags = Morsel._flags.copy()  # type: ignore[attr-defined]
     patched_flags.add("partitioned")
 
     with (
