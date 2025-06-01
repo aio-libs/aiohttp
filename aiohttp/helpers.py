@@ -44,6 +44,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    cast,
     final,
     get_args,
     overload,
@@ -1189,18 +1190,11 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str], name: str) -> Morsel[s
 
     """
     # Validate that the morsel's key matches the expected name
-    if cookie.key != name:
-        raise ValueError(
-            f"Morsel key {cookie.key!r} doesn't match expected name {name!r}"
-        )
-
-    # Create a new morsel and set values using our helper to bypass
-    # strict validation while preserving the coded_value
-    morsel: Morsel[str] = Morsel()
+    mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
     _set_and_validate_morsel_values(
-        morsel, cookie.key, cookie.value, cookie.coded_value
+        mrsl_val, cookie.key, cookie.value, cookie.coded_value
     )
-    return morsel
+    return mrsl_val
 
 
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
