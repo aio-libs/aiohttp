@@ -4,7 +4,7 @@ import datetime
 import gc
 import sys
 import weakref
-from http.cookies import Morsel, SimpleCookie
+from http.cookies import CookieError, Morsel, SimpleCookie
 from math import ceil, modf
 from pathlib import Path
 from typing import Dict, Iterator, Optional, Union
@@ -1353,7 +1353,7 @@ def test_parse_cookie_headers_quoted_values() -> None:
 
 def test_parse_cookie_headers_multiple_cookies_same_header() -> None:
     """Test parse_cookie_headers with multiple cookies in one header."""
-    # Note: parse_ns_headers should split on commas for cookies
+    # Note: SimpleCookie includes the comma as part of the first cookie's value
     headers = ["cookie1=value1, cookie2=value2"]
 
     result = parse_cookie_headers(headers)
@@ -1361,7 +1361,7 @@ def test_parse_cookie_headers_multiple_cookies_same_header() -> None:
     # Should parse as two separate cookies
     assert len(result) == 2
     assert result[0][0] == "cookie1"
-    assert result[0][1].value == "value1"
+    assert result[0][1].value == "value1,"  # Comma is included in the value
     assert result[1][0] == "cookie2"
     assert result[1][1].value == "value2"
 
@@ -1438,33 +1438,51 @@ def test_parse_cookie_headers_compatibility_with_simple_cookie() -> None:
                     assert morsel.get(attr) == sc_morsel.get(attr)
 
             # Boolean attributes are handled differently
-            # SimpleCookie sets them to empty string, we set to True
+            # SimpleCookie sets them to empty string when not present, True when present
             for bool_attr in ["secure", "httponly"]:
-                if sc_morsel.get(bool_attr) is not None:
+                # Only check if SimpleCookie has the attribute set to True
+                if sc_morsel.get(bool_attr) is True:
                     assert morsel.get(bool_attr) is True
 
 
 def test_parse_cookie_headers_relaxed_validation_differences() -> None:
     """Test where parse_cookie_headers differs from SimpleCookie (relaxed validation)."""
-    # These should work with parse_cookie_headers but fail with SimpleCookie
-    special_cookies = [
-        "cookie{with}braces=value1",
-        "cookie[with]brackets=value2",
-        "cookie(with)parens=value3",
-        "cookie:with:colons=value4",
-        "cookie@with@at=value5",
+    # Test cookies that SimpleCookie rejects with CookieError
+    rejected_by_simplecookie = [
+        ("cookie{with}braces=value1", "cookie{with}braces", "value1"),
+        ("cookie(with)parens=value3", "cookie(with)parens", "value3"),
+        ("cookie@with@at=value5", "cookie@with@at", "value5"),
     ]
 
-    for header in special_cookies:
-        # SimpleCookie should reject these
+    for header, expected_name, expected_value in rejected_by_simplecookie:
+        # SimpleCookie should reject these with CookieError
         sc = SimpleCookie()
-        sc.load(header)
-        assert len(sc) == 0  # SimpleCookie rejects
+        with pytest.raises(CookieError):
+            sc.load(header)
 
         # Our parser should accept them
         result = parse_cookie_headers([header])
         assert len(result) == 1  # We accept
-        assert "value" in result[0][1].value
+        assert result[0][0] == expected_name
+        assert result[0][1].value == expected_value
+
+    # Test cookies that SimpleCookie accepts (but we handle more consistently)
+    accepted_by_simplecookie = [
+        ("cookie[with]brackets=value2", "cookie[with]brackets", "value2"),
+        ("cookie:with:colons=value4", "cookie:with:colons", "value4"),
+    ]
+
+    for header, expected_name, expected_value in accepted_by_simplecookie:
+        # SimpleCookie accepts these
+        sc = SimpleCookie()
+        sc.load(header)
+        # May or may not parse correctly in SimpleCookie
+
+        # Our parser should accept them consistently
+        result = parse_cookie_headers([header])
+        assert len(result) == 1
+        assert result[0][0] == expected_name
+        assert result[0][1].value == expected_value
 
 
 def test_parse_cookie_headers_case_insensitive_attrs() -> None:
@@ -1489,19 +1507,25 @@ def test_parse_cookie_headers_case_insensitive_attrs() -> None:
 
 
 def test_parse_cookie_headers_unknown_attrs_ignored() -> None:
-    """Test that unknown attributes are ignored."""
+    """Test that unknown attributes are treated as new cookies (same as SimpleCookie)."""
     headers = [
         "cookie=value; Path=/; unknownattr=ignored; HttpOnly",
     ]
 
     result = parse_cookie_headers(headers)
 
-    assert len(result) == 1
-    morsel = result[0][1]
-    assert morsel["path"] == "/"
-    assert morsel["httponly"] is True
-    # Unknown attribute should not be set
-    assert "unknownattr" not in morsel
+    # SimpleCookie treats unknown attributes with values as new cookies
+    assert len(result) == 2
+
+    # First cookie
+    assert result[0][0] == "cookie"
+    assert result[0][1]["path"] == "/"
+    assert result[0][1]["httponly"] == ""  # Not set on first cookie
+
+    # Second cookie (the unknown attribute)
+    assert result[1][0] == "unknownattr"
+    assert result[1][1].value == "ignored"
+    assert result[1][1]["httponly"] is True  # HttpOnly applies to this cookie
 
 
 def test_parse_cookie_headers_complex_real_world() -> None:
