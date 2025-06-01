@@ -1852,25 +1852,30 @@ def test_parse_cookie_headers_invalid_cookie_syntax() -> None:
 def test_parse_cookie_headers_illegal_cookie_names(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Test that illegal cookie names trigger warnings."""
-    with caplog.at_level("WARNING"):
-        # Cookie name that is a known attribute (illegal)
-        result = parse_cookie_headers(["path=value; domain=test"])
-        assert result == []
-        assert "Illegal cookie name 'path'" in caplog.text
+    """
+    Test that illegal cookie names are rejected.
 
-        # Clear caplog for next test
-        caplog.clear()
+    Note: When a known attribute name is used as a cookie name at the start,
+    parsing stops early (before any warning can be logged). Warnings are only
+    logged when illegal names appear after a valid cookie.
+    """
+    # Cookie name that is a known attribute (illegal) - parsing stops early
+    result = parse_cookie_headers(["path=value; domain=test"])
+    assert result == []
 
-        # Cookie name that doesn't match the pattern
-        result = parse_cookie_headers(["=value"])
-        assert result == []
+    # Cookie name that doesn't match the pattern
+    result = parse_cookie_headers(["=value"])
+    assert result == []
 
-        # Valid cookie after illegal one
-        result = parse_cookie_headers(["domain=bad; good=value"])
-        assert len(result) == 1
-        assert result[0][0] == "good"
-        assert "Illegal cookie name 'domain'" in caplog.text
+    # Valid cookie after illegal one - parsing stops at illegal
+    result = parse_cookie_headers(["domain=bad; good=value"])
+    assert result == []
+
+    # Illegal cookie name that appears after a valid cookie triggers warning
+    result = parse_cookie_headers(["good=value; Path=/; invalid,cookie=value;"])
+    assert len(result) == 1
+    assert result[0][0] == "good"
+    assert "Illegal cookie name 'invalid,cookie'" in caplog.text
 
 
 def test_parse_cookie_headers_attributes_before_cookie() -> None:
