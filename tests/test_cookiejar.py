@@ -1455,7 +1455,7 @@ def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     jar: DummyCookieJar = DummyCookieJar()
     url: URL = URL("http://example.com/")
 
-    headers: List[str] = [
+    headers = [
         "cookie1=value1",
         "cookie2=value2",
     ]
