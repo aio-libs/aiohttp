@@ -2701,7 +2701,7 @@ async def test_set_cookies(
         ret.set_cookie("c2", "cookie2")
         ret.headers.add(
             "Set-Cookie",
-            "invalid\tcookie=value; "  # Tab character is not allowed
+            "invalid,cookie=value; "  # Comma character is not allowed
             "HttpOnly; Path=/",
         )
         return ret
@@ -2718,7 +2718,7 @@ async def test_set_cookies(
         assert cookie_names == {"c1", "c2"}
 
     assert (
-        "Can not load response cookies: Illegal cookie name 'invalid\\tcookie'"
+        "Can not load response cookies: Illegal cookie name 'invalid,cookie'"
         in caplog.text
     )
 

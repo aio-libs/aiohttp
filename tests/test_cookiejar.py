@@ -1280,7 +1280,7 @@ def test_update_cookies_from_headers_invalid_cookies(
     # Mix of valid and invalid cookies
     headers = [
         "valid-cookie=value123",
-        "invalid\tcookie=value; "  # Tab character is not allowed
+        "invalid,cookie=value; "  # Comma character is not allowed
         "HttpOnly; Path=/",
         "another-valid=value456",
     ]
