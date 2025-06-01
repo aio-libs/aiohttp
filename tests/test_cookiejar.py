@@ -1185,7 +1185,7 @@ async def test_filter_cookies_does_not_leak_memory() -> None:
         assert len(morsels) > 0, f"Empty morsel cache entry found for {key}"
 
 
-def test_update_cookies_from_headers() -> None:
+async def test_update_cookies_from_headers() -> None:
     """Test update_cookies_from_headers method."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/path")
@@ -1219,7 +1219,7 @@ def test_update_cookies_from_headers() -> None:
     assert filtered_https["tracking"].value == "xyz789"
 
 
-def test_update_cookies_from_headers_duplicate_names() -> None:
+async def test_update_cookies_from_headers_duplicate_names() -> None:
     """Test that duplicate cookie names with different domains are preserved."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://www.example.com/")
@@ -1247,7 +1247,7 @@ def test_update_cookies_from_headers_duplicate_names() -> None:
     assert domains == {"example.com", "www.example.com"}
 
 
-def test_update_cookies_from_headers_invalid_cookies(
+async def test_update_cookies_from_headers_invalid_cookies(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that invalid cookies are logged and skipped."""
@@ -1277,7 +1277,7 @@ def test_update_cookies_from_headers_invalid_cookies(
     assert "another-valid" in filtered
 
 
-def test_update_cookies_from_headers_empty_list() -> None:
+async def test_update_cookies_from_headers_empty_list() -> None:
     """Test that empty header list is handled gracefully."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/")
@@ -1288,7 +1288,7 @@ def test_update_cookies_from_headers_empty_list() -> None:
     assert len(jar) == 0
 
 
-def test_update_cookies_from_headers_with_attributes() -> None:
+async def test_update_cookies_from_headers_with_attributes() -> None:
     """Test cookies with various attributes are handled correctly."""
     jar: CookieJar = CookieJar()
     url: URL = URL("https://secure.example.com/app/page")
@@ -1333,7 +1333,7 @@ def test_update_cookies_from_headers_with_attributes() -> None:
     assert "dated-cookie" in filtered_http_app
 
 
-def test_update_cookies_from_headers_preserves_existing() -> None:
+async def test_update_cookies_from_headers_preserves_existing() -> None:
     """Test that update_cookies_from_headers preserves existing cookies."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/")
@@ -1364,7 +1364,7 @@ def test_update_cookies_from_headers_preserves_existing() -> None:
     assert "new-cookie2" in filtered
 
 
-def test_update_cookies_from_headers_overwrites_same_cookie() -> None:
+async def test_update_cookies_from_headers_overwrites_same_cookie() -> None:
     """Test that cookies with same name/domain/path are overwritten."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/")
@@ -1382,7 +1382,7 @@ def test_update_cookies_from_headers_overwrites_same_cookie() -> None:
     assert filtered["session"].value == "new-value"
 
 
-def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
+async def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     """Test that DummyCookieJar ignores update_cookies_from_headers."""
     jar: DummyCookieJar = DummyCookieJar()
     url: URL = URL("http://example.com/")
