@@ -507,11 +507,13 @@ class BaseConnector:
             for data in self._conns.values():
                 for proto, _ in data:
                     proto.close()
-                    waiters.append(proto.closed)
+                    if closed := proto.closed:
+                        waiters.append(closed)
 
             for proto in self._acquired:
                 proto.close()
-                waiters.append(proto.closed)
+                if closed := proto.closed:
+                    waiters.append(closed)
 
             for transport in self._cleanup_closed_transports:
                 if transport is not None:
