@@ -1470,3 +1470,159 @@ def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     assert len(jar) == 0
     filtered: BaseCookie[str] = jar.filter_cookies(url)
     assert len(filtered) == 0
+
+
+async def test_shared_cookie_cache_population() -> None:
+    """Test that shared cookies are cached correctly."""
+    jar = CookieJar(unsafe=True)
+
+    # Create a shared cookie (no domain/path restrictions)
+    sc = SimpleCookie()
+    sc["shared"] = "value"
+    sc["shared"]["path"] = "/"  # Will be stripped to ""
+
+    # Update with empty URL to avoid domain being set
+    jar.update_cookies(sc, URL())
+
+    # Verify cookie is stored at shared key
+    assert ("", "") in jar._cookies
+    assert "shared" in jar._cookies[("", "")]
+
+    # Filter cookies to populate cache
+    filtered = jar.filter_cookies(URL("http://example.com/"))
+    assert "shared" in filtered
+    assert filtered["shared"].value == "value"
+
+    # Verify cache was populated
+    assert ("", "") in jar._morsel_cache
+    assert "shared" in jar._morsel_cache[("", "")]
+
+    # Verify the cached morsel is the same one returned
+    cached_morsel = jar._morsel_cache[("", "")]["shared"]
+    assert cached_morsel is filtered["shared"]
+
+
+async def test_shared_cookie_cache_clearing_on_update() -> None:
+    """Test that shared cookie cache is cleared when cookie is updated."""
+    jar = CookieJar(unsafe=True)
+
+    # Create initial shared cookie
+    sc = SimpleCookie()
+    sc["shared"] = "value1"
+    sc["shared"]["path"] = "/"
+    jar.update_cookies(sc, URL())
+
+    # Filter to populate cache
+    filtered1 = jar.filter_cookies(URL("http://example.com/"))
+    assert filtered1["shared"].value == "value1"
+    assert "shared" in jar._morsel_cache[("", "")]
+
+    # Update the cookie with new value
+    sc2 = SimpleCookie()
+    sc2["shared"] = "value2"
+    sc2["shared"]["path"] = "/"
+    jar.update_cookies(sc2, URL())
+
+    # Verify cache was cleared
+    assert "shared" not in jar._morsel_cache[("", "")]
+
+    # Filter again to verify new value
+    filtered2 = jar.filter_cookies(URL("http://example.com/"))
+    assert filtered2["shared"].value == "value2"
+
+    # Verify cache was repopulated with new value
+    assert "shared" in jar._morsel_cache[("", "")]
+
+
+async def test_shared_cookie_cache_clearing_on_delete() -> None:
+    """Test that shared cookie cache is cleared when cookies are deleted."""
+    jar = CookieJar(unsafe=True)
+
+    # Create multiple shared cookies
+    sc = SimpleCookie()
+    sc["shared1"] = "value1"
+    sc["shared1"]["path"] = "/"
+    sc["shared2"] = "value2"
+    sc["shared2"]["path"] = "/"
+    jar.update_cookies(sc, URL())
+
+    # Filter to populate cache
+    jar.filter_cookies(URL("http://example.com/"))
+    assert "shared1" in jar._morsel_cache[("", "")]
+    assert "shared2" in jar._morsel_cache[("", "")]
+
+    # Delete one cookie using internal method
+    jar._delete_cookies([("", "", "shared1")])
+
+    # Verify cookie and its cache entry were removed
+    assert "shared1" not in jar._cookies[("", "")]
+    assert "shared1" not in jar._morsel_cache[("", "")]
+
+    # Verify other cookie remains
+    assert "shared2" in jar._cookies[("", "")]
+    assert "shared2" in jar._morsel_cache[("", "")]
+
+
+async def test_shared_cookie_cache_clearing_on_clear() -> None:
+    """Test that shared cookie cache is cleared when jar is cleared."""
+    jar = CookieJar(unsafe=True)
+
+    # Create shared and domain-specific cookies
+    # Shared cookie
+    sc1 = SimpleCookie()
+    sc1["shared"] = "shared_value"
+    sc1["shared"]["path"] = "/"
+    jar.update_cookies(sc1, URL())
+
+    # Domain-specific cookie
+    sc2 = SimpleCookie()
+    sc2["domain_cookie"] = "domain_value"
+    jar.update_cookies(sc2, URL("http://example.com/"))
+
+    # Filter to populate caches
+    jar.filter_cookies(URL("http://example.com/"))
+
+    # Verify caches are populated
+    assert ("", "") in jar._morsel_cache
+    assert "shared" in jar._morsel_cache[("", "")]
+    assert ("example.com", "") in jar._morsel_cache
+    assert "domain_cookie" in jar._morsel_cache[("example.com", "")]
+
+    # Clear all cookies
+    jar.clear()
+
+    # Verify all caches are cleared
+    assert len(jar._morsel_cache) == 0
+    assert len(jar._cookies) == 0
+
+    # Verify filtering returns no cookies
+    filtered = jar.filter_cookies(URL("http://example.com/"))
+    assert len(filtered) == 0
+
+
+async def test_shared_cookie_with_multiple_domains() -> None:
+    """Test that shared cookies work across different domains."""
+    jar = CookieJar(unsafe=True)
+
+    # Create a truly shared cookie
+    sc = SimpleCookie()
+    sc["universal"] = "everywhere"
+    sc["universal"]["path"] = "/"
+    jar.update_cookies(sc, URL())
+
+    # Test filtering for different domains
+    domains = [
+        "http://example.com/",
+        "http://test.org/",
+        "http://localhost/",
+        "http://192.168.1.1/",  # IP address (requires unsafe=True)
+    ]
+
+    for domain_url in domains:
+        filtered = jar.filter_cookies(URL(domain_url))
+        assert "universal" in filtered
+        assert filtered["universal"].value == "everywhere"
+
+    # Verify cache is reused efficiently
+    assert ("", "") in jar._morsel_cache
+    assert "universal" in jar._morsel_cache[("", "")]
