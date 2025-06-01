@@ -22,7 +22,7 @@ from typing import (
 from multidict import CIMultiDict
 from yarl import URL
 
-from .helpers import parse_set_cookie_header
+from .helpers import parse_cookie_headers
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:
@@ -194,11 +194,7 @@ class AbstractCookieJar(Sized, IterableBase):
         self, headers: Sequence[str], response_url: URL
     ) -> None:
         """Update cookies from raw Set-Cookie headers."""
-        cookies_to_update = []
-        for header in headers:
-            if header and (parsed := parse_set_cookie_header(header)):
-                cookies_to_update.append(parsed)
-        if cookies_to_update:
+        if headers and (cookies_to_update := parse_cookie_headers(headers)):
             self.update_cookies(cookies_to_update, response_url)
 
     @abstractmethod

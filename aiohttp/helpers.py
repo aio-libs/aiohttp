@@ -38,6 +38,7 @@ from typing import (
     Mapping,
     Optional,
     Protocol,
+    Sequence,
     Tuple,
     Type,
     TypeVar,
@@ -103,6 +104,40 @@ _COOKIE_KNOWN_ATTRS = frozenset(  # AKA Morsel._reserved
 _COOKIE_BOOL_ATTRS = frozenset(  # AKA Morsel._flags
     ("secure", "httponly", "partitioned")
 )
+
+# SimpleCookie's pattern for parsing cookies with relaxed validation
+# Based on http.cookies pattern but extended to allow more characters in cookie names
+# to handle real-world cookies (fixes #2683)
+_COOKIE_PATTERN = re.compile(
+    r"""
+    \s*                            # Optional whitespace at start of cookie
+    (?P<key>                       # Start of group 'key'
+    # aiohttp has extended to include [] for compatibility with real-world cookies
+    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\=\[\]]+?   # Any word of at least one letter
+    )                              # End of group 'key'
+    (                              # Optional group: there may not be a value.
+    \s*=\s*                          # Equal Sign
+    (?P<val>                         # Start of group 'val'
+    "(?:[^\\"]|\\.)*"                  # Any double-quoted string (properly closed)
+    |                                  # or
+    "[^";]*                            # Unmatched opening quote (differs from SimpleCookie - issue #7993)
+    |                                  # or
+    # Special case for "expires" attr
+    (\w{3,6}day|\w{3}),\s              # Day of the week or abbreviated day
+    [\w\d\s-]{9,11}\s[\d:]{8}\sGMT     # Date and time in specific format
+    |                                  # or
+    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\=\[\]]*      # Any word or empty string
+    )                                # End of group 'val'
+    )?                             # End of optional value group
+    \s*                            # Any number of spaces.
+    (\s+|;|$)                      # Ending either at space, semicolon, or EOS.
+    """,
+    re.VERBOSE | re.ASCII,
+)
+
+# Cookie parsing type constants
+_TYPE_ATTRIBUTE = 1
+_TYPE_KEYVALUE = 2
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -1176,176 +1211,83 @@ def _unquote(text: str) -> str:
     return text
 
 
-def parse_set_cookie_header(
-    set_cookie_string: str,
-) -> Optional[Tuple[str, Morsel[str]]]:
+def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
     """
-    Parse a single Set-Cookie header according to RFC 6265 Section 5.2.
+    Parse cookie headers using a vendored version of SimpleCookie parsing.
 
-    This implementation follows the algorithm specified in RFC 6265 for parsing
-    set-cookie-string values, ensuring proper handling of cookie names, values,
-    and attributes.
+    This implementation is based on SimpleCookie.__parse_string to ensure
+    compatibility with how SimpleCookie parses cookies, including handling
+    of malformed cookies with missing semicolons.
 
-    Args:
-        set_cookie_string: A single Set-Cookie header value
-
-    Returns:
-        A tuple of (name, morsel) if parsing succeeds, None otherwise
+    NOTE: This implementation differs from SimpleCookie in handling unmatched quotes.
+    SimpleCookie will stop parsing when it encounters a cookie value with an unmatched
+    quote (e.g., 'cookie="value'), causing subsequent cookies to be silently dropped.
+    This implementation handles unmatched quotes more gracefully to prevent cookie loss.
+    See https://github.com/aio-libs/aiohttp/issues/7993
     """
-    if not set_cookie_string:
-        return None
+    parsed_cookies: List[Tuple[str, Morsel[str]]] = []
 
-    # Step 1: Split into name-value-pair and unparsed-attributes
-    semicolon_pos = set_cookie_string.find(";")
-    if semicolon_pos == -1:
-        name_value_pair = set_cookie_string
-        unparsed_attributes = ""
-    else:
-        name_value_pair = set_cookie_string[:semicolon_pos]
-        unparsed_attributes = set_cookie_string[semicolon_pos:]
+    for header in headers:
+        if not header:
+            continue
 
-    # Step 2: Check for = character in name-value-pair
-    equals_pos = name_value_pair.find("=")
-    if equals_pos == -1:
-        # Ignore the set-cookie-string entirely
-        return None
+        # Parse cookie string using SimpleCookie's algorithm
+        i = 0
+        n = len(header)
+        current_morsel: Optional[Morsel[str]] = None
+        morsel_seen = False
 
-    # Step 3: Split into name and value
-    name = name_value_pair[:equals_pos]
-    value = name_value_pair[equals_pos + 1 :]
-
-    # Step 4: Remove leading/trailing WSP from name and value
-    name = name.strip()
-    value = value.strip()
-
-    # Step 5: Check if name is empty
-    if not name:
-        # Ignore the set-cookie-string entirely
-        return None
-
-    # Step 6: cookie-name is name, cookie-value is value
-    # Validate the cookie name
-    if name.lower() in _COOKIE_KNOWN_ATTRS or not _COOKIE_NAME_RE.match(name):
-        internal_logger.warning(
-            "Can not load response cookies: Illegal cookie name %r", name
-        )
-        return None
-
-    # Create the morsel with the parsed name and value
-    morsel = Morsel()
-    # Unquote the value if it's quoted
-    unquoted_value = _unquote(value)
-    _set_validated_morsel_values(morsel, name, unquoted_value)
-
-    # Parse unparsed-attributes according to the algorithm
-    pos = 0
-    while pos < len(unparsed_attributes):
-        # Step 1: Skip if empty
-        if pos >= len(unparsed_attributes):
-            break
-
-        # Step 2: Discard the first character (semicolon)
-        if unparsed_attributes[pos] == ";":
-            pos += 1
-            if pos >= len(unparsed_attributes):
+        while 0 <= i < n:
+            # Start looking for a cookie
+            match = _COOKIE_PATTERN.match(header, i)
+            if not match:
+                # No more cookies
                 break
 
-        # Skip any whitespace after semicolon
-        while pos < len(unparsed_attributes) and unparsed_attributes[pos] in " \t":
-            pos += 1
+            key, value = match.group("key"), match.group("val")
+            i = match.end(0)
+            lower_key = key.lower()
 
-        if pos >= len(unparsed_attributes):
-            break
-
-        # Step 3: Find the next semicolon or end of string
-        next_semicolon = unparsed_attributes.find(";", pos)
-        if next_semicolon == -1:
-            cookie_av = unparsed_attributes[pos:]
-            pos = len(unparsed_attributes)
-        else:
-            cookie_av = unparsed_attributes[pos:next_semicolon]
-            pos = next_semicolon
-
-        # Step 4: Check for = in cookie-av
-        equals_pos = cookie_av.find("=")
-        if equals_pos == -1:
-            attribute_name = cookie_av
-            attribute_value = ""
-        else:
-            attribute_name = cookie_av[:equals_pos]
-            attribute_value = cookie_av[equals_pos + 1 :]
-
-        # Step 5: Remove leading/trailing WSP
-        attribute_name = attribute_name.strip()
-        attribute_value = attribute_value.strip()
-
-        # Step 6: Process the attribute
-        if attribute_name:
-            attr_lower = attribute_name.lower()
-            # Handle $ prefixed attributes (legacy cookie format)
-            if attr_lower.startswith("$"):
-                attr_lower = attr_lower[1:]
-
-            if attr_lower in _COOKIE_KNOWN_ATTRS:
-                if attr_lower in _COOKIE_BOOL_ATTRS:
-                    # Boolean attributes are set to True if present
-                    morsel[attr_lower] = True
-                else:
-                    # Set the attribute value, unquoting if necessary
-                    morsel[attr_lower] = (
-                        _unquote(attribute_value) if attribute_value else ""
+            if key[0] == "$":
+                if not morsel_seen:
+                    # We ignore attributes which pertain to the cookie
+                    # mechanism as a whole, such as "$Version".
+                    continue
+                # Process as attribute
+                if current_morsel is not None:
+                    attr_lower_key = lower_key[1:]
+                    if attr_lower_key in _COOKIE_KNOWN_ATTRS:
+                        current_morsel[attr_lower_key] = value or ""
+            elif lower_key in _COOKIE_KNOWN_ATTRS:
+                if not morsel_seen:
+                    # Invalid cookie string - attribute before cookie
+                    break
+                if lower_key in _COOKIE_BOOL_ATTRS:
+                    # Boolean attribute with any value should be True
+                    if current_morsel is not None:
+                        current_morsel[lower_key] = True
+                elif value is None:
+                    # Invalid cookie string - non-boolean attribute without value
+                    break
+                elif current_morsel is not None:
+                    # Regular attribute with value
+                    current_morsel[lower_key] = _unquote(value)
+            elif value is not None:
+                # This is a cookie name=value pair
+                # Validate the name
+                if key in _COOKIE_KNOWN_ATTRS or not _COOKIE_NAME_RE.match(key):
+                    internal_logger.warning(
+                        "Can not load response cookies: Illegal cookie name %r", key
                     )
+                    current_morsel = None
+                else:
+                    # Create new morsel
+                    current_morsel = Morsel()
+                    _set_validated_morsel_values(current_morsel, key, _unquote(value))
+                    parsed_cookies.append((key, current_morsel))
+                    morsel_seen = True
+            else:
+                # Invalid cookie string - no value for non-attribute
+                break
 
-    return (name, morsel)
-
-
-def parse_cookie_header(cookie_string: str) -> List[Tuple[str, str]]:
-    """
-    Parse a Cookie header (client to server).
-
-    This parses cookie-pair values according to RFC 6265 Section 4.2.1.
-    The Cookie header contains multiple cookie-pairs separated by semicolons.
-
-    Args:
-        cookie_string: The Cookie header value
-
-    Returns:
-        A list of (name, value) tuples
-    """
-    cookies: List[Tuple[str, str]] = []
-
-    if not cookie_string:
-        return cookies
-
-    # Split by semicolon and process each cookie-pair
-    for cookie_pair in cookie_string.split(";"):
-        cookie_pair = cookie_pair.strip()
-        if not cookie_pair:
-            continue
-
-        # Find the first equals sign
-        equals_pos = cookie_pair.find("=")
-        if equals_pos == -1:
-            # No equals sign, skip this cookie-pair
-            continue
-
-        name = cookie_pair[:equals_pos].strip()
-        value = cookie_pair[equals_pos + 1 :].strip()
-
-        # Skip empty names
-        if not name:
-            continue
-
-        # Validate the cookie name
-        if not _COOKIE_NAME_RE.match(name):
-            internal_logger.warning(
-                "Can not load request cookies: Illegal cookie name %r", name
-            )
-            continue
-
-        # Unquote the value if needed
-        value = _unquote(value)
-
-        cookies.append((name, value))
-
-    return cookies
+    return parsed_cookies
