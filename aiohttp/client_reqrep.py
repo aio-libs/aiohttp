@@ -318,7 +318,7 @@ class ClientResponse(HeadersMixin):
                     try:
                         cookies.load(hdr)
                     except CookieError as exc:
-                        client_logger.warning("Can not load response cookies: %s", exc)
+                        client_logger.warning("Can not load cookies: %s", exc)
                 self._cookies = cookies
             else:
                 self._cookies = SimpleCookie()

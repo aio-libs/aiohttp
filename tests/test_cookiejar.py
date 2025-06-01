@@ -1290,7 +1290,7 @@ def test_update_cookies_from_headers_invalid_cookies(
         jar.update_cookies_from_headers(headers, url)
 
     # Check that we logged warnings for invalid cookies
-    assert "Can not load response cookies" in caplog.text
+    assert "Can not load cookies" in caplog.text
 
     # Valid cookies should still be added
     assert len(jar) >= 2  # At least the two clearly valid cookies

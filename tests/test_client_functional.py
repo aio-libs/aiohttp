@@ -2717,10 +2717,7 @@ async def test_set_cookies(
             _ = resp.cookies
         assert cookie_names == {"c1", "c2"}
 
-    assert (
-        "Can not load response cookies: Illegal cookie name 'invalid,cookie'"
-        in caplog.text
-    )
+    assert "Can not load cookies: Illegal cookie name 'invalid,cookie'" in caplog.text
 
 
 async def test_set_cookies_with_curly_braces(aiohttp_client: AiohttpClient) -> None:

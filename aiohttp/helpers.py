@@ -1278,7 +1278,7 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
                 # Validate the name
                 if key in _COOKIE_KNOWN_ATTRS or not _COOKIE_NAME_RE.match(key):
                     internal_logger.warning(
-                        "Can not load response cookies: Illegal cookie name %r", key
+                        "Can not load cookies: Illegal cookie name %r", key
                     )
                     current_morsel = None
                 else:
