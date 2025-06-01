@@ -1956,6 +1956,39 @@ def test_parse_cookie_headers_dollar_attributes() -> None:
     assert result[0][1]["path"] == "/upper"
 
 
+def test_parse_cookie_headers_attributes_after_illegal_cookie() -> None:
+    """Test that attributes after an illegal cookie name are handled correctly.
+
+    This covers the branches where current_morsel is None because an illegal
+    cookie name was encountered.
+    """
+    # Illegal cookie followed by $ attribute
+    result = parse_cookie_headers(["good=value; invalid,cookie=bad; $Path=/test"])
+    assert len(result) == 1
+    assert result[0][0] == "good"
+    # $Path should be ignored since current_morsel is None after illegal cookie
+
+    # Illegal cookie followed by boolean attribute
+    result = parse_cookie_headers(["good=value; invalid,cookie=bad; HttpOnly"])
+    assert len(result) == 1
+    assert result[0][0] == "good"
+    # HttpOnly should be ignored since current_morsel is None
+
+    # Illegal cookie followed by regular attribute with value
+    result = parse_cookie_headers(["good=value; invalid,cookie=bad; Max-Age=3600"])
+    assert len(result) == 1
+    assert result[0][0] == "good"
+    # Max-Age should be ignored since current_morsel is None
+
+    # Multiple attributes after illegal cookie
+    result = parse_cookie_headers(
+        ["good=value; invalid,cookie=bad; $Path=/; HttpOnly; Max-Age=60; Domain=.com"]
+    )
+    assert len(result) == 1
+    assert result[0][0] == "good"
+    # All attributes should be ignored after illegal cookie
+
+
 def test_parse_cookie_headers_unmatched_quotes_compatibility() -> None:
     """Test that most unmatched quote scenarios behave like SimpleCookie.
 
