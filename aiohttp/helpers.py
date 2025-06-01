@@ -1183,7 +1183,8 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
 
 
 def _unquote(text: str) -> str:
-    """Unquote a cookie value.
+    """
+    Unquote a cookie value.
 
     Vendored from http.cookies._unquote to ensure compatibility.
     """
