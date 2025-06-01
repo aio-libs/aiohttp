@@ -20,9 +20,8 @@ from aiohttp.helpers import (
     EMPTY_BODY_METHODS,
     is_expected_content_type,
     must_be_empty_body,
-    parse_cookie_header,
+    parse_cookie_headers,
     parse_http_date,
-    parse_set_cookie_header,
     preserve_morsel_with_coded_value,
     should_remove_content_length,
 )
