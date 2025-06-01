@@ -4,8 +4,8 @@ import gc
 import io
 import json
 from collections import deque
-from http.cookies import SimpleCookie
-from typing import Any, Awaitable, Callable, List
+from http.cookies import BaseCookie, SimpleCookie
+from typing import Any, Awaitable, Callable, Iterator, List, Optional, cast
 from unittest import mock
 from uuid import uuid4
 
@@ -15,7 +15,7 @@ from re_assert import Matches
 from yarl import URL
 
 import aiohttp
-from aiohttp import CookieJar, client, hdrs, web
+from aiohttp import CookieJar, abc, client, hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest
@@ -639,8 +639,43 @@ async def test_ws_connect_unix_socket_allowed_protocols(
 async def test_cookie_jar_usage(loop: Any, aiohttp_client: Any) -> None:
     req_url = None
 
-    jar = mock.Mock()
-    jar.filter_cookies.return_value = None
+    class MockCookieJar(abc.AbstractCookieJar):
+        def __init__(self) -> None:
+            self._update_cookies_mock = mock.Mock()
+            self._filter_cookies_mock = mock.Mock(return_value=BaseCookie())
+            self._clear_mock = mock.Mock()
+            self._clear_domain_mock = mock.Mock()
+            self._items: List[Any] = []
+
+        @property
+        def quote_cookie(self) -> bool:
+            return True
+
+        def clear(self, predicate: Optional[abc.ClearCookiePredicate] = None) -> None:
+            self._clear_mock(predicate)
+
+        def clear_domain(self, domain: str) -> None:
+            self._clear_domain_mock(domain)
+
+        def update_cookies(self, cookies: Any, response_url: URL = URL()) -> None:
+            self._update_cookies_mock(cookies, response_url)
+
+        def filter_cookies(self, request_url: URL) -> BaseCookie[str]:
+            return cast(BaseCookie[str], self._filter_cookies_mock(request_url))
+
+        def __len__(self) -> int:
+            return len(self._items)
+
+        def __iter__(self) -> Iterator[Any]:
+            return iter(self._items)
+
+    jar = MockCookieJar()
+
+    assert jar.quote_cookie is True
+    assert len(jar) == 0
+    assert list(jar) == []
+    jar.clear()
+    jar.clear_domain("example.com")
 
     async def handler(request):
         nonlocal req_url
@@ -657,22 +692,24 @@ async def test_cookie_jar_usage(loop: Any, aiohttp_client: Any) -> None:
     )
 
     # Updating the cookie jar with initial user defined cookies
-    jar.update_cookies.assert_called_with({"request": "req_value"})
+    jar._update_cookies_mock.assert_called_with({"request": "req_value"}, URL())
 
-    jar.update_cookies.reset_mock()
+    jar._update_cookies_mock.reset_mock()
     resp = await session.get("/")
     await resp.release()
 
     # Filtering the cookie jar before sending the request,
     # getting the request URL as only parameter
-    jar.filter_cookies.assert_called_with(URL(req_url))
+    jar._filter_cookies_mock.assert_called_with(URL(req_url))
 
     # Updating the cookie jar with the response cookies
-    assert jar.update_cookies.called
-    resp_cookies = jar.update_cookies.call_args[0][0]
-    assert isinstance(resp_cookies, SimpleCookie)
-    assert "response" in resp_cookies
-    assert resp_cookies["response"].value == "resp_value"
+    assert jar._update_cookies_mock.called
+    resp_cookies = jar._update_cookies_mock.call_args[0][0]
+    # Now update_cookies is called with a list of tuples
+    assert isinstance(resp_cookies, list)
+    assert len(resp_cookies) == 1
+    assert resp_cookies[0][0] == "response"
+    assert resp_cookies[0][1].value == "resp_value"
 
 
 async def test_cookies_with_not_quoted_cookie_jar(
