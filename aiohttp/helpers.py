@@ -1183,10 +1183,9 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
 
     Args:
         cookie: A Morsel object from SimpleCookie
-        name: The expected cookie name (for validation)
 
     Returns:
-        The same Morsel object with preserved coded_value
+        A Morsel object with preserved coded_value
 
     """
     mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
