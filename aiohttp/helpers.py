@@ -56,7 +56,7 @@ from propcache.api import under_cached_property as reify
 from yarl import URL
 
 from . import hdrs
-from .log import client_logger
+from .log import client_logger, internal_logger
 from .typedefs import PathLike  # noqa
 
 if sys.version_info >= (3, 11):
@@ -1276,7 +1276,7 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
                 # This is a cookie name=value pair
                 # Validate the name
                 if key in _COOKIE_KNOWN_ATTRS or not _COOKIE_NAME_RE.match(key):
-                    client_logger.warning(
+                    internal_logger.warning(
                         "Can not load response cookies: Illegal cookie name %r", key
                     )
                     current_morsel = None
