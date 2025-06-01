@@ -1187,6 +1187,17 @@ def test_known_attrs_is_superset_of_morsel_reserved() -> None:
     ), f"_KNOWN_ATTRS is missing: {morsel_reserved - helpers._KNOWN_ATTRS}"
 
 
+def test_bool_attrs_is_superset_of_morsel_flags() -> None:
+    """Test that _BOOL_ATTRS contains all Morsel._flags attributes."""
+    # Get Morsel._flags attributes (lowercase)
+    morsel_flags = {attr.lower() for attr in Morsel._flags}
+
+    # _BOOL_ATTRS should be a superset of morsel_flags
+    assert (
+        helpers._BOOL_ATTRS >= morsel_flags
+    ), f"_BOOL_ATTRS is missing: {morsel_flags - helpers._BOOL_ATTRS}"
+
+
 def test_preserve_morsel_with_coded_value() -> None:
     """Test preserve_morsel_with_coded_value preserves coded_value exactly."""
     # Create a cookie with a coded_value different from value

@@ -102,6 +102,7 @@ _KNOWN_ATTRS = frozenset(
         "comment",
     )
 )
+_BOOL_ATTRS = frozenset(("secure", "httponly", "partitioned"))
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -1255,13 +1256,10 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
             # Our vendored _parse_ns_headers already lowercases known attributes
             # Only process known attributes
             if attr_name in _KNOWN_ATTRS:
-                if attr_value is not None:
+                if attr_name in _BOOL_ATTRS:
+                    morsel[attr_name] = True
+                elif attr_value is not None:
                     morsel[attr_name] = attr_value
-                # Valid boolean attributes
-                elif attr_name == "secure":
-                    morsel["secure"] = True
-                elif attr_name == "httponly":
-                    morsel["httponly"] = True
 
         cookies_to_update.append((name, morsel))
 
