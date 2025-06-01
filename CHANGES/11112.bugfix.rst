@@ -1,0 +1,6 @@
+Fixed cookie parsing to be more lenient when handling cookies with special characters
+in names or values. Cookies with characters like ``{``, ``}``, and ``/`` in names are now
+accepted instead of causing a :exc:`~http.cookies.CookieError` and 500 errors. Additionally,
+cookies with mismatched quotes in values are now parsed correctly, and quoted cookie
+values are now handled consistently whether or not they include special attributes
+like ``Domain`` -- by :user:`bdraco`.
