@@ -1291,10 +1291,50 @@ def parse_set_cookie_header(
                     # Boolean attributes are set to True if present
                     morsel[attr_lower] = True
                 else:
-                    # Set the attribute value, unquoting if necessary
-                    morsel[attr_lower] = (
-                        _unquote(attribute_value) if attribute_value else ""
-                    )
+                    # Check if the attribute value contains another attribute
+                    # This handles malformed cookies like "Path=/ Max-Age=123"
+                    if attribute_value and " " in attribute_value:
+                        # Look for known attributes in the value
+                        for known_attr in _COOKIE_KNOWN_ATTRS:
+                            pattern = f" {known_attr}="
+                            pattern_idx = attribute_value.lower().find(pattern.lower())
+                            if pattern_idx != -1:
+                                # Split the value at this point
+                                actual_value = attribute_value[:pattern_idx].strip()
+                                morsel[attr_lower] = (
+                                    _unquote(actual_value) if actual_value else ""
+                                )
+
+                                # Parse the remaining part as a new attribute
+                                remaining = attribute_value[pattern_idx + 1 :]
+                                remaining_eq_pos = remaining.find("=")
+                                if remaining_eq_pos != -1:
+                                    remaining_attr = (
+                                        remaining[:remaining_eq_pos].strip().lower()
+                                    )
+                                    remaining_value = remaining[
+                                        remaining_eq_pos + 1 :
+                                    ].strip()
+                                    if remaining_attr in _COOKIE_KNOWN_ATTRS:
+                                        if remaining_attr in _COOKIE_BOOL_ATTRS:
+                                            morsel[remaining_attr] = True
+                                        else:
+                                            morsel[remaining_attr] = (
+                                                _unquote(remaining_value)
+                                                if remaining_value
+                                                else ""
+                                            )
+                                break
+                        else:
+                            # No known attribute found in value, use as-is
+                            morsel[attr_lower] = (
+                                _unquote(attribute_value) if attribute_value else ""
+                            )
+                    else:
+                        # Set the attribute value, unquoting if necessary
+                        morsel[attr_lower] = (
+                            _unquote(attribute_value) if attribute_value else ""
+                        )
 
     return (name, morsel)
 
