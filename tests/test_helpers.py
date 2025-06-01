@@ -1555,26 +1555,33 @@ def test_parse_cookie_headers_complex_real_world() -> None:
 
 
 def test_parse_cookie_headers_boolean_attrs() -> None:
-    """Test that boolean attributes (secure, httponly, partitioned) work correctly."""
+    """Test that boolean attributes (secure, httponly) work correctly."""
+    # Test secure attribute variations
     headers = [
         "cookie1=value1; Secure",
         "cookie2=value2; Secure=",
         "cookie3=value3; Secure=true",  # Non-standard but might occur
+    ]
+
+    result = parse_cookie_headers(headers)
+    assert len(result) == 3
+
+    # All should have secure=True
+    for name, morsel in result:
+        assert morsel.get("secure") is True, f"{name} should have secure=True"
+
+    # Test httponly attribute variations
+    headers = [
         "cookie4=value4; HttpOnly",
         "cookie5=value5; HttpOnly=",
     ]
 
     result = parse_cookie_headers(headers)
+    assert len(result) == 2
 
-    # All should have the boolean attributes set
-    assert len(result) == 5
-    for i, (_, morsel) in enumerate(result):
-        if i < 3:
-            assert morsel.get("secure") is True, f"Cookie {i+1} should have secure=True"
-        else:
-            assert (
-                morsel.get("httponly") is True
-            ), f"Cookie {i+1} should have httponly=True"
+    # All should have httponly=True
+    for name, morsel in result:
+        assert morsel.get("httponly") is True, f"{name} should have httponly=True"
 
 
 def test_parse_cookie_headers_boolean_attrs_with_partitioned() -> None:
@@ -1590,35 +1597,42 @@ def test_parse_cookie_headers_boolean_attrs_with_partitioned() -> None:
         mock.patch.object(Morsel, "_reserved", patched_reserved),
         mock.patch.object(Morsel, "_flags", patched_flags),
     ):
-
-        headers = [
+        # Test secure attribute variations
+        secure_headers = [
             "cookie1=value1; Secure",
             "cookie2=value2; Secure=",
             "cookie3=value3; Secure=true",  # Non-standard but might occur
+        ]
+
+        result = parse_cookie_headers(secure_headers)
+        assert len(result) == 3
+        for name, morsel in result:
+            assert morsel.get("secure") is True, f"{name} should have secure=True"
+
+        # Test httponly attribute variations
+        httponly_headers = [
             "cookie4=value4; HttpOnly",
             "cookie5=value5; HttpOnly=",
+        ]
+
+        result = parse_cookie_headers(httponly_headers)
+        assert len(result) == 2
+        for name, morsel in result:
+            assert morsel.get("httponly") is True, f"{name} should have httponly=True"
+
+        # Test partitioned attribute variations
+        partitioned_headers = [
             "cookie6=value6; Partitioned",
             "cookie7=value7; Partitioned=",
             "cookie8=value8; Partitioned=yes",  # Non-standard but might occur
         ]
 
-        result = parse_cookie_headers(headers)
-
-        # All should have the boolean attributes set
-        assert len(result) == 8
-        for i, (name, morsel) in enumerate(result):
-            if i < 3:
-                assert (
-                    morsel.get("secure") is True
-                ), f"Cookie {i+1} should have secure=True"
-            elif i < 5:
-                assert (
-                    morsel.get("httponly") is True
-                ), f"Cookie {i+1} should have httponly=True"
-            else:
-                assert (
-                    morsel.get("partitioned") is True
-                ), f"Cookie {i+1} should have partitioned=True"
+        result = parse_cookie_headers(partitioned_headers)
+        assert len(result) == 3
+        for name, morsel in result:
+            assert (
+                morsel.get("partitioned") is True
+            ), f"{name} should have partitioned=True"
 
 
 def test_parse_cookie_headers_encoded_values() -> None:
