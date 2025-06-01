@@ -312,7 +312,7 @@ class CookieJar(AbstractCookieJar):
                 DeprecationWarning,
             )
             request_url = URL(request_url)
-        filtered = BaseCookie()
+        filtered: BaseCookie[str] = BaseCookie()
         if not self._cookies:
             # Skip do_expiration() if there are no cookies.
             return filtered
