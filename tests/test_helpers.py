@@ -2029,6 +2029,12 @@ def test_parse_cookie_headers_dollar_attributes() -> None:
     assert len(result) == 1
     assert result[0][1]["path"] == ""
 
+    # Test case sensitivity compatibility with SimpleCookie
+    result = parse_cookie_headers(["test=value; $path=/lower; $PATH=/upper"])
+    assert len(result) == 1
+    # Last one wins, and it's case-insensitive
+    assert result[0][1]["path"] == "/upper"
+
 
 def test_parse_cookie_headers_unmatched_quotes_compatibility() -> None:
     """Test that most unmatched quote scenarios behave like SimpleCookie.
