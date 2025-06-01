@@ -1351,6 +1351,36 @@ def test_parse_cookie_headers_quoted_values() -> None:
     assert result[2][1].value == 'with"escaped"'
 
 
+def test_parse_cookie_headers_semicolon_in_quoted_values() -> None:
+    """Test that semicolons inside properly quoted values are handled correctly.
+
+    Cookie values can contain semicolons when properly quoted. This test ensures
+    that our parser handles these cases correctly, matching SimpleCookie behavior.
+    """
+    # Test various cases of semicolons in quoted values
+    headers = [
+        'session="abc;xyz"; token=123',
+        'data="value;with;multiple;semicolons"; next=cookie',
+        'complex="a=b;c=d"; simple=value',
+    ]
+
+    for header in headers:
+        # Test with SimpleCookie
+        sc = SimpleCookie()
+        sc.load(header)
+
+        # Test with our parser
+        result = parse_cookie_headers([header])
+
+        # Should parse the same number of cookies
+        assert len(result) == len(sc)
+
+        # Verify each cookie matches SimpleCookie
+        for (name, morsel), (sc_name, sc_morsel) in zip(result, sc.items()):
+            assert name == sc_name
+            assert morsel.value == sc_morsel.value
+
+
 def test_parse_cookie_headers_multiple_cookies_same_header() -> None:
     """Test parse_cookie_headers with multiple cookies in one header."""
     # Note: SimpleCookie includes the comma as part of the first cookie's value
@@ -1749,8 +1779,6 @@ def test_parse_cookie_headers_partitioned() -> None:
 @pytest.mark.skipif(sys.version_info >= (3, 14), reason="Test for Python < 3.14")
 def test_parse_cookie_headers_partitioned_case_insensitive_pre_314() -> None:
     """Test that partitioned attribute is recognized case-insensitively on Python < 3.14."""
-    from http.cookies import Morsel
-
     # Create patched reserved and flags with partitioned support
     patched_reserved = Morsel._reserved.copy()
     patched_reserved["partitioned"] = "partitioned"
@@ -1868,3 +1896,78 @@ def test_parse_cookie_headers_partitioned_real_world_structure() -> None:
         match = pattern.match(test_str)
         assert match is not None, f"Pattern should match '{test_str}'"
         assert match.group("key").lower() == "partitioned"
+
+
+def test_parse_cookie_headers_issue_7993_double_quotes() -> None:
+    """
+    Test that cookies with unmatched opening quotes don't break parsing of subsequent cookies.
+
+    This reproduces issue #7993 where a cookie containing an unmatched opening double quote
+    causes subsequent cookies to be silently dropped.
+
+    NOTE: This only fixes the specific case where a value starts with a quote but doesn't
+    end with one (e.g., 'cookie="value'). Other malformed quote cases still behave like
+    SimpleCookie for compatibility.
+    """
+    # Test case from the issue
+    headers = ['foo=bar; baz="qux; foo2=bar2']
+
+    result = parse_cookie_headers(headers)
+
+    # Should parse all cookies correctly
+    assert len(result) == 3
+    assert result[0][0] == "foo"
+    assert result[0][1].value == "bar"
+    assert result[1][0] == "baz"
+    assert result[1][1].value == '"qux'  # Unmatched quote included
+    assert result[2][0] == "foo2"
+    assert result[2][1].value == "bar2"
+
+
+def test_parse_cookie_headers_unmatched_quotes_compatibility() -> None:
+    """Test that most unmatched quote scenarios behave like SimpleCookie.
+
+    For compatibility, we only handle the specific case of unmatched opening quotes
+    (e.g., 'cookie="value'). Other cases behave the same as SimpleCookie.
+    """
+    # Cases that SimpleCookie and our parser both fail to parse completely
+    incompatible_cases = [
+        'cookie1=val"ue; cookie2=value2',  # codespell:ignore
+        'cookie1=value"; cookie2=value2',
+        'cookie1=va"l"ue"; cookie2=value2',  # codespell:ignore
+        'cookie1=value1; cookie2=val"ue; cookie3=value3',  # codespell:ignore
+    ]
+
+    for header in incompatible_cases:
+        # Test SimpleCookie behavior
+        sc = SimpleCookie()
+        sc.load(header)
+        sc_cookies = list(sc.items())
+
+        # Test our parser behavior
+        result = parse_cookie_headers([header])
+
+        # Both should parse the same cookies (partial parsing)
+        assert len(result) == len(sc_cookies), (
+            f"Header: {header}\n"
+            f"SimpleCookie parsed: {len(sc_cookies)} cookies\n"
+            f"Our parser parsed: {len(result)} cookies"
+        )
+
+    # The case we specifically fix (unmatched opening quote)
+    fixed_case = 'cookie1=value1; cookie2="unmatched; cookie3=value3'
+
+    # SimpleCookie fails to parse cookie3
+    sc = SimpleCookie()
+    sc.load(fixed_case)
+    assert len(sc) == 1  # Only cookie1
+
+    # Our parser handles it better
+    result = parse_cookie_headers([fixed_case])
+    assert len(result) == 3  # All three cookies
+    assert result[0][0] == "cookie1"
+    assert result[0][1].value == "value1"
+    assert result[1][0] == "cookie2"
+    assert result[1][1].value == '"unmatched'
+    assert result[2][0] == "cookie3"
+    assert result[2][1].value == "value3"

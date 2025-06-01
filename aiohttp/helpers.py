@@ -118,7 +118,9 @@ _COOKIE_PATTERN = re.compile(
     (                              # Optional group: there may not be a value.
     \s*=\s*                          # Equal Sign
     (?P<val>                         # Start of group 'val'
-    "(?:[^\\"]|\\.)*"                  # Any double-quoted string
+    "(?:[^\\"]|\\.)*"                  # Any double-quoted string (properly closed)
+    |                                  # or
+    "[^";]*                            # Unmatched opening quote (differs from SimpleCookie - issue #7993)
     |                                  # or
     # Special case for "expires" attr
     (\w{3,6}day|\w{3}),\s              # Day of the week or abbreviated day
@@ -1216,6 +1218,12 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
     This implementation is based on SimpleCookie.__parse_string to ensure
     compatibility with how SimpleCookie parses cookies, including handling
     of malformed cookies with missing semicolons.
+
+    NOTE: This implementation differs from SimpleCookie in handling unmatched quotes.
+    SimpleCookie will stop parsing when it encounters a cookie value with an unmatched
+    quote (e.g., 'cookie="value'), causing subsequent cookies to be silently dropped.
+    This implementation handles unmatched quotes more gracefully to prevent cookie loss.
+    See https://github.com/aio-libs/aiohttp/issues/7993
     """
     parsed_cookies: List[Tuple[str, Morsel[str]]] = []
 
