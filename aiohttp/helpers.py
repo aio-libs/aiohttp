@@ -1139,7 +1139,7 @@ def _set_and_validate_morsel_values(
 
 
 def create_cookie_morsel(
-    name: str, value: str, *, coded_value: Optional[str] = None
+    name: str, value: str, coded_value: Optional[str] = None
 ) -> Morsel[str]:
     """
     Create a Morsel with pre-validated name, bypassing validation.
