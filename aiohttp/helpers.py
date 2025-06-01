@@ -1163,7 +1163,7 @@ def create_cookie_morsel(
 
     Note: Django uses a similar approach for the same reasons.
     """
-    morsel = Morsel()
+    morsel: Morsel[str] = Morsel()
     _set_and_validate_morsel_values(morsel, name, value, coded_value)
     return morsel
 
@@ -1194,9 +1194,13 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str], name: str) -> Morsel[s
             f"Morsel key {cookie.key!r} doesn't match expected name {name!r}"
         )
 
-    # The morsel already has the correct coded_value from SimpleCookie,
-    # we just need to return it as-is to preserve the server's encoding
-    return cookie
+    # Create a new morsel and set values using our helper to bypass
+    # strict validation while preserving the coded_value
+    morsel: Morsel[str] = Morsel()
+    _set_and_validate_morsel_values(
+        morsel, cookie.key, cookie.value, cookie.coded_value
+    )
+    return morsel
 
 
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
