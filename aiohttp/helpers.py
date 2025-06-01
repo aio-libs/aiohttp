@@ -1186,22 +1186,15 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
         # Parse remaining attributes
         for attr_name, attr_value in cookie_attrs[1:]:
             attr_name_lower = attr_name.lower()
-
-            # Skip version attribute added by parse_ns_headers
-            if attr_name_lower == "version":
-                continue
-
             # Only process known attributes
             if attr_name_lower in _KNOWN_ATTRS:
-                if attr_value is None:
-                    # Boolean attributes
-                    if attr_name_lower == "secure":
-                        morsel["secure"] = True
-                    elif attr_name_lower == "httponly":
-                        morsel["httponly"] = True
-                else:
-                    # Attributes with values
+                if attr_value is not None:
                     morsel[attr_name_lower] = attr_value
+                # Valid boolean attributes
+                elif attr_name_lower == "secure":
+                    morsel["secure"] = True
+                elif attr_name_lower == "httponly":
+                    morsel["httponly"] = True
 
         cookies_to_update.append((name, morsel))
 
