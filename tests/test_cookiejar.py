@@ -388,6 +388,8 @@ async def test_domain_filter_ip_cookie_receive(
         ("custom-cookie=value/one;", 'Cookie: custom-cookie="value/one"', True),
         ("custom-cookie=value1;", "Cookie: custom-cookie=value1", True),
         ("custom-cookie=value/one;", "Cookie: custom-cookie=value/one", False),
+        ('foo="quoted_value"', 'Cookie: foo="quoted_value"', True),
+        ('foo="quoted_value"; domain=127.0.0.1', 'Cookie: foo="quoted_value"', True),
     ],
     ids=(
         "IP domain preserved",
@@ -395,6 +397,8 @@ async def test_domain_filter_ip_cookie_receive(
         "quoted cookie with special char",
         "quoted cookie w/o special char",
         "unquoted cookie with special char",
+        "pre-quoted cookie",
+        "pre-quoted cookie with domain",
     ),
 )
 async def test_quotes_correctly_based_on_input(

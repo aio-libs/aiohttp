@@ -28,7 +28,7 @@ from typing import (
 from yarl import URL
 
 from .abc import AbstractCookieJar, ClearCookiePredicate
-from .helpers import is_ip_address, preserve_morsel_with_coded_value
+from .helpers import is_ip_address, make_quoted_morsel, preserve_morsel_with_coded_value
 from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ("CookieJar", "DummyCookieJar")
@@ -312,9 +312,7 @@ class CookieJar(AbstractCookieJar):
                 DeprecationWarning,
             )
             request_url = URL(request_url)
-        filtered: Union[SimpleCookie, "BaseCookie[str]"] = (
-            SimpleCookie() if self._quote_cookie else BaseCookie()
-        )
+        filtered = BaseCookie()
         if not self._cookies:
             # Skip do_expiration() if there are no cookies.
             return filtered
@@ -332,8 +330,17 @@ class CookieJar(AbstractCookieJar):
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
         # Send shared cookie
-        for c in self._cookies[("", "")].values():
-            filtered[c.key] = c.value
+        key = ("", "")
+        for c in self._cookies[key].values():
+            # Check cache first
+            if c.key in self._morsel_cache[key]:
+                filtered[c.key] = self._morsel_cache[key][c.key]
+                continue
+
+            # Build and cache the morsel
+            mrsl_val = self._build_morsel(c)
+            self._morsel_cache[key][c.key] = mrsl_val
+            filtered[c.key] = mrsl_val
 
         if is_ip_address(hostname):
             if not self._unsafe:
@@ -373,12 +380,22 @@ class CookieJar(AbstractCookieJar):
                     filtered[name] = self._morsel_cache[p][name]
                     continue
 
-                # Use helper to preserve coded_value exactly as sent by server
-                mrsl_val = preserve_morsel_with_coded_value(cookie)
+                # Build and cache the morsel
+                mrsl_val = self._build_morsel(cookie)
                 self._morsel_cache[p][name] = mrsl_val
                 filtered[name] = mrsl_val
 
         return filtered
+
+    def _build_morsel(self, cookie: Morsel[str]) -> Morsel[str]:
+        """Build a morsel for sending, respecting quote_cookie setting."""
+        if not self._quote_cookie or (
+            cookie.coded_value
+            and cookie.coded_value[0] == '"'
+            and cookie.coded_value[-1] == '"'
+        ):
+            return preserve_morsel_with_coded_value(cookie)
+        return make_quoted_morsel(cookie.key, cookie.value)
 
     @staticmethod
     def _is_domain_match(domain: str, hostname: str) -> bool:

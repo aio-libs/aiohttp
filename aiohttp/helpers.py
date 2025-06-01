@@ -73,7 +73,15 @@ else:
         dataclasses.dataclass, frozen=True, slots=True
     )
 
-__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
+__all__ = (
+    "BasicAuth",
+    "ChainMapProxy",
+    "ETag",
+    "frozen_dataclass_decorator",
+    "make_quoted_morsel",
+    "preserve_morsel_with_coded_value",
+    "reify",
+)
 
 PY_310 = sys.version_info >= (3, 10)
 
@@ -1189,6 +1197,24 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
     mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
     _set_validated_morsel_values(mrsl_val, cookie.key, cookie.value, cookie.coded_value)
     return mrsl_val
+
+
+def make_quoted_morsel(name: str, value: str) -> Morsel[str]:
+    """
+    Create a new Morsel from a cookie name and value.
+
+    Args:
+        name: The cookie name
+        value: The cookie value
+
+    Returns:
+        A new Morsel object that will have a quoted coded_value.
+
+    """
+    morsel: Morsel[str] = Morsel()
+    unquoted_value = _unquote(value)
+    _set_validated_morsel_values(morsel, name, value, f'"{unquoted_value}"')
+    return morsel
 
 
 def _unquote(text: str) -> str:
