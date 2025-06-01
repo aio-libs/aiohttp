@@ -1210,7 +1210,7 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
     compatibility with how SimpleCookie parses cookies, including handling
     of malformed cookies with missing semicolons.
     """
-    cookies_to_update: List[Tuple[str, Morsel[str]]] = []
+    parsed_cookies: List[Tuple[str, Morsel[str]]] = []
 
     for header in headers:
         if not header:
@@ -1237,19 +1237,22 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
                 # Create new morsel
                 current_morsel = Morsel()
                 _set_validated_morsel_values(current_morsel, key, value)
-                cookies_to_update.append((key, current_morsel))
+                parsed_cookies.append((key, current_morsel))
 
-            elif item_type == _TYPE_ATTRIBUTE and current_morsel is not None:
+            elif (
+                item_type == _TYPE_ATTRIBUTE
+                and current_morsel is not None
+                and key in _KNOWN_ATTRS
+            ):
                 # This is an attribute for the current cookie
-                if key in _KNOWN_ATTRS:
-                    if value is True or key in _BOOL_ATTRS:
-                        # Boolean attribute
-                        current_morsel[key] = True
-                    else:
-                        # Regular attribute with value
-                        current_morsel[key] = value
+                if value is True or key in _BOOL_ATTRS:
+                    # Boolean attribute
+                    current_morsel[key] = True
+                else:
+                    # Regular attribute with value
+                    current_morsel[key] = value
 
-    return cookies_to_update
+    return parsed_cookies
 
 
 def _parse_cookie_string(cookie_str: str) -> List[Tuple[int, str, Union[str, bool]]]:
