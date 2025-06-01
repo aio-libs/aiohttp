@@ -1179,7 +1179,7 @@ def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
 def test_known_attrs_is_superset_of_morsel_reserved() -> None:
     """Test that _COOKIE_KNOWN_ATTRS contains all Morsel._reserved attributes."""
     # Get Morsel._reserved attributes (lowercase)
-    morsel_reserved = {attr.lower() for attr in Morsel._reserved}
+    morsel_reserved = {attr.lower() for attr in Morsel._reserved}  # type: ignore[attr-defined]
 
     # _COOKIE_KNOWN_ATTRS should be a superset of morsel_reserved
     assert (
@@ -1190,7 +1190,7 @@ def test_known_attrs_is_superset_of_morsel_reserved() -> None:
 def test_bool_attrs_is_superset_of_morsel_flags() -> None:
     """Test that _COOKIE_BOOL_ATTRS contains all Morsel._flags attributes."""
     # Get Morsel._flags attributes (lowercase)
-    morsel_flags = {attr.lower() for attr in Morsel._flags}
+    morsel_flags = {attr.lower() for attr in Morsel._flags}  # type: ignore[attr-defined]
 
     # _COOKIE_BOOL_ATTRS should be a superset of morsel_flags
     assert (
@@ -1201,7 +1201,7 @@ def test_bool_attrs_is_superset_of_morsel_flags() -> None:
 def test_preserve_morsel_with_coded_value() -> None:
     """Test preserve_morsel_with_coded_value preserves coded_value exactly."""
     # Create a cookie with a coded_value different from value
-    cookie = Morsel()
+    cookie: Morsel[str] = Morsel()
     cookie.set("test_cookie", "decoded value", "encoded%20value")
 
     # Preserve the coded_value
@@ -1218,7 +1218,7 @@ def test_preserve_morsel_with_coded_value() -> None:
 
 def test_preserve_morsel_with_coded_value_no_coded_value() -> None:
     """Test preserve_morsel_with_coded_value when coded_value is same as value."""
-    cookie = Morsel()
+    cookie: Morsel[str] = Morsel()
     cookie.set("test_cookie", "simple_value", "simple_value")
 
     result = preserve_morsel_with_coded_value(cookie)

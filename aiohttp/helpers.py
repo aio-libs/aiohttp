@@ -1166,9 +1166,9 @@ def _set_validated_morsel_values(
     This might break between Python versions so we have it
     isolated into a single function so we only have to change it in one place.
     """
-    morsel._key = name
-    morsel._value = value
-    morsel._coded_value = coded_value if coded_value is not None else value
+    morsel._key = name  # type: ignore[attr-defined]
+    morsel._value = value  # type: ignore[attr-defined]
+    morsel._coded_value = coded_value if coded_value is not None else value  # type: ignore[attr-defined]
 
 
 def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
