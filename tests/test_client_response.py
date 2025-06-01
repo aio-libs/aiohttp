@@ -3,6 +3,7 @@
 import asyncio
 import gc
 import sys
+from http.cookies import SimpleCookie
 from json import JSONDecodeError
 from unittest import mock
 
@@ -12,7 +13,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientSession, http
+from aiohttp import ClientSession, hdrs, http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
 from aiohttp.connector import Connection
 from aiohttp.helpers import TimerNoop
@@ -1377,3 +1378,144 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
     assert not response.ok
     assert not response.closed
     assert spy.call_count == 0
+
+
+def test_response_duplicate_cookie_names(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """
+    Test that response.cookies handles duplicate cookie names correctly.
+
+    Note: This behavior (losing cookies with same name but different domains/paths)
+    is arguably undesirable, but we promise to return a SimpleCookie object, and
+    SimpleCookie uses cookie name as the key. This is documented behavior.
+
+    To access all cookies including duplicates, users should use:
+    - response.headers.getall('Set-Cookie') for raw headers
+    - The session's cookie jar correctly stores all cookies
+    """
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    # Set headers with duplicate cookie names but different domains
+    headers = CIMultiDict(
+        [
+            (
+                "Set-Cookie",
+                "session-id=123-4567890; Domain=.example.com; Path=/; Secure",
+            ),
+            ("Set-Cookie", "session-id=098-7654321; Domain=.www.example.com; Path=/"),
+            ("Set-Cookie", "user-pref=dark; Domain=.example.com; Path=/"),
+            ("Set-Cookie", "user-pref=light; Domain=api.example.com; Path=/"),
+        ]
+    )
+    response._headers = CIMultiDictProxy(headers)
+    # Set raw cookie headers as done in ClientResponse.start()
+    response._raw_cookie_headers = tuple(headers.getall("Set-Cookie", []))
+
+    # SimpleCookie only keeps the last cookie with each name
+    # This is expected behavior since SimpleCookie uses name as the key
+    assert len(response.cookies) == 2  # Only 'session-id' and 'user-pref'
+    assert response.cookies["session-id"].value == "098-7654321"  # Last one wins
+    assert response.cookies["user-pref"].value == "light"  # Last one wins
+
+
+def test_response_raw_cookie_headers_preserved(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test that raw Set-Cookie headers are preserved in _raw_cookie_headers."""
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    # Set headers with multiple cookies
+    cookie_headers = [
+        "session-id=123; Domain=.example.com; Path=/; Secure",
+        "session-id=456; Domain=.www.example.com; Path=/",
+        "tracking=xyz; Domain=.example.com; Path=/; HttpOnly",
+    ]
+
+    headers: CIMultiDict[str] = CIMultiDict()
+    for cookie_hdr in cookie_headers:
+        headers.add("Set-Cookie", cookie_hdr)
+
+    response._headers = CIMultiDictProxy(headers)
+
+    # Set raw cookie headers as done in ClientResponse.start()
+    response._raw_cookie_headers = tuple(response.headers.getall(hdrs.SET_COOKIE, []))
+
+    # Verify raw headers are preserved
+    assert response._raw_cookie_headers == tuple(cookie_headers)
+    assert len(response._raw_cookie_headers) == 3
+
+    # But SimpleCookie only has unique names
+    assert len(response.cookies) == 2  # 'session-id' and 'tracking'
+
+
+def test_response_cookies_setter_updates_raw_headers(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Test that setting cookies property updates _raw_cookie_headers."""
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+    )
+
+    # Create a SimpleCookie with some cookies
+    cookies = SimpleCookie()
+    cookies["session-id"] = "123456"
+    cookies["session-id"]["domain"] = ".example.com"
+    cookies["session-id"]["path"] = "/"
+    cookies["session-id"]["secure"] = True
+
+    cookies["tracking"] = "xyz789"
+    cookies["tracking"]["domain"] = ".example.com"
+    cookies["tracking"]["httponly"] = True
+
+    # Set the cookies property
+    response.cookies = cookies
+
+    # Verify _raw_cookie_headers was updated
+    assert response._raw_cookie_headers is not None
+    assert len(response._raw_cookie_headers) == 2
+    assert isinstance(response._raw_cookie_headers, tuple)
+
+    # Check the raw headers contain the expected cookie strings
+    raw_headers = list(response._raw_cookie_headers)
+    assert any("session-id=123456" in h for h in raw_headers)
+    assert any("tracking=xyz789" in h for h in raw_headers)
+    assert any("Secure" in h for h in raw_headers)
+    assert any("HttpOnly" in h for h in raw_headers)
+
+    # Verify cookies property returns the same object
+    assert response.cookies is cookies
+
+    # Test setting empty cookies
+    empty_cookies = SimpleCookie()
+    response.cookies = empty_cookies
+    # Should not set _raw_cookie_headers for empty cookies
+    assert response._raw_cookie_headers is None

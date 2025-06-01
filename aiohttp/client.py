@@ -722,8 +722,11 @@ class ClientSession:
                             raise
                         raise ClientOSError(*exc.args) from exc
 
-                    if cookies := resp._cookies:
-                        self._cookie_jar.update_cookies(cookies, resp.url)
+                    # Update cookies from raw headers to preserve duplicates
+                    if resp._raw_cookie_headers:
+                        self._cookie_jar.update_cookies_from_headers(
+                            resp._raw_cookie_headers, resp.url
+                        )
 
                     # redirects
                     if resp.status in (301, 302, 303, 307, 308) and allow_redirects:
