@@ -87,7 +87,7 @@ COOKIE_MAX_LENGTH = 4096
 # This makes the cookie parser more tolerant of real-world cookies
 # while still providing some validation to catch obviously malformed names.
 _COOKIE_NAME_RE = re.compile(r"^[!#$%&\'()*+\-./0-9:<=>?@A-Z\[\]^_`a-z{|}~]+$")
-_KNOWN_ATTRS = frozenset(
+_KNOWN_ATTRS = frozenset(  # AKA Morsel._reserved
     (
         "path",
         "domain",
@@ -101,7 +101,7 @@ _KNOWN_ATTRS = frozenset(
         "comment",
     )
 )
-_BOOL_ATTRS = frozenset(("secure", "httponly", "partitioned"))
+_BOOL_ATTRS = frozenset(("secure", "httponly", "partitioned"))  # AKA Morsel._flags
 
 # SimpleCookie's pattern for parsing cookies with relaxed validation
 # Based on http.cookies pattern but extended to allow more characters in cookie names
