@@ -317,21 +317,25 @@ async def test_close(key: ConnectionKey) -> None:
 
 async def test_close_with_proto_closed_none(key: ConnectionKey) -> None:
     """Test close when protocol.closed is None."""
-    # Create a protocol where closed property returns None
-    proto = mock.create_autospec(ResponseHandler, instance=True)
-    proto.closed = None
-    proto.close = mock.Mock()
+    # Create protocols where closed property returns None
+    proto1 = mock.create_autospec(ResponseHandler, instance=True)
+    proto1.closed = None
+    proto1.close = mock.Mock()
+
+    proto2 = mock.create_autospec(ResponseHandler, instance=True)
+    proto2.closed = None
+    proto2.close = mock.Mock()
 
     conn = aiohttp.BaseConnector()
-    # Add protocol to acquired connections
-    conn._acquired.add(proto)
+    conn._conns[key] = deque([(proto1, 0)])
+    conn._acquired.add(proto2)
 
-    # Close the connector
+    # Close the connector - this should handle the case where proto.closed is None
     await conn.close()
 
-    # Verify close was called on the protocol
-    assert proto.close.called
-    # Verify no waiters were added when closed is None
+    # Verify close was called on both protocols
+    assert proto1.close.called
+    assert proto2.close.called
     assert conn.closed
 
 
