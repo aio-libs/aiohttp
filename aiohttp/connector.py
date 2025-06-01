@@ -462,13 +462,15 @@ class BaseConnector:
                 self._cleanup_closed_handle.cancel()
 
             for data in self._conns.values():
-                for proto, t0 in data:
+                for proto, _ in data:
                     proto.close()
-                    waiters.append(proto.closed)
+                    if closed := proto.closed:
+                        waiters.append(closed)
 
             for proto in self._acquired:
                 proto.close()
-                waiters.append(proto.closed)
+                if closed := proto.closed:
+                    waiters.append(closed)
 
             # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
             for transport in self._cleanup_closed_transports:
