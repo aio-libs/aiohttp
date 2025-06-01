@@ -1169,7 +1169,7 @@ def create_cookie_morsel(
     return morsel
 
 
-def preserve_morsel_with_coded_value(cookie: Morsel[str], name: str) -> Morsel[str]:
+def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
     """
     Preserve a Morsel's coded_value exactly as received from the server.
 

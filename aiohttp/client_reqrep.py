@@ -1027,7 +1027,7 @@ class ClientRequest:
         for name, value in iter_cookies:
             if isinstance(value, Morsel):
                 # Use helper to preserve coded_value exactly as sent by server
-                c[name] = preserve_morsel_with_coded_value(value, name)
+                c[name] = preserve_morsel_with_coded_value(value)
             else:
                 c[name] = value  # type: ignore[assignment]
 

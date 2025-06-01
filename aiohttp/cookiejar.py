@@ -377,7 +377,7 @@ class CookieJar(AbstractCookieJar):
                     continue
 
                 # Use helper to preserve coded_value exactly as sent by server
-                mrsl_val = preserve_morsel_with_coded_value(cookie, name)
+                mrsl_val = preserve_morsel_with_coded_value(cookie)
                 self._morsel_cache[p][name] = mrsl_val
                 filtered[name] = mrsl_val
 
