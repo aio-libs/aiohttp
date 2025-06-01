@@ -3,7 +3,7 @@ import logging
 import socket
 from abc import ABC, abstractmethod
 from collections.abc import Sized
-from http.cookies import BaseCookie, Morsel
+from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -14,6 +14,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Sequence,
     Tuple,
     TypedDict,
     Union,
@@ -22,6 +23,7 @@ from typing import (
 from multidict import CIMultiDict
 from yarl import URL
 
+from .log import client_logger
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:
@@ -191,6 +193,31 @@ class AbstractCookieJar(Sized, IterableBase):
     @abstractmethod
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
+
+    def update_cookies_from_headers(
+        self, headers: Sequence[str], response_url: URL
+    ) -> None:
+        """
+        Update cookies from raw Set-Cookie headers.
+
+        Default implementation parses each header separately to preserve
+        cookies with same name but different domain/path.
+        """
+        # Default implementation for backward compatibility
+        cookies_to_update: List[Tuple[str, Morsel[str]]] = []
+        for cookie_header in headers:
+            tmp_cookie = SimpleCookie()
+            try:
+                tmp_cookie.load(cookie_header)
+                # Collect all cookies as tuples (name, morsel)
+                for name, morsel in tmp_cookie.items():
+                    cookies_to_update.append((name, morsel))
+            except CookieError as exc:
+                client_logger.warning("Can not load response cookies: %s", exc)
+
+        # Update all cookies at once for efficiency
+        if cookies_to_update:
+            self.update_cookies(cookies_to_update, response_url)
 
     @abstractmethod
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
