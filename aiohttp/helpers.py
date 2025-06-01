@@ -1254,22 +1254,13 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
                 if not morsel_seen:
                     # Invalid cookie string - attribute before cookie
                     break
-                elif lower_key in _COOKIE_BOOL_ATTRS:
+                if lower_key in _COOKIE_BOOL_ATTRS:
                     # Boolean attribute with any value should be True
                     if current_morsel is not None:
                         current_morsel[lower_key] = True
-                if value is None:
-                    if lower_key in _COOKIE_BOOL_ATTRS:
-                        # Boolean attribute
-                        if current_morsel is not None:
-                            current_morsel[lower_key] = True
-                    else:
-                        # Invalid cookie string - non-boolean attribute without value
-                        break
-                elif lower_key in _COOKIE_BOOL_ATTRS:
-                    # Boolean attribute with any value should be True
-                    if current_morsel is not None:
-                        current_morsel[lower_key] = True
+                elif value is None:
+                    # Invalid cookie string - non-boolean attribute without value
+                    break
                 elif current_morsel is not None:
                     # Regular attribute with value
                     current_morsel[lower_key] = _unquote(value)
