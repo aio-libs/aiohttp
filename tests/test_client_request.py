@@ -612,6 +612,59 @@ def test_gen_netloc_no_port(make_request) -> None:
     )
 
 
+def test_cookie_coded_value_preserved(loop: asyncio.AbstractEventLoop) -> None:
+    """Verify the coded value of a cookie is preserved."""
+    # https://github.com/aio-libs/aiohttp/pull/1453
+    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+    req.update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
+    assert req.headers["COOKIE"] == 'ip-cookie="second"'
+
+
+def test_update_cookies_with_special_chars_in_existing_header(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that update_cookies handles existing cookies with special characters."""
+    # Create request with a cookie that has special characters (real-world example)
+    req = ClientRequest(
+        "get",
+        URL("http://python.org"),
+        headers={"Cookie": "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}=value1"},
+        loop=loop,
+    )
+
+    # Update with another cookie
+    req.update_cookies(cookies={"normal_cookie": "value2"})
+
+    # Both cookies should be preserved in the exact order
+    assert (
+        req.headers["COOKIE"]
+        == "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}=value1; normal_cookie=value2"
+    )
+
+
+def test_update_cookies_with_quoted_existing_header(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that update_cookies handles existing cookies with quoted values."""
+    # Create request with cookies that have quoted values
+    req = ClientRequest(
+        "get",
+        URL("http://python.org"),
+        headers={"Cookie": 'session="value;with;semicolon"; token=abc123'},
+        loop=loop,
+    )
+
+    # Update with another cookie
+    req.update_cookies(cookies={"new_cookie": "new_value"})
+
+    # All cookies should be preserved with their original coded values
+    # The quoted value should be preserved as-is
+    assert (
+        req.headers["COOKIE"]
+        == 'new_cookie=new_value; session="value;with;semicolon"; token=abc123'
+    )
+
+
 async def test_connection_header(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
