@@ -935,6 +935,75 @@ def test_parse_cookie_headers_ansi_c_asctime_format() -> None:
     assert result[0][1]["expires"] == "Wed Jun  9 10:18:14 2021"
 
 
+def test_parse_cookie_headers_rfc2822_timezone_issue_4493() -> None:
+    """
+    Test that parse_cookie_headers handles RFC 2822 timezone formats.
+
+    This tests the fix for issue #4493 - support for RFC 2822-compliant dates
+    with timezone offsets like -0000, +0100, etc.
+    NOTE: This is an aiohttp extension - SimpleCookie does NOT support this format.
+    """
+    headers = [
+        # RFC 2822 with -0000 timezone (common in some APIs)
+        "hello=world; expires=Wed, 15 Jan 2020 09:45:07 -0000",
+        # RFC 2822 with positive offset
+        "session=abc123; expires=Thu, 01 Feb 2024 14:30:00 +0100",
+        # RFC 2822 with negative offset
+        "token=xyz789; expires=Fri, 02 Mar 2025 08:15:30 -0500",
+        # Standard GMT for comparison
+        "classic=cookie; expires=Sat, 03 Apr 2026 12:00:00 GMT",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    # All cookies should be parsed
+    assert len(result) == 4
+
+    # Check each cookie was parsed with its expires attribute
+    assert result[0][0] == "hello"
+    assert result[0][1].value == "world"
+    assert result[0][1]["expires"] == "Wed, 15 Jan 2020 09:45:07 -0000"
+
+    assert result[1][0] == "session"
+    assert result[1][1].value == "abc123"
+    assert result[1][1]["expires"] == "Thu, 01 Feb 2024 14:30:00 +0100"
+
+    assert result[2][0] == "token"
+    assert result[2][1].value == "xyz789"
+    assert result[2][1]["expires"] == "Fri, 02 Mar 2025 08:15:30 -0500"
+
+    assert result[3][0] == "classic"
+    assert result[3][1].value == "cookie"
+    assert result[3][1]["expires"] == "Sat, 03 Apr 2026 12:00:00 GMT"
+
+
+def test_parse_cookie_headers_rfc2822_with_attributes() -> None:
+    """Test that RFC 2822 dates work correctly with other cookie attributes."""
+    headers = [
+        "session=abc123; expires=Wed, 15 Jan 2020 09:45:07 -0000; Path=/; HttpOnly; Secure",
+        "token=xyz789; expires=Thu, 01 Feb 2024 14:30:00 +0100; Domain=.example.com; SameSite=Strict",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 2
+
+    # First cookie
+    assert result[0][0] == "session"
+    assert result[0][1].value == "abc123"
+    assert result[0][1]["expires"] == "Wed, 15 Jan 2020 09:45:07 -0000"
+    assert result[0][1]["path"] == "/"
+    assert result[0][1]["httponly"] is True
+    assert result[0][1]["secure"] is True
+
+    # Second cookie
+    assert result[1][0] == "token"
+    assert result[1][1].value == "xyz789"
+    assert result[1][1]["expires"] == "Thu, 01 Feb 2024 14:30:00 +0100"
+    assert result[1][1]["domain"] == ".example.com"
+    assert result[1][1]["samesite"] == "Strict"
+
+
 def test_parse_cookie_headers_date_formats_with_attributes() -> None:
     """Test that date formats work correctly with other cookie attributes."""
     headers = [
