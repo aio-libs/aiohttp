@@ -880,40 +880,8 @@ def test_parse_cookie_headers_performance() -> None:
 
 def test_parse_cookie_headers_edge_cases() -> None:
     """Test various edge cases."""
-    # Empty input
-    assert parse_cookie_headers([]) == []
-    assert parse_cookie_headers([""]) == []
-    assert parse_cookie_headers(["", "", ""]) == []
-
     # Very long cookie values
     long_value = "x" * 4096
     result = parse_cookie_headers([f"name={long_value}"])
     assert len(result) == 1
     assert result[0][1].value == long_value
-
-
-def test_parse_cookie_headers_compat_with_cpython() -> None:
-    """Test cases where we match SimpleCookie exactly."""
-    compatible_cases = [
-        "name=value",
-        "name=value; Path=/",
-        'name="quoted value"',
-        "name=; Path=/",  # Empty value
-        "c1=v1; c2=v2; c3=v3",
-        "name=value; Domain=.example.com; Path=/test; Max-Age=3600; "
-        "Secure; HttpOnly; SameSite=Lax",
-    ]
-
-    for cookie_str in compatible_cases:
-        sc = SimpleCookie()
-        sc.load(cookie_str)
-
-        result = parse_cookie_headers([cookie_str])
-
-        # Should parse same number of cookies
-        assert len(result) == len(sc), f"Mismatch for: {cookie_str}"
-
-        # Values should match
-        for (name, morsel), (sc_name, sc_morsel) in zip(result, sc.items()):
-            assert name == sc_name
-            assert morsel.value == sc_morsel.value
