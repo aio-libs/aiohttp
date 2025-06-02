@@ -10,6 +10,68 @@
 
 .. towncrier release notes start
 
+3.12.7 (2025-06-02)
+===================
+
+Bug fixes
+---------
+
+- Fixed cookie parsing to be more lenient when handling cookies with special characters
+  in names or values. Cookies with characters like ``{``, ``}``, and ``/`` in names are now
+  accepted instead of causing a :exc:`~http.cookies.CookieError` and 500 errors. Additionally,
+  cookies with mismatched quotes in values are now parsed correctly, and quoted cookie
+  values are now handled consistently whether or not they include special attributes
+  like ``Domain``. Also fixed :class:`~aiohttp.CookieJar` to ensure shared cookies (domain="", path="")
+  respect the ``quote_cookie`` parameter, making cookie quoting behavior consistent for
+  all cookies -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2683`, :issue:`5397`, :issue:`7993`, :issue:`11112`.
+
+
+
+- Fixed an issue where cookies with duplicate names but different domains or paths
+  were lost when updating the cookie jar. The :class:`~aiohttp.ClientSession`
+  cookie jar now correctly stores all cookies even if they have the same name but
+  different domain or path, following the :rfc:`6265#section-5.3` storage model -- by :user:`bdraco`.
+
+  Note that :attr:`ClientResponse.cookies <aiohttp.ClientResponse.cookies>` returns
+  a :class:`~http.cookies.SimpleCookie` which uses the cookie name as a key, so
+  only the last cookie with each name is accessible via this interface. All cookies
+  can be accessed via :meth:`ClientResponse.headers.getall('Set-Cookie')
+  <multidict.MultiDictProxy.getall>` if needed.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`4486`, :issue:`11105`, :issue:`11106`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Avoided creating closed futures in ``ResponseHandler`` that will never be awaited -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11107`.
+
+
+
+- Downgraded the logging level for connector close errors from ERROR to DEBUG, as these are expected behavior with TLS 1.3 connections -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11114`.
+
+
+
+
+----
+
+
 3.12.6 (2025-05-31)
 ===================
 
