@@ -2,6 +2,7 @@
 import asyncio
 import gc
 import hashlib
+import logging
 import platform
 import socket
 import ssl
@@ -309,6 +310,7 @@ async def test_close_with_exception_during_closing(
     loop: asyncio.AbstractEventLoop, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Test that exceptions during connection closing are logged."""
+    caplog.set_level(logging.DEBUG)
     proto = create_mocked_conn()
 
     # Make the closed future raise an exception when awaited
@@ -327,7 +329,7 @@ async def test_close_with_exception_during_closing(
 
     # Check that the error was logged
     assert len(caplog.records) == 1
-    assert caplog.records[0].levelname == "ERROR"
+    assert caplog.records[0].levelname == "DEBUG"
     assert "Error while closing connector" in caplog.records[0].message
     assert "RuntimeError('Connection close failed')" in caplog.records[0].message
 
