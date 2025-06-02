@@ -1015,7 +1015,7 @@ class ClientRequest:
 
         c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
-            c.load(self.headers.get(hdrs.COOKIE, ""))
+            c.update(parse_cookie_headers((self.headers.get(hdrs.COOKIE, ""),)))
             del self.headers[hdrs.COOKIE]
 
         if isinstance(cookies, Mapping):
