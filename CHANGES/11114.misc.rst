@@ -1,1 +1,0 @@
-Downgraded the logging level for connector close errors from ERROR to DEBUG, as these are expected behavior with TLS 1.3 connections -- by :user:`bdraco`.
