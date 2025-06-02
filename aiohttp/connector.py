@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import logging
 import random
 import socket
 import sys
@@ -60,6 +59,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .log import client_logger
 from .resolver import DefaultResolver
 
 if sys.version_info >= (3, 12):
@@ -439,7 +439,7 @@ class BaseConnector:
             for res in results:
                 if isinstance(res, Exception):
                     err_msg = "Error while closing connector: " + repr(res)
-                    logging.error(err_msg)
+                    client_logger.debug(err_msg)
 
     def _close_immediately(self) -> List[Awaitable[object]]:
         waiters: List[Awaitable[object]] = []
