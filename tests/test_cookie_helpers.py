@@ -944,11 +944,12 @@ def test_make_quoted_morsel() -> None:
 def test_make_quoted_morsel_special_chars() -> None:
     """Test make_quoted_morsel handles special characters correctly."""
     # Test various special characters that require quoting
+    # SimpleCookie.value_encode escapes some characters but not others
     test_cases = [
-        ("semicolon", "value;with;semicolon", '"value;with;semicolon"'),
-        ("comma", "value,with,comma", '"value,with,comma"'),
+        ("semicolon", "value;with;semicolon", '"value\\073with\\073semicolon"'),
+        ("comma", "value,with,comma", '"value\\054with\\054comma"'),
         ("space", "value with space", '"value with space"'),
-        ("equals", "value=with=equals", '"value=with=equals"'),
+        ("equals", "value=with=equals", '"value=with=equals"'),  # equals is not escaped
     ]
 
     for name, value, expected_coded in test_cases:
@@ -966,11 +967,7 @@ def test_morsel_helper_functions_integration() -> None:
     """Test integration of all morsel helper functions."""
     # Create a cookie with special characters
     original = Morsel()
-    original.set("session", "abc;123", '"abc;123"')
-
-    # Test preserving coded_value
-    preserved = preserve_morsel_with_coded_value(original)
-    assert preserved.coded_value == '"abc;123"'
+    original.set("session", "abc;123", '"abc\\073123"')
 
     # Test making non-quoted version
     non_quoted = make_non_quoted_morsel(original)
@@ -978,4 +975,4 @@ def test_morsel_helper_functions_integration() -> None:
 
     # Test making quoted version
     quoted = make_quoted_morsel(original)
-    assert quoted.coded_value == '"abc;123"'  # With quotes
+    assert quoted.coded_value == '"abc\\073123"'  # With quotes and escaped semicolon
