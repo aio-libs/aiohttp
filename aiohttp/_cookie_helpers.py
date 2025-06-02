@@ -133,6 +133,9 @@ def make_non_quoted_morsel(cookie: Morsel[str]) -> Morsel[str]:
     return morsel
 
 
+_SIMPLE_COOKIE = SimpleCookie()
+
+
 def make_quoted_morsel(cookie: Morsel[str]) -> Morsel[str]:
     """
     Create a new Morsel from a cookie name and value.
@@ -145,9 +148,8 @@ def make_quoted_morsel(cookie: Morsel[str]) -> Morsel[str]:
 
     """
     morsel: Morsel[str] = Morsel()
-    simple_cookie = SimpleCookie()
     _set_validated_morsel_values(
-        morsel, cookie.key, *simple_cookie.value_encode(cookie.value)
+        morsel, cookie.key, *_SIMPLE_COOKIE.value_encode(cookie.value)
     )
     return morsel
 
