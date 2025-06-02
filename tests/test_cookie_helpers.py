@@ -1,7 +1,6 @@
 """Tests for internal cookie helper functions."""
 
 from http.cookies import CookieError, Morsel, SimpleCookie
-from unittest import mock
 
 import pytest
 
@@ -425,53 +424,40 @@ def test_parse_cookie_headers_boolean_attrs() -> None:
 
 def test_parse_cookie_headers_boolean_attrs_with_partitioned() -> None:
     """Test that boolean attributes including partitioned work correctly."""
-    # Create patched reserved and flags with partitioned support
-    patched_reserved = Morsel._reserved.copy()  # type: ignore[attr-defined]
-    patched_reserved["partitioned"] = "partitioned"
+    # Test secure attribute variations
+    secure_headers = [
+        "cookie1=value1; Secure",
+        "cookie2=value2; Secure=",
+        "cookie3=value3; Secure=true",  # Non-standard but might occur
+    ]
 
-    patched_flags = Morsel._flags.copy()  # type: ignore[attr-defined]
-    patched_flags.add("partitioned")
+    result = parse_cookie_headers(secure_headers)
+    assert len(result) == 3
+    for name, morsel in result:
+        assert morsel.get("secure") is True, f"{name} should have secure=True"
 
-    with (
-        mock.patch.object(Morsel, "_reserved", patched_reserved),
-        mock.patch.object(Morsel, "_flags", patched_flags),
-    ):
-        # Test secure attribute variations
-        secure_headers = [
-            "cookie1=value1; Secure",
-            "cookie2=value2; Secure=",
-            "cookie3=value3; Secure=true",  # Non-standard but might occur
-        ]
+    # Test httponly attribute variations
+    httponly_headers = [
+        "cookie4=value4; HttpOnly",
+        "cookie5=value5; HttpOnly=",
+    ]
 
-        result = parse_cookie_headers(secure_headers)
-        assert len(result) == 3
-        for name, morsel in result:
-            assert morsel.get("secure") is True, f"{name} should have secure=True"
+    result = parse_cookie_headers(httponly_headers)
+    assert len(result) == 2
+    for name, morsel in result:
+        assert morsel.get("httponly") is True, f"{name} should have httponly=True"
 
-        # Test httponly attribute variations
-        httponly_headers = [
-            "cookie4=value4; HttpOnly",
-            "cookie5=value5; HttpOnly=",
-        ]
+    # Test partitioned attribute variations
+    partitioned_headers = [
+        "cookie6=value6; Partitioned",
+        "cookie7=value7; Partitioned=",
+        "cookie8=value8; Partitioned=yes",  # Non-standard but might occur
+    ]
 
-        result = parse_cookie_headers(httponly_headers)
-        assert len(result) == 2
-        for name, morsel in result:
-            assert morsel.get("httponly") is True, f"{name} should have httponly=True"
-
-        # Test partitioned attribute variations
-        partitioned_headers = [
-            "cookie6=value6; Partitioned",
-            "cookie7=value7; Partitioned=",
-            "cookie8=value8; Partitioned=yes",  # Non-standard but might occur
-        ]
-
-        result = parse_cookie_headers(partitioned_headers)
-        assert len(result) == 3
-        for name, morsel in result:
-            assert (
-                morsel.get("partitioned") is True
-            ), f"{name} should have partitioned=True"
+    result = parse_cookie_headers(partitioned_headers)
+    assert len(result) == 3
+    for name, morsel in result:
+        assert morsel.get("partitioned") is True, f"{name} should have partitioned=True"
 
 
 def test_parse_cookie_headers_encoded_values() -> None:
@@ -497,80 +483,54 @@ def test_parse_cookie_headers_partitioned() -> None:
 
     This tests the fix for issue #10380 - partitioned cookies support.
     The partitioned attribute is a boolean flag like secure and httponly.
-    On Python < 3.14, this test demonstrates that aiohttp's parser can handle
-    partitioned cookies even though Python's SimpleCookie doesn't natively support them.
     """
-    # Create patched reserved and flags with partitioned support
-    patched_reserved = Morsel._reserved.copy()  # type: ignore[attr-defined]
-    patched_reserved["partitioned"] = "partitioned"
+    headers = [
+        "cookie1=value1; Partitioned",
+        "cookie2=value2; Partitioned=",
+        "cookie3=value3; Partitioned=true",  # Non-standard but might occur
+        "cookie4=value4; Secure; Partitioned; HttpOnly",
+        "cookie5=value5; Domain=.example.com; Path=/; Partitioned",
+    ]
 
-    patched_flags = Morsel._flags.copy()  # type: ignore[attr-defined]
-    patched_flags.add("partitioned")
+    result = parse_cookie_headers(headers)
 
-    with (
-        mock.patch.object(Morsel, "_reserved", patched_reserved),
-        mock.patch.object(Morsel, "_flags", patched_flags),
-    ):
+    assert len(result) == 5
 
-        headers = [
-            "cookie1=value1; Partitioned",
-            "cookie2=value2; Partitioned=",
-            "cookie3=value3; Partitioned=true",  # Non-standard but might occur
-            "cookie4=value4; Secure; Partitioned; HttpOnly",
-            "cookie5=value5; Domain=.example.com; Path=/; Partitioned",
-        ]
+    # All cookies should have partitioned=True
+    for i, (name, morsel) in enumerate(result):
+        assert (
+            morsel.get("partitioned") is True
+        ), f"Cookie {i+1} should have partitioned=True"
+        assert name == f"cookie{i+1}"
+        assert morsel.value == f"value{i+1}"
 
-        result = parse_cookie_headers(headers)
+    # Cookie 4 should also have secure and httponly
+    assert result[3][1].get("secure") is True
+    assert result[3][1].get("httponly") is True
 
-        assert len(result) == 5
-
-        # All cookies should have partitioned=True
-        for i, (name, morsel) in enumerate(result):
-            assert (
-                morsel.get("partitioned") is True
-            ), f"Cookie {i+1} should have partitioned=True"
-            assert name == f"cookie{i+1}"
-            assert morsel.value == f"value{i+1}"
-
-        # Cookie 4 should also have secure and httponly
-        assert result[3][1].get("secure") is True
-        assert result[3][1].get("httponly") is True
-
-        # Cookie 5 should also have domain and path
-        assert result[4][1].get("domain") == ".example.com"
-        assert result[4][1].get("path") == "/"
+    # Cookie 5 should also have domain and path
+    assert result[4][1].get("domain") == ".example.com"
+    assert result[4][1].get("path") == "/"
 
 
 def test_parse_cookie_headers_partitioned_case_insensitive() -> None:
     """Test that partitioned attribute is recognized case-insensitively."""
-    # Create patched reserved and flags with partitioned support
-    patched_reserved = Morsel._reserved.copy()  # type: ignore[attr-defined]
-    patched_reserved["partitioned"] = "partitioned"
+    headers = [
+        "cookie1=value1; partitioned",  # lowercase
+        "cookie2=value2; PARTITIONED",  # uppercase
+        "cookie3=value3; Partitioned",  # title case
+        "cookie4=value4; PaRtItIoNeD",  # mixed case
+    ]
 
-    patched_flags = Morsel._flags.copy()  # type: ignore[attr-defined]
-    patched_flags.add("partitioned")
+    result = parse_cookie_headers(headers)
 
-    with (
-        mock.patch.object(Morsel, "_reserved", patched_reserved),
-        mock.patch.object(Morsel, "_flags", patched_flags),
-    ):
+    assert len(result) == 4
 
-        headers = [
-            "cookie1=value1; partitioned",  # lowercase
-            "cookie2=value2; PARTITIONED",  # uppercase
-            "cookie3=value3; Partitioned",  # title case
-            "cookie4=value4; PaRtItIoNeD",  # mixed case
-        ]
-
-        result = parse_cookie_headers(headers)
-
-        assert len(result) == 4
-
-        # All should be recognized as partitioned
-        for i, (_, morsel) in enumerate(result):
-            assert (
-                morsel.get("partitioned") is True
-            ), f"Cookie {i+1} should have partitioned=True"
+    # All should be recognized as partitioned
+    for i, (_, morsel) in enumerate(result):
+        assert (
+            morsel.get("partitioned") is True
+        ), f"Cookie {i+1} should have partitioned=True"
 
 
 def test_parse_cookie_headers_partitioned_not_set() -> None:
