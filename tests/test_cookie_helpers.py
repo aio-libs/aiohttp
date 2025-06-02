@@ -963,9 +963,9 @@ def test_make_quoted_morsel_special_chars() -> None:
         assert result.coded_value == expected_coded
 
 
-def test_morsel_helper_functions_integration() -> None:
-    """Test integration of all morsel helper functions."""
-    # Create a cookie with special characters
+def test_make_quoted_and_non_quoted_morsel_with_semicolon() -> None:
+    """Test that make_quoted_morsel and make_non_quoted_morsel handle semicolons correctly."""
+    # Create a cookie with semicolons
     original = Morsel()
     original.set("session", "abc;123", '"abc\\073123"')
 
