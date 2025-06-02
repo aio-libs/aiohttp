@@ -315,8 +315,7 @@ class ClientResponse(HeadersMixin):
                 cookies = SimpleCookie()
                 # Use parse_cookie_headers for more lenient parsing that handles
                 # malformed cookies better than SimpleCookie.load
-                parsed = parse_cookie_headers(self._raw_cookie_headers)
-                cookies.update(parsed)
+                cookies.update(parse_cookie_headers(self._raw_cookie_headers))
                 self._cookies = cookies
             else:
                 self._cookies = SimpleCookie()
