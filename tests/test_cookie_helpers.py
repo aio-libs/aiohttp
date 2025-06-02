@@ -868,3 +868,95 @@ def test_parse_cookie_headers_edge_cases() -> None:
     result = parse_cookie_headers([f"name={long_value}"])
     assert len(result) == 1
     assert result[0][1].value == long_value
+
+
+def test_parse_cookie_headers_various_date_formats_issue_4327() -> None:
+    """
+    Test that parse_cookie_headers handles various date formats per RFC 6265.
+
+    This tests the fix for issue #4327 - support for RFC 822, RFC 850,
+    and ANSI C asctime() date formats in cookie expiration.
+    """
+    # Test various date formats
+    headers = [
+        # RFC 822 format (preferred format)
+        "cookie1=value1; Expires=Wed, 09 Jun 2021 10:18:14 GMT",
+        # RFC 850 format (obsolete but still used)
+        "cookie2=value2; Expires=Wednesday, 09-Jun-21 10:18:14 GMT",
+        # RFC 822 with dashes
+        "cookie3=value3; Expires=Wed, 09-Jun-2021 10:18:14 GMT",
+        # ANSI C asctime() format (aiohttp extension - not supported by SimpleCookie)
+        "cookie4=value4; Expires=Wed Jun  9 10:18:14 2021",
+        # Various other formats seen in the wild
+        "cookie5=value5; Expires=Thu, 01 Jan 2030 00:00:00 GMT",
+        "cookie6=value6; Expires=Mon, 31-Dec-99 23:59:59 GMT",
+        "cookie7=value7; Expires=Tue, 01-Jan-30 00:00:00 GMT",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    # All cookies should be parsed
+    assert len(result) == 7
+
+    # Check each cookie was parsed with its expires attribute
+    expected_cookies = [
+        ("cookie1", "value1", "Wed, 09 Jun 2021 10:18:14 GMT"),
+        ("cookie2", "value2", "Wednesday, 09-Jun-21 10:18:14 GMT"),
+        ("cookie3", "value3", "Wed, 09-Jun-2021 10:18:14 GMT"),
+        ("cookie4", "value4", "Wed Jun  9 10:18:14 2021"),
+        ("cookie5", "value5", "Thu, 01 Jan 2030 00:00:00 GMT"),
+        ("cookie6", "value6", "Mon, 31-Dec-99 23:59:59 GMT"),
+        ("cookie7", "value7", "Tue, 01-Jan-30 00:00:00 GMT"),
+    ]
+
+    for (name, morsel), (exp_name, exp_value, exp_expires) in zip(
+        result, expected_cookies
+    ):
+        assert name == exp_name
+        assert morsel.value == exp_value
+        assert morsel.get("expires") == exp_expires
+
+
+def test_parse_cookie_headers_ansi_c_asctime_format() -> None:
+    """
+    Test parsing of ANSI C asctime() format.
+
+    This tests support for ANSI C asctime() format (e.g., "Wed Jun  9 10:18:14 2021").
+    NOTE: This is an aiohttp extension - SimpleCookie does NOT support this format.
+    """
+    headers = ["cookie1=value1; Expires=Wed Jun  9 10:18:14 2021"]
+
+    result = parse_cookie_headers(headers)
+
+    # Should parse correctly with the expires attribute preserved
+    assert len(result) == 1
+    assert result[0][0] == "cookie1"
+    assert result[0][1].value == "value1"
+    assert result[0][1]["expires"] == "Wed Jun  9 10:18:14 2021"
+
+
+def test_parse_cookie_headers_date_formats_with_attributes() -> None:
+    """Test that date formats work correctly with other cookie attributes."""
+    headers = [
+        "session=abc123; Expires=Wed, 09 Jun 2030 10:18:14 GMT; Path=/; HttpOnly; Secure",
+        "token=xyz789; Expires=Wednesday, 09-Jun-30 10:18:14 GMT; Domain=.example.com; SameSite=Strict",
+    ]
+
+    result = parse_cookie_headers(headers)
+
+    assert len(result) == 2
+
+    # First cookie
+    assert result[0][0] == "session"
+    assert result[0][1].value == "abc123"
+    assert result[0][1]["expires"] == "Wed, 09 Jun 2030 10:18:14 GMT"
+    assert result[0][1]["path"] == "/"
+    assert result[0][1]["httponly"] is True
+    assert result[0][1]["secure"] is True
+
+    # Second cookie
+    assert result[1][0] == "token"
+    assert result[1][1].value == "xyz789"
+    assert result[1][1]["expires"] == "Wednesday, 09-Jun-30 10:18:14 GMT"
+    assert result[1][1]["domain"] == ".example.com"
+    assert result[1][1]["samesite"] == "Strict"

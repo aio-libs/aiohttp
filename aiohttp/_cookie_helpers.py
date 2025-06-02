@@ -57,9 +57,13 @@ _COOKIE_PATTERN = re.compile(
     |                                  # or
     "[^";]*                            # Unmatched opening quote (differs from SimpleCookie - issue #7993)
     |                                  # or
-    # Special case for "expires" attr
-    (\w{3,6}day|\w{3}),\s              # Day of the week or abbreviated day
-    [\w\d\s-]{9,11}\s[\d:]{8}\sGMT     # Date and time in specific format
+    # Special case for "expires" attr - RFC 822, RFC 850, RFC 1036, RFC 1123
+    (\w{3,6}day|\w{3}),\s              # Day of the week or abbreviated day (with comma)
+    [\w\d\s-]{9,11}\s[\d:]{8}\sGMT     # Date and time in specific format with GMT
+    |                                  # or
+    # ANSI C asctime() format: "Wed Jun  9 10:18:14 2021"
+    # NOTE: This is an aiohttp extension for issue #4327 - SimpleCookie does NOT support this format
+    \w{3}\s+\w{3}\s+[\s\d]\d\s+\d{2}:\d{2}:\d{2}\s+\d{4}
     |                                  # or
     [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\=\[\]]*      # Any word or empty string
     )                                # End of group 'val'
