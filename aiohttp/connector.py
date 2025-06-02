@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import logging
 import random
 import socket
 import sys
@@ -60,6 +59,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .log import client_logger
 from .resolver import DefaultResolver
 
 if sys.version_info >= (3, 12):
@@ -137,7 +137,7 @@ async def _wait_for_close(waiters: List[Awaitable[object]]) -> None:
     results = await asyncio.gather(*waiters, return_exceptions=True)
     for res in results:
         if isinstance(res, Exception):
-            logging.error("Error while closing connector: %r", res)
+            client_logger.debug("Error while closing connector: %r", res)
 
 
 class Connection:
