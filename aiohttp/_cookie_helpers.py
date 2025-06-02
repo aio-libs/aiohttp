@@ -244,7 +244,10 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
                 else:
                     # Create new morsel
                     current_morsel = Morsel()
-                    _set_validated_morsel_values(current_morsel, key, _unquote(value))
+                    # Preserve the original value as coded_value (with quotes if present)
+                    _set_validated_morsel_values(
+                        current_morsel, key, _unquote(value), value
+                    )
                     parsed_cookies.append((key, current_morsel))
                     morsel_seen = True
             else:

@@ -1014,6 +1014,7 @@ class ClientRequest:
 
         c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
+            # parse_cookie_headers already preserves coded values
             c.update(parse_cookie_headers((self.headers.get(hdrs.COOKIE, ""),)))
             del self.headers[hdrs.COOKIE]
 
