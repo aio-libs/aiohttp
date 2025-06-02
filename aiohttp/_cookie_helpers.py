@@ -96,7 +96,11 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
 
     """
     mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-    mrsl_val.__setstate__(
+    # We use __setstate__ instead of the public set() API because it allows us to
+    # bypass validation and set already validated state. This is more stable than
+    # setting protected attributes directly and unlikely to change since it would
+    # break pickling.
+    mrsl_val.__setstate__(  # type: ignore[attr-defined]
         {"key": cookie.key, "value": cookie.value, "coded_value": cookie.coded_value}
     )
     return mrsl_val
@@ -114,7 +118,11 @@ def make_non_quoted_morsel(cookie: Morsel[str]) -> Morsel[str]:
 
     """
     morsel: Morsel[str] = Morsel()
-    morsel.__setstate__(
+    # We use __setstate__ instead of the public set() API because it allows us to
+    # bypass validation and set already validated state. This is more stable than
+    # setting protected attributes directly and unlikely to change since it would
+    # break pickling.
+    morsel.__setstate__(  # type: ignore[attr-defined]
         {"key": cookie.key, "value": cookie.value, "coded_value": cookie.value}
     )
     return morsel
@@ -136,7 +144,11 @@ def make_quoted_morsel(cookie: Morsel[str]) -> Morsel[str]:
     """
     morsel: Morsel[str] = Morsel()
     value, coded_value = _SIMPLE_COOKIE.value_encode(cookie.value)
-    morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})
+    # We use __setstate__ instead of the public set() API because it allows us to
+    # bypass validation and set already validated state. This is more stable than
+    # setting protected attributes directly and unlikely to change since it would
+    # break pickling.
+    morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})  # type: ignore[attr-defined]
     return morsel
 
 
@@ -237,7 +249,11 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
                     # Create new morsel
                     current_morsel = Morsel()
                     # Preserve the original value as coded_value (with quotes if present)
-                    current_morsel.__setstate__(
+                    # We use __setstate__ instead of the public set() API because it allows us to
+                    # bypass validation and set already validated state. This is more stable than
+                    # setting protected attributes directly and unlikely to change since it would
+                    # break pickling.
+                    current_morsel.__setstate__(  # type: ignore[attr-defined]
                         {"key": key, "value": _unquote(value), "coded_value": value}
                     )
                     parsed_cookies.append((key, current_morsel))
