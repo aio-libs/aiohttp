@@ -9,7 +9,7 @@ import traceback
 import warnings
 from collections.abc import Mapping
 from hashlib import md5, sha1, sha256
-from http.cookies import CookieError, Morsel, SimpleCookie
+from http.cookies import Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -30,6 +30,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, helpers, http, multipart, payload
+from ._cookie_helpers import parse_cookie_headers, preserve_morsel_with_coded_value
 from .abc import AbstractStreamWriter
 from .client_exceptions import (
     ClientConnectionError,
@@ -64,7 +65,6 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
-from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -313,11 +313,9 @@ class ClientResponse(HeadersMixin):
             if self._raw_cookie_headers is not None:
                 # Parse cookies for response.cookies (SimpleCookie for backward compatibility)
                 cookies = SimpleCookie()
-                for hdr in self._raw_cookie_headers:
-                    try:
-                        cookies.load(hdr)
-                    except CookieError as exc:
-                        client_logger.warning("Can not load response cookies: %s", exc)
+                # Use parse_cookie_headers for more lenient parsing that handles
+                # malformed cookies better than SimpleCookie.load
+                cookies.update(parse_cookie_headers(self._raw_cookie_headers))
                 self._cookies = cookies
             else:
                 self._cookies = SimpleCookie()
@@ -1016,7 +1014,8 @@ class ClientRequest:
 
         c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
-            c.load(self.headers.get(hdrs.COOKIE, ""))
+            # parse_cookie_headers already preserves coded values
+            c.update(parse_cookie_headers((self.headers.get(hdrs.COOKIE, ""),)))
             del self.headers[hdrs.COOKIE]
 
         if isinstance(cookies, Mapping):
@@ -1025,10 +1024,8 @@ class ClientRequest:
             iter_cookies = cookies  # type: ignore[assignment]
         for name, value in iter_cookies:
             if isinstance(value, Morsel):
-                # Preserve coded_value
-                mrsl_val = value.get(value.key, Morsel())
-                mrsl_val.set(value.key, value.value, value.coded_value)
-                c[name] = mrsl_val
+                # Use helper to preserve coded_value exactly as sent by server
+                c[name] = preserve_morsel_with_coded_value(value)
             else:
                 c[name] = value  # type: ignore[assignment]
 

@@ -388,6 +388,8 @@ async def test_domain_filter_ip_cookie_receive(
         ("custom-cookie=value/one;", 'Cookie: custom-cookie="value/one"', True),
         ("custom-cookie=value1;", "Cookie: custom-cookie=value1", True),
         ("custom-cookie=value/one;", "Cookie: custom-cookie=value/one", False),
+        ('foo="quoted_value"', 'Cookie: foo="quoted_value"', True),
+        ('foo="quoted_value"; domain=127.0.0.1', 'Cookie: foo="quoted_value"', True),
     ],
     ids=(
         "IP domain preserved",
@@ -395,6 +397,8 @@ async def test_domain_filter_ip_cookie_receive(
         "quoted cookie with special char",
         "quoted cookie w/o special char",
         "unquoted cookie with special char",
+        "pre-quoted cookie",
+        "pre-quoted cookie with domain",
     ),
 )
 async def test_quotes_correctly_based_on_input(
@@ -1248,7 +1252,7 @@ def test_update_cookies_from_headers_duplicate_names() -> None:
     url: URL = URL("http://www.example.com/")
 
     # Headers with duplicate names but different domains
-    headers: List[str] = [
+    headers = [
         "session-id=123456; Domain=.example.com; Path=/",
         "session-id=789012; Domain=.www.example.com; Path=/",
         "user-pref=light; Domain=.example.com",
@@ -1278,11 +1282,10 @@ def test_update_cookies_from_headers_invalid_cookies(
     url: URL = URL("http://example.com/")
 
     # Mix of valid and invalid cookies
-    headers: List[str] = [
+    headers = [
         "valid-cookie=value123",
-        "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
-        "{925EC0B8-CB17-4BEB-8A35-1033813B0523}; "
-        "HttpOnly; Path=/",  # This cookie with curly braces causes CookieError
+        "invalid,cookie=value; "  # Comma character is not allowed
+        "HttpOnly; Path=/",
         "another-valid=value456",
     ]
 
@@ -1291,13 +1294,59 @@ def test_update_cookies_from_headers_invalid_cookies(
         jar.update_cookies_from_headers(headers, url)
 
     # Check that we logged warnings for invalid cookies
-    assert "Can not load response cookies" in caplog.text
+    assert "Can not load cookies" in caplog.text
 
     # Valid cookies should still be added
     assert len(jar) >= 2  # At least the two clearly valid cookies
     filtered: BaseCookie[str] = jar.filter_cookies(url)
     assert "valid-cookie" in filtered
     assert "another-valid" in filtered
+
+
+def test_update_cookies_from_headers_with_curly_braces() -> None:
+    """Test that cookies with curly braces in names are now accepted (#2683)."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Cookie names with curly braces should now be accepted
+    headers = [
+        "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
+        "{925EC0B8-CB17-4BEB-8A35-1033813B0523}; "
+        "HttpOnly; Path=/",
+        "regular-cookie=value123",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # Both cookies should be added
+    assert len(jar) == 2
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}" in filtered
+    assert "regular-cookie" in filtered
+
+
+def test_update_cookies_from_headers_with_special_chars() -> None:
+    """Test that cookies with various special characters are accepted."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Various special characters that should now be accepted
+    headers = [
+        "cookie_with_parens=(value)=test123",
+        "cookie-with-brackets[index]=value456",
+        "cookie@with@at=value789",
+        "cookie:with:colons=value000",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # All cookies should be added
+    assert len(jar) == 4
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "cookie_with_parens" in filtered
+    assert "cookie-with-brackets[index]" in filtered
+    assert "cookie@with@at" in filtered
+    assert "cookie:with:colons" in filtered
 
 
 def test_update_cookies_from_headers_empty_list() -> None:
@@ -1316,7 +1365,7 @@ def test_update_cookies_from_headers_with_attributes() -> None:
     jar: CookieJar = CookieJar()
     url: URL = URL("https://secure.example.com/app/page")
 
-    headers: List[str] = [
+    headers = [
         "secure-cookie=value1; Secure; HttpOnly; SameSite=Strict",
         "expiring-cookie=value2; Max-Age=3600; Path=/app",
         "domain-cookie=value3; Domain=.example.com; Path=/",
@@ -1371,7 +1420,7 @@ def test_update_cookies_from_headers_preserves_existing() -> None:
     )
 
     # Add more cookies via headers
-    headers: List[str] = [
+    headers = [
         "new-cookie1=value3",
         "new-cookie2=value4",
     ]
@@ -1396,7 +1445,7 @@ def test_update_cookies_from_headers_overwrites_same_cookie() -> None:
     jar.update_cookies({"session": "old-value"}, url)
 
     # Update with new value via headers
-    headers: List[str] = ["session=new-value"]
+    headers = ["session=new-value"]
     jar.update_cookies_from_headers(headers, url)
 
     # Should still have just 1 cookie with updated value
@@ -1410,7 +1459,7 @@ def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     jar: DummyCookieJar = DummyCookieJar()
     url: URL = URL("http://example.com/")
 
-    headers: List[str] = [
+    headers = [
         "cookie1=value1",
         "cookie2=value2",
     ]
@@ -1421,3 +1470,159 @@ def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     assert len(jar) == 0
     filtered: BaseCookie[str] = jar.filter_cookies(url)
     assert len(filtered) == 0
+
+
+async def test_shared_cookie_cache_population() -> None:
+    """Test that shared cookies are cached correctly."""
+    jar = CookieJar(unsafe=True)
+
+    # Create a shared cookie (no domain/path restrictions)
+    sc = SimpleCookie()
+    sc["shared"] = "value"
+    sc["shared"]["path"] = "/"  # Will be stripped to ""
+
+    # Update with empty URL to avoid domain being set
+    jar.update_cookies(sc, URL())
+
+    # Verify cookie is stored at shared key
+    assert ("", "") in jar._cookies
+    assert "shared" in jar._cookies[("", "")]
+
+    # Filter cookies to populate cache
+    filtered = jar.filter_cookies(URL("http://example.com/"))
+    assert "shared" in filtered
+    assert filtered["shared"].value == "value"
+
+    # Verify cache was populated
+    assert ("", "") in jar._morsel_cache
+    assert "shared" in jar._morsel_cache[("", "")]
+
+    # Verify the cached morsel is the same one returned
+    cached_morsel = jar._morsel_cache[("", "")]["shared"]
+    assert cached_morsel is filtered["shared"]
+
+
+async def test_shared_cookie_cache_clearing_on_update() -> None:
+    """Test that shared cookie cache is cleared when cookie is updated."""
+    jar = CookieJar(unsafe=True)
+
+    # Create initial shared cookie
+    sc = SimpleCookie()
+    sc["shared"] = "value1"
+    sc["shared"]["path"] = "/"
+    jar.update_cookies(sc, URL())
+
+    # Filter to populate cache
+    filtered1 = jar.filter_cookies(URL("http://example.com/"))
+    assert filtered1["shared"].value == "value1"
+    assert "shared" in jar._morsel_cache[("", "")]
+
+    # Update the cookie with new value
+    sc2 = SimpleCookie()
+    sc2["shared"] = "value2"
+    sc2["shared"]["path"] = "/"
+    jar.update_cookies(sc2, URL())
+
+    # Verify cache was cleared
+    assert "shared" not in jar._morsel_cache[("", "")]
+
+    # Filter again to verify new value
+    filtered2 = jar.filter_cookies(URL("http://example.com/"))
+    assert filtered2["shared"].value == "value2"
+
+    # Verify cache was repopulated with new value
+    assert "shared" in jar._morsel_cache[("", "")]
+
+
+async def test_shared_cookie_cache_clearing_on_delete() -> None:
+    """Test that shared cookie cache is cleared when cookies are deleted."""
+    jar = CookieJar(unsafe=True)
+
+    # Create multiple shared cookies
+    sc = SimpleCookie()
+    sc["shared1"] = "value1"
+    sc["shared1"]["path"] = "/"
+    sc["shared2"] = "value2"
+    sc["shared2"]["path"] = "/"
+    jar.update_cookies(sc, URL())
+
+    # Filter to populate cache
+    jar.filter_cookies(URL("http://example.com/"))
+    assert "shared1" in jar._morsel_cache[("", "")]
+    assert "shared2" in jar._morsel_cache[("", "")]
+
+    # Delete one cookie using internal method
+    jar._delete_cookies([("", "", "shared1")])
+
+    # Verify cookie and its cache entry were removed
+    assert "shared1" not in jar._cookies[("", "")]
+    assert "shared1" not in jar._morsel_cache[("", "")]
+
+    # Verify other cookie remains
+    assert "shared2" in jar._cookies[("", "")]
+    assert "shared2" in jar._morsel_cache[("", "")]
+
+
+async def test_shared_cookie_cache_clearing_on_clear() -> None:
+    """Test that shared cookie cache is cleared when jar is cleared."""
+    jar = CookieJar(unsafe=True)
+
+    # Create shared and domain-specific cookies
+    # Shared cookie
+    sc1 = SimpleCookie()
+    sc1["shared"] = "shared_value"
+    sc1["shared"]["path"] = "/"
+    jar.update_cookies(sc1, URL())
+
+    # Domain-specific cookie
+    sc2 = SimpleCookie()
+    sc2["domain_cookie"] = "domain_value"
+    jar.update_cookies(sc2, URL("http://example.com/"))
+
+    # Filter to populate caches
+    jar.filter_cookies(URL("http://example.com/"))
+
+    # Verify caches are populated
+    assert ("", "") in jar._morsel_cache
+    assert "shared" in jar._morsel_cache[("", "")]
+    assert ("example.com", "") in jar._morsel_cache
+    assert "domain_cookie" in jar._morsel_cache[("example.com", "")]
+
+    # Clear all cookies
+    jar.clear()
+
+    # Verify all caches are cleared
+    assert len(jar._morsel_cache) == 0
+    assert len(jar._cookies) == 0
+
+    # Verify filtering returns no cookies
+    filtered = jar.filter_cookies(URL("http://example.com/"))
+    assert len(filtered) == 0
+
+
+async def test_shared_cookie_with_multiple_domains() -> None:
+    """Test that shared cookies work across different domains."""
+    jar = CookieJar(unsafe=True)
+
+    # Create a truly shared cookie
+    sc = SimpleCookie()
+    sc["universal"] = "everywhere"
+    sc["universal"]["path"] = "/"
+    jar.update_cookies(sc, URL())
+
+    # Test filtering for different domains
+    domains = [
+        "http://example.com/",
+        "http://test.org/",
+        "http://localhost/",
+        "http://192.168.1.1/",  # IP address (requires unsafe=True)
+    ]
+
+    for domain_url in domains:
+        filtered = jar.filter_cookies(URL(domain_url))
+        assert "universal" in filtered
+        assert filtered["universal"].value == "everywhere"
+
+    # Verify cache is reused efficiently
+    assert ("", "") in jar._morsel_cache
+    assert "universal" in jar._morsel_cache[("", "")]
