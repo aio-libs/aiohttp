@@ -5,6 +5,7 @@ import datetime
 import http.cookies
 import io
 import json
+import logging
 import pathlib
 import socket
 import ssl
@@ -2691,11 +2692,40 @@ async def test_morsel_with_attributes(aiohttp_client) -> None:
         assert 200 == resp.status
 
 
-async def test_set_cookies(aiohttp_client) -> None:
-    async def handler(request):
+async def test_set_cookies(
+    aiohttp_client: AiohttpClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
         ret = web.Response()
         ret.set_cookie("c1", "cookie1")
         ret.set_cookie("c2", "cookie2")
+        ret.headers.add(
+            "Set-Cookie",
+            "invalid,cookie=value; "  # Comma character is not allowed
+            "HttpOnly; Path=/",
+        )
+        return ret
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    with caplog.at_level(logging.WARNING):
+        async with client.get("/") as resp:
+            assert 200 == resp.status
+            cookie_names = {c.key for c in client.session.cookie_jar}
+            _ = resp.cookies
+        assert cookie_names == {"c1", "c2"}
+
+    assert "Can not load cookies: Illegal cookie name 'invalid,cookie'" in caplog.text
+
+
+async def test_set_cookies_with_curly_braces(aiohttp_client: AiohttpClient) -> None:
+    """Test that cookies with curly braces in names are now accepted (#2683)."""
+
+    async def handler(request: web.Request) -> web.Response:
+        ret = web.Response()
+        ret.set_cookie("c1", "cookie1")
         ret.headers.add(
             "Set-Cookie",
             "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
@@ -2708,14 +2738,10 @@ async def test_set_cookies(aiohttp_client) -> None:
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    with mock.patch("aiohttp.client_reqrep.client_logger") as m_log:
-        async with client.get("/") as resp:
-            assert 200 == resp.status
-            cookie_names = {c.key for c in client.session.cookie_jar}
-            _ = resp.cookies
-        assert cookie_names == {"c1", "c2"}
-
-        m_log.warning.assert_called_with("Can not load response cookies: %s", mock.ANY)
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        cookie_names = {c.key for c in client.session.cookie_jar}
+        assert cookie_names == {"c1", "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}"}
 
 
 async def test_set_cookies_expired(aiohttp_client) -> None:
