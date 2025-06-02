@@ -13,8 +13,6 @@ from aiohttp._cookie_helpers import (
     preserve_morsel_with_coded_value,
 )
 
-# ------------------- Cookie parsing tests ----------------------------------
-
 
 def test_known_attrs_is_superset_of_morsel_reserved() -> None:
     """Test that _COOKIE_KNOWN_ATTRS contains all Morsel._reserved attributes."""
