@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, Awaitable, Generic, Protocol, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Awaitable, Generic, Protocol, TypeVar, overload, Callable
 
 from aiosignal import Signal
 from multidict import CIMultiDict
@@ -8,11 +8,14 @@ from yarl import URL
 from .client_reqrep import ClientResponse
 from .helpers import frozen_dataclass_decorator
 
+from .typedefs import P, R, Concatenate
+
 if TYPE_CHECKING:
     from .client import ClientSession
 
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
 
+    # TODO: Remove or deprecate in the future once signal_event is added.
     class _SignalCallback(Protocol[_ParamT_contra]):
         def __call__(
             self,
@@ -20,6 +23,44 @@ if TYPE_CHECKING:
             __trace_config_ctx: SimpleNamespace,
             __params: _ParamT_contra,
         ) -> Awaitable[None]: ...
+
+
+
+# Due to wanting to prevent an XZ-utils Styled Attack it was decided by the aiocallback's main 
+# mainter to let aiohttp borrow a copy of the main member descriptor, it is given with permission 
+# from it's founder & owner to use else-where. If your looking for a better solution
+# And want to write one of these yourself you can use aiocallback for that.
+
+class signal_event(Generic[P, R]):
+    """An internal member descriptor made for helping to better define signals"""
+    __slots__ = ("_func", "_name", "_signal",)
+
+    def __init__(self, func:Callable[Concatenate["TraceConfig", P], Awaitable[R]]):
+        self._func = func
+        self._name = None
+        self._signal = None
+        super().__init__()
+
+    # Doc can't be a slot so we must make it a property
+    @property
+    def __doc__(self):
+        return self._func.__doc__
+
+    def __set_name__(self, owner, name):
+        self._name = name
+
+    # For now we're waiting on aiosignal 1.3.3 which will use a new paramspec type-hinting setup...
+    def __get__(self, obj, objtype=None) -> Signal: # -> Signal[P, R]
+        try:
+            return getattr(obj, self.name)
+        except AttributeError:
+            signal = Signal(obj)
+            setattr(obj, self._name, signal)
+        return signal
+
+    # TODO: Should the __set__ method revoke access to altering signals?
+
+
 
 
 __all__ = (
@@ -59,6 +100,8 @@ class TraceConfig(Generic[_T]):
     def __init__(
         self, trace_config_ctx_factory: _Factory[Any] = SimpleNamespace
     ) -> None:
+        # TODO (Vizonex): Remove in favor of the new member descriptor Approch...
+
         self._on_request_start: Signal[_SignalCallback[TraceRequestStartParams]] = (
             Signal(self)
         )
@@ -476,3 +519,4 @@ class Trace:
             self._trace_config_ctx,
             TraceRequestHeadersSentParams(method, url, headers),
         )
+
