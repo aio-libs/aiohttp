@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 # Due to wanting to prevent an XZ-utils Styled Attack it was decided by the aiocallback's main 
 # mainter to let aiohttp borrow a copy of the main member descriptor, it is given with permission 
 # from it's founder & owner to use else-where. If your looking for a better solution
-# And want to write one of these yourself you can use aiocallback for that.
+# and you want to write one of these yourself you can use aiocallback for that.
 
 class signal_event(Generic[P, R]):
     """An internal member descriptor made for helping to better define signals"""
