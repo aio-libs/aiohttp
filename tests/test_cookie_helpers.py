@@ -910,7 +910,7 @@ def test_parse_cookie_headers_expires_attribute() -> None:
 def test_make_non_quoted_morsel() -> None:
     """Test make_non_quoted_morsel creates unquoted morsels."""
     # Create a source morsel with a value that would normally be quoted
-    source = Morsel()
+    source: Morsel[str] = Morsel()
     source.set("test", "value with spaces", "value%20with%20spaces")
 
     # Make non-quoted version
@@ -926,7 +926,7 @@ def test_make_non_quoted_morsel() -> None:
 def test_make_quoted_morsel() -> None:
     """Test make_quoted_morsel creates properly quoted morsels."""
     # Create a source morsel with a value that needs quoting
-    source = Morsel()
+    source: Morsel[str] = Morsel()
     source.set("test", "value with spaces", "ignored_coded_value")
 
     # Make quoted version
@@ -951,7 +951,7 @@ def test_make_quoted_morsel_special_chars() -> None:
     ]
 
     for name, value, expected_coded in test_cases:
-        source = Morsel()
+        source: Morsel[str] = Morsel()
         source.set(name, value, "ignored")
 
         result = make_quoted_morsel(source)
@@ -964,7 +964,7 @@ def test_make_quoted_morsel_special_chars() -> None:
 def test_make_quoted_and_non_quoted_morsel_with_semicolon() -> None:
     """Test that make_quoted_morsel and make_non_quoted_morsel handle semicolons correctly."""
     # Create a cookie with semicolons
-    original = Morsel()
+    original: Morsel[str] = Morsel()
     original.set("session", "abc;123", '"abc\\073123"')
 
     # Test making non-quoted version
