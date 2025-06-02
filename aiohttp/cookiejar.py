@@ -306,7 +306,7 @@ class CookieJar(AbstractCookieJar):
     def filter_cookies(self, request_url: URL = URL()) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
         if not isinstance(request_url, URL):
-            warnings.warn(  # type: ignore[unreachable]
+            warnings.warn(
                 "The method accepts yarl.URL instances only, got {}".format(
                     type(request_url)
                 ),
