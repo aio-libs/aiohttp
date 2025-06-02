@@ -556,10 +556,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         A read-only dictionary-like object.
         """
-        raw = self.headers.get(hdrs.COOKIE, "")
         # Use parse_cookie_headers for more lenient parsing that accepts
         # special characters in cookie names (fixes #2683)
-        parsed = parse_cookie_headers([raw])
+        parsed = parse_cookie_headers((self.headers.get(hdrs.COOKIE, ""),))
         return MappingProxyType({name: morsel.value for name, morsel in parsed})
 
     @reify
