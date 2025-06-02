@@ -1280,7 +1280,7 @@ async def test_update_cookies_from_headers_invalid_cookies(
     assert "another-valid" in filtered
 
 
-def test_update_cookies_from_headers_with_curly_braces() -> None:
+async def test_update_cookies_from_headers_with_curly_braces() -> None:
     """Test that cookies with curly braces in names are now accepted (#2683)."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/")
@@ -1302,7 +1302,7 @@ def test_update_cookies_from_headers_with_curly_braces() -> None:
     assert "regular-cookie" in filtered
 
 
-def test_update_cookies_from_headers_with_special_chars() -> None:
+async def test_update_cookies_from_headers_with_special_chars() -> None:
     """Test that cookies with various special characters are accepted."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/")
@@ -1326,7 +1326,7 @@ def test_update_cookies_from_headers_with_special_chars() -> None:
     assert "cookie:with:colons" in filtered
 
 
-def test_update_cookies_from_headers_empty_list() -> None:
+async def test_update_cookies_from_headers_empty_list() -> None:
     """Test that empty header list is handled gracefully."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/")
