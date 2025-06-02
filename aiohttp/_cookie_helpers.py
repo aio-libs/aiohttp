@@ -61,7 +61,8 @@ _COOKIE_PATTERN = re.compile(
     (\w{3,6}day|\w{3}),\s              # Day of the week or abbreviated day (with comma)
     [\w\d\s-]{9,11}\s[\d:]{8}\s        # Date and time in specific format
     (GMT|[+-]\d{4})                     # Timezone: GMT or RFC 2822 offset like -0000, +0100
-                                        # NOTE: RFC 2822 timezone support is an aiohttp extension for issue #4493 - SimpleCookie does NOT support this
+                                        # NOTE: RFC 2822 timezone support is an aiohttp extension
+                                        # for issue #4493 - SimpleCookie does NOT support this
     |                                  # or
     # ANSI C asctime() format: "Wed Jun  9 10:18:14 2021"
     # NOTE: This is an aiohttp extension for issue #4327 - SimpleCookie does NOT support this format
