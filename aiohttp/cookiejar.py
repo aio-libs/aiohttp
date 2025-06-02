@@ -305,14 +305,6 @@ class CookieJar(AbstractCookieJar):
 
     def filter_cookies(self, request_url: URL = URL()) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
-        if not isinstance(request_url, URL):
-            warnings.warn(
-                "The method accepts yarl.URL instances only, got {}".format(
-                    type(request_url)
-                ),
-                DeprecationWarning,
-            )
-            request_url = URL(request_url)
         # We always use BaseCookie now since all
         # cookies set on on filtered are fully constructed
         # Morsels, not just names and values.
