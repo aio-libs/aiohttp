@@ -7,7 +7,6 @@ import string
 import tempfile
 import types
 import warnings
-from http.cookies import SimpleCookie
 from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
@@ -36,6 +35,7 @@ from multidict import (
 from yarl import URL
 
 from . import hdrs
+from ._cookie_helpers import parse_cookie_headers
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
@@ -589,9 +589,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         A read-only dictionary-like object.
         """
-        raw = self.headers.get(hdrs.COOKIE, "")
-        parsed = SimpleCookie(raw)
-        return MappingProxyType({key: val.value for key, val in parsed.items()})
+        # Use parse_cookie_headers for more lenient parsing that accepts
+        # special characters in cookie names (fixes #2683)
+        parsed = parse_cookie_headers((self.headers.get(hdrs.COOKIE, ""),))
+        return MappingProxyType({name: morsel.value for name, morsel in parsed})
 
     @reify
     def http_range(self) -> slice:
