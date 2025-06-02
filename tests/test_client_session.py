@@ -758,7 +758,7 @@ async def test_cookie_jar_usage(
     # getting the request URL as only parameter
     jar._filter_cookies_mock.assert_called_with(URL(req_url))
 
-    # Updating the cookie jar with the cookies
+    # Updating the cookie jar with the response cookies
     assert jar._update_cookies_mock.called
     resp_cookies = jar._update_cookies_mock.call_args[0][0]
     # Now update_cookies is called with a list of tuples
