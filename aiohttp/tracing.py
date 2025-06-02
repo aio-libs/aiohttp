@@ -106,7 +106,9 @@ class _Factory(Protocol[_T]):
 
 class TraceConfig(Generic[_T]):
     """First-class used to trace requests launched via ClientSession objects."""
-
+    
+    # TODO: Maybe see about giving TraceConfig some __slots__ to be faster and discourage subclassing it?
+    
     @overload
     def __init__(self: "TraceConfig[SimpleNamespace]") -> None: ...
     @overload
