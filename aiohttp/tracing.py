@@ -175,6 +175,7 @@ class TraceConfig(Generic[_T]):
         self._on_dns_cache_miss.freeze()
         self._on_request_headers_sent.freeze()
 
+    # TODO: Transform from properties to signal events. 
     @property
     def on_request_start(self) -> "Signal[_SignalCallback[TraceRequestStartParams]]":
         return self._on_request_start
@@ -399,7 +400,7 @@ class Trace:
         self._trace_config = trace_config
         self._trace_config_ctx = trace_config_ctx
         self._session = session
-
+    
     async def send_request_start(
         self, method: str, url: URL, headers: "CIMultiDict[str]"
     ) -> None:
