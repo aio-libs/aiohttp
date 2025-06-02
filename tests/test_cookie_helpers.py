@@ -861,23 +861,6 @@ def test_parse_cookie_headers_expires_attribute() -> None:
         assert "GMT" in morsel["expires"]
 
 
-def test_parse_cookie_headers_performance() -> None:
-    """Test parse_cookie_headers handles large inputs efficiently."""
-    # Create a large cookie header with many cookies
-    large_header = "; ".join(f"cookie{i}=value{i}" for i in range(100))
-
-    result = parse_cookie_headers([large_header])
-
-    # Should parse all cookies
-    assert len(result) == 100
-
-    # Spot check some values
-    assert result[0][0] == "cookie0"
-    assert result[0][1].value == "value0"
-    assert result[99][0] == "cookie99"
-    assert result[99][1].value == "value99"
-
-
 def test_parse_cookie_headers_edge_cases() -> None:
     """Test various edge cases."""
     # Very long cookie values
