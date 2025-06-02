@@ -76,23 +76,6 @@ _COOKIE_PATTERN = re.compile(
 )
 
 
-def _set_validated_morsel_values(
-    morsel: Morsel[str],
-    name: str,
-    value: str,
-    coded_value: Optional[str] = None,
-) -> None:
-    """
-    Set Morsel values with less strict validation.
-
-    This might break between Python versions so we have it
-    isolated into a single function so we only have to change it in one place.
-    """
-    morsel._key = name  # type: ignore[attr-defined]
-    morsel._value = value  # type: ignore[attr-defined]
-    morsel._coded_value = coded_value if coded_value is not None else value  # type: ignore[attr-defined]
-
-
 def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
     """
     Preserve a Morsel's coded_value exactly as received from the server.
@@ -113,7 +96,9 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
 
     """
     mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-    _set_validated_morsel_values(mrsl_val, cookie.key, cookie.value, cookie.coded_value)
+    mrsl_val.__setstate__(
+        {"key": cookie.key, "value": cookie.value, "coded_value": cookie.coded_value}
+    )
     return mrsl_val
 
 
@@ -129,7 +114,9 @@ def make_non_quoted_morsel(cookie: Morsel[str]) -> Morsel[str]:
 
     """
     morsel: Morsel[str] = Morsel()
-    _set_validated_morsel_values(morsel, cookie.key, cookie.value)
+    morsel.__setstate__(
+        {"key": cookie.key, "value": cookie.value, "coded_value": cookie.value}
+    )
     return morsel
 
 
@@ -148,9 +135,8 @@ def make_quoted_morsel(cookie: Morsel[str]) -> Morsel[str]:
 
     """
     morsel: Morsel[str] = Morsel()
-    _set_validated_morsel_values(
-        morsel, cookie.key, *_SIMPLE_COOKIE.value_encode(cookie.value)
-    )
+    value, coded_value = _SIMPLE_COOKIE.value_encode(cookie.value)
+    morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})
     return morsel
 
 
@@ -251,8 +237,8 @@ def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]
                     # Create new morsel
                     current_morsel = Morsel()
                     # Preserve the original value as coded_value (with quotes if present)
-                    _set_validated_morsel_values(
-                        current_morsel, key, _unquote(value), value
+                    current_morsel.__setstate__(
+                        {"key": key, "value": _unquote(value), "coded_value": value}
                     )
                     parsed_cookies.append((key, current_morsel))
                     morsel_seen = True
