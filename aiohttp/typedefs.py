@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -10,6 +11,7 @@ from typing import (
     Protocol,
     Tuple,
     Union,
+    TypeVar
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
@@ -19,6 +21,16 @@ Query = _Query
 
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
+
+# TODO: Import ParamSpec & Concatenate  Directly when Python 3.9 support is Dropped.
+if sys.version_info >= (3, 10):
+    from typing import Concatenate, ParamSpec
+else:
+    from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
 
 if TYPE_CHECKING:
     _CIMultiDict = CIMultiDict[str]
@@ -67,3 +79,4 @@ class Middleware(Protocol):
 
 
 PathLike = Union[str, "os.PathLike[str]"]
+
