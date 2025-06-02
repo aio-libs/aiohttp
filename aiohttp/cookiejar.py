@@ -394,12 +394,7 @@ class CookieJar(AbstractCookieJar):
 
     def _build_morsel(self, cookie: Morsel[str]) -> Morsel[str]:
         """Build a morsel for sending, respecting quote_cookie setting."""
-        if (
-            self._quote_cookie
-            and cookie.coded_value
-            and cookie.coded_value[0] == '"'
-            and cookie.coded_value[-1] == '"'
-        ):
+        if self._quote_cookie and cookie.coded_value and cookie.coded_value[0] == '"':
             return preserve_morsel_with_coded_value(cookie)
         morsel: Morsel[str] = Morsel()
         if self._quote_cookie:
