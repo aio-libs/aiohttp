@@ -431,38 +431,54 @@ def test_parse_cookie_headers_real_world_examples() -> None:
     assert session_cookie["path"] == "/app"
 
 
-def test_parse_cookie_headers_unmatched_quotes() -> None:
-    """Test parse_cookie_headers handles unmatched quotes gracefully (#7993).
-
-    This is a key difference from SimpleCookie which stops parsing after
-    encountering an unmatched quote.
+def test_parse_cookie_headers_unmatched_quotes_compatibility() -> None:
     """
-    headers = [
-        'first=good; second="unmatched; third=also_good',
-        'a=1; b="no_close; c=2; d=3',
+    Test that most unmatched quote scenarios behave like SimpleCookie.
+
+    For compatibility, we only handle the specific case of unmatched opening quotes
+    (e.g., 'cookie="value'). Other cases behave the same as SimpleCookie.
+    """
+    # Cases that SimpleCookie and our parser both fail to parse completely
+    incompatible_cases = [
+        'cookie1=val"ue; cookie2=value2',  # codespell:ignore
+        'cookie1=value"; cookie2=value2',
+        'cookie1=va"l"ue"; cookie2=value2',  # codespell:ignore
+        'cookie1=value1; cookie2=val"ue; cookie3=value3',  # codespell:ignore
     ]
 
-    for header in headers:
+    for header in incompatible_cases:
+        # Test SimpleCookie behavior
+        sc = SimpleCookie()
+        sc.load(header)
+        sc_cookies = list(sc.items())
+
+        # Test our parser behavior
         result = parse_cookie_headers([header])
 
-        # We should parse all cookies despite unmatched quotes
-        assert len(result) == 3  # All three cookies parsed
+        # Both should parse the same cookies (partial parsing)
+        assert len(result) == len(sc_cookies), (
+            f"Header: {header}\n"
+            f"SimpleCookie parsed: {len(sc_cookies)} cookies\n"
+            f"Our parser parsed: {len(result)} cookies"
+        )
 
-        # Verify cookie names and values
-        if "first" in header:
-            assert result[0][0] == "first"
-            assert result[0][1].value == "good"
-            assert result[1][0] == "second"
-            assert result[1][1].value == '"unmatched'  # Unmatched quote included
-            assert result[2][0] == "third"
-            assert result[2][1].value == "also_good"
-        else:
-            assert result[0][0] == "a"
-            assert result[0][1].value == "1"
-            assert result[1][0] == "b"
-            assert result[1][1].value == '"no_close'  # Unmatched quote included
-            assert result[2][0] == "c"
-            assert result[2][1].value == "2"
+    # The case we specifically fix (unmatched opening quote)
+    fixed_case = 'cookie1=value1; cookie2="unmatched; cookie3=value3'
+
+    # SimpleCookie fails to parse cookie3
+    sc = SimpleCookie()
+    sc.load(fixed_case)
+    assert len(sc) == 1  # Only cookie1
+
+    # Our parser handles it better
+    result = parse_cookie_headers([fixed_case])
+    assert len(result) == 3  # All three cookies
+    assert result[0][0] == "cookie1"
+    assert result[0][1].value == "value1"
+    assert result[1][0] == "cookie2"
+    assert result[1][1].value == '"unmatched'
+    assert result[2][0] == "cookie3"
+    assert result[2][1].value == "value3"
 
 
 def test_parse_cookie_headers_expires_attribute() -> None:
