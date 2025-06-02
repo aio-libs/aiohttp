@@ -188,35 +188,35 @@ def test_parse_cookie_headers_quoted_values() -> None:
     assert result[2][1].value == 'with"escaped"'
 
 
-def test_parse_cookie_headers_semicolon_in_quoted_values() -> None:
+@pytest.mark.parametrize(
+    "header",
+    [
+        'session="abc;xyz"; token=123',
+        'data="value;with;multiple;semicolons"; next=cookie',
+        'complex="a=b;c=d"; simple=value',
+    ],
+)
+def test_parse_cookie_headers_semicolon_in_quoted_values(header: str) -> None:
     """
     Test that semicolons inside properly quoted values are handled correctly.
 
     Cookie values can contain semicolons when properly quoted. This test ensures
     that our parser handles these cases correctly, matching SimpleCookie behavior.
     """
-    # Test various cases of semicolons in quoted values
-    headers = [
-        'session="abc;xyz"; token=123',
-        'data="value;with;multiple;semicolons"; next=cookie',
-        'complex="a=b;c=d"; simple=value',
-    ]
+    # Test with SimpleCookie
+    sc = SimpleCookie()
+    sc.load(header)
 
-    for header in headers:
-        # Test with SimpleCookie
-        sc = SimpleCookie()
-        sc.load(header)
+    # Test with our parser
+    result = parse_cookie_headers([header])
 
-        # Test with our parser
-        result = parse_cookie_headers([header])
+    # Should parse the same number of cookies
+    assert len(result) == len(sc)
 
-        # Should parse the same number of cookies
-        assert len(result) == len(sc)
-
-        # Verify each cookie matches SimpleCookie
-        for (name, morsel), (sc_name, sc_morsel) in zip(result, sc.items()):
-            assert name == sc_name
-            assert morsel.value == sc_morsel.value
+    # Verify each cookie matches SimpleCookie
+    for (name, morsel), (sc_name, sc_morsel) in zip(result, sc.items()):
+        assert name == sc_name
+        assert morsel.value == sc_morsel.value
 
 
 def test_parse_cookie_headers_multiple_cookies_same_header() -> None:
@@ -571,34 +571,30 @@ def test_parse_cookie_headers_partitioned_with_other_attrs_manual() -> None:
     assert result[0][1]["httponly"] is True
 
 
-def test_parse_cookie_headers_partitioned_real_world_structure() -> None:
-    """
-    Test real-world partitioned cookie structure without using SimpleCookie.
-
-    This verifies our parsing logic correctly identifies partitioned as a known
-    boolean attribute.
-    """
+def test_cookie_helpers_constants_include_partitioned() -> None:
+    """Test that cookie helper constants include partitioned attribute."""
     # Test our constants include partitioned
     assert "partitioned" in helpers._COOKIE_KNOWN_ATTRS
     assert "partitioned" in helpers._COOKIE_BOOL_ATTRS
 
-    # Verify the pattern would match partitioned attributes
-    pattern = helpers._COOKIE_PATTERN
 
-    # Test various partitioned formats
-    test_strings = [
+@pytest.mark.parametrize(
+    "test_string",
+    [
         " Partitioned ",
         " partitioned ",
         " PARTITIONED ",
         " Partitioned; ",
         " Partitioned= ",
         " Partitioned=true ",
-    ]
-
-    for test_str in test_strings:
-        match = pattern.match(test_str)
-        assert match is not None, f"Pattern should match '{test_str}'"
-        assert match.group("key").lower() == "partitioned"
+    ],
+)
+def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
+    """Test that the cookie pattern regex matches various partitioned attribute formats."""
+    pattern = helpers._COOKIE_PATTERN
+    match = pattern.match(test_string)
+    assert match is not None, f"Pattern should match '{test_string}'"
+    assert match.group("key").lower() == "partitioned"
 
 
 def test_parse_cookie_headers_issue_7993_double_quotes() -> None:
@@ -899,26 +895,28 @@ def test_make_quoted_morsel() -> None:
     assert result is not source  # Should be a new instance
 
 
-def test_make_quoted_morsel_special_chars() -> None:
-    """Test make_quoted_morsel handles special characters correctly."""
-    # Test various special characters that require quoting
-    # SimpleCookie.value_encode escapes some characters but not others
-    test_cases = [
+@pytest.mark.parametrize(
+    ("name", "value", "expected_coded"),
+    [
         ("semicolon", "value;with;semicolon", '"value\\073with\\073semicolon"'),
         ("comma", "value,with,comma", '"value\\054with\\054comma"'),
         ("space", "value with space", '"value with space"'),
         ("equals", "value=with=equals", '"value=with=equals"'),  # equals is not escaped
-    ]
+    ],
+)
+def test_make_quoted_morsel_special_chars(
+    name: str, value: str, expected_coded: str
+) -> None:
+    """Test make_quoted_morsel handles special characters correctly."""
+    # SimpleCookie.value_encode escapes some characters but not others
+    source: Morsel[str] = Morsel()
+    source.set(name, value, "ignored")
 
-    for name, value, expected_coded in test_cases:
-        source: Morsel[str] = Morsel()
-        source.set(name, value, "ignored")
+    result = make_quoted_morsel(source)
 
-        result = make_quoted_morsel(source)
-
-        assert result.key == name
-        assert result.value == value
-        assert result.coded_value == expected_coded
+    assert result.key == name
+    assert result.value == value
+    assert result.coded_value == expected_coded
 
 
 def test_make_quoted_and_non_quoted_morsel_with_semicolon() -> None:
