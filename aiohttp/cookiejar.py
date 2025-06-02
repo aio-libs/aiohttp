@@ -27,11 +27,7 @@ from typing import (
 
 from yarl import URL
 
-from ._cookie_helpers import (
-    make_non_quoted_morsel,
-    make_quoted_morsel,
-    preserve_morsel_with_coded_value,
-)
+from ._cookie_helpers import preserve_morsel_with_coded_value
 from .abc import AbstractCookieJar, ClearCookiePredicate
 from .helpers import is_ip_address
 from .typedefs import LooseCookies, PathLike, StrOrURL
@@ -49,6 +45,7 @@ _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 # the expiration heap. This is a performance optimization to avoid cleaning up the
 # heap too often when there are only a few scheduled expirations.
 _MIN_SCHEDULED_COOKIE_EXPIRATION = 100
+_SIMPLE_COOKIE = SimpleCookie()
 
 
 class CookieJar(AbstractCookieJar):
@@ -397,15 +394,24 @@ class CookieJar(AbstractCookieJar):
 
     def _build_morsel(self, cookie: Morsel[str]) -> Morsel[str]:
         """Build a morsel for sending, respecting quote_cookie setting."""
-        if not self._quote_cookie:
-            return make_non_quoted_morsel(cookie)
         if (
-            cookie.coded_value
+            self._quote_cookie
+            and cookie.coded_value
             and cookie.coded_value[0] == '"'
             and cookie.coded_value[-1] == '"'
         ):
             return preserve_morsel_with_coded_value(cookie)
-        return make_quoted_morsel(cookie)
+        morsel: Morsel[str] = Morsel()
+        if self._quote_cookie:
+            value, coded_value = _SIMPLE_COOKIE.value_encode(cookie.value)
+        else:
+            coded_value = value = cookie.value
+        # We use __setstate__ instead of the public set() API because it allows us to
+        # bypass validation and set already validated state. This is more stable than
+        # setting protected attributes directly and unlikely to change since it would
+        # break pickling.
+        morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})  # type: ignore[attr-defined]
+        return morsel
 
     @staticmethod
     def _is_domain_match(domain: str, hostname: str) -> bool:

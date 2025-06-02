@@ -6,8 +6,6 @@ import pytest
 
 from aiohttp import _cookie_helpers as helpers
 from aiohttp._cookie_helpers import (
-    make_non_quoted_morsel,
-    make_quoted_morsel,
     parse_cookie_headers,
     preserve_morsel_with_coded_value,
 )
@@ -861,74 +859,3 @@ def test_parse_cookie_headers_expires_attribute() -> None:
     for _, morsel in result:
         assert "expires" in morsel
         assert "GMT" in morsel["expires"]
-
-
-def test_make_non_quoted_morsel() -> None:
-    """Test make_non_quoted_morsel creates unquoted morsels."""
-    # Create a source morsel with a value that would normally be quoted
-    source: Morsel[str] = Morsel()
-    source.set("test", "value with spaces", "value%20with%20spaces")
-
-    # Make non-quoted version
-    result = make_non_quoted_morsel(source)
-
-    assert result.key == "test"
-    assert result.value == "value with spaces"
-    # coded_value should be same as value (no quotes)
-    assert result.coded_value == "value with spaces"
-    assert result is not source  # Should be a new instance
-
-
-def test_make_quoted_morsel() -> None:
-    """Test make_quoted_morsel creates properly quoted morsels."""
-    # Create a source morsel with a value that needs quoting
-    source: Morsel[str] = Morsel()
-    source.set("test", "value with spaces", "ignored_coded_value")
-
-    # Make quoted version
-    result = make_quoted_morsel(source)
-
-    assert result.key == "test"
-    assert result.value == "value with spaces"
-    # coded_value should be quoted
-    assert result.coded_value == '"value with spaces"'
-    assert result is not source  # Should be a new instance
-
-
-@pytest.mark.parametrize(
-    ("name", "value", "expected_coded"),
-    [
-        ("semicolon", "value;with;semicolon", '"value\\073with\\073semicolon"'),
-        ("comma", "value,with,comma", '"value\\054with\\054comma"'),
-        ("space", "value with space", '"value with space"'),
-        ("equals", "value=with=equals", '"value=with=equals"'),  # equals is not escaped
-    ],
-)
-def test_make_quoted_morsel_special_chars(
-    name: str, value: str, expected_coded: str
-) -> None:
-    """Test make_quoted_morsel handles special characters correctly."""
-    # SimpleCookie.value_encode escapes some characters but not others
-    source: Morsel[str] = Morsel()
-    source.set(name, value, "ignored")
-
-    result = make_quoted_morsel(source)
-
-    assert result.key == name
-    assert result.value == value
-    assert result.coded_value == expected_coded
-
-
-def test_make_quoted_and_non_quoted_morsel_with_semicolon() -> None:
-    """Test that make_quoted_morsel and make_non_quoted_morsel handle semicolons correctly."""
-    # Create a cookie with semicolons
-    original: Morsel[str] = Morsel()
-    original.set("session", "abc;123", '"abc\\073123"')
-
-    # Test making non-quoted version
-    non_quoted = make_non_quoted_morsel(original)
-    assert non_quoted.coded_value == "abc;123"  # No quotes
-
-    # Test making quoted version
-    quoted = make_quoted_morsel(original)
-    assert quoted.coded_value == '"abc\\073123"'  # With quotes and escaped semicolon
