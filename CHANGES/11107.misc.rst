@@ -1,1 +1,0 @@
-Avoided creating closed futures in ``ResponseHandler`` that will never be awaited -- by :user:`bdraco`.
