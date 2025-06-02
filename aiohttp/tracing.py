@@ -3,11 +3,11 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Awaitable,
+    Callable,
     Generic,
     Protocol,
     TypeVar,
     overload,
-    Callable,
 )
 
 from aiosignal import Signal
@@ -16,8 +16,7 @@ from yarl import URL
 
 from .client_reqrep import ClientResponse
 from .helpers import frozen_dataclass_decorator
-
-from .typedefs import P, R, Concatenate
+from .typedefs import Concatenate, P, R
 
 if TYPE_CHECKING:
     from .client import ClientSession
@@ -106,9 +105,9 @@ class _Factory(Protocol[_T]):
 
 class TraceConfig(Generic[_T]):
     """First-class used to trace requests launched via ClientSession objects."""
-    
+
     # TODO: Maybe see about giving TraceConfig some __slots__ to be faster and discourage subclassing it?
-    
+
     @overload
     def __init__(self: "TraceConfig[SimpleNamespace]") -> None: ...
     @overload
@@ -124,7 +123,7 @@ class TraceConfig(Generic[_T]):
         return self._trace_config_ctx_factory(trace_request_ctx=trace_request_ctx)
 
     def freeze(self) -> None:
-        # NOTE: __get__ will be sure all these signals are made at somepoint. 
+        # NOTE: __get__ will be sure all these signals are made at somepoint.
         self.on_request_start.freeze()
         self.on_request_chunk_sent.freeze()
         self.on_response_chunk_received.freeze()
@@ -148,8 +147,7 @@ class TraceConfig(Generic[_T]):
         client_session: ClientSession,
         trace_config_ctx: _T,
         params: "TraceRequestStartParams",
-    ) -> None:...
-
+    ) -> None: ...
 
     @signal_event
     def on_request_chunk_sent(
@@ -157,8 +155,8 @@ class TraceConfig(Generic[_T]):
         client_session: ClientSession,
         trace_config_ctx: _T,
         params: "TraceRequestChunkSentParams",
-    ) -> None:...
-    
+    ) -> None: ...
+
     # TraceResponseChunkReceivedParams
     @signal_event
     def on_response_chunk_received(
@@ -166,48 +164,47 @@ class TraceConfig(Generic[_T]):
         client_session: ClientSession,
         trace_config_ctx: _T,
         params: "TraceResponseChunkReceivedParams",
-    ) -> None:...
-    
+    ) -> None: ...
+
     @signal_event
     def on_request_end(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
-        params: "TraceRequestEndParams"
-    ) -> None:...
+        params: "TraceRequestEndParams",
+    ) -> None: ...
 
     @signal_event
     def on_request_exception(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
-        params: "TraceRequestExceptionParams"
-    ) -> None:...
+        params: "TraceRequestExceptionParams",
+    ) -> None: ...
 
     @signal_event
     def on_request_redirect(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
-        params: "TraceRequestRedirectParams"
-    ) -> None:...
+        params: "TraceRequestRedirectParams",
+    ) -> None: ...
 
     @signal_event
     def on_connection_queued_start(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
-        params: "TraceConnectionQueuedStartParams"
-    ) -> None:...
-
+        params: "TraceConnectionQueuedStartParams",
+    ) -> None: ...
 
     @signal_event
     def on_connection_queued_end(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
-        params: "TraceConnectionQueuedEndParams"
-    ) -> None:...
+        params: "TraceConnectionQueuedEndParams",
+    ) -> None: ...
 
     @signal_event
     def on_connection_create_start(
@@ -215,8 +212,7 @@ class TraceConfig(Generic[_T]):
         client_session: ClientSession,
         trace_config_ctx: _T,
         params: "TraceConnectionCreateStartParams",
-    ) -> None:...
-
+    ) -> None: ...
 
     @signal_event
     def on_connection_create_end(
@@ -224,7 +220,7 @@ class TraceConfig(Generic[_T]):
         client_session: ClientSession,
         trace_config_ctx: _T,
         params: "TraceConnectionCreateEndParams",
-    ) -> None:...
+    ) -> None: ...
 
     @signal_event
     def on_connection_reuseconn(
@@ -232,48 +228,47 @@ class TraceConfig(Generic[_T]):
         client_session: ClientSession,
         trace_config_ctx: _T,
         params: "TraceConnectionReuseconnParams",
-    ) -> None:...
+    ) -> None: ...
 
     @signal_event
     def on_dns_resolvehost_start(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
-        params: "TraceDnsResolveHostStartParams"
-    ) -> None:...
-    
+        params: "TraceDnsResolveHostStartParams",
+    ) -> None: ...
+
     @signal_event
     def on_dns_resolvehost_end(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
         params: "TraceDnsResolveHostEndParams",
-    ) -> None:...
-    
+    ) -> None: ...
+
     @signal_event
     def on_dns_cache_hit(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
-        params: "TraceDnsCacheHitParams"
-    ) -> None:...
-
+        params: "TraceDnsCacheHitParams",
+    ) -> None: ...
 
     @signal_event
     def on_dns_cache_miss(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
-        params: "TraceDnsCacheMissParams"
-    ) -> None:...
-        
+        params: "TraceDnsCacheMissParams",
+    ) -> None: ...
+
     @signal_event
     def on_request_headers_sent(
         self,
         client_session: ClientSession,
         trace_config_ctx: _T,
-        params: "TraceDnsCacheMissParams"
-    ) -> None:...
+        params: "TraceDnsCacheMissParams",
+    ) -> None: ...
 
 
 @frozen_dataclass_decorator
@@ -531,4 +526,3 @@ class Trace:
             self._trace_config_ctx,
             TraceRequestHeadersSentParams(method, url, headers),
         )
-

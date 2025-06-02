@@ -10,8 +10,8 @@ from typing import (
     Mapping,
     Protocol,
     Tuple,
+    TypeVar,
     Union,
-    TypeVar
 )
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
@@ -79,4 +79,3 @@ class Middleware(Protocol):
 
 
 PathLike = Union[str, "os.PathLike[str]"]
-
