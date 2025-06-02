@@ -439,7 +439,7 @@ class BaseConnector:
             for res in results:
                 if isinstance(res, Exception):
                     err_msg = "Error while closing connector: " + repr(res)
-                    logging.error(err_msg)
+                    logging.debug(err_msg)
 
     def _close_immediately(self) -> List[Awaitable[object]]:
         waiters: List[Awaitable[object]] = []
