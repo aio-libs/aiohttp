@@ -31,6 +31,8 @@ if TYPE_CHECKING:
 # from it's founder & owner to use else-where. If your looking for a better solution
 # and you want to write one of these yourself you can use aiocallback for that.
 
+# SEE: https://github.com/aio-libs/aiohttp/issues/11036
+
 class signal_event(Generic[P, R]):
     """An internal member descriptor made for helping to better define signals"""
     __slots__ = ("_func", "_name", "_signal",)
