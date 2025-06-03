@@ -202,9 +202,8 @@ class DigestAuthMiddleware:
         self._nonce_count = 0
         self._challenge: DigestAuthChallenge = {}
         self._preemptive: bool = preemptive
-        self._protection_space: Set[URL] = (
-            set()
-        )  # Set of URLs defining the protection space
+        # Set of URLs defining the protection space
+        self._protection_space: Set[str] = set()
 
     async def _encode(
         self, method: str, url: URL, body: Union[Payload, Literal[b""]]
@@ -374,10 +373,16 @@ class DigestAuthMiddleware:
         According to RFC 7616, a URI is in the protection space if any URI
         in the protection space is a prefix of it (after both have been made absolute).
         """
-        # Check if any protection space URI is a prefix of the request URL
         request_str = str(url)
-        for space_url in self._protection_space:
-            if request_str.startswith(str(space_url)):
+        for space_str in self._protection_space:
+            # Check if request starts with space URL
+            if not request_str.startswith(space_str):
+                continue
+            # Exact match or space ends with / (proper directory prefix)
+            if len(request_str) == len(space_str) or space_str[-1] == "/":
+                return True
+            # Check next char is / to ensure proper path boundary
+            if request_str[len(space_str)] == "/":
                 return True
         return False
 
@@ -429,13 +434,13 @@ class DigestAuthMiddleware:
                 uri = uri.strip('"')
                 if uri.startswith("/"):
                     # Path-absolute, relative to origin
-                    self._protection_space.add(origin.join(URL(uri)))
+                    self._protection_space.add(str(origin.join(URL(uri))))
                 else:
                     # Absolute URI
-                    self._protection_space.add(URL(uri))
+                    self._protection_space.add(str(URL(uri)))
         else:
             # No domain specified, protection space is entire origin
-            self._protection_space = {origin}
+            self._protection_space = {str(origin)}
 
         # Return True only if we found at least one challenge parameter
         return bool(self._challenge)

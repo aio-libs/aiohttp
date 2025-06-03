@@ -1136,3 +1136,98 @@ def test_authenticate_with_malformed_headers(
 
     result = digest_auth_mw._authenticate(response)
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("protection_space_url", "request_url", "expected"),
+    [
+        # Exact match
+        ("http://example.com/app1", "http://example.com/app1", True),
+        # Path with trailing slash should match
+        ("http://example.com/app1", "http://example.com/app1/", True),
+        # Subpaths should match
+        ("http://example.com/app1", "http://example.com/app1/resource", True),
+        ("http://example.com/app1", "http://example.com/app1/sub/path", True),
+        # Should NOT match different paths that start with same prefix
+        ("http://example.com/app1", "http://example.com/app1xx", False),
+        ("http://example.com/app1", "http://example.com/app123", False),
+        # Protection space with trailing slash
+        ("http://example.com/app1/", "http://example.com/app1/", True),
+        ("http://example.com/app1/", "http://example.com/app1/resource", True),
+        (
+            "http://example.com/app1/",
+            "http://example.com/app1",
+            False,
+        ),  # No trailing slash
+        # Root protection space
+        ("http://example.com/", "http://example.com/", True),
+        ("http://example.com/", "http://example.com/anything", True),
+        ("http://example.com/", "http://example.com", False),  # No trailing slash
+        # Different origins should not match
+        ("http://example.com/app1", "https://example.com/app1", False),
+        ("http://example.com/app1", "http://other.com/app1", False),
+        ("http://example.com:8080/app1", "http://example.com/app1", False),
+    ],
+    ids=[
+        "exact_match",
+        "path_with_trailing_slash",
+        "subpath_match",
+        "deep_subpath_match",
+        "no_match_app1xx",
+        "no_match_app123",
+        "protection_with_slash_exact",
+        "protection_with_slash_subpath",
+        "protection_with_slash_no_match_without",
+        "root_protection_exact",
+        "root_protection_subpath",
+        "root_protection_no_match_without_slash",
+        "different_scheme",
+        "different_host",
+        "different_port",
+    ],
+)
+def test_in_protection_space(
+    digest_auth_mw: DigestAuthMiddleware,
+    protection_space_url: str,
+    request_url: str,
+    expected: bool,
+) -> None:
+    """Test _in_protection_space method with various URL patterns."""
+    digest_auth_mw._protection_space = {protection_space_url}
+    result = digest_auth_mw._in_protection_space(URL(request_url))
+    assert result == expected
+
+
+def test_in_protection_space_multiple_spaces(
+    digest_auth_mw: DigestAuthMiddleware,
+) -> None:
+    """Test _in_protection_space with multiple protection spaces."""
+    digest_auth_mw._protection_space = {
+        "http://example.com/api",
+        "http://example.com/admin/",
+        "http://example.com/secure/area",
+    }
+
+    # Test various URLs
+    assert digest_auth_mw._in_protection_space(URL("http://example.com/api")) is True
+    assert digest_auth_mw._in_protection_space(URL("http://example.com/api/v1")) is True
+    assert (
+        digest_auth_mw._in_protection_space(URL("http://example.com/admin/panel"))
+        is True
+    )
+    assert (
+        digest_auth_mw._in_protection_space(
+            URL("http://example.com/secure/area/resource")
+        )
+        is True
+    )
+
+    # These should not match
+    assert digest_auth_mw._in_protection_space(URL("http://example.com/apiv2")) is False
+    assert (
+        digest_auth_mw._in_protection_space(URL("http://example.com/admin")) is False
+    )  # No trailing slash
+    assert (
+        digest_auth_mw._in_protection_space(URL("http://example.com/secure")) is False
+    )
+    assert digest_auth_mw._in_protection_space(URL("http://example.com/other")) is False
