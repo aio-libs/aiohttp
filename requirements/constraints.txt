@@ -278,7 +278,7 @@ typing-extensions==4.13.2
     #   typing-inspection
 typing-inspection==0.4.1
     # via pydantic
-uritemplate==4.1.1
+uritemplate==4.2.0
     # via gidgethub
 urllib3==2.4.0
     # via requests
