@@ -913,9 +913,8 @@ async def test_preemptive_auth_updates_nonce_count(
             )
 
         # Extract nc (nonce count) from auth header
-        if "nc=" in auth_header:
-            nc_match = auth_header.split("nc=")[1].split(",")[0].strip()
-            nonce_counts.append(nc_match)
+        nc_match = auth_header.split("nc=")[1].split(",")[0].strip()
+        nonce_counts.append(nc_match)
 
         return Response(text="OK")
 

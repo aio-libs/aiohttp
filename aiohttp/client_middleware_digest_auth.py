@@ -374,9 +374,6 @@ class DigestAuthMiddleware:
         According to RFC 7616, a URI is in the protection space if any URI
         in the protection space is a prefix of it (after both have been made absolute).
         """
-        if not self._protection_space:
-            return False
-
         # Check if any protection space URI is a prefix of the request URL
         request_str = str(url)
         for space_url in self._protection_space:
