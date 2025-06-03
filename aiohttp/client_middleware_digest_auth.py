@@ -18,6 +18,7 @@ from typing import (
     FrozenSet,
     List,
     Literal,
+    Set,
     Tuple,
     TypedDict,
     Union,
@@ -38,6 +39,8 @@ class DigestAuthChallenge(TypedDict, total=False):
     qop: str
     algorithm: str
     opaque: str
+    domain: str
+    stale: str
 
 
 DigestFunctions: Dict[str, Callable[[bytes], "hashlib._Hash"]] = {
@@ -81,13 +84,17 @@ _HEADER_PAIRS_PATTERN = re.compile(
 
 # RFC 7616: Challenge parameters to extract
 CHALLENGE_FIELDS: Final[
-    Tuple[Literal["realm", "nonce", "qop", "algorithm", "opaque"], ...]
+    Tuple[
+        Literal["realm", "nonce", "qop", "algorithm", "opaque", "domain", "stale"], ...
+    ]
 ] = (
     "realm",
     "nonce",
     "qop",
     "algorithm",
     "opaque",
+    "domain",
+    "stale",
 )
 
 # Supported digest authentication algorithms
@@ -159,6 +166,7 @@ class DigestAuthMiddleware:
     - Supports 'auth' and 'auth-int' quality of protection modes
     - Properly handles quoted strings and parameter parsing
     - Includes replay attack protection with client nonce count tracking
+    - Supports preemptive authentication per RFC 7616 Section 3.6
 
     Standards compliance:
     - RFC 7616: HTTP Digest Access Authentication (primary reference)
@@ -175,6 +183,7 @@ class DigestAuthMiddleware:
         self,
         login: str,
         password: str,
+        preemptive: bool = True,
     ) -> None:
         if login is None:
             raise ValueError("None is not allowed as login value")
@@ -192,6 +201,10 @@ class DigestAuthMiddleware:
         self._last_nonce_bytes = b""
         self._nonce_count = 0
         self._challenge: DigestAuthChallenge = {}
+        self._preemptive: bool = preemptive
+        self._protection_space: Set[URL] = (
+            set()
+        )  # Set of URLs defining the protection space
 
     async def _encode(
         self, method: str, url: URL, body: Union[Payload, Literal[b""]]
@@ -354,6 +367,23 @@ class DigestAuthMiddleware:
 
         return f"Digest {', '.join(pairs)}"
 
+    def _in_protection_space(self, url: URL) -> bool:
+        """
+        Check if the given URL is within the current protection space.
+
+        According to RFC 7616, a URI is in the protection space if any URI
+        in the protection space is a prefix of it (after both have been made absolute).
+        """
+        if not self._protection_space:
+            return False
+
+        # Check if any protection space URI is a prefix of the request URL
+        request_str = str(url)
+        for space_url in self._protection_space:
+            if request_str.startswith(str(space_url)):
+                return True
+        return False
+
     def _authenticate(self, response: ClientResponse) -> bool:
         """
         Takes the given response and tries digest-auth, if needed.
@@ -391,6 +421,27 @@ class DigestAuthMiddleware:
             if value := header_pairs.get(field):
                 self._challenge[field] = value
 
+        # Update protection space based on domain parameter or default to origin
+        if self._challenge:
+            response_url = response.url
+            origin = response_url.origin()
+
+            if domain := self._challenge.get("domain"):
+                # Parse space-separated list of URIs
+                self._protection_space = set()
+                for uri in domain.split():
+                    # Remove quotes if present
+                    uri = uri.strip('"')
+                    if uri.startswith("/"):
+                        # Path-absolute, relative to origin
+                        self._protection_space.add(origin.join(URL(uri)))
+                    else:
+                        # Absolute URI
+                        self._protection_space.add(URL(uri))
+            else:
+                # No domain specified, protection space is entire origin
+                self._protection_space = {origin}
+
         # Return True only if we found at least one challenge parameter
         return bool(self._challenge)
 
@@ -400,8 +451,14 @@ class DigestAuthMiddleware:
         """Run the digest auth middleware."""
         response = None
         for retry_count in range(2):
-            # Apply authorization header if we have a challenge (on second attempt)
-            if retry_count > 0:
+            # Apply authorization header if:
+            # 1. This is a retry after 401 (retry_count > 0), OR
+            # 2. Preemptive auth is enabled AND we have a challenge AND the URL is in protection space
+            if retry_count > 0 or (
+                self._preemptive
+                and self._challenge
+                and self._in_protection_space(request.url)
+            ):
                 request.headers[hdrs.AUTHORIZATION] = await self._encode(
                     request.method, request.url, request.body
                 )
