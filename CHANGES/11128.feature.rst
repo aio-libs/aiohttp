@@ -3,7 +3,7 @@ Added preemptive digest authentication to :class:`~aiohttp.DigestAuthMiddleware`
 The middleware now reuses authentication credentials for subsequent requests to the same
 protection space, improving efficiency by avoiding extra authentication round trips.
 This behavior matches how web browsers handle digest authentication and follows
-`RFC 7616 Section 3.6 <https://datatracker.ietf.org/doc/html/rfc7616#section-3.6>`_.
+:rfc:`7616#section-3.6`.
 
 Preemptive authentication is enabled by default but can be disabled by passing
 ``preemptive=False`` to the middleware constructor.
