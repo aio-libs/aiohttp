@@ -1,0 +1,1 @@
+Added support for ``ssl_shutdown_timeout=0`` on all Python versions, which immediately aborts SSL connections without performing the shutdown handshake. Previously, this value was rejected on Python 3.11+ and ignored on earlier versions. Non-zero values on Python < 3.11 now trigger a ``RuntimeWarning`` -- by :user:`bdraco`.
