@@ -6,7 +6,7 @@ import unittest.mock
 from collections.abc import AsyncIterator
 from io import StringIO
 from pathlib import Path
-from typing import Optional, TextIO, Union
+from typing import List, Optional, TextIO, Union
 
 import pytest
 from multidict import CIMultiDict
