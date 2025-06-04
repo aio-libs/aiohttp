@@ -18,7 +18,6 @@ from typing import (
     FrozenSet,
     List,
     Literal,
-    Set,
     Tuple,
     TypedDict,
     Union,
@@ -203,7 +202,7 @@ class DigestAuthMiddleware:
         self._challenge: DigestAuthChallenge = {}
         self._preemptive: bool = preemptive
         # Set of URLs defining the protection space
-        self._protection_space: Set[str] = set()
+        self._protection_space: List[str] = []
 
     async def _encode(
         self, method: str, url: URL, body: Union[Payload, Literal[b""]]
@@ -428,19 +427,19 @@ class DigestAuthMiddleware:
 
         if domain := self._challenge.get("domain"):
             # Parse space-separated list of URIs
-            self._protection_space = set()
+            self._protection_space = []
             for uri in domain.split():
                 # Remove quotes if present
                 uri = uri.strip('"')
                 if uri.startswith("/"):
                     # Path-absolute, relative to origin
-                    self._protection_space.add(str(origin.join(URL(uri))))
+                    self._protection_space.append(str(origin.join(URL(uri))))
                 else:
                     # Absolute URI
-                    self._protection_space.add(str(URL(uri)))
+                    self._protection_space.append(str(URL(uri)))
         else:
             # No domain specified, protection space is entire origin
-            self._protection_space = {str(origin)}
+            self._protection_space = [str(origin)]
 
         # Return True only if we found at least one challenge parameter
         return bool(self._challenge)
