@@ -320,29 +320,31 @@ async def test_abort(loop: asyncio.AbstractEventLoop) -> None:
 
     # Set up some state
     proto._payload = mock.Mock()
-    proto._drop_timeout = mock.Mock()  # type: ignore[method-assign]
 
-    # Call abort
-    proto.abort()
+    # Mock _drop_timeout method using patch.object
+    with mock.patch.object(proto, "_drop_timeout") as mock_drop_timeout:
+        # Call abort
+        proto.abort()
 
-    # Verify transport.abort() was called
-    transport.abort.assert_called_once()
+        # Verify transport.abort() was called
+        transport.abort.assert_called_once()
 
-    # Verify cleanup
-    assert proto.transport is None
-    assert proto._payload is None
-    assert proto._exception is None
-    proto._drop_timeout.assert_called_once()
+        # Verify cleanup
+        assert proto.transport is None
+        assert proto._payload is None
+        assert proto._exception is None
+        mock_drop_timeout.assert_called_once()
 
 
 async def test_abort_without_transport(loop: asyncio.AbstractEventLoop) -> None:
     """Test abort() when transport is None."""
     proto = ResponseHandler(loop=loop)
-    proto._drop_timeout = mock.Mock()  # type: ignore[method-assign]
 
-    # Call abort without transport
-    proto.abort()
+    # Mock _drop_timeout method using patch.object
+    with mock.patch.object(proto, "_drop_timeout") as mock_drop_timeout:
+        # Call abort without transport
+        proto.abort()
 
-    # Should not raise and should still clean up
-    assert proto._exception is None
-    proto._drop_timeout.assert_not_called()
+        # Should not raise and should still clean up
+        assert proto._exception is None
+        mock_drop_timeout.assert_not_called()
