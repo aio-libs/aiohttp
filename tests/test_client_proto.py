@@ -332,7 +332,7 @@ async def test_abort(loop: asyncio.AbstractEventLoop) -> None:
         # Verify cleanup
         assert proto.transport is None
         assert proto._payload is None
-        assert proto._exception is None
+        assert proto._exception is None  # type: ignore[unreachable]
         mock_drop_timeout.assert_called_once()
 
 

@@ -375,7 +375,7 @@ async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
             assert session.connector._ssl_shutdown_timeout is None
 
         # Test that it doesn't affect when custom connector is provided
-        custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+        custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)  # type: ignore[unreachable]
         async with ClientSession(
             connector=custom_conn, ssl_shutdown_timeout=1.0
         ) as session:

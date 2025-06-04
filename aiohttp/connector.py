@@ -912,6 +912,7 @@ class TCPConnector(BaseConnector):
         self._interleave = interleave
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
         self._socket_factory = socket_factory
+        self._ssl_shutdown_timeout: Optional[float]
 
         # Handle ssl_shutdown_timeout with warning for Python < 3.11
         if ssl_shutdown_timeout is sentinel:

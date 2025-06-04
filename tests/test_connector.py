@@ -2109,7 +2109,7 @@ async def test_tcp_connector_ssl_shutdown_timeout(
         # Test None value
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=None)
         assert conn._ssl_shutdown_timeout is None
-        await conn.close()
+        await conn.close()  # type: ignore[unreachable]
 
 
 @pytest.mark.skipif(
