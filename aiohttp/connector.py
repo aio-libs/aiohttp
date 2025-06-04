@@ -880,7 +880,7 @@ class TCPConnector(BaseConnector):
         happy_eyeballs_delay: Optional[float] = 0.25,
         interleave: Optional[int] = None,
         socket_factory: Optional[SocketFactoryType] = None,
-        ssl_shutdown_timeout: Optional[float] = 0.1,
+        ssl_shutdown_timeout: Union[None, float, object] = sentinel,
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -912,7 +912,23 @@ class TCPConnector(BaseConnector):
         self._interleave = interleave
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
         self._socket_factory = socket_factory
-        self._ssl_shutdown_timeout = ssl_shutdown_timeout
+
+        # Handle ssl_shutdown_timeout with warning for Python < 3.11
+        if ssl_shutdown_timeout is sentinel:
+            self._ssl_shutdown_timeout = 0.1
+        else:
+            if (
+                sys.version_info < (3, 11)
+                and ssl_shutdown_timeout is not None
+                and ssl_shutdown_timeout != 0
+            ):
+                warnings.warn(
+                    f"ssl_shutdown_timeout={ssl_shutdown_timeout} is ignored on Python < 3.11; "
+                    "only ssl_shutdown_timeout=0 is supported. The timeout will be ignored.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+            self._ssl_shutdown_timeout = ssl_shutdown_timeout
 
     async def close(self, *, abort_ssl: bool = False) -> None:
         """Close all opened transports."""

@@ -245,11 +245,19 @@ The client session supports the context manager protocol for self closing.
       connections (``0.1`` seconds by default). This usually provides sufficient time
       to notify the remote peer of connection closure, helping prevent broken
       connections on the server side, while minimizing delays during connector
-      cleanup. This timeout is passed to the underlying :class:`TCPConnector`
-      when one is created automatically. Note: This parameter only takes effect
-      on Python 3.11+.
+      cleanup. Setting this to ``0`` will abort SSL connections immediately without
+      performing the shutdown handshake, which can be useful for faster cleanup
+      at the cost of potentially ungraceful disconnections. This timeout is passed
+      to the underlying :class:`TCPConnector` when one is created automatically.
+      Note: On Python versions prior to 3.11, only a value of ``0`` is supported;
+      other values will be ignored.
 
       .. versionadded:: 3.12.5
+
+      .. versionchanged:: 3.12.10
+         Added support for ``ssl_shutdown_timeout=0`` which aborts SSL connections
+         immediately on all Python versions. A :exc:`RuntimeWarning` is issued when
+         non-zero values are passed on Python < 3.11.
 
    .. attribute:: closed
 
@@ -1313,9 +1321,18 @@ is controlled by *force_close* constructor's parameter).
       the remote server (which helps prevent "connection reset" errors),
       while avoiding unnecessary delays during connector cleanup.
       The default value provides a reasonable compromise for most use cases.
-      Note: This parameter only takes effect on Python 3.11+.
+      Setting this to ``0`` will abort SSL connections immediately without
+      performing the shutdown handshake, which can be useful for faster cleanup
+      at the cost of potentially ungraceful disconnections.
+      Note: On Python versions prior to 3.11, only a value of ``0`` is supported;
+      other values will be ignored.
 
         .. versionadded:: 3.12.5
+
+        .. versionchanged:: 3.12.10
+           Added support for ``ssl_shutdown_timeout=0`` which aborts SSL connections
+           immediately on all Python versions. A :exc:`RuntimeWarning` is issued when
+           non-zero values are passed on Python < 3.11.
 
    .. attribute:: family
 
