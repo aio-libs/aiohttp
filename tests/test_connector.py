@@ -2177,22 +2177,22 @@ async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
         )
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
 
-    with mock.patch.object(
-        conn._loop, "create_connection", autospec=True, spec_set=True
-    ) as create_connection:
-        create_connection.return_value = mock.Mock(), mock.Mock()
+        with mock.patch.object(
+            conn._loop, "create_connection", autospec=True, spec_set=True
+        ) as create_connection:
+            create_connection.return_value = mock.Mock(), mock.Mock()
 
-        # Test with HTTPS
-        req = ClientRequest("GET", URL("https://example.com"), loop=loop)
-        with closing(await conn.connect(req, [], ClientTimeout())):
-            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+            # Test with HTTPS
+            req = ClientRequest("GET", URL("https://example.com"), loop=loop)
+            with closing(await conn.connect(req, [], ClientTimeout())):
+                assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
-        # Test with HTTP
-        req = ClientRequest("GET", URL("http://example.com"), loop=loop)
-        with closing(await conn.connect(req, [], ClientTimeout())):
-            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+            # Test with HTTP
+            req = ClientRequest("GET", URL("http://example.com"), loop=loop)
+            with closing(await conn.connect(req, [], ClientTimeout())):
+                assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
-    await conn.close()
+        await conn.close()
 
 
 async def test_tcp_connector_close_abort_ssl_when_shutdown_timeout_zero(
