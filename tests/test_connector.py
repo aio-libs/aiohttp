@@ -2377,7 +2377,7 @@ async def test_tcp_connector_close_abort_ssl_connections_in_conns(
 
     # Add the protocol to _conns
     key = ConnectionKey("host", 443, True, True, None, None, None)
-    conn._conns[key] = [(proto, loop.time())]
+    conn._conns[key] = deque([(proto, loop.time())])
 
     # Close the connector
     await conn.close()

@@ -320,7 +320,7 @@ async def test_abort(loop: asyncio.AbstractEventLoop) -> None:
 
     # Set up some state
     proto._payload = mock.Mock()
-    proto._drop_timeout = mock.Mock()
+    proto._drop_timeout = mock.Mock()  # type: ignore[method-assign]
 
     # Call abort
     proto.abort()
@@ -338,7 +338,7 @@ async def test_abort(loop: asyncio.AbstractEventLoop) -> None:
 async def test_abort_without_transport(loop: asyncio.AbstractEventLoop) -> None:
     """Test abort() when transport is None."""
     proto = ResponseHandler(loop=loop)
-    proto._drop_timeout = mock.Mock()
+    proto._drop_timeout = mock.Mock()  # type: ignore[method-assign]
 
     # Call abort without transport
     proto.abort()

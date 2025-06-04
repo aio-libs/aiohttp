@@ -928,7 +928,7 @@ class TCPConnector(BaseConnector):
                     RuntimeWarning,
                     stacklevel=2,
                 )
-            self._ssl_shutdown_timeout = ssl_shutdown_timeout
+            self._ssl_shutdown_timeout = cast(Optional[float], ssl_shutdown_timeout)
 
     async def close(self, *, abort_ssl: bool = False) -> None:
         """Close all opened transports."""
