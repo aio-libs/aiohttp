@@ -1193,7 +1193,7 @@ def test_in_protection_space(
     expected: bool,
 ) -> None:
     """Test _in_protection_space method with various URL patterns."""
-    digest_auth_mw._protection_space = {protection_space_url}
+    digest_auth_mw._protection_space = [protection_space_url]
     result = digest_auth_mw._in_protection_space(URL(request_url))
     assert result == expected
 
@@ -1202,11 +1202,11 @@ def test_in_protection_space_multiple_spaces(
     digest_auth_mw: DigestAuthMiddleware,
 ) -> None:
     """Test _in_protection_space with multiple protection spaces."""
-    digest_auth_mw._protection_space = {
+    digest_auth_mw._protection_space = [
         "http://example.com/api",
         "http://example.com/admin/",
         "http://example.com/secure/area",
-    }
+    ]
 
     # Test various URLs
     assert digest_auth_mw._in_protection_space(URL("http://example.com/api")) is True
