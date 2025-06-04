@@ -10,6 +10,32 @@
 
 .. towncrier release notes start
 
+3.12.8 (2025-06-04)
+===================
+
+Features
+--------
+
+- Added preemptive digest authentication to :class:`~aiohttp.DigestAuthMiddleware` -- by :user:`bdraco`.
+
+  The middleware now reuses authentication credentials for subsequent requests to the same
+  protection space, improving efficiency by avoiding extra authentication round trips.
+  This behavior matches how web browsers handle digest authentication and follows
+  :rfc:`7616#section-3.6`.
+
+  Preemptive authentication is enabled by default but can be disabled by passing
+  ``preemptive=False`` to the middleware constructor.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11128`, :issue:`11129`.
+
+
+
+
+----
+
+
 3.12.7 (2025-06-02)
 ===================
 
