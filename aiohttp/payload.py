@@ -514,7 +514,7 @@ class IOBasePayload(Payload):
         self._set_or_restore_start_position()
         size = self.size  # Call size only once since it does I/O
         return size, self._value.read(
-            min(size or READ_SIZE, remaining_content_len or READ_SIZE)
+            min(READ_SIZE, size or READ_SIZE, remaining_content_len or READ_SIZE)
         )
 
     def _read(self, remaining_content_len: Optional[int]) -> bytes:
@@ -617,7 +617,15 @@ class IOBasePayload(Payload):
                 return
 
             # Read next chunk
-            chunk = await loop.run_in_executor(None, self._read, remaining_content_len)
+            chunk = await loop.run_in_executor(
+                None,
+                self._read,
+                (
+                    min(READ_SIZE, remaining_content_len)
+                    if remaining_content_len is not None
+                    else READ_SIZE
+                ),
+            )
 
     def _should_stop_writing(
         self,
@@ -760,7 +768,7 @@ class TextIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         size = self.size
         chunk = self._value.read(
-            min(size or READ_SIZE, remaining_content_len or READ_SIZE)
+            min(READ_SIZE, size or READ_SIZE, remaining_content_len or READ_SIZE)
         )
         return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
