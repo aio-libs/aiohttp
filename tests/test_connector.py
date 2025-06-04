@@ -2423,7 +2423,13 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test _start_tls_connection exception handling with ssl_shutdown_timeout>0."""
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
+    # Suppress warnings for non-zero ssl_shutdown_timeout on Python < 3.11
+    with warnings.catch_warnings():
+        if sys.version_info < (3, 11):
+            warnings.filterwarnings(
+                "ignore", message="ssl_shutdown_timeout.*is ignored on Python < 3.11"
+            )
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
 
     underlying_transport = mock.Mock()
     req = mock.Mock()
