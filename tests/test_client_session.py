@@ -3,6 +3,8 @@ import contextlib
 import gc
 import io
 import json
+import sys
+import warnings
 from collections import deque
 from http.cookies import BaseCookie, SimpleCookie
 from typing import (
@@ -350,31 +352,38 @@ async def test_create_connector(
 
 
 async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
-    # Test default value
-    async with ClientSession() as session:
-        assert isinstance(session.connector, TCPConnector)
-        assert session.connector._ssl_shutdown_timeout == 0.1
+    # Suppress warnings for non-zero ssl_shutdown_timeout on Python < 3.11
+    with warnings.catch_warnings():
+        if sys.version_info < (3, 11):
+            warnings.filterwarnings(
+                "ignore", message="ssl_shutdown_timeout.*is ignored on Python < 3.11"
+            )
 
-    # Test custom value
-    async with ClientSession(ssl_shutdown_timeout=1.0) as session:
-        assert isinstance(session.connector, TCPConnector)
-        assert session.connector._ssl_shutdown_timeout == 1.0
+        # Test default value
+        async with ClientSession() as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout == 0.1
 
-    # Test None value
-    async with ClientSession(ssl_shutdown_timeout=None) as session:
-        assert isinstance(session.connector, TCPConnector)
-        assert session.connector._ssl_shutdown_timeout is None
+        # Test custom value
+        async with ClientSession(ssl_shutdown_timeout=1.0) as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout == 1.0
 
-    # Test that it doesn't affect when custom connector is provided
-    custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
-    async with ClientSession(
-        connector=custom_conn, ssl_shutdown_timeout=1.0
-    ) as session:
-        assert session.connector is not None
-        assert isinstance(session.connector, TCPConnector)
-        assert (
-            session.connector._ssl_shutdown_timeout == 2.0
-        )  # Should use connector's value
+        # Test None value
+        async with ClientSession(ssl_shutdown_timeout=None) as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout is None
+
+        # Test that it doesn't affect when custom connector is provided
+        custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+        async with ClientSession(
+            connector=custom_conn, ssl_shutdown_timeout=1.0
+        ) as session:
+            assert session.connector is not None
+            assert isinstance(session.connector, TCPConnector)
+            assert (
+                session.connector._ssl_shutdown_timeout == 2.0
+            )  # Should use connector's value
 
 
 def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
