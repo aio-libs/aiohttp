@@ -431,9 +431,9 @@ class BaseConnector:
                 timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
 
-    async def close(self) -> None:
+    async def close(self, *, abort_ssl: bool = False) -> None:
         """Close all opened transports."""
-        waiters = self._close_immediately()
+        waiters = self._close_immediately(abort_ssl=abort_ssl)
         if waiters:
             results = await asyncio.gather(*waiters, return_exceptions=True)
             for res in results:
@@ -441,7 +441,7 @@ class BaseConnector:
                     err_msg = "Error while closing connector: " + repr(res)
                     client_logger.debug(err_msg)
 
-    def _close_immediately(self) -> List[Awaitable[object]]:
+    def _close_immediately(self, *, abort_ssl: bool = False) -> List[Awaitable[object]]:
         waiters: List[Awaitable[object]] = []
 
         if self._closed:
@@ -463,12 +463,26 @@ class BaseConnector:
 
             for data in self._conns.values():
                 for proto, _ in data:
-                    proto.close()
+                    if (
+                        abort_ssl
+                        and proto.transport
+                        and proto.transport.get_extra_info("sslcontext") is not None
+                    ):
+                        proto.abort()
+                    else:
+                        proto.close()
                     if closed := proto.closed:
                         waiters.append(closed)
 
             for proto in self._acquired:
-                proto.close()
+                if (
+                    abort_ssl
+                    and proto.transport
+                    and proto.transport.get_extra_info("sslcontext") is not None
+                ):
+                    proto.abort()
+                else:
+                    proto.close()
                 if closed := proto.closed:
                     waiters.append(closed)
 
@@ -900,11 +914,15 @@ class TCPConnector(BaseConnector):
         self._socket_factory = socket_factory
         self._ssl_shutdown_timeout = ssl_shutdown_timeout
 
-    def _close_immediately(self) -> List[Awaitable[object]]:
+    async def close(self, *, abort_ssl: bool = False) -> None:
+        """Close all opened transports."""
+        await super().close(abort_ssl=self._ssl_shutdown_timeout == 0)
+
+    def _close_immediately(self, *, abort_ssl: bool = False) -> List[Awaitable[object]]:
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
             fut.cancel()
 
-        waiters = super()._close_immediately()
+        waiters = super()._close_immediately(abort_ssl=abort_ssl)
 
         for t in self._resolve_host_tasks:
             t.cancel()
@@ -1246,7 +1264,10 @@ class TCPConnector(BaseConnector):
                     # We need to close the underlying transport since
                     # `start_tls()` probably failed before it had a
                     # chance to do this:
-                    underlying_transport.close()
+                    if self._ssl_shutdown_timeout == 0:
+                        underlying_transport.abort()
+                    else:
+                        underlying_transport.close()
                     raise
                 if isinstance(tls_transport, asyncio.Transport):
                     fingerprint = self._get_fingerprint(req)
