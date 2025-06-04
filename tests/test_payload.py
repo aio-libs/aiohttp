@@ -377,7 +377,7 @@ async def test_iobase_payload_reads_in_chunks() -> None:
     # Track the sizes of read() calls
     read_sizes = []
 
-    def mock_read(size):
+    def mock_read(size: int) -> bytes:
         read_sizes.append(size)
         # Return data based on how many times read was called
         call_count = len(read_sizes)
@@ -412,12 +412,12 @@ async def test_iobase_payload_large_content_length() -> None:
 
     # Create a custom file-like object that tracks read sizes
     class TrackingBytesIO(io.BytesIO):
-        def __init__(self, data):
+        def __init__(self, data: bytes) -> None:
             super().__init__(data)
-            self.read_sizes = []
+            self.read_sizes: List[int] = []
 
-        def read(self, size=-1):
-            self.read_sizes.append(size)
+        def read(self, size: Optional[int] = -1) -> bytes:
+            self.read_sizes.append(size if size is not None else -1)
             return super().read(size)
 
     tracking_file = TrackingBytesIO(data)
@@ -452,7 +452,7 @@ async def test_textio_payload_reads_in_chunks() -> None:
     # Track the sizes of read() calls
     read_sizes = []
 
-    def mock_read(size):
+    def mock_read(size: int) -> str:
         read_sizes.append(size)
         # Return data based on how many times read was called
         call_count = len(read_sizes)
@@ -487,12 +487,12 @@ async def test_textio_payload_large_content_length() -> None:
 
     # Create a custom file-like object that tracks read sizes
     class TrackingStringIO(io.StringIO):
-        def __init__(self, data):
+        def __init__(self, data: str) -> None:
             super().__init__(data)
-            self.read_sizes = []
+            self.read_sizes: List[int] = []
 
-        def read(self, size=-1):
-            self.read_sizes.append(size)
+        def read(self, size: Optional[int] = -1) -> str:
+            self.read_sizes.append(size if size is not None else -1)
             return super().read(size)
 
     tracking_file = TrackingStringIO(text_data)
