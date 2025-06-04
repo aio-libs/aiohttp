@@ -308,3 +308,41 @@ async def test_closed_property_after_connection_lost(
 
     # After connection_lost, closed should return None if it was never accessed
     assert proto.closed is None
+
+
+async def test_abort(loop: asyncio.AbstractEventLoop) -> None:
+    """Test the abort() method."""
+    proto = ResponseHandler(loop=loop)
+
+    # Create a mock transport
+    transport = mock.Mock()
+    proto.connection_made(transport)
+
+    # Set up some state
+    proto._payload = mock.Mock()
+    proto._drop_timeout = mock.Mock()
+
+    # Call abort
+    proto.abort()
+
+    # Verify transport.abort() was called
+    transport.abort.assert_called_once()
+
+    # Verify cleanup
+    assert proto.transport is None
+    assert proto._payload is None
+    assert proto._exception is None
+    proto._drop_timeout.assert_called_once()
+
+
+async def test_abort_without_transport(loop: asyncio.AbstractEventLoop) -> None:
+    """Test abort() when transport is None."""
+    proto = ResponseHandler(loop=loop)
+    proto._drop_timeout = mock.Mock()
+
+    # Call abort without transport
+    proto.abort()
+
+    # Should not raise and should still clean up
+    assert proto._exception is None
+    proto._drop_timeout.assert_not_called()
