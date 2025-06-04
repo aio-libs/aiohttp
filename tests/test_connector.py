@@ -2089,20 +2089,27 @@ async def test_tcp_connector_ctor(loop: asyncio.AbstractEventLoop) -> None:
 async def test_tcp_connector_ssl_shutdown_timeout(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    # Test default value
-    conn = aiohttp.TCPConnector()
-    assert conn._ssl_shutdown_timeout == 0.1
-    await conn.close()
+    # Suppress warnings for non-zero ssl_shutdown_timeout on Python < 3.11
+    with warnings.catch_warnings():
+        if sys.version_info < (3, 11):
+            warnings.filterwarnings(
+                "ignore", message="ssl_shutdown_timeout.*is ignored on Python < 3.11"
+            )
 
-    # Test custom value
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
-    assert conn._ssl_shutdown_timeout == 1.0
-    await conn.close()
+        # Test default value
+        conn = aiohttp.TCPConnector()
+        assert conn._ssl_shutdown_timeout == 0.1
+        await conn.close()
 
-    # Test None value
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=None)
-    assert conn._ssl_shutdown_timeout is None
-    await conn.close()
+        # Test custom value
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
+        assert conn._ssl_shutdown_timeout == 1.0
+        await conn.close()
+
+        # Test None value
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=None)
+        assert conn._ssl_shutdown_timeout is None
+        await conn.close()
 
 
 @pytest.mark.skipif(
