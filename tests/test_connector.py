@@ -2171,7 +2171,11 @@ async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
     loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
 ) -> None:
     # Test that ssl_shutdown_timeout is NOT passed to create_connection on Python < 3.11
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message="ssl_shutdown_timeout.*is ignored on Python < 3.11"
+        )
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
 
     with mock.patch.object(
         conn._loop, "create_connection", autospec=True, spec_set=True
