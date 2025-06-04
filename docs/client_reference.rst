@@ -2282,12 +2282,13 @@ Utilities
       :return: encoded authentication data, :class:`str`.
 
 
-.. class:: DigestAuthMiddleware(login, password)
+.. class:: DigestAuthMiddleware(login, password, *, preemptive=True)
 
    HTTP digest authentication client middleware.
 
    :param str login: login
    :param str password: password
+   :param bool preemptive: Enable preemptive authentication (default: ``True``)
 
    This middleware supports HTTP digest authentication with both `auth` and
    `auth-int` quality of protection (qop) modes, and a variety of hashing algorithms.
@@ -2297,6 +2298,31 @@ Utilities
    - Parsing 401 Unauthorized responses with `WWW-Authenticate: Digest` headers
    - Generating appropriate `Authorization: Digest` headers on retry
    - Maintaining nonce counts and challenge data per request
+   - When ``preemptive=True``, reusing authentication credentials for subsequent
+     requests to the same protection space (following RFC 7616 Section 3.6)
+
+   **Preemptive Authentication**
+
+   By default (``preemptive=True``), the middleware remembers successful authentication
+   challenges and automatically includes the Authorization header in subsequent requests
+   to the same protection space. This behavior:
+
+   - Improves server efficiency by avoiding extra round trips
+   - Matches how modern web browsers handle digest authentication
+   - Follows the recommendation in RFC 7616 Section 3.6
+
+   The server may still respond with a 401 status and ``stale=true`` if the nonce
+   has expired, in which case the middleware will automatically retry with the new nonce.
+
+   To disable preemptive authentication and require a 401 challenge for every request,
+   set ``preemptive=False``::
+
+       # Default behavior - preemptive auth enabled
+       digest_auth_middleware = DigestAuthMiddleware(login="user", password="pass")
+
+       # Disable preemptive auth - always wait for 401 challenge
+       digest_auth_middleware = DigestAuthMiddleware(login="user", password="pass",
+                                                      preemptive=False)
 
    Usage::
 
@@ -2306,7 +2332,13 @@ Utilities
                # The middleware automatically handles the digest auth handshake
                assert resp.status == 200
 
+           # Subsequent requests include auth header preemptively
+           async with session.get("http://protected.example.com/other") as resp:
+               assert resp.status == 200  # No 401 round trip needed
+
    .. versionadded:: 3.12
+   .. versionchanged:: 3.12.8
+      Added ``preemptive`` parameter to enable/disable preemptive authentication.
 
 
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
