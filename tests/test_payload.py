@@ -12,6 +12,7 @@ from multidict import CIMultiDict
 
 from aiohttp import payload
 from aiohttp.abc import AbstractStreamWriter
+from aiohttp.payload import READ_SIZE
 
 
 class BufferWriter(AbstractStreamWriter):
@@ -361,6 +362,155 @@ async def test_iobase_payload_exact_chunk_size_limit() -> None:
     written = writer.get_written_bytes()
     assert len(written) == chunk_size
     assert written == data[:chunk_size]
+
+
+async def test_iobase_payload_reads_in_chunks() -> None:
+    """Test IOBasePayload reads data in chunks of READ_SIZE, not all at once."""
+    # Create a large file that's multiple times larger than READ_SIZE
+    large_data = b"x" * (READ_SIZE * 3 + 1000)  # ~192KB + 1000 bytes
+
+    # Mock the file-like object to track read calls
+    mock_file = unittest.mock.Mock(spec=io.BytesIO)
+    mock_file.tell.return_value = 0
+    mock_file.fileno.side_effect = AttributeError  # Make size return None
+
+    # Track the sizes of read() calls
+    read_sizes = []
+
+    def mock_read(size: int) -> bytes:
+        read_sizes.append(size)
+        # Return data based on how many times read was called
+        call_count = len(read_sizes)
+        if call_count == 1:
+            return large_data[:size]
+        elif call_count == 2:
+            return large_data[READ_SIZE : READ_SIZE + size]
+        elif call_count == 3:
+            return large_data[READ_SIZE * 2 : READ_SIZE * 2 + size]
+        else:
+            return large_data[READ_SIZE * 3 :]
+
+    mock_file.read.side_effect = mock_read
+
+    payload_obj = payload.IOBasePayload(mock_file)
+    writer = MockStreamWriter()
+
+    # Write with a large content_length
+    await payload_obj.write_with_length(writer, len(large_data))
+
+    # Verify that reads were limited to READ_SIZE
+    assert len(read_sizes) > 1  # Should have multiple reads
+    for read_size in read_sizes:
+        assert (
+            read_size <= READ_SIZE
+        ), f"Read size {read_size} exceeds READ_SIZE {READ_SIZE}"
+
+
+async def test_iobase_payload_large_content_length() -> None:
+    """Test IOBasePayload with very large content_length doesn't read all at once."""
+    data = b"x" * (READ_SIZE + 1000)
+
+    # Create a custom file-like object that tracks read sizes
+    class TrackingBytesIO(io.BytesIO):
+        def __init__(self, data: bytes) -> None:
+            super().__init__(data)
+            self.read_sizes: List[int] = []
+
+        def read(self, size: Optional[int] = -1) -> bytes:
+            self.read_sizes.append(size if size is not None else -1)
+            return super().read(size)
+
+    tracking_file = TrackingBytesIO(data)
+    payload_obj = payload.IOBasePayload(tracking_file)
+    writer = MockStreamWriter()
+
+    # Write with a very large content_length (simulating the bug scenario)
+    large_content_length = 10 * 1024 * 1024  # 10MB
+    await payload_obj.write_with_length(writer, large_content_length)
+
+    # Verify no single read exceeded READ_SIZE
+    for read_size in tracking_file.read_sizes:
+        assert (
+            read_size <= READ_SIZE
+        ), f"Read size {read_size} exceeds READ_SIZE {READ_SIZE}"
+
+    # Verify the correct amount of data was written
+    assert writer.get_written_bytes() == data
+
+
+async def test_textio_payload_reads_in_chunks() -> None:
+    """Test TextIOPayload reads data in chunks of READ_SIZE, not all at once."""
+    # Create a large text file that's multiple times larger than READ_SIZE
+    large_text = "x" * (READ_SIZE * 3 + 1000)  # ~192KB + 1000 chars
+
+    # Mock the file-like object to track read calls
+    mock_file = unittest.mock.Mock(spec=io.StringIO)
+    mock_file.tell.return_value = 0
+    mock_file.fileno.side_effect = AttributeError  # Make size return None
+    mock_file.encoding = "utf-8"
+
+    # Track the sizes of read() calls
+    read_sizes = []
+
+    def mock_read(size: int) -> str:
+        read_sizes.append(size)
+        # Return data based on how many times read was called
+        call_count = len(read_sizes)
+        if call_count == 1:
+            return large_text[:size]
+        elif call_count == 2:
+            return large_text[READ_SIZE : READ_SIZE + size]
+        elif call_count == 3:
+            return large_text[READ_SIZE * 2 : READ_SIZE * 2 + size]
+        else:
+            return large_text[READ_SIZE * 3 :]
+
+    mock_file.read.side_effect = mock_read
+
+    payload_obj = payload.TextIOPayload(mock_file)
+    writer = MockStreamWriter()
+
+    # Write with a large content_length
+    await payload_obj.write_with_length(writer, len(large_text.encode("utf-8")))
+
+    # Verify that reads were limited to READ_SIZE
+    assert len(read_sizes) > 1  # Should have multiple reads
+    for read_size in read_sizes:
+        assert (
+            read_size <= READ_SIZE
+        ), f"Read size {read_size} exceeds READ_SIZE {READ_SIZE}"
+
+
+async def test_textio_payload_large_content_length() -> None:
+    """Test TextIOPayload with very large content_length doesn't read all at once."""
+    text_data = "x" * (READ_SIZE + 1000)
+
+    # Create a custom file-like object that tracks read sizes
+    class TrackingStringIO(io.StringIO):
+        def __init__(self, data: str) -> None:
+            super().__init__(data)
+            self.read_sizes: List[int] = []
+
+        def read(self, size: Optional[int] = -1) -> str:
+            self.read_sizes.append(size if size is not None else -1)
+            return super().read(size)
+
+    tracking_file = TrackingStringIO(text_data)
+    payload_obj = payload.TextIOPayload(tracking_file)
+    writer = MockStreamWriter()
+
+    # Write with a very large content_length (simulating the bug scenario)
+    large_content_length = 10 * 1024 * 1024  # 10MB
+    await payload_obj.write_with_length(writer, large_content_length)
+
+    # Verify no single read exceeded READ_SIZE
+    for read_size in tracking_file.read_sizes:
+        assert (
+            read_size <= READ_SIZE
+        ), f"Read size {read_size} exceeds READ_SIZE {READ_SIZE}"
+
+    # Verify the correct amount of data was written
+    assert writer.get_written_bytes() == text_data.encode("utf-8")
 
 
 async def test_async_iterable_payload_write_with_length_no_limit() -> None:
