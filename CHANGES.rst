@@ -10,6 +10,26 @@
 
 .. towncrier release notes start
 
+3.12.9 (2025-06-04)
+===================
+
+Bug fixes
+---------
+
+- Fixed ``IOBasePayload`` and ``TextIOPayload`` reading entire files into memory when streaming large files -- by :user:`bdraco`.
+
+  When using file-like objects with the aiohttp client, the entire file would be read into memory if the file size was provided in the ``Content-Length`` header. This could cause out-of-memory errors when uploading large files. The payload classes now correctly read data in chunks of ``READ_SIZE`` (64KB) regardless of the total content length.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11138`.
+
+
+
+
+----
+
+
 3.12.8 (2025-06-04)
 ===================
 
