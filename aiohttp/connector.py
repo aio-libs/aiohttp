@@ -880,7 +880,7 @@ class TCPConnector(BaseConnector):
         happy_eyeballs_delay: Optional[float] = 0.25,
         interleave: Optional[int] = None,
         socket_factory: Optional[SocketFactoryType] = None,
-        ssl_shutdown_timeout: Union[None, float, object] = sentinel,
+        ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
