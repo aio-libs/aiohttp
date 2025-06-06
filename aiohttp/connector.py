@@ -883,9 +883,14 @@ class TCPConnector(BaseConnector):
                 "got {!r} instead.".format(ssl)
             )
         self._ssl = ssl
+
+        self._resolver: AbstractResolver
         if resolver is None:
-            resolver = DefaultResolver()
-        self._resolver: AbstractResolver = resolver
+            self._resolver = DefaultResolver()
+            self._resolver_owner = True
+        else:
+            self._resolver = resolver
+            self._resolver_owner = False
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
@@ -911,6 +916,12 @@ class TCPConnector(BaseConnector):
             waiters.append(t)
 
         return waiters
+
+    async def close(self) -> None:
+        """Close all opened transports."""
+        if self._resolver_owner:
+            await self._resolver.close()
+        await super().close()
 
     @property
     def family(self) -> int:
@@ -1567,7 +1578,8 @@ class NamedPipeConnector(BaseConnector):
             limit_per_host=limit_per_host,
         )
         if not isinstance(
-            self._loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
+            self._loop,
+            asyncio.ProactorEventLoop,  # type: ignore[attr-defined]
         ):
             raise RuntimeError(
                 "Named Pipes only available in proactor loop under windows"
