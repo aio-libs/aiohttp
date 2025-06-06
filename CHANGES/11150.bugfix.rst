@@ -1,1 +1,3 @@
-Fixed leak of aiodns.DNSResolver when ClientSession is closed (regression from :pr:`10897`). -- by :user:`Tasssadar`
+Fixed leak of ``aiodns.DNSResolver`` when :py:class:`~aiohttp.ClientSession` is closed -- by :user:`Tasssadar`.
+
+This was a regression introduced in version 3.12.0 (:pr:`10897`).
