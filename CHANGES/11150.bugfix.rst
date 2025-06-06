@@ -1,0 +1,1 @@
+Fixed leak of aiodns.DNSResolver when ClientSession is closed (regression from :pr:`10897`). -- by :user:`Tasssadar`
