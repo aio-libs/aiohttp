@@ -9,5 +9,5 @@ brotlicffi; platform_python_implementation != 'CPython'
 frozenlist >= 1.1.1
 multidict >=4.5, < 7.0
 propcache >= 0.2.0
-typing-extensions >= 4.13.2 ; python_version < "3.10"
+typing-extensions >= 3.10; python_version <= '3.9'
 yarl >= 1.17.0, < 2.0
