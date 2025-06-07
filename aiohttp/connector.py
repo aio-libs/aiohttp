@@ -916,7 +916,7 @@ class TCPConnector(BaseConnector):
 
         # Handle ssl_shutdown_timeout with warning for Python < 3.11
         if ssl_shutdown_timeout is sentinel:
-            self._ssl_shutdown_timeout = 0.1
+            self._ssl_shutdown_timeout = 0
         else:
             if (
                 sys.version_info < (3, 11)

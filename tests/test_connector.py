@@ -2098,7 +2098,7 @@ async def test_tcp_connector_ssl_shutdown_timeout(
 
         # Test default value
         conn = aiohttp.TCPConnector()
-        assert conn._ssl_shutdown_timeout == 0.1
+        assert conn._ssl_shutdown_timeout == 0
         await conn.close()
 
         # Test custom value
@@ -2302,7 +2302,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_sentinel_no_warning_pre_311(
         conn = aiohttp.TCPConnector()  # Uses sentinel by default
 
         assert len(w) == 0
-        assert conn._ssl_shutdown_timeout == 0.1  # Default value
+        assert conn._ssl_shutdown_timeout == 0  # Default value
 
         await conn.close()
 

@@ -362,7 +362,7 @@ async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
         # Test default value
         async with ClientSession() as session:
             assert isinstance(session.connector, TCPConnector)
-            assert session.connector._ssl_shutdown_timeout == 0.1
+            assert session.connector._ssl_shutdown_timeout == 0
 
         # Test custom value
         async with ClientSession(ssl_shutdown_timeout=1.0) as session:
