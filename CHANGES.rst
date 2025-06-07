@@ -10,6 +10,54 @@
 
 .. towncrier release notes start
 
+3.12.11 (2025-06-07)
+====================
+
+Features
+--------
+
+- Improved SSL connection handling by changing the default ``ssl_shutdown_timeout``
+  from ``0.1`` to ``0`` seconds. SSL connections now use Python's default graceful
+  shutdown during normal operation but are aborted immediately when the connector
+  is closed, providing optimal behavior for both cases. Also added support for
+  ``ssl_shutdown_timeout=0`` on all Python versions. Previously, this value was
+  rejected on Python 3.11+ and ignored on earlier versions. Non-zero values on
+  Python < 3.11 now trigger a ``RuntimeWarning`` -- by :user:`bdraco`.
+
+  The ``ssl_shutdown_timeout`` parameter is now deprecated and will be removed in
+  aiohttp 4.0 as there is no clear use case for changing the default.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11148`.
+
+
+
+
+Deprecations (removal in next major release)
+--------------------------------------------
+
+- Improved SSL connection handling by changing the default ``ssl_shutdown_timeout``
+  from ``0.1`` to ``0`` seconds. SSL connections now use Python's default graceful
+  shutdown during normal operation but are aborted immediately when the connector
+  is closed, providing optimal behavior for both cases. Also added support for
+  ``ssl_shutdown_timeout=0`` on all Python versions. Previously, this value was
+  rejected on Python 3.11+ and ignored on earlier versions. Non-zero values on
+  Python < 3.11 now trigger a ``RuntimeWarning`` -- by :user:`bdraco`.
+
+  The ``ssl_shutdown_timeout`` parameter is now deprecated and will be removed in
+  aiohttp 4.0 as there is no clear use case for changing the default.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11148`.
+
+
+
+
+----
+
+
 3.12.10 (2025-06-07)
 ====================
 
