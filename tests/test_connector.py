@@ -2225,7 +2225,10 @@ async def test_tcp_connector_close_abort_ssl_when_shutdown_timeout_zero(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test that close() uses abort() for SSL connections when ssl_shutdown_timeout=0."""
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
 
     # Create a mock SSL protocol
     proto = mock.create_autospec(ResponseHandler, instance=True)
@@ -2252,7 +2255,10 @@ async def test_tcp_connector_close_doesnt_abort_non_ssl_when_shutdown_timeout_ze
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test that close() still uses close() for non-SSL connections even when ssl_shutdown_timeout=0."""
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
 
     # Create a mock non-SSL protocol
     proto = mock.create_autospec(ResponseHandler, instance=True)
@@ -2286,12 +2292,29 @@ async def test_tcp_connector_ssl_shutdown_timeout_warning_pre_311(
         warnings.simplefilter("always")
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=5.0)
 
-        assert len(w) == 1
-        assert issubclass(w[0].category, RuntimeWarning)
-        assert "ssl_shutdown_timeout=5.0 is ignored on Python < 3.11" in str(
-            w[0].message
+        # We should get two warnings: deprecation and runtime warning
+        assert len(w) == 2
+
+        # Find each warning type
+        deprecation_warning = next(
+            (warn for warn in w if issubclass(warn.category, DeprecationWarning)), None
         )
-        assert "only ssl_shutdown_timeout=0 is supported" in str(w[0].message)
+        runtime_warning = next(
+            (warn for warn in w if issubclass(warn.category, RuntimeWarning)), None
+        )
+
+        assert deprecation_warning is not None
+        assert "ssl_shutdown_timeout parameter is deprecated" in str(
+            deprecation_warning.message
+        )
+
+        assert runtime_warning is not None
+        assert "ssl_shutdown_timeout=5.0 is ignored on Python < 3.11" in str(
+            runtime_warning.message
+        )
+        assert "only ssl_shutdown_timeout=0 is supported" in str(
+            runtime_warning.message
+        )
 
         # Verify the value is still stored
         assert conn._ssl_shutdown_timeout == 5.0
@@ -2310,7 +2333,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_no_warning_pre_311(
         warnings.simplefilter("always")
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
 
-        assert len(w) == 0
+        # We should get one warning: deprecation
+        assert len(w) == 1
+        assert issubclass(w[0].category, DeprecationWarning)
+        assert "ssl_shutdown_timeout parameter is deprecated" in str(w[0].message)
         assert conn._ssl_shutdown_timeout == 0
 
         await conn.close()
@@ -2337,7 +2363,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
     loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
 ) -> None:
     """Test that ssl_shutdown_timeout=0 is NOT passed to create_connection."""
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
 
     with mock.patch.object(
         conn._loop, "create_connection", autospec=True, spec_set=True
@@ -2365,7 +2394,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
     loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
 ) -> None:
     """Test that non-zero ssl_shutdown_timeout IS passed to create_connection on Python 3.11+."""
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=5.0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=5.0)
 
     with mock.patch.object(
         conn._loop, "create_connection", autospec=True, spec_set=True
@@ -2390,7 +2422,10 @@ async def test_tcp_connector_close_abort_ssl_connections_in_conns(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test that SSL connections in _conns are aborted when ssl_shutdown_timeout=0."""
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
 
     # Create mock SSL protocol
     proto = mock.create_autospec(ResponseHandler, instance=True)
@@ -2422,7 +2457,10 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_zero(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test _start_tls_connection exception handling with ssl_shutdown_timeout=0."""
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
 
     underlying_transport = mock.Mock()
     req = mock.Mock()
@@ -2449,12 +2487,9 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test _start_tls_connection exception handling with ssl_shutdown_timeout>0."""
-    # Suppress warnings for non-zero ssl_shutdown_timeout on Python < 3.11
-    with warnings.catch_warnings():
-        if sys.version_info < (3, 11):
-            warnings.filterwarnings(
-                "ignore", message="ssl_shutdown_timeout.*is ignored on Python < 3.11"
-            )
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
 
     underlying_transport = mock.Mock()

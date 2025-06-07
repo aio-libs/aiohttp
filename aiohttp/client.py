@@ -323,13 +323,14 @@ class ClientSession:
             )
         self._timeout = timeout
 
+        if ssl_shutdown_timeout is not sentinel:
+            warnings.warn(
+                "The ssl_shutdown_timeout parameter is deprecated and will be removed in aiohttp 4.0",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         if connector is None:
-            if ssl_shutdown_timeout is not sentinel:
-                warnings.warn(
-                    "The ssl_shutdown_timeout parameter is deprecated and will be removed in aiohttp 4.0",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
             connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
