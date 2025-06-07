@@ -95,6 +95,15 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             self._payload = None
             self._drop_timeout()
 
+    def abort(self) -> None:
+        self._exception = None  # Break cyclic references
+        transport = self.transport
+        if transport is not None:
+            transport.abort()
+            self.transport = None
+            self._payload = None
+            self._drop_timeout()
+
     def is_connected(self) -> bool:
         return self.transport is not None and not self.transport.is_closing()
 
