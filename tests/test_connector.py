@@ -2107,27 +2107,26 @@ async def test_tcp_connector_ctor(loop: asyncio.AbstractEventLoop) -> None:
 async def test_tcp_connector_ssl_shutdown_timeout(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    # Suppress warnings for non-zero ssl_shutdown_timeout on Python < 3.11
-    with warnings.catch_warnings():
-        if sys.version_info < (3, 11):
-            warnings.filterwarnings(
-                "ignore", message="ssl_shutdown_timeout.*is ignored on Python < 3.11"
-            )
+    # Test default value (no warning expected)
+    conn = aiohttp.TCPConnector()
+    assert conn._ssl_shutdown_timeout == 0
+    await conn.close()
 
-        # Test default value
-        conn = aiohttp.TCPConnector()
-        assert conn._ssl_shutdown_timeout == 0
-        await conn.close()
-
-        # Test custom value
+    # Test custom value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
-        assert conn._ssl_shutdown_timeout == 1.0
-        await conn.close()
+    assert conn._ssl_shutdown_timeout == 1.0
+    await conn.close()
 
-        # Test None value
+    # Test None value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=None)
-        assert conn._ssl_shutdown_timeout is None
-        await conn.close()
+    assert conn._ssl_shutdown_timeout is None
+    await conn.close()
 
 
 @pytest.mark.skipif(
@@ -2137,7 +2136,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
     loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
 ) -> None:
     # Test that ssl_shutdown_timeout is passed to create_connection for SSL connections
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
 
     with mock.patch.object(
         conn._loop, "create_connection", autospec=True, spec_set=True
@@ -2152,7 +2154,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
     await conn.close()
 
     # Test with None value
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=None)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=None)
 
     with mock.patch.object(
         conn._loop, "create_connection", autospec=True, spec_set=True
@@ -2168,7 +2173,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
     await conn.close()
 
     # Test that ssl_shutdown_timeout is NOT passed for non-SSL connections
-    conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
 
     with mock.patch.object(
         conn._loop, "create_connection", autospec=True, spec_set=True

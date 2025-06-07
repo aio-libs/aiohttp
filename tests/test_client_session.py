@@ -3,8 +3,6 @@ import contextlib
 import gc
 import io
 import json
-import sys
-import warnings
 from collections import deque
 from http.cookies import BaseCookie, SimpleCookie
 from typing import (
@@ -352,30 +350,35 @@ async def test_create_connector(
 
 
 async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
-    # Suppress warnings for non-zero ssl_shutdown_timeout on Python < 3.11
-    with warnings.catch_warnings():
-        if sys.version_info < (3, 11):
-            warnings.filterwarnings(
-                "ignore", message="ssl_shutdown_timeout.*is ignored on Python < 3.11"
-            )
+    # Test default value (no warning expected)
+    async with ClientSession() as session:
+        assert isinstance(session.connector, TCPConnector)
+        assert session.connector._ssl_shutdown_timeout == 0
 
-        # Test default value
-        async with ClientSession() as session:
-            assert isinstance(session.connector, TCPConnector)
-            assert session.connector._ssl_shutdown_timeout == 0
-
-        # Test custom value
+    # Test custom value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
         async with ClientSession(ssl_shutdown_timeout=1.0) as session:
             assert isinstance(session.connector, TCPConnector)
             assert session.connector._ssl_shutdown_timeout == 1.0
 
-        # Test None value
+    # Test None value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
         async with ClientSession(ssl_shutdown_timeout=None) as session:
             assert isinstance(session.connector, TCPConnector)
             assert session.connector._ssl_shutdown_timeout is None
 
-        # Test that it doesn't affect when custom connector is provided
+    # Test that it doesn't affect when custom connector is provided
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
         custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
         async with ClientSession(
             connector=custom_conn, ssl_shutdown_timeout=1.0
         ) as session:
