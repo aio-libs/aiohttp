@@ -935,24 +935,14 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(
             connector._create_connection(req, None, aiohttp.ClientTimeout())
         )
-
-        if sys.version_info >= (3, 11):
-            self.loop.start_tls.assert_called_with(
-                mock.ANY,
-                mock.ANY,
-                _SSL_CONTEXT_VERIFIED,
-                server_hostname="www.python.org",
-                ssl_handshake_timeout=mock.ANY,
-                ssl_shutdown_timeout=0.1,
-            )
-        else:
-            self.loop.start_tls.assert_called_with(
-                mock.ANY,
-                mock.ANY,
-                _SSL_CONTEXT_VERIFIED,
-                server_hostname="www.python.org",
-                ssl_handshake_timeout=mock.ANY,
-            )
+        # ssl_shutdown_timeout=0 is not passed to start_tls
+        self.loop.start_tls.assert_called_with(
+            mock.ANY,
+            mock.ANY,
+            _SSL_CONTEXT_VERIFIED,
+            server_hostname="www.python.org",
+            ssl_handshake_timeout=mock.ANY,
+        )
 
         self.assertEqual(req.url.path, "/")
         self.assertEqual(proxy_req.method, "CONNECT")

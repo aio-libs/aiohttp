@@ -698,7 +698,10 @@ async def test_ssl_client_shutdown_timeout(
 ) -> None:
     # Test that ssl_shutdown_timeout is properly used during connection closure
 
-    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx, ssl_shutdown_timeout=0.1)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        connector = aiohttp.TCPConnector(ssl=client_ssl_ctx, ssl_shutdown_timeout=0.1)
 
     async def streaming_handler(request: web.Request) -> NoReturn:
         # Create a streaming response that continuously sends data
