@@ -861,11 +861,12 @@ class TCPConnector(BaseConnector):
     socket_factory - A SocketFactoryType function that, if supplied,
                      will be used to create sockets given an
                      AddrInfoType.
-    ssl_shutdown_timeout - Grace period for SSL shutdown handshake on TLS
-                           connections. Default is 0.1 seconds. This usually
-                           allows for a clean SSL shutdown by notifying the
-                           remote peer of connection closure, while avoiding
-                           excessive delays during connector cleanup.
+    ssl_shutdown_timeout - DEPRECATED. Will be removed in aiohttp 4.0.
+                           Grace period for SSL shutdown handshake on TLS
+                           connections. Default is 0 seconds (immediate abort).
+                           This parameter allowed for a clean SSL shutdown by
+                           notifying the remote peer of connection closure,
+                           while avoiding excessive delays during connector cleanup.
                            Note: Only takes effect on Python 3.11+.
     """
 
@@ -932,6 +933,12 @@ class TCPConnector(BaseConnector):
         if ssl_shutdown_timeout is sentinel:
             self._ssl_shutdown_timeout = 0
         else:
+            # Deprecation warning for ssl_shutdown_timeout parameter
+            warnings.warn(
+                "The ssl_shutdown_timeout parameter is deprecated and will be removed in aiohttp 4.0",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             if (
                 sys.version_info < (3, 11)
                 and ssl_shutdown_timeout is not None

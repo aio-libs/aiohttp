@@ -58,7 +58,7 @@ The client session supports the context manager protocol for self closing.
                          max_line_size=8190, \
                          max_field_size=8190, \
                          fallback_charset_resolver=lambda r, b: "utf-8", \
-                         ssl_shutdown_timeout=0.1)
+                         ssl_shutdown_timeout=0)
 
    The class for creating client sessions and making requests.
 
@@ -241,8 +241,9 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.8.6
 
-   :param float ssl_shutdown_timeout: Grace period for SSL shutdown handshake on TLS
-      connections when the connector is closed (``0`` seconds by default).
+   :param float ssl_shutdown_timeout: **(DEPRECATED)** This parameter is deprecated
+      and will be removed in aiohttp 4.0. Grace period for SSL shutdown handshake on
+      TLS connections when the connector is closed (``0`` seconds by default).
       By default (``0``), SSL connections are aborted immediately when the
       connector is closed, without performing the shutdown handshake. During
       normal operation, SSL connections use Python's default SSL shutdown
@@ -261,6 +262,9 @@ The client session supports the context manager protocol for self closing.
          immediately when the connector is closed. Added support for
          ``ssl_shutdown_timeout=0`` on all Python versions. A :exc:`RuntimeWarning`
          is issued when non-zero values are passed on Python < 3.11.
+
+      .. deprecated:: 3.12.11
+         This parameter is deprecated and will be removed in aiohttp 4.0.
 
    .. attribute:: closed
 
@@ -1191,7 +1195,7 @@ is controlled by *force_close* constructor's parameter).
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
                  happy_eyeballs_delay=0.25, interleave=None, loop=None, \
-                 socket_factory=None, ssl_shutdown_timeout=0.1)
+                 socket_factory=None, ssl_shutdown_timeout=0)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1318,7 +1322,8 @@ is controlled by *force_close* constructor's parameter).
 
         .. versionadded:: 3.12
 
-   :param float ssl_shutdown_timeout: Grace period for SSL shutdown on TLS
+   :param float ssl_shutdown_timeout: **(DEPRECATED)** This parameter is deprecated
+      and will be removed in aiohttp 4.0. Grace period for SSL shutdown on TLS
       connections when the connector is closed (``0`` seconds by default).
       By default (``0``), SSL connections are aborted immediately when the
       connector is closed, without performing the shutdown handshake. During
@@ -1336,6 +1341,9 @@ is controlled by *force_close* constructor's parameter).
            immediately when the connector is closed. Added support for
            ``ssl_shutdown_timeout=0`` on all Python versions. A :exc:`RuntimeWarning`
            is issued when non-zero values are passed on Python < 3.11.
+
+        .. deprecated:: 3.12.11
+           This parameter is deprecated and will be removed in aiohttp 4.0.
 
    .. attribute:: family
 
