@@ -368,6 +368,7 @@ Vladimir Shulyak
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar
+Vojtěch Boček
 W. Trevor King
 Wei Lin
 Weiwei Wang
