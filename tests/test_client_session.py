@@ -351,6 +351,10 @@ async def test_create_connector(
     assert m.called
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="Use test_ssl_shutdown_timeout_passed_to_connector_pre_311 for Python < 3.11",
+)
 async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
     # Test default value (no warning expected)
     async with ClientSession() as session:
@@ -403,10 +407,17 @@ async def test_ssl_shutdown_timeout_passed_to_connector_pre_311() -> None:
         async with ClientSession(ssl_shutdown_timeout=1.0) as session:
             assert isinstance(session.connector, TCPConnector)
             assert session.connector._ssl_shutdown_timeout == 1.0
-        # Should have both deprecation and runtime warnings
-        assert len(w) == 2
-        assert any(issubclass(warn.category, DeprecationWarning) for warn in w)
-        assert any(issubclass(warn.category, RuntimeWarning) for warn in w)
+        # Should have deprecation warnings (from ClientSession and TCPConnector) and runtime warning
+        # ClientSession emits 1 DeprecationWarning, TCPConnector emits 1 DeprecationWarning + 1 RuntimeWarning = 3 total
+        assert len(w) == 3
+        deprecation_count = sum(
+            1 for warn in w if issubclass(warn.category, DeprecationWarning)
+        )
+        runtime_count = sum(
+            1 for warn in w if issubclass(warn.category, RuntimeWarning)
+        )
+        assert deprecation_count == 2  # One from ClientSession, one from TCPConnector
+        assert runtime_count == 1  # One from TCPConnector
 
     # Test with custom connector
     with warnings.catch_warnings(record=True) as w:

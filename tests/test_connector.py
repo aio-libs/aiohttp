@@ -2104,6 +2104,10 @@ async def test_tcp_connector_ctor(loop: asyncio.AbstractEventLoop) -> None:
     await conn.close()
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="Use test_tcp_connector_ssl_shutdown_timeout_pre_311 for Python < 3.11",
+)
 async def test_tcp_connector_ssl_shutdown_timeout(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -2505,6 +2509,10 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_zero(
     underlying_transport.close.assert_not_called()
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="Use test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311 for Python < 3.11",
+)
 async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
