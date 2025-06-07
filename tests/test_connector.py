@@ -2130,6 +2130,26 @@ async def test_tcp_connector_ssl_shutdown_timeout(
 
 
 @pytest.mark.skipif(
+    sys.version_info >= (3, 11),
+    reason="This test is for Python < 3.11 runtime warning behavior",
+)
+async def test_tcp_connector_ssl_shutdown_timeout_pre_311(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that both deprecation and runtime warnings are issued on Python < 3.11."""
+    # Test custom value - expect both deprecation and runtime warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
+        assert any(issubclass(warn.category, DeprecationWarning) for warn in w)
+        assert any(issubclass(warn.category, RuntimeWarning) for warn in w)
+    assert conn._ssl_shutdown_timeout == 1.0
+    await conn.close()
+
+
+@pytest.mark.skipif(
     sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
 )
 async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
@@ -2197,11 +2217,13 @@ async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
     loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
 ) -> None:
     # Test that ssl_shutdown_timeout is NOT passed to create_connection on Python < 3.11
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", message="ssl_shutdown_timeout.*is ignored on Python < 3.11"
-        )
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
+        assert any(issubclass(warn.category, DeprecationWarning) for warn in w)
+        assert any(issubclass(warn.category, RuntimeWarning) for warn in w)
 
         with mock.patch.object(
             conn._loop, "create_connection", autospec=True, spec_set=True
@@ -2491,6 +2513,43 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
+
+    underlying_transport = mock.Mock()
+    req = mock.Mock()
+    req.server_hostname = None
+    req.host = "example.com"
+    req.is_ssl = mock.Mock(return_value=True)
+
+    # Patch _get_ssl_context to return a valid context and make start_tls fail
+    with (
+        mock.patch.object(
+            conn, "_get_ssl_context", return_value=ssl.create_default_context()
+        ),
+        mock.patch.object(conn._loop, "start_tls", side_effect=OSError("TLS failed")),
+    ):
+        with pytest.raises(OSError):
+            await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
+
+    # Should close, not abort
+    underlying_transport.close.assert_called_once()
+    underlying_transport.abort.assert_not_called()
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 11),
+    reason="This test is for Python < 3.11 runtime warning behavior",
+)
+async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test _start_tls_connection exception handling with ssl_shutdown_timeout>0 on Python < 3.11."""
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
+        assert any(issubclass(warn.category, DeprecationWarning) for warn in w)
+        assert any(issubclass(warn.category, RuntimeWarning) for warn in w)
 
     underlying_transport = mock.Mock()
     req = mock.Mock()

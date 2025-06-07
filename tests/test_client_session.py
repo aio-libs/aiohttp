@@ -3,6 +3,8 @@ import contextlib
 import gc
 import io
 import json
+import sys
+import warnings
 from collections import deque
 from http.cookies import BaseCookie, SimpleCookie
 from typing import (
@@ -376,6 +378,42 @@ async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
         custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        async with ClientSession(
+            connector=custom_conn, ssl_shutdown_timeout=1.0
+        ) as session:
+            assert session.connector is not None
+            assert isinstance(session.connector, TCPConnector)
+            assert (
+                session.connector._ssl_shutdown_timeout == 2.0
+            )  # Should use connector's value
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 11),
+    reason="This test is for Python < 3.11 runtime warning behavior",
+)
+async def test_ssl_shutdown_timeout_passed_to_connector_pre_311() -> None:
+    """Test that both deprecation and runtime warnings are issued on Python < 3.11."""
+    # Test custom value - expect both deprecation and runtime warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        async with ClientSession(ssl_shutdown_timeout=1.0) as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout == 1.0
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
+        assert any(issubclass(warn.category, DeprecationWarning) for warn in w)
+        assert any(issubclass(warn.category, RuntimeWarning) for warn in w)
+
+    # Test with custom connector
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
