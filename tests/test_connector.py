@@ -1270,6 +1270,7 @@ async def test_tcp_connector_dns_cache_not_expired(loop, dns_response) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         await conn._resolve_host("localhost", 8080)
         await conn._resolve_host("localhost", 8080)
         m_resolver().resolve.assert_called_once_with("localhost", 8080, family=0)
@@ -1281,6 +1282,7 @@ async def test_tcp_connector_dns_cache_forever(loop, dns_response) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         await conn._resolve_host("localhost", 8080)
         await conn._resolve_host("localhost", 8080)
         m_resolver().resolve.assert_called_once_with("localhost", 8080, family=0)
@@ -1292,6 +1294,7 @@ async def test_tcp_connector_use_dns_cache_disabled(loop, dns_response) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=False)
         m_resolver().resolve.side_effect = [dns_response(), dns_response()]
+        m_resolver().close = mock.AsyncMock()
         await conn._resolve_host("localhost", 8080)
         await conn._resolve_host("localhost", 8080)
         m_resolver().resolve.assert_has_calls(
@@ -1308,6 +1311,7 @@ async def test_tcp_connector_dns_throttle_requests(loop, dns_response) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         loop.create_task(conn._resolve_host("localhost", 8080))
         loop.create_task(conn._resolve_host("localhost", 8080))
         await asyncio.sleep(0)
@@ -1322,6 +1326,7 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(loop) -> Non
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True, ttl_dns_cache=10)
         e = Exception()
         m_resolver().resolve.side_effect = e
+        m_resolver().close = mock.AsyncMock()
         r1 = loop.create_task(conn._resolve_host("localhost", 8080))
         r2 = loop.create_task(conn._resolve_host("localhost", 8080))
         await asyncio.sleep(0)
@@ -1337,10 +1342,10 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(loop) -> Non
 async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
     loop, dns_response
 ):
-
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         loop.create_task(conn._resolve_host("localhost", 8080))
         f = loop.create_task(conn._resolve_host("localhost", 8080))
 
@@ -1367,7 +1372,6 @@ def dns_response_error(loop):
 async def test_tcp_connector_cancel_dns_error_captured(
     loop, dns_response_error
 ) -> None:
-
     exception_handler_called = False
 
     def exception_handler(loop, context):
@@ -1384,6 +1388,7 @@ async def test_tcp_connector_cancel_dns_error_captured(
             use_dns_cache=False,
         )
         m_resolver().resolve.return_value = dns_response_error()
+        m_resolver().close = mock.AsyncMock()
         f = loop.create_task(conn._create_direct_connection(req, [], ClientTimeout(0)))
 
         await asyncio.sleep(0)
@@ -1419,6 +1424,7 @@ async def test_tcp_connector_dns_tracing(loop, dns_response) -> None:
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True, ttl_dns_cache=10)
 
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
 
         await conn._resolve_host("localhost", 8080, traces=traces)
         on_dns_resolvehost_start.assert_called_once_with(
@@ -1460,6 +1466,7 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response) -> N
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=False)
 
         m_resolver().resolve.side_effect = [dns_response(), dns_response()]
+        m_resolver().close = mock.AsyncMock()
 
         await conn._resolve_host("localhost", 8080, traces=traces)
 
@@ -1514,6 +1521,7 @@ async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response) -
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
         loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
         await asyncio.sleep(0)
@@ -1526,6 +1534,14 @@ async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response) -
         )
 
         await conn.close()
+
+
+async def test_tcp_connector_close_resolver() -> None:
+    m_resolver = mock.AsyncMock()
+    with mock.patch("aiohttp.connector.DefaultResolver", return_value=m_resolver):
+        conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
+        await conn.close()
+        m_resolver.close.assert_awaited_once()
 
 
 async def test_dns_error(loop) -> None:
@@ -2896,7 +2912,6 @@ async def test_connect_with_no_limits(loop, key) -> None:
 
 
 async def test_connect_with_limit_cancelled(loop) -> None:
-
     proto = create_mocked_conn()
     proto.is_connected.return_value = True
 
@@ -3691,6 +3706,7 @@ async def test_connector_resolve_in_case_of_trace_cache_miss_exception(
 
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         m_resolver().resolve.return_value = resolve_response()
+        m_resolver().close = mock.AsyncMock()
 
         connector = TCPConnector()
         traces = [DummyTracer()]
