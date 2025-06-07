@@ -303,7 +303,7 @@ class ClientSession:
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
-        ssl_shutdown_timeout: Optional[float] = 0.1,
+        ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -360,6 +360,13 @@ class ClientSession:
                     "conflict, please setup "
                     "timeout.connect"
                 )
+
+        if ssl_shutdown_timeout is not sentinel:
+            warnings.warn(
+                "The ssl_shutdown_timeout parameter is deprecated and will be removed in aiohttp 4.0",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         if connector is None:
             connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
