@@ -1,15 +1,13 @@
+import sys
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, overload
-import sys
 
 from aiosignal import Signal
 from multidict import CIMultiDict
 from yarl import URL
 
-
 from .client_reqrep import ClientResponse
 from .helpers import frozen_dataclass_decorator
-
 
 _T = TypeVar("_T", covariant=True)
 
@@ -18,9 +16,9 @@ if TYPE_CHECKING:
         from typing_extensions import TypeAlias
     else:
         from typing import TypeAlias
-    
-    
+
     from .client import ClientSession
+
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
     _SignalCallback: TypeAlias = Signal[["ClientSession", _T, _ParamT_contra], None]
 
