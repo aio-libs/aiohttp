@@ -432,7 +432,12 @@ class BaseConnector:
             )
 
     async def close(self, *, abort_ssl: bool = False) -> None:
-        """Close all opened transports."""
+        """Close all opened transports.
+
+        :param abort_ssl: If True, SSL connections will be aborted immediately
+                         without performing the shutdown handshake. This provides
+                         faster cleanup at the cost of less graceful disconnection.
+        """
         waiters = self._close_immediately(abort_ssl=abort_ssl)
         if waiters:
             results = await asyncio.gather(*waiters, return_exceptions=True)
@@ -937,7 +942,14 @@ class TCPConnector(BaseConnector):
             self._ssl_shutdown_timeout = ssl_shutdown_timeout
 
     async def close(self, *, abort_ssl: bool = False) -> None:
-        """Close all opened transports."""
+        """Close all opened transports.
+
+        :param abort_ssl: If True, SSL connections will be aborted immediately
+                         without performing the shutdown handshake. If False (default),
+                         the behavior is determined by ssl_shutdown_timeout:
+                         - If ssl_shutdown_timeout=0: connections are aborted
+                         - If ssl_shutdown_timeout>0: graceful shutdown is performed
+        """
         if self._resolver_owner:
             await self._resolver.close()
         # Use abort_ssl param if explicitly set, otherwise use ssl_shutdown_timeout default
