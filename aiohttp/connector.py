@@ -52,6 +52,7 @@ from .client_exceptions import (
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
 from .helpers import (
+    _SENTINEL,
     ceil_timeout,
     is_ip_address,
     noop,
@@ -231,14 +232,18 @@ class Connection:
 class _TransportPlaceholder:
     """placeholder for BaseConnector.connect function"""
 
-    __slots__ = ("closed",)
+    __slots__ = ("closed", "transport")
 
     def __init__(self, closed_future: asyncio.Future[Optional[Exception]]) -> None:
         """Initialize a placeholder for a transport."""
         self.closed = closed_future
+        self.transport = None
 
     def close(self) -> None:
         """Close the placeholder."""
+
+    def abort(self) -> None:
+        """Abort the placeholder (does nothing)."""
 
 
 class BaseConnector:
@@ -469,9 +474,14 @@ class BaseConnector:
                 timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
 
-    def close(self) -> Awaitable[None]:
-        """Close all opened transports."""
-        if not (waiters := self._close()):
+    def close(self, *, abort_ssl: bool = False) -> Awaitable[None]:
+        """Close all opened transports.
+
+        :param abort_ssl: If True, SSL connections will be aborted immediately
+                         without performing the shutdown handshake. This provides
+                         faster cleanup at the cost of less graceful disconnection.
+        """
+        if not (waiters := self._close(abort_ssl=abort_ssl)):
             # If there are no connections to close, we can return a noop
             # awaitable to avoid scheduling a task on the event loop.
             return _DeprecationWaiter(noop())
@@ -484,7 +494,7 @@ class BaseConnector:
             task = self._loop.create_task(coro)
         return _DeprecationWaiter(task)
 
-    def _close(self) -> List[Awaitable[object]]:
+    def _close(self, *, abort_ssl: bool = False) -> List[Awaitable[object]]:
         waiters: List[Awaitable[object]] = []
 
         if self._closed:
@@ -506,12 +516,26 @@ class BaseConnector:
 
             for data in self._conns.values():
                 for proto, _ in data:
-                    proto.close()
+                    if (
+                        abort_ssl
+                        and proto.transport
+                        and proto.transport.get_extra_info("sslcontext") is not None
+                    ):
+                        proto.abort()
+                    else:
+                        proto.close()
                     if closed := proto.closed:
                         waiters.append(closed)
 
             for proto in self._acquired:
-                proto.close()
+                if (
+                    abort_ssl
+                    and proto.transport
+                    and proto.transport.get_extra_info("sslcontext") is not None
+                ):
+                    proto.abort()
+                else:
+                    proto.close()
                 if closed := proto.closed:
                     waiters.append(closed)
 
@@ -881,11 +905,12 @@ class TCPConnector(BaseConnector):
     socket_factory - A SocketFactoryType function that, if supplied,
                      will be used to create sockets given an
                      AddrInfoType.
-    ssl_shutdown_timeout - Grace period for SSL shutdown handshake on TLS
-                           connections. Default is 0.1 seconds. This usually
-                           allows for a clean SSL shutdown by notifying the
-                           remote peer of connection closure, while avoiding
-                           excessive delays during connector cleanup.
+    ssl_shutdown_timeout - DEPRECATED. Will be removed in aiohttp 4.0.
+                           Grace period for SSL shutdown handshake on TLS
+                           connections. Default is 0 seconds (immediate abort).
+                           This parameter allowed for a clean SSL shutdown by
+                           notifying the remote peer of connection closure,
+                           while avoiding excessive delays during connector cleanup.
                            Note: Only takes effect on Python 3.11+.
     """
 
@@ -913,7 +938,7 @@ class TCPConnector(BaseConnector):
         happy_eyeballs_delay: Optional[float] = 0.25,
         interleave: Optional[int] = None,
         socket_factory: Optional[SocketFactoryType] = None,
-        ssl_shutdown_timeout: Optional[float] = 0.1,
+        ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -946,14 +971,36 @@ class TCPConnector(BaseConnector):
         self._interleave = interleave
         self._resolve_host_tasks: Set["asyncio.Task[List[ResolveResult]]"] = set()
         self._socket_factory = socket_factory
-        self._ssl_shutdown_timeout = ssl_shutdown_timeout
+        self._ssl_shutdown_timeout: Optional[float]
+        # Handle ssl_shutdown_timeout with warning for Python < 3.11
+        if ssl_shutdown_timeout is sentinel:
+            self._ssl_shutdown_timeout = 0
+        else:
+            # Deprecation warning for ssl_shutdown_timeout parameter
+            warnings.warn(
+                "The ssl_shutdown_timeout parameter is deprecated and will be removed in aiohttp 4.0",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if (
+                sys.version_info < (3, 11)
+                and ssl_shutdown_timeout is not None
+                and ssl_shutdown_timeout != 0
+            ):
+                warnings.warn(
+                    f"ssl_shutdown_timeout={ssl_shutdown_timeout} is ignored on Python < 3.11; "
+                    "only ssl_shutdown_timeout=0 is supported. The timeout will be ignored.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+            self._ssl_shutdown_timeout = ssl_shutdown_timeout
 
-    def _close(self) -> List[Awaitable[object]]:
+    def _close(self, *, abort_ssl: bool = False) -> List[Awaitable[object]]:
         """Close all ongoing DNS calls."""
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
             fut.cancel()
 
-        waiters = super()._close()
+        waiters = super()._close(abort_ssl=abort_ssl)
 
         for t in self._resolve_host_tasks:
             t.cancel()
@@ -961,11 +1008,20 @@ class TCPConnector(BaseConnector):
 
         return waiters
 
-    async def close(self) -> None:
-        """Close all opened transports."""
+    async def close(self, *, abort_ssl: bool = False) -> None:
+        """
+        Close all opened transports.
+
+        :param abort_ssl: If True, SSL connections will be aborted immediately
+                         without performing the shutdown handshake. If False (default),
+                         the behavior is determined by ssl_shutdown_timeout:
+                         - If ssl_shutdown_timeout=0: connections are aborted
+                         - If ssl_shutdown_timeout>0: graceful shutdown is performed
+        """
         if self._resolver_owner:
             await self._resolver.close()
-        await super().close()
+        # Use abort_ssl param if explicitly set, otherwise use ssl_shutdown_timeout default
+        await super().close(abort_ssl=abort_ssl or self._ssl_shutdown_timeout == 0)
 
     @property
     def family(self) -> int:
@@ -1200,7 +1256,7 @@ class TCPConnector(BaseConnector):
                 # Add ssl_shutdown_timeout for Python 3.11+ when SSL is used
                 if (
                     kwargs.get("ssl")
-                    and self._ssl_shutdown_timeout is not None
+                    and self._ssl_shutdown_timeout
                     and sys.version_info >= (3, 11)
                 ):
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
@@ -1343,10 +1399,7 @@ class TCPConnector(BaseConnector):
             ):
                 try:
                     # ssl_shutdown_timeout is only available in Python 3.11+
-                    if (
-                        sys.version_info >= (3, 11)
-                        and self._ssl_shutdown_timeout is not None
-                    ):
+                    if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
                         tls_transport = await self._loop.start_tls(
                             underlying_transport,
                             tls_proto,
@@ -1367,7 +1420,10 @@ class TCPConnector(BaseConnector):
                     # We need to close the underlying transport since
                     # `start_tls()` probably failed before it had a
                     # chance to do this:
-                    underlying_transport.close()
+                    if self._ssl_shutdown_timeout == 0:
+                        underlying_transport.abort()
+                    else:
+                        underlying_transport.close()
                     raise
                 if isinstance(tls_transport, asyncio.Transport):
                     fingerprint = self._get_fingerprint(req)
