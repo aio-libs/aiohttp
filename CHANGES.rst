@@ -10,6 +10,26 @@
 
 .. towncrier release notes start
 
+3.12.10 (2025-06-07)
+====================
+
+Bug fixes
+---------
+
+- Fixed leak of ``aiodns.DNSResolver`` when :py:class:`~aiohttp.TCPConnector` is closed and no resolver was passed when creating the connector -- by :user:`Tasssadar`.
+
+  This was a regression introduced in version 3.12.0 (:pr:`10897`).
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11150`.
+
+
+
+
+----
+
+
 3.12.9 (2025-06-04)
 ===================
 
