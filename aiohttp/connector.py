@@ -938,7 +938,10 @@ class TCPConnector(BaseConnector):
 
     async def close(self, *, abort_ssl: bool = False) -> None:
         """Close all opened transports."""
-        await super().close(abort_ssl=self._ssl_shutdown_timeout == 0)
+        if self._resolver_owner:
+            await self._resolver.close()
+        # Use abort_ssl param if explicitly set, otherwise use ssl_shutdown_timeout default
+        await super().close(abort_ssl=abort_ssl or self._ssl_shutdown_timeout == 0)
 
     def _close_immediately(self, *, abort_ssl: bool = False) -> List[Awaitable[object]]:
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
@@ -951,12 +954,6 @@ class TCPConnector(BaseConnector):
             waiters.append(t)
 
         return waiters
-
-    async def close(self) -> None:
-        """Close all opened transports."""
-        if self._resolver_owner:
-            await self._resolver.close()
-        await super().close()
 
     @property
     def family(self) -> int:
