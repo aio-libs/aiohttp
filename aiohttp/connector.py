@@ -205,14 +205,18 @@ class Connection:
 class _TransportPlaceholder:
     """placeholder for BaseConnector.connect function"""
 
-    __slots__ = ("closed",)
+    __slots__ = ("closed", "transport")
 
     def __init__(self, closed_future: asyncio.Future[Optional[Exception]]) -> None:
         """Initialize a placeholder for a transport."""
         self.closed = closed_future
+        self.transport = None
 
     def close(self) -> None:
         """Close the placeholder."""
+
+    def abort(self) -> None:
+        """Abort the placeholder (does nothing)."""
 
 
 class BaseConnector:
