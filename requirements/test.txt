@@ -41,7 +41,7 @@ forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.2
     # via -r requirements/test.in
-frozenlist==1.6.2
+frozenlist==1.7.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
