@@ -35,7 +35,10 @@ except ImportError:
     brotli = None
 
 try:
-    import zstandard
+    try:
+        import compression.zstd as zstandard
+    except ImportError:
+        import zstandard
 except ImportError:
     zstandard = None
 
