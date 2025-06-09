@@ -34,6 +34,11 @@ try:
 except ImportError:
     brotli = None
 
+try:
+    import zstandard
+except ImportError:
+    zstandard = None
+
 REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
 
@@ -598,6 +603,14 @@ def test_compression_brotli(parser: HttpRequestParser) -> None:
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
     assert msg.compression == "br"
+
+
+@pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+def test_compression_zstd(parser: HttpRequestParser) -> None:
+    text = b"GET /test HTTP/1.1\r\ncontent-encoding: zstd\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "zstd"
 
 
 def test_compression_unknown(parser: HttpRequestParser) -> None:
@@ -1849,6 +1862,15 @@ class TestParsePayload:
         assert b"brotli data" == out._buffer[0]
         assert out.is_eof()
 
+    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+    async def test_http_payload_zstandard(self, protocol: BaseProtocol) -> None:
+        compressed = zstandard.compress(b"zstd data")
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(out, length=len(compressed), compression="zstd")
+        p.feed_data(compressed)
+        assert b"zstd data" == out._buffer[0]
+        assert out.is_eof()
+
 
 class TestDeflateBuffer:
     async def test_feed_data(self, protocol: BaseProtocol) -> None:
@@ -1911,6 +1933,17 @@ class TestDeflateBuffer:
     async def test_feed_eof_no_err_brotli(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         dbuf = DeflateBuffer(buf, "br")
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b"line"
+        dbuf.decompressor.eof = False
+
+        dbuf.feed_eof()
+        assert [b"line"] == list(buf._buffer)
+
+    async def test_feed_eof_no_err_zstandard(self, protocol: BaseProtocol) -> None:
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, "zstd")
 
         dbuf.decompressor = mock.Mock()
         dbuf.decompressor.flush.return_value = b"line"

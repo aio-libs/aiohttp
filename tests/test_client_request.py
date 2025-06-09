@@ -358,7 +358,7 @@ def test_headers(make_request: _RequestMaker) -> None:
 
     assert hdrs.CONTENT_TYPE in req.headers
     assert req.headers[hdrs.CONTENT_TYPE] == "text/plain"
-    assert req.headers[hdrs.ACCEPT_ENCODING] == "gzip, deflate, br"
+    assert req.headers[hdrs.ACCEPT_ENCODING] == "gzip, deflate, br, zstd"
 
 
 def test_headers_list(make_request: _RequestMaker) -> None:
@@ -1568,15 +1568,20 @@ def test_loose_cookies_types(loop: asyncio.AbstractEventLoop) -> None:
 
 
 @pytest.mark.parametrize(
-    "has_brotli,expected",
+    "has_brotli,has_zstd,expected",
     [
-        (False, "gzip, deflate"),
-        (True, "gzip, deflate, br"),
+        (False, False, "gzip, deflate"),
+        (True, False, "gzip, deflate, br"),
+        (False, True, "gzip, deflate, zstd"),
+        (True, True, "gzip, deflate, br, zstd"),
     ],
 )
-def test_gen_default_accept_encoding(has_brotli: bool, expected: str) -> None:
+def test_gen_default_accept_encoding(
+    has_brotli: bool, has_zstd: bool, expected: str
+) -> None:
     with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
-        assert _gen_default_accept_encoding() == expected
+        with mock.patch("aiohttp.client_reqrep.HAS_ZSTD", has_zstd):
+            assert _gen_default_accept_encoding() == expected
 
 
 @pytest.mark.parametrize(
