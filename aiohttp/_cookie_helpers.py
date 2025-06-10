@@ -108,20 +108,49 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
     return mrsl_val
 
 
-def _unquote(text: str) -> str:
+_unquote_sub = re.compile(r"\\(?:([0-3][0-7][0-7])|(.))").sub
+
+
+def _unquote_replace(m: re.Match[str]) -> str:
+    """
+    Replace function for _unquote_sub regex substitution.
+
+    Handles escaped characters in cookie values:
+    - Octal sequences are converted to their character representation
+    - Other escaped characters are unescaped by removing the backslash
+    """
+    if m[1]:
+        return chr(int(m[1], 8))
+    return m[2]
+
+
+def _unquote(value: str) -> str:
     """
     Unquote a cookie value.
 
     Vendored from http.cookies._unquote to ensure compatibility.
+
+    Note: The original implementation checked for None, but we've removed
+    that check since all callers already ensure the value is not None.
     """
-    # If there are no quotes, return as-is
-    if len(text) < 2 or text[0] != '"' or text[-1] != '"':
-        return text
-    # Remove quotes and handle escaped characters
-    text = text[1:-1]
-    # Replace escaped quotes and backslashes
-    text = text.replace('\\"', '"').replace("\\\\", "\\")
-    return text
+    # If there aren't any doublequotes,
+    # then there can't be any special characters.  See RFC 2109.
+    if len(value) < 2:
+        return value
+    if value[0] != '"' or value[-1] != '"':
+        return value
+
+    # We have to assume that we must decode this string.
+    # Down to work.
+
+    # Remove the "s
+    value = value[1:-1]
+
+    # Check for special sequences.  Examples:
+    #    \012 --> \n
+    #    \"   --> "
+    #
+    return _unquote_sub(_unquote_replace, value)
 
 
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
