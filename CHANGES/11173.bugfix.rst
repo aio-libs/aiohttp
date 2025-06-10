@@ -1,1 +1,0 @@
-Fixed cookie unquoting to properly handle octal escape sequences in cookie values (e.g., ``\012`` for newline) by vendoring the correct ``_unquote`` implementation from Python's ``http.cookies`` module -- by :user:`bdraco`.

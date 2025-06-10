@@ -10,6 +10,32 @@
 
 .. towncrier release notes start
 
+3.12.12 (2025-06-09)
+====================
+
+Bug fixes
+---------
+
+- Fixed cookie unquoting to properly handle octal escape sequences in cookie values (e.g., ``\012`` for newline) by vendoring the correct ``_unquote`` implementation from Python's ``http.cookies`` module -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11173`.
+
+
+
+- Fixed ``Cookie`` header parsing to treat attribute names as regular cookies per :rfc:`6265#section-5.4` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11178`.
+
+
+
+
+----
+
+
 3.12.11 (2025-06-07)
 ====================
 
