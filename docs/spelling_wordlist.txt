@@ -363,6 +363,7 @@ uvloop
 uWSGI
 vcvarsall
 vendored
+vendoring
 waituntil
 wakeup
 wakeups
