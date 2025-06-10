@@ -431,27 +431,35 @@ def test_request_cookies_quoted_values() -> None:
 
 
 def test_request_cookies_with_attributes() -> None:
-    """Test that cookie attributes don't affect value parsing.
+    """Test that cookie attributes are parsed as cookies per RFC 6265.
 
-    Related to issue #5397 - ensures that the presence of domain or other
-    attributes doesn't change how cookie values are parsed.
+    Per RFC 6265 Section 5.4, Cookie headers contain only name-value pairs.
+    Names that match attribute names (Domain, Path, etc.) should be treated
+    as regular cookies, not as attributes.
     """
-    # Cookie with domain attribute - quotes should still be removed
+    # Cookie with domain - both should be parsed as cookies
     headers = CIMultiDict(COOKIE='sess="quoted_value"; Domain=.example.com')
     req = make_mocked_request("GET", "/", headers=headers)
-    assert req.cookies == {"sess": "quoted_value"}
+    assert req.cookies == {"sess": "quoted_value", "Domain": ".example.com"}
 
-    # Cookie with multiple attributes
+    # Cookie with multiple attribute names - all parsed as cookies
     headers = CIMultiDict(COOKIE='token="abc123"; Path=/; Secure; HttpOnly')
     req = make_mocked_request("GET", "/", headers=headers)
-    assert req.cookies == {"token": "abc123"}
+    assert req.cookies == {"token": "abc123", "Path": "/", "Secure": "", "HttpOnly": ""}
 
-    # Multiple cookies with different attributes
+    # Multiple cookies with attribute names mixed in
     headers = CIMultiDict(
         COOKIE='c1="v1"; Domain=.example.com; c2="v2"; Path=/api; c3=v3; Secure'
     )
     req = make_mocked_request("GET", "/", headers=headers)
-    assert req.cookies == {"c1": "v1", "c2": "v2", "c3": "v3"}
+    assert req.cookies == {
+        "c1": "v1",
+        "Domain": ".example.com",
+        "c2": "v2",
+        "Path": "/api",
+        "c3": "v3",
+        "Secure": "",
+    }
 
 
 def test_match_info() -> None:
