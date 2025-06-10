@@ -35,7 +35,7 @@ from multidict import (
 from yarl import URL
 
 from . import hdrs
-from ._cookie_helpers import parse_cookie_headers
+from ._cookie_helpers import parse_cookie_header
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
@@ -589,9 +589,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         A read-only dictionary-like object.
         """
-        # Use parse_cookie_headers for more lenient parsing that accepts
-        # special characters in cookie names (fixes #2683)
-        parsed = parse_cookie_headers((self.headers.get(hdrs.COOKIE, ""),))
+        # Use parse_cookie_header for RFC 6265 compliant Cookie header parsing
+        # that accepts special characters in cookie names (fixes #2683)
+        parsed = parse_cookie_header(self.headers.get(hdrs.COOKIE, ""))
+        # Extract values from Morsel objects
         return MappingProxyType({name: morsel.value for name, morsel in parsed})
 
     @reify
