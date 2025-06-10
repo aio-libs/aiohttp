@@ -12,7 +12,11 @@ from typing import List, Optional, Sequence, Tuple, cast
 
 from .log import internal_logger
 
-__all__ = ("parse_cookie_headers", "preserve_morsel_with_coded_value")
+__all__ = (
+    "parse_cookie_headers",
+    "parse_cookie_header",
+    "preserve_morsel_with_coded_value",
+)
 
 # Cookie parsing constants
 # Allow more characters in cookie names to handle real-world cookies
@@ -122,6 +126,61 @@ def _unquote(text: str) -> str:
     # Replace escaped quotes and backslashes
     text = text.replace('\\"', '"').replace("\\\\", "\\")
     return text
+
+
+def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
+    """
+    Parse a Cookie header according to RFC 6265 Section 5.4.
+
+    Cookie headers contain only name-value pairs separated by semicolons.
+    There are no attributes in Cookie headers - even names that match
+    attribute names (like 'path' or 'secure') should be treated as cookies.
+
+    This parser uses the same regex-based approach as parse_cookie_headers
+    to properly handle quoted values that may contain semicolons.
+
+    Args:
+        header: The Cookie header value to parse
+
+    Returns:
+        List of (name, Morsel) tuples for compatibility with SimpleCookie.update()
+    """
+    if not header:
+        return []
+
+    cookies: List[Tuple[str, Morsel[str]]] = []
+    i = 0
+    n = len(header)
+
+    while i < n:
+        # Use the same pattern as parse_cookie_headers to find cookies
+        match = _COOKIE_PATTERN.match(header, i)
+        if not match:
+            break
+
+        key = match.group("key")
+        value = match.group("val") or ""
+        i = match.end(0)
+
+        # Validate the name
+        if not key or not _COOKIE_NAME_RE.match(key):
+            internal_logger.warning("Can not load cookie: Illegal cookie name %r", key)
+            continue
+
+        # Create new morsel
+        morsel: Morsel[str] = Morsel()
+        # Preserve the original value as coded_value (with quotes if present)
+        # We use __setstate__ instead of the public set() API because it allows us to
+        # bypass validation and set already validated state. This is more stable than
+        # setting protected attributes directly and unlikely to change since it would
+        # break pickling.
+        morsel.__setstate__(  # type: ignore[attr-defined]
+            {"key": key, "value": _unquote(value), "coded_value": value}
+        )
+
+        cookies.append((key, morsel))
+
+    return cookies
 
 
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
