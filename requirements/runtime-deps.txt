@@ -38,5 +38,5 @@ pycparser==2.22
     # via cffi
 typing-extensions==4.13.2
     # via multidict
-yarl==1.20.0
+yarl==1.20.1
     # via -r requirements/runtime-deps.in
