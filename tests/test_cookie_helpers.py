@@ -1065,11 +1065,11 @@ def test_parse_set_cookie_headers_date_formats_with_attributes() -> None:
         ),
     ],
 )
-def test_parse_cookie_headers_uses_unquote_with_octal(
+def test_parse_set_cookie_headers_uses_unquote_with_octal(
     header: str, expected_name: str, expected_value: str, expected_coded: str
 ) -> None:
-    """Test that parse_cookie_headers correctly unquotes values with octal sequences and preserves coded_value."""
-    result = parse_cookie_headers([header])
+    """Test that parse_set_cookie_headers correctly unquotes values with octal sequences and preserves coded_value."""
+    result = parse_set_cookie_headers([header])
 
     assert len(result) == 1
     name, morsel = result[0]
