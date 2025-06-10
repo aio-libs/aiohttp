@@ -13,7 +13,7 @@ from typing import List, Optional, Sequence, Tuple, cast
 from .log import internal_logger
 
 __all__ = (
-    "parse_cookie_headers",
+    "parse_set_cookie_headers",
     "parse_cookie_header",
     "preserve_morsel_with_coded_value",
 )
@@ -136,7 +136,7 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
     There are no attributes in Cookie headers - even names that match
     attribute names (like 'path' or 'secure') should be treated as cookies.
 
-    This parser uses the same regex-based approach as parse_cookie_headers
+    This parser uses the same regex-based approach as parse_set_cookie_headers
     to properly handle quoted values that may contain semicolons.
 
     Args:
@@ -153,7 +153,7 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
     n = len(header)
 
     while i < n:
-        # Use the same pattern as parse_cookie_headers to find cookies
+        # Use the same pattern as parse_set_cookie_headers to find cookies
         match = _COOKIE_PATTERN.match(header, i)
         if not match:
             break
@@ -183,7 +183,7 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
     return cookies
 
 
-def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
+def parse_set_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
     """
     Parse cookie headers using a vendored version of SimpleCookie parsing.
 

@@ -32,7 +32,7 @@ from yarl import URL
 from . import hdrs, helpers, http, multipart, payload
 from ._cookie_helpers import (
     parse_cookie_header,
-    parse_cookie_headers,
+    parse_set_cookie_headers,
     preserve_morsel_with_coded_value,
 )
 from .abc import AbstractStreamWriter
@@ -317,9 +317,9 @@ class ClientResponse(HeadersMixin):
             if self._raw_cookie_headers is not None:
                 # Parse cookies for response.cookies (SimpleCookie for backward compatibility)
                 cookies = SimpleCookie()
-                # Use parse_cookie_headers for more lenient parsing that handles
+                # Use parse_set_cookie_headers for more lenient parsing that handles
                 # malformed cookies better than SimpleCookie.load
-                cookies.update(parse_cookie_headers(self._raw_cookie_headers))
+                cookies.update(parse_set_cookie_headers(self._raw_cookie_headers))
                 self._cookies = cookies
             else:
                 self._cookies = SimpleCookie()
