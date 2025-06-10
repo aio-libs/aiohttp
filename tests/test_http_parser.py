@@ -3,6 +3,7 @@
 import asyncio
 import re
 from contextlib import suppress
+import sys
 from typing import Any, Dict, Iterable, List, Type
 from unittest import mock
 from urllib.parse import quote
@@ -34,13 +35,13 @@ try:
 except ImportError:
     brotli = None
 
-try:
+if sys.version_info >= (3, 14):
+    import compression.zstd as zstandard
+else:
     try:
-        import compression.zstd as zstandard
-    except ImportError:
         import zstandard
-except ImportError:
-    zstandard = None
+    except ImportError:
+        zstandard = None
 
 REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
