@@ -11,9 +11,9 @@ import pytest
 
 from aiohttp import _cookie_helpers as helpers
 from aiohttp._cookie_helpers import (
+    _unquote,
     parse_cookie_header,
     parse_set_cookie_headers,
-    _unquote,
     preserve_morsel_with_coded_value,
 )
 
@@ -1039,7 +1039,6 @@ def test_parse_set_cookie_headers_date_formats_with_attributes() -> None:
     assert result[1][1]["domain"] == ".example.com"
     assert result[1][1]["samesite"] == "Strict"
 
-    
 
 @pytest.mark.parametrize(
     ("header", "expected_name", "expected_value", "expected_coded"),
@@ -1081,9 +1080,10 @@ def test_parse_cookie_headers_uses_unquote_with_octal(
 
     # Check that coded_value preserves the original quoted string
     assert morsel.coded_value == expected_coded
-    
+
 
 # Tests for parse_cookie_header (RFC 6265 compliant Cookie header parser)
+
 
 def test_parse_cookie_header_simple() -> None:
     """Test parse_cookie_header with simple cookies."""
@@ -1368,8 +1368,8 @@ def test_parse_cookie_header_issue_7993() -> None:
     assert result[1][1].value == '"qux'
     assert result[2][0] == "foo2"
     assert result[2][1].value == "bar2"
-    
-    
+
+
 @pytest.mark.parametrize(
     ("input_str", "expected"),
     [
@@ -1558,4 +1558,3 @@ def test_unquote_compatibility_with_simplecookie(test_value: str) -> None:
         f"our={_unquote(test_value)!r}, "
         f"SimpleCookie={simplecookie_unquote(test_value)!r}"
     )
-
