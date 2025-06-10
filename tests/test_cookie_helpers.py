@@ -1370,6 +1370,20 @@ def test_parse_cookie_header_issue_7993() -> None:
     assert result[2][1].value == "bar2"
 
 
+def test_parse_cookie_header_illegal_names(caplog: pytest.LogCaptureFixture) -> None:
+    """Test parse_cookie_header warns about illegal cookie names."""
+    # Cookie name with comma (not allowed in _COOKIE_NAME_RE)
+    header = "good=value; invalid,cookie=bad; another=test"
+    result = parse_cookie_header(header)
+    # Should skip the invalid cookie but continue parsing
+    assert len(result) == 2
+    assert result[0][0] == "good"
+    assert result[0][1].value == "value"
+    assert result[1][0] == "another"
+    assert result[1][1].value == "test"
+    assert "Can not load cookie: Illegal cookie name 'invalid,cookie'" in caplog.text
+
+
 @pytest.mark.parametrize(
     ("input_str", "expected"),
     [
