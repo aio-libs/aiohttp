@@ -1,11 +1,17 @@
 """Tests for internal cookie helper functions."""
 
-from http.cookies import CookieError, Morsel, SimpleCookie
+from http.cookies import (
+    CookieError,
+    Morsel,
+    SimpleCookie,
+    _unquote as simplecookie_unquote,
+)
 
 import pytest
 
 from aiohttp import _cookie_helpers as helpers
 from aiohttp._cookie_helpers import (
+    _unquote,
     parse_cookie_headers,
     preserve_morsel_with_coded_value,
 )
@@ -1029,3 +1035,240 @@ def test_parse_cookie_headers_date_formats_with_attributes() -> None:
     assert result[1][1]["expires"] == "Wednesday, 09-Jun-30 10:18:14 GMT"
     assert result[1][1]["domain"] == ".example.com"
     assert result[1][1]["samesite"] == "Strict"
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        # Unquoted strings should remain unchanged
+        ("simple", "simple"),
+        ("with spaces", "with spaces"),
+        ("", ""),
+        ('"', '"'),  # String too short to be quoted
+        ('some"text', 'some"text'),  # Quotes not at beginning/end
+        ('text"with"quotes', 'text"with"quotes'),
+    ],
+)
+def test_unquote_basic(input_str: str, expected: str) -> None:
+    """Test basic _unquote functionality."""
+    assert _unquote(input_str) == expected
+
+
+def test_unquote_none() -> None:
+    """Test _unquote with None input."""
+    assert _unquote(None) is None  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        # Basic quoted strings
+        ('"quoted"', "quoted"),
+        ('"with spaces"', "with spaces"),
+        ('""', ""),  # Empty quoted string
+        # Quoted string with special characters
+        ('"hello, world!"', "hello, world!"),
+        ('"path=/test"', "path=/test"),
+    ],
+)
+def test_unquote_quoted_strings(input_str: str, expected: str) -> None:
+    """Test _unquote with quoted strings."""
+    assert _unquote(input_str) == expected
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        # Escaped quotes should be unescaped
+        (r'"say \"hello\""', 'say "hello"'),
+        (r'"nested \"quotes\" here"', 'nested "quotes" here'),
+        # Multiple escaped quotes
+        (r'"\"start\" middle \"end\""', '"start" middle "end"'),
+    ],
+)
+def test_unquote_escaped_quotes(input_str: str, expected: str) -> None:
+    """Test _unquote with escaped quotes."""
+    assert _unquote(input_str) == expected
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        # Single escaped backslash
+        (r'"path\\to\\file"', "path\\to\\file"),
+        # Backslash before quote
+        (r'"end with slash\\"', "end with slash\\"),
+        # Mixed escaped characters
+        (r'"path\\to\\\"file\""', 'path\\to\\"file"'),
+    ],
+)
+def test_unquote_escaped_backslashes(input_str: str, expected: str) -> None:
+    """Test _unquote with escaped backslashes."""
+    assert _unquote(input_str) == expected
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        # Common octal sequences
+        (r'"\012"', "\n"),  # newline
+        (r'"\011"', "\t"),  # tab
+        (r'"\015"', "\r"),  # carriage return
+        (r'"\040"', " "),  # space
+        # Octal sequences in context
+        (r'"line1\012line2"', "line1\nline2"),
+        (r'"tab\011separated"', "tab\tseparated"),
+        # Multiple octal sequences
+        (r'"\012\011\015"', "\n\t\r"),
+        # Mixed octal and regular text
+        (r'"hello\040world\041"', "hello world!"),
+    ],
+)
+def test_unquote_octal_sequences(input_str: str, expected: str) -> None:
+    """Test _unquote with octal escape sequences."""
+    assert _unquote(input_str) == expected
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        # Test boundary values
+        (r'"\000"', "\x00"),  # null character
+        (r'"\001"', "\x01"),
+        (r'"\177"', "\x7f"),  # DEL character
+        (r'"\200"', "\x80"),  # Extended ASCII
+        (r'"\377"', "\xff"),  # Max octal value
+        # Invalid octal sequences (not 3 digits or > 377) are treated as regular escapes
+        (r'"\400"', "400"),  # 400 octal = 256 decimal, too large
+        (r'"\777"', "777"),  # 777 octal = 511 decimal, too large
+    ],
+)
+def test_unquote_octal_full_range(input_str: str, expected: str) -> None:
+    """Test _unquote with full range of valid octal sequences."""
+    assert _unquote(input_str) == expected
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        # Mix of quotes, backslashes, and octal
+        (r'"say \"hello\"\012new line"', 'say "hello"\nnew line'),
+        (r'"path\\to\\file\011\011data"', "path\\to\\file\t\tdata"),
+        # Complex mixed example
+        (r'"\042quoted\042 and \134backslash\134"', '"quoted" and \\backslash\\'),
+        # Escaped characters that aren't special
+        (r'"\a\b\c"', "abc"),  # \a, \b, \c -> a, b, c
+    ],
+)
+def test_unquote_mixed_escapes(input_str: str, expected: str) -> None:
+    """Test _unquote with mixed escape sequences."""
+    assert _unquote(input_str) == expected
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        # String that starts with quote but doesn't end with one
+        ('"not closed', '"not closed'),
+        # String that ends with quote but doesn't start with one
+        ('not opened"', 'not opened"'),
+        # Multiple quotes
+        ('"""', '"'),
+        ('""""', '""'),
+        # Backslash at the end without anything to escape
+        (r'"ends with\"', "ends with\\"),
+        # Empty escape
+        (r'"test\"', "test\\"),
+        # Just escaped characters
+        (r'"\"\"\""', '"""'),
+    ],
+)
+def test_unquote_edge_cases(input_str: str, expected: str) -> None:
+    """Test _unquote edge cases."""
+    assert _unquote(input_str) == expected
+
+
+@pytest.mark.parametrize(
+    ("input_str", "expected"),
+    [
+        # JSON-like data
+        (r'"{\"user\":\"john\",\"id\":123}"', '{"user":"john","id":123}'),
+        # URL-encoded then quoted
+        ('"hello%20world"', "hello%20world"),
+        # Path with backslashes (Windows-style)
+        (r'"C:\\Users\\John\\Documents"', "C:\\Users\\John\\Documents"),
+        # Complex session data
+        (
+            r'"session_data=\"user123\";expires=2024"',
+            'session_data="user123";expires=2024',
+        ),
+    ],
+)
+def test_unquote_real_world_examples(input_str: str, expected: str) -> None:
+    """Test _unquote with real-world cookie value examples."""
+    assert _unquote(input_str) == expected
+
+
+@pytest.mark.parametrize(
+    "test_value",
+    [
+        '""',
+        '"simple"',
+        r'"with \"quotes\""',
+        r'"with \\backslash\\"',
+        r'"\012newline"',
+        r'"complex\042quote\134slash\012"',
+        '"not-quoted',
+        'also-not-quoted"',
+        r'"mixed\011\042\134test"',
+    ],
+)
+def test_unquote_compatibility_with_simplecookie(test_value: str) -> None:
+    """Test that _unquote behaves like SimpleCookie's unquoting."""
+    assert _unquote(test_value) == simplecookie_unquote(test_value), (
+        f"Mismatch for {test_value!r}: "
+        f"our={_unquote(test_value)!r}, "
+        f"SimpleCookie={simplecookie_unquote(test_value)!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("header", "expected_name", "expected_value", "expected_coded"),
+    [
+        # Test cookie values with octal escape sequences
+        (r'name="\012newline\012"', "name", "\nnewline\n", r'"\012newline\012"'),
+        (
+            r'tab="\011separated\011values"',
+            "tab",
+            "\tseparated\tvalues",
+            r'"\011separated\011values"',
+        ),
+        (
+            r'mixed="hello\040world\041"',
+            "mixed",
+            "hello world!",
+            r'"hello\040world\041"',
+        ),
+        (
+            r'complex="\042quoted\042 text with \012 newline"',
+            "complex",
+            '"quoted" text with \n newline',
+            r'"\042quoted\042 text with \012 newline"',
+        ),
+    ],
+)
+def test_parse_cookie_headers_uses_unquote_with_octal(
+    header: str, expected_name: str, expected_value: str, expected_coded: str
+) -> None:
+    """Test that parse_cookie_headers correctly unquotes values with octal sequences and preserves coded_value."""
+    result = parse_cookie_headers([header])
+
+    assert len(result) == 1
+    name, morsel = result[0]
+
+    # Check that octal sequences were properly decoded in the value
+    assert name == expected_name
+    assert morsel.value == expected_value
+
+    # Check that coded_value preserves the original quoted string
+    assert morsel.coded_value == expected_coded
