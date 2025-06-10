@@ -31,7 +31,11 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, helpers, http, multipart, payload
-from ._cookie_helpers import parse_cookie_headers, preserve_morsel_with_coded_value
+from ._cookie_helpers import (
+    parse_cookie_header,
+    parse_set_cookie_headers,
+    preserve_morsel_with_coded_value,
+)
 from .abc import AbstractStreamWriter
 from .client_exceptions import (
     ClientConnectionError,
@@ -376,9 +380,9 @@ class ClientResponse(HeadersMixin):
             if self._raw_cookie_headers is not None:
                 # Parse cookies for response.cookies (SimpleCookie for backward compatibility)
                 cookies = SimpleCookie()
-                # Use parse_cookie_headers for more lenient parsing that handles
+                # Use parse_set_cookie_headers for more lenient parsing that handles
                 # malformed cookies better than SimpleCookie.load
-                cookies.update(parse_cookie_headers(self._raw_cookie_headers))
+                cookies.update(parse_set_cookie_headers(self._raw_cookie_headers))
                 self._cookies = cookies
             else:
                 self._cookies = SimpleCookie()
@@ -1093,8 +1097,8 @@ class ClientRequest:
 
         c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
-            # parse_cookie_headers already preserves coded values
-            c.update(parse_cookie_headers((self.headers.get(hdrs.COOKIE, ""),)))
+            # parse_cookie_header for RFC 6265 compliant Cookie header parsing
+            c.update(parse_cookie_header(self.headers.get(hdrs.COOKIE, "")))
             del self.headers[hdrs.COOKIE]
 
         if isinstance(cookies, Mapping):
