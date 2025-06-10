@@ -2,8 +2,8 @@
 
 import asyncio
 import re
-from contextlib import suppress
 import sys
+from contextlib import suppress
 from typing import Any, Dict, Iterable, List, Type
 from unittest import mock
 from urllib.parse import quote
