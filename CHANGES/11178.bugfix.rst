@@ -1,0 +1,1 @@
+Fixed Cookie header parsing to treat attribute names as regular cookies per RFC 6265 -- by :user:`bdraco`.
