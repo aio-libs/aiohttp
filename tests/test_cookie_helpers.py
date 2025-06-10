@@ -1054,11 +1054,6 @@ def test_unquote_basic(input_str: str, expected: str) -> None:
     assert _unquote(input_str) == expected
 
 
-def test_unquote_none() -> None:
-    """Test _unquote with None input."""
-    assert _unquote(None) is None  # type: ignore[arg-type]
-
-
 @pytest.mark.parametrize(
     ("input_str", "expected"),
     [

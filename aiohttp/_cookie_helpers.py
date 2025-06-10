@@ -124,30 +124,33 @@ def _unquote_replace(m: re.Match[str]) -> str:
     return m[2]
 
 
-def _unquote(str: str) -> str:
+def _unquote(value: str) -> str:
     """
     Unquote a cookie value.
 
     Vendored from http.cookies._unquote to ensure compatibility.
+
+    Note: The original implementation checked for None, but we've removed
+    that check since all callers already ensure the value is not None.
     """
     # If there aren't any doublequotes,
     # then there can't be any special characters.  See RFC 2109.
-    if str is None or len(str) < 2:
-        return str
-    if str[0] != '"' or str[-1] != '"':
-        return str
+    if len(value) < 2:
+        return value
+    if value[0] != '"' or value[-1] != '"':
+        return value
 
     # We have to assume that we must decode this string.
     # Down to work.
 
     # Remove the "s
-    str = str[1:-1]
+    value = value[1:-1]
 
     # Check for special sequences.  Examples:
     #    \012 --> \n
     #    \"   --> "
     #
-    return _unquote_sub(_unquote_replace, str)
+    return _unquote_sub(_unquote_replace, value)
 
 
 def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
