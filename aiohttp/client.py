@@ -369,7 +369,9 @@ class ClientSession:
             )
 
         if connector is None:
-            connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
+            connector = TCPConnector(
+                loop=loop, ssl_shutdown_timeout=ssl_shutdown_timeout
+            )
 
         if connector._loop is not loop:
             raise RuntimeError("Session and connector has to use same event loop")
