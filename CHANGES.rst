@@ -153,6 +153,14 @@ Features
 3.12.7 (2025-06-02)
 ===================
 
+.. warning::
+
+   This release fixes an issue where the ``quote_cookie`` parameter was not being properly
+   respected for shared cookies (domain="", path=""). If your server does not handle quoted
+   cookies correctly, you may need to disable cookie quoting by setting ``quote_cookie=False``
+   when creating your :class:`~aiohttp.ClientSession` or :class:`~aiohttp.CookieJar`.
+   See :ref:`aiohttp-client-cookies-quoting` for details.
+
 Bug fixes
 ---------
 
