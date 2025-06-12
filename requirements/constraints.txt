@@ -143,7 +143,9 @@ pkgconfig==1.5.5
 platformdirs==4.3.8
     # via virtualenv
 pluggy==1.6.0
-    # via pytest
+    # via
+    #   pytest
+    #   pytest-cov
 pre-commit==4.2.0
     # via -r requirements/lint.in
 propcache==0.3.2
@@ -186,7 +188,7 @@ pytest-codspeed==3.2.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytest-cov==6.1.1
+pytest-cov==6.2.1
     # via -r requirements/test.in
 pytest-mock==3.14.1
     # via
