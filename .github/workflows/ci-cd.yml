@@ -122,7 +122,11 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.9, '3.10', '3.11', '3.12', '3.13']
+        # Note that 3.13.4 is broken on Windows which
+        # is why 3.13.5 was rushed out. When 3.13.5 is fully
+        # available, we can remove 3.13.4 from the matrix
+        # and switch it back to 3.13
+        pyver: [3.9, '3.10', '3.11', '3.12', '3.13.3']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
