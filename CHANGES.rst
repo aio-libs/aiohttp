@@ -159,7 +159,7 @@ Features
    respected for shared cookies (domain="", path=""). If your server does not handle quoted
    cookies correctly, you may need to disable cookie quoting by setting ``quote_cookie=False``
    when creating your :class:`~aiohttp.ClientSession` or :class:`~aiohttp.CookieJar`.
-   See :ref:`aiohttp-client-cookies-quoting` for details.
+   See :ref:`aiohttp-client-cookie-quoting-routine` for details.
 
 Bug fixes
 ---------
