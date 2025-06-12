@@ -422,6 +422,26 @@ def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
         another_loop.run_until_complete(connector.close())
 
 
+def test_auto_created_connector_uses_session_loop(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that auto-created TCPConnector uses the session's loop."""
+    # Create a ClientSession without providing a connector
+    # The session should auto-create a TCPConnector with the provided loop
+    session = ClientSession(loop=loop)
+
+    # Verify the connector was created
+    assert session.connector is not None
+    assert isinstance(session.connector, TCPConnector)
+
+    # Verify the connector uses the same loop as the session
+    assert session.connector._loop is loop
+    assert session.connector._loop is session._loop
+
+    # Clean up
+    loop.run_until_complete(session.close())
+
+
 def test_detach(loop, session) -> None:
     conn = session.connector
     try:
