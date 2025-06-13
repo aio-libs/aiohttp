@@ -266,7 +266,7 @@ trustme==1.2.1 ; platform_machine != "i686"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-typing-extensions==4.13.2
+typing-extensions==4.14.0
     # via
     #   exceptiongroup
     #   multidict
