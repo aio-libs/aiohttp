@@ -1,0 +1,2 @@
+Updated TraceConfig to cooperate with the newest version of aiosignal and transformed the callback protocol to a type alias
+-- by :user:`Vizonex`.
