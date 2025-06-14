@@ -10,6 +10,24 @@
 
 .. towncrier release notes start
 
+3.12.13 (2025-06-14)
+====================
+
+Bug fixes
+---------
+
+- Fixed auto-created :py:class:`~aiohttp.TCPConnector` not using the session's event loop when :py:class:`~aiohttp.ClientSession` is created without an explicit connector -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11147`.
+
+
+
+
+----
+
+
 3.12.12 (2025-06-09)
 ====================
 
