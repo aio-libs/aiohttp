@@ -254,7 +254,7 @@ class BaseRunner(ABC, Generic[_Request]):
         return self._server
 
     @property
-    def addresses(self) -> List[Any]:  # type: ignore[misc]
+    def addresses(self) -> List[Any]:
         ret: List[Any] = []
         for site in self._sites:
             server = site._server
