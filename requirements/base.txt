@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/base.txt --strip-extras requirements/base.in
 #
-aiodns==3.4.0
+aiodns==3.5.0
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
     # via -r requirements/runtime-deps.in
@@ -16,7 +16,7 @@ brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 cffi==1.17.1
     # via pycares
-frozenlist==1.6.2
+frozenlist==1.7.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
@@ -30,11 +30,11 @@ multidict==6.4.4
     #   yarl
 packaging==25.0
     # via gunicorn
-propcache==0.3.1
+propcache==0.3.2
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-pycares==4.8.0
+pycares==4.9.0
     # via aiodns
 pycparser==2.22
     # via cffi
@@ -42,5 +42,5 @@ typing-extensions==4.13.2
     # via multidict
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-yarl==1.20.0
+yarl==1.20.1
     # via -r requirements/runtime-deps.in

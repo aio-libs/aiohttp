@@ -10,6 +10,50 @@
 
 .. towncrier release notes start
 
+3.12.13 (2025-06-14)
+====================
+
+Bug fixes
+---------
+
+- Fixed auto-created :py:class:`~aiohttp.TCPConnector` not using the session's event loop when :py:class:`~aiohttp.ClientSession` is created without an explicit connector -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11147`.
+
+
+
+
+----
+
+
+3.12.12 (2025-06-09)
+====================
+
+Bug fixes
+---------
+
+- Fixed cookie unquoting to properly handle octal escape sequences in cookie values (e.g., ``\012`` for newline) by vendoring the correct ``_unquote`` implementation from Python's ``http.cookies`` module -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11173`.
+
+
+
+- Fixed ``Cookie`` header parsing to treat attribute names as regular cookies per :rfc:`6265#section-5.4` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11178`.
+
+
+
+
+----
+
+
 3.12.11 (2025-06-07)
 ====================
 
@@ -126,6 +170,14 @@ Features
 
 3.12.7 (2025-06-02)
 ===================
+
+.. warning::
+
+   This release fixes an issue where the ``quote_cookie`` parameter was not being properly
+   respected for shared cookies (domain="", path=""). If your server does not handle quoted
+   cookies correctly, you may need to disable cookie quoting by setting ``quote_cookie=False``
+   when creating your :class:`~aiohttp.ClientSession` or :class:`~aiohttp.CookieJar`.
+   See :ref:`aiohttp-client-cookie-quoting-routine` for details.
 
 Bug fixes
 ---------

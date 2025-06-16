@@ -12,7 +12,11 @@ from typing import List, Optional, Sequence, Tuple, cast
 
 from .log import internal_logger
 
-__all__ = ("parse_cookie_headers", "preserve_morsel_with_coded_value")
+__all__ = (
+    "parse_set_cookie_headers",
+    "parse_cookie_header",
+    "preserve_morsel_with_coded_value",
+)
 
 # Cookie parsing constants
 # Allow more characters in cookie names to handle real-world cookies
@@ -108,23 +112,107 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
     return mrsl_val
 
 
-def _unquote(text: str) -> str:
+_unquote_sub = re.compile(r"\\(?:([0-3][0-7][0-7])|(.))").sub
+
+
+def _unquote_replace(m: re.Match[str]) -> str:
+    """
+    Replace function for _unquote_sub regex substitution.
+
+    Handles escaped characters in cookie values:
+    - Octal sequences are converted to their character representation
+    - Other escaped characters are unescaped by removing the backslash
+    """
+    if m[1]:
+        return chr(int(m[1], 8))
+    return m[2]
+
+
+def _unquote(value: str) -> str:
     """
     Unquote a cookie value.
 
     Vendored from http.cookies._unquote to ensure compatibility.
+
+    Note: The original implementation checked for None, but we've removed
+    that check since all callers already ensure the value is not None.
     """
-    # If there are no quotes, return as-is
-    if len(text) < 2 or text[0] != '"' or text[-1] != '"':
-        return text
-    # Remove quotes and handle escaped characters
-    text = text[1:-1]
-    # Replace escaped quotes and backslashes
-    text = text.replace('\\"', '"').replace("\\\\", "\\")
-    return text
+    # If there aren't any doublequotes,
+    # then there can't be any special characters.  See RFC 2109.
+    if len(value) < 2:
+        return value
+    if value[0] != '"' or value[-1] != '"':
+        return value
+
+    # We have to assume that we must decode this string.
+    # Down to work.
+
+    # Remove the "s
+    value = value[1:-1]
+
+    # Check for special sequences.  Examples:
+    #    \012 --> \n
+    #    \"   --> "
+    #
+    return _unquote_sub(_unquote_replace, value)
 
 
-def parse_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
+def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
+    """
+    Parse a Cookie header according to RFC 6265 Section 5.4.
+
+    Cookie headers contain only name-value pairs separated by semicolons.
+    There are no attributes in Cookie headers - even names that match
+    attribute names (like 'path' or 'secure') should be treated as cookies.
+
+    This parser uses the same regex-based approach as parse_set_cookie_headers
+    to properly handle quoted values that may contain semicolons.
+
+    Args:
+        header: The Cookie header value to parse
+
+    Returns:
+        List of (name, Morsel) tuples for compatibility with SimpleCookie.update()
+    """
+    if not header:
+        return []
+
+    cookies: List[Tuple[str, Morsel[str]]] = []
+    i = 0
+    n = len(header)
+
+    while i < n:
+        # Use the same pattern as parse_set_cookie_headers to find cookies
+        match = _COOKIE_PATTERN.match(header, i)
+        if not match:
+            break
+
+        key = match.group("key")
+        value = match.group("val") or ""
+        i = match.end(0)
+
+        # Validate the name
+        if not key or not _COOKIE_NAME_RE.match(key):
+            internal_logger.warning("Can not load cookie: Illegal cookie name %r", key)
+            continue
+
+        # Create new morsel
+        morsel: Morsel[str] = Morsel()
+        # Preserve the original value as coded_value (with quotes if present)
+        # We use __setstate__ instead of the public set() API because it allows us to
+        # bypass validation and set already validated state. This is more stable than
+        # setting protected attributes directly and unlikely to change since it would
+        # break pickling.
+        morsel.__setstate__(  # type: ignore[attr-defined]
+            {"key": key, "value": _unquote(value), "coded_value": value}
+        )
+
+        cookies.append((key, morsel))
+
+    return cookies
+
+
+def parse_set_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[str]]]:
     """
     Parse cookie headers using a vendored version of SimpleCookie parsing.
 
