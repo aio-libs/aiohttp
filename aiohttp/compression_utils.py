@@ -22,7 +22,7 @@ except ImportError:
     HAS_BROTLI = False
 
 if sys.version_info >= (3, 14):
-    import compression.zstd
+    import compression.zstd  # noqa: I900
 
     HAS_ZSTD = True
 else:
