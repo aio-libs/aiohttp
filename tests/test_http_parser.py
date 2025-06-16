@@ -36,7 +36,7 @@ except ImportError:
     brotli = None
 
 if sys.version_info >= (3, 14):
-    import compression.zstd as zstandard  # noqa: I900
+    import compression.zstd as zstandard
 else:
     try:
         import zstandard
