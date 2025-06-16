@@ -41,7 +41,7 @@ else:
     try:
         import zstandard
     except ImportError:
-        zstandard = None
+        zstandard = None  # type: ignore[assignment]
 
 REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
