@@ -51,14 +51,14 @@ repos:
   rev: 'v5.0.0'
   hooks:
   - id: check-merge-conflict
-    additional_dependencies:
-      - flake8-docstrings==1.6.0
-      - flake8-no-implicit-concat==0.3.4
-      - flake8-requirements==1.7.8
 - repo: https://github.com/asottile/yesqa
   rev: v1.5.0
   hooks:
   - id: yesqa
+    additional_dependencies:
+      - flake8-docstrings==1.6.0
+      - flake8-no-implicit-concat==0.3.4
+      - flake8-requirements==1.7.8
 - repo: https://github.com/PyCQA/isort
   rev: '6.0.1'
   hooks:
