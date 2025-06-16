@@ -100,7 +100,7 @@ class StreamWriter(AbstractStreamWriter):
         transport = self._protocol.transport
         if transport is None or transport.is_closing():
             raise ClientConnectionResetError("Cannot write to closing transport")
-        transport.write(chunk)  # type: ignore[arg-type]
+        transport.write(chunk)
 
     def _writelines(
         self,
@@ -119,7 +119,7 @@ class StreamWriter(AbstractStreamWriter):
         if SKIP_WRITELINES or size < MIN_PAYLOAD_FOR_WRITELINES:
             transport.write(b"".join(chunks))
         else:
-            transport.writelines(chunks)  # type: ignore[arg-type]
+            transport.writelines(chunks)
 
     def _write_chunked_payload(
         self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]

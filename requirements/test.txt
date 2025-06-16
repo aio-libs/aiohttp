@@ -61,7 +61,7 @@ multidict==6.4.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.15.0 ; implementation_name == "cpython"
+mypy==1.16.1 ; implementation_name == "cpython"
     # via -r requirements/test.in
 mypy-extensions==1.1.0
     # via mypy
@@ -69,6 +69,8 @@ packaging==25.0
     # via
     #   gunicorn
     #   pytest
+pathspec==0.12.1
+    # via mypy
 pkgconfig==1.5.5
     # via -r requirements/test.in
 pluggy==1.6.0
