@@ -1374,7 +1374,7 @@ async def test_oserror_on_write_bytes(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
-    req.body = b"test data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+    req.body = b"test data"
 
     writer = WriterMock()
     writer.write.side_effect = OSError
@@ -1722,7 +1722,7 @@ async def test_write_bytes_with_content_length_limit(
     data = b"Hello World"
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
 
-    req.body = data  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+    req.body = data
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=5 to truncate data
@@ -1757,9 +1757,9 @@ async def test_write_bytes_with_iterable_content_length_limit(
             for chunk in data:
                 yield chunk
 
-        req.body = gen()  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+        req.body = gen()
     else:
-        req.body = data  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+        req.body = data
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=7 to truncate at the middle of Part2
@@ -1780,7 +1780,7 @@ async def test_write_bytes_empty_iterable_with_content_length(
         return
         yield  # pragma: no cover  # This makes it a generator but never executes
 
-    req.body = gen()  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+    req.body = gen()
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=10 with empty body
@@ -1809,7 +1809,7 @@ async def test_warn_if_unclosed_payload_via_body_setter(
         ResourceWarning,
         match="The previous request body contains unclosed resources",
     ):
-        req.body = b"new data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+        req.body = b"new data"
 
     await req.close()
 
@@ -1827,7 +1827,7 @@ async def test_no_warn_for_autoclose_payload_via_body_setter(
     # Setting body again should not trigger warning since previous payload has autoclose=True
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always")
-        req.body = b"new data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+        req.body = b"new data"
 
     # Filter out any non-ResourceWarning warnings
     resource_warnings = [
@@ -1857,7 +1857,7 @@ async def test_no_warn_for_consumed_payload_via_body_setter(
     # Setting body again should not trigger warning since previous payload is consumed
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always")
-        req.body = b"new data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+        req.body = b"new data"
 
     # Filter out any non-ResourceWarning warnings
     resource_warnings = [
@@ -1976,7 +1976,7 @@ async def test_body_setter_closes_previous_payload(
     req._body = mock_payload
 
     # Update body with new data using setter
-    req.body = b"new body data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892
+    req.body = b"new body data"
 
     # Verify the previous payload was closed using _close
     mock_payload._close.assert_called_once()
@@ -2105,7 +2105,7 @@ async def test_warn_stacklevel_points_to_user_code(
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always", ResourceWarning)
         # This line should be reported as the warning source
-        req.body = b"new data"  # type: ignore[assignment]  # https://github.com/python/mypy/issues/12892  # LINE TO BE REPORTED
+        req.body = b"new data"
 
     # Find the ResourceWarning
     resource_warnings = [
