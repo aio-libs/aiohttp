@@ -42,6 +42,7 @@ from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG
 from .http import HttpVersion11
+from .log import web_logger
 from .typedefs import Handler, PathLike
 from .web_exceptions import (
     HTTPException,
@@ -67,6 +68,14 @@ __all__ = (
     "StaticResource",
     "View",
 )
+
+
+try:
+    import hyperscan
+
+    HAS_HYPERSCAN = True
+except ImportError:
+    HAS_HYPERSCAN = False
 
 
 if TYPE_CHECKING:
@@ -738,6 +747,7 @@ class PrefixedSubAppResource(PrefixResource):
     def add_prefix(self, prefix: str) -> None:
         super().add_prefix(prefix)
         self._add_prefix_to_resources(prefix)
+        self._app.router._rebuild()
 
     def _add_prefix_to_resources(self, prefix: str) -> None:
         router = self._app.router
@@ -1001,28 +1011,98 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         self._named_resources: Dict[str, AbstractResource] = {}
         self._resource_index: dict[str, list[AbstractResource]] = {}
         self._matched_sub_app_resources: List[MatchedSubAppResource] = []
+        self._hyperdb: Optional[hyperscan.Database] = None  # type: ignore[no-any-unimported]
+        self._plain_resources: dict[str, PlainResource] = {}
+        self._prefix_resources: dict[tuple[str, ...], list[PrefixResource]] = {}
+        self._max_prefix_cardinality = 0
+        self._has_variable_resources = True
+
+    def _on_match(
+        self, id_: int, from_: int, to: int, flags: int, found: list[int]
+    ) -> Optional[bool]:
+        found.append(id_)
+        return None
 
     async def resolve(self, request: Request) -> UrlMappingMatchInfo:
-        resource_index = self._resource_index
-        allowed_methods: Set[str] = set()
+        allowed_methods: set[str] = set()
+        path = request.rel_url.path_safe
 
+        # plain resource lookup
+        if (plain_resource := self._plain_resources.get(path)) is not None:
+            match_dict, allowed = await plain_resource.resolve(request)
+            if match_dict is not None:
+                return match_dict
+            else:
+                allowed_methods |= allowed
+
+        # prefix resource lookup
+        parts = tuple(
+            path[1:].split("/", self._max_prefix_cardinality)[
+                : self._max_prefix_cardinality
+            ]
+        )
+        prefix_resources = self._prefix_resources
         # Walk the url parts looking for candidates. We walk the url backwards
         # to ensure the most explicit match is found first. If there are multiple
         # candidates for a given url part because there are multiple resources
         # registered for the same canonical path, we resolve them in a linear
         # fashion to ensure registration order is respected.
-        url_part = request.rel_url.path_safe
-        while url_part:
-            for candidate in resource_index.get(url_part, ()):
-                match_dict, allowed = await candidate.resolve(request)
+        while True:
+            for prefix_resource in prefix_resources.get(parts, ()):
+                match_dict, allowed = await prefix_resource.resolve(request)
                 if match_dict is not None:
                     return match_dict
                 else:
                     allowed_methods |= allowed
-            if url_part == "/":
+            if len(parts) <= 1:
                 break
-            url_part = url_part.rpartition("/")[0] or "/"
+            parts = parts[:-1]
 
+        # variable resource lookup
+        if self._has_variable_resources:
+            if self._hyperdb is not None:
+                found: list[int] = []
+                resources = self._resources
+
+                self._hyperdb.scan(
+                    path.encode("utf8"),
+                    match_event_handler=self._on_match,
+                    context=found,
+                )
+                if len(found) > 1:
+                    # Multiple matches are found,
+                    # use the FIRST match.
+                    # Match ids are basically indexes in self._resources.
+                    found.sort()
+
+                for idx in found:
+                    resource = resources[idx]
+                    match_dict, allowed = await resource.resolve(request)
+                    if match_dict is not None:
+                        return match_dict
+                    else:
+                        allowed_methods |= allowed
+            else:
+                url_part = path
+                resource_index = self._resource_index
+
+                # Walk the url parts looking for candidates. We walk the url backwards
+                # to ensure the most explicit match is found first. If there are multiple
+                # candidates for a given url part because there are multiple resources
+                # registered for the same canonical path, we resolve them in a linear
+                # fashion to ensure registration order is respected.
+                while url_part:
+                    for candidate in resource_index.get(url_part, ()):
+                        match_dict, allowed = await candidate.resolve(request)
+                        if match_dict is not None:
+                            return match_dict
+                        else:
+                            allowed_methods |= allowed
+                    if url_part == "/":
+                        break
+                    url_part = url_part.rpartition("/")[0] or "/"
+
+        # domain resource lookup
         #
         # We didn't find any candidates, so we'll try the matched sub-app
         # resources which we have to walk in a linear fashion because they
@@ -1242,6 +1322,62 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         super().freeze()
         for resource in self._resources:
             resource.freeze()
+        self._rebuild()
+
+    def _rebuild(self) -> None:
+        self._hyperdb = None
+        self._plain_resources.clear()
+        self._prefix_resources.clear()
+        self._max_prefix_cardinality = 0
+        patterns: list[bytes] = []
+        ids: list[int] = []
+        for id_, resource in enumerate(self._resources):
+            if isinstance(resource, PlainResource):
+                self._plain_resources[resource.get_info()["path"]] = resource
+            elif isinstance(resource, DynamicResource):
+                pattern = resource.get_info()["pattern"].pattern
+                patterns.append(f"^{pattern}$".encode())
+                ids.append(id_)
+            elif isinstance(resource, PrefixResource):
+                if isinstance(resource, MatchedSubAppResource):
+                    # wildcard resources doesn't fit hyperscan table
+                    continue
+                prefix = resource.get_info()["prefix"]
+                # There may be multiple resources for a prefix
+                # so we keep them in a list to ensure that registration
+                # order is respected.
+                parts = tuple(prefix.split("/")[1:])
+                self._prefix_resources.setdefault(parts, []).append(resource)
+                self._max_prefix_cardinality = max(
+                    self._max_prefix_cardinality, len(parts)
+                )
+                # breakpoint()
+            else:
+                raise RuntimeError(f"Unsupported resource type {type(resource)}")
+
+        count = len(patterns)
+        self._has_variable_resources = count > 0
+        if self._has_variable_resources:
+            if HAS_HYPERSCAN:
+                self._hyperdb = hyperscan.Database()
+                try:
+                    self._hyperdb.compile(
+                        expressions=patterns,
+                        ids=ids,
+                        elements=count,
+                        flags=[
+                            hyperscan.HS_FLAG_UTF8
+                            | hyperscan.HS_FLAG_UCP
+                            | hyperscan.HS_FLAG_SINGLEMATCH
+                        ]
+                        * count,
+                    )
+                except hyperscan.error as exc:
+                    web_logger.warning(
+                        "Cannot compile hyperscan database: %s, switching to fallback url resolver",
+                        repr(exc),
+                    )
+                    self._hyperdb = None
 
     def add_routes(self, routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
         """Append routes to route table.
