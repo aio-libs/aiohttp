@@ -352,13 +352,15 @@ def test_skip_default_useragent_header(make_request: _RequestMaker) -> None:
 
 
 def test_headers(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "post", "http://python.org/", headers={hdrs.CONTENT_TYPE: "text/plain"}
-    )
+    with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", True):
+        with mock.patch("aiohttp.client_reqrep.HAS_ZSTD", True):
+            req = make_request(
+                "post", "http://python.org/", headers={hdrs.CONTENT_TYPE: "text/plain"}
+            )
 
-    assert hdrs.CONTENT_TYPE in req.headers
-    assert req.headers[hdrs.CONTENT_TYPE] == "text/plain"
-    assert req.headers[hdrs.ACCEPT_ENCODING] == "gzip, deflate, br, zstd"
+            assert hdrs.CONTENT_TYPE in req.headers
+            assert req.headers[hdrs.CONTENT_TYPE] == "text/plain"
+            assert req.headers[hdrs.ACCEPT_ENCODING] == "gzip, deflate, br, zstd"
 
 
 def test_headers_list(make_request: _RequestMaker) -> None:

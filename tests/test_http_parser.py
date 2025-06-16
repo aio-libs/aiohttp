@@ -1945,6 +1945,7 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
         assert [b"line"] == list(buf._buffer)
 
+    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
     async def test_feed_eof_no_err_zstandard(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         dbuf = DeflateBuffer(buf, "zstd")
