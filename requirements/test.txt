@@ -92,8 +92,10 @@ pydantic==2.11.7
 pydantic-core==2.33.2
     # via pydantic
 pygments==2.19.1
-    # via rich
-pytest==8.1.1
+    # via
+    #   pytest
+    #   rich
+pytest==8.4.0
     # via
     #   -r requirements/test.in
     #   pytest-codspeed
