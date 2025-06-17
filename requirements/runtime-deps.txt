@@ -34,7 +34,7 @@ pycares==4.9.0
     # via aiodns
 pycparser==2.22
     # via cffi
-typing-extensions==4.13.2
+typing-extensions==4.14.0
     # via multidict
 yarl==1.20.1
     # via -r requirements/runtime-deps.in
