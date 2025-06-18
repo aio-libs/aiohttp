@@ -97,7 +97,7 @@ pygments==2.19.1
     # via
     #   pytest
     #   rich
-pytest==8.4.0
+pytest==8.4.1
     # via
     #   -r requirements/test.in
     #   pytest-codspeed
