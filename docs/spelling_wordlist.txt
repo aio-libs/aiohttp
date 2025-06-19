@@ -382,3 +382,5 @@ www
 xxx
 yarl
 zlib
+zstandard
+zstd

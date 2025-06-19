@@ -14,3 +14,4 @@ trustme
 uvloop; platform_system != "Windows"
 valkey
 zlib_ng
+zstandard; implementation_name == "cpython"
