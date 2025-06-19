@@ -437,7 +437,7 @@ cdef class HttpParser:
         if enc is not None:
             self._content_encoding = None
             enc = enc.lower()
-            if enc in ('gzip', 'deflate', 'br'):
+            if enc in ('gzip', 'deflate', 'br', 'zstd'):
                 encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
