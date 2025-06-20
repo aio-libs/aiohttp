@@ -36,7 +36,7 @@ def test_one_hundred_simple_get_requests(
 
 
 def test_one_hundred_simple_get_requests_alternating_clients(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -62,11 +62,11 @@ def test_one_hundred_simple_get_requests_alternating_clients(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_simple_get_requests_no_session(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_server: AiohttpServer,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -78,7 +78,7 @@ def test_one_hundred_simple_get_requests_no_session(
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
-    server = loop.run_until_complete(aiohttp_server(app))
+    server = event_loop.run_until_complete(aiohttp_server(app))
     url = URL(f"http://{server.host}:{server.port}/")
 
     async def run_client_benchmark() -> None:
@@ -88,7 +88,7 @@ def test_one_hundred_simple_get_requests_no_session(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_simple_get_requests_multiple_methods_route(
