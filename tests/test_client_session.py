@@ -65,7 +65,7 @@ def connector(
 
 
 @pytest.fixture
-def create_session(  # type: ignore[misc]
+def create_session(
     loop: asyncio.AbstractEventLoop,
 ) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
@@ -81,7 +81,7 @@ def create_session(  # type: ignore[misc]
 
 
 @pytest.fixture
-def session(  # type: ignore[misc]
+def session(
     create_session: Callable[..., Awaitable[ClientSession]],
     loop: asyncio.AbstractEventLoop,
 ) -> ClientSession:
