@@ -1,4 +1,3 @@
-import asyncio
 from typing import Awaitable, Callable, Iterable, NoReturn
 
 import pytest

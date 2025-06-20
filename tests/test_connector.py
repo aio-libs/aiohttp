@@ -2155,6 +2155,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_pre_311() -> None:
 async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
     start_connection: mock.AsyncMock,
 ) -> None:
+    loop = asyncio.get_running_loop()
     # Test that ssl_shutdown_timeout is passed to create_connection for SSL connections
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
@@ -2216,6 +2217,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
 async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
     start_connection: mock.AsyncMock,
 ) -> None:
+    loop = asyncio.get_running_loop()
     # Test that ssl_shutdown_timeout is NOT passed to create_connection on Python < 3.11
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
@@ -2377,6 +2379,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
     start_connection: mock.AsyncMock,
 ) -> None:
     """Test that ssl_shutdown_timeout=0 is NOT passed to create_connection."""
+    loop = asyncio.get_running_loop()
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
@@ -2408,6 +2411,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
     start_connection: mock.AsyncMock,
 ) -> None:
     """Test that non-zero ssl_shutdown_timeout IS passed to create_connection on Python 3.11+."""
+    loop = asyncio.get_running_loop()
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
@@ -2434,6 +2438,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
 
 async def test_tcp_connector_close_abort_ssl_connections_in_conns() -> None:
     """Test that SSL connections in _conns are aborted when ssl_shutdown_timeout=0."""
+    loop = asyncio.get_running_loop()
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):

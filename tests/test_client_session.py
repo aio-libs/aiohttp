@@ -437,7 +437,7 @@ async def test_ssl_shutdown_timeout_passed_to_connector_pre_311() -> None:
             )  # Should use connector's value
 
 
-def test_connector_loop() -> None:
+def test_connector_loop(event_loop: asyncio.AbstractEventLoop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
         stack.enter_context(contextlib.closing(another_loop))

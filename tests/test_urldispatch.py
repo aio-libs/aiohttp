@@ -1,4 +1,3 @@
-import asyncio
 import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized

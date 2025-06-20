@@ -1,8 +1,6 @@
 """Utilities shared by tests."""
 
 import asyncio
-import contextlib
-import gc
 import ipaddress
 import os
 import socket
@@ -15,13 +13,11 @@ from typing import (
     Callable,
     Dict,
     Generic,
-    Iterator,
     List,
     Optional,
     Type,
     TypeVar,
     Union,
-    cast,
     overload,
 )
 from unittest import IsolatedAsyncioTestCase, mock

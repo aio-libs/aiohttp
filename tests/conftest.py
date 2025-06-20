@@ -245,6 +245,13 @@ def unix_sockname(
 
 
 @pytest.fixture
+def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest.fixture
 def proactor_loop() -> Iterator[asyncio.AbstractEventLoop]:
     pytest.skip("broken")
     return
