@@ -192,7 +192,7 @@ pytest-aiohttp==1.1.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-pytest-asyncio==0.23.8
+pytest-asyncio==1.0.0
     # via pytest-aiohttp
 pytest-codspeed==3.2.0
     # via
