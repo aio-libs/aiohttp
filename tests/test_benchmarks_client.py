@@ -3,7 +3,7 @@
 import asyncio
 
 import pytest
-from pytest_aiohttp import AiohttpClient
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 

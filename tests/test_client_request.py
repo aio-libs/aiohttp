@@ -606,7 +606,7 @@ def test_update_cookies_with_special_chars_in_existing_header() -> None:
         "get",
         URL("http://python.org"),
         headers={"Cookie": "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}=value1"},
-        loop=async.get_running_loop(),
+        loop=asyncio.get_running_loop(),
     )
 
     # Update with another cookie
