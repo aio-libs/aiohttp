@@ -77,9 +77,6 @@ jobs:
         # can be scanned by slotscheck.
         pip install -r requirements/base.in -c requirements/base.txt
         slotscheck -v -m aiohttp
-    - name: Install libenchant
-      run: |
-        sudo apt install libenchant-2-dev
     - name: Install spell checker
       run: |
         pip install -r requirements/doc-spelling.in -c requirements/doc-spelling.txt
@@ -141,7 +138,11 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.9, '3.10', '3.11', '3.12', '3.13']
+        # Note that 3.13.4 is broken on Windows which
+        # is why 3.13.5 was rushed out. When 3.13.5 is fully
+        # available, we can remove 3.13.4 from the matrix
+        # and switch it back to 3.13
+        pyver: [3.9, '3.10', '3.11', '3.12', '3.13.3']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
@@ -388,6 +389,9 @@ jobs:
           musl: musllinux
         - os: ubuntu-latest
           qemu: armv7l
+          musl: ""
+        - os: ubuntu-latest
+          qemu: armv7l
           musl: musllinux
         - os: ubuntu-latest
           musl: musllinux
@@ -436,7 +440,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.23.2
+      uses: pypa/cibuildwheel@v2.23.3
       env:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2

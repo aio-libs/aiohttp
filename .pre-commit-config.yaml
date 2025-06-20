@@ -55,6 +55,10 @@ repos:
   rev: v1.5.0
   hooks:
   - id: yesqa
+    additional_dependencies:
+      - flake8-docstrings==1.6.0
+      - flake8-no-implicit-concat==0.3.4
+      - flake8-requirements==1.7.8
 - repo: https://github.com/PyCQA/isort
   rev: '6.0.1'
   hooks:
@@ -97,7 +101,7 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v3.19.1'
+  rev: 'v3.20.0'
   hooks:
   - id: pyupgrade
     args: ['--py37-plus']

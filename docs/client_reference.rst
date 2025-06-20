@@ -53,10 +53,12 @@ The client session supports the context manager protocol for self closing.
                          trust_env=False, \
                          requote_redirect_url=True, \
                          trace_configs=None, \
+                         middlewares=(), \
                          read_bufsize=2**16, \
                          max_line_size=8190, \
                          max_field_size=8190, \
-                         fallback_charset_resolver=lambda r, b: "utf-8")
+                         fallback_charset_resolver=lambda r, b: "utf-8", \
+                         ssl_shutdown_timeout=0)
 
    The class for creating client sessions and making requests.
 
@@ -213,6 +215,13 @@ The client session supports the context manager protocol for self closing.
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
 
+   :param middlewares: A sequence of middleware instances to apply to all session requests.
+                      Each middleware must match the :type:`ClientMiddlewareType` signature.
+                      ``()`` (empty tuple, default) is used when no middleware is needed.
+                      See :ref:`aiohttp-client-middleware` for more information.
+
+      .. versionadded:: 3.12
+
    :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
                             64 KiB by default.
 
@@ -231,6 +240,31 @@ The client session supports the context manager protocol for self closing.
       Content-Type header). The default function simply defaults to ``utf-8``.
 
       .. versionadded:: 3.8.6
+
+   :param float ssl_shutdown_timeout: **(DEPRECATED)** This parameter is deprecated
+      and will be removed in aiohttp 4.0. Grace period for SSL shutdown handshake on
+      TLS connections when the connector is closed (``0`` seconds by default).
+      By default (``0``), SSL connections are aborted immediately when the
+      connector is closed, without performing the shutdown handshake. During
+      normal operation, SSL connections use Python's default SSL shutdown
+      behavior. Setting this to a positive value (e.g., ``0.1``) will perform
+      a graceful shutdown when closing the connector, notifying the remote
+      peer which can help prevent "connection reset" errors at the cost of
+      additional cleanup time. This timeout is passed to the underlying
+      :class:`TCPConnector` when one is created automatically.
+      Note: On Python versions prior to 3.11, only a value of ``0`` is supported;
+      other values will trigger a warning.
+
+      .. versionadded:: 3.12.5
+
+      .. versionchanged:: 3.12.11
+         Changed default from ``0.1`` to ``0`` to abort SSL connections
+         immediately when the connector is closed. Added support for
+         ``ssl_shutdown_timeout=0`` on all Python versions. A :exc:`RuntimeWarning`
+         is issued when non-zero values are passed on Python < 3.11.
+
+      .. deprecated:: 3.12.11
+         This parameter is deprecated and will be removed in aiohttp 4.0.
 
    .. attribute:: closed
 
@@ -371,6 +405,7 @@ The client session supports the context manager protocol for self closing.
                          server_hostname=None, \
                          proxy_headers=None, \
                          trace_request_ctx=None, \
+                         middlewares=None, \
                          read_bufsize=None, \
                          auto_decompress=None, \
                          max_line_size=None, \
@@ -518,6 +553,13 @@ The client session supports the context manager protocol for self closing.
         tracers that is only available at request time.
 
          .. versionadded:: 3.0
+
+      :param middlewares: A sequence of middleware instances to apply to this request only.
+                         Each middleware must match the :type:`ClientMiddlewareType` signature.
+                         ``None`` by default which uses session middlewares.
+                         See :ref:`aiohttp-client-middleware` for more information.
+
+         .. versionadded:: 3.12
 
       :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
                               ``None`` by default,
@@ -1153,7 +1195,7 @@ is controlled by *force_close* constructor's parameter).
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
                  happy_eyeballs_delay=0.25, interleave=None, loop=None, \
-                 socket_factory=None)
+                 socket_factory=None, ssl_shutdown_timeout=0)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1279,6 +1321,29 @@ is controlled by *force_close* constructor's parameter).
       :py:func:`socket.socket` when creating TCP connections.
 
         .. versionadded:: 3.12
+
+   :param float ssl_shutdown_timeout: **(DEPRECATED)** This parameter is deprecated
+      and will be removed in aiohttp 4.0. Grace period for SSL shutdown on TLS
+      connections when the connector is closed (``0`` seconds by default).
+      By default (``0``), SSL connections are aborted immediately when the
+      connector is closed, without performing the shutdown handshake. During
+      normal operation, SSL connections use Python's default SSL shutdown
+      behavior. Setting this to a positive value (e.g., ``0.1``) will perform
+      a graceful shutdown when closing the connector, notifying the remote
+      server which can help prevent "connection reset" errors at the cost of
+      additional cleanup time. Note: On Python versions prior to 3.11, only
+      a value of ``0`` is supported; other values will trigger a warning.
+
+        .. versionadded:: 3.12.5
+
+        .. versionchanged:: 3.12.11
+           Changed default from ``0.1`` to ``0`` to abort SSL connections
+           immediately when the connector is closed. Added support for
+           ``ssl_shutdown_timeout=0`` on all Python versions. A :exc:`RuntimeWarning`
+           is issued when non-zero values are passed on Python < 3.11.
+
+        .. deprecated:: 3.12.11
+           This parameter is deprecated and will be removed in aiohttp 4.0.
 
    .. attribute:: family
 
@@ -1446,6 +1511,19 @@ Response object
       HTTP cookies of response (*Set-Cookie* HTTP header,
       :class:`~http.cookies.SimpleCookie`).
 
+      .. note::
+
+         Since :class:`~http.cookies.SimpleCookie` uses cookie name as the
+         key, cookies with the same name but different domains or paths will
+         be overwritten. Only the last cookie with a given name will be
+         accessible via this attribute.
+
+         To access all cookies, including duplicates with the same name,
+         use :meth:`response.headers.getall('Set-Cookie') <multidict.MultiDictProxy.getall>`.
+
+         The session's cookie jar will correctly store all cookies, even if
+         they are not accessible via this attribute.
+
    .. attribute:: headers
 
       A case-insensitive multidict proxy with HTTP headers of
@@ -1474,7 +1552,12 @@ Response object
 
          Returns value is ``'application/octet-stream'`` if no
          Content-Type header present in HTTP headers according to
-         :rfc:`2616`. To make sure Content-Type header is not present in
+         :rfc:`9110`. If the *Content-Type* header is invalid (e.g., ``jpg``
+         instead of ``image/jpeg``), the value is ``text/plain`` by default
+         according to :rfc:`2045`. To see the original header check
+         ``resp.headers['CONTENT-TYPE']``.
+
+         To make sure Content-Type header is not present in
          the server reply, use :attr:`headers` or :attr:`raw_headers`, e.g.
          ``'CONTENT-TYPE' not in resp.headers``.
 
@@ -1827,6 +1910,221 @@ manually.
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
 
+ClientRequest
+-------------
+
+.. class:: ClientRequest
+
+   Represents an HTTP request to be sent by the client.
+
+   This object encapsulates all the details of an HTTP request before it is sent.
+   It is primarily used within client middleware to inspect or modify requests.
+
+   .. note::
+
+      You typically don't create ``ClientRequest`` instances directly. They are
+      created internally by :class:`ClientSession` methods and passed to middleware.
+
+   For more information about using middleware, see :ref:`aiohttp-client-middleware`.
+
+   .. attribute:: body
+      :type: Payload | Literal[b""]
+
+      The request body payload (defaults to ``b""`` if no body passed).
+
+      .. danger::
+
+         **DO NOT set this attribute directly!** Direct assignment will cause resource
+         leaks. Always use :meth:`update_body` instead:
+
+         .. code-block:: python
+
+            # WRONG - This will leak resources!
+            request.body = b"new data"
+
+            # CORRECT - Use update_body
+            await request.update_body(b"new data")
+
+         Setting body directly bypasses cleanup of the previous payload, which can
+         leave file handles open, streams unclosed, and buffers unreleased.
+
+         Additionally, setting body directly must be done from within an event loop
+         and is not thread-safe. Setting body outside of an event loop may raise
+         RuntimeError when closing file-based payloads.
+
+   .. attribute:: chunked
+      :type: bool | None
+
+      Whether to use chunked transfer encoding:
+
+      - ``True``: Use chunked encoding
+      - ``False``: Don't use chunked encoding
+      - ``None``: Automatically determine based on body
+
+   .. attribute:: compress
+      :type: str | None
+
+      The compression encoding for the request body. Common values include
+      ``'gzip'`` and ``'deflate'``, but any string value is technically allowed.
+      ``None`` means no compression.
+
+   .. attribute:: headers
+      :type: multidict.CIMultiDict
+
+      The HTTP headers that will be sent with the request. This is a case-insensitive
+      multidict that can be modified by middleware.
+
+      .. code-block:: python
+
+         # Add or modify headers
+         request.headers['X-Custom-Header'] = 'value'
+         request.headers['User-Agent'] = 'MyApp/1.0'
+
+   .. attribute:: is_ssl
+      :type: bool
+
+      ``True`` if the request uses a secure scheme (e.g., HTTPS, WSS), ``False`` otherwise.
+
+   .. attribute:: method
+      :type: str
+
+      The HTTP method of the request (e.g., ``'GET'``, ``'POST'``, ``'PUT'``, etc.).
+
+   .. attribute:: original_url
+      :type: yarl.URL
+
+      The original URL passed to the request method, including any fragment.
+      This preserves the exact URL as provided by the user.
+
+   .. attribute:: proxy
+      :type: yarl.URL | None
+
+      The proxy URL if the request will be sent through a proxy, ``None`` otherwise.
+
+   .. attribute:: proxy_headers
+      :type: multidict.CIMultiDict | None
+
+      Headers to be sent to the proxy server (e.g., ``Proxy-Authorization``).
+      Only set when :attr:`proxy` is not ``None``.
+
+   .. attribute:: response_class
+      :type: type[ClientResponse]
+
+      The class to use for creating the response object. Defaults to
+      :class:`ClientResponse` but can be customized for special handling.
+
+   .. attribute:: server_hostname
+      :type: str | None
+
+      Override the hostname for SSL certificate verification. Useful when
+      connecting through proxies or to IP addresses.
+
+   .. attribute:: session
+      :type: ClientSession
+
+      The client session that created this request. Useful for accessing
+      session-level configuration or making additional requests within middleware.
+
+      .. warning::
+         Be careful when making requests with the same session inside middleware
+         to avoid infinite recursion. Use ``middlewares=()`` parameter when needed.
+
+   .. attribute:: ssl
+      :type: ssl.SSLContext | bool | Fingerprint
+
+      SSL validation configuration for this request:
+
+      - ``True``: Use default SSL verification
+      - ``False``: Skip SSL verification
+      - :class:`ssl.SSLContext`: Custom SSL context
+      - :class:`Fingerprint`: Verify specific certificate fingerprint
+
+   .. attribute:: url
+      :type: yarl.URL
+
+      The target URL of the request with the fragment (``#...``) part stripped.
+      This is the actual URL that will be used for the connection.
+
+      .. note::
+         To access the original URL with fragment, use :attr:`original_url`.
+
+   .. attribute:: version
+      :type: HttpVersion
+
+      The HTTP version to use for the request (e.g., ``HttpVersion(1, 1)`` for HTTP/1.1).
+
+   .. method:: update_body(body)
+
+      Update the request body and close any existing payload to prevent resource leaks.
+
+      **This is the ONLY correct way to modify a request body.** Never set the
+      :attr:`body` attribute directly.
+
+      This method is particularly useful in middleware when you need to modify the
+      request body after the request has been created but before it's sent.
+
+      :param body: The new body content. Can be:
+
+                   - ``bytes``/``bytearray``: Raw binary data
+                   - ``str``: Text data (encoded using charset from Content-Type)
+                   - :class:`FormData`: Form data encoded as multipart/form-data
+                   - :class:`Payload`: A pre-configured payload object
+                   - ``AsyncIterable[bytes]``: Async iterable of bytes chunks
+                   - File-like object: Will be read and sent as binary data
+                   - ``None``: Clears the body
+
+      .. code-block:: python
+
+         async def middleware(request, handler):
+             # Modify request body in middleware
+             if request.method == 'POST':
+                 # CORRECT: Always use update_body
+                 await request.update_body(b'{"modified": true}')
+
+                 # WRONG: Never set body directly!
+                 # request.body = b'{"modified": true}'  # This leaks resources!
+
+             # Or add authentication data to form
+             if isinstance(request.body, FormData):
+                 form = FormData()
+                 # Copy existing fields and add auth token
+                 form.add_field('auth_token', 'secret123')
+                 await request.update_body(form)
+
+             return await handler(request)
+
+      .. note::
+
+         This method is async because it may need to close file handles or
+         other resources associated with the previous payload. Always await
+         this method to ensure proper cleanup.
+
+      .. danger::
+
+         **Never set :attr:`ClientRequest.body` directly!** Direct assignment will cause resource
+         leaks. Always use this method instead. Setting the body attribute directly:
+
+         - Bypasses cleanup of the previous payload
+         - Leaves file handles and streams open
+         - Can cause memory leaks
+         - May result in unexpected behavior with async iterables
+
+      .. warning::
+
+         When updating the body, ensure that the Content-Type header is
+         appropriate for the new body content. The Content-Length header
+         will be updated automatically. When using :class:`FormData` or
+         :class:`Payload` objects, headers are updated automatically,
+         but you may need to set Content-Type manually for raw bytes or text.
+
+         It is not recommended to change the payload type in middleware. If the
+         body was already set (e.g., as bytes), it's best to keep the same type
+         rather than converting it (e.g., to str) as this may result in unexpected
+         behavior.
+
+      .. versionadded:: 3.12
+
+
 
 Utilities
 ---------
@@ -1971,6 +2269,7 @@ Utilities
       .. versionadded:: 3.2
 
 
+
 .. class:: BasicAuth(login, password='', encoding='latin1')
 
    HTTP basic authentication helper.
@@ -2009,6 +2308,65 @@ Utilities
       header etc.
 
       :return: encoded authentication data, :class:`str`.
+
+
+.. class:: DigestAuthMiddleware(login, password, *, preemptive=True)
+
+   HTTP digest authentication client middleware.
+
+   :param str login: login
+   :param str password: password
+   :param bool preemptive: Enable preemptive authentication (default: ``True``)
+
+   This middleware supports HTTP digest authentication with both `auth` and
+   `auth-int` quality of protection (qop) modes, and a variety of hashing algorithms.
+
+   It automatically handles the digest authentication handshake by:
+
+   - Parsing 401 Unauthorized responses with `WWW-Authenticate: Digest` headers
+   - Generating appropriate `Authorization: Digest` headers on retry
+   - Maintaining nonce counts and challenge data per request
+   - When ``preemptive=True``, reusing authentication credentials for subsequent
+     requests to the same protection space (following RFC 7616 Section 3.6)
+
+   **Preemptive Authentication**
+
+   By default (``preemptive=True``), the middleware remembers successful authentication
+   challenges and automatically includes the Authorization header in subsequent requests
+   to the same protection space. This behavior:
+
+   - Improves server efficiency by avoiding extra round trips
+   - Matches how modern web browsers handle digest authentication
+   - Follows the recommendation in RFC 7616 Section 3.6
+
+   The server may still respond with a 401 status and ``stale=true`` if the nonce
+   has expired, in which case the middleware will automatically retry with the new nonce.
+
+   To disable preemptive authentication and require a 401 challenge for every request,
+   set ``preemptive=False``::
+
+       # Default behavior - preemptive auth enabled
+       digest_auth_middleware = DigestAuthMiddleware(login="user", password="pass")
+
+       # Disable preemptive auth - always wait for 401 challenge
+       digest_auth_middleware = DigestAuthMiddleware(login="user", password="pass",
+                                                      preemptive=False)
+
+   Usage::
+
+       digest_auth_middleware = DigestAuthMiddleware(login="user", password="pass")
+       async with ClientSession(middlewares=(digest_auth_middleware,)) as session:
+           async with session.get("http://protected.example.com") as resp:
+               # The middleware automatically handles the digest auth handshake
+               assert resp.status == 200
+
+           # Subsequent requests include auth header preemptively
+           async with session.get("http://protected.example.com/other") as resp:
+               assert resp.status == 200  # No 401 round trip needed
+
+   .. versionadded:: 3.12
+   .. versionchanged:: 3.12.8
+      Added ``preemptive`` parameter to enable/disable preemptive authentication.
 
 
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
@@ -2556,3 +2914,22 @@ Hierarchy of exceptions
     * :exc:`InvalidUrlRedirectClientError`
 
     * :exc:`NonHttpUrlRedirectClientError`
+
+
+Client Types
+------------
+
+.. type:: ClientMiddlewareType
+
+   Type alias for client middleware functions. Middleware functions must have this signature::
+
+      Callable[
+          [ClientRequest, ClientHandlerType],
+          Awaitable[ClientResponse]
+      ]
+
+.. type:: ClientHandlerType
+
+   Type alias for client request handler functions::
+
+      Callable[[ClientRequest], Awaitable[ClientResponse]]

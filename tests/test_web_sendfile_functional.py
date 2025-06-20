@@ -627,6 +627,7 @@ async def test_static_file_ssl(
 
     resp.release()
     await client.close()
+    await conn.close()
 
 
 async def test_static_file_directory_traversal_attack(

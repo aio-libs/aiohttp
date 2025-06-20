@@ -40,7 +40,7 @@ class Server(Generic[_Request]):
     request_factory: _RequestFactory[_Request]
 
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self: "Server[BaseRequest]",
         handler: Callable[[_Request], Awaitable[StreamResponse]],
         *,
@@ -49,7 +49,7 @@ class Server(Generic[_Request]):
         **kwargs: Any,  # TODO(PY311): Use Unpack to define kwargs from RequestHandler
     ) -> None: ...
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self,
         handler: Callable[[_Request], Awaitable[StreamResponse]],
         *,

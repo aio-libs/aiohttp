@@ -29,6 +29,7 @@ autoformatters
 autogenerates
 autogeneration
 awaitable
+backoff
 backend
 backends
 backport
@@ -145,6 +146,7 @@ HTTPException
 HttpProcessingError
 httpretty
 https
+hostname
 impl
 incapsulates
 Indices
@@ -153,6 +155,7 @@ initializer
 inline
 intaking
 io
+IoT
 ip
 IP
 ipdb
@@ -176,6 +179,7 @@ kwargs
 latin
 lifecycle
 linux
+llhttp
 localhost
 Locator
 login
@@ -252,6 +256,7 @@ pyflakes
 pyright
 pytest
 Pytest
+qop
 Quickstart
 quote’s
 rc
@@ -358,6 +363,7 @@ uvloop
 uWSGI
 vcvarsall
 vendored
+vendoring
 waituntil
 wakeup
 wakeups
@@ -367,6 +373,7 @@ websocket’s
 websockets
 Websockets
 wildcard
+Winloop
 Workflow
 ws
 wsgi
@@ -375,3 +382,5 @@ www
 xxx
 yarl
 zlib
+zstandard
+zstd

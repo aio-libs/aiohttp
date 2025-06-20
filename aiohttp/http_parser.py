@@ -26,7 +26,13 @@ from yarl import URL
 
 from . import hdrs
 from .base_protocol import BaseProtocol
-from .compression_utils import HAS_BROTLI, BrotliDecompressor, ZLibDecompressor
+from .compression_utils import (
+    HAS_BROTLI,
+    HAS_ZSTD,
+    BrotliDecompressor,
+    ZLibDecompressor,
+    ZSTDDecompressor,
+)
 from .helpers import (
     _EXC_SENTINEL,
     DEBUG,
@@ -527,7 +533,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         enc = headers.get(hdrs.CONTENT_ENCODING)
         if enc:
             enc = enc.lower()
-            if enc in ("gzip", "deflate", "br"):
+            if enc in ("gzip", "deflate", "br", "zstd"):
                 encoding = enc
 
         # chunking
@@ -792,11 +798,11 @@ class HttpPayloadParser:
             self.payload.feed_eof()
         elif self._type == ParseState.PARSE_LENGTH:
             raise ContentLengthError(
-                "Not enough data for satisfy content length header."
+                "Not enough data to satisfy content length header."
             )
         elif self._type == ParseState.PARSE_CHUNKED:
             raise TransferEncodingError(
-                "Not enough data for satisfy transfer length header."
+                "Not enough data to satisfy transfer length header."
             )
 
     def feed_data(
@@ -930,7 +936,7 @@ class DeflateBuffer:
         self.encoding = encoding
         self._started_decoding = False
 
-        self.decompressor: Union[BrotliDecompressor, ZLibDecompressor]
+        self.decompressor: Union[BrotliDecompressor, ZLibDecompressor, ZSTDDecompressor]
         if encoding == "br":
             if not HAS_BROTLI:
                 raise ContentEncodingError(
@@ -938,6 +944,13 @@ class DeflateBuffer:
                     "Please install `Brotli`"
                 )
             self.decompressor = BrotliDecompressor()
+        elif encoding == "zstd":
+            if not HAS_ZSTD:
+                raise ContentEncodingError(
+                    "Can not decode content-encoding: zstandard (zstd). "
+                    "Please install `zstandard`"
+                )
+            self.decompressor = ZSTDDecompressor()
         else:
             self.decompressor = ZLibDecompressor(encoding=encoding)
 

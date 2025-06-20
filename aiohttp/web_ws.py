@@ -359,6 +359,10 @@ class WebSocketResponse(StreamResponse):
             return WebSocketReady(True, protocol)
 
     @property
+    def prepared(self) -> bool:
+        return self._writer is not None
+
+    @property
     def closed(self) -> bool:
         return self._closed
 

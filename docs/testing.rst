@@ -770,28 +770,5 @@ Test Client
       The api corresponds to :meth:`aiohttp.ClientSession.ws_connect`.
 
 
-Utilities
-~~~~~~~~~
-
-.. function:: make_mocked_coro(return_value)
-
-  Creates a coroutine mock.
-
-  Behaves like a coroutine which returns *return_value*.  But it is
-  also a mock object, you might test it as usual
-  :class:`~unittest.mock.Mock`::
-
-      mocked = make_mocked_coro(1)
-      assert 1 == await mocked(1, 2)
-      mocked.assert_called_with(1, 2)
-
-
-  :param return_value: A value that the mock object will return when
-      called.
-  :returns: A mock object that behaves as a coroutine which returns
-      *return_value* when called.
-
-
-
 .. _pytest: http://pytest.org/latest/
 .. _pytest-aiohttp: https://pypi.python.org/pypi/pytest-aiohttp

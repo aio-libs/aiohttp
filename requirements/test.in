@@ -5,6 +5,7 @@ coverage
 freezegun
 isal
 mypy; implementation_name == "cpython"
+pkgconfig
 proxy.py >= 2.4.4rc5
 pytest
 pytest-aiohttp

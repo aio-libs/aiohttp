@@ -54,7 +54,7 @@ _HandlerType = Union[Type[AbstractView], Handler]
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
-class RouteDef(AbstractRouteDef):  # type: ignore[misc]
+class RouteDef(AbstractRouteDef):
     method: str
     path: str
     handler: _HandlerType
@@ -79,7 +79,7 @@ class RouteDef(AbstractRouteDef):  # type: ignore[misc]
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
-class StaticDef(AbstractRouteDef):  # type: ignore[misc]
+class StaticDef(AbstractRouteDef):
     prefix: str
     path: PathLike
     kwargs: Dict[str, Any]

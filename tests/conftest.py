@@ -9,7 +9,7 @@ import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Iterator
+from typing import Any, AsyncIterator, Callable, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -18,6 +18,7 @@ import pytest
 import zlib_ng.zlib_ng
 from blockbuster import blockbuster_ctx
 
+from aiohttp import payload
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
@@ -35,7 +36,10 @@ except ImportError:
 
 
 try:
-    import uvloop
+    if sys.platform == "win32":
+        import winloop as uvloop
+    else:
+        import uvloop
 except ImportError:
     uvloop = None  # type: ignore[assignment]
 
@@ -78,6 +82,14 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             bb.functions[func].can_block_in(
                 "aiohttp/web_urldispatcher.py", "add_static"
             )
+        # Note: coverage.py uses locking internally which can cause false positives
+        # in blockbuster when it instruments code. This is particularly problematic
+        # on Windows where it can lead to flaky test failures.
+        # Additionally, we're not particularly worried about threading.Lock.acquire happening
+        # by accident in this codebase as we primarily use asyncio.Lock for
+        # synchronization in async code.
+        # Allow lock.acquire calls to prevent these false positives
+        bb.functions["threading.Lock.acquire"].deactivate()
         yield
 
 
@@ -255,38 +267,20 @@ def proactor_loop() -> Iterator[asyncio.AbstractEventLoop]:
 def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
     pytest.skip("broken")
     return
-    policy = asyncio.WindowsSelectorEventLoopPolicy()  # type: ignore[attr-defined]
-    asyncio.set_event_loop_policy(policy)
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    if not loop.is_closed():
-        loop.call_soon(loop.stop)
-        loop.run_forever()
-        loop.close()
-
-    gc.collect()
-    asyncio.set_event_loop(None)
+    factory = asyncio.SelectorEventLoop
+    with loop_context(factory) as _loop:
+        asyncio.set_event_loop(_loop)
+        yield _loop
 
 
 @pytest.fixture
 def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
     pytest.skip("broken")
     return
-    policy = uvloop.EventLoopPolicy()
-    asyncio.set_event_loop_policy(policy)
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    if not loop.is_closed():
-        loop.call_soon(loop.stop)
-        loop.run_forever()
-        loop.close()
-
-    gc.collect()
-    asyncio.set_event_loop(None)
+    factory = uvloop.new_event_loop
+    with loop_context(factory) as _loop:
+        asyncio.set_event_loop(_loop)
+        yield _loop
 
 
 @pytest.fixture
@@ -370,3 +364,16 @@ def parametrize_zlib_backend(
     yield
 
     set_zlib_backend(original_backend)
+
+
+@pytest.fixture()
+async def cleanup_payload_pending_file_closes(
+    loop: asyncio.AbstractEventLoop,
+) -> AsyncIterator[None]:
+    """Ensure all pending file close operations complete during test teardown."""
+    yield
+    if payload._CLOSE_FUTURES:
+        # Only wait for futures from the current loop
+        loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
+        if loop_futures:
+            await asyncio.gather(*loop_futures, return_exceptions=True)

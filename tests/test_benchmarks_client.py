@@ -5,8 +5,9 @@ import asyncio
 import pytest
 from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
+from yarl import URL
 
-from aiohttp import hdrs, web
+from aiohttp import hdrs, request, web
 
 
 def test_one_hundred_simple_get_requests(
@@ -32,6 +33,62 @@ def test_one_hundred_simple_get_requests(
     @benchmark
     def _run() -> None:
         event_loop.run_until_complete(run_client_benchmark())
+
+
+def test_one_hundred_simple_get_requests_alternating_clients(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 100 simple GET requests with alternating clients."""
+    message_count = 100
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client1 = await aiohttp_client(app)
+        client2 = await aiohttp_client(app)
+        for i in range(message_count):
+            if i % 2 == 0:
+                await client1.get("/")
+            else:
+                await client2.get("/")
+        await client1.close()
+        await client2.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
+def test_one_hundred_simple_get_requests_no_session(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_server: AiohttpServer,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 100 simple GET requests without a session."""
+    message_count = 100
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = loop.run_until_complete(aiohttp_server(app))
+    url = URL(f"http://{server.host}:{server.port}/")
+
+    async def run_client_benchmark() -> None:
+        for _ in range(message_count):
+            async with request("GET", url):
+                pass
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
 
 
 def test_one_hundred_simple_get_requests_multiple_methods_route(
