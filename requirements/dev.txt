@@ -162,6 +162,7 @@ pydantic-core==2.33.2
     # via pydantic
 pygments==2.19.1
     # via
+    #   pytest
     #   rich
     #   sphinx
 pyjwt==2.8.0
@@ -172,7 +173,7 @@ pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
-pytest==8.1.1
+pytest==8.4.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -290,6 +291,10 @@ zlib-ng==0.5.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
+zstandard==0.23.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.1.1
