@@ -21,6 +21,18 @@ try:
 except ImportError:  # pragma: no cover
     HAS_BROTLI = False
 
+if sys.version_info >= (3, 14):
+    import compression.zstd  # noqa: I900
+
+    HAS_ZSTD = True
+else:
+    try:
+        import zstandard
+
+        HAS_ZSTD = True
+    except ImportError:
+        HAS_ZSTD = False
+
 MAX_SYNC_CHUNK_SIZE = 1024
 
 
@@ -275,4 +287,23 @@ class BrotliDecompressor:
     def flush(self) -> bytes:
         if hasattr(self._obj, "flush"):
             return cast(bytes, self._obj.flush())
+        return b""
+
+
+class ZSTDDecompressor:
+    def __init__(self) -> None:
+        if not HAS_ZSTD:
+            raise RuntimeError(
+                "The zstd decompression is not available. "
+                "Please install `zstandard` module"
+            )
+        if sys.version_info >= (3, 14):
+            self._obj = compression.zstd.ZstdDecompressor()
+        else:
+            self._obj = zstandard.ZstdDecompressor()
+
+    def decompress_sync(self, data: bytes) -> bytes:
+        return self._obj.decompress(data)
+
+    def flush(self) -> bytes:
         return b""

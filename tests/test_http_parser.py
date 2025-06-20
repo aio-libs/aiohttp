@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+import sys
 from contextlib import nullcontext
 from typing import Any, Dict, List
 from unittest import mock
@@ -32,6 +33,13 @@ try:
 except ImportError:
     brotli = None
 
+if sys.version_info >= (3, 14):
+    import compression.zstd as zstandard  # noqa: I900
+else:
+    try:
+        import zstandard
+    except ImportError:
+        zstandard = None  # type: ignore[assignment]
 
 REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
@@ -585,7 +593,15 @@ def test_compression_brotli(parser) -> None:
     assert msg.compression == "br"
 
 
-def test_compression_unknown(parser) -> None:
+@pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+def test_compression_zstd(parser: HttpRequestParser) -> None:
+    text = b"GET /test HTTP/1.1\r\ncontent-encoding: zstd\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "zstd"
+
+
+def test_compression_unknown(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\ncontent-encoding: compress\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
@@ -1794,10 +1810,19 @@ class TestParsePayload:
         assert b"brotli data" == out._buffer[0]
         assert out.is_eof()
 
+    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+    async def test_http_payload_zstandard(self, protocol: BaseProtocol) -> None:
+        compressed = zstandard.compress(b"zstd data")
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(out, length=len(compressed), compression="zstd")
+        p.feed_data(compressed)
+        assert b"zstd data" == out._buffer[0]
+        assert out.is_eof()
+
 
 class TestDeflateBuffer:
-    async def test_feed_data(self, stream) -> None:
-        buf = aiohttp.StreamReader(stream, 2**16, loop=asyncio.get_event_loop())
+    async def test_feed_data(self, protocol: BaseProtocol) -> None:
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
         dbuf = DeflateBuffer(buf, "deflate")
 
         dbuf.decompressor = mock.Mock()
@@ -1807,8 +1832,8 @@ class TestDeflateBuffer:
         dbuf.feed_data(b"xxxx", 4)
         assert [b"line"] == list(buf._buffer)
 
-    async def test_feed_data_err(self, stream) -> None:
-        buf = aiohttp.StreamReader(stream, 2**16, loop=asyncio.get_event_loop())
+    async def test_feed_data_err(self, protocol: BaseProtocol) -> None:
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
         dbuf = DeflateBuffer(buf, "deflate")
 
         exc = ValueError()
@@ -1856,6 +1881,18 @@ class TestDeflateBuffer:
     async def test_feed_eof_no_err_brotli(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         dbuf = DeflateBuffer(buf, "br")
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b"line"
+        dbuf.decompressor.eof = False
+
+        dbuf.feed_eof()
+        assert [b"line"] == list(buf._buffer)
+
+    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+    async def test_feed_eof_no_err_zstandard(self, protocol: BaseProtocol) -> None:
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, "zstd")
 
         dbuf.decompressor = mock.Mock()
         dbuf.decompressor.flush.return_value = b"line"
