@@ -301,6 +301,7 @@ async def test_server_make_url_yarl_compatibility() -> None:
             make_url(URL("http://foo.com"))
 
 
+@pytest.mark.xfail(reason="https://github.com/pytest-dev/pytest/issues/13546")
 def test_testcase_no_app(testdir: pytest.Testdir) -> None:
     testdir.makepyfile(
         """

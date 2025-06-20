@@ -105,8 +105,10 @@ pydantic==2.11.7
 pydantic-core==2.33.2
     # via pydantic
 pygments==2.19.1
-    # via rich
-pytest==8.1.1
+    # via
+    #   pytest
+    #   rich
+pytest==8.4.1
     # via
     #   -r requirements/test.in
     #   pytest-aiohttp
@@ -166,3 +168,5 @@ yarl==1.20.1
     #   aiohttp
 zlib-ng==0.5.1
     # via -r requirements/test.in
+zstandard==0.23.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+    # via -r requirements/runtime-deps.in

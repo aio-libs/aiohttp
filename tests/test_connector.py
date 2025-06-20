@@ -54,25 +54,25 @@ from aiohttp.tracing import Trace
 
 
 @pytest.fixture
-def key() -> ConnectionKey:  # type: ignore[misc]
+def key() -> ConnectionKey:
     # Connection key
     return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
-def key2() -> ConnectionKey:  # type: ignore[misc]
+def key2() -> ConnectionKey:
     # Connection key
     return ConnectionKey("localhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
-def other_host_key2() -> ConnectionKey:  # type: ignore[misc]
+def other_host_key2() -> ConnectionKey:
     # Connection key
     return ConnectionKey("otherhost", 80, False, True, None, None, None)
 
 
 @pytest.fixture
-def ssl_key() -> ConnectionKey:  # type: ignore[misc]
+def ssl_key() -> ConnectionKey:
     # Connection key
     return ConnectionKey("localhost", 80, True, True, None, None, None)
 
