@@ -246,7 +246,7 @@ def unix_sockname(
 
 @pytest.fixture
 def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    return asyncio.get_running_loop()
+    return asyncio.get_event_loop()
 
 
 @pytest.fixture
