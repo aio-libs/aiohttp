@@ -2153,7 +2153,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_pre_311() -> None:
     sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
 )
 async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
-    start_connection: mock.AsyncMock
+    start_connection: mock.AsyncMock,
 ) -> None:
     # Test that ssl_shutdown_timeout is passed to create_connection for SSL connections
     with pytest.warns(
@@ -2214,7 +2214,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
 
 @pytest.mark.skipif(sys.version_info >= (3, 11), reason="Test for Python < 3.11")
 async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
-    start_connection: mock.AsyncMock
+    start_connection: mock.AsyncMock,
 ) -> None:
     # Test that ssl_shutdown_timeout is NOT passed to create_connection on Python < 3.11
     with warnings.catch_warnings(record=True) as w:
@@ -2271,7 +2271,9 @@ async def test_tcp_connector_close_abort_ssl_when_shutdown_timeout_zero() -> Non
     proto.close.assert_not_called()
 
 
-async def test_tcp_connector_close_doesnt_abort_non_ssl_when_shutdown_timeout_zero() -> None:
+async def test_tcp_connector_close_doesnt_abort_non_ssl_when_shutdown_timeout_zero() -> (
+    None
+):
     """Test that close() still uses close() for non-SSL connections even when ssl_shutdown_timeout=0."""
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
@@ -2372,7 +2374,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_sentinel_no_warning_pre_311() 
 
 
 async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
-    start_connection: mock.AsyncMock
+    start_connection: mock.AsyncMock,
 ) -> None:
     """Test that ssl_shutdown_timeout=0 is NOT passed to create_connection."""
     with pytest.warns(
@@ -2403,7 +2405,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
     sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
 )
 async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
-    start_connection: mock.AsyncMock
+    start_connection: mock.AsyncMock,
 ) -> None:
     """Test that non-zero ssl_shutdown_timeout IS passed to create_connection on Python 3.11+."""
     with pytest.warns(
