@@ -1047,8 +1047,6 @@ def test_https_auth(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    pytest.skip("broken")
-    return
     proxy_req = ClientRequest(
         "GET",
         URL("http://proxy.example.com"),
