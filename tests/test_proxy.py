@@ -23,7 +23,7 @@ from aiohttp.helpers import TimerNoop
 def test_connect(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
-    event_loop: asyncio.AbstractEventLoop
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     req = ClientRequest(
         "GET",
@@ -46,9 +46,7 @@ def test_connect(  # type: ignore[misc]
         "proto": 0,
         "flags": 0,
     }
-    with mock.patch.object(
-        connector, "_resolve_host", autospec=True, return_value=[r]
-    ):
+    with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
         proto = mock.Mock(
             **{
                 "transport.get_extra_info.return_value": False,
@@ -78,6 +76,7 @@ def test_connect(  # type: ignore[misc]
 
             conn.close()
     event_loop.run_until_complete(connector.close())
+
 
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
@@ -112,9 +111,7 @@ def test_proxy_headers(  # type: ignore[misc]
         "proto": 0,
         "flags": 0,
     }
-    with mock.patch.object(
-        connector, "_resolve_host", autospec=True, return_value=[r]
-    ):
+    with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
         proto = mock.Mock(
             **{
                 "transport.get_extra_info.return_value": False,
@@ -145,6 +142,7 @@ def test_proxy_headers(  # type: ignore[misc]
             conn.close()
     event_loop.run_until_complete(connector.close())
 
+
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
     autospec=True,
@@ -160,6 +158,7 @@ def test_proxy_auth(start_connection: mock.Mock) -> None:  # type: ignore[misc]
             proxy_auth=("user", "pass"),  # type: ignore[arg-type]
             loop=mock.Mock(),
         )
+
 
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -195,6 +194,7 @@ def test_proxy_dns_error(
         assert dict(req.headers) == expected_headers
     event_loop.run_until_complete(connector.close())
 
+
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
     autospec=True,
@@ -217,9 +217,7 @@ def test_proxy_connection_error(
         "proto": 0,
         "flags": socket.AI_NUMERICHOST,
     }
-    with mock.patch.object(
-        connector, "_resolve_host", autospec=True, return_value=[r]
-    ):
+    with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
         with mock.patch.object(
             connector._loop,
             "create_connection",
@@ -238,6 +236,7 @@ def test_proxy_connection_error(
                 )
     event_loop.run_until_complete(connector.close())
 
+
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -249,9 +248,7 @@ def test_proxy_server_hostname_default(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    proxy_req = ClientRequest(
-        "GET", URL("http://proxy.example.com"), loop=event_loop
-    )
+    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -265,9 +262,7 @@ def test_proxy_server_hostname_default(  # type: ignore[misc]
         loop=event_loop,
         session=mock.Mock(),
     )
-    with mock.patch.object(
-        proxy_req, "send", autospec=True, return_value=proxy_resp
-    ):
+    with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
             m.return_value.status = 200
 
@@ -321,6 +316,7 @@ def test_proxy_server_hostname_default(  # type: ignore[misc]
                         event_loop.run_until_complete(req.close())
             event_loop.run_until_complete(connector.close())
 
+
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -350,9 +346,7 @@ def test_proxy_server_hostname_override(
         loop=event_loop,
         session=mock.Mock(),
     )
-    with mock.patch.object(
-        proxy_req, "send", autospec=True, return_value=proxy_resp
-    ):
+    with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
             m.return_value.status = 200
 
@@ -407,6 +401,7 @@ def test_proxy_server_hostname_override(
                         event_loop.run_until_complete(req.close())
             event_loop.run_until_complete(connector.close())
 
+
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -424,9 +419,7 @@ def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     async def make_conn() -> aiohttp.TCPConnector:
         return aiohttp.TCPConnector(enable_cleanup_closed=cleanup)
 
-    proxy_req = ClientRequest(
-        "GET", URL("http://proxy.example.com"), loop=event_loop
-    )
+    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     class TransportMock(asyncio.Transport):
@@ -513,10 +506,9 @@ def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
             )
             with pytest.raises(aiohttp.ServerFingerprintMismatch):
                 event_loop.run_until_complete(
-                    connector._create_connection(
-                        req, [], aiohttp.ClientTimeout()
-                    )
+                    connector._create_connection(req, [], aiohttp.ClientTimeout())
                 )
+
 
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
@@ -529,9 +521,7 @@ def test_https_connect(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    proxy_req = ClientRequest(
-        "GET", URL("http://proxy.example.com"), loop=event_loop
-    )
+    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -545,9 +535,7 @@ def test_https_connect(  # type: ignore[misc]
         loop=event_loop,
         session=mock.Mock(),
     )
-    with mock.patch.object(
-        proxy_req, "send", autospec=True, return_value=proxy_resp
-    ):
+    with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
             m.return_value.status = 200
 
@@ -600,6 +588,7 @@ def test_https_connect(  # type: ignore[misc]
                         event_loop.run_until_complete(req.close())
             event_loop.run_until_complete(connector.close())
 
+
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -611,9 +600,7 @@ def test_https_connect_certificate_error(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    proxy_req = ClientRequest(
-        "GET", URL("http://proxy.example.com"), loop=event_loop
-    )
+    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -627,9 +614,7 @@ def test_https_connect_certificate_error(  # type: ignore[misc]
         loop=event_loop,
         session=mock.Mock(),
     )
-    with mock.patch.object(
-        proxy_req, "send", autospec=True, return_value=proxy_resp
-    ):
+    with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
             m.return_value.status = 200
 
@@ -669,15 +654,14 @@ def test_https_connect_certificate_error(  # type: ignore[misc]
                             proxy=URL("http://proxy.example.com"),
                             loop=event_loop,
                         )
-                        with pytest.raises(
-                            aiohttp.ClientConnectorCertificateError
-                        ):
+                        with pytest.raises(aiohttp.ClientConnectorCertificateError):
                             event_loop.run_until_complete(
                                 connector._create_connection(
                                     req, [], aiohttp.ClientTimeout()
                                 )
                             )
             event_loop.run_until_complete(connector.close())
+
 
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
@@ -690,9 +674,7 @@ def test_https_connect_ssl_error(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    proxy_req = ClientRequest(
-        "GET", URL("http://proxy.example.com"), loop=event_loop
-    )
+    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -706,9 +688,7 @@ def test_https_connect_ssl_error(  # type: ignore[misc]
         loop=event_loop,
         session=mock.Mock(),
     )
-    with mock.patch.object(
-        proxy_req, "send", autospec=True, return_value=proxy_resp
-    ):
+    with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
             m.return_value.status = 200
 
@@ -756,6 +736,7 @@ def test_https_connect_ssl_error(  # type: ignore[misc]
                             )
             event_loop.run_until_complete(connector.close())
 
+
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -767,9 +748,7 @@ def test_https_connect_http_proxy_error(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    proxy_req = ClientRequest(
-        "GET", URL("http://proxy.example.com"), loop=event_loop
-    )
+    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -783,9 +762,7 @@ def test_https_connect_http_proxy_error(  # type: ignore[misc]
         loop=event_loop,
         session=mock.Mock(),
     )
-    with mock.patch.object(
-        proxy_req, "send", autospec=True, return_value=proxy_resp
-    ):
+    with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
             m.return_value.status = 400
             m.return_value.reason = "bad request"
@@ -834,6 +811,7 @@ def test_https_connect_http_proxy_error(  # type: ignore[misc]
                     event_loop.run_until_complete(req.close())
             event_loop.run_until_complete(connector.close())
 
+
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -845,9 +823,7 @@ def test_https_connect_resp_start_error(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    proxy_req = ClientRequest(
-        "GET", URL("http://proxy.example.com"), loop=event_loop
-    )
+    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -861,9 +837,7 @@ def test_https_connect_resp_start_error(  # type: ignore[misc]
         loop=event_loop,
         session=mock.Mock(),
     )
-    with mock.patch.object(
-        proxy_req, "send", autospec=True, return_value=proxy_resp
-    ):
+    with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(
             proxy_resp, "start", autospec=True, side_effect=OSError("error message")
         ):
@@ -906,6 +880,7 @@ def test_https_connect_resp_start_error(  # type: ignore[misc]
                         )
             event_loop.run_until_complete(connector.close())
 
+
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -917,9 +892,7 @@ def test_request_port(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    proxy_req = ClientRequest(
-        "GET", URL("http://proxy.example.com"), loop=event_loop
-    )
+    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     async def make_conn() -> aiohttp.TCPConnector:
@@ -934,9 +907,7 @@ def test_request_port(  # type: ignore[misc]
         "proto": 0,
         "flags": 0,
     }
-    with mock.patch.object(
-        connector, "_resolve_host", autospec=True, return_value=[r]
-    ):
+    with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
         tr, proto = mock.Mock(), mock.Mock()
         tr.get_extra_info.return_value = None
         # Called on connection to http://proxy.example.com
@@ -955,6 +926,7 @@ def test_request_port(  # type: ignore[misc]
             assert req.url == URL("http://localhost:1234/path")
     event_loop.run_until_complete(connector.close())
 
+
 def test_proxy_auth_property(event_loop: asyncio.AbstractEventLoop) -> None:
     req = aiohttp.ClientRequest(
         "GET",
@@ -965,6 +937,7 @@ def test_proxy_auth_property(event_loop: asyncio.AbstractEventLoop) -> None:
     )
     assert ("user", "pass", "latin1") == req.proxy_auth
 
+
 def test_proxy_auth_property_default(event_loop: asyncio.AbstractEventLoop) -> None:
     req = aiohttp.ClientRequest(
         "GET",
@@ -973,6 +946,7 @@ def test_proxy_auth_property_default(event_loop: asyncio.AbstractEventLoop) -> N
         loop=event_loop,
     )
     assert req.proxy_auth is None
+
 
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
@@ -985,9 +959,7 @@ def test_https_connect_pass_ssl_context(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    proxy_req = ClientRequest(
-        "GET", URL("http://proxy.example.com"), loop=event_loop
-    )
+    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -1001,9 +973,7 @@ def test_https_connect_pass_ssl_context(  # type: ignore[misc]
         loop=event_loop,
         session=mock.Mock(),
     )
-    with mock.patch.object(
-        proxy_req, "send", autospec=True, return_value=proxy_resp
-    ):
+    with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
             m.return_value.status = 200
 
@@ -1065,6 +1035,7 @@ def test_https_connect_pass_ssl_context(  # type: ignore[misc]
                         event_loop.run_until_complete(req.close())
             event_loop.run_until_complete(connector.close())
 
+
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -1097,9 +1068,7 @@ def test_https_auth(  # type: ignore[misc]
         loop=event_loop,
         session=mock.Mock(),
     )
-    with mock.patch.object(
-        proxy_req, "send", autospec=True, return_value=proxy_resp
-    ):
+    with mock.patch.object(proxy_req, "send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
             m.return_value.status = 200
 
