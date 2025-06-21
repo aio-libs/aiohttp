@@ -15,7 +15,7 @@ def test___all__(pytester: pytest.Pytester) -> None:
         """
     )
     pytester.makefile(
-        "ini",
+        ".ini",
         pytest="""
 [pytest]
 asyncio_default_fixture_loop_scope = function
@@ -31,7 +31,7 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
         """
     )
     pytester.makefile(
-        "ini",
+        ".ini",
         pytest="""
 [pytest]
 asyncio_default_fixture_loop_scope = function
