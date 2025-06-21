@@ -372,12 +372,11 @@ def parametrize_zlib_backend(
 
 
 @pytest.fixture()
-async def cleanup_payload_pending_file_closes(
-    loop: asyncio.AbstractEventLoop,
-) -> AsyncIterator[None]:
+async def cleanup_payload_pending_file_closes() -> AsyncIterator[None]:
     """Ensure all pending file close operations complete during test teardown."""
     yield
     if payload._CLOSE_FUTURES:
+        loop = asyncio.get_running_loop()
         # Only wait for futures from the current loop
         loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
         if loop_futures:
