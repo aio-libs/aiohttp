@@ -1357,7 +1357,7 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
 
 
 def test_response_duplicate_cookie_names(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """
     Test that response.cookies handles duplicate cookie names correctly.
@@ -1406,7 +1406,7 @@ def test_response_duplicate_cookie_names(
 
 
 def test_response_raw_cookie_headers_preserved(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """Test that raw Set-Cookie headers are preserved in _raw_cookie_headers."""
     response = ClientResponse(
@@ -1446,7 +1446,7 @@ def test_response_raw_cookie_headers_preserved(
 
 
 def test_response_cookies_setter_updates_raw_headers(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """Test that setting cookies property updates _raw_cookie_headers."""
     response = ClientResponse(

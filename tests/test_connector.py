@@ -2470,9 +2470,7 @@ async def test_tcp_connector_allowed_protocols() -> None:
     assert conn.allowed_protocol_schema_set == {"", "tcp", "http", "https", "ws", "wss"}
 
 
-async def test_start_tls_exception_with_ssl_shutdown_timeout_zero(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_start_tls_exception_with_ssl_shutdown_timeout_zero() -> None:
     """Test _start_tls_connection exception handling with ssl_shutdown_timeout=0."""
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
@@ -2504,9 +2502,7 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_zero(
     sys.version_info < (3, 11),
     reason="Use test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311 for Python < 3.11",
 )
-async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero() -> None:
     """Test _start_tls_connection exception handling with ssl_shutdown_timeout>0."""
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
@@ -2538,9 +2534,7 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero(
     sys.version_info >= (3, 11),
     reason="This test is for Python < 3.11 runtime warning behavior",
 )
-async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311() -> None:
     """Test _start_tls_connection exception handling with ssl_shutdown_timeout>0 on Python < 3.11."""
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")

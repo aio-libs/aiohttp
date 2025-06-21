@@ -1453,7 +1453,8 @@ async def test_set_eof_idempotent(
     transport: asyncio.Transport,
 ) -> None:
     """Test that set_eof() is idempotent and can be called multiple times safely."""
-    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    loop = asyncio.get_running_loop()
+    msg = http.StreamWriter(protocol, loop)
 
     # Test 1: Multiple set_eof calls with buffered headers
     headers = CIMultiDict({"Content-Length": "0"})

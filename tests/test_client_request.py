@@ -599,14 +599,16 @@ def test_cookie_coded_value_preserved(event_loop: asyncio.AbstractEventLoop) -> 
     assert req.headers["COOKIE"] == 'ip-cookie="second"'
 
 
-def test_update_cookies_with_special_chars_in_existing_header() -> None:
+def test_update_cookies_with_special_chars_in_existing_header(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     """Test that update_cookies handles existing cookies with special characters."""
     # Create request with a cookie that has special characters (real-world example)
     req = ClientRequest(
         "get",
         URL("http://python.org"),
         headers={"Cookie": "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}=value1"},
-        loop=asyncio.get_running_loop(),
+        loop=event_loop,
     )
 
     # Update with another cookie
@@ -619,14 +621,16 @@ def test_update_cookies_with_special_chars_in_existing_header() -> None:
     )
 
 
-def test_update_cookies_with_quoted_existing_header() -> None:
+def test_update_cookies_with_quoted_existing_header(
+    event_loop: asyncio.AbstractEventLoop
+) -> None:
     """Test that update_cookies handles existing cookies with quoted values."""
     # Create request with cookies that have quoted values
     req = ClientRequest(
         "get",
         URL("http://python.org"),
         headers={"Cookie": 'session="value;with;semicolon"; token=abc123'},
-        loop=asyncio.get_running_loop(),
+        loop=event_loop,
     )
 
     # Update with another cookie
@@ -2219,10 +2223,10 @@ def test_content_length_for_methods(
     method: str,
     data: Optional[bytes],
     expected_content_length: Optional[str],
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test that Content-Length header is set correctly for all HTTP methods."""
-    loop = asyncio.get_running_loop()
-    req = ClientRequest(method, URL("http://python.org/"), data=data, loop=loop)
+    req = ClientRequest(method, URL("http://python.org/"), data=data, loop=event_loop)
 
     actual_content_length = req.headers.get(hdrs.CONTENT_LENGTH)
     assert actual_content_length == expected_content_length
