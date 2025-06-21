@@ -19,7 +19,8 @@ def test___all__(pytester: pytest.Pytester) -> None:
         pytest="""
 [pytest]
 asyncio_default_fixture_loop_scope = function
-""")
+""",
+    )
     result = pytester.runpytest("-vv")
     result.assert_outcomes(passed=0, errors=0)
 
@@ -35,7 +36,8 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
         pytest="""
 [pytest]
 asyncio_default_fixture_loop_scope = function
-""")
+""",
+    )
     result = pytester.runpytest("-vv")
     result.assert_outcomes(passed=0, errors=0)
 
