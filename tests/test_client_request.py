@@ -622,7 +622,7 @@ def test_update_cookies_with_special_chars_in_existing_header(
 
 
 def test_update_cookies_with_quoted_existing_header(
-    event_loop: asyncio.AbstractEventLoop
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test that update_cookies handles existing cookies with quoted values."""
     # Create request with cookies that have quoted values
