@@ -26,10 +26,6 @@ For using pytest plugin please install pytest-aiohttp_ library:
 
    $ pip install pytest-aiohttp
 
-If you don't want to install *pytest-aiohttp* for some reason you may
-insert ``pytest_plugins = 'aiohttp.pytest_plugin'`` line into
-``conftest.py`` instead for the same functionality.
-
 
 
 The Test Client and Servers
@@ -205,22 +201,6 @@ Pytest tooling has the following fixtures:
    not provided a random unused port is used.
 
    .. versionadded:: 3.0
-
-.. data:: aiohttp_unused_port()
-
-   Function to return an unused port number for IPv4 TCP protocol::
-
-      async def test_f(aiohttp_client, aiohttp_unused_port):
-          port = aiohttp_unused_port()
-          app = web.Application()
-          # fill route table
-
-          client = await aiohttp_client(app, server_kwargs={'port': port})
-          ...
-
-   .. versionchanged:: 3.0
-
-      The fixture was renamed from ``unused_port`` to ``aiohttp_unused_port``.
 
 .. data:: aiohttp_client_cls
 
@@ -555,7 +535,7 @@ Test server usually works in conjunction with
 :class:`aiohttp.test_utils.TestClient` which provides handy client methods
 for accessing to the server.
 
-.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None, socket_factory=get_port_socket)
+.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None, socket_factory=...)
 
    Base class for test servers.
 
@@ -788,51 +768,6 @@ Test Client
       Initiate websocket connection.
 
       The api corresponds to :meth:`aiohttp.ClientSession.ws_connect`.
-
-
-Utilities
-~~~~~~~~~
-
-.. function:: unused_port()
-
-   Return an unused port number for IPv4 TCP protocol.
-
-   :return int: ephemeral port number which could be reused by test server.
-
-.. function:: loop_context(loop_factory=<function asyncio.new_event_loop>)
-
-   A contextmanager that creates an event_loop, for test purposes.
-
-   Handles the creation and cleanup of a test loop.
-
-.. function:: setup_test_loop(loop_factory=<function asyncio.new_event_loop>)
-
-   Create and return an :class:`asyncio.AbstractEventLoop` instance.
-
-   The caller should also call teardown_test_loop, once they are done
-   with the loop.
-
-   .. note::
-
-      As side effect the function changes asyncio *default loop* by
-      :func:`asyncio.set_event_loop` call.
-
-      Previous default loop is not restored.
-
-      It should not be a problem for test suite: every test expects a
-      new test loop instance anyway.
-
-   .. versionchanged:: 3.1
-
-      The function installs a created event loop as *default*.
-
-.. function:: teardown_test_loop(loop)
-
-   Teardown and cleanup an event_loop created by setup_test_loop.
-
-   :param loop: the loop to teardown
-   :type loop: asyncio.AbstractEventLoop
-
 
 
 .. _pytest: http://pytest.org/latest/

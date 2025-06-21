@@ -6,6 +6,7 @@ from typing import Generator, Literal, Union
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpServer
 from yarl import URL
 
 from aiohttp import ClientSession, hdrs
@@ -20,7 +21,6 @@ from aiohttp.client_middleware_digest_auth import (
 )
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.payload import BytesIOPayload
-from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 
 

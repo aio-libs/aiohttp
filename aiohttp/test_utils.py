@@ -1,8 +1,6 @@
 """Utilities shared by tests."""
 
 import asyncio
-import contextlib
-import gc
 import ipaddress
 import os
 import socket
@@ -15,13 +13,11 @@ from typing import (
     Callable,
     Dict,
     Generic,
-    Iterator,
     List,
     Optional,
     Type,
     TypeVar,
     Union,
-    cast,
     overload,
 )
 from unittest import IsolatedAsyncioTestCase, mock
@@ -77,32 +73,6 @@ _Request = TypeVar("_Request", bound=BaseRequest)
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
 
-def get_unused_port_socket(
-    host: str, family: socket.AddressFamily = socket.AF_INET
-) -> socket.socket:
-    return get_port_socket(host, 0, family)
-
-
-def get_port_socket(
-    host: str, port: int, family: socket.AddressFamily = socket.AF_INET
-) -> socket.socket:
-    s = socket.socket(family, socket.SOCK_STREAM)
-    if REUSE_ADDRESS:
-        # Windows has different semantics for SO_REUSEADDR,
-        # so don't set it. Ref:
-        # https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((host, port))
-    return s
-
-
-def unused_port() -> int:
-    """Return a port that is unused on the current host."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return cast(int, s.getsockname()[1])
-
-
 class BaseTestServer(ABC, Generic[_Request]):
     __test__ = False
 
@@ -115,7 +85,9 @@ class BaseTestServer(ABC, Generic[_Request]):
         skip_url_asserts: bool = False,
         socket_factory: Callable[
             [str, int, socket.AddressFamily], socket.socket
-        ] = get_port_socket,
+        ] = lambda h, p, f: socket.create_server(
+            (h, p), family=f, reuse_port=REUSE_ADDRESS
+        ),
         **kwargs: Any,
     ) -> None:
         self.runner: Optional[BaseRunner[_Request]] = None
@@ -529,49 +501,6 @@ class AioHTTPTestCase(IsolatedAsyncioTestCase, ABC):
     async def get_client(self, server: TestServer) -> TestClient[Request, Application]:
         """Return a TestClient instance."""
         return TestClient(server)
-
-
-_LOOP_FACTORY = Callable[[], asyncio.AbstractEventLoop]
-
-
-@contextlib.contextmanager
-def loop_context(
-    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop, fast: bool = False
-) -> Iterator[asyncio.AbstractEventLoop]:
-    """A contextmanager that creates an event_loop, for test purposes.
-
-    Handles the creation and cleanup of a test loop.
-    """
-    loop = setup_test_loop(loop_factory)
-    yield loop
-    teardown_test_loop(loop, fast=fast)
-
-
-def setup_test_loop(
-    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop,
-) -> asyncio.AbstractEventLoop:
-    """Create and return an asyncio.BaseEventLoop instance.
-
-    The caller should also call teardown_test_loop,
-    once they are done with the loop.
-    """
-    loop = loop_factory()
-    asyncio.set_event_loop(loop)
-    return loop
-
-
-def teardown_test_loop(loop: asyncio.AbstractEventLoop, fast: bool = False) -> None:
-    """Teardown and cleanup an event_loop created by setup_test_loop."""
-    closed = loop.is_closed()
-    if not closed:
-        loop.call_soon(loop.stop)
-        loop.run_forever()
-        loop.close()
-
-    if not fast:
-        gc.collect()
-
-    asyncio.set_event_loop(None)
 
 
 def _create_app_mock() -> mock.MagicMock:

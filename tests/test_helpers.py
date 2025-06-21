@@ -283,8 +283,8 @@ def test_is_ip_address_invalid_type() -> None:
 # ----------------------------------- TimeoutHandle -------------------
 
 
-def test_timeout_handle(loop: asyncio.AbstractEventLoop) -> None:
-    handle = helpers.TimeoutHandle(loop, 10.2)
+def test_timeout_handle(event_loop: asyncio.AbstractEventLoop) -> None:
+    handle = helpers.TimeoutHandle(event_loop, 10.2)
     cb = mock.Mock()
     handle.register(cb)
     assert cb == handle._callbacks[0][0]
@@ -292,11 +292,11 @@ def test_timeout_handle(loop: asyncio.AbstractEventLoop) -> None:
     assert not handle._callbacks
 
 
-def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
+def test_when_timeout_smaller_second(event_loop: asyncio.AbstractEventLoop) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
+    timer = event_loop.time() + timeout
 
-    handle = helpers.TimeoutHandle(loop, timeout)
+    handle = helpers.TimeoutHandle(event_loop, timeout)
     assert handle is not None
     start_handle = handle.start()
     assert start_handle is not None
@@ -308,12 +308,12 @@ def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def test_when_timeout_smaller_second_with_low_threshold(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
+    timer = event_loop.time() + timeout
 
-    handle = helpers.TimeoutHandle(loop, timeout, 0.01)
+    handle = helpers.TimeoutHandle(event_loop, timeout, 0.01)
     assert handle is not None
     start_handle = handle.start()
     assert start_handle is not None
@@ -324,8 +324,8 @@ def test_when_timeout_smaller_second_with_low_threshold(
     assert when == ceil(timer)
 
 
-def test_timeout_handle_cb_exc(loop: asyncio.AbstractEventLoop) -> None:
-    handle = helpers.TimeoutHandle(loop, 10.2)
+def test_timeout_handle_cb_exc(event_loop: asyncio.AbstractEventLoop) -> None:
+    handle = helpers.TimeoutHandle(event_loop, 10.2)
     cb = mock.Mock()
     handle.register(cb)
     cb.side_effect = ValueError()
@@ -401,22 +401,20 @@ async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     assert task.cancelling() == 1
 
 
-def test_timer_context_no_task(loop: asyncio.AbstractEventLoop) -> None:
+def test_timer_context_no_task(event_loop: asyncio.AbstractEventLoop) -> None:
     with pytest.raises(RuntimeError):
-        with helpers.TimerContext(loop):
+        with helpers.TimerContext(event_loop):
             pass
 
 
-async def test_weakref_handle(loop: asyncio.AbstractEventLoop) -> None:
+async def test_weakref_handle() -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, "test", 0.01, loop)
+    helpers.weakref_handle(cb, "test", 0.01, asyncio.get_running_loop())
     await asyncio.sleep(0.1)
     assert cb.test.called
 
 
-async def test_weakref_handle_with_small_threshold(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_weakref_handle_with_small_threshold() -> None:
     cb = mock.Mock()
     loop = mock.Mock()
     loop.time.return_value = 10
@@ -426,9 +424,9 @@ async def test_weakref_handle_with_small_threshold(
     )
 
 
-async def test_weakref_handle_weak(loop: asyncio.AbstractEventLoop) -> None:
+async def test_weakref_handle_weak() -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, "test", 0.01, loop)
+    helpers.weakref_handle(cb, "test", 0.01, asyncio.get_running_loop())
     del cb
     gc.collect()
     await asyncio.sleep(0.1)
@@ -445,7 +443,7 @@ def test_ceil_call_later() -> None:
     loop.call_at.assert_called_with(21.0, cb)
 
 
-async def test_ceil_timeout_round(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_round() -> None:
     async with helpers.ceil_timeout(7.5) as cm:
         if sys.version_info >= (3, 11):
             w = cm.when()
@@ -457,7 +455,7 @@ async def test_ceil_timeout_round(loop: asyncio.AbstractEventLoop) -> None:
         assert frac == 0
 
 
-async def test_ceil_timeout_small(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_small() -> None:
     async with helpers.ceil_timeout(1.1) as cm:
         if sys.version_info >= (3, 11):
             w = cm.when()
@@ -485,7 +483,7 @@ def test_ceil_call_later_no_timeout() -> None:
     assert not loop.call_at.called
 
 
-async def test_ceil_timeout_none(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_none() -> None:
     async with helpers.ceil_timeout(None) as cm:
         if sys.version_info >= (3, 11):
             assert cm.when() is None
@@ -493,9 +491,7 @@ async def test_ceil_timeout_none(loop: asyncio.AbstractEventLoop) -> None:
             assert cm.deadline is None
 
 
-async def test_ceil_timeout_small_with_overriden_threshold(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_ceil_timeout_small_with_overriden_threshold() -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
         if sys.version_info >= (3, 11):
             w = cm.when()
@@ -729,14 +725,14 @@ def test_get_env_proxy_for_url(proxy_env_vars: Dict[str, str], url_input: str) -
 # ------------- set_result / set_exception ----------------------
 
 
-async def test_set_result(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_result() -> None:
+    fut = asyncio.get_running_loop().create_future()
     helpers.set_result(fut, 123)
     assert 123 == await fut
 
 
-async def test_set_result_cancelled(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_result_cancelled() -> None:
+    fut = asyncio.get_running_loop().create_future()
     fut.cancel()
     helpers.set_result(fut, 123)
 
@@ -744,15 +740,15 @@ async def test_set_result_cancelled(loop: asyncio.AbstractEventLoop) -> None:
         await fut
 
 
-async def test_set_exception(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_exception() -> None:
+    fut = asyncio.get_running_loop().create_future()
     helpers.set_exception(fut, RuntimeError())
     with pytest.raises(RuntimeError):
         await fut
 
 
-async def test_set_exception_cancelled(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_exception_cancelled() -> None:
+    fut = asyncio.get_running_loop().create_future()
     fut.cancel()
     helpers.set_exception(fut, RuntimeError())
 

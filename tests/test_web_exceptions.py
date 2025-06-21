@@ -4,10 +4,10 @@ from traceback import format_exception
 from typing import Mapping, NoReturn
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 from yarl import URL
 
 from aiohttp import web
-from aiohttp.pytest_plugin import AiohttpClient
 
 
 def test_all_http_exceptions_exported() -> None:
