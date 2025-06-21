@@ -253,11 +253,9 @@ def test_connection_lost_sets_transport_to_none(
     assert proto.transport is None
 
 
-async def test_connection_lost_exception_is_marked_retrieved(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_connection_lost_exception_is_marked_retrieved() -> None:
     """Test that connection_lost properly handles exceptions without warnings."""
-    proto = ResponseHandler(loop=loop)
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
     proto.connection_made(mock.Mock())
 
     # Access closed property before connection_lost to ensure future is created
@@ -276,11 +274,9 @@ async def test_connection_lost_exception_is_marked_retrieved(
     assert exc.__cause__ is ssl_error
 
 
-async def test_closed_property_lazy_creation(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_closed_property_lazy_creation() -> None:
     """Test that closed future is created lazily."""
-    proto = ResponseHandler(loop=loop)
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
 
     # Initially, the closed future should not be created
     assert proto._closed is None
@@ -295,11 +291,9 @@ async def test_closed_property_lazy_creation(
     assert proto.closed is closed_future
 
 
-async def test_closed_property_after_connection_lost(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_closed_property_after_connection_lost() -> None:
     """Test that closed property returns None after connection_lost if never accessed."""
-    proto = ResponseHandler(loop=loop)
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
     proto.connection_made(mock.Mock())
 
     # Don't access proto.closed before connection_lost
@@ -309,9 +303,9 @@ async def test_closed_property_after_connection_lost(
     assert proto.closed is None
 
 
-async def test_abort(loop: asyncio.AbstractEventLoop) -> None:
+async def test_abort() -> None:
     """Test the abort() method."""
-    proto = ResponseHandler(loop=loop)
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
 
     # Create a mock transport
     transport = mock.Mock()
@@ -335,9 +329,9 @@ async def test_abort(loop: asyncio.AbstractEventLoop) -> None:
         mock_drop_timeout.assert_called_once()
 
 
-async def test_abort_without_transport(loop: asyncio.AbstractEventLoop) -> None:
+async def test_abort_without_transport() -> None:
     """Test abort() when transport is None."""
-    proto = ResponseHandler(loop=loop)
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
 
     # Mock _drop_timeout method using patch.object
     with mock.patch.object(proto, "_drop_timeout") as mock_drop_timeout:

@@ -1723,11 +1723,12 @@ def test_get_content_length(make_request: _RequestMaker) -> None:
 
 
 async def test_write_bytes_with_content_length_limit(
-    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+    buf: bytearray, conn: mock.Mock
 ) -> None:
     """Test that write_bytes respects content_length limit for different body types."""
     # Test with bytes data
     data = b"Hello World"
+    loop = asyncio.get_running_loop()
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
 
     req.body = data
@@ -1749,13 +1750,13 @@ async def test_write_bytes_with_content_length_limit(
     ],
 )
 async def test_write_bytes_with_iterable_content_length_limit(
-    loop: asyncio.AbstractEventLoop,
     buf: bytearray,
     conn: mock.Mock,
     data: Union[List[bytes], bytes],
 ) -> None:
     """Test that write_bytes respects content_length limit for iterable data."""
     # Test with iterable data
+    loop = asyncio.get_running_loop()
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
 
     # Convert list to async generator if needed
@@ -1778,9 +1779,10 @@ async def test_write_bytes_with_iterable_content_length_limit(
 
 
 async def test_write_bytes_empty_iterable_with_content_length(
-    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+    buf: bytearray, conn: mock.Mock
 ) -> None:
     """Test that write_bytes handles empty iterable body with content_length."""
+    loop = asyncio.get_running_loop()
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
 
     # Create an empty async generator
@@ -2217,9 +2219,9 @@ def test_content_length_for_methods(
     method: str,
     data: Optional[bytes],
     expected_content_length: Optional[str],
-    loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test that Content-Length header is set correctly for all HTTP methods."""
+    loop = asyncio.get_running_loop()
     req = ClientRequest(method, URL("http://python.org/"), data=data, loop=loop)
 
     actual_content_length = req.headers.get(hdrs.CONTENT_LENGTH)
@@ -2238,23 +2240,23 @@ def test_non_get_methods_classification(method: str) -> None:
     assert method not in ClientRequest.GET_METHODS
 
 
-async def test_content_length_with_string_data(loop: asyncio.AbstractEventLoop) -> None:
+async def test_content_length_with_string_data() -> None:
     """Test Content-Length when data is a string."""
     data = "Hello, World!"
+    loop = asyncio.get_running_loop()
     req = ClientRequest("POST", URL("http://python.org/"), data=data, loop=loop)
     # String should be encoded to bytes, default encoding is utf-8
     assert req.headers[hdrs.CONTENT_LENGTH] == str(len(data.encode("utf-8")))
     await req.close()
 
 
-async def test_content_length_with_async_iterable(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_content_length_with_async_iterable() -> None:
     """Test that async iterables use chunked encoding, not Content-Length."""
 
     async def data_gen() -> AsyncIterator[bytes]:
         yield b"chunk1"  # pragma: no cover
 
+    loop = asyncio.get_running_loop()
     req = ClientRequest("POST", URL("http://python.org/"), data=data_gen(), loop=loop)
     assert hdrs.CONTENT_LENGTH not in req.headers
     assert req.chunked
@@ -2262,39 +2264,40 @@ async def test_content_length_with_async_iterable(
     await req.close()
 
 
-async def test_content_length_not_overridden(loop: asyncio.AbstractEventLoop) -> None:
+async def test_content_length_not_overridden() -> None:
     """Test that explicitly set Content-Length is not overridden."""
     req = ClientRequest(
         "POST",
         URL("http://python.org/"),
         data=b"test",
         headers={hdrs.CONTENT_LENGTH: "100"},
-        loop=loop,
+        loop=asyncio.get_running_loop(),
     )
     # Should keep the explicitly set value
     assert req.headers[hdrs.CONTENT_LENGTH] == "100"
     await req.close()
 
 
-async def test_content_length_with_formdata(loop: asyncio.AbstractEventLoop) -> None:
+async def test_content_length_with_formdata() -> None:
     """Test Content-Length with FormData."""
     form = aiohttp.FormData()
     form.add_field("field", "value")
 
+    loop = asyncio.get_running_loop()
     req = ClientRequest("POST", URL("http://python.org/"), data=form, loop=loop)
     # FormData with known size should set Content-Length
     assert hdrs.CONTENT_LENGTH in req.headers
     await req.close()
 
 
-async def test_no_content_length_with_chunked(loop: asyncio.AbstractEventLoop) -> None:
+async def test_no_content_length_with_chunked() -> None:
     """Test that chunked encoding prevents Content-Length header."""
     req = ClientRequest(
         "POST",
         URL("http://python.org/"),
         data=b"test",
         chunked=True,
-        loop=loop,
+        loop=asyncio.get_running_loop(),
     )
     assert hdrs.CONTENT_LENGTH not in req.headers
     assert req.headers[hdrs.TRANSFER_ENCODING] == "chunked"
@@ -2302,11 +2305,10 @@ async def test_no_content_length_with_chunked(loop: asyncio.AbstractEventLoop) -
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
-async def test_update_body_none_sets_content_length_zero(
-    method: str, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_update_body_none_sets_content_length_zero(method: str) -> None:
     """Test that updating body to None sets Content-Length: 0 for POST-like methods."""
     # Create request with initial body
+    loop = asyncio.get_running_loop()
     req = ClientRequest(method, URL("http://python.org/"), data=b"initial", loop=loop)
     assert req.headers[hdrs.CONTENT_LENGTH] == "7"
 
@@ -2318,11 +2320,10 @@ async def test_update_body_none_sets_content_length_zero(
 
 
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
-async def test_update_body_none_no_content_length_for_get_methods(
-    method: str, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_update_body_none_no_content_length_for_get_methods(method: str) -> None:
     """Test that updating body to None doesn't set Content-Length for GET-like methods."""
     # Create request with initial body
+    loop = asyncio.get_running_loop()
     req = ClientRequest(method, URL("http://python.org/"), data=b"initial", loop=loop)
     assert req.headers[hdrs.CONTENT_LENGTH] == "7"
 

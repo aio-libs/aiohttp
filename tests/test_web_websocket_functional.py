@@ -1274,7 +1274,7 @@ async def test_normal_closure_while_client_sends_msg(
 
 
 async def test_websocket_prepare_timeout_close_issue(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient
 ) -> None:
     """Test that WebSocket can handle prepare with early returns.
 
@@ -1303,7 +1303,7 @@ async def test_websocket_prepare_timeout_close_issue(
 
 
 async def test_websocket_prepare_timeout_from_issue_reproducer(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient
 ) -> None:
     """Test websocket behavior when prepare is interrupted.
 
@@ -1348,9 +1348,7 @@ async def test_websocket_prepare_timeout_from_issue_reproducer(
     await close_complete.wait()
 
 
-async def test_websocket_prepared_property(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
+async def test_websocket_prepared_property(aiohttp_client: AiohttpClient) -> None:
     """Test that WebSocketResponse.prepared property correctly reflects state."""
     prepare_called = asyncio.Event()
 
