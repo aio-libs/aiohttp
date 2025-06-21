@@ -1378,7 +1378,7 @@ def test_response_duplicate_cookie_names(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
     )
 
@@ -1417,7 +1417,7 @@ def test_response_raw_cookie_headers_preserved(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
     )
 
@@ -1457,7 +1457,7 @@ def test_response_cookies_setter_updates_raw_headers(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
     )
 
