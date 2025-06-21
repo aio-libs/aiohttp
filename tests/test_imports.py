@@ -14,7 +14,13 @@ def test___all__(pytester: pytest.Pytester) -> None:
             assert 'GunicornWebWorker' in globals()
         """
     )
-    result = pytester.runpytest("-vv", "--asyncio-default-fixture-loop-scope=function")
+    pytester.makefile(
+        "ini",
+        pytest="""
+[pytest]
+asyncio_default_fixture_loop_scope = function
+""")
+    result = pytester.runpytest("-vv")
     result.assert_outcomes(passed=0, errors=0)
 
 
@@ -24,7 +30,13 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
             from aiohttp.web import *
         """
     )
-    result = pytester.runpytest("-vv", "--asyncio-default-fixture-loop-scope=function")
+    pytester.makefile(
+        "ini",
+        pytest="""
+[pytest]
+asyncio_default_fixture_loop_scope = function
+""")
+    result = pytester.runpytest("-vv")
     result.assert_outcomes(passed=0, errors=0)
 
 
