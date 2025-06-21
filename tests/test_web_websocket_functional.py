@@ -1274,7 +1274,7 @@ async def test_normal_closure_while_client_sends_msg(
 
 
 async def test_websocket_prepare_timeout_close_issue(
-    aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient,
 ) -> None:
     """Test that WebSocket can handle prepare with early returns.
 
@@ -1303,7 +1303,7 @@ async def test_websocket_prepare_timeout_close_issue(
 
 
 async def test_websocket_prepare_timeout_from_issue_reproducer(
-    aiohttp_client: AiohttpClient
+    aiohttp_client: AiohttpClient,
 ) -> None:
     """Test websocket behavior when prepare is interrupted.
 
