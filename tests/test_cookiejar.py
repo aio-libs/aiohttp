@@ -452,9 +452,6 @@ class TestCookieJarBase(unittest.TestCase):
         return cookies_sent, cookies_received
 
 
-pytest.skip(allow_module_level=True)
-
-
 class TestCookieJarSafe(TestCookieJarBase):
     def setUp(self) -> None:
         super().setUp()
