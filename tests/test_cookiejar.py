@@ -827,9 +827,6 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.assertEqual(jar_filtered["path-cookie"].value, "one")
 
 
-pytest.skip(allow_module_level=True)
-
-
 async def test_dummy_cookie_jar() -> None:
     cookie = SimpleCookie("foo=bar; Domain=example.com;")
     dummy_jar = DummyCookieJar()
@@ -1119,6 +1116,9 @@ def test_pickle_format(cookies_to_send: SimpleCookie) -> None:
     cj.update_cookies(cookies_to_send)
 
     assert cookies == cj._cookies
+
+
+pytest.skip(allow_module_level=True)
 
 
 @pytest.mark.parametrize(
