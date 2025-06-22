@@ -433,7 +433,7 @@ class TestCookieJarSafe(unittest.IsolatedAsyncioTestCase):
 
         return cookies_sent, cookies_received
 
-    def asyncSetUp(self) -> None:
+    async def asyncSetUp(self) -> None:
         self.jar = CookieJar()
 
         self.cookies_to_send = SimpleCookie(
