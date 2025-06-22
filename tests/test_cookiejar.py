@@ -1118,9 +1118,6 @@ def test_pickle_format(cookies_to_send: SimpleCookie) -> None:
     assert cookies == cj._cookies
 
 
-pytest.skip(allow_module_level=True)
-
-
 @pytest.mark.parametrize(
     "url",
     [
@@ -1497,6 +1494,9 @@ async def test_shared_cookie_cache_population() -> None:
     # Verify the cached morsel is the same one returned
     cached_morsel = jar._morsel_cache[("", "")]["shared"]
     assert cached_morsel is filtered["shared"]
+
+
+pytest.skip(allow_module_level=True)
 
 
 async def test_shared_cookie_cache_clearing_on_update() -> None:
