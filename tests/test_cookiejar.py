@@ -415,25 +415,7 @@ async def test_ignore_domain_ending_with_dot() -> None:
     assert cookies_sent.output(header="Cookie:") == ""
 
 
-class TestCookieJarBase(unittest.TestCase):
-    cookies_to_receive: SimpleCookie
-    cookies_to_send: SimpleCookie
-    loop: asyncio.AbstractEventLoop
-    jar: CookieJar
-
-    def setUp(self) -> None:
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-        # N.B. those need to be overridden in child test cases
-        async def make_jar() -> CookieJar:
-            return CookieJar()
-
-        self.jar = self.loop.run_until_complete(make_jar())
-
-    def tearDown(self) -> None:
-        self.loop.close()
-
+class TestCookieJarSafe(unittest.IsolatedAsyncioTestCase):
     def request_reply_with_same_url(
         self, url: str
     ) -> Tuple["BaseCookie[str]", SimpleCookie]:
@@ -451,10 +433,8 @@ class TestCookieJarBase(unittest.TestCase):
 
         return cookies_sent, cookies_received
 
-
-"""class TestCookieJarSafe(TestCookieJarBase):
-    def setUp(self) -> None:
-        super().setUp()
+    def asyncSetUp(self) -> None:
+        self.jar = CookieJar()
 
         self.cookies_to_send = SimpleCookie(
             "shared-cookie=first; "
@@ -490,11 +470,6 @@ class TestCookieJarBase(unittest.TestCase):
             "path-cookie=eighth; Domain=pathtest.com; Path=/somepath; "
             "wrong-path-cookie=ninth; Domain=pathtest.com; Path=somepath;"
         )
-
-        async def make_jar() -> CookieJar:
-            return CookieJar()
-
-        self.jar = self.loop.run_until_complete(make_jar())
 
     def timed_request(
         self, url: str, update_time: float, send_time: float
@@ -746,7 +721,7 @@ class TestCookieJarBase(unittest.TestCase):
         cookie = cookies_sent["invalid-expires-cookie"]
         self.assertEqual(cookie["expires"], "")
 
-    def test_cookie_not_expired_when_added_after_removal(self) -> None:
+    async def test_cookie_not_expired_when_added_after_removal(self) -> None:
         # Test case for https://github.com/aio-libs/aiohttp/issues/2084
         timestamps = [
             533588.993,
@@ -762,10 +737,7 @@ class TestCookieJarBase(unittest.TestCase):
             timestamps, itertools.cycle([timestamps[-1]])
         )
 
-        async def make_jar() -> CookieJar:
-            return CookieJar(unsafe=True)
-
-        jar = self.loop.run_until_complete(make_jar())
+        jar = CookieJar(unsafe=True)
         # Remove `foo` cookie.
         jar.update_cookies(SimpleCookie('foo=""; Max-Age=0'))
         # Set `foo` cookie to `bar`.
@@ -774,11 +746,8 @@ class TestCookieJarBase(unittest.TestCase):
         # Assert that there is a cookie.
         assert len(jar) == 1
 
-    def test_path_filter_diff_folder_same_name(self) -> None:
-        async def make_jar() -> CookieJar:
-            return CookieJar(unsafe=True)
-
-        jar = self.loop.run_until_complete(make_jar())
+    async def test_path_filter_diff_folder_same_name(self) -> None:
+        jar = CookieJar(unsafe=True)
 
         jar.update_cookies(
             SimpleCookie("path-cookie=zero; Domain=pathtest.com; Path=/; ")
@@ -796,13 +765,10 @@ class TestCookieJarBase(unittest.TestCase):
         self.assertEqual(len(jar_filtered), 1)
         self.assertEqual(jar_filtered["path-cookie"].value, "one")
 
-    def test_path_filter_diff_folder_same_name_return_best_match_independent_from_put_order(
+    async def test_path_filter_diff_folder_same_name_return_best_match_independent_from_put_order(
         self,
     ) -> None:
-        async def make_jar() -> CookieJar:
-            return CookieJar(unsafe=True)
-
-        jar = self.loop.run_until_complete(make_jar())
+        jar = CookieJar(unsafe=True)
         jar.update_cookies(
             SimpleCookie("path-cookie=one; Domain=pathtest.com; Path=/one; ")
         )
@@ -824,7 +790,7 @@ class TestCookieJarBase(unittest.TestCase):
 
         jar_filtered = jar.filter_cookies(URL("http://pathtest.com/one"))
         self.assertEqual(len(jar_filtered), 1)
-        self.assertEqual(jar_filtered["path-cookie"].value, "one")"""
+        self.assertEqual(jar_filtered["path-cookie"].value, "one")
 
 
 async def test_dummy_cookie_jar() -> None:

@@ -14,6 +14,7 @@ def test___all__(pytester: pytest.Pytester) -> None:
             assert 'GunicornWebWorker' in globals()
         """
     )
+    # TODO: Remove when asyncio_default_fixture_loop_scope has a default.
     pytester.makefile(
         ".ini",
         pytest="""
@@ -31,6 +32,7 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
             from aiohttp.web import *
         """
     )
+    # TODO: Remove when asyncio_default_fixture_loop_scope has a default.
     pytester.makefile(
         ".ini",
         pytest="""
