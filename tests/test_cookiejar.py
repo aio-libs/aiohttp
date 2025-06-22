@@ -452,9 +452,6 @@ class TestCookieJarBase(unittest.TestCase):
         return cookies_sent, cookies_received
 
 
-pytest.skip(allow_module_level=True)
-
-
 class TestCookieJarSafe(TestCookieJarBase):
     def setUp(self) -> None:
         super().setUp()
@@ -828,6 +825,9 @@ class TestCookieJarSafe(TestCookieJarBase):
         jar_filtered = jar.filter_cookies(URL("http://pathtest.com/one"))
         self.assertEqual(len(jar_filtered), 1)
         self.assertEqual(jar_filtered["path-cookie"].value, "one")
+
+
+pytest.skip(allow_module_level=True)
 
 
 async def test_dummy_cookie_jar() -> None:
