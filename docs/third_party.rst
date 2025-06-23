@@ -310,5 +310,5 @@ ask to raise the status.
 - `aiohttp-openmetrics <https://github.com/jelmer/aiohttp-openmetrics>`_
   An aiohttp middleware for exposing Prometheus metrics.
 
-- `wireup` <https://github.com/maldoinc/wireup>
+- `wireup <https://github.com/maldoinc/wireup>`_
   Performant, concise, and easy-to-use dependency injection container for Python 3.8+ and AIOHTTP.
