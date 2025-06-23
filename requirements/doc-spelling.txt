@@ -32,7 +32,7 @@ packaging==25.0
     # via sphinx
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
-pygments==2.19.1
+pygments==2.19.2
     # via sphinx
 requests==2.32.4
     # via
