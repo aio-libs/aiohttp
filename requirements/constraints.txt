@@ -162,7 +162,7 @@ pydantic-core==2.33.2
     # via pydantic
 pyenchant==3.2.2
     # via sphinxcontrib-spelling
-pygments==2.19.1
+pygments==2.19.2
     # via
     #   pytest
     #   rich
