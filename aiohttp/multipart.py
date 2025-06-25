@@ -114,6 +114,10 @@ def parse_content_disposition(
     while parts:
         item = parts.pop(0)
 
+        if not item:  # To handle trailing semicolons
+            warnings.warn(BadContentDispositionHeader(header))
+            continue
+
         if "=" not in item:
             warnings.warn(BadContentDispositionHeader(header))
             return None, {}

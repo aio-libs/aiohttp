@@ -17,6 +17,7 @@ from aiohttp import ClientSession, hdrs, http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
 from aiohttp.connector import Connection
 from aiohttp.helpers import TimerNoop
+from aiohttp.multipart import BadContentDispositionHeader
 
 
 class WriterMock(mock.AsyncMock):
@@ -994,6 +995,34 @@ def test_content_disposition_no_parameters() -> None:
     assert "attachment" == response.content_disposition.type
     assert response.content_disposition.filename is None
     assert {} == response.content_disposition.parameters
+
+
+@pytest.mark.parametrize(
+    "content_disposition",
+    (
+        'attachment; filename="archive.tar.gz";',
+        'attachment;; filename="archive.tar.gz"',
+    ),
+)
+def test_content_disposition_empty_parts(content_disposition: str) -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://def-cl-resp.org"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock(),
+    )
+    h = {"Content-Disposition": content_disposition}
+    response._headers = CIMultiDictProxy(CIMultiDict(h))
+
+    with pytest.warns(BadContentDispositionHeader):
+        assert response.content_disposition is not None
+        assert "attachment" == response.content_disposition.type
+        assert "archive.tar.gz" == response.content_disposition.filename
 
 
 def test_content_disposition_no_header() -> None:
