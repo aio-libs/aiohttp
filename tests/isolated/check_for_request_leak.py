@@ -20,16 +20,16 @@ async def main() -> None:
     app.router.add_route("GET", "/json", handler)
     with socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS) as sock:
         port = sock.getsockname()[1]
-    
+
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.SockSite(runner, sock)
         await site.start()
-    
+
         async with ClientSession() as session:
             async with session.get(f"http://127.0.0.1:{port}/json") as resp:
                 await resp.read()
-    
+
         # Give time for the cancelled task to be collected
         await asyncio.sleep(0.5)
         gc.collect()
