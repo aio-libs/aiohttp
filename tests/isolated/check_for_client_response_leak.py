@@ -21,20 +21,22 @@ async def main() -> None:
     app.router.add_get("/stream", stream_handler)
     with socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS) as sock:
         port = sock.getsockname()[1]
-    
+
         runner = web.AppRunner(app)
         await runner.setup()
         site = web.SockSite(runner, sock)
         await site.start()
-    
+
         session = ClientSession()
-    
+
         async def fetch_stream(url: str) -> None:
             """Fetch a stream and read a few bytes from it."""
             with contextlib.suppress(ClientError):
                 await session.get(url)
-    
-        client_task = asyncio.create_task(fetch_stream(f"http://localhost:{port}/stream"))
+
+        client_task = asyncio.create_task(
+            fetch_stream(f"http://localhost:{port}/stream")
+        )
         await client_task
         gc.collect()
         client_response_present = any(
