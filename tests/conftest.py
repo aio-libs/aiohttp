@@ -244,6 +244,11 @@ def unix_sockname(
 
 
 @pytest.fixture
+async def event_loop() -> asyncio.AbstractEventLoop:
+    return asyncio.get_running_loop()
+
+
+@pytest.fixture
 def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
     factory = asyncio.SelectorEventLoop
     with loop_context(factory) as _loop:
