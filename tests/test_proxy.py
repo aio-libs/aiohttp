@@ -1,8 +1,6 @@
 import asyncio
-import gc
 import socket
 import ssl
-import unittest
 from unittest import mock
 
 import pytest
