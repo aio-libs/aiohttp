@@ -1,8 +1,6 @@
 import asyncio
-import gc
 import socket
 import ssl
-import unittest
 from unittest import mock
 
 import pytest
@@ -165,7 +163,7 @@ def test_proxy_auth(start_connection: mock.Mock) -> None:  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_dns_error(
+def test_proxy_dns_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -201,7 +199,7 @@ def test_proxy_dns_error(
     spec_set=True,
     return_value=mock.create_autospec(socket.socket, spec_set=True, instance=True),
 )
-def test_proxy_connection_error(
+def test_proxy_connection_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -323,7 +321,7 @@ def test_proxy_server_hostname_default(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_server_hostname_override(
+def test_proxy_server_hostname_override(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
