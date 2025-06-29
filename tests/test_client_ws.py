@@ -20,9 +20,7 @@ from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
 
 
-async def test_ws_connect(
-    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
-) -> None:
+async def test_ws_connect(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -35,7 +33,7 @@ async def test_ws_connect(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             res = await aiohttp.ClientSession().ws_connect(
@@ -48,7 +46,7 @@ async def test_ws_connect(
 
 
 async def test_ws_connect_read_timeout_is_reset_to_inf(
-    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -64,7 +62,7 @@ async def test_ws_connect_read_timeout_is_reset_to_inf(
         mock.patch("aiohttp.client.ClientSession.request") as m_req,
     ):
         m_os.urandom.return_value = key_data
-        m_req.return_value = loop.create_future()
+        m_req.return_value = asyncio.get_running_loop().create_future()
         m_req.return_value.set_result(resp)
 
         res = await aiohttp.ClientSession().ws_connect(
@@ -77,9 +75,7 @@ async def test_ws_connect_read_timeout_is_reset_to_inf(
     assert resp.connection.protocol.read_timeout is None
 
 
-async def test_ws_connect_read_timeout_stays_inf(
-    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
-) -> None:
+async def test_ws_connect_read_timeout_stays_inf(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -94,7 +90,7 @@ async def test_ws_connect_read_timeout_stays_inf(
         mock.patch("aiohttp.client.ClientSession.request") as m_req,
     ):
         m_os.urandom.return_value = key_data
-        m_req.return_value = loop.create_future()
+        m_req.return_value = asyncio.get_running_loop().create_future()
         m_req.return_value.set_result(resp)
 
         res = await aiohttp.ClientSession().ws_connect(
@@ -110,7 +106,7 @@ async def test_ws_connect_read_timeout_stays_inf(
 
 
 async def test_ws_connect_read_timeout_reset_to_max(
-    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -126,7 +122,7 @@ async def test_ws_connect_read_timeout_reset_to_max(
         mock.patch("aiohttp.client.ClientSession.request") as m_req,
     ):
         m_os.urandom.return_value = key_data
-        m_req.return_value = loop.create_future()
+        m_req.return_value = asyncio.get_running_loop().create_future()
         m_req.return_value.set_result(resp)
 
         res = await aiohttp.ClientSession().ws_connect(
@@ -141,15 +137,13 @@ async def test_ws_connect_read_timeout_reset_to_max(
     assert resp.connection.protocol.read_timeout == 1.0
 
 
-async def test_ws_connect_with_origin(
-    key_data: bytes, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_ws_connect_with_origin(key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 403
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             origin = "https://example.org/page.html"
@@ -162,9 +156,7 @@ async def test_ws_connect_with_origin(
     assert m_req.call_args[1]["headers"][hdrs.ORIGIN] == origin
 
 
-async def test_ws_connect_with_params(
-    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
-) -> None:
+async def test_ws_connect_with_params(ws_key: str, key_data: bytes) -> None:
     params = {"key1": "value1", "key2": "value2"}
 
     resp = mock.Mock()
@@ -179,7 +171,7 @@ async def test_ws_connect_with_params(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             await aiohttp.ClientSession().ws_connect(
@@ -189,9 +181,7 @@ async def test_ws_connect_with_params(
     assert m_req.call_args[1]["params"] == params
 
 
-async def test_ws_connect_custom_response(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_custom_response(ws_key: str, key_data: bytes) -> None:
     class CustomResponse(client.ClientWebSocketResponse):
         def read(self, decode: bool = False) -> str:
             return "customized!"
@@ -207,7 +197,7 @@ async def test_ws_connect_custom_response(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             res = await aiohttp.ClientSession(
@@ -219,9 +209,7 @@ async def test_ws_connect_custom_response(
     assert res.read() == "customized!"  # type: ignore[attr-defined]
 
 
-async def test_ws_connect_err_status(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_err_status(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 500
     resp.headers = {
@@ -232,7 +220,7 @@ async def test_ws_connect_err_status(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError) as ctx:
@@ -243,9 +231,7 @@ async def test_ws_connect_err_status(
     assert ctx.value.message == "Invalid response status"
 
 
-async def test_ws_connect_err_upgrade(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_err_upgrade(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -256,7 +242,7 @@ async def test_ws_connect_err_upgrade(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError) as ctx:
@@ -267,9 +253,7 @@ async def test_ws_connect_err_upgrade(
     assert ctx.value.message == "Invalid upgrade header"
 
 
-async def test_ws_connect_err_conn(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_err_conn(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -280,7 +264,7 @@ async def test_ws_connect_err_conn(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError) as ctx:
@@ -291,9 +275,7 @@ async def test_ws_connect_err_conn(
     assert ctx.value.message == "Invalid connection header"
 
 
-async def test_ws_connect_err_challenge(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_err_challenge(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -304,7 +286,7 @@ async def test_ws_connect_err_challenge(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError) as ctx:
@@ -315,9 +297,7 @@ async def test_ws_connect_err_challenge(
     assert ctx.value.message == "Invalid challenge response"
 
 
-async def test_ws_connect_common_headers(
-    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
-) -> None:
+async def test_ws_connect_common_headers(ws_key: str, key_data: bytes) -> None:
     # Emulate a headers dict being reused for a second ws_connect.
 
     # In this scenario, we need to ensure that the newly generated secret key
@@ -363,9 +343,7 @@ async def test_ws_connect_common_headers(
     await test_connection()
 
 
-async def test_close(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_close(ws_key: str, key_data: bytes) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -378,7 +356,7 @@ async def test_close(
         with mock.patch("aiohttp.client.os") as m_os:
             with mock.patch("aiohttp.client.ClientSession.request") as m_req:
                 m_os.urandom.return_value = key_data
-                m_req.return_value = loop.create_future()
+                m_req.return_value = asyncio.get_running_loop().create_future()
                 m_req.return_value.set_result(mresp)
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
@@ -404,9 +382,7 @@ async def test_close(
                 await session.close()
 
 
-async def test_close_eofstream(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_close_eofstream(ws_key: str, key_data: bytes) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -419,7 +395,7 @@ async def test_close_eofstream(
         with mock.patch("aiohttp.client.os") as m_os:
             with mock.patch("aiohttp.client.ClientSession.request") as m_req:
                 m_os.urandom.return_value = key_data
-                m_req.return_value = loop.create_future()
+                m_req.return_value = asyncio.get_running_loop().create_future()
                 m_req.return_value.set_result(mresp)
                 writer = WebSocketWriter.return_value = mock.Mock()
 
@@ -437,9 +413,7 @@ async def test_close_eofstream(
                 await session.close()  # type: ignore[unreachable]
 
 
-async def test_close_connection_lost(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_close_connection_lost(ws_key: str, key_data: bytes) -> None:
     """Test the websocket client handles the connection being closed out from under it."""
     mresp = mock.Mock(spec_set=client.ClientResponse)
     mresp.status = 101
@@ -455,7 +429,7 @@ async def test_close_connection_lost(
         mock.patch("aiohttp.client.ClientSession.request") as m_req,
     ):
         m_os.urandom.return_value = key_data
-        m_req.return_value = loop.create_future()
+        m_req.return_value = asyncio.get_running_loop().create_future()
         m_req.return_value.set_result(mresp)
 
         session = aiohttp.ClientSession()
@@ -472,9 +446,7 @@ async def test_close_connection_lost(
         await session.close()  # type: ignore[unreachable]
 
 
-async def test_close_exc(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_close_exc(ws_key: str, key_data: bytes) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -487,7 +459,7 @@ async def test_close_exc(
         with mock.patch("aiohttp.client.os") as m_os:
             with mock.patch("aiohttp.client.ClientSession.request") as m_req:
                 m_os.urandom.return_value = key_data
-                m_req.return_value = loop.create_future()
+                m_req.return_value = asyncio.get_running_loop().create_future()
                 m_req.return_value.set_result(mresp)
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
@@ -507,9 +479,7 @@ async def test_close_exc(
                 await session.close()
 
 
-async def test_close_exc2(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_close_exc2(ws_key: str, key_data: bytes) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -522,7 +492,7 @@ async def test_close_exc2(
         with mock.patch("aiohttp.client.os") as m_os:
             with mock.patch("aiohttp.client.ClientSession.request") as m_req:
                 m_os.urandom.return_value = key_data
-                m_req.return_value = loop.create_future()
+                m_req.return_value = asyncio.get_running_loop().create_future()
                 m_req.return_value.set_result(mresp)
                 writer = WebSocketWriter.return_value = mock.Mock()
 
@@ -547,7 +517,6 @@ async def test_send_data_after_close(
     exc: Type[Exception],
     ws_key: str,
     key_data: bytes,
-    loop: asyncio.AbstractEventLoop,
 ) -> None:
     mresp = mock.Mock()
     mresp.status = 101
@@ -560,7 +529,7 @@ async def test_send_data_after_close(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(mresp)
 
             resp = await aiohttp.ClientSession().ws_connect("http://test.org")
@@ -578,9 +547,7 @@ async def test_send_data_after_close(
                     await meth(*args)
 
 
-async def test_send_data_type_errors(
-    ws_key: str, key_data: bytes, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_send_data_type_errors(ws_key: str, key_data: bytes) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -593,7 +560,7 @@ async def test_send_data_type_errors(
         with mock.patch("aiohttp.client.os") as m_os:
             with mock.patch("aiohttp.client.ClientSession.request") as m_req:
                 m_os.urandom.return_value = key_data
-                m_req.return_value = loop.create_future()
+                m_req.return_value = asyncio.get_running_loop().create_future()
                 m_req.return_value.set_result(mresp)
                 WebSocketWriter.return_value = mock.Mock()
 
@@ -607,9 +574,7 @@ async def test_send_data_type_errors(
                     await resp.send_json(set())
 
 
-async def test_reader_read_exception(
-    ws_key: str, key_data: bytes, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_reader_read_exception(ws_key: str, key_data: bytes) -> None:
     hresp = mock.Mock()
     hresp.status = 101
     hresp.headers = {
@@ -622,7 +587,7 @@ async def test_reader_read_exception(
         with mock.patch("aiohttp.client.os") as m_os:
             with mock.patch("aiohttp.client.ClientSession.request") as m_req:
                 m_os.urandom.return_value = key_data
-                m_req.return_value = loop.create_future()
+                m_req.return_value = asyncio.get_running_loop().create_future()
                 m_req.return_value.set_result(hresp)
 
                 writer = mock.Mock()
@@ -642,7 +607,7 @@ async def test_reader_read_exception(
                 await session.close()
 
 
-async def test_receive_runtime_err(loop: asyncio.AbstractEventLoop) -> None:
+async def test_receive_runtime_err() -> None:
     resp = client.ClientWebSocketResponse(
         mock.Mock(),
         mock.Mock(),
@@ -651,7 +616,7 @@ async def test_receive_runtime_err(loop: asyncio.AbstractEventLoop) -> None:
         ClientWSTimeout(ws_receive=10.0),
         True,
         True,
-        loop,
+        asyncio.get_running_loop(),
     )
     resp._waiting = True
 
@@ -659,9 +624,7 @@ async def test_receive_runtime_err(loop: asyncio.AbstractEventLoop) -> None:
         await resp.receive()
 
 
-async def test_ws_connect_close_resp_on_err(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_close_resp_on_err(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 500
     resp.headers = {
@@ -672,7 +635,7 @@ async def test_ws_connect_close_resp_on_err(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError):
@@ -683,7 +646,7 @@ async def test_ws_connect_close_resp_on_err(
 
 
 async def test_ws_connect_non_overlapped_protocols(
-    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -697,7 +660,7 @@ async def test_ws_connect_non_overlapped_protocols(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             res = await aiohttp.ClientSession().ws_connect(
@@ -708,7 +671,7 @@ async def test_ws_connect_non_overlapped_protocols(
 
 
 async def test_ws_connect_non_overlapped_protocols_2(
-    ws_key: str, loop: asyncio.AbstractEventLoop, key_data: bytes
+    ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -722,7 +685,7 @@ async def test_ws_connect_non_overlapped_protocols_2(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             connector = aiohttp.TCPConnector(force_close=True)
@@ -734,9 +697,7 @@ async def test_ws_connect_non_overlapped_protocols_2(
     del res
 
 
-async def test_ws_connect_deflate(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_deflate(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -749,7 +710,7 @@ async def test_ws_connect_deflate(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             res = await aiohttp.ClientSession().ws_connect(
@@ -760,9 +721,7 @@ async def test_ws_connect_deflate(
     assert res.client_notakeover is False
 
 
-async def test_ws_connect_deflate_per_message(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_deflate_per_message(ws_key: str, key_data: bytes) -> None:
     mresp = mock.Mock()
     mresp.status = 101
     mresp.headers = {
@@ -776,7 +735,7 @@ async def test_ws_connect_deflate_per_message(
         with mock.patch("aiohttp.client.os") as m_os:
             with mock.patch("aiohttp.client.ClientSession.request") as m_req:
                 m_os.urandom.return_value = key_data
-                m_req.return_value = loop.create_future()
+                m_req.return_value = asyncio.get_running_loop().create_future()
                 m_req.return_value.set_result(mresp)
                 writer = WebSocketWriter.return_value = mock.Mock()
                 send_frame = writer.send_frame = mock.AsyncMock()
@@ -806,7 +765,7 @@ async def test_ws_connect_deflate_per_message(
 
 
 async def test_ws_connect_deflate_server_not_support(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
+    ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -819,7 +778,7 @@ async def test_ws_connect_deflate_server_not_support(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             res = await aiohttp.ClientSession().ws_connect(
@@ -830,9 +789,7 @@ async def test_ws_connect_deflate_server_not_support(
     assert res.client_notakeover is False
 
 
-async def test_ws_connect_deflate_notakeover(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_deflate_notakeover(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -846,7 +803,7 @@ async def test_ws_connect_deflate_notakeover(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             res = await aiohttp.ClientSession().ws_connect(
@@ -857,9 +814,7 @@ async def test_ws_connect_deflate_notakeover(
     assert res.client_notakeover is True
 
 
-async def test_ws_connect_deflate_client_wbits(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_deflate_client_wbits(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -873,7 +828,7 @@ async def test_ws_connect_deflate_client_wbits(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             res = await aiohttp.ClientSession().ws_connect(
@@ -885,7 +840,7 @@ async def test_ws_connect_deflate_client_wbits(
 
 
 async def test_ws_connect_deflate_client_wbits_bad(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
+    ws_key: str, key_data: bytes
 ) -> None:
     resp = mock.Mock()
     resp.status = 101
@@ -899,16 +854,14 @@ async def test_ws_connect_deflate_client_wbits_bad(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError):
                 await aiohttp.ClientSession().ws_connect("http://test.org", compress=15)
 
 
-async def test_ws_connect_deflate_server_ext_bad(
-    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_deflate_server_ext_bad(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -920,7 +873,7 @@ async def test_ws_connect_deflate_server_ext_bad(
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
-            m_req.return_value = loop.create_future()
+            m_req.return_value = asyncio.get_running_loop().create_future()
             m_req.return_value.set_result(resp)
 
             with pytest.raises(client.WSServerHandshakeError):

@@ -8,11 +8,11 @@ from unittest import mock
 
 import pytest
 from _pytest.fixtures import SubRequest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
 
 try:
@@ -61,19 +61,21 @@ def hello_txt(
 
 @pytest.fixture
 def loop_with_mocked_native_sendfile(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     def sendfile(transport: object, fobj: object, offset: int, count: int) -> NoReturn:
         if count == 0:
             raise ValueError("count must be a positive integer (got 0)")
         raise NotImplementedError
 
-    with mock.patch.object(loop, "sendfile", sendfile):
-        yield loop
+    with mock.patch.object(event_loop, "sendfile", sendfile):
+        yield event_loop
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
-def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Sender]:
+def sender(
+    request: SubRequest, event_loop: asyncio.AbstractEventLoop
+) -> Iterator[_Sender]:
     sendfile_mock = None
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
@@ -85,7 +87,7 @@ def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Se
 
     if request.param == "no_sendfile":
         with mock.patch.object(
-            loop,
+            event_loop,
             "sendfile",
             autospec=True,
             spec_set=True,

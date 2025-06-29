@@ -5,6 +5,7 @@ import socket
 from typing import Dict, List, NoReturn, Optional, Union
 
 import pytest
+from pytest_aiohttp import AiohttpServer
 
 from aiohttp import (
     ClientError,
@@ -19,7 +20,6 @@ from aiohttp import (
 from aiohttp.abc import ResolveResult
 from aiohttp.client_middlewares import build_client_middlewares
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.resolver import ThreadedResolver
 from aiohttp.tracing import Trace
 

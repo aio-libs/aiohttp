@@ -5,7 +5,7 @@ import socket
 import ssl
 from typing import Dict, List
 
-from aiohttp import ClientSession, TCPConnector, test_utils, web
+from aiohttp import ClientSession, TCPConnector, web
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.resolver import DefaultResolver
 
@@ -60,11 +60,10 @@ class FakeFacebook:
         self.ssl_context.load_cert_chain(str(ssl_cert), str(ssl_key))
 
     async def start(self) -> Dict[str, int]:
-        port = test_utils.unused_port()
         await self.runner.setup()
-        site = web.TCPSite(self.runner, "127.0.0.1", port, ssl_context=self.ssl_context)
+        site = web.TCPSite(self.runner, "127.0.0.1", 0, ssl_context=self.ssl_context)
         await site.start()
-        return {"graph.facebook.com": port}
+        return {"graph.facebook.com": self._server.sockets[0].getsockname()[1]}
 
     async def stop(self) -> None:
         await self.runner.cleanup()
