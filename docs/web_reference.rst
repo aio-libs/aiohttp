@@ -1087,7 +1087,9 @@ and :ref:`aiohttp-web-signals` handlers::
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-      :raise RuntimeError: if connections is not started or closing.
+      :raise RuntimeError: if the connections is not started.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1102,7 +1104,9 @@ and :ref:`aiohttp-web-signals` handlers::
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-      :raise RuntimeError: if connections is not started or closing.
+      :raise RuntimeError: if the connections is not started.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1119,9 +1123,11 @@ and :ref:`aiohttp-web-signals` handlers::
                            single message,
                            ``None`` for not overriding per-socket setting.
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if the connection is not started.
 
       :raise TypeError: if data is not :class:`str`
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1139,10 +1145,12 @@ and :ref:`aiohttp-web-signals` handlers::
                            single message,
                            ``None`` for not overriding per-socket setting.
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if the connection is not started.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1164,11 +1172,13 @@ and :ref:`aiohttp-web-signals` handlers::
                              returns a JSON string
                              (:func:`json.dumps` by default).
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if the connection is not started.
 
       :raise ValueError: if data is not serializable object
 
       :raise TypeError: if value returned by ``dumps`` param is not :class:`str`
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1198,6 +1208,10 @@ and :ref:`aiohttp-web-signals` handlers::
       :param int compress: sets specific level of compression for
                            single message,
                            ``None`` for not overriding per-socket setting.
+
+      :raise RuntimeError: if the connection is not started.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionadded:: 3.11
 
