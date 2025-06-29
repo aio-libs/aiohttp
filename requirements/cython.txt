@@ -6,7 +6,7 @@
 #
 cython==3.1.2
     # via -r requirements/cython.in
-multidict==6.5.1
+multidict==6.6.0
     # via -r requirements/multidict.in
 typing-extensions==4.14.0
     # via multidict
