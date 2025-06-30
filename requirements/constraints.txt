@@ -113,7 +113,7 @@ markupsafe==3.0.2
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.5.1
+multidict==6.6.2
     # via
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
@@ -300,6 +300,10 @@ zlib-ng==0.5.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
+zstandard==0.23.0 ; implementation_name == "cpython"
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.1.1
