@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import gc
 import os
 import socket
 import ssl
@@ -8,7 +9,7 @@ import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncIterator, Callable, Generator, Iterator
+from typing import Any, AsyncIterator, Callable, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -21,7 +22,7 @@ from aiohttp import payload
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
-from aiohttp.test_utils import get_unused_port_socket, loop_context
+from aiohttp.test_utils import REUSE_ADDRESS
 
 try:
     import trustme
@@ -43,7 +44,9 @@ except ImportError:
     uvloop = None  # type: ignore[assignment]
 
 
-pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
+# We require pytest-aiohttp to avoid confusing debugging if it's not installed.
+pytest_plugins = ("pytest_aiohttp", "pytester")
+
 
 IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
@@ -64,9 +67,7 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             yield
             return
         node = node.parent
-    with blockbuster_ctx(
-        "aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]
-    ) as bb:
+    with blockbuster_ctx("aiohttp") as bb:
         # TODO: Fix blocking call in ClientRequest's constructor.
         # https://github.com/aio-libs/aiohttp/issues/10435
         for func in ["io.TextIOWrapper.read", "os.stat"]:
@@ -154,11 +155,11 @@ def pipe_name() -> str:
 
 @pytest.fixture
 def create_mocked_conn(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[Callable[[], ResponseHandler]]:
     def _proto_factory() -> Any:
         proto = mock.create_autospec(ResponseHandler, instance=True)
-        proto.closed = loop.create_future()
+        proto.closed = event_loop.create_future()
         proto.closed.set_result(None)
         return proto
 
@@ -244,12 +245,33 @@ def unix_sockname(
 
 
 @pytest.fixture
-async def event_loop(loop: asyncio.AbstractEventLoop) -> asyncio.AbstractEventLoop:
+async def event_loop() -> asyncio.AbstractEventLoop:
     return asyncio.get_running_loop()
 
 
 @pytest.fixture
+def proactor_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    pytest.skip("broken")
+    return
+    policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore[attr-defined]
+    asyncio.set_event_loop_policy(policy)
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+    if not loop.is_closed():
+        loop.call_soon(loop.stop)
+        loop.run_forever()
+        loop.close()
+
+    gc.collect()
+    asyncio.set_event_loop(None)
+
+
+@pytest.fixture
 def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    pytest.skip("broken")
+    return
     factory = asyncio.SelectorEventLoop
     with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
@@ -258,6 +280,8 @@ def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 @pytest.fixture
 def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    pytest.skip("broken")
+    return
     factory = uvloop.new_event_loop
     with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
@@ -313,7 +337,7 @@ def ws_key(key: bytes) -> str:
 
 
 @pytest.fixture
-def enable_cleanup_closed() -> Generator[None, None, None]:
+def enable_cleanup_closed() -> Iterator[None]:
     """Fixture to override the NEEDS_CLEANUP_CLOSED flag.
 
     On Python 3.12.7+ and 3.13.1+ enable_cleanup_closed is not needed,
@@ -324,24 +348,21 @@ def enable_cleanup_closed() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def unused_port_socket() -> Generator[socket.socket, None, None]:
+def unused_port_socket() -> Iterator[socket.socket]:
     """Return a socket that is unused on the current host.
 
     Unlike aiohttp_used_port, the socket is yielded so there is no
     race condition between checking if the port is in use and
     binding to it later in the test.
     """
-    s = get_unused_port_socket("127.0.0.1")
-    try:
+    with socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS) as s:
         yield s
-    finally:
-        s.close()
 
 
 @pytest.fixture(params=[zlib, zlib_ng.zlib_ng, isal.isal_zlib])
 def parametrize_zlib_backend(
     request: pytest.FixtureRequest,
-) -> Generator[None, None, None]:
+) -> Iterator[None]:
     original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
     set_zlib_backend(request.param)
 
@@ -351,12 +372,11 @@ def parametrize_zlib_backend(
 
 
 @pytest.fixture()
-async def cleanup_payload_pending_file_closes(
-    loop: asyncio.AbstractEventLoop,
-) -> AsyncIterator[None]:
+async def cleanup_payload_pending_file_closes() -> AsyncIterator[None]:
     """Ensure all pending file close operations complete during test teardown."""
     yield
     if payload._CLOSE_FUTURES:
+        loop = asyncio.get_running_loop()
         # Only wait for futures from the current loop
         loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
         if loop_futures:

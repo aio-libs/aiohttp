@@ -1,4 +1,3 @@
-import asyncio
 import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
@@ -1172,17 +1171,13 @@ def test_subapp_rule_resource(app: web.Application) -> None:
         resource.url_for()
 
 
-async def test_add_domain_not_str(
-    app: web.Application, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_add_domain_not_str(app: web.Application) -> None:
     app = web.Application()
     with pytest.raises(TypeError):
         app.add_domain(1, app)  # type: ignore[arg-type]
 
 
-async def test_add_domain(
-    app: web.Application, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_add_domain(app: web.Application) -> None:
     subapp1 = web.Application()
     h1 = make_handler()
     subapp1.router.add_get("/", h1)

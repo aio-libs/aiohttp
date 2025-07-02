@@ -31,6 +31,7 @@ from unittest import mock
 import pytest
 import trustme
 from multidict import MultiDict
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -58,8 +59,7 @@ from aiohttp.payload import (
     StringIOPayload,
     StringPayload,
 )
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.test_utils import TestClient, TestServer, unused_port
+from aiohttp.test_utils import TestClient, TestServer
 from aiohttp.typedefs import Handler, Query
 
 
@@ -3835,7 +3835,7 @@ async def test_dont_close_explicit_connector(aiohttp_client: AiohttpClient) -> N
     assert 1 == len(client.session.connector._conns)
 
 
-async def test_server_close_keepalive_connection() -> None:
+async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
     loop = asyncio.get_event_loop()
 
     class Proto(asyncio.Protocol):
@@ -3860,7 +3860,7 @@ async def test_server_close_keepalive_connection() -> None:
         def connection_lost(self, exc: Optional[BaseException]) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_port())
+    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
 
     addr = server.sockets[0].getsockname()
 
@@ -3876,7 +3876,7 @@ async def test_server_close_keepalive_connection() -> None:
     await server.wait_closed()
 
 
-async def test_handle_keepalive_on_closed_connection() -> None:
+async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> None:
     loop = asyncio.get_event_loop()
 
     class Proto(asyncio.Protocol):
@@ -3895,7 +3895,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
         def connection_lost(self, exc: Optional[BaseException]) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_port())
+    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
 
     addr = server.sockets[0].getsockname()
 

@@ -5,6 +5,7 @@ from typing import List, NoReturn, Optional
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp import (
@@ -19,7 +20,6 @@ from aiohttp._websocket.models import WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -929,10 +929,11 @@ async def test_heartbeat_no_pong_concurrent_receive(
 
 
 async def test_close_websocket_while_ping_inflight(
-    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
+    aiohttp_client: AiohttpClient,
 ) -> None:
     """Test closing the websocket while a ping is in-flight."""
     ping_received = False
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:
         nonlocal ping_received
@@ -1263,9 +1264,7 @@ async def test_websocket_connection_not_closed_properly(
     await resp.close()
 
 
-async def test_websocket_connection_cancellation(
-    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_websocket_connection_cancellation(aiohttp_client: AiohttpClient) -> None:
     """Test canceling the WebSocket connection task does not raise an exception in __del__."""
 
     async def handler(request: web.Request) -> NoReturn:
@@ -1274,6 +1273,7 @@ async def test_websocket_connection_cancellation(
         await ws.close()
         assert False
 
+    loop = asyncio.get_running_loop()
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 

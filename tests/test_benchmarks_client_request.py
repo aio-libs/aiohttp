@@ -16,10 +16,10 @@ from aiohttp.tracing import Trace
 
 
 def test_client_request_update_cookies(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
-    req = ClientRequest("get", url, loop=loop)
+    req = ClientRequest("get", url, loop=event_loop)
     cookie_jar = CookieJar()
     cookie_jar.update_cookies({"string": "Another string"})
     cookies = cookie_jar.filter_cookies(url)
@@ -31,7 +31,7 @@ def test_client_request_update_cookies(
 
 
 def test_create_client_request_with_cookies(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
     cookie_jar = CookieJar()
@@ -47,7 +47,7 @@ def test_create_client_request_with_cookies(
         ClientRequest(
             method="get",
             url=url,
-            loop=loop,
+            loop=event_loop,
             params=None,
             skip_auto_headers=None,
             response_class=ClientResponse,
@@ -72,7 +72,7 @@ def test_create_client_request_with_cookies(
 
 
 def test_create_client_request_with_headers(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
     timer = TimerNoop()
@@ -85,7 +85,7 @@ def test_create_client_request_with_headers(
         ClientRequest(
             method="get",
             url=url,
-            loop=loop,
+            loop=event_loop,
             params=None,
             skip_auto_headers=None,
             response_class=ClientResponse,
@@ -110,10 +110,10 @@ def test_create_client_request_with_headers(
 
 
 def test_send_client_request_one_hundred(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     url = URL("http://python.org")
-    req = ClientRequest("get", url, loop=loop)
+    req = ClientRequest("get", url, loop=event_loop)
 
     class MockTransport(asyncio.Transport):
         """Mock transport for testing that do no real I/O."""
@@ -159,4 +159,4 @@ def test_send_client_request_one_hundred(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(send_requests())
+        event_loop.run_until_complete(send_requests())

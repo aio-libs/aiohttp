@@ -14,9 +14,9 @@ def protocol() -> BaseProtocol:
 
 @pytest.fixture
 def stream(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> streams.StreamReader:
-    return streams.StreamReader(protocol, limit=1, loop=loop)
+    return streams.StreamReader(protocol, limit=1, loop=event_loop)
 
 
 class TestFlowControlStreamReader:

@@ -113,23 +113,23 @@ def build_close_frame(
 
 
 @pytest.fixture()
-def protocol(loop: asyncio.AbstractEventLoop) -> BaseProtocol:
+def protocol(event_loop: asyncio.AbstractEventLoop) -> BaseProtocol:
     transport = mock.Mock(spec_set=asyncio.Transport)
-    protocol = BaseProtocol(loop)
+    protocol = BaseProtocol(event_loop)
     protocol.connection_made(transport)
     return protocol
 
 
 @pytest.fixture()
-def out(loop: asyncio.AbstractEventLoop) -> WebSocketDataQueue:
-    return WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
+def out(event_loop: asyncio.AbstractEventLoop) -> WebSocketDataQueue:
+    return WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=event_loop)
 
 
 @pytest.fixture()
 def out_low_limit(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> WebSocketDataQueue:
-    return WebSocketDataQueue(protocol, 16, loop=loop)
+    return WebSocketDataQueue(protocol, 16, loop=event_loop)
 
 
 @pytest.fixture()
