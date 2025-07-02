@@ -1,5 +1,8 @@
 [build-system]
-requires = ["setuptools >= 67.0"]
+requires = [
+    "pkgconfig",
+    "setuptools >= 67.0",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,7 +15,6 @@ classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Framework :: AsyncIO",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: Apache Software License",
   "Operating System :: POSIX",
   "Operating System :: MacOS :: MacOS X",
   "Operating System :: Microsoft :: Windows",

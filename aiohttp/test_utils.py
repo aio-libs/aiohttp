@@ -3,7 +3,6 @@
 import asyncio
 import contextlib
 import gc
-import inspect
 import ipaddress
 import os
 import socket
@@ -42,7 +41,6 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar, AbstractStreamWriter
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import LooseHeaders, StrOrURL
@@ -157,7 +155,7 @@ class BaseTestServer(ABC, Generic[_Request]):
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod
-    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:  # type: ignore[misc]
+    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:
         """Return a new runner for the server."""
         # TODO(PY311): Use Unpack to specify Server kwargs.
 
@@ -267,7 +265,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
     __test__ = False
 
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self: "TestClient[Request, Application]",
         server: TestServer,
         *,
@@ -275,7 +273,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         **kwargs: Any,
     ) -> None: ...
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self: "TestClient[_Request, None]",
         server: BaseTestServer[_Request],
         *,
@@ -682,10 +680,10 @@ def make_mocked_request(
 
     if writer is None:
         writer = mock.Mock()
-        writer.write_headers = make_mocked_coro(None)
-        writer.write = make_mocked_coro(None)
-        writer.write_eof = make_mocked_coro(None)
-        writer.drain = make_mocked_coro(None)
+        writer.write_headers = mock.AsyncMock(return_value=None)
+        writer.write = mock.AsyncMock(return_value=None)
+        writer.write_eof = mock.AsyncMock(return_value=None)
+        writer.drain = mock.AsyncMock(return_value=None)
         writer.transport = transport
 
     protocol.transport = transport
@@ -701,18 +699,3 @@ def make_mocked_request(
     req._match_info = match_info
 
     return req
-
-
-def make_mocked_coro(
-    return_value: Any = sentinel, raise_exception: Any = sentinel
-) -> Any:
-    """Creates a coroutine mock."""
-
-    async def mock_coro(*args: Any, **kwargs: Any) -> Any:
-        if raise_exception is not sentinel:
-            raise raise_exception
-        if not inspect.isawaitable(return_value):
-            return return_value
-        await return_value
-
-    return mock.Mock(wraps=mock_coro)

@@ -345,8 +345,8 @@ async def test_access_non_existing_resource(
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
-    r = await client.get("/non_existing_resource")
-    assert r.status == 404
+    async with client.get("/non_existing_resource") as r:
+        assert r.status == 404
 
 
 @pytest.mark.parametrize(
@@ -369,8 +369,8 @@ async def test_url_escaping(
     app.router.add_get(registered_path, handler)
     client = await aiohttp_client(app)
 
-    r = await client.get(request_url)
-    assert r.status == 200
+    async with client.get(request_url) as r:
+        assert r.status == 200
 
 
 async def test_handler_metadata_persistence() -> None:
@@ -405,8 +405,8 @@ async def test_static_directory_without_read_permission(
     app.router.add_static("/", str(tmp_path), show_index=True)
     client = await aiohttp_client(app)
 
-    r = await client.get(f"/{my_dir.name}/{file_request}")
-    assert r.status == 403
+    async with client.get(f"/{my_dir.name}/{file_request}") as r:
+        assert r.status == 403
 
 
 @pytest.mark.parametrize("file_request", ["", "my_file.txt"])
@@ -440,10 +440,10 @@ async def test_static_directory_with_mock_permission_error(
     app.router.add_static("/", str(tmp_path), show_index=True)
     client = await aiohttp_client(app)
 
-    r = await client.get("/")
-    assert r.status == 200
-    r = await client.get(f"/{my_dir.name}/{file_request}")
-    assert r.status == 403
+    async with client.get("/") as r:
+        assert r.status == 200
+    async with client.get(f"/{my_dir.name}/{file_request}") as r:
+        assert r.status == 403
 
 
 @pytest.mark.skipif(
@@ -461,8 +461,8 @@ async def test_static_file_without_read_permission(
     app.router.add_static("/", str(tmp_path))
     client = await aiohttp_client(app)
 
-    r = await client.get(f"/{my_file.name}")
-    assert r.status == 403
+    async with client.get(f"/{my_file.name}") as r:
+        assert r.status == 403
 
 
 async def test_static_file_with_mock_permission_error(
@@ -490,10 +490,10 @@ async def test_static_file_with_mock_permission_error(
     client = await aiohttp_client(app)
 
     # Test the mock only applies to my_file, then test the permission error.
-    r = await client.get(f"/{my_readable.name}")
-    assert r.status == 200
-    r = await client.get(f"/{my_file.name}")
-    assert r.status == 403
+    async with client.get(f"/{my_readable.name}") as r:
+        assert r.status == 200
+    async with client.get(f"/{my_file.name}") as r:
+        assert r.status == 403
 
 
 async def test_access_symlink_loop(
@@ -510,8 +510,8 @@ async def test_access_symlink_loop(
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
-    r = await client.get("/" + my_dir_path.name)
-    assert r.status == 404
+    async with client.get("/" + my_dir_path.name) as r:
+        assert r.status == 404
 
 
 async def test_access_compressed_file_as_symlink(
@@ -530,9 +530,8 @@ async def test_access_compressed_file_as_symlink(
     client = await aiohttp_client(app)
 
     # Symlink should be ignored; response reflects missing uncompressed file.
-    resp = await client.get(f"/{gz_link.stem}", auto_decompress=False)
-    assert resp.status == 404
-    resp.release()
+    async with client.get(f"/{gz_link.stem}", auto_decompress=False) as resp:
+        assert resp.status == 404
 
     # Again symlin is ignored, and then uncompressed is served.
     txt_file = gz_link.with_suffix("")
@@ -564,8 +563,8 @@ async def test_access_special_resource(
     app.router.add_static("/", str(tmp_path))
 
     client = await aiohttp_client(app)
-    r = await client.get(f"/{my_special.name}")
-    assert r.status == 403
+    async with client.get(f"/{my_special.name}") as r:
+        assert r.status == 403
     my_socket.close()
 
 
@@ -595,8 +594,8 @@ async def test_access_mock_special_resource(
     app.router.add_static("/", str(tmp_path))
     client = await aiohttp_client(app)
 
-    r = await client.get(f"/{my_special.name}")
-    assert r.status == 403
+    async with client.get(f"/{my_special.name}") as r:
+        assert r.status == 403
 
 
 async def test_partially_applied_handler(aiohttp_client: AiohttpClient) -> None:
@@ -626,8 +625,8 @@ async def test_static_head(
     app.router.add_static("/", str(tmp_path))
     client = await aiohttp_client(app)
 
-    r = await client.head("/test.txt")
-    assert r.status == 200
+    async with client.head("/test.txt") as r:
+        assert r.status == 200
 
     # Check that there is no content sent (see #4809). This can't easily be
     # done with aiohttp_client because the buffering can consume the content.
@@ -665,21 +664,17 @@ async def test_allow_head(aiohttp_client: AiohttpClient) -> None:
     app.router.add_get("/b", handler, allow_head=False, name="b")
     client = await aiohttp_client(app)
 
-    r = await client.get("/a")
-    assert r.status == 200
-    r.release()
+    async with client.get("/a") as r:
+        assert r.status == 200
 
-    r = await client.head("/a")
-    assert r.status == 200
-    r.release()
+    async with client.head("/a") as r:
+        assert r.status == 200
 
-    r = await client.get("/b")
-    assert r.status == 200
-    r.release()
+    async with client.get("/b") as r:
+        assert r.status == 200
 
-    r = await client.head("/b")
-    assert r.status == 405
-    r.release()
+    async with client.head("/b") as r:
+        assert r.status == 405
 
 
 @pytest.mark.parametrize(
@@ -736,17 +731,14 @@ async def test_add_view(aiohttp_client: AiohttpClient) -> None:
 
     client = await aiohttp_client(app)
 
-    r = await client.get("/a")
-    assert r.status == 200
-    r.release()
+    async with client.get("/a") as r:
+        assert r.status == 200
 
-    r = await client.post("/a")
-    assert r.status == 200
-    r.release()
+    async with client.post("/a") as r:
+        assert r.status == 200
 
-    r = await client.put("/a")
-    assert r.status == 405
-    r.release()
+    async with client.put("/a") as r:
+        assert r.status == 405
 
 
 async def test_decorate_view(aiohttp_client: AiohttpClient) -> None:
@@ -765,17 +757,14 @@ async def test_decorate_view(aiohttp_client: AiohttpClient) -> None:
 
     client = await aiohttp_client(app)
 
-    r = await client.get("/a")
-    assert r.status == 200
-    r.release()
+    async with client.get("/a") as r:
+        assert r.status == 200
 
-    r = await client.post("/a")
-    assert r.status == 200
-    r.release()
+    async with client.post("/a") as r:
+        assert r.status == 200
 
-    r = await client.put("/a")
-    assert r.status == 405
-    r.release()
+    async with client.put("/a") as r:
+        assert r.status == 405
 
 
 async def test_web_view(aiohttp_client: AiohttpClient) -> None:
@@ -792,17 +781,14 @@ async def test_web_view(aiohttp_client: AiohttpClient) -> None:
 
     client = await aiohttp_client(app)
 
-    r = await client.get("/a")
-    assert r.status == 200
-    r.release()
+    async with client.get("/a") as r:
+        assert r.status == 200
 
-    r = await client.post("/a")
-    assert r.status == 200
-    r.release()
+    async with client.post("/a") as r:
+        assert r.status == 200
 
-    r = await client.put("/a")
-    assert r.status == 405
-    r.release()
+    async with client.put("/a") as r:
+        assert r.status == 405
 
 
 async def test_static_absolute_url(
@@ -817,8 +803,8 @@ async def test_static_absolute_url(
     here = pathlib.Path(__file__).parent
     app.router.add_static("/static", here)
     client = await aiohttp_client(app)
-    resp = await client.get("/static/" + str(file_path.resolve()))
-    assert resp.status == 403
+    async with client.get("/static/" + str(file_path.resolve())) as resp:
+        assert resp.status == 403
 
 
 async def test_for_issue_5250(
@@ -960,9 +946,8 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
 
     client = await aiohttp_client(app)
 
-    r = await client.get("///a")
-    assert r.status == 200
-    r.release()
+    async with client.get("///a") as r:
+        assert r.status == 200
 
 
 async def test_route_with_regex(aiohttp_client: AiohttpClient) -> None:

@@ -13,6 +13,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Sequence,
     Tuple,
     TypedDict,
     Union,
@@ -21,6 +22,7 @@ from typing import (
 from multidict import CIMultiDict
 from yarl import URL
 
+from ._cookie_helpers import parse_set_cookie_headers
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:
@@ -80,7 +82,7 @@ class AbstractMatchInfo(ABC):
         """HTTPException instance raised on router's resolving, or None"""
 
     @abstractmethod  # pragma: no branch
-    def get_info(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def get_info(self) -> Dict[str, Any]:
         """Return a dict with additional info useful for introspection"""
 
     @property  # pragma: no branch
@@ -188,6 +190,13 @@ class AbstractCookieJar(Sized, IterableBase):
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
 
+    def update_cookies_from_headers(
+        self, headers: Sequence[str], response_url: URL
+    ) -> None:
+        """Update cookies from raw Set-Cookie headers."""
+        if headers and (cookies_to_update := parse_set_cookie_headers(headers)):
+            self.update_cookies(cookies_to_update, response_url)
+
     @abstractmethod
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Return the jar's cookies filtered by their attributes."""
@@ -229,6 +238,13 @@ class AbstractStreamWriter(ABC):
         self, status_line: str, headers: "CIMultiDict[str]"
     ) -> None:
         """Write HTTP headers"""
+
+    def send_headers(self) -> None:
+        """Force sending buffered headers if not already sent.
+
+        Required only if write_headers() buffers headers instead of sending immediately.
+        For backwards compatibility, this method does nothing by default.
+        """
 
 
 class AbstractAccessLogger(ABC):

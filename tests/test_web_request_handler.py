@@ -1,7 +1,6 @@
 from unittest import mock
 
 from aiohttp import web
-from aiohttp.test_utils import make_mocked_coro
 
 
 async def serve(request: web.BaseRequest) -> web.Response:
@@ -37,7 +36,7 @@ async def test_shutdown_no_timeout() -> None:
 
     handler = mock.Mock(spec_set=web.RequestHandler)
     handler._task_handler = None
-    handler.shutdown = make_mocked_coro(mock.Mock())
+    handler.shutdown = mock.AsyncMock(return_value=mock.Mock())
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 
@@ -52,7 +51,7 @@ async def test_shutdown_timeout() -> None:
     manager = web.Server(serve)
 
     handler = mock.Mock()
-    handler.shutdown = make_mocked_coro(mock.Mock())
+    handler.shutdown = mock.AsyncMock(return_value=mock.Mock())
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 

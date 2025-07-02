@@ -12,7 +12,7 @@ from aiohttp import WSMessageTypeError, WSMsgType, web
 from aiohttp.http import WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE
 from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
-from aiohttp.test_utils import make_mocked_coro, make_mocked_request
+from aiohttp.test_utils import make_mocked_request
 from aiohttp.web_ws import WebSocketReady
 
 
@@ -421,9 +421,7 @@ async def test_receive_eofstream_in_reader(
 
     ws._reader = mock.Mock()
     exc = EofStream()
-    res = loop.create_future()
-    res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(side_effect=exc)
     assert ws._payload_writer is not None
     f = loop.create_future()
     f.set_result(True)
@@ -442,9 +440,7 @@ async def test_receive_exception_in_reader(
 
     ws._reader = mock.Mock()
     exc = Exception()
-    res = loop.create_future()
-    res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(side_effect=exc)
 
     f = loop.create_future()
     assert ws._payload_writer is not None
@@ -545,9 +541,7 @@ async def test_receive_timeouterror(
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
     ws._reader = mock.Mock()
-    res = loop.create_future()
-    res.set_exception(asyncio.TimeoutError())
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(side_effect=asyncio.TimeoutError())
 
     with pytest.raises(asyncio.TimeoutError):
         await ws.receive()
@@ -676,4 +670,4 @@ async def test_get_extra_info(
     await ws.prepare(req)
     ws._writer = ws_transport
 
-    assert ws.get_extra_info(valid_key, default_value) == expected_result
+    assert expected_result == ws.get_extra_info(valid_key, default_value)

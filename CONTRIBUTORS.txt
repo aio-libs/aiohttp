@@ -105,6 +105,7 @@ Denilson Amorim
 Denis Matiychuk
 Denis Moshensky
 Dennis Kliban
+Devanshu Koyalkar
 Dima Veselov
 Dimitar Dimitrov
 Diogo Dutra da Mata
@@ -142,6 +143,7 @@ Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
 Gang Ji
+Gary Leung
 Gary Wilson Jr.
 Gennady Andreyev
 Georges Dubus
@@ -193,6 +195,7 @@ Jesus Cea
 Jian Zeng
 Jinkyu Yi
 Joel Watts
+John Feusi
 John Parton
 Jon Nabozny
 Jonas Krüger Svensson
@@ -215,6 +218,7 @@ Justin Foo
 Justin Turner Arthur
 Kay Zheng
 Kevin Samuel
+Kilian Guillaume
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
@@ -293,6 +297,7 @@ Pavol Vargovčík
 Pawel Kowalski
 Pawel Miech
 Pepe Osca
+Phebe Polk
 Philipp A.
 Pierre-Louis Peeters
 Pieter van Beek
@@ -366,6 +371,7 @@ Vincent Maillol
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
+Vizonex
 Vladimir Kamarzin
 Vladimir Kozlovski
 Vladimir Rutsky
@@ -373,6 +379,7 @@ Vladimir Shulyak
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar
+Vojtěch Boček
 W. Trevor King
 Wei Lin
 Weiwei Wang
