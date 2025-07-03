@@ -1,0 +1,2 @@
+Clarified exceptions raised by ``WebSocketResponse.send_frame`` at al.
+-- by :user:`DoctorJohn`.
