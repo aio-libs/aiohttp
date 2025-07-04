@@ -1535,7 +1535,7 @@ async def test_parse_chunked_payload_split_chunks(response: HttpResponseParser) 
 
 
 async def test_parse_chunked_payload_with_lf_in_extensions(
-    parser: HttpRequestParser
+    parser: HttpRequestParser,
 ) -> None:
     """Test chunked payload that has a LF in the chunk extensions."""
     payload = (
