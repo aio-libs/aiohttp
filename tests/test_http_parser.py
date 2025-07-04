@@ -1812,7 +1812,9 @@ class TestParsePayload:
 
         length = len(COMPRESSED)
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        p = HttpPayloadParser(out, length=length, compression="deflate", headers_parser=HeadersParser())
+        p = HttpPayloadParser(
+            out, length=length, compression="deflate", headers_parser=HeadersParser()
+        )
         p.feed_data(COMPRESSED)
         assert b"data" == out._buffer[0]
         assert out.is_eof()
@@ -1826,7 +1828,9 @@ class TestParsePayload:
 
         length = len(COMPRESSED)
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        p = HttpPayloadParser(out, length=length, compression="deflate", headers_parser=HeadersParser())
+        p = HttpPayloadParser(
+            out, length=length, compression="deflate", headers_parser=HeadersParser()
+        )
         p.feed_data(COMPRESSED)
         assert b"data" == out._buffer[0]
         assert out.is_eof()
@@ -1839,7 +1843,9 @@ class TestParsePayload:
 
         length = len(COMPRESSED)
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        p = HttpPayloadParser(out, length=length, compression="deflate", headers_parser=HeadersParser())
+        p = HttpPayloadParser(
+            out, length=length, compression="deflate", headers_parser=HeadersParser()
+        )
         p.feed_data(COMPRESSED)
 
         assert b"data" == out._buffer[0]
@@ -1849,7 +1855,9 @@ class TestParsePayload:
         self, protocol: BaseProtocol
     ) -> None:
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        p = HttpPayloadParser(out, compression="deflate", headers_parser=HeadersParser())
+        p = HttpPayloadParser(
+            out, compression="deflate", headers_parser=HeadersParser()
+        )
         # Feeding one correct byte should be enough to choose exact
         # deflate decompressor
         p.feed_data(b"x")
@@ -1861,7 +1869,9 @@ class TestParsePayload:
         self, protocol: BaseProtocol
     ) -> None:
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        p = HttpPayloadParser(out, compression="deflate", headers_parser=HeadersParser())
+        p = HttpPayloadParser(
+            out, compression="deflate", headers_parser=HeadersParser()
+        )
         # Feeding one wrong byte should be enough to choose exact
         # deflate decompressor
         p.feed_data(b"K")
@@ -1881,7 +1891,12 @@ class TestParsePayload:
     async def test_http_payload_brotli(self, protocol: BaseProtocol) -> None:
         compressed = brotli.compress(b"brotli data")
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        p = HttpPayloadParser(out, length=len(compressed), compression="br", headers_parser=HeadersParser())
+        p = HttpPayloadParser(
+            out,
+            length=len(compressed),
+            compression="br",
+            headers_parser=HeadersParser(),
+        )
         p.feed_data(compressed)
         assert b"brotli data" == out._buffer[0]
         assert out.is_eof()
@@ -1890,7 +1905,12 @@ class TestParsePayload:
     async def test_http_payload_zstandard(self, protocol: BaseProtocol) -> None:
         compressed = zstandard.compress(b"zstd data")
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        p = HttpPayloadParser(out, length=len(compressed), compression="zstd", headers_parser=HeadersParser())
+        p = HttpPayloadParser(
+            out,
+            length=len(compressed),
+            compression="zstd",
+            headers_parser=HeadersParser(),
+        )
         p.feed_data(compressed)
         assert b"zstd data" == out._buffer[0]
         assert out.is_eof()

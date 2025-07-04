@@ -913,7 +913,9 @@ class HttpPayloadParser:
                         # Headers and trailers are defined the same way,
                         # so we reuse the HeadersParser here.
                         try:
-                            trailers, raw_trailers = self._headers_parser.parse_headers(self._trailer_lines)
+                            trailers, raw_trailers = self._headers_parser.parse_headers(
+                                self._trailer_lines
+                            )
                         finally:
                             self._trailer_lines.clear()
                         self.payload.feed_eof()
