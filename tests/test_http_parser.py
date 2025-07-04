@@ -1367,10 +1367,11 @@ async def test_request_chunked_with_trailer(parser: HttpRequestParser) -> None:
 
 async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n0\r\nbad\ntrailer\r\n\r\n"
-    messages, upgraded, tail = parser.feed_data(text)
-    assert not tail
-    msg, payload = messages[0]
+    # This raises on feed_data() or .read() depending on parser used.
     with pytest.raises(http_exceptions.BadHttpMessage, match=r"b'bad\\ntrailer'"):
+        messages, upgraded, tail = parser.feed_data(text)
+        assert not tail
+        msg, payload = messages[0]
         await payload.read()
 
 
