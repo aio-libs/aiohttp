@@ -1,0 +1,2 @@
+Updated `_TracingSignal` to utilize a secondary generic variable for typehinting custom context variables.
+-- by :user:`Vizonex`.

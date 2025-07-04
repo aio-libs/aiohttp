@@ -75,7 +75,7 @@ class TraceConfig(Generic[_T]):
             _T, TraceConnectionQueuedEndParams
         ] = Signal(self)
         self._on_connection_create_start: _TracingSignal[
-            TraceConnectionCreateStartParams
+            _T, TraceConnectionCreateStartParams
         ] = Signal(self)
         self._on_connection_create_end: _TracingSignal[
             _T, TraceConnectionCreateEndParams
