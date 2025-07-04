@@ -1370,7 +1370,7 @@ async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> 
     messages, upgraded, tail = parser.feed_data(text)
     assert not tail
     msg, payload = messages[0]
-    with pytest.raises(http_exceptions.InvalidHeader, match=r"b'bad\\ntrailer'"):
+    with pytest.raises(http_exceptions.BadHttpMessage, match=r"b'bad\\ntrailer'"):
         await payload.read()
 
 
