@@ -33,6 +33,10 @@ class TestTraceConfig:
     def test_trace_config_ctx_default(self) -> None:
         trace_config = TraceConfig()
         assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
+        assert_type(
+            trace_config.on_request_chunk_sent,
+            Signal[ClientSession, SimpleNamespace, TraceRequestChunkSentParams]
+        )
 
     def test_trace_config_ctx_factory(self) -> None:
         trace_config = TraceConfig(trace_config_ctx_factory=dict)
