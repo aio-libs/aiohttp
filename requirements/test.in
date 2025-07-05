@@ -15,6 +15,5 @@ pytest_codspeed
 python-on-whales
 setuptools-git
 trustme; platform_machine != "i686"  # no 32-bit wheels
-typing-extensions
 wait-for-it
 zlib_ng
