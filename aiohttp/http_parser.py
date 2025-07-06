@@ -470,7 +470,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                     eof = True
                     data = b""
-                    if isinstance(underlying_exc, BadHttpMessage):
+                    if isinstance(underlying_exc, (InvalidHeader, TransferEncodingError)):
                         raise
 
                 if eof:
@@ -843,7 +843,7 @@ class HttpPayloadParser:
                             size_b = chunk[:i]  # strip chunk-extensions
                             # Verify no LF in the chunk-extension
                             if b"\n" in (ext := chunk[i:pos]):
-                                exc = BadHttpMessage(
+                                exc = TransferEncodingError(
                                     f"Unexpected LF in chunk-extension: {ext!r}"
                                 )
                                 set_exception(self.payload, exc)
