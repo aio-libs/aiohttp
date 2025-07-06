@@ -470,7 +470,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                     eof = True
                     data = b""
-                    if isinstance(underlying_exc, (InvalidHeader, TransferEncodingError)):
+                    if isinstance(
+                        underlying_exc, (InvalidHeader, TransferEncodingError)
+                    ):
                         raise
 
                 if eof:
