@@ -1179,7 +1179,7 @@ async def test_http_response_parser_bad_chunked_strict_py(
         b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
     )
     with pytest.raises(http_exceptions.TransferEncodingError, match="5"):
-        messages, upgrade, tail = response.feed_data(text)
+        response.feed_data(text)
 
 
 @pytest.mark.dev_mode
