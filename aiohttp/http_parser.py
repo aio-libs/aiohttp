@@ -142,8 +142,8 @@ class HeadersParser:
         # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
 
-        lines_idx = 1
-        line = lines[1]
+        lines_idx = 0
+        line = lines[lines_idx]
         line_count = len(lines)
 
         while line:
@@ -634,7 +634,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             compression,
             upgrade,
             chunked,
-        ) = self.parse_headers(lines)
+        ) = self.parse_headers(lines[1:])
 
         if close is None:  # then the headers weren't set in the request
             if version_o <= HttpVersion10:  # HTTP 1.0 must asks to not close
@@ -720,7 +720,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
             compression,
             upgrade,
             chunked,
-        ) = self.parse_headers(lines)
+        ) = self.parse_headers(lines[1:])
 
         if close is None:
             if version_o <= HttpVersion10:
@@ -774,8 +774,7 @@ class HttpPayloadParser:
         self._auto_decompress = auto_decompress
         self._lax = lax
         self._headers_parser = headers_parser
-        # HeadersParser expects status/request line first, so skips the first line.
-        self._trailer_lines: list[bytes] = [b""]
+        self._trailer_lines: list[bytes] = []
         self.done = False
 
         # payload decompression wrapper
