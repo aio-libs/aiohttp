@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Awaitable, Mapping, Optional, Protocol, Type, TypeVar
+from typing import TYPE_CHECKING, Mapping, Optional, Type, TypeVar
 
 import attr
 from aiosignal import Signal
@@ -12,14 +12,7 @@ if TYPE_CHECKING:
     from .client import ClientSession
 
     _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
-
-    class _SignalCallback(Protocol[_ParamT_contra]):
-        def __call__(
-            self,
-            __client_session: ClientSession,
-            __trace_config_ctx: SimpleNamespace,
-            __params: _ParamT_contra,
-        ) -> Awaitable[None]: ...
+    _TracingSignal = Signal[ClientSession, SimpleNamespace, _ParamT_contra]
 
 
 __all__ = (
@@ -49,54 +42,46 @@ class TraceConfig:
     def __init__(
         self, trace_config_ctx_factory: Type[SimpleNamespace] = SimpleNamespace
     ) -> None:
-        self._on_request_start: Signal[_SignalCallback[TraceRequestStartParams]] = (
+        self._on_request_start: _TracingSignal[TraceRequestStartParams] = Signal(self)
+        self._on_request_chunk_sent: _TracingSignal[TraceRequestChunkSentParams] = (
             Signal(self)
         )
-        self._on_request_chunk_sent: Signal[
-            _SignalCallback[TraceRequestChunkSentParams]
+        self._on_response_chunk_received: _TracingSignal[
+            TraceResponseChunkReceivedParams
         ] = Signal(self)
-        self._on_response_chunk_received: Signal[
-            _SignalCallback[TraceResponseChunkReceivedParams]
-        ] = Signal(self)
-        self._on_request_end: Signal[_SignalCallback[TraceRequestEndParams]] = Signal(
+        self._on_request_end: _TracingSignal[TraceRequestEndParams] = Signal(self)
+        self._on_request_exception: _TracingSignal[TraceRequestExceptionParams] = (
+            Signal(self)
+        )
+        self._on_request_redirect: _TracingSignal[TraceRequestRedirectParams] = Signal(
             self
         )
-        self._on_request_exception: Signal[
-            _SignalCallback[TraceRequestExceptionParams]
+        self._on_connection_queued_start: _TracingSignal[
+            TraceConnectionQueuedStartParams
         ] = Signal(self)
-        self._on_request_redirect: Signal[
-            _SignalCallback[TraceRequestRedirectParams]
+        self._on_connection_queued_end: _TracingSignal[
+            TraceConnectionQueuedEndParams
         ] = Signal(self)
-        self._on_connection_queued_start: Signal[
-            _SignalCallback[TraceConnectionQueuedStartParams]
+        self._on_connection_create_start: _TracingSignal[
+            TraceConnectionCreateStartParams
         ] = Signal(self)
-        self._on_connection_queued_end: Signal[
-            _SignalCallback[TraceConnectionQueuedEndParams]
+        self._on_connection_create_end: _TracingSignal[
+            TraceConnectionCreateEndParams
         ] = Signal(self)
-        self._on_connection_create_start: Signal[
-            _SignalCallback[TraceConnectionCreateStartParams]
+        self._on_connection_reuseconn: _TracingSignal[
+            TraceConnectionReuseconnParams
         ] = Signal(self)
-        self._on_connection_create_end: Signal[
-            _SignalCallback[TraceConnectionCreateEndParams]
+        self._on_dns_resolvehost_start: _TracingSignal[
+            TraceDnsResolveHostStartParams
         ] = Signal(self)
-        self._on_connection_reuseconn: Signal[
-            _SignalCallback[TraceConnectionReuseconnParams]
-        ] = Signal(self)
-        self._on_dns_resolvehost_start: Signal[
-            _SignalCallback[TraceDnsResolveHostStartParams]
-        ] = Signal(self)
-        self._on_dns_resolvehost_end: Signal[
-            _SignalCallback[TraceDnsResolveHostEndParams]
-        ] = Signal(self)
-        self._on_dns_cache_hit: Signal[_SignalCallback[TraceDnsCacheHitParams]] = (
+        self._on_dns_resolvehost_end: _TracingSignal[TraceDnsResolveHostEndParams] = (
             Signal(self)
         )
-        self._on_dns_cache_miss: Signal[_SignalCallback[TraceDnsCacheMissParams]] = (
+        self._on_dns_cache_hit: _TracingSignal[TraceDnsCacheHitParams] = Signal(self)
+        self._on_dns_cache_miss: _TracingSignal[TraceDnsCacheMissParams] = Signal(self)
+        self._on_request_headers_sent: _TracingSignal[TraceRequestHeadersSentParams] = (
             Signal(self)
         )
-        self._on_request_headers_sent: Signal[
-            _SignalCallback[TraceRequestHeadersSentParams]
-        ] = Signal(self)
 
         self._trace_config_ctx_factory = trace_config_ctx_factory
 
@@ -125,91 +110,91 @@ class TraceConfig:
         self._on_request_headers_sent.freeze()
 
     @property
-    def on_request_start(self) -> "Signal[_SignalCallback[TraceRequestStartParams]]":
+    def on_request_start(self) -> "_TracingSignal[TraceRequestStartParams]":
         return self._on_request_start
 
     @property
     def on_request_chunk_sent(
         self,
-    ) -> "Signal[_SignalCallback[TraceRequestChunkSentParams]]":
+    ) -> "_TracingSignal[TraceRequestChunkSentParams]":
         return self._on_request_chunk_sent
 
     @property
     def on_response_chunk_received(
         self,
-    ) -> "Signal[_SignalCallback[TraceResponseChunkReceivedParams]]":
+    ) -> "_TracingSignal[TraceResponseChunkReceivedParams]":
         return self._on_response_chunk_received
 
     @property
-    def on_request_end(self) -> "Signal[_SignalCallback[TraceRequestEndParams]]":
+    def on_request_end(self) -> "_TracingSignal[TraceRequestEndParams]":
         return self._on_request_end
 
     @property
     def on_request_exception(
         self,
-    ) -> "Signal[_SignalCallback[TraceRequestExceptionParams]]":
+    ) -> "_TracingSignal[TraceRequestExceptionParams]":
         return self._on_request_exception
 
     @property
     def on_request_redirect(
         self,
-    ) -> "Signal[_SignalCallback[TraceRequestRedirectParams]]":
+    ) -> "_TracingSignal[TraceRequestRedirectParams]":
         return self._on_request_redirect
 
     @property
     def on_connection_queued_start(
         self,
-    ) -> "Signal[_SignalCallback[TraceConnectionQueuedStartParams]]":
+    ) -> "_TracingSignal[TraceConnectionQueuedStartParams]":
         return self._on_connection_queued_start
 
     @property
     def on_connection_queued_end(
         self,
-    ) -> "Signal[_SignalCallback[TraceConnectionQueuedEndParams]]":
+    ) -> "_TracingSignal[TraceConnectionQueuedEndParams]":
         return self._on_connection_queued_end
 
     @property
     def on_connection_create_start(
         self,
-    ) -> "Signal[_SignalCallback[TraceConnectionCreateStartParams]]":
+    ) -> "_TracingSignal[TraceConnectionCreateStartParams]":
         return self._on_connection_create_start
 
     @property
     def on_connection_create_end(
         self,
-    ) -> "Signal[_SignalCallback[TraceConnectionCreateEndParams]]":
+    ) -> "_TracingSignal[TraceConnectionCreateEndParams]":
         return self._on_connection_create_end
 
     @property
     def on_connection_reuseconn(
         self,
-    ) -> "Signal[_SignalCallback[TraceConnectionReuseconnParams]]":
+    ) -> "_TracingSignal[TraceConnectionReuseconnParams]":
         return self._on_connection_reuseconn
 
     @property
     def on_dns_resolvehost_start(
         self,
-    ) -> "Signal[_SignalCallback[TraceDnsResolveHostStartParams]]":
+    ) -> "_TracingSignal[TraceDnsResolveHostStartParams]":
         return self._on_dns_resolvehost_start
 
     @property
     def on_dns_resolvehost_end(
         self,
-    ) -> "Signal[_SignalCallback[TraceDnsResolveHostEndParams]]":
+    ) -> "_TracingSignal[TraceDnsResolveHostEndParams]":
         return self._on_dns_resolvehost_end
 
     @property
-    def on_dns_cache_hit(self) -> "Signal[_SignalCallback[TraceDnsCacheHitParams]]":
+    def on_dns_cache_hit(self) -> "_TracingSignal[TraceDnsCacheHitParams]":
         return self._on_dns_cache_hit
 
     @property
-    def on_dns_cache_miss(self) -> "Signal[_SignalCallback[TraceDnsCacheMissParams]]":
+    def on_dns_cache_miss(self) -> "_TracingSignal[TraceDnsCacheMissParams]":
         return self._on_dns_cache_miss
 
     @property
     def on_request_headers_sent(
         self,
-    ) -> "Signal[_SignalCallback[TraceRequestHeadersSentParams]]":
+    ) -> "_TracingSignal[TraceRequestHeadersSentParams]":
         return self._on_request_headers_sent
 
 
