@@ -202,6 +202,14 @@ class Connection:
         return self._protocol is None or not self._protocol.is_connected()
 
 
+class _ConnectTunnelConnection(Connection):
+    """Special connection for CONNECT tunnels that doesn't pool on release."""
+
+    def release(self) -> None:
+        """Do nothing - don't pool or close the connection."""
+        # The connection will be used for TLS upgrade and cleaned up later
+
+
 class _TransportPlaceholder:
     """placeholder for BaseConnector.connect function"""
 
@@ -1496,7 +1504,7 @@ class TCPConnector(BaseConnector):
             key = req.connection_key._replace(
                 proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
-            conn = Connection(self, key, proto, self._loop)
+            conn = _ConnectTunnelConnection(self, key, proto, self._loop)
             proxy_resp = await proxy_req.send(conn)
             try:
                 protocol = conn._protocol
