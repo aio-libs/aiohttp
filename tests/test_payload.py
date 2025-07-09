@@ -1351,6 +1351,9 @@ async def test_iobase_payload_size_unseekable() -> None:
     # Size should return None for unseekable files
     assert p.size is None
 
+    # Payload should not be consumed before writing
+    assert p.consumed is False
+
     # Writing should still work
     writer = BufferWriter()
     await p.write(writer)
