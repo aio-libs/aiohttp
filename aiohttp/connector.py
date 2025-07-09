@@ -229,6 +229,26 @@ class Connection:
         return self._protocol is None or not self._protocol.is_connected()
 
 
+class _ConnectTunnelConnection(Connection):
+    """Special connection wrapper for CONNECT tunnels that must never be pooled.
+
+    This connection wraps the proxy connection that will be upgraded with TLS.
+    It must never be released to the pool because:
+    1. Its 'closed' future will never complete, causing session.close() to hang
+    2. It represents an intermediate state, not a reusable connection
+    3. The real connection (with TLS) will be created separately
+    """
+
+    def release(self) -> None:
+        """Do nothing - don't pool or close the connection.
+
+        These connections are an intermediate state during the CONNECT tunnel
+        setup and will be cleaned up naturally after the TLS upgrade. If they
+        were to be pooled, they would never be properly closed, causing
+        session.close() to wait forever for their 'closed' future.
+        """
+
+
 class _TransportPlaceholder:
     """placeholder for BaseConnector.connect function"""
 
@@ -1612,7 +1632,7 @@ class TCPConnector(BaseConnector):
             key = req.connection_key._replace(
                 proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
-            conn = Connection(self, key, proto, self._loop)
+            conn = _ConnectTunnelConnection(self, key, proto, self._loop)
             proxy_resp = await proxy_req.send(conn)
             try:
                 protocol = conn._protocol
