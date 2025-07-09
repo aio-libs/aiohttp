@@ -5420,3 +5420,98 @@ async def test_file_upload_307_redirect(
             assert received_bodies[1] == content  # After redirect
     finally:
         await asyncio.to_thread(f.close)
+
+
+async def test_file_upload_307_302_redirect_chain(
+    aiohttp_client: Any, tmp_path: pathlib.Path
+) -> None:
+    """Test that file uploads work correctly with 307->302->200 redirect chain.
+
+    This verifies that:
+    1. 307 preserves POST method and file body
+    2. 302 changes POST to GET and drops the body
+    3. No body leaks to the final GET request
+    """
+    received_requests: List[Dict[str, Any]] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        # Store request details
+        body = await request.read()
+        received_requests.append(
+            {
+                "path": str(request.url.path),
+                "method": request.method,
+                "body_size": len(body),
+                "content_length": request.headers.get("Content-Length"),
+            }
+        )
+
+        if request.url.path == "/upload307":
+            # First redirect: 307 should preserve method and body
+            return web.Response(status=307, headers={"Location": "/upload302"})
+        elif request.url.path == "/upload302":
+            # Second redirect: 302 should change POST to GET
+            return web.Response(status=302, headers={"Location": "/final"})
+        else:
+            # Final destination
+            return web.json_response(
+                {
+                    "final_method": request.method,
+                    "final_body_size": len(body),
+                    "requests_received": len(received_requests),
+                }
+            )
+
+    app = web.Application()
+    app.router.add_route("*", "/upload307", handler)
+    app.router.add_route("*", "/upload302", handler)
+    app.router.add_route("*", "/final", handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a test file
+    test_file = tmp_path / "test_redirect_chain.txt"
+    content = b"Test file content that should not leak to GET request"
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Upload file to URL that triggers 307->302->final redirect chain
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.post("/upload307", data=f) as resp:
+            assert resp.status == 200
+            result = await resp.json()
+
+            # Verify the redirect chain
+            assert len(resp.history) == 2
+            assert resp.history[0].status == 307
+            assert resp.history[1].status == 302
+
+            # Verify final request is GET with no body
+            assert result["final_method"] == "GET"
+            assert result["final_body_size"] == 0
+            assert result["requests_received"] == 3
+
+            # Verify the request sequence
+            assert len(received_requests) == 3
+
+            # First request (307): POST with full body
+            assert received_requests[0]["path"] == "/upload307"
+            assert received_requests[0]["method"] == "POST"
+            assert received_requests[0]["body_size"] == expected_size
+            assert received_requests[0]["content_length"] == str(expected_size)
+
+            # Second request (302): POST with preserved body from 307
+            assert received_requests[1]["path"] == "/upload302"
+            assert received_requests[1]["method"] == "POST"
+            assert received_requests[1]["body_size"] == expected_size
+            assert received_requests[1]["content_length"] == str(expected_size)
+
+            # Third request (final): GET with no body (302 changed method and dropped body)
+            assert received_requests[2]["path"] == "/final"
+            assert received_requests[2]["method"] == "GET"
+            assert received_requests[2]["body_size"] == 0
+            assert received_requests[2]["content_length"] is None
+
+    finally:
+        await asyncio.to_thread(f.close)
