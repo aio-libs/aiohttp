@@ -4461,9 +4461,11 @@ async def test_connect_tunnel_connection_release(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test _ConnectTunnelConnection.release() does not pool the connection."""
-    connector = mock.Mock()
-    key = mock.Mock()
-    protocol = mock.Mock()
+    connector = mock.create_autospec(
+        aiohttp.BaseConnector, spec_set=True, instance=True
+    )
+    key = mock.create_autospec(ConnectionKey, spec_set=True, instance=True)
+    protocol = mock.create_autospec(ResponseHandler, spec_set=True, instance=True)
 
     # Create a connect tunnel connection
     conn = _ConnectTunnelConnection(connector, key, protocol, loop)
