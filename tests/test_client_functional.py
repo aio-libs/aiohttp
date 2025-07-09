@@ -5359,9 +5359,9 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
         ), "All raw headers should be preserved"
 
 
-@pytest.mark.parametrize("status", [307, 308])
+@pytest.mark.parametrize("status", (307, 308))
 async def test_file_upload_307_308_redirect(
-    aiohttp_client: Any, tmp_path: pathlib.Path, status: int
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path, status: int
 ) -> None:
     """Test that file uploads work correctly with 307/308 redirects.
 
@@ -5426,7 +5426,7 @@ async def test_file_upload_307_308_redirect(
 @pytest.mark.parametrize("status", [301, 302])
 @pytest.mark.parametrize("method", ["PUT", "PATCH", "DELETE"])
 async def test_file_upload_301_302_redirect_non_post(
-    aiohttp_client: Any, tmp_path: pathlib.Path, status: int, method: str
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path, status: int, method: str
 ) -> None:
     """Test that file uploads work correctly with 301/302 redirects for non-POST methods.
 
@@ -5490,7 +5490,7 @@ async def test_file_upload_301_302_redirect_non_post(
 
 
 async def test_file_upload_307_302_redirect_chain(
-    aiohttp_client: Any, tmp_path: pathlib.Path
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
 ) -> None:
     """Test that file uploads work correctly with 307->302->200 redirect chain.
 
