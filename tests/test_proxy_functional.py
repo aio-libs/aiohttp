@@ -18,6 +18,7 @@ import aiohttp
 from aiohttp import ClientResponse, web
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS
+from aiohttp.pytest_plugin import AiohttpServer
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
