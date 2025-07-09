@@ -550,12 +550,12 @@ class IOBasePayload(Payload):
         """
         try:
             # Store the start position on first access.
-            # This is critical for 307/308 redirects where the same payload instance
-            # is reused. Without storing the initial position, after the first request
-            # reads the file, the file position would be at EOF, which would cause the
+            # This is critical when the same payload instance is reused (e.g., 307/308
+            # redirects). Without storing the initial position, after the payload is
+            # read once, the file position would be at EOF, which would cause the
             # size calculation to return 0 (file_size - EOF position).
             # By storing the start position, we ensure the size calculation always
-            # returns the correct total size for subsequent redirect requests.
+            # returns the correct total size for any subsequent use.
             if self._start_position is None:
                 try:
                     self._start_position = self._value.tell()
