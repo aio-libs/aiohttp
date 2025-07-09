@@ -542,7 +542,14 @@ class IOBasePayload(Payload):
         """
         Size of the payload in bytes.
 
-        Returns the total size of the payload content.
+        This is the remaining size of the file-like object that can be read.
+
+        This property stores the start position on first access
+        to ensure that subsequent calls to size return the correct
+        number of bytes remaining to be read, even after some data has been consumed.
+
+        Returns the number of bytes remaining to be read from the file.
+
         Returns None if the size cannot be determined (e.g., for unseekable streams).
         """
         try:
