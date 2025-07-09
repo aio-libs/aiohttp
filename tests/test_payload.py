@@ -1356,5 +1356,6 @@ async def test_iobase_payload_size_unseekable() -> None:
     await p.write(writer)
     assert writer.buffer == content
 
-    # After reading, the payload should be marked as consumed
+    # For unseekable files that can't tell() or seek(),
+    # they are marked as consumed after the first write
     assert p.consumed is True

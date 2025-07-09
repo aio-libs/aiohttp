@@ -484,10 +484,14 @@ class IOBasePayload(Payload):
         if self._start_position is None:
             try:
                 self._start_position = self._value.tell()
-            except OSError:
+            except (OSError, AttributeError):
                 self._consumed = True  # Cannot seek, mark as consumed
             return
-        self._value.seek(self._start_position)
+        try:
+            self._value.seek(self._start_position)
+        except (OSError, AttributeError):
+            # Failed to seek back - mark as consumed since we've already read
+            self._consumed = True
 
     def _read_and_available_len(
         self, remaining_content_len: Optional[int]
@@ -538,19 +542,20 @@ class IOBasePayload(Payload):
         """
         Size of the payload in bytes.
 
-        Returns the number of bytes remaining to be read from the file.
+        Returns the total size of the payload content.
         Returns None if the size cannot be determined (e.g., for unseekable streams).
         """
         try:
-            # Reset file position to the start position before calculating size.
-            # This is critical for 307/308 redirects where the same payload instance
-            # is reused. After the first request reads the file, the position is at EOF,
-            # causing size calculation to return 0 (file_size - EOF position).
-            # By resetting to the start position first, we ensure the size calculation
-            # returns the correct total size for the subsequent redirect request.
-            self._set_or_restore_start_position()
+            # Store the start position on first access
             if self._start_position is None:
-                return None
+                try:
+                    self._start_position = self._value.tell()
+                except (OSError, AttributeError):
+                    # Can't get position, can't determine size
+                    return None
+
+            # Return the total size from the start position
+            # This ensures Content-Length is correct even after reading
             return os.fstat(self._value.fileno()).st_size - self._start_position
         except (AttributeError, OSError):
             return None
