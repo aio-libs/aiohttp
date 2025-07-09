@@ -1326,23 +1326,13 @@ async def test_iobase_payload_size_unseekable() -> None:
             self.content = content
             self.pos = 0
 
-        def read(self, size: int = -1) -> bytes:
-            if size == -1:
-                result = self.content[self.pos :]
-                self.pos = len(self.content)
-            else:
-                result = self.content[self.pos : self.pos + size]
-                self.pos += len(result)
+        def read(self, size: int) -> bytes:
+            result = self.content[self.pos : self.pos + size]
+            self.pos += len(result)
             return result
 
         def tell(self) -> int:
             raise OSError("Unseekable file")
-
-        def seek(self, offset: int, whence: int = 0) -> int:
-            raise OSError("Unseekable file")
-
-        def fileno(self) -> int:
-            raise AttributeError("No file descriptor")
 
     content = b"Unseekable content"
     f = UnseekableFile(content)
