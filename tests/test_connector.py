@@ -47,6 +47,7 @@ from aiohttp.connector import (
     AddrInfoType,
     Connection,
     TCPConnector,
+    _ConnectTunnelConnection,
     _DNSCacheTable,
 )
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
@@ -4460,8 +4461,6 @@ async def test_connect_tunnel_connection_release(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test _ConnectTunnelConnection.release() does not pool the connection."""
-    from aiohttp.connector import _ConnectTunnelConnection
-
     connector = mock.Mock()
     key = mock.Mock()
     protocol = mock.Mock()
