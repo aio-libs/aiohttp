@@ -982,15 +982,9 @@ async def test_https_proxy_connect_tunnel_session_close_no_hang(
     """Test that CONNECT tunnel connections are not pooled."""
     # Regression test for issue #11273.
 
-    # Create a simple proxy server that responds to CONNECT
-    async def proxy_handler(request: web.Request) -> web.Response:
-        if request.method == "CONNECT":
-            # Return 200 OK for CONNECT
-            return web.Response(status=200)
-        return web.Response(text="proxy response")
-
+    # Create a minimal proxy server
+    # The CONNECT method is handled at the protocol level, not by the handler
     proxy_app = web.Application()
-    proxy_app.router.add_route("*", "/{path:.*}", proxy_handler)
     proxy_server = await aiohttp_server(proxy_app)
     proxy_url = f"http://{proxy_server.host}:{proxy_server.port}"
 
