@@ -539,21 +539,21 @@ class IOBasePayload(Payload):
 
     @property
     def size(self) -> Optional[int]:
-        """
-        Size of the payload in bytes.
+        """Size of the payload in bytes.
 
-        This is the remaining size of the file-like object that can be read.
-
-        This property stores the start position on first access
-        to ensure that subsequent calls to size return the correct
-        number of bytes remaining to be read, even after some data has been consumed.
-
-        Returns the number of bytes remaining to be read from the file.
+        Returns the total size of the payload content from the initial position.
+        This ensures consistent Content-Length for requests, including 307/308 redirects
+        where the same payload instance is reused.
 
         Returns None if the size cannot be determined (e.g., for unseekable streams).
         """
         try:
-            # Store the start position on first access
+            # Store the start position on first access.
+            # This is critical for 307/308 redirects where the same payload instance
+            # is reused. After the first request reads the file, the position is at EOF,
+            # causing size calculation to return 0 (file_size - EOF position).
+            # By storing the start position on first access, we ensure the size calculation
+            # returns the correct total size for the subsequent redirect request.
             if self._start_position is None:
                 try:
                     self._start_position = self._value.tell()
