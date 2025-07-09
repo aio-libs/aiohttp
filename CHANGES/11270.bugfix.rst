@@ -1,0 +1,1 @@
+Fixed file uploads failing with HTTP 422 errors when encountering 307/308 redirects by ensuring correct Content-Length calculation after payload reuse -- by :user:`bdraco`.
