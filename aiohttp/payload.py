@@ -539,7 +539,8 @@ class IOBasePayload(Payload):
 
     @property
     def size(self) -> Optional[int]:
-        """Size of the payload in bytes.
+        """
+        Size of the payload in bytes.
 
         Returns the total size of the payload content from the initial position.
         This ensures consistent Content-Length for requests, including 307/308 redirects
