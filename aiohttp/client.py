@@ -761,13 +761,7 @@ class ClientSession:
                             data = None
                             if headers.get(hdrs.CONTENT_LENGTH):
                                 headers.pop(hdrs.CONTENT_LENGTH)
-                        elif (
-                            resp.status in (307, 308)
-                            or (
-                                resp.status in (301, 302)
-                                and resp.method != hdrs.METH_POST
-                            )
-                        ) and req._body is not None:
+                        else:
                             # For 307/308, always preserve the request body
                             # For 301/302 with non-POST methods, preserve the request body
                             # https://www.rfc-editor.org/rfc/rfc9110#section-15.4.3-3.1
