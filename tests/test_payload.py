@@ -1346,7 +1346,7 @@ async def test_iobase_payload_size_unseekable() -> None:
 
     content = b"Unseekable content"
     f = UnseekableFile(content)
-    p = payload.IOBasePayload(f)
+    p = payload.IOBasePayload(f)  # type: ignore[arg-type]
 
     # Size should return None for unseekable files
     assert p.size is None
