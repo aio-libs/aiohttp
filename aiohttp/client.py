@@ -761,6 +761,10 @@ class ClientSession:
                             data = None
                             if headers.get(hdrs.CONTENT_LENGTH):
                                 headers.pop(hdrs.CONTENT_LENGTH)
+                        elif resp.status in (307, 308) and req._body is not None:
+                            # For 307/308, preserve the request body
+                            # Use the existing payload to avoid recreating it from a potentially consumed file
+                            data = req._body
 
                         r_url = resp.headers.get(hdrs.LOCATION) or resp.headers.get(
                             hdrs.URI

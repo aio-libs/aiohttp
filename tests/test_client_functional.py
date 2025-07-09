@@ -5357,3 +5357,66 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
         assert (
             len(resp._raw_cookie_headers) == 12
         ), "All raw headers should be preserved"
+
+
+async def test_file_upload_307_redirect(
+    aiohttp_client: Any, tmp_path: pathlib.Path
+) -> None:
+    """Test that file uploads work correctly with 307 redirects.
+
+    This demonstrates the bug where file payloads get incorrect Content-Length
+    on redirect because the file position isn't reset.
+    """
+    received_bodies: List[bytes] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        # Store the body content
+        body = await request.read()
+        received_bodies.append(body)
+
+        if str(request.url.path).endswith("/"):
+            # Redirect URLs ending with / to remove the trailing slash
+            return web.Response(
+                status=307,
+                headers={
+                    "Location": str(request.url.with_path(request.url.path.rstrip("/")))
+                },
+            )
+
+        # Return success with the body size
+        return web.json_response(
+            {
+                "received_size": len(body),
+                "content_length": request.headers.get("Content-Length"),
+            }
+        )
+
+    app = web.Application()
+    app.router.add_post("/upload/", handler)
+    app.router.add_post("/upload", handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a test file
+    test_file = tmp_path / "test_upload.txt"
+    content = b"This is test file content for upload."
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Upload file to URL with trailing slash (will trigger 307 redirect)
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.post("/upload/", data=f) as resp:
+            assert resp.status == 200
+            result = await resp.json()
+
+            # The server should receive the full file content
+            assert result["received_size"] == expected_size
+            assert result["content_length"] == str(expected_size)
+
+            # Both requests should have received the same content
+            assert len(received_bodies) == 2
+            assert received_bodies[0] == content  # First request
+            assert received_bodies[1] == content  # After redirect
+    finally:
+        await asyncio.to_thread(f.close)

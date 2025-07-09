@@ -542,7 +542,16 @@ class IOBasePayload(Payload):
         Returns None if the size cannot be determined (e.g., for unseekable streams).
         """
         try:
-            return os.fstat(self._value.fileno()).st_size - self._value.tell()
+            # Reset file position to the start position before calculating size.
+            # This is critical for 307/308 redirects where the same payload instance
+            # is reused. After the first request reads the file, the position is at EOF,
+            # causing size calculation to return 0 (file_size - EOF position).
+            # By resetting to the start position first, we ensure the size calculation
+            # returns the correct total size for the subsequent redirect request.
+            self._set_or_restore_start_position()
+            if self._start_position is None:
+                return None
+            return os.fstat(self._value.fileno()).st_size - self._start_position
         except (AttributeError, OSError):
             return None
 
