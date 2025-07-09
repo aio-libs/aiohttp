@@ -203,11 +203,23 @@ class Connection:
 
 
 class _ConnectTunnelConnection(Connection):
-    """Special connection for CONNECT tunnels that doesn't pool on release."""
+    """Special connection wrapper for CONNECT tunnels that must never be pooled.
+
+    This connection wraps the proxy connection that will be upgraded with TLS.
+    It must never be released to the pool because:
+    1. Its 'closed' future will never complete, causing session.close() to hang
+    2. It represents an intermediate state, not a reusable connection
+    3. The real connection (with TLS) will be created separately
+    """
 
     def release(self) -> None:
-        """Do nothing - don't pool or close the connection."""
-        # The connection will be used for TLS upgrade and cleaned up later
+        """Do nothing - don't pool or close the connection.
+
+        These connections are an intermediate state during the CONNECT tunnel
+        setup and will be cleaned up naturally after the TLS upgrade. If they
+        were to be pooled, they would never be properly closed, causing
+        session.close() to wait forever for their 'closed' future.
+        """
 
 
 class _TransportPlaceholder:
