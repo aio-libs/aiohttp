@@ -5297,7 +5297,7 @@ async def test_file_upload_307_308_redirect(
     This demonstrates the bug where file payloads get incorrect Content-Length
     on redirect because the file position isn't reset.
     """
-    received_bodies: List[bytes] = []
+    received_bodies: list[bytes] = []
 
     async def handler(request: web.Request) -> web.Response:
         # Store the body content
@@ -5361,7 +5361,7 @@ async def test_file_upload_301_302_redirect_non_post(
 
     Per RFC 9110, 301/302 redirects should preserve the method and body for non-POST requests.
     """
-    received_bodies: List[bytes] = []
+    received_bodies: list[bytes] = []
 
     async def handler(request: web.Request) -> web.Response:
         # Store the body content
