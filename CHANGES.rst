@@ -10,6 +10,65 @@
 
 .. towncrier release notes start
 
+3.12.14 (2025-07-10)
+====================
+
+Bug fixes
+---------
+
+- Fixed file uploads failing with HTTP 422 errors when encountering 307/308 redirects, and 301/302 redirects for non-POST methods, by preserving the request body when appropriate per :rfc:`9110#section-15.4.3-3.1` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11270`.
+
+
+
+- Fixed :py:meth:`ClientSession.close() <aiohttp.ClientSession.close>` hanging indefinitely when using HTTPS requests through HTTP proxies -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11273`.
+
+
+
+- Bumped minimum version of aiosignal to 1.4+ to resolve typing issues -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11280`.
+
+
+
+
+Features
+--------
+
+- Added initial trailer parsing logic to Python HTTP parser -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11269`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Clarified exceptions raised by ``WebSocketResponse.send_frame`` et al.
+  -- by :user:`DoctorJohn`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11234`.
+
+
+
+
+----
+
+
 3.12.13 (2025-06-14)
 ====================
 
