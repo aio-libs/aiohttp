@@ -1344,7 +1344,7 @@ async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> 
 def test_parse_no_length_or_te_on_post(
     loop: asyncio.AbstractEventLoop,
     protocol: BaseProtocol,
-    request_cls: Type[HttpRequestParser],
+    request_cls: type[HttpRequestParser],
 ) -> None:
     parser = request_cls(protocol, loop, limit=2**16)
     text = b"POST /test HTTP/1.1\r\n\r\n"
