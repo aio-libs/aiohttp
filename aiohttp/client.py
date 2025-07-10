@@ -761,6 +761,12 @@ class ClientSession:
                             data = None
                             if headers.get(hdrs.CONTENT_LENGTH):
                                 headers.pop(hdrs.CONTENT_LENGTH)
+                        else:
+                            # For 307/308, always preserve the request body
+                            # For 301/302 with non-POST methods, preserve the request body
+                            # https://www.rfc-editor.org/rfc/rfc9110#section-15.4.3-3.1
+                            # Use the existing payload to avoid recreating it from a potentially consumed file
+                            data = req._body
 
                         r_url = resp.headers.get(hdrs.LOCATION) or resp.headers.get(
                             hdrs.URI
