@@ -1,1 +1,0 @@
-Bumped minimum version of aiosignal to 1.4+ to resolve typing issues -- by :user:`Dreamsorcerer`.
