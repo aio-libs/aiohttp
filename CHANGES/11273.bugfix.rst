@@ -1,1 +1,0 @@
-Fixed :py:meth:`ClientSession.close() <aiohttp.ClientSession.close>` hanging indefinitely when using HTTPS requests through HTTP proxies -- by :user:`bdraco`.
