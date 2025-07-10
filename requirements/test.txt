@@ -102,7 +102,7 @@ pytest==8.4.1
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==3.2.0
+pytest-codspeed==4.0.0
     # via -r requirements/test.in
 pytest-cov==6.2.1
     # via -r requirements/test.in
