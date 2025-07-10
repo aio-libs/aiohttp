@@ -21,23 +21,23 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`11270`.
-  
-  
-  
+
+
+
 - Fixed :py:meth:`ClientSession.close() <aiohttp.ClientSession.close>` hanging indefinitely when using HTTPS requests through HTTP proxies -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11273`.
-  
-  
+
+
 
 - Bumped minimum version of aiosignal to 1.4+ to resolve typing issues -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11280`.
-  
+
 
 
 
@@ -49,9 +49,9 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`11269`.
-  
-  
-  
+
+
+
 
 Improved documentation
 ----------------------
@@ -62,9 +62,9 @@ Improved documentation
 
   *Related issues and pull requests on GitHub:*
   :issue:`11234`.
-  
-  
-  
+
+
+
 
 ----
 
