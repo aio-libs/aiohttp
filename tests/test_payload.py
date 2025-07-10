@@ -1276,3 +1276,79 @@ async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
         assert len(writer.buffer) == utf16_file_size
     finally:
         await loop.run_in_executor(None, f.close)
+
+
+async def test_iobase_payload_size_after_reading(tmp_path: Path) -> None:
+    """Test that IOBasePayload.size returns correct size after file has been read.
+
+    This demonstrates the bug where size calculation doesn't account for
+    the current file position, causing issues with 307/308 redirects.
+    """
+    # Create a test file with known content
+    test_file = tmp_path / "test.txt"
+    content = b"Hello, World! This is test content."
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Open the file and create payload
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        p = payload.BufferedReaderPayload(f)
+
+        # First size check - should return full file size
+        assert p.size == expected_size
+
+        # Read the file (simulating first request)
+        writer = BufferWriter()
+        await p.write(writer)
+        assert len(writer.buffer) == expected_size
+
+        # Second size check - should still return full file size
+        # but currently returns 0 because file position is at EOF
+        assert p.size == expected_size  # This assertion fails!
+
+        # Attempting to write again should write the full content
+        # but currently writes nothing because file is at EOF
+        writer2 = BufferWriter()
+        await p.write(writer2)
+        assert len(writer2.buffer) == expected_size  # This also fails!
+    finally:
+        await asyncio.to_thread(f.close)
+
+
+async def test_iobase_payload_size_unseekable() -> None:
+    """Test that IOBasePayload.size returns None for unseekable files."""
+
+    class UnseekableFile:
+        """Mock file object that doesn't support seeking."""
+
+        def __init__(self, content: bytes) -> None:
+            self.content = content
+            self.pos = 0
+
+        def read(self, size: int) -> bytes:
+            result = self.content[self.pos : self.pos + size]
+            self.pos += len(result)
+            return result
+
+        def tell(self) -> int:
+            raise OSError("Unseekable file")
+
+    content = b"Unseekable content"
+    f = UnseekableFile(content)
+    p = payload.IOBasePayload(f)  # type: ignore[arg-type]
+
+    # Size should return None for unseekable files
+    assert p.size is None
+
+    # Payload should not be consumed before writing
+    assert p.consumed is False
+
+    # Writing should still work
+    writer = BufferWriter()
+    await p.write(writer)
+    assert writer.buffer == content
+
+    # For unseekable files that can't tell() or seek(),
+    # they are marked as consumed after the first write
+    assert p.consumed is True
