@@ -3670,8 +3670,12 @@ async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:
     not_an_awaitable = aiohttp.request("GET", server.make_url("/"))
     with pytest.raises(
         TypeError,
-        match="^object _SessionRequestContextManager "
-        "can't be used in 'await' expression$",
+        match=(
+            "^'_SessionRequestContextManager' object can't be awaited$"
+            if sys.version_info >= (3, 14)
+            else "^object _SessionRequestContextManager "
+            "can't be used in 'await' expression$"
+        ),
     ):
         await not_an_awaitable  # type: ignore[misc]
 
