@@ -11,9 +11,6 @@ from .helpers import frozen_dataclass_decorator
 if TYPE_CHECKING:
     from .client import ClientSession
 
-    _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
-    _TracingSignal = Signal[ClientSession, "_T", _ParamT_contra]
-
 
 __all__ = (
     "TraceConfig",
@@ -36,6 +33,8 @@ __all__ = (
 )
 
 _T = TypeVar("_T", covariant=True)
+_ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
+_TracingSignal = Signal["ClientSession", _T, _ParamT_contra]
 
 
 class _Factory(Protocol[_T]):
