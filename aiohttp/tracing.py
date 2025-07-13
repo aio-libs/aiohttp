@@ -44,7 +44,7 @@ __all__ = (
 
 _T = TypeVar("_T", covariant=True)
 _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
-_TracingSignal = Signal[ClientSession, _T, _ParamT_contra]
+_TracingSignal = Signal["ClientSession", _T, _ParamT_contra]
 
 
 class _Factory(Protocol[_T]):
