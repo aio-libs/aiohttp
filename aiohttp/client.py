@@ -297,7 +297,7 @@ class ClientSession:
         auto_decompress: bool = True,
         trust_env: bool = False,
         requote_redirect_url: bool = True,
-        trace_configs: Optional[List[TraceConfig]] = None,
+        trace_configs: Optional[List[TraceConfig[Any]]] = None,
         read_bufsize: int = 2**16,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
@@ -1426,7 +1426,7 @@ class ClientSession:
         return self._trust_env
 
     @property
-    def trace_configs(self) -> List[TraceConfig]:
+    def trace_configs(self) -> List[TraceConfig[Any]]:
         """A list of TraceConfig instances used for client tracing"""
         return self._trace_configs
 
