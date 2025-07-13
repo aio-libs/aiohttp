@@ -6,9 +6,7 @@ from typing import (
     Any,
     Generic,
     Mapping,
-    Optional,
     Protocol,
-    Type,
     TypeVar,
     overload,
 )
