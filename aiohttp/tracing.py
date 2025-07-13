@@ -61,7 +61,10 @@ class TraceConfig(Generic[_T]):
     def __init__(self, trace_config_ctx_factory: _Factory[_T]) -> None: ...
 
     def __init__(
-        self, trace_config_ctx_factory: Type[SimpleNamespace] = SimpleNamespace
+        self,
+        trace_config_ctx_factory: (
+            Type[SimpleNamespace] | _Factory[_T]
+        ) = SimpleNamespace,
     ) -> None:
         self._on_request_start: _TracingSignal[_T, TraceRequestStartParams] = Signal(
             self
@@ -114,7 +117,7 @@ class TraceConfig(Generic[_T]):
 
     def trace_config_ctx(
         self, trace_request_ctx: Optional[Mapping[str, Any]] = None
-    ) -> SimpleNamespace:
+    ) -> SimpleNamespace | _T:
         """Return a new trace_config_ctx instance"""
         return self._trace_config_ctx_factory(trace_request_ctx=trace_request_ctx)
 
@@ -354,7 +357,7 @@ class Trace:
     def __init__(
         self,
         session: "ClientSession",
-        trace_config: TraceConfig,
+        trace_config: TraceConfig[Any],
         trace_config_ctx: SimpleNamespace,
     ) -> None:
         self._trace_config = trace_config
