@@ -1,15 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generic,
-    Mapping,
-    Protocol,
-    TypeVar,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Generic, Mapping, Protocol, TypeVar, overload
 
 import attr
 from aiosignal import Signal
