@@ -1,2 +1,2 @@
 Add support for a new TraceConfig Generic Variable for python 3.13
--- by :user:`Vizonex`. 
+-- by :user:`Vizonex`.
