@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Mapping, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Generic, Mapping, Optional, Type, TypeVar
 
 import attr
 from aiosignal import Signal
@@ -37,11 +37,15 @@ _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
 _TracingSignal = Signal["ClientSession", _T, _ParamT_contra]
 
 
-class TraceConfig:
+class TraceConfig(Generic[_T]):
     """First-class used to trace requests launched via ClientSession objects."""
 
+    @overload
+    def __init__(self: "TraceConfig[SimpleNamespace]") -> None: ...
+    @overload
+    def __init__(self, trace_config_ctx_factory: _Factory[_T]) -> None: ...
     def __init__(
-        self, trace_config_ctx_factory: Type[SimpleNamespace] = SimpleNamespace
+        self, trace_config_ctx_factory: _Factory[Any] = SimpleNamespace
     ) -> None:
         self._on_request_start: _TracingSignal[_T, TraceRequestStartParams] = Signal(
             self
