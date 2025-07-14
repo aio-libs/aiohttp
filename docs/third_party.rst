@@ -311,4 +311,4 @@ ask to raise the status.
   An aiohttp middleware for exposing Prometheus metrics.
 
 - `wireup <https://github.com/maldoinc/wireup>`_
-  Performant, concise, and easy-to-use dependency injection container for Python 3.8+ and AIOHTTP.
+  Performant, concise, and easy-to-use dependency injection container.
