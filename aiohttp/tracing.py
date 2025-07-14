@@ -36,6 +36,7 @@ _T = TypeVar("_T", covariant=True)
 _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
 _TracingSignal = Signal["ClientSession", _T, _ParamT_contra]
 
+
 class TraceConfig:
     """First-class used to trace requests launched via ClientSession objects."""
 
