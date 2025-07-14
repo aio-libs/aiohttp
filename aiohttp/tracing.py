@@ -1,11 +1,11 @@
 from types import SimpleNamespace
 from typing import (
     TYPE_CHECKING,
+    Any,
     Generic,
     Mapping,
     Optional,
     Protocol,
-    Type,
     TypeVar,
     overload,
 )
