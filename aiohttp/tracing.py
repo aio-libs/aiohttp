@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Generic, Mapping, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Generic, Mapping, Optional, Type, TypeVar, overload
 
 import attr
 from aiosignal import Signal
