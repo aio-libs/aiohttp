@@ -37,6 +37,10 @@ _ParamT_contra = TypeVar("_ParamT_contra", contravariant=True)
 _TracingSignal = Signal["ClientSession", _T, _ParamT_contra]
 
 
+class _Factory(Protocol[_T]):
+    def __call__(self, **kwargs: Any) -> _T: ...
+
+
 class TraceConfig(Generic[_T]):
     """First-class used to trace requests launched via ClientSession objects."""
 
