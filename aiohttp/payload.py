@@ -557,11 +557,7 @@ class IOBasePayload(Payload):
             # By storing the start position, we ensure the size calculation always
             # returns the correct total size for any subsequent use.
             if self._start_position is None:
-                try:
-                    self._start_position = self._value.tell()
-                except (OSError, AttributeError):
-                    # Can't get position, can't determine size
-                    return None
+                self._start_position = self._value.tell()
 
             # Return the total size from the start position
             # This ensures Content-Length is correct even after reading
