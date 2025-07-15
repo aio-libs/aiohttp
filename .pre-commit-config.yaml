@@ -106,7 +106,7 @@ repos:
   - id: pyupgrade
     args: ['--py37-plus']
 - repo: https://github.com/PyCQA/flake8
-  rev: '7.2.0'
+  rev: '7.3.0'
   hooks:
   - id: flake8
     additional_dependencies:

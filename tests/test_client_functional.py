@@ -3670,8 +3670,12 @@ async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:
     not_an_awaitable = aiohttp.request("GET", server.make_url("/"))
     with pytest.raises(
         TypeError,
-        match="^object _SessionRequestContextManager "
-        "can't be used in 'await' expression$",
+        match=(
+            "^'_SessionRequestContextManager' object can't be awaited$"
+            if sys.version_info >= (3, 14)
+            else "^object _SessionRequestContextManager "
+            "can't be used in 'await' expression$"
+        ),
     ):
         await not_an_awaitable  # type: ignore[misc]
 
@@ -5357,3 +5361,228 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
         assert (
             len(resp._raw_cookie_headers) == 12
         ), "All raw headers should be preserved"
+
+
+@pytest.mark.parametrize("status", (307, 308))
+async def test_file_upload_307_308_redirect(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path, status: int
+) -> None:
+    """Test that file uploads work correctly with 307/308 redirects.
+
+    This demonstrates the bug where file payloads get incorrect Content-Length
+    on redirect because the file position isn't reset.
+    """
+    received_bodies: list[bytes] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        # Store the body content
+        body = await request.read()
+        received_bodies.append(body)
+
+        if str(request.url.path).endswith("/"):
+            # Redirect URLs ending with / to remove the trailing slash
+            return web.Response(
+                status=status,
+                headers={
+                    "Location": str(request.url.with_path(request.url.path.rstrip("/")))
+                },
+            )
+
+        # Return success with the body size
+        return web.json_response(
+            {
+                "received_size": len(body),
+                "content_length": request.headers.get("Content-Length"),
+            }
+        )
+
+    app = web.Application()
+    app.router.add_post("/upload/", handler)
+    app.router.add_post("/upload", handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a test file
+    test_file = tmp_path / f"test_upload_{status}.txt"
+    content = b"This is test file content for upload."
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Upload file to URL with trailing slash (will trigger redirect)
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.post("/upload/", data=f) as resp:
+            assert resp.status == 200
+            result = await resp.json()
+
+            # The server should receive the full file content
+            assert result["received_size"] == expected_size
+            assert result["content_length"] == str(expected_size)
+
+            # Both requests should have received the same content
+            assert len(received_bodies) == 2
+            assert received_bodies[0] == content  # First request
+            assert received_bodies[1] == content  # After redirect
+    finally:
+        await asyncio.to_thread(f.close)
+
+
+@pytest.mark.parametrize("status", [301, 302])
+@pytest.mark.parametrize("method", ["PUT", "PATCH", "DELETE"])
+async def test_file_upload_301_302_redirect_non_post(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path, status: int, method: str
+) -> None:
+    """Test that file uploads work correctly with 301/302 redirects for non-POST methods.
+
+    Per RFC 9110, 301/302 redirects should preserve the method and body for non-POST requests.
+    """
+    received_bodies: list[bytes] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        # Store the body content
+        body = await request.read()
+        received_bodies.append(body)
+
+        if str(request.url.path).endswith("/"):
+            # Redirect URLs ending with / to remove the trailing slash
+            return web.Response(
+                status=status,
+                headers={
+                    "Location": str(request.url.with_path(request.url.path.rstrip("/")))
+                },
+            )
+
+        # Return success with the body size
+        return web.json_response(
+            {
+                "method": request.method,
+                "received_size": len(body),
+                "content_length": request.headers.get("Content-Length"),
+            }
+        )
+
+    app = web.Application()
+    app.router.add_route(method, "/upload/", handler)
+    app.router.add_route(method, "/upload", handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a test file
+    test_file = tmp_path / f"test_upload_{status}_{method.lower()}.txt"
+    content = f"Test {method} file content for {status} redirect.".encode()
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Upload file to URL with trailing slash (will trigger redirect)
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.request(method, "/upload/", data=f) as resp:
+            assert resp.status == 200
+            result = await resp.json()
+
+            # The server should receive the full file content after redirect
+            assert result["method"] == method  # Method should be preserved
+            assert result["received_size"] == expected_size
+            assert result["content_length"] == str(expected_size)
+
+            # Both requests should have received the same content
+            assert len(received_bodies) == 2
+            assert received_bodies[0] == content  # First request
+            assert received_bodies[1] == content  # After redirect
+    finally:
+        await asyncio.to_thread(f.close)
+
+
+async def test_file_upload_307_302_redirect_chain(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """Test that file uploads work correctly with 307->302->200 redirect chain.
+
+    This verifies that:
+    1. 307 preserves POST method and file body
+    2. 302 changes POST to GET and drops the body
+    3. No body leaks to the final GET request
+    """
+    received_requests: list[dict[str, Any]] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        # Store request details
+        body = await request.read()
+        received_requests.append(
+            {
+                "path": str(request.url.path),
+                "method": request.method,
+                "body_size": len(body),
+                "content_length": request.headers.get("Content-Length"),
+            }
+        )
+
+        if request.url.path == "/upload307":
+            # First redirect: 307 should preserve method and body
+            return web.Response(status=307, headers={"Location": "/upload302"})
+        elif request.url.path == "/upload302":
+            # Second redirect: 302 should change POST to GET
+            return web.Response(status=302, headers={"Location": "/final"})
+        else:
+            # Final destination
+            return web.json_response(
+                {
+                    "final_method": request.method,
+                    "final_body_size": len(body),
+                    "requests_received": len(received_requests),
+                }
+            )
+
+    app = web.Application()
+    app.router.add_route("*", "/upload307", handler)
+    app.router.add_route("*", "/upload302", handler)
+    app.router.add_route("*", "/final", handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a test file
+    test_file = tmp_path / "test_redirect_chain.txt"
+    content = b"Test file content that should not leak to GET request"
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Upload file to URL that triggers 307->302->final redirect chain
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.post("/upload307", data=f) as resp:
+            assert resp.status == 200
+            result = await resp.json()
+
+            # Verify the redirect chain
+            assert len(resp.history) == 2
+            assert resp.history[0].status == 307
+            assert resp.history[1].status == 302
+
+            # Verify final request is GET with no body
+            assert result["final_method"] == "GET"
+            assert result["final_body_size"] == 0
+            assert result["requests_received"] == 3
+
+            # Verify the request sequence
+            assert len(received_requests) == 3
+
+            # First request (307): POST with full body
+            assert received_requests[0]["path"] == "/upload307"
+            assert received_requests[0]["method"] == "POST"
+            assert received_requests[0]["body_size"] == expected_size
+            assert received_requests[0]["content_length"] == str(expected_size)
+
+            # Second request (302): POST with preserved body from 307
+            assert received_requests[1]["path"] == "/upload302"
+            assert received_requests[1]["method"] == "POST"
+            assert received_requests[1]["body_size"] == expected_size
+            assert received_requests[1]["content_length"] == str(expected_size)
+
+            # Third request (final): GET with no body (302 changed method and dropped body)
+            assert received_requests[2]["path"] == "/final"
+            assert received_requests[2]["method"] == "GET"
+            assert received_requests[2]["body_size"] == 0
+            assert received_requests[2]["content_length"] is None
+
+    finally:
+        await asyncio.to_thread(f.close)
