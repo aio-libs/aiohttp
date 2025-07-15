@@ -5298,8 +5298,8 @@ async def test_file_upload_307_308_redirect(
 ) -> None:
     """Test that file uploads work correctly with 307/308 redirects.
 
-    This demonstrates the bug where file payloads get incorrect Content-Length
-    on redirect because the file position isn't reset.
+    This verifies that file payloads maintain correct Content-Length
+    on redirect by properly handling the file position.
     """
     received_bodies: list[bytes] = []
 
