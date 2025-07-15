@@ -5,21 +5,21 @@
 #    pip-compile --allow-unsafe --output-file=requirements/test.txt --resolver=backtracking --strip-extras requirements/test.in
 #
 aiodns==3.5.0
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
 aiosignal==1.4.0
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
 annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1 ; python_version < "3.11"
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
 attrs==25.3.0
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
-blockbuster==1.5.24
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
+blockbuster==1.5.25
     # via -r requirements/test.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
 cffi==1.17.1
     # via
     #   cryptography
@@ -43,10 +43,10 @@ freezegun==1.5.3
     # via -r requirements/test.in
 frozenlist==1.7.0
     # via
-    #   -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    #   -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
     #   aiosignal
 gunicorn==23.0.0
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/base.in
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/base.in
 idna==3.4
     # via
     #   trustme
@@ -61,7 +61,7 @@ mdurl==0.1.2
     # via markdown-it-py
 multidict==6.6.3
     # via
-    #   -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    #   -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
     #   yarl
 mypy==1.17.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
@@ -81,7 +81,7 @@ pluggy==1.6.0
     #   pytest-cov
 propcache==0.3.2
     # via
-    #   -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    #   -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test.in
@@ -147,12 +147,12 @@ typing-extensions==4.14.1
 typing-inspection==0.4.1
     # via pydantic
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/base.in
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/base.in
 wait-for-it==2.3.0
     # via -r requirements/test.in
 yarl==1.20.1
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
 zlib-ng==0.5.1
     # via -r requirements/test.in
 zstandard==0.23.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
-    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1333-v8vdn6/dependabot_20250715-1333-nl1p4c/requirements/runtime-deps.in
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-g9qf0i/dependabot_20250715-1382-3ymb72/requirements/runtime-deps.in
