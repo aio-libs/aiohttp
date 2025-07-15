@@ -1283,8 +1283,9 @@ async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
 async def test_iobase_payload_size_after_reading(tmp_path: Path) -> None:
     """Test that IOBasePayload.size returns correct size after file has been read.
 
-    This demonstrates the bug where size calculation doesn't account for
-    the current file position, causing issues with 307/308 redirects.
+    This verifies that size calculation properly accounts for the initial
+    file position, which is critical for 307/308 redirects where the same
+    payload instance is reused.
     """
     # Create a test file with known content
     test_file = tmp_path / "test.txt"
@@ -1306,14 +1307,12 @@ async def test_iobase_payload_size_after_reading(tmp_path: Path) -> None:
         assert len(writer.buffer) == expected_size
 
         # Second size check - should still return full file size
-        # but currently returns 0 because file position is at EOF
-        assert p.size == expected_size  # This assertion fails!
+        assert p.size == expected_size
 
         # Attempting to write again should write the full content
-        # but currently writes nothing because file is at EOF
         writer2 = BufferWriter()
         await p.write(writer2)
-        assert len(writer2.buffer) == expected_size  # This also fails!
+        assert len(writer2.buffer) == expected_size
     finally:
         await asyncio.to_thread(f.close)
 
