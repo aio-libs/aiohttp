@@ -874,7 +874,7 @@ async def test_string_io_payload_reusability() -> None:
 async def test_buffered_reader_payload_reusability() -> None:
     """Test that BufferedReaderPayload can be written and read multiple times."""
     data = b"test buffered reader payload"
-    buffer = io.BufferedReader(io.BytesIO(data))  # type: ignore[arg-type]
+    buffer = io.BufferedReader(io.BytesIO(data))
     p = payload.BufferedReaderPayload(buffer)
 
     # First write_with_length
