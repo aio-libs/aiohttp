@@ -1191,7 +1191,7 @@ async def test_data_stream(
 async def test_data_file(
     loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
 ) -> None:
-    with io.BufferedReader(io.BytesIO(b"*" * 2)) as file_handle:  # type: ignore[arg-type]
+    with io.BufferedReader(io.BytesIO(b"*" * 2)) as file_handle:
         req = ClientRequest(
             "POST",
             URL("http://python.org/"),
@@ -1804,7 +1804,7 @@ async def test_warn_if_unclosed_payload_via_body_setter(
 
     # First set a payload that needs manual closing (autoclose=False)
     file_payload = payload.BufferedReaderPayload(
-        io.BufferedReader(io.BytesIO(b"test data")),  # type: ignore[arg-type]
+        io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
     req.body = file_payload
@@ -1851,7 +1851,7 @@ async def test_no_warn_for_consumed_payload_via_body_setter(
 
     # Create a payload that needs manual closing
     file_payload = payload.BufferedReaderPayload(
-        io.BufferedReader(io.BytesIO(b"test data")),  # type: ignore[arg-type]
+        io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
     req.body = file_payload
@@ -1881,7 +1881,7 @@ async def test_warn_if_unclosed_payload_via_update_body_from_data(
 
     # First set a payload that needs manual closing
     file_payload = payload.BufferedReaderPayload(
-        io.BufferedReader(io.BytesIO(b"initial data")),  # type: ignore[arg-type]
+        io.BufferedReader(io.BytesIO(b"initial data")),
         encoding="utf-8",
     )
     req.update_body_from_data(file_payload)
@@ -1907,11 +1907,11 @@ async def test_warn_via_update_with_file_payload(
     req = make_request("POST", "http://python.org/")
 
     # First create a file-like object that results in BufferedReaderPayload
-    buffered1 = io.BufferedReader(io.BytesIO(b"file content 1"))  # type: ignore[arg-type]
+    buffered1 = io.BufferedReader(io.BytesIO(b"file content 1"))
     req.update_body_from_data(buffered1)
 
     # Second update should warn about the first payload
-    buffered2 = io.BufferedReader(io.BytesIO(b"file content 2"))  # type: ignore[arg-type]
+    buffered2 = io.BufferedReader(io.BytesIO(b"file content 2"))
 
     with pytest.warns(
         ResourceWarning,
@@ -2101,7 +2101,7 @@ async def test_warn_stacklevel_points_to_user_code(
 
     # First set a payload that needs manual closing (autoclose=False)
     file_payload = payload.BufferedReaderPayload(
-        io.BufferedReader(io.BytesIO(b"test data")),  # type: ignore[arg-type]
+        io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
     req.body = file_payload
@@ -2139,7 +2139,7 @@ async def test_warn_stacklevel_update_body_from_data(
 
     # First set a payload that needs manual closing (autoclose=False)
     file_payload = payload.BufferedReaderPayload(
-        io.BufferedReader(io.BytesIO(b"test data")),  # type: ignore[arg-type]
+        io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
     req.update_body_from_data(file_payload)
