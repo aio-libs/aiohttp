@@ -17,7 +17,7 @@ from multidict cimport (
 # NOTE: Cython API is Experimental and is held subject to change
 #       Depending on different circumstances.
 #       Remove this comment when draft is officially over
-#       or when 6.7 is released with the offical names.
+#       or when 6.7 is released with the official names.
 #       This may or may not be what the other authors had in mind.
 #       My todos are held subject to removal when Draft is transformed
 #       into a real pull request.
