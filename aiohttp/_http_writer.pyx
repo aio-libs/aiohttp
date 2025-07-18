@@ -1,16 +1,28 @@
+# cython:  freethreading_compatible = True
+
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.exc cimport PyErr_NoMemory
 from cpython.mem cimport PyMem_Free, PyMem_Malloc, PyMem_Realloc
-from cpython.object cimport PyObject_Str
+from cpython.object cimport PyObject_Str, PyObject
 from libc.stdint cimport uint8_t, uint64_t
 from libc.string cimport memcpy
+from cpython.unicode cimport PyUnicode_CheckExact
 
-from multidict import istr
+# NOTE: Cython API is Experimental and is held subject to change 
+#       Depending on different circumstances. 
+#       Remove this comment when draft is officially over 
+#       or when 6.7 is released with the offical names.
+#       This may or may not be what the other authors had in mind.
+#       My todos are held subject to removal when Draft is transformed 
+#       into a real pull request.
+
+from multidict cimport IStr_CheckExact, MultiDictIter_New, MultiDictIter_Next, multidict_import
+
+# Run first thing so that Capsule imports...
+multidict_import()
 
 DEF BUF_SIZE = 16 * 1024  # 16KiB
 cdef char BUFFER[BUF_SIZE]
-
-cdef object _istr = istr
 
 
 # ----------------- writer ---------------------------
@@ -100,9 +112,9 @@ cdef inline int _write_str(Writer* writer, str s):
 cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
     cdef Py_UCS4 ch
     cdef str out_str
-    if type(s) is str:
+    if PyUnicode_CheckExact(s):
         out_str = <str>s
-    elif type(s) is _istr:
+    elif IStr_CheckExact(s):
         out_str = PyObject_Str(s)
     elif not isinstance(s, str):
         raise TypeError("Cannot serialize non-str key {!r}".format(s))
@@ -121,29 +133,35 @@ cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
 
 # --------------- _serialize_headers ----------------------
 
+# TODO: Change headers parameter into CIMultiDict or MultiDict or fused 
+# cython type or am I insane for wanting to do so?
+
 def _serialize_headers(str status_line, headers):
     cdef Writer writer
-    cdef object key
-    cdef object val
-
+    cdef PyObject* key
+    cdef PyObject* val
+    cdef object multidict_iter
     _init_writer(&writer)
 
     try:
+        multidict_iter = MultiDictIter_New(headers)
+        
         if _write_str(&writer, status_line) < 0:
             raise
         if _write_byte(&writer, b'\r') < 0:
             raise
         if _write_byte(&writer, b'\n') < 0:
             raise
+    
+        while MultiDictIter_Next(multidict_iter, &key, &val):
 
-        for key, val in headers.items():
-            if _write_str_raise_on_nlcr(&writer, key) < 0:
+            if _write_str_raise_on_nlcr(&writer, <object>key) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:
                 raise
             if _write_byte(&writer, b' ') < 0:
                 raise
-            if _write_str_raise_on_nlcr(&writer, val) < 0:
+            if _write_str_raise_on_nlcr(&writer, <object>val) < 0:
                 raise
             if _write_byte(&writer, b'\r') < 0:
                 raise
