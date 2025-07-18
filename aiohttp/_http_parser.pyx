@@ -15,17 +15,17 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from cpython.object cimport PyObject
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
-
 from multidict cimport (
-    CIMultiDict, 
-    CIMultiDictProxy,
-    CIMultiDictProxy_New,
-    CIMultiDict_Contains,
-    multidict_import,
-    CIMultiDict_New,
+    CIMultiDict,
     CIMultiDict_Add,
-    CIMultiDictProxy_GetOne
+    CIMultiDict_Contains,
+    CIMultiDict_New,
+    CIMultiDictProxy,
+    CIMultiDictProxy_GetOne,
+    CIMultiDictProxy_New,
+    multidict_import,
 )
+
 from yarl import URL as _URL
 
 from aiohttp import hdrs
@@ -57,6 +57,7 @@ from aiohttp cimport _cparser as cparser
 include "_headers.pxi"
 
 from aiohttp cimport _find_header
+
 # import multidict capsule...
 multidict_import()
 
@@ -224,7 +225,7 @@ cdef class RawResponseMessage:
     cdef readonly int code
     cdef readonly str reason
     # Temporary Note: We can now expose the real types thanks to the new cython-api
-    cdef readonly CIMultiDictProxy headers 
+    cdef readonly CIMultiDictProxy headers
     cdef readonly CIMultiDict raw_headers
     cdef readonly object should_close
     cdef readonly object compression
@@ -439,7 +440,7 @@ cdef class HttpParser:
         if self._cparser.type == cparser.HTTP_REQUEST:
             if upgrade and CIMultiDictProxy_GetOne(headers, "upgrade", &upgrade_value):
                 self._upgraded = (
-                    (<str>upgrade_value).lower() in ALLOWED_UPGRADES 
+                    (<str>upgrade_value).lower() in ALLOWED_UPGRADES
                     or self._cparser.method == cparser.HTTP_CONNECT
                 )
             elif self._cparser.method == cparser.HTTP_CONNECT:

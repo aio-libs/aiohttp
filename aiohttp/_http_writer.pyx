@@ -3,20 +3,25 @@
 from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.exc cimport PyErr_NoMemory
 from cpython.mem cimport PyMem_Free, PyMem_Malloc, PyMem_Realloc
-from cpython.object cimport PyObject_Str, PyObject
+from cpython.object cimport PyObject, PyObject_Str
+from cpython.unicode cimport PyUnicode_CheckExact
 from libc.stdint cimport uint8_t, uint64_t
 from libc.string cimport memcpy
-from cpython.unicode cimport PyUnicode_CheckExact
+from multidict cimport (
+    IStr_CheckExact,
+    MultiDictIter_New,
+    MultiDictIter_Next,
+    multidict_import,
+)
 
-# NOTE: Cython API is Experimental and is held subject to change 
-#       Depending on different circumstances. 
-#       Remove this comment when draft is officially over 
+# NOTE: Cython API is Experimental and is held subject to change
+#       Depending on different circumstances.
+#       Remove this comment when draft is officially over
 #       or when 6.7 is released with the offical names.
 #       This may or may not be what the other authors had in mind.
-#       My todos are held subject to removal when Draft is transformed 
+#       My todos are held subject to removal when Draft is transformed
 #       into a real pull request.
 
-from multidict cimport IStr_CheckExact, MultiDictIter_New, MultiDictIter_Next, multidict_import
 
 # Run first thing so that Capsule imports...
 multidict_import()
@@ -133,7 +138,7 @@ cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
 
 # --------------- _serialize_headers ----------------------
 
-# TODO: Change headers parameter into CIMultiDict or MultiDict or fused 
+# TODO: Change headers parameter into CIMultiDict or MultiDict or fused
 # cython type or am I insane for wanting to do so?
 
 def _serialize_headers(str status_line, headers):
@@ -145,14 +150,14 @@ def _serialize_headers(str status_line, headers):
 
     try:
         multidict_iter = MultiDictIter_New(headers)
-        
+
         if _write_str(&writer, status_line) < 0:
             raise
         if _write_byte(&writer, b'\r') < 0:
             raise
         if _write_byte(&writer, b'\n') < 0:
             raise
-    
+
         while MultiDictIter_Next(multidict_iter, &key, &val):
 
             if _write_str_raise_on_nlcr(&writer, <object>key) < 0:
