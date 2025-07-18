@@ -113,7 +113,10 @@ markupsafe==3.0.2
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.6.3
+# Temporarily redirect it to me, will revert when 6.7 gets released
+multidict @ git+https://github.com/Vizonex/multidict@capi
+
+# multidict==6.6.3
     # via
     #   -r /home/dependabot/dependabot-updater/tmp/20250715-1384-v0sr9j/dependabot_20250715-1384-mw23m4/requirements/multidict.in
     #   -r /home/dependabot/dependabot-updater/tmp/20250715-1384-v0sr9j/dependabot_20250715-1384-mw23m4/requirements/runtime-deps.in
