@@ -76,8 +76,8 @@ ERROR = RawRequestMessage(
     "UNKNOWN",
     "/",
     HttpVersion10,
-    CIMultiDictProxy(CIMultiDict()),  # type: ignore[arg-type]
-    CIMultiDictProxy(CIMultiDict()),  # type: ignore[arg-type]
+    CIMultiDictProxy(CIMultiDict()),
+    CIMultiDictProxy(CIMultiDict()),
     True,
     None,
     False,
@@ -616,7 +616,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 payload,
                 self,
                 writer,
-                self._task_handler or asyncio.current_task(loop),  # type: ignore[arg-type]
+                self._task_handler or asyncio.current_task(loop),
             )
             try:
                 # a new task is used for copy context vars (#3406)
