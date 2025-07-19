@@ -18,7 +18,7 @@ from libc.string cimport memcpy
 from multidict cimport (
     CIMultiDict,
     CIMultiDict_Add,
-    CIMultiDict_Check,
+    CIMultiDict_Clear,
     CIMultiDict_New,
     CIMultiDict_UpdateFromDict,
     CIMultiDict_UpdateFromMultiDict,
@@ -125,12 +125,13 @@ cdef inline object find_header(bytes raw_header):
     return headers[idx]
 
 
+
 @cython.freelist(DEFAULT_FREELIST_SIZE)
 cdef class RawRequestMessage:
     cdef readonly str method
     cdef readonly str path
     cdef readonly object version  # HttpVersion
-    cdef readonly CIMultiDict headers  # CIMultiDict
+    cdef readonly object headers  # CIMultiDict
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -143,20 +144,7 @@ cdef class RawRequestMessage:
         self.method = method
         self.path = path
         self.version = version
-
-
-        if CIMultiDict_Check(headers):
-            self.headers = headers
-
-        elif MultiDict_Check(headers) or MultiDictProxy_Check(headers) or CIMultiDictProxy_Check(headers):
-            self.headers = CIMultiDict_New(len(headers))
-            CIMultiDict_UpdateFromMultiDict(self.headers, headers, UpdateOp.Extend)
-
-        elif isinstance(headers, dict):
-            self.headers = CIMultiDict_New(len(headers))
-            CIMultiDict_UpdateFromDict(self.headers, headers, UpdateOp.Extend)
-
-
+        self.headers = headers
         self.raw_headers = raw_headers
         self.should_close = should_close
         self.compression = compression
@@ -216,7 +204,7 @@ cdef class RawRequestMessage:
 cdef _new_request_message(str method,
                            str path,
                            object version,
-                           CIMultiDictProxy headers,
+                           object headers,
                            object raw_headers,
                            bint should_close,
                            object compression,
@@ -228,8 +216,7 @@ cdef _new_request_message(str method,
     ret.method = method
     ret.path = path
     ret.version = version
-    ret.headers = CIMultiDict_New(len(headers))
-    CIMultiDict_UpdateFromMultiDict(ret.headers, headers, UpdateOp.Extend)
+    ret.headers = headers
     ret.raw_headers = raw_headers
     ret.should_close = should_close
     ret.compression = compression
@@ -244,7 +231,7 @@ cdef class RawResponseMessage:
     cdef readonly object version  # HttpVersion
     cdef readonly int code
     cdef readonly str reason
-    cdef readonly CIMultiDict headers  # CIMultiDict
+    cdef readonly object headers  # CIMultiDict
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -256,18 +243,7 @@ cdef class RawResponseMessage:
         self.version = version
         self.code = code
         self.reason = reason
-
-        if CIMultiDict_Check(headers):
-            self.headers = headers
-
-        elif MultiDict_Check(headers) or MultiDictProxy_Check(headers) or CIMultiDictProxy_Check(headers):
-            self.headers = CIMultiDict_New(len(headers))
-            CIMultiDict_UpdateFromMultiDict(self.headers, headers, UpdateOp.Extend)
-
-        elif isinstance(headers, dict):
-            self.headers = CIMultiDict_New(len(headers))
-            CIMultiDict_UpdateFromDict(self.headers, headers, UpdateOp.Extend)
-
+        self.headers = headers
         self.raw_headers = raw_headers
         self.should_close = should_close
         self.compression = compression
@@ -292,7 +268,7 @@ cdef class RawResponseMessage:
 cdef _new_response_message(object version,
                            int code,
                            str reason,
-                           CIMultiDictProxy headers,
+                           object headers,
                            object raw_headers,
                            bint should_close,
                            object compression,
@@ -303,8 +279,7 @@ cdef _new_response_message(object version,
     ret.version = version
     ret.code = code
     ret.reason = reason
-    ret.headers = CIMultiDict_New(len(headers))
-    CIMultiDict_UpdateFromMultiDict(ret.headers, headers, UpdateOp.Extend)
+    ret.headers = headers
     ret.raw_headers = raw_headers
     ret.should_close = should_close
     ret.compression = compression
