@@ -216,7 +216,7 @@ cdef class RawRequestMessage:
 cdef _new_request_message(str method,
                            str path,
                            object version,
-                           CIMultiDict headers,
+                           CIMultiDictProxy headers,
                            object raw_headers,
                            bint should_close,
                            object compression,
@@ -228,7 +228,8 @@ cdef _new_request_message(str method,
     ret.method = method
     ret.path = path
     ret.version = version
-    ret.headers = headers
+    ret.headers = CIMultiDict_New(len(headers))
+    CIMultiDict_UpdateFromMultiDict(ret.headers, headers, UpdateOp.Extend)
     ret.raw_headers = raw_headers
     ret.should_close = should_close
     ret.compression = compression
@@ -255,7 +256,18 @@ cdef class RawResponseMessage:
         self.version = version
         self.code = code
         self.reason = reason
-        self.headers = headers
+
+        if CIMultiDict_Check(headers):
+            self.headers = headers
+
+        elif MultiDict_Check(headers) or MultiDictProxy_Check(headers) or CIMultiDictProxy_Check(headers):
+            self.headers = CIMultiDict_New(len(headers))
+            CIMultiDict_UpdateFromMultiDict(self.headers, headers, UpdateOp.Extend)
+
+        elif isinstance(headers, dict):
+            self.headers = CIMultiDict_New(len(headers))
+            CIMultiDict_UpdateFromDict(self.headers, headers, UpdateOp.Extend)
+
         self.raw_headers = raw_headers
         self.should_close = should_close
         self.compression = compression
@@ -280,7 +292,7 @@ cdef class RawResponseMessage:
 cdef _new_response_message(object version,
                            int code,
                            str reason,
-                           CIMultiDict headers,
+                           CIMultiDictProxy headers,
                            object raw_headers,
                            bint should_close,
                            object compression,
@@ -291,7 +303,8 @@ cdef _new_response_message(object version,
     ret.version = version
     ret.code = code
     ret.reason = reason
-    ret.headers = headers
+    ret.headers = CIMultiDict_New(len(headers))
+    CIMultiDict_UpdateFromMultiDict(ret.headers, headers, UpdateOp.Extend)
     ret.raw_headers = raw_headers
     ret.should_close = should_close
     ret.compression = compression
