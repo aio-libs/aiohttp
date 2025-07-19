@@ -3,11 +3,16 @@
 # Based on https://github.com/MagicStack/httptools
 #
 
+# NOTE: I have scattered notes around this file
+# Temporarily as I hunt for things to improve, Please know
+# that my notes are all temporary and I plan to remove them
+# when I convert the pull request from a draft to a real pull
+# request. - Vizonex
+
 from cpython cimport (
     Py_buffer,
     PyBUF_SIMPLE,
     PyBuffer_Release,
-    PyBytes_AsString,
     PyBytes_AsStringAndSize,
     PyObject_GetBuffer,
 )
@@ -23,13 +28,10 @@ from multidict cimport (
     CIMultiDict_UpdateFromDict,
     CIMultiDict_UpdateFromMultiDict,
     CIMultiDictProxy,
-    CIMultiDictProxy_Check,
     CIMultiDictProxy_Contains,
     CIMultiDictProxy_GetOne,
     CIMultiDictProxy_New,
-    MultiDict_Check,
-    MultiDictProxy_Check,
-    UpdateOp,
+    istr,
     multidict_import,
 )
 
@@ -71,6 +73,7 @@ ALLOWED_UPGRADES = frozenset({"websocket"})
 DEF DEFAULT_FREELIST_SIZE = 250
 
 cdef extern from "Python.h":
+    bytearray PyByteArray_FromStringAndSize(const char *string, Py_ssize_t len)
     int PyByteArray_Resize(object, Py_ssize_t) except -1
     Py_ssize_t PyByteArray_Size(object) except -1
     char* PyByteArray_AsString(object)
@@ -83,8 +86,8 @@ cdef object URL_build = URL.build
 cdef object HttpVersion = _HttpVersion
 cdef object HttpVersion10 = _HttpVersion10
 cdef object HttpVersion11 = _HttpVersion11
-cdef object SEC_WEBSOCKET_KEY1 = hdrs.SEC_WEBSOCKET_KEY1
-cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
+cdef istr SEC_WEBSOCKET_KEY1 = hdrs.SEC_WEBSOCKET_KEY1
+cdef istr CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
@@ -100,7 +103,6 @@ cdef inline object extend(object buf, const char* at, size_t length):
 
 
 DEF METHODS_COUNT = 46;
-
 cdef list _http_method = []
 
 for i in range(METHODS_COUNT):
@@ -131,7 +133,7 @@ cdef class RawRequestMessage:
     cdef readonly str method
     cdef readonly str path
     cdef readonly object version  # HttpVersion
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly CIMultiDictProxy headers  # CIMultiDictProxy[str]
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -153,7 +155,8 @@ cdef class RawRequestMessage:
         self.url = url
 
     def __repr__(self):
-        info = []
+        # NOTE: This is Experimental, I might revert this later...
+        cdef list info = []
         info.append(("method", self.method))
         info.append(("path", self.path))
         info.append(("version", self.version))
@@ -226,12 +229,17 @@ cdef _new_request_message(str method,
     return ret
 
 
+# TODO: headers can sometimes come in as a different objects other than
+# CIMultiDictProxy, this might be a problem if we wish to optimize these
+# class datatypes further since some tests like to throw in a few
+# curve balls int the headers argument.
+
 @cython.freelist(DEFAULT_FREELIST_SIZE)
 cdef class RawResponseMessage:
     cdef readonly object version  # HttpVersion
     cdef readonly int code
     cdef readonly str reason
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly CIMultiDictProxy headers  # CIMultiDictProxy[str]
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -251,7 +259,7 @@ cdef class RawResponseMessage:
         self.chunked = chunked
 
     def __repr__(self):
-        info = []
+        cdef list info = []
         info.append(("version", self.version))
         info.append(("code", self.code))
         info.append(("reason", self.reason))
@@ -363,7 +371,7 @@ cdef class HttpParser:
         self._loop = loop
         self._timer = timer
 
-        self._buf = bytearray()
+        self._buf = PyByteArray_FromStringAndSize(NULL, 0)
         self._payload = None
         self._payload_error = 0
         self._payload_exception = payload_exception

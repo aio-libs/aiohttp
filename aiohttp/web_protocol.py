@@ -24,6 +24,7 @@ from typing import (
 )
 
 import yarl
+from multidict import CIMultiDict, CIMultiDictProxy
 from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
@@ -75,8 +76,8 @@ ERROR = RawRequestMessage(
     "UNKNOWN",
     "/",
     HttpVersion10,
-    {},  # type: ignore[arg-type]
-    {},  # type: ignore[arg-type]
+    CIMultiDictProxy(CIMultiDict()),  # type: ignore[arg-type]
+    CIMultiDictProxy(CIMultiDict()),  # type: ignore[arg-type]
     True,
     None,
     False,
