@@ -1,20 +1,17 @@
-from abc import ABC, abstractmethod
 import asyncio
-from dataclasses import dataclass
-from datetime import datetime
 import io
 import os
 import pathlib
 import sys
+from abc import ABC, abstractmethod
 from contextlib import suppress
+from dataclasses import dataclass
 from enum import Enum, auto
 from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
 from typing import (
-    IO,
     TYPE_CHECKING,
-    Any,
     Awaitable,
     BinaryIO,
     Callable,
@@ -23,7 +20,6 @@ from typing import (
     Set,
     Tuple,
 )
-from typing_extensions import override
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -114,12 +110,10 @@ class BaseIOResponse(StreamResponse, ABC):
         self._chunk_size = chunk_size
 
     @abstractmethod
-    async def open(self) -> _ResponseOpenFile:
-        ...
+    async def open(self, accept_encoding: str) -> _ResponseOpenFile: ...
 
     @abstractmethod
-    async def close(self, open_file: _ResponseOpenFile) -> None:
-        ...
+    async def close(self, open_file: _ResponseOpenFile) -> None: ...
 
     def _seek_and_read(self, fobj: BinaryIO, offset: int, chunk_size: int) -> bytes:
         fobj.seek(offset)
@@ -176,7 +170,10 @@ class BaseIOResponse(StreamResponse, ABC):
         )
 
     async def _not_modified(
-        self, request: "BaseRequest", etag_value: Optional[str], last_modified: Optional[float]
+        self,
+        request: "BaseRequest",
+        etag_value: Optional[str],
+        last_modified: Optional[float],
     ) -> Optional[AbstractStreamWriter]:
         self.set_status(HTTPNotModified.status_code)
         self._length_check = False
@@ -195,11 +192,14 @@ class BaseIOResponse(StreamResponse, ABC):
         self.content_length = 0
         return await super().prepare(request)
 
-    @override
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
+        # Encoding comparisons should be case-insensitive
+        # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
+        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
+
         open_file = None
         try:
-            open_file = await self.open()
+            open_file = await self.open(accept_encoding)
 
             if hdrs.CONTENT_TYPE not in self.headers:
                 self.headers[hdrs.CONTENT_TYPE] = open_file.guessed_content_type
@@ -211,10 +211,14 @@ class BaseIOResponse(StreamResponse, ABC):
                 ):
                     return await self._precondition_failed(request)
 
-                if (ifnonematch := request.if_none_match) is not None and self._etag_match(
+                if (
+                    ifnonematch := request.if_none_match
+                ) is not None and self._etag_match(
                     open_file.etag, ifnonematch, weak=True
                 ):
-                    return await self._not_modified(request, open_file.etag, open_file.last_modified)
+                    return await self._not_modified(
+                        request, open_file.etag, open_file.last_modified
+                    )
 
             if open_file.last_modified is not None:
                 if (
@@ -229,7 +233,9 @@ class BaseIOResponse(StreamResponse, ABC):
                     and request.if_none_match is None
                     and open_file.last_modified <= modsince.timestamp()
                 ):
-                    return await self._not_modified(request, open_file.etag, open_file.last_modified)
+                    return await self._not_modified(
+                        request, open_file.etag, open_file.last_modified
+                    )
 
             return await self._prepare_open_file(request, open_file)
 
@@ -262,7 +268,11 @@ class BaseIOResponse(StreamResponse, ABC):
         count: int = open_file.size
         start: Optional[int] = None
 
-        if (ifrange := request.if_range) is None or open_file.last_modified is None or open_file.last_modified <= ifrange.timestamp():
+        if (
+            (ifrange := request.if_range) is None
+            or open_file.last_modified is None
+            or open_file.last_modified <= ifrange.timestamp()
+        ):
             # If-Range header check:
             # condition = cached date >= last modification date
             # return 206 if True else 200.
@@ -307,7 +317,8 @@ class BaseIOResponse(StreamResponse, ABC):
                     # value of last-byte-pos with a value that is one less than
                     # the current length of the selected representation).
                     count = (
-                        min(end if end is not None else open_file.size, open_file.size) - start
+                        min(end if end is not None else open_file.size, open_file.size)
+                        - start
                     )
 
                 if start >= open_file.size:
@@ -365,7 +376,8 @@ class BaseIOResponse(StreamResponse, ABC):
 
 class FileResponse(BaseIOResponse):
     """A response object can be used to send files."""
-    path: PathLike
+
+    path: pathlib.Path
 
     def __init__(
         self,
@@ -375,34 +387,62 @@ class FileResponse(BaseIOResponse):
         reason: Optional[str] = None,
         headers: Optional[LooseHeaders] = None,
     ) -> None:
-        self.path = path
+        self.path = pathlib.Path(path)
         super().__init__(status=status, reason=reason, headers=headers)
 
-    @override
-    async def open(self) -> _ResponseOpenFile:
+    def _get_file_path_stat_encoding(
+        self, accept_encoding: str
+    ) -> Tuple[Optional[pathlib.Path], os.stat_result, Optional[str]]:
+        file_path = self.path
+        for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
+            if file_encoding not in accept_encoding:
+                continue
+
+            compressed_path = file_path.with_suffix(file_path.suffix + file_extension)
+            with suppress(OSError):
+                # Do not follow symlinks and ignore any non-regular files.
+                st = compressed_path.lstat()
+                if S_ISREG(st.st_mode):
+                    return compressed_path, st, file_encoding
+
+        # Fallback to the uncompressed file
+        st = file_path.stat()
+        return file_path if S_ISREG(st.st_mode) else None, st, None
+
+    async def open(self, accept_encoding: str) -> _ResponseOpenFile:
         def _open():
             # Guess a fallback content type, used if no Content-Type header is provided
             if sys.version_info >= (3, 13):
                 guesser = CONTENT_TYPES.guess_file_type
             else:
                 guesser = CONTENT_TYPES.guess_type
-            guessed_content_type = guesser(self.path)[0] or FALLBACK_CONTENT_TYPE
+            content_type = guesser(self.path)[0] or FALLBACK_CONTENT_TYPE
 
-            st = os.stat(self.path)
-            last_modified = st.st_mtime
-            etag: str = f"{st.st_mtime_ns:x}-{st.st_size:x}"
-            fobj = pathlib.Path(self.path).open("rb")
-            return _ResponseOpenFile(fobj, st.st_size, guessed_content_type, etag, last_modified, None)
+            file_path, st, encoding = self._get_file_path_stat_encoding(accept_encoding)
+            if file_path is None:
+                # Forbid special files like sockets, pipes, devices, etc.
+                raise PermissionError()
+
+            return _ResponseOpenFile(
+                fobj=file_path.open("rb"),
+                size=st.st_size,
+                guessed_content_type=content_type,
+                etag=f"{st.st_mtime_ns:x}-{st.st_size:x}",
+                last_modified=st.st_mtime,
+                encoding=encoding,
+            )
 
         return await asyncio.get_running_loop().run_in_executor(None, _open)
 
-    @override
     async def close(self, open_file: _ResponseOpenFile) -> None:
-        return await asyncio.get_running_loop().run_in_executor(None, open_file.fobj.close)
+        return await asyncio.get_running_loop().run_in_executor(
+            None, open_file.fobj.close
+        )
 
 
 class IOResponse(BaseIOResponse):
     """A response object using any binary IO object"""
+
     _fobj: BinaryIO
     _etag: str | None
     _last_modified: float | None
@@ -428,8 +468,7 @@ class IOResponse(BaseIOResponse):
         self._close = close
         super().__init__(status=status, reason=reason, headers=headers)
 
-    @override
-    async def open(self) -> _ResponseOpenFile:
+    async def open(self, accept_encoding: str) -> _ResponseOpenFile:
         def get_size():
             self._fobj.seek(0, io.SEEK_END)
             size = self._fobj.tell()
@@ -437,9 +476,10 @@ class IOResponse(BaseIOResponse):
             return size
 
         size = await asyncio.get_running_loop().run_in_executor(None, get_size)
-        return _ResponseOpenFile(self._fobj, size, self._content_type, self._etag, self._last_modified, None)
+        return _ResponseOpenFile(
+            self._fobj, size, self._content_type, self._etag, self._last_modified, None
+        )
 
-    @override
     async def close(self, open_file: _ResponseOpenFile) -> None:
         if self._close:
             await asyncio.get_running_loop().run_in_executor(None, open_file.fobj.close)
