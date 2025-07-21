@@ -379,7 +379,7 @@ class BaseIOResponse(StreamResponse, ABC):
 class FileResponse(BaseIOResponse):
     """A response object can be used to send files."""
 
-    path: pathlib.Path
+    _path: pathlib.Path
 
     def __init__(
         self,
@@ -389,13 +389,13 @@ class FileResponse(BaseIOResponse):
         reason: Optional[str] = None,
         headers: Optional[LooseHeaders] = None,
     ) -> None:
-        self.path = pathlib.Path(path)
+        self._path = pathlib.Path(path)
         super().__init__(status=status, reason=reason, headers=headers)
 
     def _get_file_path_stat_encoding(
         self, accept_encoding: str
     ) -> Tuple[Optional[pathlib.Path], os.stat_result, Optional[str]]:
-        file_path = self.path
+        file_path = self._path
         for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
             if file_encoding not in accept_encoding:
                 continue
@@ -418,9 +418,10 @@ class FileResponse(BaseIOResponse):
                 guesser = CONTENT_TYPES.guess_file_type
             else:
                 guesser = CONTENT_TYPES.guess_type
-            content_type = guesser(self.path)[0] or FALLBACK_CONTENT_TYPE
+            content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
 
             file_path, st, encoding = self._get_file_path_stat_encoding(accept_encoding)
+
             if file_path is None:
                 # Forbid special files like sockets, pipes, devices, etc.
                 raise PermissionError()
