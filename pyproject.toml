@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name        = "aiohttp"
-license     = {text = "Apache-2.0"}
+license     = {text = "Apache-2.0 AND MIT"}
 description = "Async http client/server framework (asyncio)"
 readme      = "README.rst"
 maintainers = [{name = "aiohttp team", email = "team@aiohttp.org"}]
@@ -40,6 +40,13 @@ dynamic = ["version", "dependencies", "optional-dependencies"]
 "Docs: RTD"          = "https://docs.aiohttp.org"
 "GitHub: issues"     = "https://github.com/aio-libs/aiohttp/issues"
 "GitHub: repo"       = "https://github.com/aio-libs/aiohttp"
+
+[tool.setuptools]
+license-files = [
+  # TODO: Use 'project.license-files' instead once setuptools is bumped to >=77
+  "LICENSE.txt",
+  "vendor/llhttp/LICENSE",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "aiohttp.__version__"}
