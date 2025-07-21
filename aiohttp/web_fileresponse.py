@@ -205,16 +205,19 @@ class BaseIOResponse(StreamResponse, ABC):
                 self.headers[hdrs.CONTENT_TYPE] = open_file.guessed_content_type
 
             # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
-            if (
-                (ifmatch := request.if_match) is not None
-                and (open_file.etag is None or not self._etag_match(open_file.etag, ifmatch, weak=False))
+            if (ifmatch := request.if_match) is not None and (
+                open_file.etag is None
+                or not self._etag_match(open_file.etag, ifmatch, weak=False)
             ):
                 return await self._precondition_failed(request)
 
             if (
                 (unmodsince := request.if_unmodified_since) is not None
                 and request.if_match is None
-                and (open_file.last_modified is None or open_file.last_modified > unmodsince.timestamp())
+                and (
+                    open_file.last_modified is None
+                    or open_file.last_modified > unmodsince.timestamp()
+                )
             ):
                 return await self._precondition_failed(request)
 
