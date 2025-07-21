@@ -172,14 +172,14 @@ class BaseIOResponse(StreamResponse, ABC):
     async def _not_modified(
         self,
         request: "BaseRequest",
-        etag_value: Optional[str],
+        etag: Optional[str],
         last_modified: Optional[float],
     ) -> Optional[AbstractStreamWriter]:
         self.set_status(HTTPNotModified.status_code)
         self._length_check = False
-        if self.etag is not None:
-            self.etag = etag_value  # type: ignore[assignment]
-        if self.etag is not None:
+        if etag is not None:
+            self.etag = etag  # type: ignore[assignment]
+        if last_modified is not None:
             self.last_modified = last_modified  # type: ignore[assignment]
         # Delete any Content-Length headers provided by user. HTTP 304
         # should always have empty response body
@@ -205,37 +205,37 @@ class BaseIOResponse(StreamResponse, ABC):
                 self.headers[hdrs.CONTENT_TYPE] = open_file.guessed_content_type
 
             # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
-            if open_file.etag is not None:
-                if (ifmatch := request.if_match) is not None and not self._etag_match(
-                    open_file.etag, ifmatch, weak=False
-                ):
-                    return await self._precondition_failed(request)
+            if (
+                (ifmatch := request.if_match) is not None
+                and (open_file.etag is None or not self._etag_match(open_file.etag, ifmatch, weak=False))
+            ):
+                return await self._precondition_failed(request)
 
-                if (
-                    ifnonematch := request.if_none_match
-                ) is not None and self._etag_match(
-                    open_file.etag, ifnonematch, weak=True
-                ):
-                    return await self._not_modified(
-                        request, open_file.etag, open_file.last_modified
-                    )
+            if (
+                (unmodsince := request.if_unmodified_since) is not None
+                and request.if_match is None
+                and (open_file.last_modified is None or open_file.last_modified > unmodsince.timestamp())
+            ):
+                return await self._precondition_failed(request)
 
-            if open_file.last_modified is not None:
-                if (
-                    (unmodsince := request.if_unmodified_since) is not None
-                    and request.if_match is None
-                    and open_file.last_modified > unmodsince.timestamp()
-                ):
-                    return await self._precondition_failed(request)
+            # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
+            if (
+                open_file.etag is not None
+                and (ifnonematch := request.if_none_match) is not None
+                and self._etag_match(open_file.etag, ifnonematch, weak=True)
+            ):
+                return await self._not_modified(
+                    request, open_file.etag, open_file.last_modified
+                )
 
-                if (
-                    (modsince := request.if_modified_since) is not None
-                    and request.if_none_match is None
-                    and open_file.last_modified <= modsince.timestamp()
-                ):
-                    return await self._not_modified(
-                        request, open_file.etag, open_file.last_modified
-                    )
+            if (
+                open_file.last_modified is not None
+                and (modsince := request.if_modified_since) is not None
+                and open_file.last_modified <= modsince.timestamp()
+            ):
+                return await self._not_modified(
+                    request, open_file.etag, open_file.last_modified
+                )
 
             return await self._prepare_open_file(request, open_file)
 
@@ -350,7 +350,6 @@ class BaseIOResponse(StreamResponse, ABC):
 
         if open_file.etag is not None:
             self.etag = open_file.etag
-
         if open_file.last_modified is not None:
             self.last_modified = open_file.last_modified  # type: ignore[assignment]
         self.content_length = count
