@@ -1,3 +1,0 @@
-Added human-readable error messages to the exceptions for WebSocket disconnects due to PONG not being received -- by :user:`bdraco`.
-
-Previously, the error messages were empty strings, which made it hard to determine what went wrong.

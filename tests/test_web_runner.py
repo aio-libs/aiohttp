@@ -49,22 +49,40 @@ async def test_site_for_nonfrozen_app(make_runner: _RunnerMaker) -> None:
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
 async def test_runner_setup_handle_signals(make_runner: _RunnerMaker) -> None:
-    runner = make_runner(handle_signals=True)
-    await runner.setup()
-    assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
-    await runner.cleanup()
-    assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    # Save the original signal handler
+    original_handler = signal.getsignal(signal.SIGTERM)
+    try:
+        # Set a known state for the signal handler to avoid flaky tests
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+        runner = make_runner(handle_signals=True)
+        await runner.setup()
+        assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
+        await runner.cleanup()
+        assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    finally:
+        # Restore original signal handler
+        signal.signal(signal.SIGTERM, original_handler)
 
 
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
 async def test_runner_setup_without_signal_handling(make_runner: _RunnerMaker) -> None:
-    runner = make_runner(handle_signals=False)
-    await runner.setup()
-    assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
-    await runner.cleanup()
-    assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    # Save the original signal handler
+    original_handler = signal.getsignal(signal.SIGTERM)
+    try:
+        # Set a known state for the signal handler to avoid flaky tests
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+        runner = make_runner(handle_signals=False)
+        await runner.setup()
+        assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+        await runner.cleanup()
+        assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    finally:
+        # Restore original signal handler
+        signal.signal(signal.SIGTERM, original_handler)
 
 
 async def test_site_double_added(make_runner: _RunnerMaker) -> None:
@@ -194,6 +212,12 @@ async def test_app_make_handler_access_log_class2() -> None:
     app = web.Application(handler_args={"access_log_class": Logger})
     runner = web.AppRunner(app)
     assert runner._kwargs["access_log_class"] is Logger
+
+
+async def test_app_make_handler_no_access_log_class() -> None:
+    app = web.Application(handler_args={"access_log": None})
+    runner = web.AppRunner(app)
+    assert runner._kwargs["access_log"] is None
 
 
 async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:

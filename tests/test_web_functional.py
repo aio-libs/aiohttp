@@ -4,8 +4,17 @@ import json
 import pathlib
 import socket
 import sys
-import zlib
-from typing import AsyncIterator, Awaitable, Callable, Dict, List, NoReturn, Optional
+from typing import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    NoReturn,
+    Optional,
+    Tuple,
+)
 from unittest import mock
 
 import pytest
@@ -24,9 +33,9 @@ from aiohttp import (
     web,
 )
 from aiohttp.abc import AbstractResolver, ResolveResult
+from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
 
@@ -414,7 +423,7 @@ async def test_post_single_file(aiohttp_client: AiohttpClient) -> None:
         assert ["data.unknown_mime_type"] == list(data.keys())
         for fs in data.values():
             assert isinstance(fs, aiohttp.web_request.FileField)
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -441,9 +450,9 @@ async def test_files_upload_with_same_key(aiohttp_client: AiohttpClient) -> None
             assert isinstance(_file, aiohttp.web_request.FileField)
             assert not _file.file.closed
             if _file.filename == "test1.jpeg":
-                assert _file.file.read() == b"binary data 1"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 1"
             if _file.filename == "test2.jpeg":
-                assert _file.file.read() == b"binary data 2"
+                assert await asyncio.to_thread(_file.file.read) == b"binary data 2"
             file_names.add(_file.filename)
             _file.file.close()
         assert len(files) == 2
@@ -483,7 +492,7 @@ async def test_post_files(aiohttp_client: AiohttpClient) -> None:
         assert ["data.unknown_mime_type", "conftest.py"] == list(data.keys())
         for fs in data.values():
             assert isinstance(fs, aiohttp.web_request.FileField)
-            check_file(fs)
+            await asyncio.to_thread(check_file, fs)
             fs.file.close()
         resp = web.Response(body=b"OK")
         return resp
@@ -762,7 +771,7 @@ async def test_upload_file(aiohttp_client: AiohttpClient) -> None:
         form = await request.post()
         form_file = form["file"]
         assert isinstance(form_file, aiohttp.web_request.FileField)
-        raw_data = form_file.file.read()
+        raw_data = await asyncio.to_thread(form_file.file.read)
         form_file.file.close()
         assert data == raw_data
         return web.Response()
@@ -787,7 +796,7 @@ async def test_upload_file_object(aiohttp_client: AiohttpClient) -> None:
         form = await request.post()
         form_file = form["file"]
         assert isinstance(form_file, aiohttp.web_request.FileField)
-        raw_data = form_file.file.read()
+        raw_data = await asyncio.to_thread(form_file.file.read)
         form_file.file.close()
         assert data == raw_data
         return web.Response()
@@ -914,10 +923,10 @@ async def test_response_with_async_gen(
 
     async def stream(f_name: pathlib.Path) -> AsyncIterator[bytes]:
         with f_name.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Length": str(data_size)}
@@ -946,10 +955,10 @@ async def test_response_with_async_gen_no_params(
 
     async def stream() -> AsyncIterator[bytes]:
         with fname.open("rb") as f:
-            data = f.read(100)
+            data = await asyncio.to_thread(f.read, 100)
             while data:
                 yield data
-                data = f.read(100)
+                data = await asyncio.to_thread(f.read, 100)
 
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Length": str(data_size)}
@@ -1090,19 +1099,30 @@ async def test_response_with_payload_stringio(
     resp.release()
 
 
-@pytest.mark.parametrize(
-    "compressor,encoding",
-    [
-        (zlib.compressobj(wbits=16 + zlib.MAX_WBITS), "gzip"),
-        (zlib.compressobj(wbits=zlib.MAX_WBITS), "deflate"),
-        # Actually, wrong compression format, but
-        # should be supported for some legacy cases.
-        (zlib.compressobj(wbits=-zlib.MAX_WBITS), "deflate"),
-    ],
-)
+@pytest.fixture(params=["gzip", "deflate", "deflate-raw"])
+def compressor_case(
+    request: pytest.FixtureRequest,
+    parametrize_zlib_backend: None,
+) -> Generator[Tuple[ZLibCompressObjProtocol, str], None, None]:
+    encoding: str = request.param
+    max_wbits: int = ZLibBackend.MAX_WBITS
+
+    encoding_to_wbits: Dict[str, int] = {
+        "deflate": max_wbits,
+        "deflate-raw": -max_wbits,
+        "gzip": 16 + max_wbits,
+    }
+
+    compressor = ZLibBackend.compressobj(wbits=encoding_to_wbits[encoding])
+    yield (compressor, "deflate" if encoding.startswith("deflate") else encoding)
+
+
 async def test_response_with_precompressed_body(
-    aiohttp_client: AiohttpClient, compressor: "zlib._Compress", encoding: str
+    aiohttp_client: AiohttpClient,
+    compressor_case: Tuple[ZLibCompressObjProtocol, str],
 ) -> None:
+    compressor, encoding = compressor_case
+
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Encoding": encoding}
         data = compressor.compress(b"mydata") + compressor.flush()
@@ -1925,6 +1945,9 @@ async def test_response_context_manager_error(aiohttp_server: AiohttpServer) -> 
             await resp.read()
     assert resp.closed
 
+    # Wait for any pending operations to complete
+    await resp.wait_for_close()
+
     assert session._connector is not None
     assert len(session._connector._conns) == 1
 
@@ -1997,13 +2020,13 @@ async def test_iter_any(aiohttp_server: AiohttpServer) -> None:
 
 
 async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
-    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_create_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_create_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_start = mock.AsyncMock()
+    on_request_end = mock.AsyncMock()
+    on_dns_resolvehost_start = mock.AsyncMock()
+    on_dns_resolvehost_end = mock.AsyncMock()
+    on_request_redirect = mock.AsyncMock()
+    on_connection_create_start = mock.AsyncMock()
+    on_connection_create_end = mock.AsyncMock()
 
     async def redirector(request: web.Request) -> NoReturn:
         raise web.HTTPFound(location=URL("/redirected"))
@@ -2179,6 +2202,7 @@ async def test_read_bufsize(aiohttp_client: AiohttpClient) -> None:
 @pytest.mark.parametrize(
     "auto_decompress,len_of", [(True, "uncompressed"), (False, "compressed")]
 )
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_auto_decompress(
     aiohttp_client: AiohttpClient,
     auto_decompress: bool,
@@ -2193,7 +2217,7 @@ async def test_auto_decompress(
 
     client = await aiohttp_client(app)
     uncompressed = b"dataaaaaaaaaaaaaaaaaaaaaaaaa"
-    compressor = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+    compressor = ZLibBackend.compressobj(wbits=16 + ZLibBackend.MAX_WBITS)
     compressed = compressor.compress(uncompressed) + compressor.flush()
     assert len(compressed) != len(uncompressed)
     headers = {"content-encoding": "gzip"}

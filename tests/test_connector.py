@@ -7,6 +7,7 @@ import socket
 import ssl
 import sys
 import uuid
+import warnings
 from collections import defaultdict, deque
 from concurrent import futures
 from contextlib import closing, suppress
@@ -26,7 +27,6 @@ from typing import (
 from unittest import mock
 
 import pytest
-from aiohappyeyeballs import AddrInfoType
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -44,16 +44,18 @@ from aiohttp.client_reqrep import ConnectionKey
 from aiohttp.connector import (
     _SSL_CONTEXT_UNVERIFIED,
     _SSL_CONTEXT_VERIFIED,
+    AddrInfoType,
     Connection,
     TCPConnector,
+    _ConnectTunnelConnection,
     _DNSCacheTable,
 )
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.test_utils import make_mocked_coro, unused_port
+from aiohttp.test_utils import unused_port
 from aiohttp.tracing import Trace
 
 
-@pytest.fixture()
+@pytest.fixture
 def key() -> ConnectionKey:
     # Connection key
     return ConnectionKey("localhost", 80, False, True, None, None, None)
@@ -124,7 +126,7 @@ def create_mocked_conn(
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        loop = asyncio.get_event_loop_policy().get_event_loop()
+        loop = asyncio.get_event_loop()
 
     f = loop.create_future()
     proto: mock.Mock = mock.create_autospec(
@@ -221,7 +223,7 @@ async def test_del(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
 
 
 @pytest.mark.xfail
-async def test_del_with_scheduled_cleanup(
+async def test_del_with_scheduled_cleanup(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
     loop.set_debug(True)
@@ -251,7 +253,7 @@ async def test_del_with_scheduled_cleanup(
 @pytest.mark.skipif(
     sys.implementation.name != "cpython", reason="CPython GC is required for the test"
 )
-def test_del_with_closed_loop(
+def test_del_with_closed_loop(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
     async def make_conn() -> aiohttp.BaseConnector:
@@ -290,7 +292,6 @@ async def test_create_conn() -> None:
     conn = aiohttp.BaseConnector()
     with pytest.raises(NotImplementedError):
         await conn._create_connection(object(), [], object())  # type: ignore[arg-type]
-
     await conn.close()
 
 
@@ -316,82 +317,116 @@ async def test_close(key: ConnectionKey) -> None:
     assert conn.closed
 
 
+async def test_close_with_proto_closed_none(key: ConnectionKey) -> None:
+    """Test close when protocol.closed is None."""
+    # Create protocols where closed property returns None
+    proto1 = mock.create_autospec(ResponseHandler, instance=True)
+    proto1.closed = None
+    proto1.close = mock.Mock()
+
+    proto2 = mock.create_autospec(ResponseHandler, instance=True)
+    proto2.closed = None
+    proto2.close = mock.Mock()
+
+    conn = aiohttp.BaseConnector()
+    conn._conns[key] = deque([(proto1, 0)])
+    conn._acquired.add(proto2)
+
+    # Close the connector - this should handle the case where proto.closed is None
+    await conn.close()
+
+    # Verify close was called on both protocols
+    assert proto1.close.called
+    assert proto2.close.called
+    assert conn.closed
+
+
 async def test_get(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     conn = aiohttp.BaseConnector()
-    assert await conn._get(key, []) is None
+    try:
+        assert await conn._get(key, []) is None
 
-    proto = create_mocked_conn(loop)
-    conn._conns[key] = deque([(proto, loop.time())])
-    connection = await conn._get(key, [])
-    assert connection is not None
-    assert connection.protocol == proto
-    connection.close()
-    await conn.close()
+        proto = create_mocked_conn(loop)
+        conn._conns[key] = deque([(proto, loop.time())])
+        connection = await conn._get(key, [])
+        assert connection is not None
+        assert connection.protocol == proto
+        connection.close()
+    finally:
+        await conn.close()
 
 
 async def test_get_unconnected_proto(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.BaseConnector()
     key = ConnectionKey("localhost", 80, False, False, None, None, None)
-    assert await conn._get(key, []) is None
+    try:
+        assert await conn._get(key, []) is None
 
-    proto = create_mocked_conn(loop)
-    conn._conns[key] = deque([(proto, loop.time())])
-    connection = await conn._get(key, [])
-    assert connection is not None
-    assert connection.protocol == proto
-    connection.close()
+        proto = create_mocked_conn(loop)
+        conn._conns[key] = deque([(proto, loop.time())])
+        connection = await conn._get(key, [])
+        assert connection is not None
+        assert connection.protocol == proto
+        connection.close()
 
-    assert await conn._get(key, []) is None
-    conn._conns[key] = deque([(proto, loop.time())])
-    proto.is_connected = lambda *args: False
-    assert await conn._get(key, []) is None
-    await conn.close()
+        assert await conn._get(key, []) is None
+        conn._conns[key] = deque([(proto, loop.time())])
+        proto.is_connected = lambda *args: False
+        assert await conn._get(key, []) is None
+    finally:
+        await conn.close()
 
 
 async def test_get_unconnected_proto_ssl(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.BaseConnector()
     key = ConnectionKey("localhost", 80, True, False, None, None, None)
-    assert await conn._get(key, []) is None
+    try:
+        assert await conn._get(key, []) is None
 
-    proto = create_mocked_conn(loop)
-    conn._conns[key] = deque([(proto, loop.time())])
-    connection = await conn._get(key, [])
-    assert connection is not None
-    assert connection.protocol == proto
-    connection.close()
+        proto = create_mocked_conn(loop)
+        conn._conns[key] = deque([(proto, loop.time())])
+        connection = await conn._get(key, [])
+        assert connection is not None
+        assert connection.protocol == proto
+        connection.close()
 
-    assert await conn._get(key, []) is None
-    conn._conns[key] = deque([(proto, loop.time())])
-    proto.is_connected = lambda *args: False
-    assert await conn._get(key, []) is None
-    await conn.close()
+        assert await conn._get(key, []) is None
+        conn._conns[key] = deque([(proto, loop.time())])
+        proto.is_connected = lambda *args: False
+        assert await conn._get(key, []) is None
+    finally:
+        await conn.close()
 
 
 async def test_get_expired(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.BaseConnector()
     key = ConnectionKey("localhost", 80, False, False, None, None, None)
-    assert await conn._get(key, []) is None
+    try:
+        assert await conn._get(key, []) is None
 
-    proto = create_mocked_conn(loop)
-    conn._conns[key] = deque([(proto, loop.time() - 1000)])
-    assert await conn._get(key, []) is None
-    assert not conn._conns
-    await conn.close()
+        proto = create_mocked_conn(loop)
+        conn._conns[key] = deque([(proto, loop.time() - 1000)])
+        assert await conn._get(key, []) is None
+        assert not conn._conns
+    finally:
+        await conn.close()
 
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_get_expired_ssl(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     key = ConnectionKey("localhost", 80, True, False, None, None, None)
-    assert await conn._get(key, []) is None
+    try:
+        assert await conn._get(key, []) is None
 
-    proto = create_mocked_conn(loop)
-    transport = proto.transport
-    conn._conns[key] = deque([(proto, loop.time() - 1000)])
-    assert await conn._get(key, []) is None
-    assert not conn._conns
-    assert conn._cleanup_closed_transports == [transport]
-    await conn.close()
+        proto = create_mocked_conn(loop)
+        transport = proto.transport
+        conn._conns[key] = deque([(proto, loop.time() - 1000)])
+        assert await conn._get(key, []) is None
+        assert not conn._conns
+        assert conn._cleanup_closed_transports == [transport]
+    finally:
+        await conn.close()
 
 
 async def test_release_acquired(key: ConnectionKey) -> None:
@@ -444,7 +479,7 @@ async def test_release(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> N
 
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
-async def test_release_ssl_transport(
+async def test_release_ssl_transport(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
 ) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
@@ -1268,6 +1303,7 @@ async def test_tcp_connector_dns_cache_not_expired(
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         await conn._resolve_host("localhost", 8080)
         await conn._resolve_host("localhost", 8080)
         m_resolver().resolve.assert_called_once_with("localhost", 8080, family=0)
@@ -1281,6 +1317,7 @@ async def test_tcp_connector_dns_cache_forever(
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         await conn._resolve_host("localhost", 8080)
         await conn._resolve_host("localhost", 8080)
         m_resolver().resolve.assert_called_once_with("localhost", 8080, family=0)
@@ -1294,6 +1331,7 @@ async def test_tcp_connector_use_dns_cache_disabled(
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=False)
         m_resolver().resolve.side_effect = [dns_response(), dns_response()]
+        m_resolver().close = mock.AsyncMock()
         await conn._resolve_host("localhost", 8080)
         await conn._resolve_host("localhost", 8080)
         m_resolver().resolve.assert_has_calls(
@@ -1312,6 +1350,7 @@ async def test_tcp_connector_dns_throttle_requests(
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         t = loop.create_task(conn._resolve_host("localhost", 8080))
         t2 = loop.create_task(conn._resolve_host("localhost", 8080))
         await asyncio.sleep(0)
@@ -1332,6 +1371,7 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         e = Exception()
         m_resolver().resolve.side_effect = e
+        m_resolver().close = mock.AsyncMock()
         r1 = loop.create_task(conn._resolve_host("localhost", 8080))
         r2 = loop.create_task(conn._resolve_host("localhost", 8080))
         await asyncio.sleep(0)
@@ -1350,6 +1390,7 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         t = loop.create_task(conn._resolve_host("localhost", 8080))
         f = loop.create_task(conn._resolve_host("localhost", 8080))
 
@@ -1396,6 +1437,7 @@ async def test_tcp_connector_cancel_dns_error_captured(
             use_dns_cache=False,
         )
         m_resolver().resolve.return_value = dns_response_error()
+        m_resolver().close = mock.AsyncMock()
         f = loop.create_task(conn._create_direct_connection(req, [], ClientTimeout(0)))
 
         await asyncio.sleep(0)
@@ -1414,10 +1456,10 @@ async def test_tcp_connector_dns_tracing(
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_dns_resolvehost_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_cache_hit = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_cache_miss = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_dns_resolvehost_start = mock.AsyncMock()
+    on_dns_resolvehost_end = mock.AsyncMock()
+    on_dns_cache_hit = mock.AsyncMock()
+    on_dns_cache_miss = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -1433,6 +1475,7 @@ async def test_tcp_connector_dns_tracing(
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
 
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
 
         await conn._resolve_host("localhost", 8080, traces=traces)
         on_dns_resolvehost_start.assert_called_once_with(
@@ -1461,8 +1504,8 @@ async def test_tcp_connector_dns_tracing_cache_disabled(
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_dns_resolvehost_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_dns_resolvehost_start = mock.AsyncMock()
+    on_dns_resolvehost_end = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -1476,6 +1519,7 @@ async def test_tcp_connector_dns_tracing_cache_disabled(
         conn = aiohttp.TCPConnector(use_dns_cache=False)
 
         m_resolver().resolve.side_effect = [dns_response(), dns_response()]
+        m_resolver().close = mock.AsyncMock()
 
         await conn._resolve_host("localhost", 8080, traces=traces)
 
@@ -1518,8 +1562,8 @@ async def test_tcp_connector_dns_tracing_throttle_requests(
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_dns_cache_hit = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_cache_miss = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_dns_cache_hit = mock.AsyncMock()
+    on_dns_cache_miss = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -1532,6 +1576,7 @@ async def test_tcp_connector_dns_tracing_throttle_requests(
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
+        m_resolver().close = mock.AsyncMock()
         t = loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
         t1 = loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
         await asyncio.sleep(0)
@@ -1548,6 +1593,14 @@ async def test_tcp_connector_dns_tracing_throttle_requests(
             await asyncio.gather(t, t1)
 
         await conn.close()
+
+
+async def test_tcp_connector_close_resolver() -> None:
+    m_resolver = mock.AsyncMock()
+    with mock.patch("aiohttp.connector.DefaultResolver", return_value=m_resolver):
+        conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
+        await conn.close()
+        m_resolver.close.assert_awaited_once()
 
 
 async def test_dns_error(loop: asyncio.AbstractEventLoop) -> None:
@@ -1662,8 +1715,8 @@ async def test_connect(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> N
 async def test_connect_tracing(loop: asyncio.AbstractEventLoop) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_connection_create_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_create_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_connection_create_start = mock.AsyncMock()
+    on_connection_create_end = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -1924,7 +1977,7 @@ async def test_cleanup(key: ConnectionKey) -> None:
 
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
-async def test_cleanup_close_ssl_transport(
+async def test_cleanup_close_ssl_transport(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
 ) -> None:
     proto = create_mocked_conn(loop)
@@ -2052,9 +2105,480 @@ async def test_tcp_connector_ctor(loop: asyncio.AbstractEventLoop) -> None:
     await conn.close()
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="Use test_tcp_connector_ssl_shutdown_timeout_pre_311 for Python < 3.11",
+)
+async def test_tcp_connector_ssl_shutdown_timeout(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    # Test default value (no warning expected)
+    conn = aiohttp.TCPConnector()
+    assert conn._ssl_shutdown_timeout == 0
+    await conn.close()
+
+    # Test custom value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
+    assert conn._ssl_shutdown_timeout == 1.0
+    await conn.close()
+
+    # Test None value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=None)
+    assert conn._ssl_shutdown_timeout is None
+    await conn.close()
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 11),
+    reason="This test is for Python < 3.11 runtime warning behavior",
+)
+async def test_tcp_connector_ssl_shutdown_timeout_pre_311(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that both deprecation and runtime warnings are issued on Python < 3.11."""
+    # Test custom value - expect both deprecation and runtime warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
+        assert any(issubclass(warn.category, DeprecationWarning) for warn in w)
+        assert any(issubclass(warn.category, RuntimeWarning) for warn in w)
+    assert conn._ssl_shutdown_timeout == 1.0
+    await conn.close()
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
+)
+async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
+    loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
+) -> None:
+    # Test that ssl_shutdown_timeout is passed to create_connection for SSL connections
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        create_connection.return_value = mock.Mock(), mock.Mock()
+
+        req = ClientRequest("GET", URL("https://example.com"), loop=loop)
+
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            assert create_connection.call_args.kwargs["ssl_shutdown_timeout"] == 2.5
+
+    await conn.close()
+
+    # Test with None value
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=None)
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        create_connection.return_value = mock.Mock(), mock.Mock()
+
+        req = ClientRequest("GET", URL("https://example.com"), loop=loop)
+
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            # When ssl_shutdown_timeout is None, it should not be in kwargs
+            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+
+    await conn.close()
+
+    # Test that ssl_shutdown_timeout is NOT passed for non-SSL connections
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        create_connection.return_value = mock.Mock(), mock.Mock()
+
+        req = ClientRequest("GET", URL("http://example.com"), loop=loop)
+
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            # For non-SSL connections, ssl_shutdown_timeout should not be passed
+            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+
+    await conn.close()
+
+
+@pytest.mark.skipif(sys.version_info >= (3, 11), reason="Test for Python < 3.11")
+async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
+    loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
+) -> None:
+    # Test that ssl_shutdown_timeout is NOT passed to create_connection on Python < 3.11
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
+        assert any(issubclass(warn.category, DeprecationWarning) for warn in w)
+        assert any(issubclass(warn.category, RuntimeWarning) for warn in w)
+
+        with mock.patch.object(
+            conn._loop, "create_connection", autospec=True, spec_set=True
+        ) as create_connection:
+            create_connection.return_value = mock.Mock(), mock.Mock()
+
+            # Test with HTTPS
+            req = ClientRequest("GET", URL("https://example.com"), loop=loop)
+            with closing(await conn.connect(req, [], ClientTimeout())):
+                assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+
+            # Test with HTTP
+            req = ClientRequest("GET", URL("http://example.com"), loop=loop)
+            with closing(await conn.connect(req, [], ClientTimeout())):
+                assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+
+        await conn.close()
+
+
+async def test_tcp_connector_close_abort_ssl_when_shutdown_timeout_zero(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that close() uses abort() for SSL connections when ssl_shutdown_timeout=0."""
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+
+    # Create a mock SSL protocol
+    proto = mock.create_autospec(ResponseHandler, instance=True)
+    proto.closed = None
+
+    # Create mock SSL transport
+    transport = mock.Mock()
+    transport.get_extra_info.return_value = mock.Mock()  # Returns SSL context
+    transport.is_closing.return_value = False
+    proto.transport = transport
+
+    # Add the protocol to acquired connections
+    conn._acquired.add(proto)
+
+    # Close the connector
+    await conn.close()
+
+    # Verify abort was called instead of close for SSL connection
+    proto.abort.assert_called_once()
+    proto.close.assert_not_called()
+
+
+async def test_tcp_connector_close_doesnt_abort_non_ssl_when_shutdown_timeout_zero(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that close() still uses close() for non-SSL connections even when ssl_shutdown_timeout=0."""
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+
+    # Create a mock non-SSL protocol
+    proto = mock.create_autospec(ResponseHandler, instance=True)
+    proto.closed = None
+
+    # Create mock non-SSL transport
+    transport = mock.Mock()
+    transport.get_extra_info.return_value = None  # No SSL context
+    transport.is_closing.return_value = False
+    proto.transport = transport
+
+    # Add the protocol to acquired connections
+    conn._acquired.add(proto)
+
+    # Close the connector
+    await conn.close()
+
+    # Verify close was called for non-SSL connection
+    proto.close.assert_called_once()
+    proto.abort.assert_not_called()
+
+
+async def test_tcp_connector_ssl_shutdown_timeout_warning_pre_311(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that a warning is issued for non-zero ssl_shutdown_timeout on Python < 3.11."""
+    with (
+        mock.patch.object(sys, "version_info", (3, 10, 0)),
+        warnings.catch_warnings(record=True) as w,
+    ):
+        warnings.simplefilter("always")
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=5.0)
+
+        # We should get two warnings: deprecation and runtime warning
+        assert len(w) == 2
+
+        # Find each warning type
+        deprecation_warning = next(
+            (warn for warn in w if issubclass(warn.category, DeprecationWarning)), None
+        )
+        runtime_warning = next(
+            (warn for warn in w if issubclass(warn.category, RuntimeWarning)), None
+        )
+
+        assert deprecation_warning is not None
+        assert "ssl_shutdown_timeout parameter is deprecated" in str(
+            deprecation_warning.message
+        )
+
+        assert runtime_warning is not None
+        assert "ssl_shutdown_timeout=5.0 is ignored on Python < 3.11" in str(
+            runtime_warning.message
+        )
+        assert "only ssl_shutdown_timeout=0 is supported" in str(
+            runtime_warning.message
+        )
+
+        # Verify the value is still stored
+        assert conn._ssl_shutdown_timeout == 5.0
+
+        await conn.close()
+
+
+async def test_tcp_connector_ssl_shutdown_timeout_zero_no_warning_pre_311(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that no warning is issued for ssl_shutdown_timeout=0 on Python < 3.11."""
+    with (
+        mock.patch.object(sys, "version_info", (3, 10, 0)),
+        warnings.catch_warnings(record=True) as w,
+    ):
+        warnings.simplefilter("always")
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+
+        # We should get one warning: deprecation
+        assert len(w) == 1
+        assert issubclass(w[0].category, DeprecationWarning)
+        assert "ssl_shutdown_timeout parameter is deprecated" in str(w[0].message)
+        assert conn._ssl_shutdown_timeout == 0
+
+        await conn.close()
+
+
+async def test_tcp_connector_ssl_shutdown_timeout_sentinel_no_warning_pre_311(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that no warning is issued when sentinel is used on Python < 3.11."""
+    with (
+        mock.patch.object(sys, "version_info", (3, 10, 0)),
+        warnings.catch_warnings(record=True) as w,
+    ):
+        warnings.simplefilter("always")
+        conn = aiohttp.TCPConnector()  # Uses sentinel by default
+
+        assert len(w) == 0
+        assert conn._ssl_shutdown_timeout == 0  # Default value
+
+        await conn.close()
+
+
+async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
+    loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
+) -> None:
+    """Test that ssl_shutdown_timeout=0 is NOT passed to create_connection."""
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        create_connection.return_value = mock.Mock(), mock.Mock()
+
+        # Test with HTTPS
+        req = ClientRequest("GET", URL("https://example.com"), loop=loop)
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            # Verify ssl_shutdown_timeout was NOT passed
+            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+
+        # Test with HTTP (should not have ssl_shutdown_timeout anyway)
+        req = ClientRequest("GET", URL("http://example.com"), loop=loop)
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+
+    await conn.close()
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
+)
+async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
+    loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
+) -> None:
+    """Test that non-zero ssl_shutdown_timeout IS passed to create_connection on Python 3.11+."""
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=5.0)
+
+    with mock.patch.object(
+        conn._loop, "create_connection", autospec=True, spec_set=True
+    ) as create_connection:
+        create_connection.return_value = mock.Mock(), mock.Mock()
+
+        # Test with HTTPS
+        req = ClientRequest("GET", URL("https://example.com"), loop=loop)
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            # Verify ssl_shutdown_timeout WAS passed
+            assert create_connection.call_args.kwargs["ssl_shutdown_timeout"] == 5.0
+
+        # Test with HTTP (should not have ssl_shutdown_timeout)
+        req = ClientRequest("GET", URL("http://example.com"), loop=loop)
+        with closing(await conn.connect(req, [], ClientTimeout())):
+            assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
+
+    await conn.close()
+
+
+async def test_tcp_connector_close_abort_ssl_connections_in_conns(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that SSL connections in _conns are aborted when ssl_shutdown_timeout=0."""
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+
+    # Create mock SSL protocol
+    proto = mock.create_autospec(ResponseHandler, instance=True)
+    proto.closed = None
+
+    # Create mock SSL transport
+    transport = mock.Mock()
+    transport.get_extra_info.return_value = mock.Mock()  # Returns SSL context
+    proto.transport = transport
+
+    # Add the protocol to _conns
+    key = ConnectionKey("host", 443, True, True, None, None, None)
+    conn._conns[key] = deque([(proto, loop.time())])
+
+    # Close the connector
+    await conn.close()
+
+    # Verify abort was called for SSL connection
+    proto.abort.assert_called_once()
+    proto.close.assert_not_called()
+
+
 async def test_tcp_connector_allowed_protocols(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.TCPConnector()
     assert conn.allowed_protocol_schema_set == {"", "tcp", "http", "https", "ws", "wss"}
+
+
+async def test_start_tls_exception_with_ssl_shutdown_timeout_zero(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test _start_tls_connection exception handling with ssl_shutdown_timeout=0."""
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=0)
+
+    underlying_transport = mock.Mock()
+    req = mock.Mock()
+    req.server_hostname = None
+    req.host = "example.com"
+    req.is_ssl = mock.Mock(return_value=True)
+
+    # Patch _get_ssl_context to return a valid context and make start_tls fail
+    with (
+        mock.patch.object(
+            conn, "_get_ssl_context", return_value=ssl.create_default_context()
+        ),
+        mock.patch.object(conn._loop, "start_tls", side_effect=OSError("TLS failed")),
+    ):
+        with pytest.raises(OSError):
+            await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
+
+    # Should abort, not close
+    underlying_transport.abort.assert_called_once()
+    underlying_transport.close.assert_not_called()
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="Use test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311 for Python < 3.11",
+)
+async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test _start_tls_connection exception handling with ssl_shutdown_timeout>0."""
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
+
+    underlying_transport = mock.Mock()
+    req = mock.Mock()
+    req.server_hostname = None
+    req.host = "example.com"
+    req.is_ssl = mock.Mock(return_value=True)
+
+    # Patch _get_ssl_context to return a valid context and make start_tls fail
+    with (
+        mock.patch.object(
+            conn, "_get_ssl_context", return_value=ssl.create_default_context()
+        ),
+        mock.patch.object(conn._loop, "start_tls", side_effect=OSError("TLS failed")),
+    ):
+        with pytest.raises(OSError):
+            await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
+
+    # Should close, not abort
+    underlying_transport.close.assert_called_once()
+    underlying_transport.abort.assert_not_called()
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 11),
+    reason="This test is for Python < 3.11 runtime warning behavior",
+)
+async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test _start_tls_connection exception handling with ssl_shutdown_timeout>0 on Python < 3.11."""
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=1.0)
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
+        assert any(issubclass(warn.category, DeprecationWarning) for warn in w)
+        assert any(issubclass(warn.category, RuntimeWarning) for warn in w)
+
+    underlying_transport = mock.Mock()
+    req = mock.Mock()
+    req.server_hostname = None
+    req.host = "example.com"
+    req.is_ssl = mock.Mock(return_value=True)
+
+    # Patch _get_ssl_context to return a valid context and make start_tls fail
+    with (
+        mock.patch.object(
+            conn, "_get_ssl_context", return_value=ssl.create_default_context()
+        ),
+        mock.patch.object(conn._loop, "start_tls", side_effect=OSError("TLS failed")),
+    ):
+        with pytest.raises(OSError):
+            await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
+
+    # Should close, not abort
+    underlying_transport.close.assert_called_once()
+    underlying_transport.abort.assert_not_called()
 
 
 async def test_invalid_ssl_param() -> None:
@@ -2668,8 +3192,8 @@ async def test_connect_queued_operation_tracing(
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_connection_queued_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_queued_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_connection_queued_start = mock.AsyncMock()
+    on_connection_queued_end = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -2715,7 +3239,7 @@ async def test_connect_reuseconn_tracing(
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    on_connection_reuseconn = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_connection_reuseconn = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -3219,7 +3743,7 @@ async def test_unix_connector_not_found(loop: asyncio.AbstractEventLoop) -> None
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_permission(loop: asyncio.AbstractEventLoop) -> None:
-    m = make_mocked_coro(raise_exception=PermissionError())
+    m = mock.AsyncMock(side_effect=PermissionError())
     with mock.patch.object(loop, "create_unix_connection", m):
         connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
@@ -3258,7 +3782,7 @@ async def test_named_pipe_connector_not_found(
 async def test_named_pipe_connector_permission(
     proactor_loop: asyncio.AbstractEventLoop, pipe_name: str
 ) -> None:
-    m = make_mocked_coro(raise_exception=PermissionError())
+    m = mock.AsyncMock(side_effect=PermissionError())
     with mock.patch.object(proactor_loop, "create_pipe_connection", m):
         asyncio.set_event_loop(proactor_loop)
         connector = aiohttp.NamedPipeConnector(pipe_name)
@@ -3660,6 +4184,62 @@ async def test_connector_throttle_trace_race(loop: asyncio.AbstractEventLoop) ->
     await connector.close()
 
 
+async def test_connector_resolve_in_case_of_trace_cache_miss_exception(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    token: ResolveResult = {
+        "hostname": "localhost",
+        "host": "127.0.0.1",
+        "port": 80,
+        "family": socket.AF_INET,
+        "proto": 0,
+        "flags": socket.AI_NUMERICHOST,
+    }
+
+    request_count = 0
+
+    class DummyTracer(Trace):
+        def __init__(self) -> None:
+            """Dummy"""
+
+        async def send_dns_cache_hit(self, *args: object, **kwargs: object) -> None:
+            """Dummy send_dns_cache_hit"""
+
+        async def send_dns_resolvehost_start(
+            self, *args: object, **kwargs: object
+        ) -> None:
+            """Dummy send_dns_resolvehost_start"""
+
+        async def send_dns_resolvehost_end(
+            self, *args: object, **kwargs: object
+        ) -> None:
+            """Dummy send_dns_resolvehost_end"""
+
+        async def send_dns_cache_miss(self, *args: object, **kwargs: object) -> None:
+            nonlocal request_count
+            request_count += 1
+            if request_count <= 1:
+                raise Exception("first attempt")
+
+    async def resolve_response() -> List[ResolveResult]:
+        await asyncio.sleep(0)
+        return [token]
+
+    with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
+        m_resolver().resolve.return_value = resolve_response()
+        m_resolver().close = mock.AsyncMock()
+
+        connector = TCPConnector()
+        traces = [DummyTracer()]
+
+        with pytest.raises(Exception):
+            await connector._resolve_host("", 0, traces)
+
+        await connector._resolve_host("", 0, traces) == [token]
+
+    await connector.close()
+
+
 async def test_connector_does_not_remove_needed_waiters(
     loop: asyncio.AbstractEventLoop, key: ConnectionKey
 ) -> None:
@@ -3744,6 +4324,50 @@ def test_connector_multiple_event_loop() -> None:
     assert raw_response_list == [True, True]
 
 
+async def test_tcp_connector_socket_factory(
+    loop: asyncio.AbstractEventLoop, start_connection: mock.AsyncMock
+) -> None:
+    """Check that socket factory is called"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        start_connection.return_value = s
+
+        local_addr = None
+        socket_factory: Callable[[AddrInfoType], socket.socket] = lambda _: s
+        happy_eyeballs_delay = 0.123
+        interleave = 3
+        conn = aiohttp.TCPConnector(
+            interleave=interleave,
+            local_addr=local_addr,
+            happy_eyeballs_delay=happy_eyeballs_delay,
+            socket_factory=socket_factory,
+        )
+
+        with mock.patch.object(
+            conn._loop,
+            "create_connection",
+            autospec=True,
+            spec_set=True,
+            return_value=(mock.Mock(), mock.Mock()),
+        ):
+            host = "127.0.0.1"
+            port = 443
+            req = ClientRequest("GET", URL(f"https://{host}:{port}"), loop=loop)
+            with closing(await conn.connect(req, [], ClientTimeout())):
+                pass
+            await conn.close()
+
+    start_connection.assert_called_with(
+        addr_infos=[
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (host, port))
+        ],
+        local_addr_infos=local_addr,
+        happy_eyeballs_delay=happy_eyeballs_delay,
+        interleave=interleave,
+        loop=loop,
+        socket_factory=socket_factory,
+    )
+
+
 def test_default_ssl_context_creation_without_ssl() -> None:
     """Verify _make_ssl_context does not raise when ssl is not available."""
     with mock.patch.object(connector_module, "ssl", None):
@@ -3788,7 +4412,7 @@ async def test_available_connections_with_limit_per_host(
 
 
 @pytest.mark.parametrize("limit_per_host", [0, 10])
-async def test_available_connections_without_limit_per_host(
+async def test_available_connections_without_limit_per_host(  # type: ignore[misc]
     key: ConnectionKey, other_host_key2: ConnectionKey, limit_per_host: int
 ) -> None:
     """Verify expected values based on active connections with higher host limit."""
@@ -3831,3 +4455,31 @@ async def test_available_connections_no_limits(
     connection1.close()
     assert conn._available_connections(key) == 1
     assert conn._available_connections(other_host_key2) == 1
+
+
+async def test_connect_tunnel_connection_release(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test _ConnectTunnelConnection.release() does not pool the connection."""
+    connector = mock.create_autospec(
+        aiohttp.BaseConnector, spec_set=True, instance=True
+    )
+    key = mock.create_autospec(ConnectionKey, spec_set=True, instance=True)
+    protocol = mock.create_autospec(ResponseHandler, spec_set=True, instance=True)
+
+    # Create a connect tunnel connection
+    conn = _ConnectTunnelConnection(connector, key, protocol, loop)
+
+    # Verify protocol is set
+    assert conn._protocol is protocol
+
+    # Release should do nothing (not pool the connection)
+    conn.release()
+
+    # Protocol should still be there (not released to pool)
+    assert conn._protocol is protocol
+    # Connector._release should NOT have been called
+    connector._release.assert_not_called()
+
+    # Clean up to avoid resource warning
+    conn.close()

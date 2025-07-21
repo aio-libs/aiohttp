@@ -1,8 +1,10 @@
 import asyncio
 import os
 import pathlib
+import platform
 import ssl
 import sys
+from contextlib import suppress
 from re import match as match_regex
 from typing import (
     TYPE_CHECKING,
@@ -240,6 +242,38 @@ async def test_https_proxy_unsupported_tls_in_tls(
     await asyncio.sleep(0.1)
 
 
+@pytest.mark.skipif(
+    platform.system() == "Windows" or sys.implementation.name != "cpython",
+    reason="uvloop is not supported on Windows and non-CPython implementations",
+)
+@pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
+# Filter out the warning from
+# https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
+# otherwise this test will fail because the proxy will die with an error.
+async def test_uvloop_secure_https_proxy(
+    client_ssl_ctx: ssl.SSLContext,
+    secure_proxy_url: URL,
+    uvloop_loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
+    conn = aiohttp.TCPConnector(force_close=True)
+    sess = aiohttp.ClientSession(connector=conn)
+    try:
+        url = URL("https://example.com")
+
+        async with sess.get(
+            url, proxy=secure_proxy_url, ssl=client_ssl_ctx
+        ) as response:
+            assert response.status == 200
+            # Ensure response body is read to completion
+            await response.read()
+    finally:
+        await sess.close()
+        await conn.close()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0.1)
+
+
 @pytest.fixture
 def proxy_test_server(
     aiohttp_raw_server: AiohttpRawServer,
@@ -430,6 +464,7 @@ async def test_proxy_http_acquired_cleanup(
     assert 0 == len(conn._acquired)
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -454,6 +489,7 @@ async def test_proxy_http_acquired_cleanup_force(
     assert 0 == len(conn._acquired)
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -488,6 +524,7 @@ async def test_proxy_http_multi_conn_limit(
     assert {resp.status for resp in responses} == {200}
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.xfail
@@ -532,15 +569,17 @@ async def test_proxy_https_send_body(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     sess = aiohttp.ClientSession()
-    proxy = await proxy_test_server()
-    proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
-    url = "https://www.google.com.ua/search?q=aiohttp proxy"
+    try:
+        proxy = await proxy_test_server()
+        proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
+        url = "https://www.google.com.ua/search?q=aiohttp proxy"
 
-    async with sess.get(url, proxy=proxy.url) as resp:
-        body = await resp.read()
-    await sess.close()
+        async with sess.get(url, proxy=proxy.url) as resp:
+            body = await resp.read()
 
-    assert body == b"1" * (2**20)
+        assert body == b"1" * (2**20)
+    finally:
+        await sess.close()
 
 
 @pytest.mark.xfail
@@ -635,19 +674,21 @@ async def test_proxy_https_acquired_cleanup(
 
     conn = aiohttp.TCPConnector()
     sess = aiohttp.ClientSession(connector=conn)
-    proxy = await proxy_test_server()
+    try:
+        proxy = await proxy_test_server()
 
-    assert 0 == len(conn._acquired)
+        assert 0 == len(conn._acquired)
 
-    async def request() -> None:
-        async with sess.get(url, proxy=proxy.url):
-            assert 1 == len(conn._acquired)
+        async def request() -> None:
+            async with sess.get(url, proxy=proxy.url):
+                assert 1 == len(conn._acquired)
 
-    await request()
+        await request()
 
-    assert 0 == len(conn._acquired)
-
-    await sess.close()
+        assert 0 == len(conn._acquired)
+    finally:
+        await sess.close()
+        await conn.close()
 
 
 @pytest.mark.xfail
@@ -659,19 +700,21 @@ async def test_proxy_https_acquired_cleanup_force(
 
     conn = aiohttp.TCPConnector(force_close=True)
     sess = aiohttp.ClientSession(connector=conn)
-    proxy = await proxy_test_server()
+    try:
+        proxy = await proxy_test_server()
 
-    assert 0 == len(conn._acquired)
+        assert 0 == len(conn._acquired)
 
-    async def request() -> None:
-        async with sess.get(url, proxy=proxy.url):
-            assert 1 == len(conn._acquired)
+        async def request() -> None:
+            async with sess.get(url, proxy=proxy.url):
+                assert 1 == len(conn._acquired)
 
-    await request()
+        await request()
 
-    assert 0 == len(conn._acquired)
-
-    await sess.close()
+        assert 0 == len(conn._acquired)
+    finally:
+        await sess.close()
+        await conn.close()
 
 
 @pytest.mark.xfail
@@ -686,26 +729,30 @@ async def test_proxy_https_multi_conn_limit(
     sess = aiohttp.ClientSession(connector=conn)
     proxy = await proxy_test_server()
 
-    current_pid = None
+    try:
+        current_pid = None
 
-    async def request(pid: int) -> ClientResponse:
-        # process requests only one by one
-        nonlocal current_pid
+        async def request(pid: int) -> ClientResponse:
+            # process requests only one by one
+            nonlocal current_pid
 
-        async with sess.get(url, proxy=proxy.url) as resp:
-            current_pid = pid
-            await asyncio.sleep(0.2)
-            assert current_pid == pid
+            async with sess.get(url, proxy=proxy.url) as resp:
+                current_pid = pid
+                await asyncio.sleep(0.2)
+                assert current_pid == pid
 
-        return resp
+            return resp
 
-    requests = [request(pid) for pid in range(multi_conn_num)]
-    responses = await asyncio.gather(*requests)
+        requests = [request(pid) for pid in range(multi_conn_num)]
+        responses = await asyncio.gather(*requests, return_exceptions=True)
 
-    assert len(responses) == multi_conn_num
-    assert {resp.status for resp in responses} == {200}
-
-    await sess.close()
+        # Filter out exceptions to count actual responses
+        actual_responses = [r for r in responses if isinstance(r, ClientResponse)]
+        assert len(actual_responses) == multi_conn_num
+        assert {resp.status for resp in actual_responses} == {200}
+    finally:
+        await sess.close()
+        await conn.close()
 
 
 def _patch_ssl_transport(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -873,7 +920,7 @@ async def test_proxy_from_env_https(
     url = "https://aiohttp.io/path"
     proxy = await proxy_test_server()
     mocker.patch.dict(os.environ, {"https_proxy": str(proxy.url)})
-    mock.patch("pathlib.Path.is_file", mock_is_file)
+    mocker.patch("pathlib.Path.is_file", mock_is_file)
 
     await get_request(url=url, trust_env=True)
 
@@ -927,3 +974,46 @@ async def test_proxy_auth() -> None:
                 proxy_auth=("user", "pass"),  # type: ignore[arg-type]
             ):
                 pass
+
+
+async def test_https_proxy_connect_tunnel_session_close_no_hang(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that CONNECT tunnel connections are not pooled."""
+    # Regression test for issue #11273.
+
+    # Create a minimal proxy server
+    # The CONNECT method is handled at the protocol level, not by the handler
+    proxy_app = web.Application()
+    proxy_server = await aiohttp_server(proxy_app)
+    proxy_url = f"http://{proxy_server.host}:{proxy_server.port}"
+
+    # Create session and make HTTPS request through proxy
+    session = aiohttp.ClientSession()
+
+    try:
+        # This will fail during TLS upgrade because proxy doesn't establish tunnel
+        with suppress(aiohttp.ClientError):
+            async with session.get("https://example.com/test", proxy=proxy_url) as resp:
+                await resp.read()
+
+        # The critical test: Check if any connections were pooled with proxy=None
+        # This is the root cause of the hang - CONNECT tunnel connections
+        # should NOT be pooled
+        connector = session.connector
+        assert connector is not None
+
+        # Count connections with proxy=None in the pool
+        proxy_none_keys = [key for key in connector._conns if key.proxy is None]
+        proxy_none_count = len(proxy_none_keys)
+
+        # Before the fix, there would be a connection with proxy=None
+        # After the fix, CONNECT tunnel connections are not pooled
+        assert proxy_none_count == 0, (
+            f"Found {proxy_none_count} connections with proxy=None in pool. "
+            f"CONNECT tunnel connections should not be pooled - this is bug #11273"
+        )
+
+    finally:
+        # Clean close
+        await session.close()

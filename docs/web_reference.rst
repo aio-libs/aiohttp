@@ -649,7 +649,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       .. seealso:: :meth:`enable_compression`
 
-   .. method:: enable_compression(force=None, strategy=zlib.Z_DEFAULT_STRATEGY)
+   .. method:: enable_compression(force=None, strategy=None)
 
       Enable compression.
 
@@ -660,7 +660,10 @@ and :ref:`aiohttp-web-signals` handlers::
       :class:`ContentCoding`.
 
       *strategy* accepts a :mod:`zlib` compression strategy.
-      See :func:`zlib.compressobj` for possible values.
+      See :func:`zlib.compressobj` for possible values, or refer to the
+      docs for the zlib of your using, should you use :func:`aiohttp.set_zlib_backend`
+      to change zlib backend. If ``None``, the default value adopted by
+      your zlib backend will be used where applicable.
 
       .. seealso:: :attr:`compression`
 
@@ -1042,6 +1045,11 @@ and :ref:`aiohttp-web-signals` handlers::
       of closing.
       :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
+   .. attribute:: prepared
+
+      Read-only :class:`bool` property, ``True`` if :meth:`prepare` has
+      been called, ``False`` otherwise.
+
    .. attribute:: close_code
 
       Read-only property, close code from peer. It is set to ``None`` on
@@ -1079,7 +1087,9 @@ and :ref:`aiohttp-web-signals` handlers::
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-      :raise RuntimeError: if connections is not started or closing.
+      :raise RuntimeError: if the connections is not started.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1094,7 +1104,9 @@ and :ref:`aiohttp-web-signals` handlers::
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-      :raise RuntimeError: if connections is not started or closing.
+      :raise RuntimeError: if the connections is not started.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1111,9 +1123,11 @@ and :ref:`aiohttp-web-signals` handlers::
                            single message,
                            ``None`` for not overriding per-socket setting.
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if the connection is not started.
 
       :raise TypeError: if data is not :class:`str`
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1131,10 +1145,12 @@ and :ref:`aiohttp-web-signals` handlers::
                            single message,
                            ``None`` for not overriding per-socket setting.
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if the connection is not started.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1156,11 +1172,13 @@ and :ref:`aiohttp-web-signals` handlers::
                              returns a JSON string
                              (:func:`json.dumps` by default).
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if the connection is not started.
 
       :raise ValueError: if data is not serializable object
 
       :raise TypeError: if value returned by ``dumps`` param is not :class:`str`
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1190,6 +1208,10 @@ and :ref:`aiohttp-web-signals` handlers::
       :param int compress: sets specific level of compression for
                            single message,
                            ``None`` for not overriding per-socket setting.
+
+      :raise RuntimeError: if the connection is not started.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionadded:: 3.11
 

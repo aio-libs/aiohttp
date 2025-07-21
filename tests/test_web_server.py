@@ -248,6 +248,24 @@ async def test_raw_server_do_not_swallow_exceptions(
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
 
+async def test_raw_server_does_not_swallow_base_exceptions(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    class UnexpectedException(BaseException):
+        """Dummy base exception."""
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise UnexpectedException()
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+    server = await aiohttp_raw_server(handler)
+    cli = await aiohttp_client(server)
+
+    with pytest.raises(client.ServerDisconnectedError):
+        await cli.get("/path/to", timeout=client.ClientTimeout(10))
+
+
 async def test_raw_server_cancelled_in_write_eof(
     aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
@@ -265,9 +283,8 @@ async def test_raw_server_cancelled_in_write_eof(
     server = await aiohttp_raw_server(handler, logger=logger)
     cli = await aiohttp_client(server)
 
-    resp = await cli.get("/path/to")
-    with pytest.raises(client.ClientPayloadError):
-        await resp.read()
+    with pytest.raises(client.ServerDisconnectedError):
+        await cli.get("/path/to")
 
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
@@ -366,7 +383,6 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
     port = sock.getsockname()[1]
 
     async def on_request(request: web.Request) -> web.Response:
-        nonlocal event
         try:
             await asyncio.sleep(10)
         except asyncio.CancelledError:
@@ -409,7 +425,7 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
     started = False
 
     async def on_request(request: web.Request) -> web.Response:
-        nonlocal done_event, started, timeout_event
+        nonlocal started
         started = True
         await asyncio.wait_for(timeout_event.wait(), timeout=5)
         done_event.set()

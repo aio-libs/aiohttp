@@ -51,7 +51,7 @@ jobs:
       with:
         python-version: 3.11
     - name: Cache PyPI
-      uses: actions/cache@v4.2.0
+      uses: actions/cache@v4.2.3
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -77,9 +77,6 @@ jobs:
         # can be scanned by slotscheck.
         pip install -r requirements/base.in -c requirements/base.txt
         slotscheck -v -m aiohttp
-    - name: Install libenchant
-      run: |
-        sudo apt install libenchant-2-dev
     - name: Install spell checker
       run: |
         pip install -r requirements/doc-spelling.in -c requirements/doc-spelling.txt
@@ -112,7 +109,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v4.2.0
+      uses: actions/cache@v4.2.3
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
@@ -141,7 +138,11 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.9, '3.10', '3.11', '3.12', '3.13']
+        # Note that 3.13.4 is broken on Windows which
+        # is why 3.13.5 was rushed out. When 3.13.5 is fully
+        # available, we can remove 3.13.4 from the matrix
+        # and switch it back to 3.13
+        pyver: [3.9, '3.10', '3.11', '3.12', '3.13.3']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
@@ -179,7 +180,7 @@ jobs:
         echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
       shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v4.2.0
+      uses: actions/cache@v4.2.3
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -260,7 +261,7 @@ jobs:
     needs: gen_llhttp
 
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 9
     steps:
     - name: Checkout project
       uses: actions/checkout@v4
@@ -388,6 +389,9 @@ jobs:
           musl: musllinux
         - os: ubuntu-latest
           qemu: armv7l
+          musl: ""
+        - os: ubuntu-latest
+          qemu: armv7l
           musl: musllinux
         - os: ubuntu-latest
           musl: musllinux
@@ -436,7 +440,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.22.0
+      uses: pypa/cibuildwheel@v3.0.1
       env:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
@@ -499,7 +503,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v3.0.0
+      uses: sigstore/gh-action-sigstore-python@v3.0.1
       with:
         inputs: >-
           ./dist/*.tar.gz

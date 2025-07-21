@@ -6,7 +6,6 @@ import json
 import math
 import time
 import warnings
-import zlib
 from concurrent.futures import Executor
 from http import HTTPStatus
 from typing import (
@@ -83,13 +82,14 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
     _keep_alive: Optional[bool] = None
     _chunked: bool = False
     _compression: bool = False
-    _compression_strategy: int = zlib.Z_DEFAULT_STRATEGY
+    _compression_strategy: Optional[int] = None
     _compression_force: Optional[ContentCoding] = None
     _req: Optional["BaseRequest"] = None
     _payload_writer: Optional[AbstractStreamWriter] = None
     _eof_sent: bool = False
     _must_be_empty_body: Optional[bool] = None
     _body_length = 0
+    _send_headers_immediately = True
 
     def __init__(
         self,
@@ -184,9 +184,16 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
     def enable_compression(
         self,
         force: Optional[ContentCoding] = None,
-        strategy: int = zlib.Z_DEFAULT_STRATEGY,
+        strategy: Optional[int] = None,
     ) -> None:
         """Enables response compression encoding."""
+        # Don't enable compression if content is already encoded.
+        # This prevents double compression and provides a safe, predictable behavior
+        # without breaking existing code that may call enable_compression() on
+        # responses that already have Content-Encoding set (e.g., FileResponse
+        # serving pre-compressed files).
+        if hdrs.CONTENT_ENCODING in self._headers:
+            return
         self._compression = True
         self._compression_force = force
         self._compression_strategy = strategy
@@ -435,7 +442,13 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         status_line = f"HTTP/{version[0]}.{version[1]} {self._status} {self._reason}"
         await writer.write_headers(status_line, self._headers)
 
-    async def write(self, data: Union[bytes, bytearray, memoryview]) -> None:
+        # Send headers immediately if not opted into buffering
+        if self._send_headers_immediately:
+            writer.send_headers()
+
+    async def write(
+        self, data: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+    ) -> None:
         assert isinstance(
             data, (bytes, bytearray, memoryview)
         ), "data argument must be byte-ish (%r)" % type(data)
@@ -511,6 +524,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 class Response(StreamResponse):
 
     _compressed_body: Optional[bytes] = None
+    _send_headers_immediately = False
 
     def __init__(
         self,
@@ -530,10 +544,8 @@ class Response(StreamResponse):
 
         if headers is None:
             real_headers: CIMultiDict[str] = CIMultiDict()
-        elif not isinstance(headers, CIMultiDict):
-            real_headers = CIMultiDict(headers)
         else:
-            real_headers = headers  # = cast('CIMultiDict[str]', headers)
+            real_headers = CIMultiDict(headers)
 
         if content_type is not None and "charset" in content_type:
             raise ValueError("charset must not be in content_type argument")
@@ -580,7 +592,7 @@ class Response(StreamResponse):
         self._zlib_executor = zlib_executor
 
     @property
-    def body(self) -> Optional[Union[bytes, Payload]]:
+    def body(self) -> Optional[Union[bytes, bytearray, Payload]]:
         return self._body
 
     @body.setter
@@ -613,6 +625,9 @@ class Response(StreamResponse):
     def text(self) -> Optional[str]:
         if self._body is None:
             return None
+        # Note: When _body is a Payload (e.g. FilePayload), this may do blocking I/O
+        # This is generally safe as most common payloads (BytesPayload, StringPayload)
+        # don't do blocking I/O, but be careful with file-based payloads
         return self._body.decode(self.charset or "utf-8")
 
     @text.setter
@@ -654,7 +669,7 @@ class Response(StreamResponse):
         if self._eof_sent:
             return
         if self._compressed_body is None:
-            body: Optional[Union[bytes, Payload]] = self._body
+            body = self._body
         else:
             body = self._compressed_body
         assert not data, f"data arg is not supported, got {data!r}"
@@ -664,6 +679,7 @@ class Response(StreamResponse):
             await super().write_eof()
         elif isinstance(self._body, Payload):
             await self._body.write(self._payload_writer)
+            await self._body.close()
             await super().write_eof()
         else:
             await super().write_eof(cast(bytes, body))

@@ -178,9 +178,9 @@ class BaseIOResponse(StreamResponse, ABC):
         self.set_status(HTTPNotModified.status_code)
         self._length_check = False
         if etag is not None:
-            self.etag = etag  # type: ignore[assignment]
+            self.etag = etag
         if last_modified is not None:
-            self.last_modified = last_modified  # type: ignore[assignment]
+            self.last_modified = last_modified
         # Delete any Content-Length headers provided by user. HTTP 304
         # should always have empty response body
         return await super().prepare(request)
@@ -351,7 +351,7 @@ class BaseIOResponse(StreamResponse, ABC):
         if open_file.etag is not None:
             self.etag = open_file.etag
         if open_file.last_modified is not None:
-            self.last_modified = open_file.last_modified  # type: ignore[assignment]
+            self.last_modified = open_file.last_modified
         self.content_length = count
 
         self._headers[hdrs.ACCEPT_RANGES] = "bytes"

@@ -256,7 +256,8 @@ class WebSocketResponse(StreamResponse):
             else:
                 # No overlap found: Return no protocol as per spec
                 ws_logger.warning(
-                    "Client protocols %r don’t overlap server-known ones %r",
+                    "%s: Client protocols %r don’t overlap server-known ones %r",
+                    request.remote,
                     req_protocols,
                     self._protocols,
                 )
@@ -356,6 +357,10 @@ class WebSocketResponse(StreamResponse):
             return WebSocketReady(False, None)
         else:
             return WebSocketReady(True, protocol)
+
+    @property
+    def prepared(self) -> bool:
+        return self._writer is not None
 
     @property
     def closed(self) -> bool:
@@ -606,7 +611,9 @@ class WebSocketResponse(StreamResponse):
         data = await self.receive_str(timeout=timeout)
         return loads(data)
 
-    async def write(self, data: bytes) -> None:
+    async def write(
+        self, data: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+    ) -> None:
         raise RuntimeError("Cannot call .write() for websocket")
 
     def __aiter__(self) -> "WebSocketResponse":

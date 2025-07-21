@@ -3,7 +3,6 @@
 import asyncio
 import contextlib
 import gc
-import inspect
 import ipaddress
 import os
 import socket
@@ -42,7 +41,6 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar, AbstractStreamWriter
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import LooseHeaders, StrOrURL
@@ -149,7 +147,7 @@ class BaseTestServer(ABC, Generic[_Request]):
         await site.start()
         server = site._server
         assert server is not None
-        sockets = server.sockets  # type: ignore[attr-defined]
+        sockets = server.sockets
         assert sockets is not None
         self.port = sockets[0].getsockname()[1]
         if not self.scheme:
@@ -159,6 +157,7 @@ class BaseTestServer(ABC, Generic[_Request]):
     @abstractmethod
     async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:
         """Return a new runner for the server."""
+        # TODO(PY311): Use Unpack to specify Server kwargs.
 
     def make_url(self, path: StrOrURL) -> URL:
         assert self._root is not None
@@ -232,6 +231,7 @@ class TestServer(BaseTestServer[Request]):
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(self, **kwargs: Any) -> AppRunner:
+        # TODO(PY311): Use Unpack to specify Server kwargs.
         return AppRunner(self.app, **kwargs)
 
 
@@ -249,6 +249,7 @@ class RawTestServer(BaseTestServer[BaseRequest]):
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(self, **kwargs: Any) -> ServerRunner:
+        # TODO(PY311): Use Unpack to specify Server kwargs.
         srv = Server(self._handler, **kwargs)
         return ServerRunner(srv, **kwargs)
 
@@ -286,6 +287,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         cookie_jar: Optional[AbstractCookieJar] = None,
         **kwargs: Any,
     ) -> None:
+        # TODO(PY311): Use Unpack to specify ClientSession kwargs.
         if not isinstance(server, BaseTestServer):
             raise TypeError(
                 "server must be TestServer instance, found type: %r" % type(server)
@@ -671,13 +673,17 @@ def make_mocked_request(
     if protocol is None:
         protocol = mock.Mock()
         protocol.transport = transport
+        type(protocol).peername = mock.PropertyMock(
+            return_value=transport.get_extra_info("peername")
+        )
+        type(protocol).ssl_context = mock.PropertyMock(return_value=sslcontext)
 
     if writer is None:
         writer = mock.Mock()
-        writer.write_headers = make_mocked_coro(None)
-        writer.write = make_mocked_coro(None)
-        writer.write_eof = make_mocked_coro(None)
-        writer.drain = make_mocked_coro(None)
+        writer.write_headers = mock.AsyncMock(return_value=None)
+        writer.write = mock.AsyncMock(return_value=None)
+        writer.write_eof = mock.AsyncMock(return_value=None)
+        writer.drain = mock.AsyncMock(return_value=None)
         writer.transport = transport
 
     protocol.transport = transport
@@ -693,18 +699,3 @@ def make_mocked_request(
     req._match_info = match_info
 
     return req
-
-
-def make_mocked_coro(
-    return_value: Any = sentinel, raise_exception: Any = sentinel
-) -> Any:
-    """Creates a coroutine mock."""
-
-    async def mock_coro(*args: Any, **kwargs: Any) -> Any:
-        if raise_exception is not sentinel:
-            raise raise_exception
-        if not inspect.isawaitable(return_value):
-            return return_value
-        await return_value
-
-    return mock.Mock(wraps=mock_coro)

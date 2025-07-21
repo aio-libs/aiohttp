@@ -46,7 +46,7 @@ class Server(Generic[_Request]):
         *,
         debug: Optional[bool] = None,
         handler_cancellation: bool = False,
-        **kwargs: Any,
+        **kwargs: Any,  # TODO(PY311): Use Unpack to define kwargs from RequestHandler
     ) -> None: ...
     @overload
     def __init__(

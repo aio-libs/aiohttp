@@ -2,13 +2,12 @@
 
 import asyncio
 import random
-import zlib
 from functools import partial
 from typing import Any, Final, Optional, Union
 
 from ..base_protocol import BaseProtocol
 from ..client_exceptions import ClientConnectionResetError
-from ..compression_utils import ZLibCompressor
+from ..compression_utils import ZLibBackend, ZLibCompressor
 from .helpers import (
     MASK_LEN,
     MSG_SIZE,
@@ -95,7 +94,9 @@ class WebSocketWriter:
             message = (
                 await compressobj.compress(message)
                 + compressobj.flush(
-                    zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH
+                    ZLibBackend.Z_FULL_FLUSH
+                    if self.notakeover
+                    else ZLibBackend.Z_SYNC_FLUSH
                 )
             ).removesuffix(WS_DEFLATE_TRAILING)
             # Its critical that we do not return control to the event
@@ -133,9 +134,9 @@ class WebSocketWriter:
         # when aiohttp is acting as a client. Servers do not use a mask.
         if use_mask:
             mask = PACK_RANDBITS(self.get_random_bits())
-            message = bytearray(message)
-            websocket_mask(mask, message)
-            self.transport.write(header + mask + message)
+            message_arr = bytearray(message)
+            websocket_mask(mask, message_arr)
+            self.transport.write(header + mask + message_arr)
             self._output_size += MASK_LEN
         elif msg_length > MSG_SIZE:
             self.transport.write(header)
@@ -160,7 +161,7 @@ class WebSocketWriter:
 
     def _make_compress_obj(self, compress: int) -> ZLibCompressor:
         return ZLibCompressor(
-            level=zlib.Z_BEST_SPEED,
+            level=ZLibBackend.Z_BEST_SPEED,
             wbits=-compress,
             max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
         )

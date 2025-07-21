@@ -9,13 +9,12 @@ from aiohttp import WSMsgType
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http import WebSocketReader, WebSocketWriter
-from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
 def protocol() -> mock.Mock:
     ret = mock.Mock()
-    ret._drain_helper = make_mocked_coro()
+    ret._drain_helper = mock.AsyncMock()
     return ret
 
 
@@ -127,6 +126,7 @@ async def test_send_compress_text_per_message(
         (32, lambda count: 64 + count if count % 2 else count),
     ),
 )
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_concurrent_messages(
     protocol: BaseProtocol,
     transport: asyncio.Transport,

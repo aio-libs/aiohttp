@@ -67,6 +67,26 @@ argument. An instance of :class:`BasicAuth` can be passed in like this::
     async with ClientSession(auth=auth) as session:
         ...
 
+For HTTP digest authentication, use the :class:`DigestAuthMiddleware` client middleware::
+
+    from aiohttp import ClientSession, DigestAuthMiddleware
+
+    # Create the middleware with your credentials
+    digest_auth = DigestAuthMiddleware(login="user", password="password")
+
+    # Pass it to the ClientSession as a tuple
+    async with ClientSession(middlewares=(digest_auth,)) as session:
+        # The middleware will automatically handle auth challenges
+        async with session.get("https://example.com/protected") as resp:
+            print(await resp.text())
+
+The :class:`DigestAuthMiddleware` implements HTTP Digest Authentication according to RFC 7616,
+providing a more secure alternative to Basic Authentication. It supports all
+standard hash algorithms including MD5, SHA, SHA-256, SHA-512 and their session
+variants, as well as both 'auth' and 'auth-int' quality of protection (qop) options.
+The middleware automatically handles the authentication flow by intercepting 401 responses
+and retrying with proper credentials.
+
 Note that if the request is redirected and the redirect URL contains
 credentials, those credentials will supersede any previously set credentials.
 In other words, if ``http://user@example.com`` redirects to
@@ -104,6 +124,79 @@ background.
 
    Started keeping the ``Authorization`` header during HTTP → HTTPS
    redirects when the host remains the same.
+
+.. _aiohttp-client-middleware:
+
+Client Middleware
+-----------------
+
+The client supports middleware to intercept requests and responses. This can be
+useful for authentication, logging, request/response modification, retries etc.
+
+For more examples and common middleware patterns, see the :ref:`aiohttp-client-middleware-cookbook`.
+
+Creating a middleware
+^^^^^^^^^^^^^^^^^^^^^
+
+To create a middleware, define an async function (or callable class) that accepts a request object
+and a handler function, and returns a response. Middlewares must follow the
+:type:`ClientMiddlewareType` signature::
+
+    async def auth_middleware(req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
+        req.headers["Authorization"] = get_auth_header()
+        return await handler(req)
+
+Using Middlewares
+^^^^^^^^^^^^^^^^^
+
+You can apply middlewares to a client session or to individual requests::
+
+    # Apply to all requests in a session
+    async with ClientSession(middlewares=(my_middleware,)) as session:
+        resp = await session.get("http://example.com")
+
+    # Apply to a specific request
+    async with ClientSession() as session:
+        resp = await session.get("http://example.com", middlewares=(my_middleware,))
+
+Middleware Chaining
+^^^^^^^^^^^^^^^^^^^
+
+Multiple middlewares are applied in the order they are listed::
+
+    # Middlewares are applied in order: logging -> auth -> request
+    async with ClientSession(middlewares=(logging_middleware, auth_middleware)) as session:
+        async with session.get("http://example.com") as resp:
+            ...
+
+A key aspect to understand about the middleware sequence is that the execution flow follows this pattern:
+
+1. The first middleware in the list is called first and executes its code before calling the handler
+2. The handler is the next middleware in the chain (or the request handler if there are no more middlewares)
+3. When the handler returns a response, execution continues from the last middleware right after the handler call
+4. This creates a nested "onion-like" pattern for execution
+
+For example, with ``middlewares=(middleware1, middleware2)``, the execution order would be:
+
+1. Enter ``middleware1`` (pre-request code)
+2. Enter ``middleware2`` (pre-request code)
+3. Execute the actual request handler
+4. Exit ``middleware2`` (post-response code)
+5. Exit ``middleware1`` (post-response code)
+
+This flat structure means that a middleware is applied on each retry attempt inside the client's retry loop,
+not just once before all retries. This allows middleware to modify requests freshly on each retry attempt.
+
+For example, if we had a retry middleware and a logging middleware, and we want every retried request to be
+logged separately, then we'd need to specify ``middlewares=(retry_mw, logging_mw)``. If we reversed the order
+to ``middlewares=(logging_mw, retry_mw)``, then we'd only log once regardless of how many retries are done.
+
+.. note::
+
+   Client middleware is a powerful feature but should be used judiciously.
+   Each middleware adds overhead to request processing. For simple use cases
+   like adding static headers, you can often use request parameters
+   (e.g., ``headers``) or session configuration instead.
 
 Custom Cookies
 --------------
@@ -466,6 +559,42 @@ If your HTTP server uses UNIX domain sockets you can use
 
   conn = aiohttp.UnixConnector(path='/path/to/socket')
   session = aiohttp.ClientSession(connector=conn)
+
+
+Custom socket creation
+^^^^^^^^^^^^^^^^^^^^^^
+
+If the default socket is insufficient for your use case, pass an optional
+``socket_factory`` to the :class:`~aiohttp.TCPConnector`, which implements
+:class:`SocketFactoryType`. This will be used to create all sockets for the
+lifetime of the class object. For example, we may want to change the
+conditions under which we consider a connection dead. The following would
+make all sockets respect 9*7200 = 18 hours::
+
+  import socket
+
+  def socket_factory(addr_info):
+      family, type_, proto, _, _ = addr_info
+      sock = socket.socket(family=family, type=type_, proto=proto)
+      sock.setsockopt(socket.SOL_SOCKET,  socket.SO_KEEPALIVE,  True)
+      sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE,  7200)
+      sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT,      9)
+      return sock
+
+  conn = aiohttp.TCPConnector(socket_factory=socket_factory)
+
+``socket_factory`` may also be used for binding to the specific network
+interface on supported platforms::
+
+  def socket_factory(addr_info):
+      family, type_, proto, _, _ = addr_info
+      sock = socket.socket(family=family, type=type_, proto=proto)
+      sock.setsockopt(
+          socket.SOL_SOCKET, socket.SO_BINDTODEVICE, b'eth0'
+      )
+      return sock
+
+  conn = aiohttp.TCPConnector(socket_factory=socket_factory)
 
 
 Named pipes in Windows

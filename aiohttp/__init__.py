@@ -47,6 +47,10 @@ from .client import (
     WSServerHandshakeError,
     request,
 )
+from .client_middleware_digest_auth import DigestAuthMiddleware
+from .client_middlewares import ClientHandlerType, ClientMiddlewareType
+from .compression_utils import set_zlib_backend
+from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
 from .formdata import FormData
 from .helpers import BasicAuth, ChainMapProxy, ETag
@@ -112,6 +116,7 @@ if TYPE_CHECKING:
 __all__: Tuple[str, ...] = (
     "hdrs",
     # client
+    "AddrInfoType",
     "BaseConnector",
     "ClientConnectionError",
     "ClientConnectionResetError",
@@ -146,6 +151,7 @@ __all__: Tuple[str, ...] = (
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
     "ServerTimeoutError",
+    "SocketFactoryType",
     "SocketTimeoutError",
     "TCPConnector",
     "TooManyRedirects",
@@ -153,6 +159,9 @@ __all__: Tuple[str, ...] = (
     "NamedPipeConnector",
     "WSServerHandshakeError",
     "request",
+    # client_middleware
+    "ClientMiddlewareType",
+    "ClientHandlerType",
     # cookiejar
     "CookieJar",
     "DummyCookieJar",
@@ -161,7 +170,9 @@ __all__: Tuple[str, ...] = (
     # helpers
     "BasicAuth",
     "ChainMapProxy",
+    "DigestAuthMiddleware",
     "ETag",
+    "set_zlib_backend",
     # http
     "HttpVersion",
     "HttpVersion10",

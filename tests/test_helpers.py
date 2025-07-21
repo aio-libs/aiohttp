@@ -189,7 +189,7 @@ def test_basic_auth_decode_invalid_credentials() -> None:
         ),
     ),
 )
-def test_basic_auth_decode_blank_username(
+def test_basic_auth_decode_blank_username(  # type: ignore[misc]
     credentials: str, expected_auth: helpers.BasicAuth
 ) -> None:
     header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
@@ -378,7 +378,6 @@ async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     ctx = helpers.TimerContext(loop)
 
     async def task_with_timeout() -> None:
-        nonlocal ctx
         new_task = asyncio.current_task()
         assert new_task is not None
         with pytest.raises(asyncio.TimeoutError):
@@ -1106,7 +1105,7 @@ def test_netrc_from_home_does_not_raise_if_access_denied(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_present_in_netrc(
+def test_basicauth_present_in_netrc(  # type: ignore[misc]
     expected_auth: helpers.BasicAuth,
 ) -> None:
     """Test that netrc file contents are properly parsed into BasicAuth tuples"""

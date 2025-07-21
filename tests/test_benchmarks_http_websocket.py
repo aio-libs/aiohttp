@@ -3,6 +3,7 @@
 import asyncio
 from typing import Union
 
+import pytest
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp._websocket.helpers import MSG_SIZE, PACK_LEN3
@@ -117,6 +118,7 @@ def test_send_one_hundred_websocket_text_messages_with_mask(
         loop.run_until_complete(_send_one_hundred_websocket_text_messages())
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_send_one_hundred_websocket_compressed_messages(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:

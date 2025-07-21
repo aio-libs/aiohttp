@@ -1,6 +1,5 @@
 import logging
 import socket
-import zlib
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel
@@ -14,6 +13,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Sequence,
     Tuple,
     TypedDict,
     Union,
@@ -22,6 +22,7 @@ from typing import (
 from multidict import CIMultiDict
 from yarl import URL
 
+from ._cookie_helpers import parse_set_cookie_headers
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:
@@ -120,7 +121,7 @@ class AbstractView(ABC):
         return self._request
 
     @abstractmethod
-    def __await__(self) -> Generator[Any, None, StreamResponse]:
+    def __await__(self) -> Generator[None, None, StreamResponse]:
         """Execute the view handler."""
 
 
@@ -189,6 +190,13 @@ class AbstractCookieJar(Sized, IterableBase):
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
 
+    def update_cookies_from_headers(
+        self, headers: Sequence[str], response_url: URL
+    ) -> None:
+        """Update cookies from raw Set-Cookie headers."""
+        if headers and (cookies_to_update := parse_set_cookie_headers(headers)):
+            self.update_cookies(cookies_to_update, response_url)
+
     @abstractmethod
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Return the jar's cookies filtered by their attributes."""
@@ -202,7 +210,9 @@ class AbstractStreamWriter(ABC):
     length: Optional[int] = 0
 
     @abstractmethod
-    async def write(self, chunk: Union[bytes, bytearray, memoryview]) -> None:
+    async def write(
+        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+    ) -> None:
         """Write chunk into stream."""
 
     @abstractmethod
@@ -215,7 +225,7 @@ class AbstractStreamWriter(ABC):
 
     @abstractmethod
     def enable_compression(
-        self, encoding: str = "deflate", strategy: int = zlib.Z_DEFAULT_STRATEGY
+        self, encoding: str = "deflate", strategy: Optional[int] = None
     ) -> None:
         """Enable HTTP body compression"""
 
@@ -228,6 +238,13 @@ class AbstractStreamWriter(ABC):
         self, status_line: str, headers: "CIMultiDict[str]"
     ) -> None:
         """Write HTTP headers"""
+
+    def send_headers(self) -> None:
+        """Force sending buffered headers if not already sent.
+
+        Required only if write_headers() buffers headers instead of sending immediately.
+        For backwards compatibility, this method does nothing by default.
+        """
 
 
 class AbstractAccessLogger(ABC):
