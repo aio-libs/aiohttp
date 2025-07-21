@@ -4910,7 +4910,7 @@ async def test_buffered_reader_payload_redirect(aiohttp_client: AiohttpClient) -
     client = await aiohttp_client(app)
 
     payload_data = b"buffered reader payload"
-    buffer = io.BufferedReader(io.BytesIO(payload_data))  # type: ignore[arg-type]
+    buffer = io.BufferedReader(io.BytesIO(payload_data))
     payload = BufferedReaderPayload(buffer)
 
     resp = await client.post("/redirect", data=payload)
@@ -5369,8 +5369,8 @@ async def test_file_upload_307_308_redirect(
 ) -> None:
     """Test that file uploads work correctly with 307/308 redirects.
 
-    This demonstrates the bug where file payloads get incorrect Content-Length
-    on redirect because the file position isn't reset.
+    This verifies that file payloads maintain correct Content-Length
+    on redirect by properly handling the file position.
     """
     received_bodies: list[bytes] = []
 

@@ -1106,7 +1106,7 @@ class CustomIO(io.IOBase):
         (io.StringIO("test"), "test"),
         (io.TextIOWrapper(io.BytesIO(b"test")), "test"),
         (io.BytesIO(b"test"), "test"),
-        (io.BufferedReader(io.BytesIO(b"test")), "test"),  # type: ignore[arg-type]
+        (io.BufferedReader(io.BytesIO(b"test")), "test"),
         (async_iter(), None),
         (BodyPartReader(b"x", CIMultiDictProxy(CIMultiDict()), mock.Mock()), None),
         (
