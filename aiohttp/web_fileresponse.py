@@ -100,10 +100,10 @@ class BaseIOResponse(StreamResponse, ABC):
         self._chunk_size = chunk_size
 
     @abstractmethod
-    async def open(self, accept_encoding: str) -> _ResponseOpenFile: ...
+    async def _open(self, accept_encoding: str) -> _ResponseOpenFile: ...
 
     @abstractmethod
-    async def close(self, open_file: _ResponseOpenFile) -> None: ...
+    async def _close(self, open_file: _ResponseOpenFile) -> None: ...
 
     def _seek_and_read(self, fobj: BinaryIO, offset: int, chunk_size: int) -> bytes:
         fobj.seek(offset)
@@ -189,7 +189,7 @@ class BaseIOResponse(StreamResponse, ABC):
 
         open_file = None
         try:
-            open_file = await self.open(accept_encoding)
+            open_file = await self._open(accept_encoding)
 
             if hdrs.CONTENT_TYPE not in self.headers:
                 self.headers[hdrs.CONTENT_TYPE] = open_file.guessed_content_type
@@ -246,7 +246,7 @@ class BaseIOResponse(StreamResponse, ABC):
             # so the connection can begin servicing another request
             # as soon as possible.
             if open_file is not None:
-                close_future = asyncio.ensure_future(self.close(open_file))
+                close_future = asyncio.ensure_future(self._close(open_file))
                 # Hold a strong reference to the future to prevent it from being
                 # garbage collected before it completes.
                 _CLOSE_FUTURES.add(close_future)
@@ -401,8 +401,8 @@ class FileResponse(BaseIOResponse):
         st = file_path.stat()
         return file_path if S_ISREG(st.st_mode) else None, st, None
 
-    async def open(self, accept_encoding: str) -> _ResponseOpenFile:
-        def _open() -> _ResponseOpenFile:
+    async def _open(self, accept_encoding: str) -> _ResponseOpenFile:
+        def open_func() -> _ResponseOpenFile:
             # Guess a fallback content type, used if no Content-Type header is provided
             if sys.version_info >= (3, 13):
                 guesser = CONTENT_TYPES.guess_file_type
@@ -425,9 +425,9 @@ class FileResponse(BaseIOResponse):
                 encoding=encoding,
             )
 
-        return await asyncio.get_running_loop().run_in_executor(None, _open)
+        return await asyncio.get_running_loop().run_in_executor(None, func=open_func)
 
-    async def close(self, open_file: _ResponseOpenFile) -> None:
+    async def _close(self, open_file: _ResponseOpenFile) -> None:
         return await asyncio.get_running_loop().run_in_executor(
             None, open_file.fobj.close
         )
@@ -440,7 +440,7 @@ class IOResponse(BaseIOResponse):
     _etag: Optional[str]
     _last_modified: Optional[float]
     _content_type: str
-    _close: bool
+    _close_after_response: bool
 
     def __init__(
         self,
@@ -448,7 +448,7 @@ class IOResponse(BaseIOResponse):
         etag: Optional[str] = None,
         last_modified: Optional[float] = None,
         content_type: str = FALLBACK_CONTENT_TYPE,
-        close: bool = True,
+        close_after_response: bool = True,
         chunk_size: int = 256 * 1024,
         status: int = 200,
         reason: Optional[str] = None,
@@ -458,10 +458,10 @@ class IOResponse(BaseIOResponse):
         self._etag = etag
         self._last_modified = last_modified
         self._content_type = content_type
-        self._close = close
+        self._close_after_response = close_after_response
         super().__init__(status=status, reason=reason, headers=headers)
 
-    async def open(self, accept_encoding: str) -> _ResponseOpenFile:
+    async def _open(self, accept_encoding: str) -> _ResponseOpenFile:
         def get_size() -> int:
             self._fobj.seek(0, io.SEEK_END)
             size = self._fobj.tell()
@@ -473,6 +473,6 @@ class IOResponse(BaseIOResponse):
             self._fobj, size, self._content_type, self._etag, self._last_modified, None
         )
 
-    async def close(self, open_file: _ResponseOpenFile) -> None:
-        if self._close:
+    async def _close(self, open_file: _ResponseOpenFile) -> None:
+        if self._close_after_response:
             await asyncio.get_running_loop().run_in_executor(None, open_file.fobj.close)
