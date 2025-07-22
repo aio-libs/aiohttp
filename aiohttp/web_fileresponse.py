@@ -467,7 +467,12 @@ class IOResponse(BaseIOResponse):
 
         size = await asyncio.get_running_loop().run_in_executor(None, get_size)
         return _ResponseOpenFile(
-            self._fobj, size, FALLBACK_CONTENT_TYPE, self._etag, self._last_modified, None
+            self._fobj,
+            size,
+            FALLBACK_CONTENT_TYPE,
+            self._etag,
+            self._last_modified,
+            None,
         )
 
     async def _close(self, open_file: _ResponseOpenFile) -> None:

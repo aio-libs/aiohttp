@@ -178,7 +178,7 @@ async def test_io_response_open():
     data = b"hello"
     fobj = BytesIO(data)
     response = IOResponse(fobj, etag="test-etag", last_modified=1234)
-    open_file = await response._open('')
+    open_file = await response._open("")
     assert open_file.size == len(data)
     assert open_file.encoding is None
     assert open_file.etag == "test-etag"
