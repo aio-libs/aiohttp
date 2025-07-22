@@ -6,7 +6,6 @@ import sys
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from dataclasses import dataclass
-from enum import Enum, auto
 from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
