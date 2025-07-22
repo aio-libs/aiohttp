@@ -439,7 +439,6 @@ class IOResponse(BaseIOResponse):
     _fobj: BinaryIO
     _etag: Optional[str]
     _last_modified: Optional[float]
-    _content_type: str
     _close_after_response: bool
 
     def __init__(
@@ -447,7 +446,6 @@ class IOResponse(BaseIOResponse):
         fobj: BinaryIO,
         etag: Optional[str] = None,
         last_modified: Optional[float] = None,
-        content_type: str = FALLBACK_CONTENT_TYPE,
         close_after_response: bool = True,
         chunk_size: int = 256 * 1024,
         status: int = 200,
@@ -457,7 +455,6 @@ class IOResponse(BaseIOResponse):
         self._fobj = fobj
         self._etag = etag
         self._last_modified = last_modified
-        self._content_type = content_type
         self._close_after_response = close_after_response
         super().__init__(status=status, reason=reason, headers=headers)
 
@@ -470,7 +467,7 @@ class IOResponse(BaseIOResponse):
 
         size = await asyncio.get_running_loop().run_in_executor(None, get_size)
         return _ResponseOpenFile(
-            self._fobj, size, self._content_type, self._etag, self._last_modified, None
+            self._fobj, size, FALLBACK_CONTENT_TYPE, self._etag, self._last_modified, None
         )
 
     async def _close(self, open_file: _ResponseOpenFile) -> None:
