@@ -84,7 +84,7 @@ class _ResponseOpenFile:
     guessed_content_type: str
     etag: Optional[str]
     last_modified: Optional[float]
-    encoding: str | None
+    encoding: Optional[str]
 
 
 class BaseIOResponse(StreamResponse, ABC):
@@ -438,8 +438,8 @@ class IOResponse(BaseIOResponse):
     """A response object using any binary IO object"""
 
     _fobj: BinaryIO
-    _etag: str | None
-    _last_modified: float | None
+    _etag: Optional[str]
+    _last_modified: Optional[float]
     _content_type: str
     _close: bool
 
