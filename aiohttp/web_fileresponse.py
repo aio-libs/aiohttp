@@ -68,15 +68,6 @@ ADDITIONAL_CONTENT_TYPES = MappingProxyType(
 )
 
 
-class _FileResponseResult(Enum):
-    """The result of the file response."""
-
-    SEND_FILE = auto()  # Ie a regular file to send
-    NOT_ACCEPTABLE = auto()  # Ie a socket, or non-regular file
-    PRE_CONDITION_FAILED = auto()  # Ie If-Match or If-None-Match failed
-    NOT_MODIFIED = auto()  # 304 Not Modified
-
-
 # Add custom pairs and clear the encodings map so guess_type ignores them.
 CONTENT_TYPES.encodings_map.clear()
 for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
