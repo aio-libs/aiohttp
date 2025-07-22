@@ -107,7 +107,7 @@ class BaseIOResponse(StreamResponse, ABC):
 
     def _seek_and_read(self, fobj: BinaryIO, offset: int, chunk_size: int) -> bytes:
         fobj.seek(offset)
-        return fobj.read(chunk_size)  # type: ignore[no-any-return]
+        return fobj.read(chunk_size)
 
     async def _sendfile_fallback(
         self, writer: AbstractStreamWriter, fobj: BinaryIO, offset: int, count: int
@@ -402,7 +402,7 @@ class FileResponse(BaseIOResponse):
         return file_path if S_ISREG(st.st_mode) else None, st, None
 
     async def open(self, accept_encoding: str) -> _ResponseOpenFile:
-        def _open():
+        def _open() -> _ResponseOpenFile:
             # Guess a fallback content type, used if no Content-Type header is provided
             if sys.version_info >= (3, 13):
                 guesser = CONTENT_TYPES.guess_file_type
@@ -462,7 +462,7 @@ class IOResponse(BaseIOResponse):
         super().__init__(status=status, reason=reason, headers=headers)
 
     async def open(self, accept_encoding: str) -> _ResponseOpenFile:
-        def get_size():
+        def get_size() -> int:
             self._fobj.seek(0, io.SEEK_END)
             size = self._fobj.tell()
             self._fobj.seek(0)
