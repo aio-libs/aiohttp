@@ -57,7 +57,7 @@ cdef inline void _release_writer(Writer* writer) noexcept:
     if writer.buf != BUFFER:
         PyMem_Free(writer.buf)
 
-# set to noexcept since we wish to handle the exceptions ourselves...
+
 cdef inline int _write_byte(Writer* writer, uint8_t ch) except -1:
     cdef char * buf
     cdef Py_ssize_t size
@@ -119,22 +119,22 @@ cdef inline int _write_utf8(Writer* writer, Py_UCS4 symbol) except -1:
 cdef inline int _write_str(Writer* writer, str s) except -1:
     cdef Py_UCS4 ch
     if not PyUnicode_Check(s):
-        PyErr_SetObject(ValueError, "Invalid status-line: {!r}")
+        PyErr_SetObject(ValueError, "Invalid status-line: {!r}".format(s))
         return -1
     for ch in s:
         if _write_utf8(writer, ch) < 0:
             return -1
     return 0
 
-@cython.nonecheck(False)
 cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s) except -1:
     cdef Py_UCS4 ch
     cdef str out_str
+
     if PyUnicode_CheckExact(s):
         out_str = <str>s
     elif IStr_CheckExact(s):
         out_str = PyObject_Str(s)
-    elif not isinstance(s, str):
+    elif not PyUnicode_Check(s):
         PyErr_SetObject(TypeError, "Cannot serialize non-str key {!r}".format(s))
         return -1
     else:

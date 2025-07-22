@@ -93,14 +93,15 @@ cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
 cdef bytes EMPTY_BYTES = b""
 
-cdef inline object extend(object buf, const char* at, size_t length):
+cdef inline int extend(object buf, const char* at, size_t length) except -1:
     cdef Py_ssize_t s
     cdef char* ptr
     s = PyByteArray_Size(buf)
-    PyByteArray_Resize(buf, s + length)
+    if PyByteArray_Resize(buf, s + length) < 0:
+        return -1
     ptr = PyByteArray_AsString(buf)
     memcpy(ptr + s, at, length)
-
+    return 0
 
 DEF METHODS_COUNT = 46;
 cdef list _http_method = []
@@ -207,7 +208,7 @@ cdef class RawRequestMessage:
 cdef _new_request_message(str method,
                            str path,
                            object version,
-                           object headers,
+                           CIMultiDictProxy headers,
                            object raw_headers,
                            bint should_close,
                            object compression,
@@ -276,7 +277,7 @@ cdef class RawResponseMessage:
 cdef _new_response_message(object version,
                            int code,
                            str reason,
-                           object headers,
+                           CIMultiDictProxy headers,
                            object raw_headers,
                            bint should_close,
                            object compression,
@@ -629,7 +630,7 @@ cdef class HttpRequestParser(HttpParser):
             if self._cparser.method == cparser.HTTP_CONNECT:
                 # authority-form,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
-                self._url = URL.build(authority=self._path, encoded=True)
+                self._url = URL_build(authority=self._path, encoded=True)
             elif idx3 > 1 and self._path[0] == '/':
                 # origin-form,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
@@ -655,7 +656,7 @@ cdef class HttpRequestParser(HttpParser):
                         query = self._path[idx1: idx2]
                         fragment = self._path[idx2+1:]
 
-                self._url = URL.build(
+                self._url = URL_build(
                     path=path,
                     query_string=query,
                     fragment=fragment,

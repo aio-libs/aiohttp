@@ -77,7 +77,7 @@ ERROR = RawRequestMessage(
     "/",
     HttpVersion10,
     CIMultiDictProxy(CIMultiDict()),
-    CIMultiDictProxy(CIMultiDict()),
+    tuple(),
     True,
     None,
     False,
