@@ -1334,7 +1334,7 @@ class ClientRequest:
         self,
         writer: AbstractStreamWriter,
         conn: "Connection",
-        content_length: Optional[int],
+        content_length: Optional[int] = None,
     ) -> None:
         """
         Write the request body to the connection stream.
