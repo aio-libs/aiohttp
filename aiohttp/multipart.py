@@ -980,8 +980,7 @@ class MultipartWriter(Payload):
         """Size of the payload."""
         total = 0
         for part, encoding, te_encoding in self._parts:
-            part_size = part.size
-            if encoding or te_encoding or part_size is None:
+            if encoding or te_encoding or (part_size := part.size) is None:
                 return None
 
             total += int(
