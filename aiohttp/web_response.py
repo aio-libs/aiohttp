@@ -791,8 +791,8 @@ class Response(StreamResponse):
                 del self._headers[hdrs.CONTENT_LENGTH]
         elif not self._chunked:
             if isinstance(self._body, Payload):
-                if self._body.size is not None:
-                    self._headers[hdrs.CONTENT_LENGTH] = str(self._body.size)
+                if (size := self._body.size) is not None:
+                    self._headers[hdrs.CONTENT_LENGTH] = str(size)
             else:
                 body_len = len(self._body) if self._body else "0"
                 # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-7
