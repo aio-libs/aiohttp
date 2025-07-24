@@ -972,14 +972,15 @@ class MultipartWriter(Payload):
         """Size of the payload."""
         total = 0
         for part, encoding, te_encoding in self._parts:
-            if encoding or te_encoding or part.size is None:
+            part_size = part.size
+            if encoding or te_encoding or part_size is None:
                 return None
 
             total += int(
                 2
                 + len(self._boundary)
                 + 2
-                + part.size  # b'--'+self._boundary+b'\r\n'
+                + part_size  # b'--'+self._boundary+b'\r\n'
                 + len(part._binary_headers)
                 + 2  # b'\r\n'
             )
