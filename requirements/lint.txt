@@ -88,7 +88,7 @@ python-on-whales==0.78.0
     # via -r requirements/lint.in
 pyyaml==6.0.2
     # via pre-commit
-rich==14.0.0
+rich==14.1.0
     # via pytest-codspeed
 six==1.17.0
     # via python-dateutil
@@ -108,7 +108,6 @@ typing-extensions==4.14.1
     #   pydantic
     #   pydantic-core
     #   python-on-whales
-    #   rich
     #   typing-inspection
 typing-inspection==0.4.1
     # via pydantic
