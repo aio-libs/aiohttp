@@ -12,9 +12,7 @@ from typing import Any, AsyncIterator, Callable, Generator, Iterator
 from unittest import mock
 from uuid import uuid4
 
-import isal.isal_zlib
 import pytest
-import zlib_ng.zlib_ng
 from blockbuster import blockbuster_ctx
 
 from aiohttp import payload
@@ -41,6 +39,17 @@ try:
         import uvloop
 except ImportError:
     uvloop = None  # type: ignore[assignment]
+
+
+try:
+    import zlib_ng.zlib_ng as zlib_ng
+except ImportError:
+    zlib_ng = None  # type: ignore[assignment]
+
+try:
+    import isal.isal_zlib as isal_zlib
+except ImportError:
+    isal_zlib = None  # type: ignore[assignment]
 
 
 pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
@@ -338,13 +347,14 @@ def unused_port_socket() -> Generator[socket.socket, None, None]:
         s.close()
 
 
-@pytest.fixture(params=[zlib, zlib_ng.zlib_ng, isal.isal_zlib])
+@pytest.fixture(params=[zlib, zlib_ng, isal_zlib])
 def parametrize_zlib_backend(
     request: pytest.FixtureRequest,
 ) -> Generator[None, None, None]:
     original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
+    if request.param is None:
+        pytest.skip("zlib backend not available")
     set_zlib_backend(request.param)
-
     yield
 
     set_zlib_backend(original_backend)
