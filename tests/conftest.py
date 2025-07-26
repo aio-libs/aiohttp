@@ -4,7 +4,6 @@ import os
 import socket
 import ssl
 import sys
-import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
