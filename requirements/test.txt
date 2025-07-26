@@ -5,15 +5,15 @@
 #    pip-compile --allow-unsafe --output-file=requirements/test.txt --strip-extras requirements/test.in
 #
 aiodns==3.5.0
-    # via -r /Users/kumaraditya/work/aiohttp/requirements/runtime-deps.in
+    # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
-    # via -r /Users/kumaraditya/work/aiohttp/requirements/runtime-deps.in
+    # via -r requirements/runtime-deps.in
 aiosignal==1.4.0
-    # via -r /Users/kumaraditya/work/aiohttp/requirements/runtime-deps.in
+    # via -r requirements/runtime-deps.in
 blockbuster==1.5.25
     # via -r requirements/test.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
-    # via -r /Users/kumaraditya/work/aiohttp/requirements/runtime-deps.in
+    # via -r requirements/runtime-deps.in
 cffi==1.17.1
     # via
     #   cryptography
@@ -35,10 +35,10 @@ freezegun==1.5.3
     # via -r requirements/test.in
 frozenlist==1.7.0
     # via
-    #   -r /Users/kumaraditya/work/aiohttp/requirements/runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiosignal
 gunicorn==23.0.0
-    # via -r /Users/kumaraditya/work/aiohttp/requirements/base.in
+    # via -r requirements/base.in
 idna==3.6
     # via
     #   trustme
@@ -51,7 +51,7 @@ mdurl==0.1.2
     # via markdown-it-py
 multidict==6.6.3
     # via
-    #   -r /Users/kumaraditya/work/aiohttp/requirements/runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   yarl
 mypy==1.17.0 ; implementation_name == "cpython"
     # via -r requirements/test.in
@@ -71,7 +71,7 @@ pluggy==1.6.0
     #   pytest-cov
 propcache==0.3.2
     # via
-    #   -r /Users/kumaraditya/work/aiohttp/requirements/runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test.in
@@ -111,10 +111,10 @@ trustme==1.2.1 ; platform_machine != "i686"
 typing-extensions==4.14.1
     # via mypy
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
-    # via -r /Users/kumaraditya/work/aiohttp/requirements/base.in
+    # via -r requirements/base.in
 wait-for-it==2.3.0
     # via -r requirements/test.in
 yarl==1.20.1
-    # via -r /Users/kumaraditya/work/aiohttp/requirements/runtime-deps.in
+    # via -r requirements/runtime-deps.in
 zlib-ng==0.5.1
     # via -r requirements/test.in
