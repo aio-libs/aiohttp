@@ -1324,10 +1324,8 @@ Install with ``pip``:
 
     $ pip install aiohttp-devtools
 
-* ``runserver`` provides a development server with auto-reload,
-  live-reload, static file serving.
-* ``start`` is a `cookiecutter command which does the donkey work
-  of creating new :mod:`aiohttp.web` Applications.
+``adev runserver`` provides a development server with auto-reload,
+live-reload, static file serving.
 
 Documentation and a complete tutorial of creating and running an app
 locally are available at `aiohttp-devtools`_.
