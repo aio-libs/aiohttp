@@ -1274,7 +1274,7 @@ CORS support
 :mod:`aiohttp.web` itself does not support `Cross-Origin Resource
 Sharing <https://en.wikipedia.org/wiki/Cross-origin_resource_sharing>`_, but
 there is an aiohttp plugin for it:
-`aiohttp_cors <https://github.com/aio-libs/aiohttp_cors>`_.
+`aiohttp-cors <https://github.com/aio-libs/aiohttp-cors>`_.
 
 
 Debug Toolbar
