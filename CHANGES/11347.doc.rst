@@ -1,0 +1,3 @@
+Remove outdated contents of aiohttp-devtools and aiohttp-swagger
+from Web_advanced docs.
+-- by :user:`Cycloctane`
