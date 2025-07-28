@@ -245,7 +245,9 @@ class DigestAuthMiddleware:
             )
 
         qop_raw = challenge.get("qop", "")
-        algorithm = challenge.get("algorithm", "MD5").upper()
+        # Preserve original algorithm case for response while using uppercase for processing
+        algorithm_original = challenge.get("algorithm", "MD5")
+        algorithm = algorithm_original.upper()
         opaque = challenge.get("opaque", "")
 
         # Convert string values to bytes once
@@ -342,7 +344,7 @@ class DigestAuthMiddleware:
             "nonce": escape_quotes(nonce),
             "uri": path,
             "response": response_digest.decode(),
-            "algorithm": algorithm,
+            "algorithm": algorithm_original,
         }
 
         # Optional fields
