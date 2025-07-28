@@ -1,6 +1,7 @@
 """Test digest authentication middleware for aiohttp client."""
 
 import io
+import re
 from hashlib import md5, sha1
 from typing import Generator, Literal, Union
 from unittest import mock
@@ -209,6 +210,31 @@ async def test_encode_unsupported_algorithm(
 
     with pytest.raises(ClientError, match="Unsupported hash algorithm"):
         await digest_auth_mw._encode("GET", URL("http://example.com/resource"), b"")
+
+
+@pytest.mark.parametrize(
+    "algorithm", ["MD5", "md5", "MD5-sess", "MD5-SESS", "sha-256", "SHA-256"]
+)
+async def test_encode_algorithm_case_preservation(
+    digest_auth_mw: DigestAuthMiddleware,
+    qop_challenge: DigestAuthChallenge,
+    algorithm: str,
+) -> None:
+    """Test that algorithm case is preserved in the response header."""
+    # Create a challenge with the specific algorithm case
+    challenge = qop_challenge.copy()
+    challenge["algorithm"] = algorithm
+    digest_auth_mw._challenge = challenge
+
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
+
+    # The algorithm in the response should match the exact case from the challenge
+    assert f"algorithm={algorithm}" in header
+    # Also verify it's not the uppercase version if the original wasn't uppercase
+    if algorithm != algorithm.upper():
+        assert f"algorithm={algorithm.upper()}" not in header
 
 
 async def test_invalid_qop_rejected(
@@ -1231,3 +1257,54 @@ def test_in_protection_space_multiple_spaces(
         digest_auth_mw._in_protection_space(URL("http://example.com/secure")) is False
     )
     assert digest_auth_mw._in_protection_space(URL("http://example.com/other")) is False
+
+
+async def test_case_sensitive_algorithm_server(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test authentication with a server that requires exact algorithm case matching.
+
+    This simulates servers like Prusa printers that expect the algorithm
+    to be returned with the exact same case as sent in the challenge.
+    """
+    digest_auth_mw = DigestAuthMiddleware("testuser", "testpass")
+    request_count = 0
+    auth_algorithms: list[str] = []
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        if not (auth_header := request.headers.get(hdrs.AUTHORIZATION)):
+            # Send challenge with lowercase-sess algorithm (like Prusa)
+            challenge = 'Digest realm="Administrator", nonce="test123", qop="auth", algorithm="MD5-sess", opaque="xyz123"'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+
+        # Extract algorithm from auth response
+        if algo_match := re.search(r"algorithm=([^,\s]+)", auth_header):
+            auth_algorithms.append(algo_match.group(1))
+
+        # Case-sensitive server: only accept exact case match
+        assert "algorithm=MD5-sess" in auth_header
+        return Response(text="Success")
+
+    app = Application()
+    app.router.add_get("/api/test", handler)
+    server = await aiohttp_server(app)
+
+    async with (
+        ClientSession(middlewares=(digest_auth_mw,)) as session,
+        session.get(server.make_url("/api/test")) as resp,
+    ):
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Success"
+
+    # Verify the middleware preserved the exact algorithm case
+    assert request_count == 2  # Initial 401 + successful retry
+    assert len(auth_algorithms) == 1
+    assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
