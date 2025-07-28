@@ -212,15 +212,13 @@ async def test_encode_unsupported_algorithm(
         await digest_auth_mw._encode("GET", URL("http://example.com/resource"), b"")
 
 
-@pytest.mark.parametrize(
-    "algorithm", ["MD5", "md5", "MD5-sess", "MD5-SESS", "sha-256", "SHA-256"]
-)
-async def test_encode_algorithm_case_preservation(
+@pytest.mark.parametrize("algorithm", ["MD5", "MD5-SESS", "SHA-256"])
+async def test_encode_algorithm_case_preservation_uppercase(
     digest_auth_mw: DigestAuthMiddleware,
     qop_challenge: DigestAuthChallenge,
     algorithm: str,
 ) -> None:
-    """Test that algorithm case is preserved in the response header."""
+    """Test that uppercase algorithm case is preserved in the response header."""
     # Create a challenge with the specific algorithm case
     challenge = qop_challenge.copy()
     challenge["algorithm"] = algorithm
@@ -232,9 +230,28 @@ async def test_encode_algorithm_case_preservation(
 
     # The algorithm in the response should match the exact case from the challenge
     assert f"algorithm={algorithm}" in header
-    # Also verify it's not the uppercase version if the original wasn't uppercase
-    if algorithm != algorithm.upper():
-        assert f"algorithm={algorithm.upper()}" not in header
+
+
+@pytest.mark.parametrize("algorithm", ["md5", "MD5-sess", "sha-256"])
+async def test_encode_algorithm_case_preservation_lowercase(
+    digest_auth_mw: DigestAuthMiddleware,
+    qop_challenge: DigestAuthChallenge,
+    algorithm: str,
+) -> None:
+    """Test that lowercase/mixed-case algorithm is preserved in the response header."""
+    # Create a challenge with the specific algorithm case
+    challenge = qop_challenge.copy()
+    challenge["algorithm"] = algorithm
+    digest_auth_mw._challenge = challenge
+
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
+
+    # The algorithm in the response should match the exact case from the challenge
+    assert f"algorithm={algorithm}" in header
+    # Also verify it's not the uppercase version
+    assert f"algorithm={algorithm.upper()}" not in header
 
 
 async def test_invalid_qop_rejected(
