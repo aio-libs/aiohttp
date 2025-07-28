@@ -1302,8 +1302,9 @@ async def test_case_sensitive_algorithm_server(
             )
 
         # Extract algorithm from auth response
-        if algo_match := re.search(r"algorithm=([^,\s]+)", auth_header):
-            auth_algorithms.append(algo_match.group(1))
+        algo_match = re.search(r"algorithm=([^,\s]+)", auth_header)
+        assert algo_match is not None
+        auth_algorithms.append(algo_match.group(1))
 
         # Case-sensitive server: only accept exact case match
         assert "algorithm=MD5-sess" in auth_header
