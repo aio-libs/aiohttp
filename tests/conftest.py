@@ -15,7 +15,6 @@ from uuid import uuid4
 import isal.isal_zlib
 import pytest
 import zlib_ng.zlib_ng
-from blockbuster import blockbuster_ctx
 
 from aiohttp import payload
 from aiohttp.client_proto import ResponseHandler
@@ -64,6 +63,9 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             yield
             return
         node = node.parent
+
+    from blockbuster import blockbuster_ctx
+
     with blockbuster_ctx(
         "aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]
     ) as bb:
