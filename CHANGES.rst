@@ -10,6 +10,63 @@
 
 .. towncrier release notes start
 
+3.12.15 (2025-07-28)
+====================
+
+Bug fixes
+---------
+
+- Fixed :class:`~aiohttp.DigestAuthMiddleware` to preserve the algorithm case from the server's challenge in the authorization response. This improves compatibility with servers that perform case-sensitive algorithm matching (e.g., servers expecting ``algorithm=MD5-sess`` instead of ``algorithm=MD5-SESS``)
+  -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11352`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Remove outdated contents of ``aiohttp-devtools`` and ``aiohttp-swagger``
+  from Web_advanced docs.
+  -- by :user:`Cycloctane`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11347`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Started including the ``llhttp`` :file:`LICENSE` file in wheels by adding ``vendor/llhttp/LICENSE`` to ``license-files`` in :file:`setup.cfg` -- by :user:`threexc`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11226`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Updated a regex in `test_aiohttp_request_coroutine` for Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11271`.
+
+
+
+
+----
+
+
 3.12.14 (2025-07-10)
 ====================
 
