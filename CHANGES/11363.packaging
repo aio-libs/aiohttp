@@ -1,0 +1,2 @@
+Tests no longer import the blockbuster module when it will not be used, e.g. if the skip_blockbuster mark is set
+-- by :user:`musicinybrain`.
