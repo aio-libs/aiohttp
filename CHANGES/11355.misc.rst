@@ -1,2 +1,2 @@
-Improved :exc:`~aiohttp.ContentLengthError` exception messages to include both expected and received byte counts. This enhancement provides better diagnostics when debugging response body size mismatches
+Improved ``ContentLengthError`` exception messages to include both expected and received byte counts. This enhancement provides better diagnostics when debugging response body size mismatches
 -- by :user:`bdraco`.
