@@ -15,7 +15,11 @@ from uuid import uuid4
 import isal.isal_zlib
 import pytest
 import zlib_ng.zlib_ng
-from blockbuster import blockbuster_ctx
+try:
+    from blockbuster import blockbuster_ctx
+    have_blockbuster = True
+except ImportError:
+    have_blockbuster = False
 
 from aiohttp import payload
 from aiohttp.client_proto import ResponseHandler
@@ -49,11 +53,12 @@ IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=have_blockbuster)
 def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
-    # Allow selectively disabling blockbuster for specific tests
-    # using the @pytest.mark.skip_blockbuster marker.
-    if "skip_blockbuster" in request.node.keywords:
+    # Disable blockbuster if it is not available, and allow selectively
+    # disabling blockbuster for specific tests using the
+    # @pytest.mark.skip_blockbuster marker.
+    if not have_blockbuster or  "skip_blockbuster" in request.node.keywords:
         yield
         return
 
