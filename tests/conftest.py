@@ -15,8 +15,10 @@ from uuid import uuid4
 import isal.isal_zlib
 import pytest
 import zlib_ng.zlib_ng
+
 try:
     from blockbuster import blockbuster_ctx
+
     have_blockbuster = True
 except ImportError:
     have_blockbuster = False
@@ -58,7 +60,7 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
     # Disable blockbuster if it is not available, and allow selectively
     # disabling blockbuster for specific tests using the
     # @pytest.mark.skip_blockbuster marker.
-    if not have_blockbuster or  "skip_blockbuster" in request.node.keywords:
+    if not have_blockbuster or "skip_blockbuster" in request.node.keywords:
         yield
         return
 
