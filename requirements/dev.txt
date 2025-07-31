@@ -132,7 +132,7 @@ packaging==25.0
     #   wheel
 pathspec==0.12.1
     # via mypy
-pip-tools==7.4.1
+pip-tools==7.5.0
     # via -r requirements/dev.in
 pkgconfig==1.5.5
     # via -r requirements/test.in
