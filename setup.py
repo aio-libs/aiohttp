@@ -2,6 +2,7 @@ import os
 import pathlib
 import sys
 
+import multidict
 from setuptools import Extension, setup
 
 if sys.version_info < (3, 9):
@@ -51,7 +52,7 @@ else:
     ]
     llhttp_kwargs = {
         "define_macros": [("LLHTTP_STRICT_MODE", 0)],
-        "include_dirs": ["vendor/llhttp/build"],
+        "include_dirs": ["vendor/llhttp/build"] + multidict.__path__,
     }
 
 extensions = [
@@ -65,7 +66,11 @@ extensions = [
         ],
         **llhttp_kwargs,
     ),
-    Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
+    Extension(
+        "aiohttp._http_writer",
+        ["aiohttp/_http_writer.c"],
+        include_dirs=multidict.__path__,
+    ),
     Extension("aiohttp._websocket.reader_c", ["aiohttp/_websocket/reader_c.c"]),
 ]
 

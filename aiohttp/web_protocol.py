@@ -24,6 +24,7 @@ from typing import (
 )
 
 import yarl
+from multidict import CIMultiDict, CIMultiDictProxy
 from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
@@ -75,8 +76,8 @@ ERROR = RawRequestMessage(
     "UNKNOWN",
     "/",
     HttpVersion10,
-    {},  # type: ignore[arg-type]
-    {},  # type: ignore[arg-type]
+    CIMultiDictProxy(CIMultiDict()),
+    tuple(),
     True,
     None,
     False,
@@ -615,7 +616,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 payload,
                 self,
                 writer,
-                self._task_handler or asyncio.current_task(loop),  # type: ignore[arg-type]
+                self._task_handler or asyncio.current_task(loop),
             )
             try:
                 # a new task is used for copy context vars (#3406)
