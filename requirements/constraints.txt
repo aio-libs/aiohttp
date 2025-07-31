@@ -205,7 +205,7 @@ pyyaml==6.0.2
     # via pre-commit
 re-assert==1.1.0
     # via -r requirements/test.in
-regex==2025.7.31
+regex==2025.7.34
     # via re-assert
 requests==2.32.4
     # via
