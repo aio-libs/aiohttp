@@ -1,6 +1,10 @@
 [build-system]
 requires = [
     "pkgconfig",
+    # setuptools >= 67.0 required for Python 3.12+ support
+    # Next step should be >= 77.0 for PEP 639 support
+    # Don't bump to early to give distributors time to update
+    # their setuptools version.
     "setuptools >= 67.0",
 ]
 build-backend = "setuptools.build_meta"
@@ -27,7 +31,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Topic :: Internet :: WWW/HTTP",
 ]
-requires-python = ">=3.9"
+requires-python = ">= 3.9"
 dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.urls]
@@ -55,7 +59,7 @@ version = {attr = "aiohttp.__version__"}
 include = ["aiohttp*"]
 
 [tool.setuptools.exclude-package-data]
-"*" = ["*.c", "*.h", "*.hash"]
+"*" = ["*.c", "*.h"]
 
 [tool.towncrier]
   package = "aiohttp"
