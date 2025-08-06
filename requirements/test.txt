@@ -25,11 +25,11 @@ cffi==1.17.1
     #   pytest-codspeed
 click==8.1.8
     # via wait-for-it
-coverage==7.10.0
+coverage==7.10.2
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==45.0.5
+cryptography==45.0.6
     # via trustme
 exceptiongroup==1.3.0
     # via pytest
@@ -61,7 +61,7 @@ multidict==6.6.3
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.17.0 ; implementation_name == "cpython"
+mypy==1.17.1 ; implementation_name == "cpython"
     # via -r requirements/test.in
 mypy-extensions==1.1.0
     # via mypy
@@ -83,13 +83,15 @@ propcache==0.3.2
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test.in
-pycares==4.9.0
+pycares==4.10.0
     # via aiodns
 pycparser==2.22
     # via cffi
-pydantic==2.11.7
-    # via python-on-whales
-pydantic-core==2.33.2
+pydantic==2.12.0a1
+    # via
+    #   -r requirements/test.in
+    #   python-on-whales
+pydantic-core==2.37.2
     # via pydantic
 pygments==2.19.2
     # via
@@ -112,7 +114,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.78.0 ; python_version < "3.14"
+python-on-whales==0.78.0
     # via -r requirements/test.in
 rich==14.1.0
     # via pytest-codspeed
