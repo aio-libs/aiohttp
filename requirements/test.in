@@ -13,7 +13,7 @@ pytest-cov
 pytest-mock
 pytest-xdist
 pytest_codspeed
-python-on-whales;
+python-on-whales
 setuptools-git
 trustme; platform_machine != "i686"  # no 32-bit wheels
 wait-for-it
