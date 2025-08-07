@@ -88,7 +88,7 @@ from .payload import (
     payload_type,
 )
 from .resolver import AsyncResolver, DefaultResolver, ThreadedResolver
-from .streams import EMPTY_PAYLOAD, DataQueue, EofStream, StreamReader
+from .streams import EMPTY_PAYLOAD, DataQueue, EofStream, StreamReader, empty_stream_reader
 from .tracing import (
     TraceConfig,
     TraceConnectionCreateEndParams,
@@ -212,6 +212,7 @@ __all__: Tuple[str, ...] = (
     "EMPTY_PAYLOAD",
     "EofStream",
     "StreamReader",
+    "empty_stream_reader",
     # tracing
     "TraceConfig",
     "TraceConnectionCreateEndParams",

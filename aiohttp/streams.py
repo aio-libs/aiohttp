@@ -30,6 +30,7 @@ __all__ = (
     "EofStream",
     "StreamReader",
     "DataQueue",
+    "empty_stream_reader",
 )
 
 _T = TypeVar("_T")
@@ -602,6 +603,18 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 
 
 EMPTY_PAYLOAD: Final[StreamReader] = EmptyStreamReader()
+
+
+def empty_stream_reader() -> "EmptyStreamReader":
+    """Create a fresh EmptyStreamReader instance.
+
+    This function should be used instead of the global EMPTY_PAYLOAD
+    to avoid state sharing issues between requests.
+
+    Returns:
+        A new EmptyStreamReader instance.
+    """
+    return EmptyStreamReader()
 
 
 class DataQueue(Generic[_T]):

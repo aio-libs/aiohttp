@@ -38,7 +38,7 @@ from .http_writer import (
     HttpVersion10 as _HttpVersion10,
     HttpVersion11 as _HttpVersion11,
 )
-from .streams import EMPTY_PAYLOAD as _EMPTY_PAYLOAD, StreamReader as _StreamReader
+from .streams import EMPTY_PAYLOAD as _EMPTY_PAYLOAD, StreamReader as _StreamReader, empty_stream_reader as _empty_stream_reader
 
 cimport cython
 
@@ -70,6 +70,7 @@ cdef object SEC_WEBSOCKET_KEY1 = hdrs.SEC_WEBSOCKET_KEY1
 cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
+cdef object empty_stream_reader = _empty_stream_reader
 cdef object DeflateBuffer = _DeflateBuffer
 cdef bytes EMPTY_BYTES = b""
 
@@ -463,14 +464,14 @@ cdef class HttpParser:
                 self._protocol, timer=self._timer, loop=self._loop,
                 limit=self._limit)
         else:
-            payload = EMPTY_PAYLOAD
+            payload = empty_stream_reader()
 
         self._payload = payload
         if encoding is not None and self._auto_decompress:
             self._payload = DeflateBuffer(payload, encoding)
 
         if not self._response_with_body:
-            payload = EMPTY_PAYLOAD
+            payload = empty_stream_reader()
 
         self._messages.append((msg, payload))
 
