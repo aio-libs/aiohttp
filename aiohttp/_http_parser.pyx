@@ -38,7 +38,11 @@ from .http_writer import (
     HttpVersion10 as _HttpVersion10,
     HttpVersion11 as _HttpVersion11,
 )
-from .streams import EMPTY_PAYLOAD as _EMPTY_PAYLOAD, StreamReader as _StreamReader, empty_stream_reader as _empty_stream_reader
+from .streams import (
+    EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
+    StreamReader as _StreamReader,
+    empty_stream_reader as _empty_stream_reader,
+)
 
 cimport cython
 
