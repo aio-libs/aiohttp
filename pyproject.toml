@@ -2,6 +2,8 @@
 requires = [
     "pkgconfig",
     "setuptools >= 46.4.0",
+    # Temporarily redirect it to me, will revert when 6.7 gets released
+    "multidict @ git+https://github.com/Vizonex/multidict@capi"
 ]
 build-backend = "setuptools.build_meta"
 
