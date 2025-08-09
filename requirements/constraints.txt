@@ -169,8 +169,10 @@ pygments==2.19.2
     #   pytest
     #   rich
     #   sphinx
-pyjwt==2.8.0
-    # via gidgethub
+pyjwt==2.9.0
+    # via
+    #   gidgethub
+    #   pyjwt
 pyproject-hooks==1.2.0
     # via
     #   build
