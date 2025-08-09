@@ -17,7 +17,7 @@ try:
     from blockbuster import blockbuster_ctx
 
     HAS_BLOCKBUSTER = True
-except ImportError:
+except ImportError:  # For downstreams only  # pragma: no cover
     HAS_BLOCKBUSTER = False
 
 from aiohttp import payload
