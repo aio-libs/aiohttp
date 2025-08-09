@@ -1,0 +1,1 @@
+Updated dependencies to allow testing on Python 3.14.
