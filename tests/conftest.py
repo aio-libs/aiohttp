@@ -12,7 +12,13 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
-from blockbuster import blockbuster_ctx
+
+try:
+    from blockbuster import blockbuster_ctx
+
+    HAS_BLOCKBUSTER = True
+except ImportError:  # For downstreams only  # pragma: no cover
+    HAS_BLOCKBUSTER = False
 
 from aiohttp import payload
 from aiohttp.client_proto import ResponseHandler
@@ -45,7 +51,7 @@ IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=HAS_BLOCKBUSTER)
 def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
     # Allow selectively disabling blockbuster for specific tests
     # using the @pytest.mark.skip_blockbuster marker.
