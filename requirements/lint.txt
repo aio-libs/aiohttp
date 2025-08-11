@@ -21,7 +21,7 @@ cfgv==3.4.0
     # via pre-commit
 click==8.1.8
     # via slotscheck
-cryptography==45.0.5
+cryptography==45.0.6
     # via trustme
 distlib==0.4.0
     # via virtualenv
@@ -31,7 +31,7 @@ filelock==3.18.0
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
-freezegun==1.5.3
+freezegun==1.5.4
     # via -r requirements/lint.in
 identify==2.6.12
     # via pre-commit
@@ -63,7 +63,7 @@ pre-commit==4.2.0
     # via -r requirements/lint.in
 proxy-py==2.4.10
     # via -r requirements/lint.in
-pycares==4.9.0
+pycares==4.10.0
     # via aiodns
 pycparser==2.22
     # via cffi
@@ -117,7 +117,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.0
     # via -r requirements/lint.in
-virtualenv==20.33.0
+virtualenv==20.33.1
     # via pre-commit
 zlib-ng==0.5.1
     # via -r requirements/lint.in
