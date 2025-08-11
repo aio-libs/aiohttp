@@ -39,7 +39,7 @@ execnet==2.1.1
     # via pytest-xdist
 forbiddenfruit==0.1.4
     # via blockbuster
-freezegun==1.5.4
+freezegun==1.5.5
     # via -r requirements/test.in
 frozenlist==1.7.0
     # via
@@ -90,9 +90,7 @@ pycares==4.10.0
 pycparser==2.22
     # via cffi
 pydantic==2.12.0a1
-    # via
-    #   -r requirements/test.in
-    #   python-on-whales
+    # via python-on-whales
 pydantic-core==2.37.2
     # via pydantic
 pygments==2.19.2

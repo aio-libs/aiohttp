@@ -74,7 +74,7 @@ filelock==3.18.0
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
-freezegun==1.5.4
+freezegun==1.5.5
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
@@ -154,9 +154,7 @@ pycares==4.10.0
 pycparser==2.22
     # via cffi
 pydantic==2.12.0a1
-    # via
-    #   -r requirements/test.in
-    #   python-on-whales
+    # via python-on-whales
 pydantic-core==2.37.2
     # via pydantic
 pygments==2.19.2
@@ -165,7 +163,9 @@ pygments==2.19.2
     #   rich
     #   sphinx
 pyjwt==2.8.0
-    # via gidgethub
+    # via
+    #   gidgethub
+    #   pyjwt
 pyproject-hooks==1.2.0
     # via
     #   build
