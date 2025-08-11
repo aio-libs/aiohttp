@@ -157,9 +157,7 @@ pycares==4.10.0
 pycparser==2.22
     # via cffi
 pydantic==2.12.0a1
-    # via
-    #   -r requirements/test.in
-    #   python-on-whales
+    # via python-on-whales
 pydantic-core==2.37.2
     # via pydantic
 pyenchant==3.2.2
@@ -288,7 +286,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-valkey==6.1.0
+valkey==6.1.1
     # via -r requirements/lint.in
 virtualenv==20.33.1
     # via pre-commit
