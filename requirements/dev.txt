@@ -54,7 +54,7 @@ click==8.1.8
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.10.2
+coverage==7.10.3
     # via
     #   -r requirements/test.in
     #   pytest-cov
@@ -154,9 +154,7 @@ pycares==4.10.0
 pycparser==2.22
     # via cffi
 pydantic==2.12.0a1
-    # via
-    #   -r requirements/test.in
-    #   python-on-whales
+    # via python-on-whales
 pydantic-core==2.37.2
     # via pydantic
 pygments==2.19.2
@@ -165,7 +163,9 @@ pygments==2.19.2
     #   rich
     #   sphinx
 pyjwt==2.8.0
-    # via gidgethub
+    # via
+    #   gidgethub
+    #   pyjwt
 pyproject-hooks==1.2.0
     # via
     #   build
