@@ -113,7 +113,7 @@ typing-inspection==0.4.1
     # via pydantic
 uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
-valkey==6.1.0
+valkey==6.1.1
     # via -r requirements/lint.in
 virtualenv==20.33.1
     # via pre-commit
