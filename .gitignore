@@ -65,3 +65,4 @@ sources
 var/*
 venv
 virtualenv.py
+__pycache__
