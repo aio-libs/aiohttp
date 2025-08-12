@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: >-
@@ -105,7 +105,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Cache llhttp generated files
@@ -161,7 +161,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -260,7 +260,7 @@ jobs:
     timeout-minutes: 9
     steps:
     - name: Checkout project
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Setup Python 3.13.2
@@ -328,7 +328,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Setup Python
@@ -395,7 +395,7 @@ jobs:
           musl: musllinux
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Set up QEMU
@@ -466,7 +466,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Login
