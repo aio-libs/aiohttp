@@ -3,7 +3,7 @@ requires = [
     "pkgconfig",
     # setuptools >= 67.0 required for Python 3.12+ support
     # Next step should be >= 77.0 for PEP 639 support
-    # Don't bump to early to give distributors time to update
+    # Don't bump too early to give distributors time to update
     # their setuptools version.
     "setuptools >= 67.0",
 ]
@@ -11,10 +11,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name        = "aiohttp"
+# TODO: Update to just 'license = "..."' once setuptools is bumped to >=77
 license     = {text = "Apache-2.0 AND MIT"}
 description = "Async http client/server framework (asyncio)"
 readme      = "README.rst"
-maintainers = [{name = "aiohttp team", email = "team@aiohttp.org"}]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Framework :: AsyncIO",
@@ -32,7 +32,15 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP",
 ]
 requires-python = ">= 3.9"
-dynamic = ["version", "dependencies", "optional-dependencies"]
+dynamic = [
+  "dependencies",
+  "optional-dependencies",
+  "version",
+]
+
+[[project.maintainers]]
+name = "aiohttp team"
+email = "team@aiohttp.org"
 
 [project.urls]
 "Homepage"           = "https://github.com/aio-libs/aiohttp"
