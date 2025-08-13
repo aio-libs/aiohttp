@@ -64,7 +64,10 @@ license-files = [
 version = {attr = "aiohttp.__version__"}
 
 [tool.setuptools.packages.find]
-include = ["aiohttp*"]
+include = [
+  "aiohttp",
+  "aiohttp.*",
+]
 
 [tool.setuptools.exclude-package-data]
 "*" = ["*.c", "*.h"]
