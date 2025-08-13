@@ -93,8 +93,6 @@ idna==3.6
     #   yarl
 imagesize==1.4.1
     # via sphinx
-incremental==24.7.2
-    # via towncrier
 iniconfig==2.1.0
     # via pytest
 isal==1.7.2 ; python_version < "3.14"
@@ -242,14 +240,13 @@ tomli==2.2.1
     #   build
     #   cherry-picker
     #   coverage
-    #   incremental
     #   mypy
     #   pip-tools
     #   pytest
     #   slotscheck
     #   sphinx
     #   towncrier
-towncrier==23.11.0
+towncrier==24.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
@@ -300,6 +297,4 @@ zstandard==0.23.0 ; platform_python_implementation == "CPython" and python_versi
 pip==25.2
     # via pip-tools
 setuptools==80.9.0
-    # via
-    #   incremental
-    #   pip-tools
+    # via pip-tools
