@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: >-
@@ -51,7 +51,7 @@ jobs:
       with:
         python-version: 3.11
     - name: Cache PyPI
-      uses: actions/cache@v4.2.3
+      uses: actions/cache@v4.2.4
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -105,11 +105,11 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v4.2.3
+      uses: actions/cache@v4.2.4
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
@@ -161,7 +161,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -176,7 +176,7 @@ jobs:
         echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
       shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v4.2.3
+      uses: actions/cache@v4.2.4
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -190,7 +190,7 @@ jobs:
         python -m pip install -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -260,7 +260,7 @@ jobs:
     timeout-minutes: 9
     steps:
     - name: Checkout project
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Setup Python 3.13.2
@@ -277,7 +277,7 @@ jobs:
       run: |
         python -m pip install -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -328,7 +328,7 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Setup Python
@@ -341,7 +341,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -395,7 +395,7 @@ jobs:
           musl: musllinux
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Set up QEMU
@@ -428,7 +428,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -466,14 +466,14 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: true
     - name: Login
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Download distributions
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         path: dist
         pattern: dist-*
