@@ -111,13 +111,14 @@ typing-extensions==4.14.1
     #   pydantic-core
     #   python-on-whales
     #   typing-inspection
+    #   virtualenv
 typing-inspection==0.4.1
     # via pydantic
 uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.0
     # via -r requirements/lint.in
-virtualenv==20.33.1
+virtualenv==20.34.0
     # via pre-commit
 zlib-ng==0.5.1
     # via -r requirements/lint.in
