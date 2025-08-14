@@ -276,6 +276,7 @@ typing-extensions==4.14.1
     #   pydantic-core
     #   python-on-whales
     #   typing-inspection
+    #   virtualenv
 typing-inspection==0.4.1
     # via pydantic
 uritemplate==4.2.0
@@ -288,7 +289,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==20.33.1
+virtualenv==20.34.0
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test.in
