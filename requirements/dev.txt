@@ -72,7 +72,7 @@ filelock==3.19.1
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
-freezegun==1.5.4
+freezegun==1.5.5
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
