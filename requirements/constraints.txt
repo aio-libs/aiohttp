@@ -298,7 +298,7 @@ zlib-ng==0.5.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-zstandard==0.23.0 ; implementation_name == "cpython"
+zstandard==0.24.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
