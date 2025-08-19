@@ -1,7 +1,6 @@
 import asyncio
 import enum
 import io
-import json
 import mimetypes
 import os
 import sys
@@ -36,7 +35,13 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import JSONEncoder, _CIMultiDict
+from .typedefs import (
+    DEFAULT_JSON_BYTES_ENCODER,
+    DEFAULT_JSON_ENCODER,
+    JSONBytesEncoder,
+    JSONEncoder,
+    _CIMultiDict,
+)
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -939,15 +944,17 @@ class JsonPayload(BytesPayload):
         value: Any,
         encoding: str = "utf-8",
         content_type: str = "application/json",
-        dumps: JSONEncoder = json.dumps,
-        *args: Any,
+        dumps: JSONEncoder = DEFAULT_JSON_ENCODER,
+        *,
+        dumps_bytes: JSONBytesEncoder = DEFAULT_JSON_BYTES_ENCODER,
         **kwargs: Any,
     ) -> None:
+        # Prefer bytes serializer to avoid extra encode/decode
+        body = dumps_bytes(value)
         super().__init__(
-            dumps(value).encode(encoding),
+            body,
             content_type=content_type,
             encoding=encoding,
-            *args,
             **kwargs,
         )
 

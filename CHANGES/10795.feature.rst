@@ -1,0 +1,2 @@
+Added :py:mod:`orjson` support as the default JSON encoder for :py:class:`~aiohttp.ClientSession` and :py:class:`~aiohttp.JsonPayload`
+-- by :user:`fatelei`
