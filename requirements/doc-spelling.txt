@@ -34,7 +34,7 @@ pyenchant==3.2.2
     # via sphinxcontrib-spelling
 pygments==2.19.2
     # via sphinx
-requests==2.32.4
+requests==2.32.5
     # via
     #   sphinx
     #   sphinxcontrib-spelling

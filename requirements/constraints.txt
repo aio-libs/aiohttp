@@ -204,7 +204,7 @@ python-on-whales==0.78.0
     #   -r requirements/test.in
 pyyaml==6.0.2
     # via pre-commit
-requests==2.32.4
+requests==2.32.5
     # via
     #   cherry-picker
     #   sphinx
