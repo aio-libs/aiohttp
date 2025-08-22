@@ -202,7 +202,7 @@ re-assert==1.1.0
     # via -r requirements/test.in
 regex==2025.7.34
     # via re-assert
-requests==2.32.4
+requests==2.32.5
     # via
     #   cherry-picker
     #   sphinx
