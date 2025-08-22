@@ -32,7 +32,7 @@ packaging==25.0
     # via sphinx
 pygments==2.19.2
     # via sphinx
-requests==2.32.4
+requests==2.32.5
     # via sphinx
 snowballstemmer==3.0.1
     # via sphinx
