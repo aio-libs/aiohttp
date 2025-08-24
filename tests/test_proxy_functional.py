@@ -4,6 +4,7 @@ import pathlib
 import platform
 import ssl
 import sys
+from contextlib import suppress
 from re import match as match_regex
 from typing import (
     TYPE_CHECKING,
@@ -973,3 +974,46 @@ async def test_proxy_auth() -> None:
                 proxy_auth=("user", "pass"),  # type: ignore[arg-type]
             ):
                 pass
+
+
+async def test_https_proxy_connect_tunnel_session_close_no_hang(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that CONNECT tunnel connections are not pooled."""
+    # Regression test for issue #11273.
+
+    # Create a minimal proxy server
+    # The CONNECT method is handled at the protocol level, not by the handler
+    proxy_app = web.Application()
+    proxy_server = await aiohttp_server(proxy_app)
+    proxy_url = f"http://{proxy_server.host}:{proxy_server.port}"
+
+    # Create session and make HTTPS request through proxy
+    session = aiohttp.ClientSession()
+
+    try:
+        # This will fail during TLS upgrade because proxy doesn't establish tunnel
+        with suppress(aiohttp.ClientError):
+            async with session.get("https://example.com/test", proxy=proxy_url) as resp:
+                await resp.read()
+
+        # The critical test: Check if any connections were pooled with proxy=None
+        # This is the root cause of the hang - CONNECT tunnel connections
+        # should NOT be pooled
+        connector = session.connector
+        assert connector is not None
+
+        # Count connections with proxy=None in the pool
+        proxy_none_keys = [key for key in connector._conns if key.proxy is None]
+        proxy_none_count = len(proxy_none_keys)
+
+        # Before the fix, there would be a connection with proxy=None
+        # After the fix, CONNECT tunnel connections are not pooled
+        assert proxy_none_count == 0, (
+            f"Found {proxy_none_count} connections with proxy=None in pool. "
+            f"CONNECT tunnel connections should not be pooled - this is bug #11273"
+        )
+
+    finally:
+        # Clean close
+        await session.close()

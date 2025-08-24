@@ -16,7 +16,7 @@ def key() -> object:
 
 
 @pytest.fixture
-def loop() -> Any:  # type: ignore[misc]
+def loop() -> Any:
     return mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
 
 

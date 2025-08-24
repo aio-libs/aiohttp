@@ -625,6 +625,9 @@ class Response(StreamResponse):
     def text(self) -> Optional[str]:
         if self._body is None:
             return None
+        # Note: When _body is a Payload (e.g. FilePayload), this may do blocking I/O
+        # This is generally safe as most common payloads (BytesPayload, StringPayload)
+        # don't do blocking I/O, but be careful with file-based payloads
         return self._body.decode(self.charset or "utf-8")
 
     @text.setter
@@ -676,6 +679,7 @@ class Response(StreamResponse):
             await super().write_eof()
         elif isinstance(self._body, Payload):
             await self._body.write(self._payload_writer)
+            await self._body.close()
             await super().write_eof()
         else:
             await super().write_eof(cast(bytes, body))
@@ -686,8 +690,8 @@ class Response(StreamResponse):
                 del self._headers[hdrs.CONTENT_LENGTH]
         elif not self._chunked:
             if isinstance(self._body, Payload):
-                if self._body.size is not None:
-                    self._headers[hdrs.CONTENT_LENGTH] = str(self._body.size)
+                if (size := self._body.size) is not None:
+                    self._headers[hdrs.CONTENT_LENGTH] = str(size)
             else:
                 body_len = len(self._body) if self._body else "0"
                 # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-7

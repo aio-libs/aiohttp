@@ -297,6 +297,7 @@ class ClientSession:
         max_field_size: int = 8190,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
+        ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -322,8 +323,15 @@ class ClientSession:
             )
         self._timeout = timeout
 
+        if ssl_shutdown_timeout is not sentinel:
+            warnings.warn(
+                "The ssl_shutdown_timeout parameter is deprecated and will be removed in aiohttp 4.0",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         if connector is None:
-            connector = TCPConnector()
+            connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector = connector
@@ -721,8 +729,11 @@ class ClientSession:
                             raise
                         raise ClientOSError(*exc.args) from exc
 
-                    if cookies := resp._cookies:
-                        self._cookie_jar.update_cookies(cookies, resp.url)
+                    # Update cookies from raw headers to preserve duplicates
+                    if resp._raw_cookie_headers:
+                        self._cookie_jar.update_cookies_from_headers(
+                            resp._raw_cookie_headers, resp.url
+                        )
 
                     # redirects
                     if resp.status in (301, 302, 303, 307, 308) and allow_redirects:
@@ -734,6 +745,8 @@ class ClientSession:
                         redirects += 1
                         history.append(resp)
                         if max_redirects and redirects >= max_redirects:
+                            if req._body is not None:
+                                await req._body.close()
                             resp.close()
                             raise TooManyRedirects(
                                 history[0].request_info, tuple(history)
@@ -748,6 +761,12 @@ class ClientSession:
                             data = None
                             if headers.get(hdrs.CONTENT_LENGTH):
                                 headers.pop(hdrs.CONTENT_LENGTH)
+                        else:
+                            # For 307/308, always preserve the request body
+                            # For 301/302 with non-POST methods, preserve the request body
+                            # https://www.rfc-editor.org/rfc/rfc9110#section-15.4.3-3.1
+                            # Use the existing payload to avoid recreating it from a potentially consumed file
+                            data = req._body
 
                         r_url = resp.headers.get(hdrs.LOCATION) or resp.headers.get(
                             hdrs.URI
@@ -765,6 +784,9 @@ class ClientSession:
                                 r_url, encoded=not self._requote_redirect_url
                             )
                         except ValueError as e:
+                            if req._body is not None:
+                                await req._body.close()
+                            resp.close()
                             raise InvalidUrlRedirectClientError(
                                 r_url,
                                 "Server attempted redirecting to a location that does not look like a URL",
@@ -772,6 +794,8 @@ class ClientSession:
 
                         scheme = parsed_redirect_url.scheme
                         if scheme not in HTTP_AND_EMPTY_SCHEMA_SET:
+                            if req._body is not None:
+                                await req._body.close()
                             resp.close()
                             raise NonHttpUrlRedirectClientError(r_url)
                         elif not scheme:
@@ -786,6 +810,9 @@ class ClientSession:
                         try:
                             redirect_origin = parsed_redirect_url.origin()
                         except ValueError as origin_val_err:
+                            if req._body is not None:
+                                await req._body.close()
+                            resp.close()
                             raise InvalidUrlRedirectClientError(
                                 parsed_redirect_url,
                                 "Invalid redirect URL origin",
@@ -805,6 +832,8 @@ class ClientSession:
 
                     break
 
+            if req._body is not None:
+                await req._body.close()
             # check response status
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
@@ -1278,7 +1307,7 @@ class ClientSession:
         return self._skip_auto_headers
 
     @property
-    def auth(self) -> Optional[BasicAuth]:  # type: ignore[misc]
+    def auth(self) -> Optional[BasicAuth]:
         """An object that represents HTTP Basic Authorization"""
         return self._default_auth
 
@@ -1315,7 +1344,7 @@ class ClientSession:
         return self._trust_env
 
     @property
-    def trace_configs(self) -> List[TraceConfig[Any]]:  # type: ignore[misc]
+    def trace_configs(self) -> List[TraceConfig[Any]]:
         """A list of TraceConfig instances used for client tracing"""
         return self._trace_configs
 

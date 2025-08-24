@@ -4,7 +4,6 @@ import os
 import socket
 import ssl
 import sys
-import zlib
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,10 +11,14 @@ from typing import Any, AsyncIterator, Callable, Generator, Iterator
 from unittest import mock
 from uuid import uuid4
 
-import isal.isal_zlib
 import pytest
-import zlib_ng.zlib_ng
-from blockbuster import blockbuster_ctx
+
+try:
+    from blockbuster import blockbuster_ctx
+
+    HAS_BLOCKBUSTER = True
+except ImportError:  # For downstreams only  # pragma: no cover
+    HAS_BLOCKBUSTER = False
 
 from aiohttp import payload
 from aiohttp.client_proto import ResponseHandler
@@ -49,7 +52,7 @@ IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=HAS_BLOCKBUSTER)
 def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
     # Allow selectively disabling blockbuster for specific tests
     # using the @pytest.mark.skip_blockbuster marker.
@@ -81,6 +84,14 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             bb.functions[func].can_block_in(
                 "aiohttp/web_urldispatcher.py", "add_static"
             )
+        # Note: coverage.py uses locking internally which can cause false positives
+        # in blockbuster when it instruments code. This is particularly problematic
+        # on Windows where it can lead to flaky test failures.
+        # Additionally, we're not particularly worried about threading.Lock.acquire happening
+        # by accident in this codebase as we primarily use asyncio.Lock for
+        # synchronization in async code.
+        # Allow lock.acquire calls to prevent these false positives
+        bb.functions["threading.Lock.acquire"].deactivate()
         yield
 
 
@@ -236,6 +247,11 @@ def unix_sockname(
 
 
 @pytest.fixture
+async def event_loop(loop: asyncio.AbstractEventLoop) -> asyncio.AbstractEventLoop:
+    return asyncio.get_running_loop()
+
+
+@pytest.fixture
 def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
     factory = asyncio.SelectorEventLoop
     with loop_context(factory) as _loop:
@@ -245,6 +261,8 @@ def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
 
 @pytest.fixture
 def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    if uvloop is None:
+        pytest.skip("uvloop is not installed")
     factory = uvloop.new_event_loop
     with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
@@ -325,13 +343,13 @@ def unused_port_socket() -> Generator[socket.socket, None, None]:
         s.close()
 
 
-@pytest.fixture(params=[zlib, zlib_ng.zlib_ng, isal.isal_zlib])
+@pytest.fixture(params=["zlib", "zlib_ng.zlib_ng", "isal.isal_zlib"])
 def parametrize_zlib_backend(
     request: pytest.FixtureRequest,
 ) -> Generator[None, None, None]:
     original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
-    set_zlib_backend(request.param)
-
+    backend = pytest.importorskip(request.param)
+    set_zlib_backend(backend)
     yield
 
     set_zlib_backend(original_backend)

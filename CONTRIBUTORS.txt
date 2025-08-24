@@ -59,6 +59,7 @@ Arthur Darcet
 Austin Scola
 Bai Haoran
 Ben Bader
+Ben Beasley
 Ben Greiner
 Ben Kallus
 Ben Timby
@@ -143,6 +144,7 @@ Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
 Gang Ji
+Gary Leung
 Gary Wilson Jr.
 Gennady Andreyev
 Georges Dubus
@@ -217,6 +219,7 @@ Justin Foo
 Justin Turner Arthur
 Kay Zheng
 Kevin Samuel
+Kilian Guillaume
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
@@ -351,6 +354,7 @@ Tim Menninger
 Tolga Tezel
 Tomasz Trebski
 Toshiaki Tanaka
+Trevor Gamblin
 Trinh Hoang Nhu
 Tymofii Tsiapa
 Vadim Suharnikov
@@ -377,6 +381,7 @@ Vladimir Shulyak
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar
+Vojtěch Boček
 W. Trevor King
 Wei Lin
 Weiwei Wang

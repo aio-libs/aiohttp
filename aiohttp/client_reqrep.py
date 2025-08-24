@@ -7,9 +7,9 @@ import re
 import sys
 import traceback
 import warnings
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from hashlib import md5, sha1, sha256
-from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -18,7 +18,7 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Mapping,
+    Literal,
     NamedTuple,
     Optional,
     Tuple,
@@ -30,6 +30,11 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart, payload
+from ._cookie_helpers import (
+    parse_cookie_header,
+    parse_set_cookie_headers,
+    preserve_morsel_with_coded_value,
+)
 from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
@@ -40,7 +45,7 @@ from .client_exceptions import (
     InvalidURL,
     ServerFingerprintMismatch,
 )
-from .compression_utils import HAS_BROTLI
+from .compression_utils import HAS_BROTLI, HAS_ZSTD
 from .formdata import FormData
 from .helpers import (
     _SENTINEL,
@@ -65,7 +70,6 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
-from .log import client_logger
 from .streams import StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -97,11 +101,20 @@ if TYPE_CHECKING:
     from .tracing import Trace
 
 
+_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
 def _gen_default_accept_encoding() -> str:
-    return "gzip, deflate, br" if HAS_BROTLI else "gzip, deflate"
+    encodings = [
+        "gzip",
+        "deflate",
+    ]
+    if HAS_BROTLI:
+        encodings.append("br")
+    if HAS_ZSTD:
+        encodings.append("zstd")
+    return ", ".join(encodings)
 
 
 @frozen_dataclass_decorator
@@ -193,6 +206,25 @@ class ConnectionKey(NamedTuple):
     proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
 
 
+def _warn_if_unclosed_payload(payload: payload.Payload, stacklevel: int = 2) -> None:
+    """Warn if the payload is not closed.
+
+    Callers must check that the body is a Payload before calling this method.
+
+    Args:
+        payload: The payload to check
+        stacklevel: Stack level for the warning (default 2 for direct callers)
+    """
+    if not payload.autoclose and not payload.consumed:
+        warnings.warn(
+            "The previous request body contains unclosed resources. "
+            "Use await request.update_body() instead of setting request.body "
+            "directly to properly close resources and avoid leaks.",
+            ResourceWarning,
+            stacklevel=stacklevel,
+        )
+
+
 class ClientResponse(HeadersMixin):
     # Some of these attributes are None when created,
     # but will be set by the start() method.
@@ -210,6 +242,7 @@ class ClientResponse(HeadersMixin):
 
     _connection: Optional["Connection"] = None  # current connection
     _cookies: Optional[SimpleCookie] = None
+    _raw_cookie_headers: Optional[Tuple[str, ...]] = None
     _continue: Optional["asyncio.Future[bool]"] = None
     _source_traceback: Optional[traceback.StackSummary] = None
     _session: Optional["ClientSession"] = None
@@ -290,12 +323,27 @@ class ClientResponse(HeadersMixin):
     @property
     def cookies(self) -> SimpleCookie:
         if self._cookies is None:
-            self._cookies = SimpleCookie()
+            if self._raw_cookie_headers is not None:
+                # Parse cookies for response.cookies (SimpleCookie for backward compatibility)
+                cookies = SimpleCookie()
+                # Use parse_set_cookie_headers for more lenient parsing that handles
+                # malformed cookies better than SimpleCookie.load
+                cookies.update(parse_set_cookie_headers(self._raw_cookie_headers))
+                self._cookies = cookies
+            else:
+                self._cookies = SimpleCookie()
         return self._cookies
 
     @cookies.setter
     def cookies(self, cookies: SimpleCookie) -> None:
         self._cookies = cookies
+        # Generate raw cookie headers from the SimpleCookie
+        if cookies:
+            self._raw_cookie_headers = tuple(
+                morsel.OutputString() for morsel in cookies.values()
+            )
+        else:
+            self._raw_cookie_headers = None
 
     @reify
     def url(self) -> URL:
@@ -455,13 +503,8 @@ class ClientResponse(HeadersMixin):
 
         # cookies
         if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
-            cookies = SimpleCookie()
-            for hdr in cookie_hdrs:
-                try:
-                    cookies.load(hdr)
-                except CookieError as exc:
-                    client_logger.warning("Can not load response cookies: %s", exc)
-            self._cookies = cookies
+            # Store raw cookie headers for CookieJar
+            self._raw_cookie_headers = tuple(cookie_hdrs)
         return self
 
     def _response_eof(self) -> None:

@@ -288,6 +288,7 @@ resolvehost
 resolvers
 reusage
 reuseconn
+riscv64
 Runit
 runtime
 runtimes
@@ -363,6 +364,7 @@ uvloop
 uWSGI
 vcvarsall
 vendored
+vendoring
 waituntil
 wakeup
 wakeups
@@ -381,3 +383,5 @@ www
 xxx
 yarl
 zlib
+zstandard
+zstd

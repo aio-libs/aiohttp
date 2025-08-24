@@ -210,7 +210,7 @@ def test_last_modified_string() -> None:
     resp = web.StreamResponse()
 
     dt = datetime.datetime(1990, 1, 2, 3, 4, 5, 0, datetime.timezone.utc)
-    resp.last_modified = "Mon, 2 Jan 1990 03:04:05 GMT"  # type: ignore[assignment]
+    resp.last_modified = "Mon, 2 Jan 1990 03:04:05 GMT"
     assert resp.last_modified == dt
 
 
@@ -219,10 +219,10 @@ def test_last_modified_timestamp() -> None:
 
     dt = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, datetime.timezone.utc)
 
-    resp.last_modified = 0  # type: ignore[assignment]
+    resp.last_modified = 0
     assert resp.last_modified == dt
 
-    resp.last_modified = 0.0  # type: ignore[assignment]
+    resp.last_modified = 0.0
     assert resp.last_modified == dt
 
 
@@ -237,7 +237,7 @@ def test_last_modified_datetime() -> None:
 def test_last_modified_reset() -> None:
     resp = web.StreamResponse()
 
-    resp.last_modified = 0  # type: ignore[assignment]
+    resp.last_modified = 0
     resp.last_modified = None
     assert resp.last_modified is None
 
@@ -270,7 +270,7 @@ def test_etag_initial() -> None:
 def test_etag_string() -> None:
     resp = web.StreamResponse()
     value = "0123-kotik"
-    resp.etag = value  # type: ignore[assignment]
+    resp.etag = value
     assert resp.etag == ETag(value=value)
     assert resp.headers[hdrs.ETAG] == f'"{value}"'
 
@@ -291,7 +291,7 @@ def test_etag_class(etag: ETag, expected_header: str) -> None:
 
 def test_etag_any() -> None:
     resp = web.StreamResponse()
-    resp.etag = "*"  # type: ignore[assignment]
+    resp.etag = "*"
     assert resp.etag == ETag(value="*")
     assert resp.headers[hdrs.ETAG] == "*"
 
@@ -308,7 +308,7 @@ def test_etag_any() -> None:
 def test_etag_invalid_value_set(invalid_value: Union[str, ETag]) -> None:
     resp = web.StreamResponse()
     with pytest.raises(ValueError, match="is not a valid etag"):
-        resp.etag = invalid_value  # type: ignore[assignment]
+        resp.etag = invalid_value
 
 
 @pytest.mark.parametrize(
@@ -333,7 +333,7 @@ def test_etag_invalid_value_class(invalid: Union[int, ETag]) -> None:
 
 def test_etag_reset() -> None:
     resp = web.StreamResponse()
-    resp.etag = "*"  # type: ignore[assignment]
+    resp.etag = "*"
     resp.etag = None
     assert resp.etag is None
 
@@ -1062,7 +1062,7 @@ async def test_assign_nonbyteish_body() -> None:
     resp = web.Response(body=b"data")
 
     with pytest.raises(ValueError):
-        resp.body = 123  # type: ignore[assignment]
+        resp.body = 123
     assert b"data" == resp.body
     assert 4 == resp.content_length
 
@@ -1106,7 +1106,7 @@ class CustomIO(io.IOBase):
         (io.StringIO("test"), "test"),
         (io.TextIOWrapper(io.BytesIO(b"test")), "test"),
         (io.BytesIO(b"test"), "test"),
-        (io.BufferedReader(io.BytesIO(b"test")), "test"),  # type: ignore[arg-type]
+        (io.BufferedReader(io.BytesIO(b"test")), "test"),
         (async_iter(), None),
         (BodyPartReader(b"x", CIMultiDictProxy(CIMultiDict()), mock.Mock()), None),
         (

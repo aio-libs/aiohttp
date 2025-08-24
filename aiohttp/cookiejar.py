@@ -10,6 +10,7 @@ import re
 import time
 import warnings
 from collections import defaultdict
+from collections.abc import Mapping
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (
     DefaultDict,
@@ -18,16 +19,15 @@ from typing import (
     Iterable,
     Iterator,
     List,
-    Mapping,
     Optional,
     Set,
     Tuple,
     Union,
-    cast,
 )
 
 from yarl import URL
 
+from ._cookie_helpers import preserve_morsel_with_coded_value
 from .abc import AbstractCookieJar, ClearCookiePredicate
 from .helpers import is_ip_address
 from .typedefs import LooseCookies, PathLike, StrOrURL
@@ -45,6 +45,7 @@ _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 # the expiration heap. This is a performance optimization to avoid cleaning up the
 # heap too often when there are only a few scheduled expirations.
 _MIN_SCHEDULED_COOKIE_EXPIRATION = 100
+_SIMPLE_COOKIE = SimpleCookie()
 
 
 class CookieJar(AbstractCookieJar):
@@ -313,9 +314,10 @@ class CookieJar(AbstractCookieJar):
                 DeprecationWarning,
             )
             request_url = URL(request_url)
-        filtered: Union[SimpleCookie, "BaseCookie[str]"] = (
-            SimpleCookie() if self._quote_cookie else BaseCookie()
-        )
+        # We always use BaseCookie now since all
+        # cookies set on on filtered are fully constructed
+        # Morsels, not just names and values.
+        filtered: BaseCookie[str] = BaseCookie()
         if not self._cookies:
             # Skip do_expiration() if there are no cookies.
             return filtered
@@ -333,8 +335,17 @@ class CookieJar(AbstractCookieJar):
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
         # Send shared cookie
-        for c in self._cookies[("", "")].values():
-            filtered[c.key] = c.value
+        key = ("", "")
+        for c in self._cookies[key].values():
+            # Check cache first
+            if c.key in self._morsel_cache[key]:
+                filtered[c.key] = self._morsel_cache[key][c.key]
+                continue
+
+            # Build and cache the morsel
+            mrsl_val = self._build_morsel(c)
+            self._morsel_cache[key][c.key] = mrsl_val
+            filtered[c.key] = mrsl_val
 
         if is_ip_address(hostname):
             if not self._unsafe:
@@ -354,6 +365,8 @@ class CookieJar(AbstractCookieJar):
         path_len = len(request_url.path)
         # Point 2: https://www.rfc-editor.org/rfc/rfc6265.html#section-5.4
         for p in pairs:
+            if p not in self._cookies:
+                continue
             for name, cookie in self._cookies[p].items():
                 domain = cookie["domain"]
 
@@ -372,14 +385,28 @@ class CookieJar(AbstractCookieJar):
                     filtered[name] = self._morsel_cache[p][name]
                     continue
 
-                # It's critical we use the Morsel so the coded_value
-                # (based on cookie version) is preserved
-                mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-                mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+                # Build and cache the morsel
+                mrsl_val = self._build_morsel(cookie)
                 self._morsel_cache[p][name] = mrsl_val
                 filtered[name] = mrsl_val
 
         return filtered
+
+    def _build_morsel(self, cookie: Morsel[str]) -> Morsel[str]:
+        """Build a morsel for sending, respecting quote_cookie setting."""
+        if self._quote_cookie and cookie.coded_value and cookie.coded_value[0] == '"':
+            return preserve_morsel_with_coded_value(cookie)
+        morsel: Morsel[str] = Morsel()
+        if self._quote_cookie:
+            value, coded_value = _SIMPLE_COOKIE.value_encode(cookie.value)
+        else:
+            coded_value = value = cookie.value
+        # We use __setstate__ instead of the public set() API because it allows us to
+        # bypass validation and set already validated state. This is more stable than
+        # setting protected attributes directly and unlikely to change since it would
+        # break pickling.
+        morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})  # type: ignore[attr-defined]
+        return morsel
 
     @staticmethod
     def _is_domain_match(domain: str, hostname: str) -> bool:

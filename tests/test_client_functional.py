@@ -5,6 +5,7 @@ import datetime
 import http.cookies
 import io
 import json
+import logging
 import pathlib
 import socket
 import ssl
@@ -12,6 +13,7 @@ import sys
 import tarfile
 import time
 import zipfile
+from contextlib import suppress
 from typing import (
     Any,
     AsyncIterator,
@@ -33,7 +35,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, payload, web
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.client_exceptions import (
     ClientResponseError,
@@ -48,6 +50,14 @@ from aiohttp.client_exceptions import (
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import Connection
 from aiohttp.http_writer import StreamWriter
+from aiohttp.payload import (
+    AsyncIterablePayload,
+    BufferedReaderPayload,
+    BytesIOPayload,
+    BytesPayload,
+    StringIOPayload,
+    StringPayload,
+)
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestClient, TestServer, unused_port
 from aiohttp.typedefs import Handler, Query
@@ -619,6 +629,61 @@ async def test_post_data_tarfile_filelike(aiohttp_client: AiohttpClient) -> None
             assert resp.status == 200
 
 
+async def test_post_bytes_data_content_length_from_body(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that Content-Length is set from body payload size when sending bytes."""
+    data = b"test payload data"
+
+    async def handler(request: web.Request) -> web.Response:
+        # Verify Content-Length header was set correctly
+        assert request.content_length == len(data)
+        assert request.headers.get("Content-Length") == str(len(data))
+
+        # Verify we can read the data
+        val = await request.read()
+        assert data == val
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    # Send bytes data - this should trigger the code path where
+    # Content-Length is set from body.size in update_transfer_encoding
+    async with client.post("/", data=data) as resp:
+        assert resp.status == 200
+
+
+async def test_post_custom_payload_without_content_length(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that Content-Length is set from payload.size when not explicitly provided."""
+    data = b"custom payload data"
+
+    async def handler(request: web.Request) -> web.Response:
+        # Verify Content-Length header was set from payload size
+        assert request.content_length == len(data)
+        assert request.headers.get("Content-Length") == str(len(data))
+
+        # Verify we can read the data
+        val = await request.read()
+        assert data == val
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("POST", "/", handler)
+    client = await aiohttp_client(app)
+
+    # Create a BytesPayload directly - this ensures we test the path
+    # where update_transfer_encoding sets Content-Length from body.size
+    bytes_payload = payload.BytesPayload(data)
+
+    # Don't set Content-Length header explicitly
+    async with client.post("/", data=bytes_payload) as resp:
+        assert resp.status == 200
+
+
 async def test_ssl_client(
     aiohttp_server: AiohttpServer,
     ssl_ctx: ssl.SSLContext,
@@ -639,6 +704,73 @@ async def test_ssl_client(
         assert resp.status == 200
         txt = await resp.text()
     assert txt == "Test message"
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
+)
+async def test_ssl_client_shutdown_timeout(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    # Test that ssl_shutdown_timeout is properly used during connection closure
+
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        connector = aiohttp.TCPConnector(ssl=client_ssl_ctx, ssl_shutdown_timeout=0.1)
+
+    async def streaming_handler(request: web.Request) -> NoReturn:
+        # Create a streaming response that continuously sends data
+        response = web.StreamResponse()
+        await response.prepare(request)
+
+        # Keep sending data until connection is closed
+        while True:
+            await response.write(b"data chunk\n")
+            await asyncio.sleep(0.01)  # Small delay between chunks
+
+        assert False, "not reached"
+
+    app = web.Application()
+    app.router.add_route("GET", "/stream", streaming_handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)
+
+    # Verify the connector has the correct timeout
+    assert connector._ssl_shutdown_timeout == 0.1
+
+    # Start a streaming request to establish SSL connection with active data transfer
+    resp = await client.get("/stream")
+    assert resp.status == 200
+
+    # Create a background task that continuously reads data
+    async def read_loop() -> None:
+        while True:
+            # Read "data chunk\n"
+            await resp.content.read(11)
+
+    read_task = asyncio.create_task(read_loop())
+    await asyncio.sleep(0)  # Yield control to ensure read_task starts
+
+    # Record the time before closing
+    start_time = time.monotonic()
+
+    # Now close the connector while the stream is still active
+    # This will test the ssl_shutdown_timeout during an active connection
+    await connector.close()
+
+    # Verify the connection was closed within a reasonable time
+    # Should be close to ssl_shutdown_timeout (0.1s) but allow some margin
+    elapsed = time.monotonic() - start_time
+    assert elapsed < 0.3, f"Connection closure took too long: {elapsed}s"
+
+    read_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await read_task
+    assert read_task.done(), "Read task should be cancelled after connection closure"
 
 
 async def test_ssl_client_alpn(
@@ -2107,6 +2239,51 @@ async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
     assert expect_called
 
 
+async def test_expect100_with_no_body(aiohttp_client: AiohttpClient) -> None:
+    """Test expect100 with GET request that has no body."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="OK")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    # GET request with expect100=True but no body
+    async with client.get("/", expect100=True) as resp:
+        assert resp.status == 200
+        assert await resp.text() == "OK"
+
+
+async def test_expect100_continue_with_none_payload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test expect100 continue handling when payload is None from the start."""
+    expect_received = False
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"OK")
+
+    async def expect_handler(request: web.Request) -> None:
+        nonlocal expect_received
+        expect_received = True
+        # Send 100 Continue
+        assert request.transport is not None
+        request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    # POST request with expect100=True but no body (data=None)
+    async with client.post("/", expect100=True, data=None) as resp:
+        assert resp.status == 200
+        assert await resp.read() == b"OK"
+
+    # Expect handler should still be called even with no body
+    assert expect_received
+
+
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_encoding_deflate(
     aiohttp_client: AiohttpClient,
@@ -2518,11 +2695,40 @@ async def test_morsel_with_attributes(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
 
 
-async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
+async def test_set_cookies(
+    aiohttp_client: AiohttpClient, caplog: pytest.LogCaptureFixture
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         ret = web.Response()
         ret.set_cookie("c1", "cookie1")
         ret.set_cookie("c2", "cookie2")
+        ret.headers.add(
+            "Set-Cookie",
+            "invalid,cookie=value; "  # Comma character is not allowed
+            "HttpOnly; Path=/",
+        )
+        return ret
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    with caplog.at_level(logging.WARNING):
+        async with client.get("/") as resp:
+            assert 200 == resp.status
+            cookie_names = {c.key for c in client.session.cookie_jar}
+            _ = resp.cookies
+        assert cookie_names == {"c1", "c2"}
+
+    assert "Can not load cookies: Illegal cookie name 'invalid,cookie'" in caplog.text
+
+
+async def test_set_cookies_with_curly_braces(aiohttp_client: AiohttpClient) -> None:
+    """Test that cookies with curly braces in names are now accepted (#2683)."""
+
+    async def handler(request: web.Request) -> web.Response:
+        ret = web.Response()
+        ret.set_cookie("c1", "cookie1")
         ret.headers.add(
             "Set-Cookie",
             "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
@@ -2535,13 +2741,10 @@ async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    with mock.patch("aiohttp.client_reqrep.client_logger") as m_log:
-        async with client.get("/") as resp:
-            assert 200 == resp.status
-            cookie_names = {c.key for c in client.session.cookie_jar}
-        assert cookie_names == {"c1", "c2"}
-
-        m_log.warning.assert_called_with("Can not load response cookies: %s", mock.ANY)
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        cookie_names = {c.key for c in client.session.cookie_jar}
+        assert cookie_names == {"c1", "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}"}
 
 
 async def test_set_cookies_expired(aiohttp_client: AiohttpClient) -> None:
@@ -3467,8 +3670,12 @@ async def test_aiohttp_request_coroutine(aiohttp_server: AiohttpServer) -> None:
     not_an_awaitable = aiohttp.request("GET", server.make_url("/"))
     with pytest.raises(
         TypeError,
-        match="^object _SessionRequestContextManager "
-        "can't be used in 'await' expression$",
+        match=(
+            "^'_SessionRequestContextManager' object can't be awaited$"
+            if sys.version_info >= (3, 14)
+            else "^object _SessionRequestContextManager "
+            "can't be used in 'await' expression$"
+        ),
     ):
         await not_an_awaitable  # type: ignore[misc]
 
@@ -4573,3 +4780,809 @@ async def test_set_eof_on_empty_response(aiohttp_client: AiohttpClient) -> None:
     data = await resp.read()
     assert data == b""
     resp.close()
+
+
+async def test_bytes_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that BytesPayload can be reused across redirects."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = b"test payload data"
+    payload = BytesPayload(payload_data)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: test payload data"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_string_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that StringPayload can be reused across redirects."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.text()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.text()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = "test string payload"
+    payload = StringPayload(payload_data)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: test string payload"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that AsyncIterablePayload cannot be reused across redirects."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    chunks = [b"chunk1", b"chunk2", b"chunk3"]
+
+    async def async_gen() -> AsyncIterator[bytes]:
+        for chunk in chunks:
+            yield chunk
+
+    payload = AsyncIterablePayload(async_gen())
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    # AsyncIterablePayload is consumed after first use, so redirect gets empty body
+    assert text == "Received: "
+
+    # Only the first endpoint should have received data
+    expected_data = b"".join(chunks)
+    assert len(data_received) == 2
+    assert data_received[0] == ("redirect", expected_data)
+    assert data_received[1] == ("final", b"")  # Empty after being consumed
+
+
+async def test_buffered_reader_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that BufferedReaderPayload can be reused across redirects."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = b"buffered reader payload"
+    buffer = io.BufferedReader(io.BytesIO(payload_data))
+    payload = BufferedReaderPayload(buffer)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: buffered reader payload"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_string_io_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that StringIOPayload can be reused across redirects."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.text()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.text()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = "string io payload"
+    string_io = io.StringIO(payload_data)
+    payload = StringIOPayload(string_io)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: string io payload"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_bytes_io_payload_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that BytesIOPayload can be reused across redirects."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = b"bytes io payload"
+    bytes_io = io.BytesIO(payload_data)
+    payload = BytesIOPayload(bytes_io)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == "Received: bytes io payload"
+    # Both endpoints should have received the data
+    assert data_received == [("redirect", payload_data), ("final", payload_data)]
+
+
+async def test_multiple_redirects_with_bytes_payload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test BytesPayload with multiple redirects."""
+    data_received = []
+
+    async def redirect1_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect1", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/redirect2")
+
+    async def redirect2_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect2", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text=f"Received after 2 redirects: {data.decode()}")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect1_handler)
+    app.router.add_post("/redirect2", redirect2_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    payload_data = b"multi-redirect-test"
+    payload = BytesPayload(payload_data)
+
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    text = await resp.text()
+    assert text == f"Received after 2 redirects: {payload_data.decode()}"
+    # All 3 endpoints should have received the same data
+    assert data_received == [
+        ("redirect1", payload_data),
+        ("redirect2", payload_data),
+        ("final", payload_data),
+    ]
+
+
+async def test_redirect_with_empty_payload(aiohttp_client: AiohttpClient) -> None:
+    """Test redirects with empty payloads."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("final", data))
+        return web.Response(text="Done")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    # Test with empty BytesPayload
+    payload = BytesPayload(b"")
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    assert data_received == [("redirect", b""), ("final", b"")]
+
+
+async def test_redirect_preserves_content_type(aiohttp_client: AiohttpClient) -> None:
+    """Test that content-type is preserved across redirects."""
+    content_types = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        content_types.append(("redirect", request.content_type))
+        # Use 307 to preserve POST method
+        raise web.HTTPTemporaryRedirect("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        content_types.append(("final", request.content_type))
+        return web.Response(text="Done")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_post("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    # StringPayload should set content-type with charset
+    payload = StringPayload("test data")
+    resp = await client.post("/redirect", data=payload)
+    assert resp.status == 200
+    # Both requests should have the same content type
+    assert len(content_types) == 2
+    assert content_types[0][1] == "text/plain"
+    assert content_types[1][1] == "text/plain"
+
+
+class MockedBytesPayload(BytesPayload):
+    """A BytesPayload that tracks whether close() was called."""
+
+    def __init__(self, data: bytes) -> None:
+        super().__init__(data)
+        self.close_called = False
+
+    async def close(self) -> None:
+        self.close_called = True
+        await super().close()
+
+
+async def test_too_many_redirects_closes_payload(aiohttp_client: AiohttpClient) -> None:
+    """Test that TooManyRedirects exception closes the request payload."""
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        # Read the payload to simulate server processing
+        await request.read()
+        count = int(request.match_info.get("count", 0))
+        # Use 307 to preserve POST method
+        return web.Response(
+            status=307, headers={hdrs.LOCATION: f"/redirect/{count + 1}"}
+        )
+
+    app = web.Application()
+    app.router.add_post(r"/redirect/{count:\d+}", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a mocked payload to verify close() is called
+    payload = MockedBytesPayload(b"test payload")
+
+    with pytest.raises(TooManyRedirects):
+        await client.post("/redirect/0", data=payload, max_redirects=2)
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called when TooManyRedirects was raised"
+
+
+async def test_invalid_url_redirect_closes_payload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that InvalidUrlRedirectClientError exception closes the request payload."""
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        # Read the payload to simulate server processing
+        await request.read()
+        # Return an invalid URL that will cause ValueError in URL parsing
+        # Using a URL with invalid port that's out of range
+        return web.Response(
+            status=307, headers={hdrs.LOCATION: "http://example.com:999999/path"}
+        )
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a mocked payload to verify close() is called
+    payload = MockedBytesPayload(b"test payload")
+
+    with pytest.raises(
+        InvalidUrlRedirectClientError,
+        match="Server attempted redirecting to a location that does not look like a URL",
+    ):
+        await client.post("/redirect", data=payload)
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called when InvalidUrlRedirectClientError was raised"
+
+
+async def test_non_http_redirect_closes_payload(aiohttp_client: AiohttpClient) -> None:
+    """Test that NonHttpUrlRedirectClientError exception closes the request payload."""
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        # Read the payload to simulate server processing
+        await request.read()
+        # Return a non-HTTP scheme URL
+        return web.Response(
+            status=307, headers={hdrs.LOCATION: "ftp://example.com/file"}
+        )
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a mocked payload to verify close() is called
+    payload = MockedBytesPayload(b"test payload")
+
+    with pytest.raises(NonHttpUrlRedirectClientError):
+        await client.post("/redirect", data=payload)
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called when NonHttpUrlRedirectClientError was raised"
+
+
+async def test_invalid_redirect_origin_closes_payload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that InvalidUrlRedirectClientError exception (invalid origin) closes the request payload."""
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        # Read the payload to simulate server processing
+        await request.read()
+        # Return a URL that will fail origin() check - using a relative URL without host
+        return web.Response(status=307, headers={hdrs.LOCATION: "http:///path"})
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a mocked payload to verify close() is called
+    payload = MockedBytesPayload(b"test payload")
+
+    with pytest.raises(
+        InvalidUrlRedirectClientError, match="Invalid redirect URL origin"
+    ):
+        await client.post("/redirect", data=payload)
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called when InvalidUrlRedirectClientError (invalid origin) was raised"
+
+
+async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> None:
+    """Test real-world cookie scenario similar to Amazon."""
+
+    class FakeResolver(AbstractResolver):
+        def __init__(self, port: int):
+            self._port = port
+
+        async def resolve(
+            self, host: str, port: int = 0, family: int = 0
+        ) -> List[ResolveResult]:
+            if host in ("amazon.it", "www.amazon.it"):
+                return [
+                    {
+                        "hostname": host,
+                        "host": "127.0.0.1",
+                        "port": self._port,
+                        "family": socket.AF_INET,
+                        "proto": 0,
+                        "flags": 0,
+                    }
+                ]
+            assert False, f"Unexpected host: {host}"
+
+        async def close(self) -> None:
+            """Close the resolver if needed."""
+
+    async def handler(request: web.Request) -> web.Response:
+        response = web.Response(text="Login successful")
+
+        # Simulate Amazon-like cookies from the issue
+        cookies = [
+            "session-id=146-7423990-7621939; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Secure; HttpOnly",
+            "session-id=147-8529641-8642103; Domain=.www.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; HttpOnly",
+            "session-id-time=2082758401l; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            "session-id-time=2082758402l; Domain=.www.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "ubid-acbit=257-7531983-5395266; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            'x-acbit="KdvJzu8W@Fx6Jj3EuNFLuP0N7OtkuCfs"; Version=1; '
+            "Domain=.amazon.it; Path=/; Secure; HttpOnly",
+            "at-acbit=Atza|IwEBIM-gLr8; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Secure; HttpOnly",
+            'sess-at-acbit="4+6VzSJPHIFD/OqO264hFxIng8Y="; '
+            "Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; "
+            "Path=/; Secure; HttpOnly",
+            "lc-acbit=it_IT; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "i18n-prefs=EUR; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "av-profile=null; Domain=.amazon.it; "
+            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            'user-pref-token="Am81ywsJ69xObBnuJ2FbilVH0mg="; '
+            "Domain=.amazon.it; Path=/; Secure",
+        ]
+
+        for cookie in cookies:
+            response.headers.add("Set-Cookie", cookie)
+
+        return response
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    # Get the test server
+    server = await aiohttp_client(app)
+    port = server.port
+
+    # Create a new client session with our fake resolver
+    resolver = FakeResolver(port)
+
+    async with (
+        aiohttp.TCPConnector(resolver=resolver, force_close=True) as connector,
+        aiohttp.ClientSession(connector=connector) as session,
+    ):
+        # Make request to www.amazon.it which will resolve to
+        # 127.0.0.1:port. This allows cookies for both .amazon.it
+        # and .www.amazon.it domains
+        resp = await session.get(f"http://www.amazon.it:{port}/")
+
+        # Check headers
+        cookie_headers = resp.headers.getall("Set-Cookie")
+        assert (
+            len(cookie_headers) == 12
+        ), f"Expected 12 headers, got {len(cookie_headers)}"
+
+        # Check parsed cookies - SimpleCookie only keeps the last
+        # cookie with each name. So we expect 10 unique cookie names
+        # (not 12)
+        expected_cookie_names = {
+            "session-id",  # Will only have one
+            "session-id-time",  # Will only have one
+            "ubid-acbit",
+            "x-acbit",
+            "at-acbit",
+            "sess-at-acbit",
+            "lc-acbit",
+            "i18n-prefs",
+            "av-profile",
+            "user-pref-token",
+        }
+        assert set(resp.cookies.keys()) == expected_cookie_names
+        assert (
+            len(resp.cookies) == 10
+        ), f"Expected 10 cookies in SimpleCookie, got {len(resp.cookies)}"
+
+        # The important part: verify the session's cookie jar has
+        # all cookies. The cookie jar should have all 12 cookies,
+        # not just 10
+        jar_cookies = list(session.cookie_jar)
+        assert (
+            len(jar_cookies) == 12
+        ), f"Expected 12 cookies in jar, got {len(jar_cookies)}"
+
+        # Verify we have both session-id cookies with different domains
+        session_ids = [c for c in jar_cookies if c.key == "session-id"]
+        assert (
+            len(session_ids) == 2
+        ), f"Expected 2 session-id cookies, got {len(session_ids)}"
+
+        # Verify the domains are different
+        session_id_domains = {c["domain"] for c in session_ids}
+        assert session_id_domains == {
+            "amazon.it",
+            "www.amazon.it",
+        }, f"Got domains: {session_id_domains}"
+
+        # Verify we have both session-id-time cookies with different
+        # domains
+        session_id_times = [c for c in jar_cookies if c.key == "session-id-time"]
+        assert (
+            len(session_id_times) == 2
+        ), f"Expected 2 session-id-time cookies, got {len(session_id_times)}"
+
+        # Now test that the raw headers were properly preserved
+        assert resp._raw_cookie_headers is not None
+        assert (
+            len(resp._raw_cookie_headers) == 12
+        ), "All raw headers should be preserved"
+
+
+@pytest.mark.parametrize("status", (307, 308))
+async def test_file_upload_307_308_redirect(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path, status: int
+) -> None:
+    """Test that file uploads work correctly with 307/308 redirects.
+
+    This verifies that file payloads maintain correct Content-Length
+    on redirect by properly handling the file position.
+    """
+    received_bodies: list[bytes] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        # Store the body content
+        body = await request.read()
+        received_bodies.append(body)
+
+        if str(request.url.path).endswith("/"):
+            # Redirect URLs ending with / to remove the trailing slash
+            return web.Response(
+                status=status,
+                headers={
+                    "Location": str(request.url.with_path(request.url.path.rstrip("/")))
+                },
+            )
+
+        # Return success with the body size
+        return web.json_response(
+            {
+                "received_size": len(body),
+                "content_length": request.headers.get("Content-Length"),
+            }
+        )
+
+    app = web.Application()
+    app.router.add_post("/upload/", handler)
+    app.router.add_post("/upload", handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a test file
+    test_file = tmp_path / f"test_upload_{status}.txt"
+    content = b"This is test file content for upload."
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Upload file to URL with trailing slash (will trigger redirect)
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.post("/upload/", data=f) as resp:
+            assert resp.status == 200
+            result = await resp.json()
+
+            # The server should receive the full file content
+            assert result["received_size"] == expected_size
+            assert result["content_length"] == str(expected_size)
+
+            # Both requests should have received the same content
+            assert len(received_bodies) == 2
+            assert received_bodies[0] == content  # First request
+            assert received_bodies[1] == content  # After redirect
+    finally:
+        await asyncio.to_thread(f.close)
+
+
+@pytest.mark.parametrize("status", [301, 302])
+@pytest.mark.parametrize("method", ["PUT", "PATCH", "DELETE"])
+async def test_file_upload_301_302_redirect_non_post(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path, status: int, method: str
+) -> None:
+    """Test that file uploads work correctly with 301/302 redirects for non-POST methods.
+
+    Per RFC 9110, 301/302 redirects should preserve the method and body for non-POST requests.
+    """
+    received_bodies: list[bytes] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        # Store the body content
+        body = await request.read()
+        received_bodies.append(body)
+
+        if str(request.url.path).endswith("/"):
+            # Redirect URLs ending with / to remove the trailing slash
+            return web.Response(
+                status=status,
+                headers={
+                    "Location": str(request.url.with_path(request.url.path.rstrip("/")))
+                },
+            )
+
+        # Return success with the body size
+        return web.json_response(
+            {
+                "method": request.method,
+                "received_size": len(body),
+                "content_length": request.headers.get("Content-Length"),
+            }
+        )
+
+    app = web.Application()
+    app.router.add_route(method, "/upload/", handler)
+    app.router.add_route(method, "/upload", handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a test file
+    test_file = tmp_path / f"test_upload_{status}_{method.lower()}.txt"
+    content = f"Test {method} file content for {status} redirect.".encode()
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Upload file to URL with trailing slash (will trigger redirect)
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.request(method, "/upload/", data=f) as resp:
+            assert resp.status == 200
+            result = await resp.json()
+
+            # The server should receive the full file content after redirect
+            assert result["method"] == method  # Method should be preserved
+            assert result["received_size"] == expected_size
+            assert result["content_length"] == str(expected_size)
+
+            # Both requests should have received the same content
+            assert len(received_bodies) == 2
+            assert received_bodies[0] == content  # First request
+            assert received_bodies[1] == content  # After redirect
+    finally:
+        await asyncio.to_thread(f.close)
+
+
+async def test_file_upload_307_302_redirect_chain(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """Test that file uploads work correctly with 307->302->200 redirect chain.
+
+    This verifies that:
+    1. 307 preserves POST method and file body
+    2. 302 changes POST to GET and drops the body
+    3. No body leaks to the final GET request
+    """
+    received_requests: list[dict[str, Any]] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        # Store request details
+        body = await request.read()
+        received_requests.append(
+            {
+                "path": str(request.url.path),
+                "method": request.method,
+                "body_size": len(body),
+                "content_length": request.headers.get("Content-Length"),
+            }
+        )
+
+        if request.url.path == "/upload307":
+            # First redirect: 307 should preserve method and body
+            return web.Response(status=307, headers={"Location": "/upload302"})
+        elif request.url.path == "/upload302":
+            # Second redirect: 302 should change POST to GET
+            return web.Response(status=302, headers={"Location": "/final"})
+        else:
+            # Final destination
+            return web.json_response(
+                {
+                    "final_method": request.method,
+                    "final_body_size": len(body),
+                    "requests_received": len(received_requests),
+                }
+            )
+
+    app = web.Application()
+    app.router.add_route("*", "/upload307", handler)
+    app.router.add_route("*", "/upload302", handler)
+    app.router.add_route("*", "/final", handler)
+
+    client = await aiohttp_client(app)
+
+    # Create a test file
+    test_file = tmp_path / "test_redirect_chain.txt"
+    content = b"Test file content that should not leak to GET request"
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Upload file to URL that triggers 307->302->final redirect chain
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.post("/upload307", data=f) as resp:
+            assert resp.status == 200
+            result = await resp.json()
+
+            # Verify the redirect chain
+            assert len(resp.history) == 2
+            assert resp.history[0].status == 307
+            assert resp.history[1].status == 302
+
+            # Verify final request is GET with no body
+            assert result["final_method"] == "GET"
+            assert result["final_body_size"] == 0
+            assert result["requests_received"] == 3
+
+            # Verify the request sequence
+            assert len(received_requests) == 3
+
+            # First request (307): POST with full body
+            assert received_requests[0]["path"] == "/upload307"
+            assert received_requests[0]["method"] == "POST"
+            assert received_requests[0]["body_size"] == expected_size
+            assert received_requests[0]["content_length"] == str(expected_size)
+
+            # Second request (302): POST with preserved body from 307
+            assert received_requests[1]["path"] == "/upload302"
+            assert received_requests[1]["method"] == "POST"
+            assert received_requests[1]["body_size"] == expected_size
+            assert received_requests[1]["content_length"] == str(expected_size)
+
+            # Third request (final): GET with no body (302 changed method and dropped body)
+            assert received_requests[2]["path"] == "/final"
+            assert received_requests[2]["method"] == "GET"
+            assert received_requests[2]["body_size"] == 0
+            assert received_requests[2]["content_length"] is None
+
+    finally:
+        await asyncio.to_thread(f.close)

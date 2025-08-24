@@ -1,7 +1,9 @@
 """Test digest authentication middleware for aiohttp client."""
 
+import io
+import re
 from hashlib import md5, sha1
-from typing import Generator, Union
+from typing import Generator, Literal, Union
 from unittest import mock
 
 import pytest
@@ -18,6 +20,7 @@ from aiohttp.client_middleware_digest_auth import (
     unescape_quotes,
 )
 from aiohttp.client_reqrep import ClientResponse
+from aiohttp.payload import BytesIOPayload
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 
@@ -154,7 +157,7 @@ async def test_authenticate_scenarios(
         ),
     ],
 )
-def test_encode_validation_errors(
+async def test_encode_validation_errors(
     digest_auth_mw: DigestAuthMiddleware,
     challenge: DigestAuthChallenge,
     expected_error: str,
@@ -162,12 +165,14 @@ def test_encode_validation_errors(
     """Test validation errors when encoding digest auth headers."""
     digest_auth_mw._challenge = challenge
     with pytest.raises(ClientError, match=expected_error):
-        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+        await digest_auth_mw._encode("GET", URL("http://example.com/resource"), b"")
 
 
-def test_encode_digest_with_md5(auth_mw_with_challenge: DigestAuthMiddleware) -> None:
-    header = auth_mw_with_challenge._encode(
-        "GET", URL("http://example.com/resource"), ""
+async def test_encode_digest_with_md5(
+    auth_mw_with_challenge: DigestAuthMiddleware,
+) -> None:
+    header = await auth_mw_with_challenge._encode(
+        "GET", URL("http://example.com/resource"), b""
     )
     assert header.startswith("Digest ")
     assert 'username="user"' in header
@@ -177,7 +182,7 @@ def test_encode_digest_with_md5(auth_mw_with_challenge: DigestAuthMiddleware) ->
 @pytest.mark.parametrize(
     "algorithm", ["MD5-SESS", "SHA-SESS", "SHA-256-SESS", "SHA-512-SESS"]
 )
-def test_encode_digest_with_sess_algorithms(
+async def test_encode_digest_with_sess_algorithms(
     digest_auth_mw: DigestAuthMiddleware,
     qop_challenge: DigestAuthChallenge,
     algorithm: str,
@@ -188,11 +193,13 @@ def test_encode_digest_with_sess_algorithms(
     challenge["algorithm"] = algorithm
     digest_auth_mw._challenge = challenge
 
-    header = digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
     assert f"algorithm={algorithm}" in header
 
 
-def test_encode_unsupported_algorithm(
+async def test_encode_unsupported_algorithm(
     digest_auth_mw: DigestAuthMiddleware, basic_challenge: DigestAuthChallenge
 ) -> None:
     """Test that unsupported algorithm raises ClientError."""
@@ -202,10 +209,52 @@ def test_encode_unsupported_algorithm(
     digest_auth_mw._challenge = challenge
 
     with pytest.raises(ClientError, match="Unsupported hash algorithm"):
-        digest_auth_mw._encode("GET", URL("http://example.com/resource"), "")
+        await digest_auth_mw._encode("GET", URL("http://example.com/resource"), b"")
 
 
-def test_invalid_qop_rejected(
+@pytest.mark.parametrize("algorithm", ["MD5", "MD5-SESS", "SHA-256"])
+async def test_encode_algorithm_case_preservation_uppercase(
+    digest_auth_mw: DigestAuthMiddleware,
+    qop_challenge: DigestAuthChallenge,
+    algorithm: str,
+) -> None:
+    """Test that uppercase algorithm case is preserved in the response header."""
+    # Create a challenge with the specific algorithm case
+    challenge = qop_challenge.copy()
+    challenge["algorithm"] = algorithm
+    digest_auth_mw._challenge = challenge
+
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
+
+    # The algorithm in the response should match the exact case from the challenge
+    assert f"algorithm={algorithm}" in header
+
+
+@pytest.mark.parametrize("algorithm", ["md5", "MD5-sess", "sha-256"])
+async def test_encode_algorithm_case_preservation_lowercase(
+    digest_auth_mw: DigestAuthMiddleware,
+    qop_challenge: DigestAuthChallenge,
+    algorithm: str,
+) -> None:
+    """Test that lowercase/mixed-case algorithm is preserved in the response header."""
+    # Create a challenge with the specific algorithm case
+    challenge = qop_challenge.copy()
+    challenge["algorithm"] = algorithm
+    digest_auth_mw._challenge = challenge
+
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
+
+    # The algorithm in the response should match the exact case from the challenge
+    assert f"algorithm={algorithm}" in header
+    # Also verify it's not the uppercase version
+    assert f"algorithm={algorithm.upper()}" not in header
+
+
+async def test_invalid_qop_rejected(
     digest_auth_mw: DigestAuthMiddleware, basic_challenge: DigestAuthChallenge
 ) -> None:
     """Test that invalid Quality of Protection values are rejected."""
@@ -217,7 +266,7 @@ def test_invalid_qop_rejected(
 
     # This should raise an error about unsupported QoP
     with pytest.raises(ClientError, match="Unsupported Quality of Protection"):
-        digest_auth_mw._encode("GET", URL("http://example.com"), "")
+        await digest_auth_mw._encode("GET", URL("http://example.com"), b"")
 
 
 def compute_expected_digest(
@@ -264,14 +313,17 @@ def compute_expected_digest(
 @pytest.mark.parametrize(
     ("body", "body_str"),
     [
-        ("this is a body", "this is a body"),  # String case
-        (b"this is a body", "this is a body"),  # Bytes case
+        (b"", ""),  # Bytes case
+        (
+            BytesIOPayload(io.BytesIO(b"this is a body")),
+            "this is a body",
+        ),  # BytesIOPayload case
     ],
 )
-def test_digest_response_exact_match(
+async def test_digest_response_exact_match(
     qop: str,
     algorithm: str,
-    body: Union[str, bytes],
+    body: Union[Literal[b""], BytesIOPayload],
     body_str: str,
     mock_sha1_digest: mock.MagicMock,
 ) -> None:
@@ -295,7 +347,7 @@ def test_digest_response_exact_match(
     auth._last_nonce_bytes = nonce.encode("utf-8")
     auth._nonce_count = nc
 
-    header = auth._encode(method, URL(f"http://host{uri}"), body)
+    header = await auth._encode(method, URL(f"http://host{uri}"), body)
 
     # Get expected digest
     expected = compute_expected_digest(
@@ -402,7 +454,7 @@ def test_middleware_invalid_login() -> None:
         DigestAuthMiddleware("user:name", "pass")
 
 
-def test_escaping_quotes_in_auth_header() -> None:
+async def test_escaping_quotes_in_auth_header() -> None:
     """Test that double quotes are properly escaped in auth header."""
     auth = DigestAuthMiddleware('user"with"quotes', "pass")
     auth._challenge = DigestAuthChallenge(
@@ -413,7 +465,7 @@ def test_escaping_quotes_in_auth_header() -> None:
         opaque='opaque"with"quotes',
     )
 
-    header = auth._encode("GET", URL("http://example.com/path"), "")
+    header = await auth._encode("GET", URL("http://example.com/path"), b"")
 
     # Check that quotes are escaped in the header
     assert 'username="user\\"with\\"quotes"' in header
@@ -422,13 +474,15 @@ def test_escaping_quotes_in_auth_header() -> None:
     assert 'opaque="opaque\\"with\\"quotes"' in header
 
 
-def test_template_based_header_construction(
+async def test_template_based_header_construction(
     auth_mw_with_challenge: DigestAuthMiddleware,
     mock_sha1_digest: mock.MagicMock,
     mock_md5_digest: mock.MagicMock,
 ) -> None:
     """Test that the template-based header construction works correctly."""
-    header = auth_mw_with_challenge._encode("GET", URL("http://example.com/test"), "")
+    header = await auth_mw_with_challenge._encode(
+        "GET", URL("http://example.com/test"), b""
+    )
 
     # Split the header into scheme and parameters
     scheme, params_str = header.split(" ", 1)
@@ -767,6 +821,332 @@ async def test_no_retry_on_second_401(
     assert request_count == 2
 
 
+async def test_preemptive_auth_disabled(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that preemptive authentication can be disabled."""
+    digest_auth_mw = DigestAuthMiddleware("user", "pass", preemptive=False)
+    request_count = 0
+    auth_headers = []
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+        auth_headers.append(request.headers.get(hdrs.AUTHORIZATION))
+
+        if not request.headers.get(hdrs.AUTHORIZATION):
+            # Return 401 with digest challenge
+            challenge = 'Digest realm="test", nonce="abc123", qop="auth", algorithm=MD5'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        # First request will get 401 and store challenge
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "OK"
+
+        # Second request should NOT send auth preemptively (preemptive=False)
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "OK"
+
+    # With preemptive disabled, each request needs 401 challenge first
+    assert request_count == 4  # 2 requests * 2 (401 + retry)
+    assert auth_headers[0] is None  # First request has no auth
+    assert auth_headers[1] is not None  # Second request has auth after 401
+    assert auth_headers[2] is None  # Third request has no auth (preemptive disabled)
+    assert auth_headers[3] is not None  # Fourth request has auth after 401
+
+
+async def test_preemptive_auth_with_stale_nonce(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test preemptive auth handles stale nonce responses correctly."""
+    digest_auth_mw = DigestAuthMiddleware("user", "pass", preemptive=True)
+    request_count = 0
+    current_nonce = 0
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count, current_nonce
+        request_count += 1
+
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+
+        if not auth_header:
+            # First request without auth
+            current_nonce = 1
+            challenge = f'Digest realm="test", nonce="nonce{current_nonce}", qop="auth", algorithm=MD5'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+
+        # For the second set of requests, always consider the first nonce stale
+        if request_count == 3 and current_nonce == 1:
+            # Stale nonce - request new auth with stale=true
+            current_nonce = 2
+            challenge = f'Digest realm="test", nonce="nonce{current_nonce}", qop="auth", algorithm=MD5, stale=true'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized - Stale nonce",
+            )
+
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        # First request - will get 401, then retry with auth
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "OK"
+
+        # Second request - will use preemptive auth with nonce1, get 401 stale, retry with nonce2
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "OK"
+
+    # Verify the expected flow:
+    # Request 1: no auth -> 401
+    # Request 2: retry with auth -> 200
+    # Request 3: preemptive auth with old nonce -> 401 stale
+    # Request 4: retry with new nonce -> 200
+    assert request_count == 4
+
+
+async def test_preemptive_auth_updates_nonce_count(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that preemptive auth properly increments nonce count."""
+    digest_auth_mw = DigestAuthMiddleware("user", "pass", preemptive=True)
+    request_count = 0
+    nonce_counts = []
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+
+        if not auth_header:
+            # First request without auth
+            challenge = 'Digest realm="test", nonce="abc123", qop="auth", algorithm=MD5'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+
+        # Extract nc (nonce count) from auth header
+        nc_match = auth_header.split("nc=")[1].split(",")[0].strip()
+        nonce_counts.append(nc_match)
+
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        # Make multiple requests to see nonce count increment
+        for _ in range(3):
+            async with session.get(server.make_url("/")) as resp:
+                assert resp.status == 200
+                await resp.text()
+
+    # First request has no auth, then gets 401 and retries with nc=00000001
+    # Second and third requests use preemptive auth with nc=00000002 and nc=00000003
+    assert len(nonce_counts) == 3
+    assert nonce_counts[0] == "00000001"
+    assert nonce_counts[1] == "00000002"
+    assert nonce_counts[2] == "00000003"
+
+
+async def test_preemptive_auth_respects_protection_space(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that preemptive auth only applies to URLs within the protection space."""
+    digest_auth_mw = DigestAuthMiddleware("user", "pass", preemptive=True)
+    request_count = 0
+    auth_headers = []
+    requested_paths = []
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+        auth_headers.append(request.headers.get(hdrs.AUTHORIZATION))
+        requested_paths.append(request.path)
+
+        if not request.headers.get(hdrs.AUTHORIZATION):
+            # Return 401 with digest challenge including domain parameter
+            challenge = 'Digest realm="test", nonce="abc123", qop="auth", algorithm=MD5, domain="/api /admin"'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/api/endpoint", handler)
+    app.router.add_get("/admin/panel", handler)
+    app.router.add_get("/public/page", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        # First request to /api/endpoint - should get 401 and retry with auth
+        async with session.get(server.make_url("/api/endpoint")) as resp:
+            assert resp.status == 200
+
+        # Second request to /api/endpoint - should use preemptive auth (in protection space)
+        async with session.get(server.make_url("/api/endpoint")) as resp:
+            assert resp.status == 200
+
+        # Third request to /admin/panel - should use preemptive auth (in protection space)
+        async with session.get(server.make_url("/admin/panel")) as resp:
+            assert resp.status == 200
+
+        # Fourth request to /public/page - should NOT use preemptive auth (outside protection space)
+        async with session.get(server.make_url("/public/page")) as resp:
+            assert resp.status == 200
+
+    # Verify auth headers
+    assert auth_headers[0] is None  # First request to /api/endpoint - no auth
+    assert auth_headers[1] is not None  # Retry with auth
+    assert (
+        auth_headers[2] is not None
+    )  # Second request to /api/endpoint - preemptive auth
+    assert auth_headers[3] is not None  # Request to /admin/panel - preemptive auth
+    assert auth_headers[4] is None  # First request to /public/page - no preemptive auth
+    assert auth_headers[5] is not None  # Retry with auth
+
+    # Verify paths
+    assert requested_paths == [
+        "/api/endpoint",  # Initial request
+        "/api/endpoint",  # Retry with auth
+        "/api/endpoint",  # Second request with preemptive auth
+        "/admin/panel",  # Request with preemptive auth
+        "/public/page",  # Initial request (no preemptive auth)
+        "/public/page",  # Retry with auth
+    ]
+
+
+async def test_preemptive_auth_with_absolute_domain_uris(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test preemptive auth with absolute URIs in domain parameter."""
+    digest_auth_mw = DigestAuthMiddleware("user", "pass", preemptive=True)
+    request_count = 0
+    auth_headers = []
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+        auth_headers.append(request.headers.get(hdrs.AUTHORIZATION))
+
+        if not request.headers.get(hdrs.AUTHORIZATION):
+            # Return 401 with digest challenge including absolute URI in domain
+            server_url = str(request.url.with_path("/protected"))
+            challenge = f'Digest realm="test", nonce="abc123", qop="auth", algorithm=MD5, domain="{server_url}"'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/protected/resource", handler)
+    app.router.add_get("/unprotected/resource", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        # First request to protected resource
+        async with session.get(server.make_url("/protected/resource")) as resp:
+            assert resp.status == 200
+
+        # Second request to protected resource - should use preemptive auth
+        async with session.get(server.make_url("/protected/resource")) as resp:
+            assert resp.status == 200
+
+        # Request to unprotected resource - should NOT use preemptive auth
+        async with session.get(server.make_url("/unprotected/resource")) as resp:
+            assert resp.status == 200
+
+    # Verify auth pattern
+    assert auth_headers[0] is None  # First request - no auth
+    assert auth_headers[1] is not None  # Retry with auth
+    assert auth_headers[2] is not None  # Second request - preemptive auth
+    assert auth_headers[3] is None  # Unprotected resource - no preemptive auth
+    assert auth_headers[4] is not None  # Retry with auth
+
+
+async def test_preemptive_auth_without_domain_uses_origin(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that preemptive auth without domain parameter applies to entire origin."""
+    digest_auth_mw = DigestAuthMiddleware("user", "pass", preemptive=True)
+    request_count = 0
+    auth_headers = []
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+        auth_headers.append(request.headers.get(hdrs.AUTHORIZATION))
+
+        if not request.headers.get(hdrs.AUTHORIZATION):
+            # Return 401 with digest challenge without domain parameter
+            challenge = 'Digest realm="test", nonce="abc123", qop="auth", algorithm=MD5'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/path1", handler)
+    app.router.add_get("/path2", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        # First request
+        async with session.get(server.make_url("/path1")) as resp:
+            assert resp.status == 200
+
+        # Second request to different path - should still use preemptive auth
+        async with session.get(server.make_url("/path2")) as resp:
+            assert resp.status == 200
+
+    # Verify auth pattern
+    assert auth_headers[0] is None  # First request - no auth
+    assert auth_headers[1] is not None  # Retry with auth
+    assert (
+        auth_headers[2] is not None
+    )  # Second request - preemptive auth (entire origin)
+
+
 @pytest.mark.parametrize(
     ("status", "headers", "expected"),
     [
@@ -799,3 +1179,150 @@ def test_authenticate_with_malformed_headers(
 
     result = digest_auth_mw._authenticate(response)
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("protection_space_url", "request_url", "expected"),
+    [
+        # Exact match
+        ("http://example.com/app1", "http://example.com/app1", True),
+        # Path with trailing slash should match
+        ("http://example.com/app1", "http://example.com/app1/", True),
+        # Subpaths should match
+        ("http://example.com/app1", "http://example.com/app1/resource", True),
+        ("http://example.com/app1", "http://example.com/app1/sub/path", True),
+        # Should NOT match different paths that start with same prefix
+        ("http://example.com/app1", "http://example.com/app1xx", False),
+        ("http://example.com/app1", "http://example.com/app123", False),
+        # Protection space with trailing slash
+        ("http://example.com/app1/", "http://example.com/app1/", True),
+        ("http://example.com/app1/", "http://example.com/app1/resource", True),
+        (
+            "http://example.com/app1/",
+            "http://example.com/app1",
+            False,
+        ),  # No trailing slash
+        # Root protection space
+        ("http://example.com/", "http://example.com/", True),
+        ("http://example.com/", "http://example.com/anything", True),
+        ("http://example.com/", "http://example.com", False),  # No trailing slash
+        # Different origins should not match
+        ("http://example.com/app1", "https://example.com/app1", False),
+        ("http://example.com/app1", "http://other.com/app1", False),
+        ("http://example.com:8080/app1", "http://example.com/app1", False),
+    ],
+    ids=[
+        "exact_match",
+        "path_with_trailing_slash",
+        "subpath_match",
+        "deep_subpath_match",
+        "no_match_app1xx",
+        "no_match_app123",
+        "protection_with_slash_exact",
+        "protection_with_slash_subpath",
+        "protection_with_slash_no_match_without",
+        "root_protection_exact",
+        "root_protection_subpath",
+        "root_protection_no_match_without_slash",
+        "different_scheme",
+        "different_host",
+        "different_port",
+    ],
+)
+def test_in_protection_space(
+    digest_auth_mw: DigestAuthMiddleware,
+    protection_space_url: str,
+    request_url: str,
+    expected: bool,
+) -> None:
+    """Test _in_protection_space method with various URL patterns."""
+    digest_auth_mw._protection_space = [protection_space_url]
+    result = digest_auth_mw._in_protection_space(URL(request_url))
+    assert result == expected
+
+
+def test_in_protection_space_multiple_spaces(
+    digest_auth_mw: DigestAuthMiddleware,
+) -> None:
+    """Test _in_protection_space with multiple protection spaces."""
+    digest_auth_mw._protection_space = [
+        "http://example.com/api",
+        "http://example.com/admin/",
+        "http://example.com/secure/area",
+    ]
+
+    # Test various URLs
+    assert digest_auth_mw._in_protection_space(URL("http://example.com/api")) is True
+    assert digest_auth_mw._in_protection_space(URL("http://example.com/api/v1")) is True
+    assert (
+        digest_auth_mw._in_protection_space(URL("http://example.com/admin/panel"))
+        is True
+    )
+    assert (
+        digest_auth_mw._in_protection_space(
+            URL("http://example.com/secure/area/resource")
+        )
+        is True
+    )
+
+    # These should not match
+    assert digest_auth_mw._in_protection_space(URL("http://example.com/apiv2")) is False
+    assert (
+        digest_auth_mw._in_protection_space(URL("http://example.com/admin")) is False
+    )  # No trailing slash
+    assert (
+        digest_auth_mw._in_protection_space(URL("http://example.com/secure")) is False
+    )
+    assert digest_auth_mw._in_protection_space(URL("http://example.com/other")) is False
+
+
+async def test_case_sensitive_algorithm_server(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test authentication with a server that requires exact algorithm case matching.
+
+    This simulates servers like Prusa printers that expect the algorithm
+    to be returned with the exact same case as sent in the challenge.
+    """
+    digest_auth_mw = DigestAuthMiddleware("testuser", "testpass")
+    request_count = 0
+    auth_algorithms: list[str] = []
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        if not (auth_header := request.headers.get(hdrs.AUTHORIZATION)):
+            # Send challenge with lowercase-sess algorithm (like Prusa)
+            challenge = 'Digest realm="Administrator", nonce="test123", qop="auth", algorithm="MD5-sess", opaque="xyz123"'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+
+        # Extract algorithm from auth response
+        algo_match = re.search(r"algorithm=([^,\s]+)", auth_header)
+        assert algo_match is not None
+        auth_algorithms.append(algo_match.group(1))
+
+        # Case-sensitive server: only accept exact case match
+        assert "algorithm=MD5-sess" in auth_header
+        return Response(text="Success")
+
+    app = Application()
+    app.router.add_get("/api/test", handler)
+    server = await aiohttp_server(app)
+
+    async with (
+        ClientSession(middlewares=(digest_auth_mw,)) as session,
+        session.get(server.make_url("/api/test")) as resp,
+    ):
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Success"
+
+    # Verify the middleware preserved the exact algorithm case
+    assert request_count == 2  # Initial 401 + successful retry
+    assert len(auth_algorithms) == 1
+    assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
