@@ -287,6 +287,7 @@ resolvehost
 resolvers
 reusage
 reuseconn
+riscv64
 Runit
 runtime
 runtimes
