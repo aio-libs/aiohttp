@@ -777,6 +777,23 @@ class ClientRequestBase:
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
 
+    def _get_content_length(self) -> Optional[int]:
+        """Extract and validate Content-Length header value.
+
+        Returns parsed Content-Length value or None if not set.
+        Raises ValueError if header exists but cannot be parsed as an integer.
+        """
+        if hdrs.CONTENT_LENGTH not in self.headers:
+            return None
+
+        content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
+        try:
+            return int(content_length_hdr)
+        except ValueError:
+            raise ValueError(
+                f"Invalid Content-Length header: {content_length_hdr}"
+            ) from None
+
     @property
     def _writer(self) -> Optional["asyncio.Task[None]"]:
         return self.__writer
@@ -787,6 +804,13 @@ class ClientRequestBase:
             self.__writer.remove_done_callback(self.__reset_writer)
         self.__writer = writer
         writer.add_done_callback(self.__reset_writer)
+
+    def is_ssl(self) -> bool:
+        return self.url.scheme in _SSL_SCHEMES
+
+    @property
+    def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
+        return self._ssl
 
     @property
     def connection_key(self) -> ConnectionKey:  # type: ignore[misc]
@@ -815,13 +839,6 @@ class ClientRequestBase:
             RequestInfo, (self.url, self.method, headers, self.original_url)
         )
 
-    def is_ssl(self) -> bool:
-        return self.url.scheme in _SSL_SCHEMES
-
-    @property
-    def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
-        return self._ssl
-
     def _update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
@@ -838,6 +855,16 @@ class ClientRequestBase:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
+    def _update_host(self, url: URL) -> None:
+        """Update destination host, port and connection type (ssl)."""
+        # get host/port
+        if not url.raw_host:
+            raise InvalidURL(url)
+
+        # basic auth info
+        if url.raw_user or url.raw_password:
+            self.auth = BasicAuth(url.user or "", url.password or "")
+
     def _update_headers(self, headers: CIMultiDict[str]) -> None:
         """Update request headers."""
         self.headers: CIMultiDict[str] = CIMultiDict()
@@ -850,33 +877,6 @@ class ClientRequestBase:
         assert host is not None
         self.headers[hdrs.HOST] = headers.pop(hdrs.HOST, host)
         self.headers.extend(headers)
-
-    def _update_host(self, url: URL) -> None:
-        """Update destination host, port and connection type (ssl)."""
-        # get host/port
-        if not url.raw_host:
-            raise InvalidURL(url)
-
-        # basic auth info
-        if url.raw_user or url.raw_password:
-            self.auth = BasicAuth(url.user or "", url.password or "")
-
-    def _get_content_length(self) -> Optional[int]:
-        """Extract and validate Content-Length header value.
-
-        Returns parsed Content-Length value or None if not set.
-        Raises ValueError if header exists but cannot be parsed as an integer.
-        """
-        if hdrs.CONTENT_LENGTH not in self.headers:
-            return None
-
-        content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
-        try:
-            return int(content_length_hdr)
-        except ValueError:
-            raise ValueError(
-                f"Invalid Content-Length header: {content_length_hdr}"
-            ) from None
 
     def _create_response(self, task: Optional[asyncio.Task[None]]) -> ClientResponse:
         return self.response_class(
@@ -1108,14 +1108,13 @@ class ClientRequest(ClientRequestBase):
 
         c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
-            c.load(self.headers.get(hdrs.COOKIE, ""))
+            # parse_cookie_headers already preserves coded values
+            c.update(parse_cookie_headers((self.headers.get(hdrs.COOKIE, ""),)))
             del self.headers[hdrs.COOKIE]
 
         for name, value in cookies.items():
-            # Preserve coded_value
-            mrsl_val = value.get(value.key, Morsel())
-            mrsl_val.set(value.key, value.value, value.coded_value)
-            c[name] = mrsl_val
+            # Use helper to preserve coded_value exactly as sent by server
+            c[name] = preserve_morsel_with_coded_value(value)
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
@@ -1154,9 +1153,20 @@ class ClientRequest(ClientRequestBase):
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
 
-    def _update_body_from_data(self, body: Any) -> None:
+    def _update_body_from_data(self, body: Any, _stacklevel: int = 3) -> None:
+        """Update request body from data."""
+        if self._body is not None:
+            _warn_if_unclosed_payload(self._body, stacklevel=_stacklevel)
+
         if body is None:
-            self.headers[hdrs.CONTENT_LENGTH] = "0"
+            self._body = None
+            # Set Content-Length to 0 when body is None for methods that expect a body
+            if (
+                self.method not in self.GET_METHODS
+                and not self.chunked
+                and hdrs.CONTENT_LENGTH not in self.headers
+            ):
+                self.headers[hdrs.CONTENT_LENGTH] = "0"
             return
 
         # FormData
@@ -1173,7 +1183,7 @@ class ClientRequest(ClientRequestBase):
                     ).parameters.get("boundary")
                 body = FormData(body, boundary=boundary)()
 
-        self.body = body
+        self._body = body
 
         # enable chunked encoding if needed
         if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
@@ -1261,16 +1271,6 @@ class ClientRequest(ClientRequestBase):
             self.body.size != 0 or self._continue is not None or protocol.writing_paused
         )
 
-    async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
-        for trace in self._traces:
-            await trace.send_request_chunk_sent(method, url, chunk)
-
-    async def _on_headers_request_sent(
-        self, method: str, url: URL, headers: "CIMultiDict[str]"
-    ) -> None:
-        for trace in self._traces:
-            await trace.send_request_headers(method, url, headers)
-
     async def _write_bytes(
         self,
         writer: AbstractStreamWriter,
@@ -1313,7 +1313,14 @@ class ClientRequest(ClientRequestBase):
         protocol = conn.protocol
         assert protocol is not None
         try:
-            await self.body.write_with_length(writer, content_length)
+            # This should be a rare case but the
+            # self._body can be set to None while
+            # the task is being started or we wait above
+            # for the 100-continue response.
+            # The more likely case is we have an empty
+            # payload, but 100-continue is still expected.
+            if self._body is not None:
+                await self._body.write_with_length(writer, content_length)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 
@@ -1364,3 +1371,13 @@ class ClientRequest(ClientRequestBase):
                 self.__writer.cancel()
             self.__writer.remove_done_callback(self.__reset_writer)
             self.__writer = None
+
+    async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
+        for trace in self._traces:
+            await trace.send_request_chunk_sent(method, url, chunk)
+
+    async def _on_headers_request_sent(
+        self, method: str, url: URL, headers: "CIMultiDict[str]"
+    ) -> None:
+        for trace in self._traces:
+            await trace.send_request_headers(method, url, headers)
