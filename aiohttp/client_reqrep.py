@@ -17,8 +17,6 @@ from typing import (
     Callable,
     Dict,
     Iterable,
-    List,
-    Literal,
     NamedTuple,
     Optional,
     Tuple,
@@ -74,8 +72,6 @@ from .streams import StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     JSONDecoder,
-    LooseCookies,
-    LooseHeaders,
     Query,
     RawHeaders,
 )
@@ -897,7 +893,7 @@ class ClientRequestBase:
     def _should_write(self, protocol: BaseProtocol) -> bool:
         return protocol.writing_paused
 
-    async def _send(self, conn: "Connection") -> "ClientResponse":
+    async def _send(self, conn: "Connection") -> ClientResponse:
         # Specify request target:
         # - CONNECT request must send authority form URI
         # - not CONNECT proxy must send absolute form URI
@@ -1006,7 +1002,7 @@ class ClientRequest(ClientRequestBase):
         chunked: Optional[bool],
         expect100: bool,
         loop: asyncio.AbstractEventLoop,
-        response_class: type["ClientResponse"],
+        response_class: type[ClientResponse],
         proxy: Optional[URL],
         proxy_auth: Optional[BasicAuth],
         timer: BaseTimerContext,
