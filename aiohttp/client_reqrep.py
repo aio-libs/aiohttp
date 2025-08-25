@@ -7,9 +7,9 @@ import re
 import sys
 import traceback
 import warnings
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from hashlib import md5, sha1, sha256
-from http.cookies import BaseCookie, Morsel, SimpleCookie
+from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -1108,8 +1108,8 @@ class ClientRequest(ClientRequestBase):
 
         c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
-            # parse_cookie_headers already preserves coded values
-            c.update(parse_cookie_headers((self.headers.get(hdrs.COOKIE, ""),)))
+            # parse_cookie_header for RFC 6265 compliant Cookie header parsing
+            c.update(parse_cookie_header(self.headers.get(hdrs.COOKIE, "")))
             del self.headers[hdrs.COOKIE]
 
         for name, value in cookies.items():
