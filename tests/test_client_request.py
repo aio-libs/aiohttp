@@ -70,7 +70,7 @@ def make_request(loop: asyncio.AbstractEventLoop) -> Iterator[_RequestMaker]:
 
     yield maker
     if request is not None:
-        loop.run_until_complete(request.close())
+        loop.run_until_complete(request._close())
 
 
 @pytest.fixture
@@ -146,13 +146,13 @@ def test_request_info(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org/")
     url = URL("http://python.org/")
     h = CIMultiDictProxy(req.headers)
-    assert req.request_info == aiohttp.RequestInfo(url, "GET", h, url)
+    assert req._request_info == aiohttp.RequestInfo(url, "GET", h, url)
 
 
 def test_request_info_with_fragment(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org/#urlfragment")
     h = CIMultiDictProxy(req.headers)
-    assert req.request_info == aiohttp.RequestInfo(
+    assert req._request_info == aiohttp.RequestInfo(
         URL("http://python.org/"),
         "GET",
         h,
@@ -167,57 +167,57 @@ def test_version_err(make_request: _RequestMaker) -> None:
 
 def test_host_port_default_http(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org/")
-    assert req.host == "python.org"
-    assert req.port == 80
+    assert req.url.host == "python.org"
+    assert req.url.port == 80
     assert not req.is_ssl()
 
 
 def test_host_port_default_https(make_request: _RequestMaker) -> None:
     req = make_request("get", "https://python.org/")
-    assert req.host == "python.org"
-    assert req.port == 443
+    assert req.url.host == "python.org"
+    assert req.url.port == 443
     assert req.is_ssl()
 
 
 def test_host_port_nondefault_http(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://python.org:960/")
-    assert req.host == "python.org"
-    assert req.port == 960
+    assert req.url.host == "python.org"
+    assert req.url.port == 960
     assert not req.is_ssl()
 
 
 def test_host_port_nondefault_https(make_request: _RequestMaker) -> None:
     req = make_request("get", "https://python.org:960/")
-    assert req.host == "python.org"
-    assert req.port == 960
+    assert req.url.host == "python.org"
+    assert req.url.port == 960
     assert req.is_ssl()
 
 
 def test_host_port_default_ws(make_request: _RequestMaker) -> None:
     req = make_request("get", "ws://python.org/")
-    assert req.host == "python.org"
-    assert req.port == 80
+    assert req.url.host == "python.org"
+    assert req.url.port == 80
     assert not req.is_ssl()
 
 
 def test_host_port_default_wss(make_request: _RequestMaker) -> None:
     req = make_request("get", "wss://python.org/")
-    assert req.host == "python.org"
-    assert req.port == 443
+    assert req.url.host == "python.org"
+    assert req.url.port == 443
     assert req.is_ssl()
 
 
 def test_host_port_nondefault_ws(make_request: _RequestMaker) -> None:
     req = make_request("get", "ws://python.org:960/")
-    assert req.host == "python.org"
-    assert req.port == 960
+    assert req.url.host == "python.org"
+    assert req.url.port == 960
     assert not req.is_ssl()
 
 
 def test_host_port_nondefault_wss(make_request: _RequestMaker) -> None:
     req = make_request("get", "wss://python.org:960/")
-    assert req.host == "python.org"
-    assert req.port == 960
+    assert req.url.host == "python.org"
+    assert req.url.port == 960
     assert req.is_ssl()
 
 
@@ -394,29 +394,29 @@ def test_no_path(make_request: _RequestMaker) -> None:
 
 def test_ipv6_default_http_port(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://[2001:db8::1]/")
-    assert req.host == "2001:db8::1"
-    assert req.port == 80
+    assert req.url.host == "2001:db8::1"
+    assert req.url.port == 80
     assert not req.is_ssl()
 
 
 def test_ipv6_default_https_port(make_request: _RequestMaker) -> None:
     req = make_request("get", "https://[2001:db8::1]/")
-    assert req.host == "2001:db8::1"
-    assert req.port == 443
+    assert req.url.host == "2001:db8::1"
+    assert req.url.port == 443
     assert req.is_ssl()
 
 
 def test_ipv6_nondefault_http_port(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://[2001:db8::1]:960/")
-    assert req.host == "2001:db8::1"
-    assert req.port == 960
+    assert req.url.host == "2001:db8::1"
+    assert req.url.port == 960
     assert not req.is_ssl()
 
 
 def test_ipv6_nondefault_https_port(make_request: _RequestMaker) -> None:
     req = make_request("get", "https://[2001:db8::1]:960/")
-    assert req.host == "2001:db8::1"
-    assert req.port == 960
+    assert req.url.host == "2001:db8::1"
+    assert req.url.port == 960
     assert req.is_ssl()
 
 
@@ -445,14 +445,14 @@ def test_basic_auth_from_url(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://nkim:1234@python.org")
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
-    assert "python.org" == req.host
+    assert "python.org" == req.url.host
 
 
 def test_basic_auth_no_user_from_url(make_request: _RequestMaker) -> None:
     req = make_request("get", "http://:1234@python.org")
     assert "AUTHORIZATION" in req.headers
     assert "Basic OjEyMzQ=" == req.headers["AUTHORIZATION"]
-    assert "python.org" == req.host
+    assert "python.org" == req.url.host
 
 
 def test_basic_auth_from_url_overridden(make_request: _RequestMaker) -> None:
@@ -461,7 +461,7 @@ def test_basic_auth_from_url_overridden(make_request: _RequestMaker) -> None:
     )
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
-    assert "python.org" == req.host
+    assert "python.org" == req.url.host
 
 
 def test_path_is_not_double_encoded1(make_request: _RequestMaker) -> None:

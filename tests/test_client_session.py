@@ -949,7 +949,7 @@ async def test_request_tracing(
             context: object,
             params: tracing.TraceRequestHeadersSentParams,
         ) -> None:
-            gathered_req_headers.extend(**params.headers)
+            gathered_req_headers.extend(params.headers)
 
         trace_config = aiohttp.TraceConfig(
             trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)

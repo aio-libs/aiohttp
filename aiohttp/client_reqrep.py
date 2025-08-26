@@ -1192,6 +1192,86 @@ class ClientRequest(ClientRequestBase):
                 continue
             headers[key] = value
 
+    def _update_body(self, body: Any) -> None:
+        """Update request body after its already been set."""
+        # Remove existing Content-Length header since body is changing
+        if hdrs.CONTENT_LENGTH in self.headers:
+            del self.headers[hdrs.CONTENT_LENGTH]
+
+        # Remove existing Transfer-Encoding header to avoid conflicts
+        if self.chunked and hdrs.TRANSFER_ENCODING in self.headers:
+            del self.headers[hdrs.TRANSFER_ENCODING]
+
+        # Now update the body using the existing method
+        # Called from _update_body, add 1 to stacklevel from caller
+        self.update_body_from_data(body, _stacklevel=4)
+
+        # Update transfer encoding headers if needed (same logic as __init__)
+        if body is not None or self.method not in self.GET_METHODS:
+            self.update_transfer_encoding()
+
+    async def update_body(self, body: Any) -> None:
+        """
+        Update request body and close previous payload if needed.
+
+        This method safely updates the request body by first closing any existing
+        payload to prevent resource leaks, then setting the new body.
+
+        IMPORTANT: Always use this method instead of setting request.body directly.
+        Direct assignment to request.body will leak resources if the previous body
+        contains file handles, streams, or other resources that need cleanup.
+
+        Args:
+            body: The new body content. Can be:
+                - bytes/bytearray: Raw binary data
+                - str: Text data (will be encoded using charset from Content-Type)
+                - FormData: Form data that will be encoded as multipart/form-data
+                - Payload: A pre-configured payload object
+                - AsyncIterable: An async iterable of bytes chunks
+                - File-like object: Will be read and sent as binary data
+                - None: Clears the body
+
+        Usage:
+            # CORRECT: Use update_body
+            await request.update_body(b"new request data")
+
+            # WRONG: Don't set body directly
+            # request.body = b"new request data"  # This will leak resources!
+
+            # Update with form data
+            form_data = FormData()
+            form_data.add_field('field', 'value')
+            await request.update_body(form_data)
+
+            # Clear body
+            await request.update_body(None)
+
+        Note:
+            This method is async because it may need to close file handles or
+            other resources associated with the previous payload. Always await
+            this method to ensure proper cleanup.
+
+        Warning:
+            Setting request.body directly is highly discouraged and can lead to:
+            - Resource leaks (unclosed file handles, streams)
+            - Memory leaks (unreleased buffers)
+            - Unexpected behavior with streaming payloads
+
+            It is not recommended to change the payload type in middleware. If the
+            body was already set (e.g., as bytes), it's best to keep the same type
+            rather than converting it (e.g., to str) as this may result in unexpected
+            behavior.
+
+        See Also:
+            - update_body_from_data: Synchronous body update without cleanup
+            - body property: Direct body access (STRONGLY DISCOURAGED)
+
+        """
+        # Close existing payload if it exists and needs closing
+        if self._body is not None:
+            await self._body.close()
+        self._update_body(body)
+
     def _update_expect_continue(self, expect: bool = False) -> None:
         if expect:
             self.headers[hdrs.EXPECT] = "100-continue"

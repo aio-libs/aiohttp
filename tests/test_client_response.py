@@ -1052,7 +1052,7 @@ def test_default_encoding_is_utf8() -> None:
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
-        session=None,  # type: ignore[arg-type]
+        session=None,
     )
     response._headers = CIMultiDictProxy(CIMultiDict({}))
     response._body = b""
