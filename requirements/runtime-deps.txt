@@ -34,7 +34,7 @@ pycares==4.10.0
     # via aiodns
 pycparser==2.22
     # via cffi
-typing-extensions==4.14.1
+typing-extensions==4.15.0
     # via
     #   aiosignal
     #   multidict
