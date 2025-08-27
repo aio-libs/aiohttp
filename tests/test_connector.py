@@ -11,7 +11,9 @@ import warnings
 from collections import defaultdict, deque
 from concurrent import futures
 from contextlib import closing, suppress
+from http.cookies import BaseCookie
 from typing import (
+    Any,
     Awaitable,
     Callable,
     DefaultDict,
@@ -27,14 +29,17 @@ from typing import (
 from unittest import mock
 
 import pytest
+from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
 from aiohttp import (
-    ClientRequest,
+    ClientRequest as RawClientRequest,
+    ClientResponse,
     ClientSession,
     ClientTimeout,
+    HttpVersion11,
     connector as connector_module,
     web,
 )
@@ -50,9 +55,36 @@ from aiohttp.connector import (
     _ConnectTunnelConnection,
     _DNSCacheTable,
 )
+from aiohttp.helpers import TimerNoop
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import unused_port
 from aiohttp.tracing import Trace
+
+
+def ClientRequest(method: str, url: URL, **kwargs: Any) -> RawClientRequest:
+    default_args = {
+        "params": {},
+        "headers": CIMultiDict[str](),
+        "skip_auto_headers": None,
+        "data": None,
+        "cookies": BaseCookie[str](),
+        "auth": None,
+        "version": HttpVersion11,
+        "compress": False,
+        "chunked": None,
+        "expect100": False,
+        "response_class": ClientResponse,
+        "proxy": None,
+        "proxy_auth": None,
+        "timer": TimerNoop(),
+        "session": None,  # Shouldn't be None, but we don't have an async context.
+        "ssl": True,
+        "proxy_headers": None,
+        "traces": [],
+        "trust_env": False,
+        "server_hostname": None,
+    }
+    return RawClientRequest(method, url, **(default_args | kwargs))
 
 
 @pytest.fixture

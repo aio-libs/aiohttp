@@ -29,7 +29,7 @@ from aiohttp.abc import AbstractStreamWriter
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.client_reqrep import (
-    ClientRequest,
+    ClientRequest as RawClientRequest,
     ClientResponse,
     Fingerprint,
     _gen_default_accept_encoding,
@@ -37,13 +37,40 @@ from aiohttp.client_reqrep import (
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
 from aiohttp.hdrs import METH_DELETE
+from aiohttp.helpers import TimerNoop
 from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
 from aiohttp.typedefs import LooseCookies
 
 
+def ClientRequest(method: str, url: URL, **kwargs: Any) -> RawClientRequest:
+    default_args = {
+        "params": {},
+        "headers": CIMultiDict[str](),
+        "skip_auto_headers": None,
+        "data": None,
+        "cookies": BaseCookie[str](),
+        "auth": None,
+        "version": HttpVersion11,
+        "compress": False,
+        "chunked": None,
+        "expect100": False,
+        "response_class": ClientResponse,
+        "proxy": None,
+        "proxy_auth": None,
+        "timer": TimerNoop(),
+        "session": None,  # Shouldn't be None, but we don't have an async context.
+        "ssl": True,
+        "proxy_headers": None,
+        "traces": [],
+        "trust_env": False,
+        "server_hostname": None,
+    }
+    return RawClientRequest(method, url, **(default_args | kwargs))
+
+
 class _RequestMaker(Protocol):
-    def __call__(self, method: str, url: str, **kwargs: Any) -> ClientRequest: ...
+    def __call__(self, method: str, url: str, **kwargs: Any) -> RawClientRequest: ...
 
 
 class WriterMock(mock.AsyncMock):
@@ -55,7 +82,7 @@ class WriterMock(mock.AsyncMock):
 
 
 ALL_METHODS = frozenset(
-    (*ClientRequest.GET_METHODS, *ClientRequest.POST_METHODS, METH_DELETE)
+    (*RawClientRequest.GET_METHODS, *RawClientRequest.POST_METHODS, METH_DELETE)
 )
 
 
@@ -63,7 +90,7 @@ ALL_METHODS = frozenset(
 def make_request(loop: asyncio.AbstractEventLoop) -> Iterator[_RequestMaker]:
     request = None
 
-    def maker(method: str, url: str, **kwargs: Any) -> ClientRequest:
+    def maker(method: str, url: str, **kwargs: Any) -> RawClientRequest:
         nonlocal request
         request = ClientRequest(method, URL(url), loop=loop, **kwargs)
         return request
@@ -601,7 +628,7 @@ def test_cookie_coded_value_preserved(loop: asyncio.AbstractEventLoop) -> None:
     """Verify the coded value of a cookie is preserved."""
     # https://github.com/aio-libs/aiohttp/pull/1453
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    req.update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
+    req._update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
     assert req.headers["COOKIE"] == 'ip-cookie="second"'
 
 
@@ -618,7 +645,7 @@ def test_update_cookies_with_special_chars_in_existing_header(
     )
 
     # Update with another cookie
-    req.update_cookies(cookies={"normal_cookie": "value2"})
+    req._update_cookies(cookies=BaseCookie({"normal_cookie": "value2"}))
 
     # Both cookies should be preserved in the exact order
     assert (
@@ -640,7 +667,7 @@ def test_update_cookies_with_quoted_existing_header(
     )
 
     # Update with another cookie
-    req.update_cookies(cookies={"new_cookie": "new_value"})
+    req._update_cookies(cookies=BaseCookie({"new_cookie": "new_value"}))
 
     # All cookies should be preserved with their original coded values
     # The quoted value should be preserved as-is
@@ -659,25 +686,25 @@ async def test_connection_header(
     req.version = HttpVersion11
     req.headers.clear()
     with mock.patch.object(conn._connector, "force_close", False):
-        await req.send(conn)
+        await req._send(conn)
     assert req.headers.get("CONNECTION") is None
 
     req.version = HttpVersion10
     req.headers.clear()
     with mock.patch.object(conn._connector, "force_close", False):
-        await req.send(conn)
+        await req._send(conn)
     assert req.headers.get("CONNECTION") == "keep-alive"
 
     req.version = HttpVersion11
     req.headers.clear()
     with mock.patch.object(conn._connector, "force_close", True):
-        await req.send(conn)
+        await req._send(conn)
     assert req.headers.get("CONNECTION") == "close"
 
     req.version = HttpVersion10
     req.headers.clear()
     with mock.patch.object(conn._connector, "force_close", True):
-        await req.send(conn)
+        await req._send(conn)
     assert not req.headers.get("CONNECTION")
 
 
@@ -685,9 +712,9 @@ async def test_no_content_length(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert req.headers.get("CONTENT-LENGTH") is None
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -695,9 +722,9 @@ async def test_no_content_length_head(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("head", URL("http://python.org"), loop=loop)
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert req.headers.get("CONTENT-LENGTH") is None
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -705,10 +732,10 @@ async def test_content_type_auto_header_get(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
-    await req.close()
+    await req._close()
 
 
 async def test_content_type_auto_header_form(
@@ -717,7 +744,7 @@ async def test_content_type_auto_header_form(
     req = ClientRequest(
         "post", URL("http://python.org"), data={"hey": "you"}, loop=loop
     )
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert "application/x-www-form-urlencoded" == req.headers.get("CONTENT-TYPE")
     resp.close()
 
@@ -726,7 +753,7 @@ async def test_content_type_auto_header_bytes(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("post", URL("http://python.org"), data=b"hey you", loop=loop)
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert "application/octet-stream" == req.headers.get("CONTENT-TYPE")
     resp.close()
 
@@ -742,7 +769,7 @@ async def test_content_type_skip_auto_header_bytes(
         loop=loop,
     )
     assert req.skip_auto_headers == CIMultiDict({"CONTENT-TYPE": None})
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
 
@@ -757,7 +784,7 @@ async def test_content_type_skip_auto_header_form(
         loop=loop,
         skip_auto_headers={"Content-Type"},
     )
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
 
@@ -773,7 +800,7 @@ async def test_content_type_auto_header_content_length_no_skip(
             skip_auto_headers={"Content-Length"},
             loop=loop,
         )
-        resp = await req.send(conn)
+        resp = await req._send(conn)
         assert req.headers.get("CONTENT-LENGTH") == "3"
         resp.close()
 
@@ -787,7 +814,7 @@ async def test_urlencoded_formdata_charset(
         data=aiohttp.FormData({"hey": "you"}, charset="koi8-r"),
         loop=loop,
     )
-    async with await req.send(conn):
+    async with await req._send(conn):
         await asyncio.sleep(0)
     assert "application/x-www-form-urlencoded; charset=koi8-r" == req.headers.get(
         "CONTENT-TYPE"
@@ -807,23 +834,23 @@ async def test_formdata_boundary_from_headers(
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
             loop=loop,
         )
-        async with await req.send(conn):
+        async with await req._send(conn):
             await asyncio.sleep(0)
         assert isinstance(req.body, MultipartWriter)
         assert req.body._boundary == boundary.encode()
 
 
 async def test_post_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    for meth in ClientRequest.POST_METHODS:
+    for meth in RawClientRequest.POST_METHODS:
         req = ClientRequest(
             meth, URL("http://python.org/"), data={"life": "42"}, loop=loop
         )
-        resp = await req.send(conn)
+        resp = await req._send(conn)
         assert "/" == req.url.path
         assert isinstance(req.body, payload.Payload)
         assert b"life=42" == req.body._value
         assert "application/x-www-form-urlencoded" == req.headers["CONTENT-TYPE"]
-        await req.close()
+        await req._close()
         resp.close()
 
 
@@ -831,7 +858,7 @@ async def test_pass_falsy_data(loop: asyncio.AbstractEventLoop) -> None:
     with mock.patch("aiohttp.client_reqrep.ClientRequest.update_body_from_data") as m:
         req = ClientRequest("post", URL("http://python.org/"), data={}, loop=loop)
         m.assert_called_once_with({})
-    await req.close()
+    await req._close()
 
 
 async def test_pass_falsy_data_file(
@@ -849,33 +876,33 @@ async def test_pass_falsy_data_file(
         loop=loop,
     )
     assert req.headers.get("CONTENT-LENGTH", None) is not None
-    await req.close()
+    await req._close()
     testfile.close()
 
 
 # Elasticsearch API requires to send request body with GET-requests
 async def test_get_with_data(loop: asyncio.AbstractEventLoop) -> None:
-    for meth in ClientRequest.GET_METHODS:
+    for meth in RawClientRequest.GET_METHODS:
         req = ClientRequest(
             meth, URL("http://python.org/"), data={"life": "42"}, loop=loop
         )
         assert "/" == req.url.path
         assert isinstance(req.body, payload.Payload)
         assert b"life=42" == req.body._value
-        await req.close()
+        await req._close()
 
 
 async def test_bytes_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    for meth in ClientRequest.POST_METHODS:
+    for meth in RawClientRequest.POST_METHODS:
         req = ClientRequest(
             meth, URL("http://python.org/"), data=b"binary data", loop=loop
         )
-        resp = await req.send(conn)
+        resp = await req._send(conn)
         assert "/" == req.url.path
         assert isinstance(req.body, payload.BytesPayload)
         assert b"binary data" == req.body._value
         assert "application/octet-stream" == req.headers["CONTENT-TYPE"]
-        await req.close()
+        await req._close()
         resp.close()
 
 
@@ -889,11 +916,11 @@ async def test_content_encoding(
     )
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
         m_writer.return_value.write_headers = mock.AsyncMock()
-        resp = await req.send(conn)
+        resp = await req._send(conn)
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
     assert req.headers["CONTENT-ENCODING"] == "deflate"
     m_writer.return_value.enable_compression.assert_called_with("deflate")
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -904,10 +931,10 @@ async def test_content_encoding_dont_set_headers_if_no_body(
         "post", URL("http://python.org/"), compress="deflate", loop=loop
     )
     with mock.patch("aiohttp.client_reqrep.http"):
-        resp = await req.send(conn)
+        resp = await req._send(conn)
     assert "TRANSFER-ENCODING" not in req.headers
     assert "CONTENT-ENCODING" not in req.headers
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -925,11 +952,11 @@ async def test_content_encoding_header(
     )
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
         m_writer.return_value.write_headers = mock.AsyncMock()
-        resp = await req.send(conn)
+        resp = await req._send(conn)
 
     assert not m_writer.return_value.enable_compression.called
     assert not m_writer.return_value.enable_chunking.called
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -954,9 +981,9 @@ async def test_chunked(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None
         headers={"TRANSFER-ENCODING": "gzip"},
         loop=loop,
     )
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert "gzip" == req.headers["TRANSFER-ENCODING"]
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -967,9 +994,9 @@ async def test_chunked2(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> Non
         headers={"Transfer-encoding": "chunked"},
         loop=loop,
     )
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -985,10 +1012,10 @@ async def test_chunked_empty_body(
         data=b"",
     )
     with mock.patch.object(req, "write_bytes") as write_bytes:
-        resp = await req.send(conn)
+        resp = await req._send(conn)
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
     assert write_bytes.called
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -999,11 +1026,11 @@ async def test_chunked_explicit(
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
         m_writer.return_value.write_headers = mock.AsyncMock()
         m_writer.return_value.write_eof = mock.AsyncMock()
-        resp = await req.send(conn)
+        resp = await req._send(conn)
 
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
     m_writer.return_value.enable_chunking.assert_called_with()
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -1037,7 +1064,7 @@ async def test_file_upload_not_chunked(loop: asyncio.AbstractEventLoop) -> None:
         req = ClientRequest("post", URL("http://python.org/"), data=f, loop=loop)
         assert not req.chunked
         assert req.headers["CONTENT-LENGTH"] == str(file_path.stat().st_size)
-        await req.close()
+        await req._close()
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
@@ -1056,7 +1083,7 @@ async def test_precompressed_data_stays_intact(
     assert not req.compress
     assert not req.chunked
     assert req.headers["CONTENT-ENCODING"] == "deflate"
-    await req.close()
+    await req._close()
 
 
 async def test_body_with_size_sets_content_length(
@@ -1079,7 +1106,7 @@ async def test_body_with_size_sets_content_length(
     assert req.body is not None
     assert req._body is not None  # When _body is set, body returns it
     assert req._body.size == len(data)
-    await req.close()
+    await req._close()
 
 
 async def test_body_payload_with_size_no_content_length(
@@ -1119,7 +1146,7 @@ async def test_body_payload_with_size_no_content_length(
     assert req.headers[hdrs.CONTENT_LENGTH] == "0"
     assert req._body is None
 
-    await req.close()
+    await req._close()
 
 
 async def test_file_upload_not_chunked_seek(loop: asyncio.AbstractEventLoop) -> None:
@@ -1128,7 +1155,7 @@ async def test_file_upload_not_chunked_seek(loop: asyncio.AbstractEventLoop) -> 
         f.seek(100)
         req = ClientRequest("post", URL("http://python.org/"), data=f, loop=loop)
         assert req.headers["CONTENT-LENGTH"] == str(file_path.stat().st_size - 100)
-        await req.close()
+        await req._close()
 
 
 async def test_file_upload_force_chunked(loop: asyncio.AbstractEventLoop) -> None:
@@ -1139,15 +1166,15 @@ async def test_file_upload_force_chunked(loop: asyncio.AbstractEventLoop) -> Non
         )
         assert req.chunked
         assert "CONTENT-LENGTH" not in req.headers
-        await req.close()
+        await req._close()
 
 
 async def test_expect100(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
     req = ClientRequest("get", URL("http://python.org/"), expect100=True, loop=loop)
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert "100-continue" == req.headers["EXPECT"]
     assert req._continue is not None
-    req.terminate()
+    req._terminate()
     resp.close()
 
 
@@ -1157,10 +1184,10 @@ async def test_expect_100_continue_header(
     req = ClientRequest(
         "get", URL("http://python.org/"), headers={"expect": "100-continue"}, loop=loop
     )
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert "100-continue" == req.headers["EXPECT"]
     assert req._continue is not None
-    req.terminate()
+    req._terminate()
     resp.close()
 
 
@@ -1174,7 +1201,7 @@ async def test_data_stream(
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
     assert req.chunked
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
-    original_write_bytes = req.write_bytes
+    original_write_bytes = req._write_bytes
 
     async def _mock_write_bytes(
         writer: AbstractStreamWriter, conn: mock.Mock, content_length: Optional[int]
@@ -1184,14 +1211,14 @@ async def test_data_stream(
         await original_write_bytes(writer, conn, content_length)
 
     with mock.patch.object(req, "write_bytes", _mock_write_bytes):
-        resp = await req.send(conn)
+        resp = await req._send(conn)
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
     assert (  # type: ignore[unreachable]
         buf.split(b"\r\n\r\n", 1)[1] == b"b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n"
     )
-    await req.close()
+    await req._close()
 
 
 async def test_data_file(
@@ -1208,13 +1235,13 @@ async def test_data_file(
         assert isinstance(req.body, payload.BufferedReaderPayload)
         assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
-        resp = await req.send(conn)
+        resp = await req._send(conn)
         assert asyncio.isfuture(req._writer)
         await resp.wait_for_close()
 
         assert req._writer is None
         assert buf.split(b"\r\n\r\n", 1)[1] == b"2\r\n" + b"*" * 2 + b"\r\n0\r\n\r\n"  # type: ignore[unreachable]
-        await req.close()
+        await req._close()
 
 
 async def test_data_stream_exc(
@@ -1236,14 +1263,14 @@ async def test_data_stream_exc(
 
     t = loop.create_task(throw_exc())
 
-    async with await req.send(conn):
+    async with await req._send(conn):
         assert req._writer is not None
         await req._writer
         await t
         # assert conn.close.called
         assert conn.protocol is not None
         assert conn.protocol.set_exception.called
-    await req.close()
+    await req._close()
 
 
 async def test_data_stream_exc_chain(
@@ -1266,7 +1293,7 @@ async def test_data_stream_exc_chain(
 
     t = loop.create_task(throw_exc())
 
-    async with await req.send(conn):
+    async with await req._send(conn):
         assert req._writer is not None
         await req._writer
     await t
@@ -1275,7 +1302,7 @@ async def test_data_stream_exc_chain(
     outer_exc = conn.protocol.set_exception.call_args[0][0]
     assert isinstance(outer_exc, ClientConnectionError)
     assert outer_exc.__cause__ is inner_exc
-    await req.close()
+    await req._close()
 
 
 async def test_data_stream_continue(
@@ -1297,14 +1324,14 @@ async def test_data_stream_continue(
 
     t = loop.create_task(coro())
 
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert req._writer is not None
     await req._writer
     await t
     assert (
         buf.split(b"\r\n\r\n", 1)[1] == b"b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n"
     )
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -1322,13 +1349,13 @@ async def test_data_continue(
 
     t = loop.create_task(coro())
 
-    resp = await req.send(conn)
+    resp = await req._send(conn)
 
     assert req._writer is not None
     await req._writer
     await t
     assert buf.split(b"\r\n\r\n", 1)[1] == b"data"
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -1340,10 +1367,10 @@ async def test_close(
         yield b"result"
 
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
-    resp = await req.send(conn)
-    await req.close()
+    resp = await req._send(conn)
+    await req._close()
     assert buf.split(b"\r\n\r\n", 1)[1] == b"6\r\nresult\r\n0\r\n\r\n"
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -1357,7 +1384,7 @@ async def test_bad_version(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> 
     )
 
     with pytest.raises(AttributeError):
-        await req.send(conn)
+        await req._send(conn)
 
 
 async def test_custom_response_class(
@@ -1370,9 +1397,9 @@ async def test_custom_response_class(
     req = ClientRequest(
         "GET", URL("http://python.org/"), response_class=CustomResponse, loop=loop
     )
-    resp = await req.send(conn)
+    resp = await req._send(conn)
     assert await resp.read() == b"customized!"
-    await req.close()
+    await req._close()
     resp.close()
 
 
@@ -1380,12 +1407,12 @@ async def test_oserror_on_write_bytes(
     loop: asyncio.AbstractEventLoop, conn: mock.Mock
 ) -> None:
     req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
-    req.body = b"test data"
+    await req.update_body(b"test data")
 
     writer = WriterMock()
     writer.write.side_effect = OSError
 
-    await req.write_bytes(writer, conn, None)
+    await req._write_bytes(writer, conn, None)
 
     assert conn.protocol.set_exception.called
     exc = conn.protocol.set_exception.call_args[0][0]
@@ -1397,7 +1424,7 @@ async def test_cancel_close(loop: asyncio.AbstractEventLoop, conn: mock.Mock) ->
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     req._writer = asyncio.Future()  # type: ignore[assignment]
 
-    t = asyncio.create_task(req.close())
+    t = asyncio.create_task(req._close())
 
     # Start waiting on _writer
     await asyncio.sleep(0)
@@ -1416,7 +1443,7 @@ async def test_terminate(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
         await asyncio.sleep(0)
 
     with mock.patch.object(req, "write_bytes", _mock_write_bytes):
-        resp = await req.send(conn)
+        resp = await req._send(conn)
 
     assert req._writer is not None
     assert resp._writer is not None
@@ -1429,7 +1456,7 @@ async def test_terminate(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
 
     assert req._writer is not None
     assert resp._writer is not None
-    req.terminate()
+    req._terminate()
     writer.cancel.assert_called_with()
     writer.done.assert_called_with()
     resp.close()
@@ -1449,7 +1476,7 @@ def test_terminate_with_closed_loop(
             await asyncio.sleep(0)
 
         with mock.patch.object(req, "write_bytes", _mock_write_bytes):
-            resp = await req.send(conn)
+            resp = await req._send(conn)
 
         assert req._writer is not None
         writer = WriterMock()
@@ -1463,7 +1490,7 @@ def test_terminate_with_closed_loop(
 
     loop.close()
     assert req is not None
-    req.terminate()
+    req._terminate()
     assert req._writer is None
     assert writer is not None
     assert not writer.cancel.called
@@ -1475,7 +1502,7 @@ def test_terminate_without_writer(loop: asyncio.AbstractEventLoop) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     assert req._writer is None
 
-    req.terminate()
+    req._terminate()
     assert req._writer is None
 
 
@@ -1496,15 +1523,15 @@ async def test_custom_req_rep(
 
     called = False
 
-    class CustomRequest(ClientRequest):
-        async def send(self, conn: Connection) -> ClientResponse:
+    class CustomRequest(RawClientRequest):
+        async def _send(self, conn: Connection) -> ClientResponse:
             resp = self.response_class(
                 self.method,
                 self.url,
                 writer=self._writer,
                 continue100=self._continue,
                 timer=self._timer,
-                request_info=self.request_info,
+                request_info=self._request_info,
                 traces=self._traces,
                 loop=self.loop,
                 session=self._session,
@@ -1515,7 +1542,7 @@ async def test_custom_req_rep(
             return resp
 
     async def create_connection(
-        req: ClientRequest, traces: object, timeout: object
+        req: RawClientRequest, traces: object, timeout: object
     ) -> Connection:
         assert isinstance(req, CustomRequest)
         return create_mocked_conn()  # type: ignore[no-any-return]
@@ -1570,7 +1597,7 @@ def test_loose_cookies_types(loop: asyncio.AbstractEventLoop) -> None:
     ]
 
     for loose_cookies_type in accepted_types:
-        req.update_cookies(cookies=loose_cookies_type)
+        req._update_cookies(cookies=loose_cookies_type)
 
 
 @pytest.mark.parametrize(
@@ -1649,7 +1676,7 @@ async def test_connection_key_with_proxy() -> None:
         loop=asyncio.get_running_loop(),
     )
     assert req.connection_key.proxy_headers_hash is not None
-    await req.close()
+    await req._close()
 
 
 async def test_connection_key_without_proxy() -> None:
@@ -1662,7 +1689,7 @@ async def test_connection_key_without_proxy() -> None:
         loop=asyncio.get_running_loop(),
     )
     assert req.connection_key.proxy_headers_hash is None
-    await req.close()
+    await req._close()
 
 
 def test_request_info_back_compat() -> None:
@@ -1733,15 +1760,15 @@ async def test_write_bytes_with_content_length_limit(
     data = b"Hello World"
     req = ClientRequest("post", URL("http://python.org/"), loop=loop)
 
-    req.body = data
+    await req.update_body(data)
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=5 to truncate data
-    await req.write_bytes(writer, conn, 5)
+    await req._write_bytes(writer, conn, 5)
 
     # Verify only the first 5 bytes were written
     assert buf == b"Hello"
-    await req.close()
+    await req._close()
 
 
 @pytest.mark.parametrize(
@@ -1768,16 +1795,16 @@ async def test_write_bytes_with_iterable_content_length_limit(
             for chunk in data:
                 yield chunk
 
-        req.body = gen()
+        await req.update_body(gen())
     else:
-        req.body = data
+        await req.update_body(data)
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=7 to truncate at the middle of Part2
-    await req.write_bytes(writer, conn, 7)
+    await req._write_bytes(writer, conn, 7)
     assert len(buf) == 7
     assert buf == b"Part1Pa"
-    await req.close()
+    await req._close()
 
 
 async def test_write_bytes_empty_iterable_with_content_length(
@@ -1791,15 +1818,15 @@ async def test_write_bytes_empty_iterable_with_content_length(
         return
         yield  # pragma: no cover  # This makes it a generator but never executes
 
-    req.body = gen()
+    await req.update_body(gen())
 
     writer = StreamWriter(protocol=conn.protocol, loop=loop)
     # Use content_length=10 with empty body
-    await req.write_bytes(writer, conn, 10)
+    await req._write_bytes(writer, conn, 10)
 
     # Verify nothing was written
     assert len(buf) == 0
-    await req.close()
+    await req._close()
 
 
 async def test_warn_if_unclosed_payload_via_body_setter(
@@ -1820,9 +1847,9 @@ async def test_warn_if_unclosed_payload_via_body_setter(
         ResourceWarning,
         match="The previous request body contains unclosed resources",
     ):
-        req.body = b"new data"
+        await req.update_body(b"new data")
 
-    await req.close()
+    await req._close()
 
 
 async def test_no_warn_for_autoclose_payload_via_body_setter(
@@ -1838,7 +1865,7 @@ async def test_no_warn_for_autoclose_payload_via_body_setter(
     # Setting body again should not trigger warning since previous payload has autoclose=True
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always")
-        req.body = b"new data"
+        await req.update_body(b"new data")
 
     # Filter out any non-ResourceWarning warnings
     resource_warnings = [
@@ -1846,7 +1873,7 @@ async def test_no_warn_for_autoclose_payload_via_body_setter(
     ]
     assert len(resource_warnings) == 0
 
-    await req.close()
+    await req._close()
 
 
 async def test_no_warn_for_consumed_payload_via_body_setter(
@@ -1868,7 +1895,7 @@ async def test_no_warn_for_consumed_payload_via_body_setter(
     # Setting body again should not trigger warning since previous payload is consumed
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always")
-        req.body = b"new data"
+        await req.update_body(b"new data")
 
     # Filter out any non-ResourceWarning warnings
     resource_warnings = [
@@ -1876,7 +1903,7 @@ async def test_no_warn_for_consumed_payload_via_body_setter(
     ]
     assert len(resource_warnings) == 0
 
-    await req.close()
+    await req._close()
 
 
 async def test_warn_if_unclosed_payload_via_update_body_from_data(
@@ -1890,7 +1917,7 @@ async def test_warn_if_unclosed_payload_via_update_body_from_data(
         io.BufferedReader(io.BytesIO(b"initial data")),
         encoding="utf-8",
     )
-    req.update_body_from_data(file_payload)
+    req._update_body_from_data(file_payload)
 
     # Create FormData for second update
     form = aiohttp.FormData()
@@ -1901,9 +1928,9 @@ async def test_warn_if_unclosed_payload_via_update_body_from_data(
         ResourceWarning,
         match="The previous request body contains unclosed resources",
     ):
-        req.update_body_from_data(form)
+        req._update_body_from_data(form)
 
-    await req.close()
+    await req._close()
 
 
 async def test_warn_via_update_with_file_payload(
@@ -1914,7 +1941,7 @@ async def test_warn_via_update_with_file_payload(
 
     # First create a file-like object that results in BufferedReaderPayload
     buffered1 = io.BufferedReader(io.BytesIO(b"file content 1"))
-    req.update_body_from_data(buffered1)
+    req._update_body_from_data(buffered1)
 
     # Second update should warn about the first payload
     buffered2 = io.BufferedReader(io.BytesIO(b"file content 2"))
@@ -1923,9 +1950,9 @@ async def test_warn_via_update_with_file_payload(
         ResourceWarning,
         match="The previous request body contains unclosed resources",
     ):
-        req.update_body_from_data(buffered2)
+        req._update_body_from_data(buffered2)
 
-    await req.close()
+    await req._close()
 
 
 async def test_no_warn_for_simple_data_via_update_body_from_data(
@@ -1937,7 +1964,7 @@ async def test_no_warn_for_simple_data_via_update_body_from_data(
     # Simple bytes data should not trigger warning
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always")
-        req.update_body_from_data(b"simple data")
+        req._update_body_from_data(b"simple data")
 
     # Filter out any non-ResourceWarning warnings
     resource_warnings = [
@@ -1945,7 +1972,7 @@ async def test_no_warn_for_simple_data_via_update_body_from_data(
     ]
     assert len(resource_warnings) == 0
 
-    await req.close()
+    await req._close()
 
 
 async def test_update_body_closes_previous_payload(
@@ -1970,7 +1997,7 @@ async def test_update_body_closes_previous_payload(
     # Verify new body is set (it's a BytesPayload now)
     assert isinstance(req.body, payload.BytesPayload)
 
-    await req.close()
+    await req._close()
 
 
 async def test_body_setter_closes_previous_payload(
@@ -1987,7 +2014,7 @@ async def test_body_setter_closes_previous_payload(
     req._body = mock_payload
 
     # Update body with new data using setter
-    req.body = b"new body data"
+    await req.update_body(b"new body data")
 
     # Verify the previous payload was closed using _close
     mock_payload._close.assert_called_once()
@@ -1995,7 +2022,7 @@ async def test_body_setter_closes_previous_payload(
     # Verify new body is set (it's a BytesPayload now)
     assert isinstance(req.body, payload.BytesPayload)
 
-    await req.close()
+    await req._close()
 
 
 async def test_update_body_with_different_types(
@@ -2016,7 +2043,7 @@ async def test_update_body_with_different_types(
     await req.update_body(None)
     assert req.body == b""  # type: ignore[comparison-overlap]  # empty body is represented as b""
 
-    await req.close()
+    await req._close()
 
 
 async def test_update_body_with_chunked_encoding(
@@ -2046,7 +2073,7 @@ async def test_update_body_with_chunked_encoding(
     assert req.headers["Transfer-Encoding"] == "chunked"
     assert "Content-Length" not in req.headers
 
-    await req.close()
+    await req._close()
 
 
 async def test_update_body_get_method_with_none_body(
@@ -2068,7 +2095,7 @@ async def test_update_body_get_method_with_none_body(
     assert "Transfer-Encoding" not in req.headers
     assert "Content-Length" not in req.headers
 
-    await req.close()
+    await req._close()
 
 
 async def test_update_body_updates_content_length(
@@ -2096,7 +2123,7 @@ async def test_update_body_updates_content_length(
     # For None body with POST method, Content-Length should be set to 0
     assert req.headers[hdrs.CONTENT_LENGTH] == "0"
 
-    await req.close()
+    await req._close()
 
 
 async def test_warn_stacklevel_points_to_user_code(
@@ -2116,7 +2143,7 @@ async def test_warn_stacklevel_points_to_user_code(
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always", ResourceWarning)
         # This line should be reported as the warning source
-        req.body = b"new data"
+        await req.update_body(b"new data")
 
     # Find the ResourceWarning
     resource_warnings = [
@@ -2134,7 +2161,7 @@ async def test_warn_stacklevel_points_to_user_code(
     # to client_reqrep.py (the library code)
     assert "client_reqrep.py" not in warning.filename
 
-    await req.close()
+    await req._close()
 
 
 async def test_warn_stacklevel_update_body_from_data(
@@ -2148,13 +2175,13 @@ async def test_warn_stacklevel_update_body_from_data(
         io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
-    req.update_body_from_data(file_payload)
+    req._update_body_from_data(file_payload)
 
     # Capture warnings with their details
     with warnings.catch_warnings(record=True) as warning_list:
         warnings.simplefilter("always", ResourceWarning)
         # This line should be reported as the warning source
-        req.update_body_from_data(b"new data")  # LINE TO BE REPORTED
+        req._update_body_from_data(b"new data")  # LINE TO BE REPORTED
 
     # Find the ResourceWarning
     resource_warnings = [
@@ -2168,7 +2195,7 @@ async def test_warn_stacklevel_update_body_from_data(
     assert warning.filename == __file__
     assert "client_reqrep.py" not in warning.filename
 
-    await req.close()
+    await req._close()
 
 
 async def test_expect100_with_body_becomes_none() -> None:
@@ -2187,7 +2214,7 @@ async def test_expect100_with_body_becomes_none() -> None:
     # where req._body is set to None after expect100 handling
     req._body = None
 
-    await req.write_bytes(mock_writer, mock_conn, None)
+    await req._write_bytes(mock_writer, mock_conn, None)
 
 
 @pytest.mark.parametrize(
@@ -2232,13 +2259,13 @@ def test_content_length_for_methods(
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
 def test_get_methods_classification(method: str) -> None:
     """Test that GET-like methods are correctly classified."""
-    assert method in ClientRequest.GET_METHODS
+    assert method in RawClientRequest.GET_METHODS
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
 def test_non_get_methods_classification(method: str) -> None:
     """Test that POST-like methods are not in GET_METHODS."""
-    assert method not in ClientRequest.GET_METHODS
+    assert method not in RawClientRequest.GET_METHODS
 
 
 async def test_content_length_with_string_data(loop: asyncio.AbstractEventLoop) -> None:
@@ -2247,7 +2274,7 @@ async def test_content_length_with_string_data(loop: asyncio.AbstractEventLoop) 
     req = ClientRequest("POST", URL("http://python.org/"), data=data, loop=loop)
     # String should be encoded to bytes, default encoding is utf-8
     assert req.headers[hdrs.CONTENT_LENGTH] == str(len(data.encode("utf-8")))
-    await req.close()
+    await req._close()
 
 
 async def test_content_length_with_async_iterable(
@@ -2262,7 +2289,7 @@ async def test_content_length_with_async_iterable(
     assert hdrs.CONTENT_LENGTH not in req.headers
     assert req.chunked
     assert req.headers[hdrs.TRANSFER_ENCODING] == "chunked"
-    await req.close()
+    await req._close()
 
 
 async def test_content_length_not_overridden(loop: asyncio.AbstractEventLoop) -> None:
@@ -2276,7 +2303,7 @@ async def test_content_length_not_overridden(loop: asyncio.AbstractEventLoop) ->
     )
     # Should keep the explicitly set value
     assert req.headers[hdrs.CONTENT_LENGTH] == "100"
-    await req.close()
+    await req._close()
 
 
 async def test_content_length_with_formdata(loop: asyncio.AbstractEventLoop) -> None:
@@ -2287,7 +2314,7 @@ async def test_content_length_with_formdata(loop: asyncio.AbstractEventLoop) -> 
     req = ClientRequest("POST", URL("http://python.org/"), data=form, loop=loop)
     # FormData with known size should set Content-Length
     assert hdrs.CONTENT_LENGTH in req.headers
-    await req.close()
+    await req._close()
 
 
 async def test_no_content_length_with_chunked(loop: asyncio.AbstractEventLoop) -> None:
@@ -2301,7 +2328,7 @@ async def test_no_content_length_with_chunked(loop: asyncio.AbstractEventLoop) -
     )
     assert hdrs.CONTENT_LENGTH not in req.headers
     assert req.headers[hdrs.TRANSFER_ENCODING] == "chunked"
-    await req.close()
+    await req._close()
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
@@ -2317,7 +2344,7 @@ async def test_update_body_none_sets_content_length_zero(
     await req.update_body(None)
     assert req.headers[hdrs.CONTENT_LENGTH] == "0"
     assert req._body is None
-    await req.close()
+    await req._close()
 
 
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
@@ -2333,4 +2360,4 @@ async def test_update_body_none_no_content_length_for_get_methods(
     await req.update_body(None)
     assert hdrs.CONTENT_LENGTH not in req.headers
     assert req._body is None
-    await req.close()
+    await req._close()
