@@ -1,6 +1,7 @@
 """codspeed benchmarks for client requests."""
 
 import asyncio
+import sys
 from http.cookies import BaseCookie
 from typing import Any, Callable, Union
 

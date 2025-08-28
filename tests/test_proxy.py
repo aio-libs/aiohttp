@@ -1,6 +1,7 @@
 import asyncio
 import socket
 import ssl
+import sys
 from typing import Callable, Unpack
 from unittest import mock
 
