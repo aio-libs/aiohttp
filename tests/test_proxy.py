@@ -2,7 +2,7 @@ import asyncio
 import socket
 import ssl
 import sys
-from typing import Callable, Unpack
+from typing import Callable
 from unittest import mock
 
 import pytest
