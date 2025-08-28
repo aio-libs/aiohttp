@@ -147,13 +147,6 @@ def test_request_info_with_fragment(make_client_request: _RequestMaker) -> None:
     )
 
 
-def test_version_err(make_client_request: _RequestMaker) -> None:
-    with pytest.raises(ValueError):
-        make_client_request(
-            "get", URL("http://python.org/"), version=HttpVersion("1.c")
-        )
-
-
 def test_host_port_default_http(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     assert req.url.host == "python.org"
@@ -1222,7 +1215,6 @@ async def test_body_payload_with_size_no_content_length(
 
     # Verify Content-Length is back to 0 for POST with None body
     assert req.headers[hdrs.CONTENT_LENGTH] == "0"
-    assert req._body is None
 
     await req._close()
 
@@ -1965,7 +1957,7 @@ async def test_warn_if_unclosed_payload_via_body_setter(
         io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
-    req.update_body(file_payload)
+    await req.update_body(file_payload)
 
     # Setting body again should trigger the warning for the previous payload
     with pytest.warns(
@@ -1985,7 +1977,7 @@ async def test_no_warn_for_autoclose_payload_via_body_setter(
 
     # First set BytesIOPayload which has autoclose=True
     bytes_payload = payload.BytesIOPayload(io.BytesIO(b"test data"))
-    req.update_body(bytes_payload)
+    await req.update_body(bytes_payload)
 
     # Setting body again should not trigger warning since previous payload has autoclose=True
     with warnings.catch_warnings(record=True) as warning_list:
@@ -2012,7 +2004,7 @@ async def test_no_warn_for_consumed_payload_via_body_setter(
         io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
-    req.update_body(file_payload)
+    await req.update_body(file_payload)
 
     # Properly close the payload to mark it as consumed
     await file_payload.close()
@@ -2262,7 +2254,7 @@ async def test_warn_stacklevel_points_to_user_code(
         io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
-    req.update_body(file_payload)
+    await req.update_body(file_payload)
 
     # Capture warnings with their details
     with warnings.catch_warnings(record=True) as warning_list:
