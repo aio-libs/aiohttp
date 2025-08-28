@@ -1179,7 +1179,7 @@ class ClientRequest(ClientRequestBase):
             _warn_if_unclosed_payload(self._body, stacklevel=_stacklevel)
 
         if body is None:
-            self._body = None
+            self._body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
             # Set Content-Length to 0 when body is None for methods that expect a body
             if (
                 self.method not in self.GET_METHODS
@@ -1413,14 +1413,7 @@ class ClientRequest(ClientRequestBase):
         protocol = conn.protocol
         assert protocol is not None
         try:
-            # This should be a rare case but the
-            # self._body can be set to None while
-            # the task is being started or we wait above
-            # for the 100-continue response.
-            # The more likely case is we have an empty
-            # payload, but 100-continue is still expected.
-            if self._body is not None:
-                await self._body.write_with_length(writer, content_length)
+            await self._body.write_with_length(writer, content_length)
         except OSError as underlying_exc:
             reraised_exc = underlying_exc
 

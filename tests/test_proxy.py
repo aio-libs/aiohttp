@@ -158,8 +158,8 @@ def test_proxy_headers(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_auth(
-    start_connection: mock.Mock,  # type: ignore[misc]
+def test_proxy_auth(  # type: ignore[misc]
+    start_connection: mock.Mock,
     make_client_request: _RequestMaker,
 ) -> None:
     msg = r"proxy_auth must be None or BasicAuth\(\) tuple"

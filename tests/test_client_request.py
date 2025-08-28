@@ -40,7 +40,7 @@ from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
 from aiohttp.hdrs import METH_DELETE
 from aiohttp.helpers import TimerNoop
-from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
+from aiohttp.http import HttpVersion, HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
 from aiohttp.typedefs import LooseCookies
 
@@ -1205,8 +1205,6 @@ async def test_body_payload_with_size_no_content_length(
         loop=loop,
     )
 
-    # Initially no body should be set
-    assert req._body is None
     # POST method with None body should have Content-Length: 0
     assert req.headers[hdrs.CONTENT_LENGTH] == "0"
 
@@ -1217,7 +1215,6 @@ async def test_body_payload_with_size_no_content_length(
     assert req.headers[hdrs.CONTENT_LENGTH] == str(len(data))
     assert req.body is bytes_payload
     assert req._body is bytes_payload  # Access _body which is the Payload
-    assert req._body is not None  # type: ignore[unreachable]
     assert req._body.size == len(data)
 
     # Set body back to None
@@ -1968,7 +1965,7 @@ async def test_warn_if_unclosed_payload_via_body_setter(
         io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
-    req.body = file_payload
+    req.update_body(file_payload)
 
     # Setting body again should trigger the warning for the previous payload
     with pytest.warns(
@@ -1988,7 +1985,7 @@ async def test_no_warn_for_autoclose_payload_via_body_setter(
 
     # First set BytesIOPayload which has autoclose=True
     bytes_payload = payload.BytesIOPayload(io.BytesIO(b"test data"))
-    req.body = bytes_payload
+    req.update_body(bytes_payload)
 
     # Setting body again should not trigger warning since previous payload has autoclose=True
     with warnings.catch_warnings(record=True) as warning_list:
@@ -2015,7 +2012,7 @@ async def test_no_warn_for_consumed_payload_via_body_setter(
         io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
-    req.body = file_payload
+    req.update_body(file_payload)
 
     # Properly close the payload to mark it as consumed
     await file_payload.close()
@@ -2265,7 +2262,7 @@ async def test_warn_stacklevel_points_to_user_code(
         io.BufferedReader(io.BytesIO(b"test data")),
         encoding="utf-8",
     )
-    req.body = file_payload
+    req.update_body(file_payload)
 
     # Capture warnings with their details
     with warnings.catch_warnings(record=True) as warning_list:
@@ -2326,10 +2323,10 @@ async def test_warn_stacklevel_update_body_from_data(
     await req._close()
 
 
-async def test_expect100_with_body_becomes_none(
+async def test_expect100_with_body_becomes_empty(
     make_client_request: _RequestMaker,
 ) -> None:
-    """Test that write_bytes handles body becoming None after expect100 handling."""
+    """Test that write_bytes handles body becoming empty after expect100 handling."""
     # Create a mock writer and connection
     mock_writer = mock.AsyncMock()
     mock_conn = mock.Mock()
@@ -2340,9 +2337,9 @@ async def test_expect100_with_body_becomes_none(
     )
     req._body = mock.Mock()  # Start with a body
 
-    # Now set body to None to simulate a race condition
+    # Now set body to empty payload to simulate a race condition
     # where req._body is set to None after expect100 handling
-    req._body = None
+    req._body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
 
     await req._write_bytes(mock_writer, mock_conn, None)
 
@@ -2493,7 +2490,6 @@ async def test_update_body_none_sets_content_length_zero(
     # Update body to None
     await req.update_body(None)
     assert req.headers[hdrs.CONTENT_LENGTH] == "0"
-    assert req._body is None
     await req._close()
 
 
@@ -2513,5 +2509,4 @@ async def test_update_body_none_no_content_length_for_get_methods(
     # Update body to None
     await req.update_body(None)
     assert hdrs.CONTENT_LENGTH not in req.headers
-    assert req._body is None
     await req._close()
