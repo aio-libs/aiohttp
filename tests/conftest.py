@@ -14,7 +14,6 @@ from typing import (
     Any,
     AsyncIterator,
     Callable,
-    Generator,
     Iterable,
     Iterator,
     Optional,
@@ -348,7 +347,7 @@ def ws_key(key: bytes) -> str:
 
 
 @pytest.fixture
-def enable_cleanup_closed() -> Generator[None, None, None]:
+def enable_cleanup_closed() -> Iterator[None]:
     """Fixture to override the NEEDS_CLEANUP_CLOSED flag.
 
     On Python 3.12.7+ and 3.13.1+ enable_cleanup_closed is not needed,
@@ -359,7 +358,7 @@ def enable_cleanup_closed() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def unused_port_socket() -> Generator[socket.socket, None, None]:
+def unused_port_socket() -> Iterator[socket.socket]:
     """Return a socket that is unused on the current host.
 
     Unlike aiohttp_used_port, the socket is yielded so there is no
@@ -376,7 +375,7 @@ def unused_port_socket() -> Generator[socket.socket, None, None]:
 @pytest.fixture(params=["zlib", "zlib_ng.zlib_ng", "isal.isal_zlib"])
 def parametrize_zlib_backend(
     request: pytest.FixtureRequest,
-) -> Generator[None, None, None]:
+) -> Iterator[None]:
     original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
     backend = pytest.importorskip(request.param)
     set_zlib_backend(backend)
