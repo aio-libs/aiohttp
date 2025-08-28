@@ -16,7 +16,6 @@ from typing import (
     Optional,
     Protocol,
     Union,
-    Unpack,
 )
 from unittest import mock
 
@@ -44,7 +43,12 @@ from aiohttp.http import HttpVersion, HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
 from aiohttp.typedefs import LooseCookies
 
-_RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+if sys.version_info >= (3, 11):
+    from typing import Unpack
+
+    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+else:
+    _RequestMaker = Any
 
 
 class WriterMock(mock.AsyncMock):

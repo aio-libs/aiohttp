@@ -25,7 +25,6 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    Unpack,
 )
 from unittest import mock
 
@@ -61,7 +60,12 @@ from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import unused_port
 from aiohttp.tracing import Trace
 
-_RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+if sys.version_info >= (3, 11):
+    from typing import Unpack
+
+    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+else:
+    _RequestMaker = Any
 
 
 @pytest.fixture

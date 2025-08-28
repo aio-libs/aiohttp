@@ -1,3 +1,5 @@
+from __future__ import annotations  # TODO(PY311): Remove
+
 import asyncio
 import base64
 import os
@@ -18,7 +20,6 @@ from typing import (
     Optional,
     TypedDict,
     Union,
-    Unpack,
 )
 from unittest import mock
 from uuid import uuid4
@@ -68,6 +69,11 @@ try:
         import uvloop
 except ImportError:
     uvloop = None  # type: ignore[assignment]
+
+if sys.version_info >= (3, 11):
+    from typing import Unpack
+else:
+    from typing import Any as Unpack
 
 
 pytest_plugins = ("aiohttp.pytest_plugin", "pytester")

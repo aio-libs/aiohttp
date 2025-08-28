@@ -19,7 +19,12 @@ from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
 from aiohttp.http import HttpVersion
 
-_RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+if sys.version_info >= (3, 11):
+    from typing import Unpack
+
+    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+else:
+    _RequestMaker = Any
 
 
 @mock.patch("aiohttp.connector.ClientRequest")

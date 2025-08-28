@@ -2,7 +2,7 @@
 
 import asyncio
 from http.cookies import BaseCookie
-from typing import Any, Callable, Union, Unpack
+from typing import Any, Callable, Union
 
 from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
@@ -13,6 +13,13 @@ from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
 from aiohttp.tracing import Trace
+
+if sys.version_info >= (3, 11):
+    from typing import Unpack
+
+    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+else:
+    _RequestMaker = Any
 
 
 def test_client_request_update_cookies(
