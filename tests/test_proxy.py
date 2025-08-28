@@ -8,7 +8,12 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse, Fingerprint
+from aiohttp.client_reqrep import (
+    ClientRequest,
+    ClientRequestArgs,
+    ClientResponse,
+    Fingerprint,
+)
 from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
 
@@ -151,8 +156,10 @@ def test_proxy_headers(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_auth(start_connection: mock.Mock,  # type: ignore[misc]
-    make_client_request: _RequestMaker) -> None:
+def test_proxy_auth(
+    start_connection: mock.Mock,  # type: ignore[misc]
+    make_client_request: _RequestMaker,
+) -> None:
     msg = r"proxy_auth must be None or BasicAuth\(\) tuple"
     with pytest.raises(ValueError, match=msg):
         make_client_request(
@@ -255,7 +262,9 @@ def test_proxy_server_hostname_default(  # type: ignore[misc]
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request(
+        "GET", URL("http://proxy.example.com"), loop=event_loop
+    )
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -428,7 +437,9 @@ def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     async def make_conn() -> aiohttp.TCPConnector:
         return aiohttp.TCPConnector(enable_cleanup_closed=cleanup)
 
-    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request(
+        "GET", URL("http://proxy.example.com"), loop=event_loop
+    )
     ClientRequestMock.return_value = proxy_req
 
     class TransportMock(asyncio.Transport):
@@ -531,7 +542,9 @@ def test_https_connect(  # type: ignore[misc]
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request(
+        "GET", URL("http://proxy.example.com"), loop=event_loop
+    )
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -611,7 +624,9 @@ def test_https_connect_certificate_error(  # type: ignore[misc]
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request(
+        "GET", URL("http://proxy.example.com"), loop=event_loop
+    )
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -686,7 +701,9 @@ def test_https_connect_ssl_error(  # type: ignore[misc]
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request(
+        "GET", URL("http://proxy.example.com"), loop=event_loop
+    )
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -761,7 +778,9 @@ def test_https_connect_http_proxy_error(  # type: ignore[misc]
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request(
+        "GET", URL("http://proxy.example.com"), loop=event_loop
+    )
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -837,7 +856,9 @@ def test_https_connect_resp_start_error(  # type: ignore[misc]
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request(
+        "GET", URL("http://proxy.example.com"), loop=event_loop
+    )
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -907,7 +928,9 @@ def test_request_port(  # type: ignore[misc]
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request(
+        "GET", URL("http://proxy.example.com"), loop=event_loop
+    )
     ClientRequestMock.return_value = proxy_req
 
     async def make_conn() -> aiohttp.TCPConnector:
@@ -942,8 +965,9 @@ def test_request_port(  # type: ignore[misc]
     event_loop.run_until_complete(connector.close())
 
 
-def test_proxy_auth_property(event_loop: asyncio.AbstractEventLoop, 
-    make_client_request: _RequestMaker) -> None:
+def test_proxy_auth_property(
+    event_loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+) -> None:
     req = make_client_request(
         "GET",
         URL("http://localhost:1234/path"),
@@ -954,8 +978,10 @@ def test_proxy_auth_property(event_loop: asyncio.AbstractEventLoop,
     assert ("user", "pass", "latin1") == req.proxy_auth
 
 
-def test_proxy_auth_property_default(event_loop: asyncio.AbstractEventLoop, 
-    make_client_request: _RequestMaker,) -> None:
+def test_proxy_auth_property_default(
+    event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     req = make_client_request(
         "GET",
         URL("http://localhost:1234/path"),
@@ -977,7 +1003,9 @@ def test_https_connect_pass_ssl_context(  # type: ignore[misc]
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request(
+        "GET", URL("http://proxy.example.com"), loop=event_loop
+    )
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(

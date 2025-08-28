@@ -8,7 +8,18 @@ from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncIterator, Callable, Generator, Iterable, Iterator, Optional, TypedDict, Union, Unpack
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Generator,
+    Iterable,
+    Iterator,
+    Optional,
+    TypedDict,
+    Union,
+    Unpack,
+)
 from unittest import mock
 from uuid import uuid4
 
@@ -26,7 +37,12 @@ except ImportError:  # For downstreams only  # pragma: no cover
 from aiohttp import payload
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse, Fingerprint
+from aiohttp.client_reqrep import (
+    ClientRequest,
+    ClientRequestArgs,
+    ClientResponse,
+    Fingerprint,
+)
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.helpers import BaseTimerContext, BasicAuth, TimerNoop
 from aiohttp.http import WS_KEY, HttpVersion, HttpVersion11
@@ -377,11 +393,15 @@ async def cleanup_payload_pending_file_closes(
 
 
 @pytest.fixture
-async def make_client_request() -> Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]:
+async def make_client_request() -> (
+    Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+):
     """Fixture to help creating test ClientRequest objects with defaults."""
     request = session = None
 
-    def maker(method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]) -> ClientRequest:
+    def maker(
+        method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+    ) -> ClientRequest:
         nonlocal request, session
         session = ClientSession()
         default_args: ClientRequestArgs = {

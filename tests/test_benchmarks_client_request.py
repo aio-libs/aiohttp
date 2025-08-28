@@ -16,7 +16,8 @@ from aiohttp.tracing import Trace
 
 
 def test_client_request_update_cookies(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture,
+    loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
     make_client_request: Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest],
 ) -> None:
     url = URL("http://python.org")
@@ -32,7 +33,8 @@ def test_client_request_update_cookies(
 
 
 def test_create_client_request_with_cookies(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture,
+    loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
 ) -> None:
     url = URL("http://python.org")
     cookie_jar = CookieJar()
@@ -73,7 +75,8 @@ def test_create_client_request_with_cookies(
 
 
 def test_create_client_request_with_headers(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture,
+    loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
 ) -> None:
     url = URL("http://python.org")
     timer = TimerNoop()
@@ -111,7 +114,8 @@ def test_create_client_request_with_headers(
 
 
 def test_send_client_request_one_hundred(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture,
+    loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
     make_client_request: Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest],
 ) -> None:
     url = URL("http://python.org")
