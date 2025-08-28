@@ -2,50 +2,25 @@
 
 import asyncio
 from http.cookies import BaseCookie
-from typing import Any, Union
+from typing import Any, Callable, Union, Unpack
 
 from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
-from aiohttp.client_reqrep import ClientRequest as RawClientRequest, ClientResponse
+from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
 from aiohttp.tracing import Trace
 
 
-def ClientRequest(method: str, url: URL, **kwargs: Any) -> RawClientRequest:
-    default_args = {
-        "params": {},
-        "headers": CIMultiDict[str](),
-        "skip_auto_headers": None,
-        "data": None,
-        "cookies": BaseCookie[str](),
-        "auth": None,
-        "version": HttpVersion11,
-        "compress": False,
-        "chunked": None,
-        "expect100": False,
-        "response_class": ClientResponse,
-        "proxy": None,
-        "proxy_auth": None,
-        "timer": TimerNoop(),
-        "session": None,  # Shouldn't be None, but we don't have an async context.
-        "ssl": True,
-        "proxy_headers": None,
-        "traces": [],
-        "trust_env": False,
-        "server_hostname": None,
-    }
-    return RawClientRequest(method, url, **(default_args | kwargs))
-
-
 def test_client_request_update_cookies(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture,
+    make_client_request: Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest],
 ) -> None:
     url = URL("http://python.org")
-    req = ClientRequest("get", url, loop=loop)
+    req = make_client_request("get", url, loop=loop)
     cookie_jar = CookieJar()
     cookie_jar.update_cookies({"string": "Another string"})
     cookies = cookie_jar.filter_cookies(url)
@@ -57,7 +32,7 @@ def test_client_request_update_cookies(
 
 
 def test_create_client_request_with_cookies(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture,
 ) -> None:
     url = URL("http://python.org")
     cookie_jar = CookieJar()
@@ -70,7 +45,7 @@ def test_create_client_request_with_cookies(
 
     @benchmark
     def _run() -> None:
-        RawClientRequest(
+        ClientRequest(
             method="get",
             url=url,
             loop=loop,
@@ -98,7 +73,7 @@ def test_create_client_request_with_cookies(
 
 
 def test_create_client_request_with_headers(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture,
 ) -> None:
     url = URL("http://python.org")
     timer = TimerNoop()
@@ -108,7 +83,7 @@ def test_create_client_request_with_headers(
 
     @benchmark
     def _run() -> None:
-        RawClientRequest(
+        ClientRequest(
             method="get",
             url=url,
             loop=loop,
@@ -136,10 +111,11 @@ def test_create_client_request_with_headers(
 
 
 def test_send_client_request_one_hundred(
-    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture,
+    make_client_request: Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest],
 ) -> None:
     url = URL("http://python.org")
-    req = ClientRequest("get", url, loop=loop)
+    req = make_client_request("get", url, loop=loop)
 
     class MockTransport(asyncio.Transport):
         """Mock transport for testing that do no real I/O."""

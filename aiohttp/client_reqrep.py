@@ -21,6 +21,7 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    TypedDict,
     Union,
 )
 
@@ -964,6 +965,30 @@ class ClientRequestBase:
     ) -> None:
         # Base class never has a body, this will never be run.
         assert False
+
+
+class ClientRequestArgs(TypedDict, total=False):
+    params: Query
+    headers: CIMultiDict[str]
+    skip_auto_headers: Optional[Iterable[str]]
+    data: Any
+    cookies: BaseCookie[str]
+    auth: Optional[BasicAuth]
+    version: HttpVersion
+    compress: Union[str, bool]
+    chunked: Optional[bool]
+    expect100: bool
+    loop: asyncio.AbstractEventLoop
+    response_class: type[ClientResponse]
+    proxy: Optional[URL]
+    proxy_auth: Optional[BasicAuth]
+    timer: BaseTimerContext
+    session: "ClientSession"
+    ssl: Union[SSLContext, bool, Fingerprint]
+    proxy_headers: Optional[CIMultiDict[str]]
+    traces: list["Trace"]
+    trust_env: bool
+    server_hostname: Optional[str]
 
 
 class ClientRequest(ClientRequestBase):

@@ -1,15 +1,18 @@
 import asyncio
 import socket
 import ssl
+from typing import Callable, Unpack
 from unittest import mock
 
 import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp.client_reqrep import ClientRequest, ClientResponse, Fingerprint
+from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse, Fingerprint
 from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
+
+_RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
 
 
 @mock.patch("aiohttp.connector.ClientRequest")
@@ -22,8 +25,9 @@ def test_connect(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "GET",
         URL("http://www.python.org"),
         proxy=URL("http://proxy.example.com"),
@@ -86,12 +90,13 @@ def test_proxy_headers(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "GET",
         URL("http://www.python.org"),
         proxy=URL("http://proxy.example.com"),
-        proxy_headers={"Foo": "Bar"},
+        proxy_headers=CIMultiDict({"Foo": "Bar"}),
         loop=event_loop,
     )
     assert str(req.proxy) == "http://proxy.example.com"
@@ -146,10 +151,11 @@ def test_proxy_headers(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_auth(start_connection: mock.Mock) -> None:  # type: ignore[misc]
+def test_proxy_auth(start_connection: mock.Mock,  # type: ignore[misc]
+    make_client_request: _RequestMaker) -> None:
     msg = r"proxy_auth must be None or BasicAuth\(\) tuple"
     with pytest.raises(ValueError, match=msg):
-        ClientRequest(
+        make_client_request(
             "GET",
             URL("http://python.org"),
             proxy=URL("http://proxy.example.com"),
@@ -166,6 +172,7 @@ def test_proxy_auth(start_connection: mock.Mock) -> None:  # type: ignore[misc]
 def test_proxy_dns_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     async def make_conn() -> aiohttp.TCPConnector:
         return aiohttp.TCPConnector()
@@ -177,7 +184,7 @@ def test_proxy_dns_error(  # type: ignore[misc]
         autospec=True,
         side_effect=OSError("dont take it serious"),
     ):
-        req = ClientRequest(
+        req = make_client_request(
             "GET",
             URL("http://www.python.org"),
             proxy=URL("http://proxy.example.com"),
@@ -202,6 +209,7 @@ def test_proxy_dns_error(  # type: ignore[misc]
 def test_proxy_connection_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     async def make_conn() -> aiohttp.TCPConnector:
         return aiohttp.TCPConnector()
@@ -222,7 +230,7 @@ def test_proxy_connection_error(  # type: ignore[misc]
             autospec=True,
             side_effect=OSError("dont take it serious"),
         ):
-            req = ClientRequest(
+            req = make_client_request(
                 "GET",
                 URL("http://www.python.org"),
                 proxy=URL("http://proxy.example.com"),
@@ -245,8 +253,9 @@ def test_proxy_server_hostname_default(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -292,7 +301,7 @@ def test_proxy_server_hostname_default(  # type: ignore[misc]
                         autospec=True,
                         return_value=mock.Mock(),
                     ) as tls_m:
-                        req = ClientRequest(
+                        req = make_client_request(
                             "GET",
                             URL("https://www.python.org"),
                             proxy=URL("http://proxy.example.com"),
@@ -309,9 +318,9 @@ def test_proxy_server_hostname_default(  # type: ignore[misc]
                             == "www.python.org"
                         )
 
-                        event_loop.run_until_complete(proxy_req.close())
+                        event_loop.run_until_complete(proxy_req._close())
                         proxy_resp.close()
-                        event_loop.run_until_complete(req.close())
+                        event_loop.run_until_complete(req._close())
             event_loop.run_until_complete(connector.close())
 
 
@@ -325,8 +334,9 @@ def test_proxy_server_hostname_override(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest(
+    proxy_req = make_client_request(
         "GET",
         URL("http://proxy.example.com"),
         loop=event_loop,
@@ -376,7 +386,7 @@ def test_proxy_server_hostname_override(  # type: ignore[misc]
                         autospec=True,
                         return_value=mock.Mock(),
                     ) as tls_m:
-                        req = ClientRequest(
+                        req = make_client_request(
                             "GET",
                             URL("https://www.python.org"),
                             proxy=URL("http://proxy.example.com"),
@@ -394,9 +404,9 @@ def test_proxy_server_hostname_override(  # type: ignore[misc]
                             == "server-hostname.example.com"
                         )
 
-                        event_loop.run_until_complete(proxy_req.close())
+                        event_loop.run_until_complete(proxy_req._close())
                         proxy_resp.close()
-                        event_loop.run_until_complete(req.close())
+                        event_loop.run_until_complete(req._close())
             event_loop.run_until_complete(connector.close())
 
 
@@ -413,11 +423,12 @@ def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     cleanup: bool,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     async def make_conn() -> aiohttp.TCPConnector:
         return aiohttp.TCPConnector(enable_cleanup_closed=cleanup)
 
-    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     class TransportMock(asyncio.Transport):
@@ -496,7 +507,7 @@ def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
                 return_value=TransportMock(),
             ),
         ):
-            req = ClientRequest(
+            req = make_client_request(
                 "GET",
                 URL("https://www.python.org"),
                 proxy=URL("http://proxy.example.com"),
@@ -518,8 +529,9 @@ def test_https_connect(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -565,7 +577,7 @@ def test_https_connect(  # type: ignore[misc]
                         autospec=True,
                         return_value=mock.Mock(),
                     ):
-                        req = ClientRequest(
+                        req = make_client_request(
                             "GET",
                             URL("https://www.python.org"),
                             proxy=URL("http://proxy.example.com"),
@@ -581,9 +593,9 @@ def test_https_connect(  # type: ignore[misc]
                         assert proxy_req.method == "CONNECT"
                         assert proxy_req.url == URL("https://www.python.org")
 
-                        event_loop.run_until_complete(proxy_req.close())
+                        event_loop.run_until_complete(proxy_req._close())
                         proxy_resp.close()
-                        event_loop.run_until_complete(req.close())
+                        event_loop.run_until_complete(req._close())
             event_loop.run_until_complete(connector.close())
 
 
@@ -597,8 +609,9 @@ def test_https_connect_certificate_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -646,7 +659,7 @@ def test_https_connect_certificate_error(  # type: ignore[misc]
                         autospec=True,
                         side_effect=ssl.CertificateError,
                     ):
-                        req = ClientRequest(
+                        req = make_client_request(
                             "GET",
                             URL("https://www.python.org"),
                             proxy=URL("http://proxy.example.com"),
@@ -671,8 +684,9 @@ def test_https_connect_ssl_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -720,7 +734,7 @@ def test_https_connect_ssl_error(  # type: ignore[misc]
                         autospec=True,
                         side_effect=ssl.SSLError,
                     ):
-                        req = ClientRequest(
+                        req = make_client_request(
                             "GET",
                             URL("https://www.python.org"),
                             proxy=URL("http://proxy.example.com"),
@@ -745,8 +759,9 @@ def test_https_connect_http_proxy_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -789,7 +804,7 @@ def test_https_connect_http_proxy_error(  # type: ignore[misc]
                     autospec=True,
                     return_value=(tr, proto),
                 ):
-                    req = ClientRequest(
+                    req = make_client_request(
                         "GET",
                         URL("https://www.python.org"),
                         proxy=URL("http://proxy.example.com"),
@@ -804,9 +819,9 @@ def test_https_connect_http_proxy_error(  # type: ignore[misc]
                             )
                         )
 
-                    event_loop.run_until_complete(proxy_req.close())
+                    event_loop.run_until_complete(proxy_req._close())
                     proxy_resp.close()
-                    event_loop.run_until_complete(req.close())
+                    event_loop.run_until_complete(req._close())
             event_loop.run_until_complete(connector.close())
 
 
@@ -820,8 +835,9 @@ def test_https_connect_resp_start_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -864,7 +880,7 @@ def test_https_connect_resp_start_error(  # type: ignore[misc]
                     autospec=True,
                     return_value=(tr, proto),
                 ):
-                    req = ClientRequest(
+                    req = make_client_request(
                         "GET",
                         URL("https://www.python.org"),
                         proxy=URL("http://proxy.example.com"),
@@ -889,8 +905,9 @@ def test_request_port(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     async def make_conn() -> aiohttp.TCPConnector:
@@ -912,7 +929,7 @@ def test_request_port(  # type: ignore[misc]
         with mock.patch.object(
             event_loop, "create_connection", autospec=True, return_value=(tr, proto)
         ):
-            req = ClientRequest(
+            req = make_client_request(
                 "GET",
                 URL("http://localhost:1234/path"),
                 proxy=URL("http://proxy.example.com"),
@@ -925,8 +942,9 @@ def test_request_port(  # type: ignore[misc]
     event_loop.run_until_complete(connector.close())
 
 
-def test_proxy_auth_property(event_loop: asyncio.AbstractEventLoop) -> None:
-    req = aiohttp.ClientRequest(
+def test_proxy_auth_property(event_loop: asyncio.AbstractEventLoop, 
+    make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
         "GET",
         URL("http://localhost:1234/path"),
         proxy=URL("http://proxy.example.com"),
@@ -936,8 +954,9 @@ def test_proxy_auth_property(event_loop: asyncio.AbstractEventLoop) -> None:
     assert ("user", "pass", "latin1") == req.proxy_auth
 
 
-def test_proxy_auth_property_default(event_loop: asyncio.AbstractEventLoop) -> None:
-    req = aiohttp.ClientRequest(
+def test_proxy_auth_property_default(event_loop: asyncio.AbstractEventLoop, 
+    make_client_request: _RequestMaker,) -> None:
+    req = make_client_request(
         "GET",
         URL("http://localhost:1234/path"),
         proxy=URL("http://proxy.example.com"),
@@ -956,8 +975,9 @@ def test_https_connect_pass_ssl_context(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest("GET", URL("http://proxy.example.com"), loop=event_loop)
+    proxy_req = make_client_request("GET", URL("http://proxy.example.com"), loop=event_loop)
     ClientRequestMock.return_value = proxy_req
 
     proxy_resp = ClientResponse(
@@ -1003,7 +1023,7 @@ def test_https_connect_pass_ssl_context(  # type: ignore[misc]
                         autospec=True,
                         return_value=mock.Mock(),
                     ) as tls_m:
-                        req = ClientRequest(
+                        req = make_client_request(
                             "GET",
                             URL("https://www.python.org"),
                             proxy=URL("http://proxy.example.com"),
@@ -1028,9 +1048,9 @@ def test_https_connect_pass_ssl_context(  # type: ignore[misc]
                         assert proxy_req.method == "CONNECT"
                         assert proxy_req.url == URL("https://www.python.org")
 
-                        event_loop.run_until_complete(proxy_req.close())
+                        event_loop.run_until_complete(proxy_req._close())
                         proxy_resp.close()
-                        event_loop.run_until_complete(req.close())
+                        event_loop.run_until_complete(req._close())
             event_loop.run_until_complete(connector.close())
 
 
@@ -1044,8 +1064,9 @@ def test_https_auth(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
-    proxy_req = ClientRequest(
+    proxy_req = make_client_request(
         "GET",
         URL("http://proxy.example.com"),
         auth=aiohttp.helpers.BasicAuth("user", "pass"),
@@ -1099,7 +1120,7 @@ def test_https_auth(  # type: ignore[misc]
                         assert "AUTHORIZATION" in proxy_req.headers
                         assert "PROXY-AUTHORIZATION" not in proxy_req.headers
 
-                        req = ClientRequest(
+                        req = make_client_request(
                             "GET",
                             URL("https://www.python.org"),
                             proxy=URL("http://proxy.example.com"),
@@ -1123,7 +1144,7 @@ def test_https_auth(  # type: ignore[misc]
                             "proxy.example.com", 80, traces=mock.ANY
                         )
 
-                        event_loop.run_until_complete(proxy_req.close())
+                        event_loop.run_until_complete(proxy_req._close())
                         proxy_resp.close()
-                        event_loop.run_until_complete(req.close())
+                        event_loop.run_until_complete(req._close())
             event_loop.run_until_complete(connector.close())

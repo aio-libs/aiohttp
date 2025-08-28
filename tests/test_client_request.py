@@ -16,6 +16,7 @@ from typing import (
     Optional,
     Protocol,
     Union,
+    Unpack,
 )
 from unittest import mock
 
@@ -29,7 +30,8 @@ from aiohttp.abc import AbstractStreamWriter
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.client_reqrep import (
-    ClientRequest as RawClientRequest,
+    ClientRequest,
+    ClientRequestArgs,
     ClientResponse,
     Fingerprint,
     _gen_default_accept_encoding,
@@ -42,35 +44,7 @@ from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
 from aiohttp.typedefs import LooseCookies
 
-
-def ClientRequest(method: str, url: URL, **kwargs: Any) -> RawClientRequest:
-    default_args = {
-        "params": {},
-        "headers": CIMultiDict[str](),
-        "skip_auto_headers": None,
-        "data": None,
-        "cookies": BaseCookie[str](),
-        "auth": None,
-        "version": HttpVersion11,
-        "compress": False,
-        "chunked": None,
-        "expect100": False,
-        "response_class": ClientResponse,
-        "proxy": None,
-        "proxy_auth": None,
-        "timer": TimerNoop(),
-        "session": None,  # Shouldn't be None, but we don't have an async context.
-        "ssl": True,
-        "proxy_headers": None,
-        "traces": [],
-        "trust_env": False,
-        "server_hostname": None,
-    }
-    return RawClientRequest(method, url, **(default_args | kwargs))
-
-
-class _RequestMaker(Protocol):
-    def __call__(self, method: str, url: str, **kwargs: Any) -> RawClientRequest: ...
+_RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
 
 
 class WriterMock(mock.AsyncMock):
@@ -82,22 +56,8 @@ class WriterMock(mock.AsyncMock):
 
 
 ALL_METHODS = frozenset(
-    (*RawClientRequest.GET_METHODS, *RawClientRequest.POST_METHODS, METH_DELETE)
+    (*ClientRequest.GET_METHODS, *ClientRequest.POST_METHODS, METH_DELETE)
 )
-
-
-@pytest.fixture
-def make_request(loop: asyncio.AbstractEventLoop) -> Iterator[_RequestMaker]:
-    request = None
-
-    def maker(method: str, url: str, **kwargs: Any) -> RawClientRequest:
-        nonlocal request
-        request = ClientRequest(method, URL(url), loop=loop, **kwargs)
-        return request
-
-    yield maker
-    if request is not None:
-        loop.run_until_complete(request._close())
 
 
 @pytest.fixture
@@ -139,45 +99,45 @@ def conn(transport: asyncio.Transport, protocol: BaseProtocol) -> Connection:
     return mock.Mock(transport=transport, protocol=protocol)
 
 
-def test_method1(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/")
+def test_method1(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"))
     assert req.method == "GET"
 
 
-def test_method2(make_request: _RequestMaker) -> None:
-    req = make_request("head", "http://python.org/")
+def test_method2(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("head", URL("http://python.org/"))
     assert req.method == "HEAD"
 
 
-def test_method3(make_request: _RequestMaker) -> None:
-    req = make_request("HEAD", "http://python.org/")
+def test_method3(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("HEAD", URL("http://python.org/"))
     assert req.method == "HEAD"
 
 
-def test_method_invalid(make_request: _RequestMaker) -> None:
+def test_method_invalid(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError, match="Method cannot contain non-token characters"):
-        make_request("METHOD WITH\nWHITESPACES", "http://python.org/")
+        make_client_request("METHOD WITH\nWHITESPACES", URL("http://python.org/"))
 
 
-def test_version_1_0(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/", version="1.0")
+def test_version_1_0(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"), version=HttpVersion10)
     assert req.version == (1, 0)
 
 
-def test_version_default(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/")
+def test_version_default(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"))
     assert req.version == (1, 1)
 
 
-def test_request_info(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/")
+def test_request_info(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"))
     url = URL("http://python.org/")
     h = CIMultiDictProxy(req.headers)
     assert req._request_info == aiohttp.RequestInfo(url, "GET", h, url)
 
 
-def test_request_info_with_fragment(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/#urlfragment")
+def test_request_info_with_fragment(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/#urlfragment"))
     h = CIMultiDictProxy(req.headers)
     assert req._request_info == aiohttp.RequestInfo(
         URL("http://python.org/"),
@@ -187,206 +147,206 @@ def test_request_info_with_fragment(make_request: _RequestMaker) -> None:
     )
 
 
-def test_version_err(make_request: _RequestMaker) -> None:
+def test_version_err(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError):
-        make_request("get", "http://python.org/", version="1.c")
+        make_client_request("get", URL("http://python.org/"), version=HttpVersion("1.c"))
 
 
-def test_host_port_default_http(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/")
+def test_host_port_default_http(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"))
     assert req.url.host == "python.org"
     assert req.url.port == 80
     assert not req.is_ssl()
 
 
-def test_host_port_default_https(make_request: _RequestMaker) -> None:
-    req = make_request("get", "https://python.org/")
+def test_host_port_default_https(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("https://python.org/"))
     assert req.url.host == "python.org"
     assert req.url.port == 443
     assert req.is_ssl()
 
 
-def test_host_port_nondefault_http(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org:960/")
+def test_host_port_nondefault_http(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org:960/"))
     assert req.url.host == "python.org"
     assert req.url.port == 960
     assert not req.is_ssl()
 
 
-def test_host_port_nondefault_https(make_request: _RequestMaker) -> None:
-    req = make_request("get", "https://python.org:960/")
+def test_host_port_nondefault_https(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("https://python.org:960/"))
     assert req.url.host == "python.org"
     assert req.url.port == 960
     assert req.is_ssl()
 
 
-def test_host_port_default_ws(make_request: _RequestMaker) -> None:
-    req = make_request("get", "ws://python.org/")
+def test_host_port_default_ws(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("ws://python.org/"))
     assert req.url.host == "python.org"
     assert req.url.port == 80
     assert not req.is_ssl()
 
 
-def test_host_port_default_wss(make_request: _RequestMaker) -> None:
-    req = make_request("get", "wss://python.org/")
+def test_host_port_default_wss(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("wss://python.org/"))
     assert req.url.host == "python.org"
     assert req.url.port == 443
     assert req.is_ssl()
 
 
-def test_host_port_nondefault_ws(make_request: _RequestMaker) -> None:
-    req = make_request("get", "ws://python.org:960/")
+def test_host_port_nondefault_ws(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("ws://python.org:960/"))
     assert req.url.host == "python.org"
     assert req.url.port == 960
     assert not req.is_ssl()
 
 
-def test_host_port_nondefault_wss(make_request: _RequestMaker) -> None:
-    req = make_request("get", "wss://python.org:960/")
+def test_host_port_nondefault_wss(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("wss://python.org:960/"))
     assert req.url.host == "python.org"
     assert req.url.port == 960
     assert req.is_ssl()
 
 
-def test_host_port_none_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "unix://localhost/path")
+def test_host_port_none_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("unix://localhost/path"))
     assert req.headers[hdrs.HOST] == "localhost"
 
 
-def test_host_port_err(make_request: _RequestMaker) -> None:
+def test_host_port_err(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError):
-        make_request("get", "http://python.org:123e/")
+        make_client_request("get", URL("http://python.org:123e/"))
 
 
-def test_hostname_err(make_request: _RequestMaker) -> None:
+def test_hostname_err(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError):
-        make_request("get", "http://:8080/")
+        make_client_request("get", URL("http://:8080/"))
 
 
-def test_host_header_host_first(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/")
+def test_host_header_host_first(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"))
     assert list(req.headers)[0] == hdrs.HOST
 
 
-def test_host_header_host_without_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/")
+def test_host_header_host_without_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"))
     assert req.headers[hdrs.HOST] == "python.org"
 
 
-def test_host_header_host_with_default_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org:80/")
+def test_host_header_host_with_default_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org:80/"))
     assert req.headers[hdrs.HOST] == "python.org"
 
 
-def test_host_header_host_with_nondefault_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org:99/")
+def test_host_header_host_with_nondefault_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org:99/"))
     assert req.headers["HOST"] == "python.org:99"
 
 
-def test_host_header_host_idna_encode(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://xn--9caa.com")
+def test_host_header_host_idna_encode(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://xn--9caa.com"))
     assert req.headers["HOST"] == "xn--9caa.com"
 
 
-def test_host_header_host_unicode(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://éé.com")
+def test_host_header_host_unicode(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://éé.com"))
     assert req.headers["HOST"] == "xn--9caa.com"
 
 
-def test_host_header_explicit_host(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/", headers={"host": "example.com"})
+def test_host_header_explicit_host(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"), headers=CIMultiDict({"host": "example.com"}))
     assert req.headers["HOST"] == "example.com"
 
 
-def test_host_header_explicit_host_with_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/", headers={"host": "example.com:99"})
+def test_host_header_explicit_host_with_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"), headers=CIMultiDict({"host": "example.com:99"}))
     assert req.headers["HOST"] == "example.com:99"
 
 
-def test_host_header_ipv4(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://127.0.0.2")
+def test_host_header_ipv4(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://127.0.0.2"))
     assert req.headers["HOST"] == "127.0.0.2"
 
 
-def test_host_header_ipv6(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://[::2]")
+def test_host_header_ipv6(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://[::2]"))
     assert req.headers["HOST"] == "[::2]"
 
 
-def test_host_header_ipv4_with_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://127.0.0.2:99")
+def test_host_header_ipv4_with_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://127.0.0.2:99"))
     assert req.headers["HOST"] == "127.0.0.2:99"
 
 
-def test_host_header_ipv6_with_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://[::2]:99")
+def test_host_header_ipv6_with_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://[::2]:99"))
     assert req.headers["HOST"] == "[::2]:99"
 
 
 @pytest.mark.parametrize(
     ("url", "headers", "expected"),
     (
-        pytest.param("http://localhost.", None, "localhost", id="dot only at the end"),
-        pytest.param("http://python.org.", None, "python.org", id="single dot"),
+        pytest.param("http://localhost.", CIMultiDict(), "localhost", id="dot only at the end"),
+        pytest.param("http://python.org.", CIMultiDict(), "python.org", id="single dot"),
         pytest.param(
-            "http://python.org.:99", None, "python.org:99", id="single dot with port"
+            "http://python.org.:99", CIMultiDict(), "python.org:99", id="single dot with port"
         ),
         pytest.param(
             "http://python.org...:99",
-            None,
+            CIMultiDict(),
             "python.org:99",
             id="multiple dots with port",
         ),
         pytest.param(
             "http://python.org.:99",
-            {"host": "example.com.:99"},
+            CIMultiDict({"host": "example.com.:99"}),
             "example.com.:99",
             id="explicit host header",
         ),
-        pytest.param("https://python.org.", None, "python.org", id="https"),
-        pytest.param("https://...", None, "", id="only dots"),
+        pytest.param("https://python.org.", CIMultiDict(), "python.org", id="https"),
+        pytest.param("https://...", CIMultiDict(), "", id="only dots"),
         pytest.param(
             "http://príklad.example.org.:99",
-            None,
+            CIMultiDict(),
             "xn--prklad-4va.example.org:99",
             id="single dot with port idna",
         ),
     ),
 )
 def test_host_header_fqdn(
-    make_request: _RequestMaker, url: str, headers: Dict[str, str], expected: str
+    make_client_request: _RequestMaker, url: str, headers: CIMultiDict[str], expected: str
 ) -> None:
-    req = make_request("get", url, headers=headers)
+    req = make_client_request("get", URL(url), headers=headers)
     assert req.headers["HOST"] == expected
 
 
-def test_default_headers_useragent(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org/")
+def test_default_headers_useragent(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org/"))
 
     assert "SERVER" not in req.headers
     assert "USER-AGENT" in req.headers
 
 
-def test_default_headers_useragent_custom(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "get", "http://python.org/", headers={"user-agent": "my custom agent"}
+def test_default_headers_useragent_custom(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "get", URL("http://python.org/"), headers=CIMultiDict({"user-agent": "my custom agent"})
     )
 
     assert "USER-Agent" in req.headers
     assert "my custom agent" == req.headers["User-Agent"]
 
 
-def test_skip_default_useragent_header(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "get", "http://python.org/", skip_auto_headers={istr("user-agent")}
+def test_skip_default_useragent_header(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "get", URL("http://python.org/"), skip_auto_headers={istr("user-agent")}
     )
 
     assert "User-Agent" not in req.headers
 
 
-def test_headers(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "post", "http://python.org/", headers={hdrs.CONTENT_TYPE: "text/plain"}
+def test_headers(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "post", URL("http://python.org/"), headers=CIMultiDict({hdrs.CONTENT_TYPE: "text/plain"})
     )
 
     assert hdrs.CONTENT_TYPE in req.headers
@@ -394,217 +354,215 @@ def test_headers(make_request: _RequestMaker) -> None:
     assert "gzip" in req.headers[hdrs.ACCEPT_ENCODING]
 
 
-def test_headers_list(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "post", "http://python.org/", headers=[("Content-Type", "text/plain")]
+def test_headers_list(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "post", URL("http://python.org/"), headers=CIMultiDict((("Content-Type", "text/plain"),))
     )
     assert "CONTENT-TYPE" in req.headers
     assert req.headers["CONTENT-TYPE"] == "text/plain"
 
 
-def test_headers_default(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "get", "http://python.org/", headers={"ACCEPT-ENCODING": "deflate"}
+def test_headers_default(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "get", URL("http://python.org/"), headers=CIMultiDict({"ACCEPT-ENCODING": "deflate"})
     )
     assert req.headers["ACCEPT-ENCODING"] == "deflate"
 
 
-def test_invalid_url(make_request: _RequestMaker) -> None:
+def test_invalid_url(make_client_request: _RequestMaker) -> None:
     with pytest.raises(aiohttp.InvalidURL):
-        make_request("get", "hiwpefhipowhefopw")
+        make_client_request("get", URL("hiwpefhipowhefopw"))
 
 
-def test_no_path(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://python.org")
+def test_no_path(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org"))
     assert "/" == req.url.path
 
 
-def test_ipv6_default_http_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://[2001:db8::1]/")
+def test_ipv6_default_http_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://[2001:db8::1]/"))
     assert req.url.host == "2001:db8::1"
     assert req.url.port == 80
     assert not req.is_ssl()
 
 
-def test_ipv6_default_https_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "https://[2001:db8::1]/")
+def test_ipv6_default_https_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("https://[2001:db8::1]/"))
     assert req.url.host == "2001:db8::1"
     assert req.url.port == 443
     assert req.is_ssl()
 
 
-def test_ipv6_nondefault_http_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://[2001:db8::1]:960/")
+def test_ipv6_nondefault_http_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://[2001:db8::1]:960/"))
     assert req.url.host == "2001:db8::1"
     assert req.url.port == 960
     assert not req.is_ssl()
 
 
-def test_ipv6_nondefault_https_port(make_request: _RequestMaker) -> None:
-    req = make_request("get", "https://[2001:db8::1]:960/")
+def test_ipv6_nondefault_https_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("https://[2001:db8::1]:960/"))
     assert req.url.host == "2001:db8::1"
     assert req.url.port == 960
     assert req.is_ssl()
 
 
-def test_basic_auth(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "get", "http://python.org", auth=aiohttp.BasicAuth("nkim", "1234")
+def test_basic_auth(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "get", URL("http://python.org"), auth=aiohttp.BasicAuth("nkim", "1234")
     )
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
 
 
-def test_basic_auth_utf8(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "get", "http://python.org", auth=aiohttp.BasicAuth("nkim", "секрет", "utf-8")
+def test_basic_auth_utf8(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "get", URL("http://python.org"), auth=aiohttp.BasicAuth("nkim", "секрет", "utf-8")
     )
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbTrRgdC10LrRgNC10YI=" == req.headers["AUTHORIZATION"]
 
 
-def test_basic_auth_tuple_forbidden(make_request: _RequestMaker) -> None:
+def test_basic_auth_tuple_forbidden(make_client_request: _RequestMaker) -> None:
     with pytest.raises(TypeError):
-        make_request("get", "http://python.org", auth=("nkim", "1234"))
+        make_client_request("get", URL("http://python.org"), auth=("nkim", "1234"))
 
 
-def test_basic_auth_from_url(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://nkim:1234@python.org")
+def test_basic_auth_from_url(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://nkim:1234@python.org"))
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
     assert "python.org" == req.url.host
 
 
-def test_basic_auth_no_user_from_url(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://:1234@python.org")
+def test_basic_auth_no_user_from_url(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://:1234@python.org"))
     assert "AUTHORIZATION" in req.headers
     assert "Basic OjEyMzQ=" == req.headers["AUTHORIZATION"]
     assert "python.org" == req.url.host
 
 
-def test_basic_auth_from_url_overridden(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "get", "http://garbage@python.org", auth=aiohttp.BasicAuth("nkim", "1234")
+def test_basic_auth_from_url_overridden(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "get", URL("http://garbage@python.org"), auth=aiohttp.BasicAuth("nkim", "1234")
     )
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
     assert "python.org" == req.url.host
 
 
-def test_path_is_not_double_encoded1(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://0.0.0.0/get/test case")
+def test_path_is_not_double_encoded1(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://0.0.0.0/get/test case"))
     assert req.url.raw_path == "/get/test%20case"
 
 
-def test_path_is_not_double_encoded2(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://0.0.0.0/get/test%2fcase")
+def test_path_is_not_double_encoded2(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://0.0.0.0/get/test%2fcase"))
     assert req.url.raw_path == "/get/test%2Fcase"
 
 
-def test_path_is_not_double_encoded3(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://0.0.0.0/get/test%20case")
+def test_path_is_not_double_encoded3(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://0.0.0.0/get/test%20case"))
     assert req.url.raw_path == "/get/test%20case"
 
 
-def test_path_safe_chars_preserved(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://0.0.0.0/get/:=+/%2B/")
+def test_path_safe_chars_preserved(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://0.0.0.0/get/:=+/%2B/"))
     assert req.url.path == "/get/:=+/+/"
 
 
-def test_params_are_added_before_fragment1(make_request: _RequestMaker) -> None:
-    req = make_request("GET", "http://example.com/path#fragment", params={"a": "b"})
+def test_params_are_added_before_fragment1(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("GET", URL("http://example.com/path#fragment"), params={"a": "b"})
     assert str(req.url) == "http://example.com/path?a=b"
 
 
-def test_params_are_added_before_fragment2(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "GET", "http://example.com/path?key=value#fragment", params={"a": "b"}
+def test_params_are_added_before_fragment2(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "GET", URL("http://example.com/path?key=value#fragment"), params={"a": "b"}
     )
     assert str(req.url) == "http://example.com/path?key=value&a=b"
 
 
-def test_path_not_contain_fragment1(make_request: _RequestMaker) -> None:
-    req = make_request("GET", "http://example.com/path#fragment")
+def test_path_not_contain_fragment1(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("GET", URL("http://example.com/path#fragment"))
     assert req.url.path == "/path"
 
 
-def test_path_not_contain_fragment2(make_request: _RequestMaker) -> None:
-    req = make_request("GET", "http://example.com/path?key=value#fragment")
+def test_path_not_contain_fragment2(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("GET", URL("http://example.com/path?key=value#fragment"))
     assert str(req.url) == "http://example.com/path?key=value"
 
 
-def test_cookies(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://test.com/path", cookies={"cookie1": "val1"})
+def test_cookies(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://test.com/path"), cookies=BaseCookie({"cookie1": "val1"}))
 
     assert "COOKIE" in req.headers
     assert "cookie1=val1" == req.headers["COOKIE"]
 
 
-def test_cookies_is_quoted_with_special_characters(make_request: _RequestMaker) -> None:
-    req = make_request("get", "http://test.com/path", cookies={"cookie1": "val/one"})
+def test_cookies_is_quoted_with_special_characters(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://test.com/path"), cookies=BaseCookie({"cookie1": "val/one"}))
 
     assert "COOKIE" in req.headers
     assert 'cookie1="val/one"' == req.headers["COOKIE"]
 
 
-def test_cookies_merge_with_headers(make_request: _RequestMaker) -> None:
-    req = make_request(
+def test_cookies_merge_with_headers(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
         "get",
-        "http://test.com/path",
-        headers={"cookie": "cookie1=val1"},
-        cookies={"cookie2": "val2"},
+        URL("http://test.com/path"),
+        headers=CIMultiDict({"cookie": "cookie1=val1"}),
+        cookies=BaseCookie({"cookie2": "val2"}),
     )
 
     assert "cookie1=val1; cookie2=val2" == req.headers["COOKIE"]
 
 
-def test_query_multivalued_param(make_request: _RequestMaker) -> None:
+def test_query_multivalued_param(make_client_request: _RequestMaker) -> None:
     for meth in ALL_METHODS:
-        req = make_request(
-            meth, "http://python.org", params=(("test", "foo"), ("test", "baz"))
+        req = make_client_request(
+            meth, URL("http://python.org"), params=(("test", "foo"), ("test", "baz"))
         )
 
         assert str(req.url) == "http://python.org/?test=foo&test=baz"
 
 
-def test_query_str_param(make_request: _RequestMaker) -> None:
+def test_query_str_param(make_client_request: _RequestMaker) -> None:
     for meth in ALL_METHODS:
-        req = make_request(meth, "http://python.org", params="test=foo")
+        req = make_client_request(meth, URL("http://python.org"), params="test=foo")
         assert str(req.url) == "http://python.org/?test=foo"
 
 
-def test_query_bytes_param_raises(make_request: _RequestMaker) -> None:
+def test_query_bytes_param_raises(make_client_request: _RequestMaker) -> None:
     for meth in ALL_METHODS:
         with pytest.raises(TypeError):
-            make_request(meth, "http://python.org", params=b"test=foo")
+            make_client_request(meth, URL("http://python.org"), params=b"test=foo")
 
 
-def test_query_str_param_is_not_encoded(make_request: _RequestMaker) -> None:
+def test_query_str_param_is_not_encoded(make_client_request: _RequestMaker) -> None:
     for meth in ALL_METHODS:
-        req = make_request(meth, "http://python.org", params="test=f+oo")
+        req = make_client_request(meth, URL("http://python.org"), params="test=f+oo")
         assert str(req.url) == "http://python.org/?test=f+oo"
 
 
-def test_params_update_path_and_url(make_request: _RequestMaker) -> None:
-    req = make_request(
-        "get", "http://python.org", params=(("test", "foo"), ("test", "baz"))
+def test_params_update_path_and_url(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
+        "get", URL("http://python.org"), params=(("test", "foo"), ("test", "baz"))
     )
     assert str(req.url) == "http://python.org/?test=foo&test=baz"
 
 
-def test_params_empty_path_and_url(make_request: _RequestMaker) -> None:
-    req_empty = make_request("get", "http://python.org", params={})
+def test_params_empty_path_and_url(make_client_request: _RequestMaker) -> None:
+    req_empty = make_client_request("get", URL("http://python.org"), params={})
     assert str(req_empty.url) == "http://python.org"
-    req_none = make_request("get", "http://python.org")
+    req_none = make_client_request("get", URL("http://python.org"))
     assert str(req_none.url) == "http://python.org"
 
 
-def test_gen_netloc_all(make_request: _RequestMaker) -> None:
-    req = make_request(
+def test_gen_netloc_all(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
         "get",
-        "https://aiohttp:pwpwpw@"
-        + "12345678901234567890123456789"
-        + "012345678901234567890:8080",
+        URL("https://aiohttp:pwpwpw@12345678901234567890123456789012345678901234567890:8080"),
     )
     assert (
         req.headers["HOST"]
@@ -612,35 +570,37 @@ def test_gen_netloc_all(make_request: _RequestMaker) -> None:
     )
 
 
-def test_gen_netloc_no_port(make_request: _RequestMaker) -> None:
-    req = make_request(
+def test_gen_netloc_no_port(make_client_request: _RequestMaker) -> None:
+    req = make_client_request(
         "get",
-        "https://aiohttp:pwpwpw@"
-        + "12345678901234567890123456789"
-        + "012345678901234567890/",
+        URL("https://aiohttp:pwpwpw@12345678901234567890123456789012345678901234567890/"),
     )
     assert (
         req.headers["HOST"] == "12345678901234567890123456789" + "012345678901234567890"
     )
 
 
-def test_cookie_coded_value_preserved(loop: asyncio.AbstractEventLoop) -> None:
+def test_cookie_coded_value_preserved(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     """Verify the coded value of a cookie is preserved."""
     # https://github.com/aio-libs/aiohttp/pull/1453
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+    req = make_client_request("get", URL("http://python.org"), loop=loop)
     req._update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
     assert req.headers["COOKIE"] == 'ip-cookie="second"'
 
 
 def test_update_cookies_with_special_chars_in_existing_header(
     loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that update_cookies handles existing cookies with special characters."""
     # Create request with a cookie that has special characters (real-world example)
-    req = ClientRequest(
+    req = make_client_request(
         "get",
         URL("http://python.org"),
-        headers={"Cookie": "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}=value1"},
+        headers=CIMultiDict({"Cookie": "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}=value1"}),
         loop=loop,
     )
 
@@ -656,13 +616,14 @@ def test_update_cookies_with_special_chars_in_existing_header(
 
 def test_update_cookies_with_quoted_existing_header(
     loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that update_cookies handles existing cookies with quoted values."""
     # Create request with cookies that have quoted values
-    req = ClientRequest(
+    req = make_client_request(
         "get",
         URL("http://python.org"),
-        headers={"Cookie": 'session="value;with;semicolon"; token=abc123'},
+        headers=CIMultiDict({"Cookie": 'session="value;with;semicolon"; token=abc123'}),
         loop=loop,
     )
 
@@ -678,9 +639,10 @@ def test_update_cookies_with_quoted_existing_header(
 
 
 async def test_connection_header(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+    req = make_client_request("get", URL("http://python.org"), loop=loop)
     req.headers.clear()
 
     req.version = HttpVersion11
@@ -709,9 +671,10 @@ async def test_connection_header(
 
 
 async def test_no_content_length(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+    req = make_client_request("get", URL("http://python.org"), loop=loop)
     resp = await req._send(conn)
     assert req.headers.get("CONTENT-LENGTH") is None
     await req._close()
@@ -719,9 +682,10 @@ async def test_no_content_length(
 
 
 async def test_no_content_length_head(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest("head", URL("http://python.org"), loop=loop)
+    req = make_client_request("head", URL("http://python.org"), loop=loop)
     resp = await req._send(conn)
     assert req.headers.get("CONTENT-LENGTH") is None
     await req._close()
@@ -729,9 +693,10 @@ async def test_no_content_length_head(
 
 
 async def test_content_type_auto_header_get(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+    req = make_client_request("get", URL("http://python.org"), loop=loop)
     resp = await req._send(conn)
     assert "CONTENT-TYPE" not in req.headers
     resp.close()
@@ -739,9 +704,10 @@ async def test_content_type_auto_header_get(
 
 
 async def test_content_type_auto_header_form(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "post", URL("http://python.org"), data={"hey": "you"}, loop=loop
     )
     resp = await req._send(conn)
@@ -750,18 +716,20 @@ async def test_content_type_auto_header_form(
 
 
 async def test_content_type_auto_header_bytes(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest("post", URL("http://python.org"), data=b"hey you", loop=loop)
+    req = make_client_request("post", URL("http://python.org"), data=b"hey you", loop=loop)
     resp = await req._send(conn)
     assert "application/octet-stream" == req.headers.get("CONTENT-TYPE")
     resp.close()
 
 
 async def test_content_type_skip_auto_header_bytes(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "post",
         URL("http://python.org"),
         data=b"hey you",
@@ -775,9 +743,10 @@ async def test_content_type_skip_auto_header_bytes(
 
 
 async def test_content_type_skip_auto_header_form(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "post",
         URL("http://python.org"),
         data={"hey": "you"},
@@ -790,10 +759,11 @@ async def test_content_type_skip_auto_header_form(
 
 
 async def test_content_type_auto_header_content_length_no_skip(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     with io.BytesIO(b"hey") as file_handle:
-        req = ClientRequest(
+        req = make_client_request(
             "post",
             URL("http://python.org"),
             data=file_handle,
@@ -806,9 +776,10 @@ async def test_content_type_auto_header_content_length_no_skip(
 
 
 async def test_urlencoded_formdata_charset(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "post",
         URL("http://python.org"),
         data=aiohttp.FormData({"hey": "you"}, charset="koi8-r"),
@@ -822,16 +793,17 @@ async def test_urlencoded_formdata_charset(
 
 
 async def test_formdata_boundary_from_headers(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     boundary = "some_boundary"
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
-        req = ClientRequest(
+        req = make_client_request(
             "post",
             URL("http://python.org"),
             data={"aiohttp.png": f},
-            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            headers=CIMultiDict({"Content-Type": f"multipart/form-data; boundary={boundary}"}),
             loop=loop,
         )
         async with await req._send(conn):
@@ -840,9 +812,12 @@ async def test_formdata_boundary_from_headers(
         assert req.body._boundary == boundary.encode()
 
 
-async def test_post_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    for meth in RawClientRequest.POST_METHODS:
-        req = ClientRequest(
+async def test_post_data(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    for meth in ClientRequest.POST_METHODS:
+        req = make_client_request(
             meth, URL("http://python.org/"), data={"life": "42"}, loop=loop
         )
         resp = await req._send(conn)
@@ -854,21 +829,25 @@ async def test_post_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
         resp.close()
 
 
-async def test_pass_falsy_data(loop: asyncio.AbstractEventLoop) -> None:
+async def test_pass_falsy_data(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     with mock.patch("aiohttp.client_reqrep.ClientRequest.update_body_from_data") as m:
-        req = ClientRequest("post", URL("http://python.org/"), data={}, loop=loop)
+        req = make_client_request("post", URL("http://python.org/"), data={}, loop=loop)
         m.assert_called_once_with({})
     await req._close()
 
 
 async def test_pass_falsy_data_file(
-    loop: asyncio.AbstractEventLoop, tmp_path: pathlib.Path
+    loop: asyncio.AbstractEventLoop, tmp_path: pathlib.Path,
+    make_client_request: _RequestMaker,
 ) -> None:
     testfile = (tmp_path / "tmpfile").open("w+b")
     testfile.write(b"data")
     testfile.seek(0)
     skip = frozenset([hdrs.CONTENT_TYPE])
-    req = ClientRequest(
+    req = make_client_request(
         "post",
         URL("http://python.org/"),
         data=testfile,
@@ -881,9 +860,12 @@ async def test_pass_falsy_data_file(
 
 
 # Elasticsearch API requires to send request body with GET-requests
-async def test_get_with_data(loop: asyncio.AbstractEventLoop) -> None:
-    for meth in RawClientRequest.GET_METHODS:
-        req = ClientRequest(
+async def test_get_with_data(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
+    for meth in ClientRequest.GET_METHODS:
+        req = make_client_request(
             meth, URL("http://python.org/"), data={"life": "42"}, loop=loop
         )
         assert "/" == req.url.path
@@ -892,9 +874,12 @@ async def test_get_with_data(loop: asyncio.AbstractEventLoop) -> None:
         await req._close()
 
 
-async def test_bytes_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    for meth in RawClientRequest.POST_METHODS:
-        req = ClientRequest(
+async def test_bytes_data(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    for meth in ClientRequest.POST_METHODS:
+        req = make_client_request(
             meth, URL("http://python.org/"), data=b"binary data", loop=loop
         )
         resp = await req._send(conn)
@@ -910,8 +895,9 @@ async def test_bytes_data(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> N
 async def test_content_encoding(
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "post", URL("http://python.org/"), data="foo", compress="deflate", loop=loop
     )
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
@@ -925,9 +911,10 @@ async def test_content_encoding(
 
 
 async def test_content_encoding_dont_set_headers_if_no_body(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "post", URL("http://python.org/"), compress="deflate", loop=loop
     )
     with mock.patch("aiohttp.client_reqrep.http"):
@@ -942,12 +929,13 @@ async def test_content_encoding_dont_set_headers_if_no_body(
 async def test_content_encoding_header(
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "post",
         URL("http://python.org/"),
         data="foo",
-        headers={"Content-Encoding": "deflate"},
+        headers=CIMultiDict({"Content-Encoding": "deflate"}),
         loop=loop,
     )
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
@@ -961,24 +949,28 @@ async def test_content_encoding_header(
 
 
 async def test_compress_and_content_encoding(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     with pytest.raises(ValueError):
-        ClientRequest(
+        make_client_request(
             "post",
             URL("http://python.org/"),
             data="foo",
-            headers={"content-encoding": "deflate"},
+            headers=CIMultiDict({"content-encoding": "deflate"}),
             compress="deflate",
             loop=loop,
         )
 
 
-async def test_chunked(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    req = ClientRequest(
+async def test_chunked(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request(
         "post",
         URL("http://python.org/"),
-        headers={"TRANSFER-ENCODING": "gzip"},
+        headers=CIMultiDict({"TRANSFER-ENCODING": "gzip"}),
         loop=loop,
     )
     resp = await req._send(conn)
@@ -987,11 +979,14 @@ async def test_chunked(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None
     resp.close()
 
 
-async def test_chunked2(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    req = ClientRequest(
+async def test_chunked2(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request(
         "post",
         URL("http://python.org/"),
-        headers={"Transfer-encoding": "chunked"},
+        headers=CIMultiDict({"Transfer-encoding": "chunked"}),
         loop=loop,
     )
     resp = await req._send(conn)
@@ -1001,10 +996,11 @@ async def test_chunked2(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> Non
 
 
 async def test_chunked_empty_body(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Ensure write_bytes is called even if the body is empty."""
-    req = ClientRequest(
+    req = make_client_request(
         "post",
         URL("http://python.org/"),
         chunked=True,
@@ -1020,9 +1016,10 @@ async def test_chunked_empty_body(
 
 
 async def test_chunked_explicit(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest("post", URL("http://python.org/"), chunked=True, loop=loop)
+    req = make_client_request("post", URL("http://python.org/"), chunked=True, loop=loop)
     with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
         m_writer.return_value.write_headers = mock.AsyncMock()
         m_writer.return_value.write_eof = mock.AsyncMock()
@@ -1034,34 +1031,41 @@ async def test_chunked_explicit(
     resp.close()
 
 
-async def test_chunked_length(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
+async def test_chunked_length(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
     with pytest.raises(ValueError):
-        ClientRequest(
+        make_client_request(
             "post",
             URL("http://python.org/"),
-            headers={"CONTENT-LENGTH": "1000"},
+            headers=CIMultiDict({"CONTENT-LENGTH": "1000"}),
             chunked=True,
             loop=loop,
         )
 
 
 async def test_chunked_transfer_encoding(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     with pytest.raises(ValueError):
-        ClientRequest(
+        make_client_request(
             "post",
             URL("http://python.org/"),
-            headers={"TRANSFER-ENCODING": "chunked"},
+            headers=CIMultiDict({"TRANSFER-ENCODING": "chunked"}),
             chunked=True,
             loop=loop,
         )
 
 
-async def test_file_upload_not_chunked(loop: asyncio.AbstractEventLoop) -> None:
+async def test_file_upload_not_chunked(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
-        req = ClientRequest("post", URL("http://python.org/"), data=f, loop=loop)
+        req = make_client_request("post", URL("http://python.org/"), data=f, loop=loop)
         assert not req.chunked
         assert req.headers["CONTENT-LENGTH"] == str(file_path.stat().st_size)
         await req._close()
@@ -1070,13 +1074,14 @@ async def test_file_upload_not_chunked(loop: asyncio.AbstractEventLoop) -> None:
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_precompressed_data_stays_intact(
     loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     data = ZLibBackend.compress(b"foobar")
-    req = ClientRequest(
+    req = make_client_request(
         "post",
         URL("http://python.org/"),
         data=data,
-        headers={"CONTENT-ENCODING": "deflate"},
+        headers=CIMultiDict({"CONTENT-ENCODING": "deflate"}),
         compress=False,
         loop=loop,
     )
@@ -1088,13 +1093,14 @@ async def test_precompressed_data_stays_intact(
 
 async def test_body_with_size_sets_content_length(
     loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that when body has a size and no Content-Length header is set, it gets added."""
     # Create a BytesPayload which has a size property
     data = b"test data"
 
     # Create request with data that will create a BytesPayload
-    req = ClientRequest(
+    req = make_client_request(
         "post",
         URL("http://python.org/"),
         data=data,
@@ -1111,6 +1117,7 @@ async def test_body_with_size_sets_content_length(
 
 async def test_body_payload_with_size_no_content_length(
     loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that when a body payload is set via update_body, Content-Length is added."""
     # Create a payload with a known size
@@ -1118,7 +1125,7 @@ async def test_body_payload_with_size_no_content_length(
     bytes_payload = payload.BytesPayload(data)
 
     # Create request with no data initially
-    req = ClientRequest(
+    req = make_client_request(
         "post",
         URL("http://python.org/"),
         loop=loop,
@@ -1149,19 +1156,25 @@ async def test_body_payload_with_size_no_content_length(
     await req._close()
 
 
-async def test_file_upload_not_chunked_seek(loop: asyncio.AbstractEventLoop) -> None:
+async def test_file_upload_not_chunked_seek(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
         f.seek(100)
-        req = ClientRequest("post", URL("http://python.org/"), data=f, loop=loop)
+        req = make_client_request("post", URL("http://python.org/"), data=f, loop=loop)
         assert req.headers["CONTENT-LENGTH"] == str(file_path.stat().st_size - 100)
         await req._close()
 
 
-async def test_file_upload_force_chunked(loop: asyncio.AbstractEventLoop) -> None:
+async def test_file_upload_force_chunked(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
-        req = ClientRequest(
+        req = make_client_request(
             "post", URL("http://python.org/"), data=f, chunked=True, loop=loop
         )
         assert req.chunked
@@ -1169,8 +1182,11 @@ async def test_file_upload_force_chunked(loop: asyncio.AbstractEventLoop) -> Non
         await req._close()
 
 
-async def test_expect100(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    req = ClientRequest("get", URL("http://python.org/"), expect100=True, loop=loop)
+async def test_expect100(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request("get", URL("http://python.org/"), expect100=True, loop=loop)
     resp = await req._send(conn)
     assert "100-continue" == req.headers["EXPECT"]
     assert req._continue is not None
@@ -1179,10 +1195,11 @@ async def test_expect100(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
 
 
 async def test_expect_100_continue_header(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
-        "get", URL("http://python.org/"), headers={"expect": "100-continue"}, loop=loop
+    req = make_client_request(
+        "get", URL("http://python.org/"), headers=CIMultiDict({"expect": "100-continue"}), loop=loop
     )
     resp = await req._send(conn)
     assert "100-continue" == req.headers["EXPECT"]
@@ -1192,13 +1209,14 @@ async def test_expect_100_continue_header(
 
 
 async def test_data_stream(
-    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     async def gen() -> AsyncIterator[bytes]:
         yield b"binary data"
         yield b" result"
 
-    req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
+    req = make_client_request("POST", URL("http://python.org/"), data=gen(), loop=loop)
     assert req.chunked
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
     original_write_bytes = req._write_bytes
@@ -1222,10 +1240,11 @@ async def test_data_stream(
 
 
 async def test_data_file(
-    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     with io.BufferedReader(io.BytesIO(b"*" * 2)) as file_handle:
-        req = ClientRequest(
+        req = make_client_request(
             "POST",
             URL("http://python.org/"),
             data=file_handle,
@@ -1245,7 +1264,8 @@ async def test_data_file(
 
 
 async def test_data_stream_exc(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     fut = loop.create_future()
 
@@ -1253,7 +1273,7 @@ async def test_data_stream_exc(
         yield b"binary data"
         await fut
 
-    req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
+    req = make_client_request("POST", URL("http://python.org/"), data=gen(), loop=loop)
     assert req.chunked
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
@@ -1274,7 +1294,8 @@ async def test_data_stream_exc(
 
 
 async def test_data_stream_exc_chain(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     fut = loop.create_future()
 
@@ -1283,7 +1304,7 @@ async def test_data_stream_exc_chain(
         assert False
         yield  # type: ignore[unreachable]  # pragma: no cover
 
-    req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
+    req = make_client_request("POST", URL("http://python.org/"), data=gen(), loop=loop)
 
     inner_exc = ValueError()
 
@@ -1306,13 +1327,14 @@ async def test_data_stream_exc_chain(
 
 
 async def test_data_stream_continue(
-    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     async def gen() -> AsyncIterator[bytes]:
         yield b"binary data"
         yield b" result"
 
-    req = ClientRequest(
+    req = make_client_request(
         "POST", URL("http://python.org/"), data=gen(), expect100=True, loop=loop
     )
     assert req.chunked
@@ -1336,9 +1358,10 @@ async def test_data_stream_continue(
 
 
 async def test_data_continue(
-    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest(
+    req = make_client_request(
         "POST", URL("http://python.org/"), data=b"data", expect100=True, loop=loop
     )
 
@@ -1360,13 +1383,14 @@ async def test_data_continue(
 
 
 async def test_close(
-    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     async def gen() -> AsyncIterator[bytes]:
         await asyncio.sleep(0.00001)
         yield b"result"
 
-    req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
+    req = make_client_request("POST", URL("http://python.org/"), data=gen(), loop=loop)
     resp = await req._send(conn)
     await req._close()
     assert buf.split(b"\r\n\r\n", 1)[1] == b"6\r\nresult\r\n0\r\n\r\n"
@@ -1374,12 +1398,15 @@ async def test_close(
     resp.close()
 
 
-async def test_bad_version(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    req = ClientRequest(
+async def test_bad_version(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request(
         "GET",
         URL("http://python.org"),
         loop=loop,
-        headers={"Connection": "Close"},
+        headers=CIMultiDict({"Connection": "Close"}),
         version=("1", "1\r\nInjected-Header: not allowed"),  # type: ignore[arg-type]
     )
 
@@ -1388,13 +1415,14 @@ async def test_bad_version(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> 
 
 
 async def test_custom_response_class(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     class CustomResponse(ClientResponse):
         async def read(self) -> bytes:
             return b"customized!"
 
-    req = ClientRequest(
+    req = make_client_request(
         "GET", URL("http://python.org/"), response_class=CustomResponse, loop=loop
     )
     resp = await req._send(conn)
@@ -1404,9 +1432,10 @@ async def test_custom_response_class(
 
 
 async def test_oserror_on_write_bytes(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
-    req = ClientRequest("POST", URL("http://python.org/"), loop=loop)
+    req = make_client_request("POST", URL("http://python.org/"), loop=loop)
     await req.update_body(b"test data")
 
     writer = WriterMock()
@@ -1420,8 +1449,11 @@ async def test_oserror_on_write_bytes(
 
 
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
-async def test_cancel_close(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+async def test_cancel_close(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request("get", URL("http://python.org"), loop=loop)
     req._writer = asyncio.Future()  # type: ignore[assignment]
 
     t = asyncio.create_task(req._close())
@@ -1435,8 +1467,11 @@ async def test_cancel_close(loop: asyncio.AbstractEventLoop, conn: mock.Mock) ->
         await t
 
 
-async def test_terminate(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+async def test_terminate(
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request("get", URL("http://python.org"), loop=loop)
 
     async def _mock_write_bytes(*args: object, **kwargs: object) -> None:
         # Ensure the task is scheduled
@@ -1463,13 +1498,14 @@ async def test_terminate(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> No
 
 
 def test_terminate_with_closed_loop(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     req = resp = writer = None
 
     async def go() -> None:
         nonlocal req, resp, writer
-        req = ClientRequest("get", URL("http://python.org"), loop=loop)
+        req = make_client_request("get", URL("http://python.org"), loop=loop)
 
         async def _mock_write_bytes(*args: object, **kwargs: object) -> None:
             # Ensure the task is scheduled
@@ -1498,8 +1534,11 @@ def test_terminate_with_closed_loop(
     resp.close()
 
 
-def test_terminate_without_writer(loop: asyncio.AbstractEventLoop) -> None:
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
+def test_terminate_without_writer(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request("get", URL("http://python.org"), loop=loop)
     assert req._writer is None
 
     req._terminate()
@@ -1523,7 +1562,7 @@ async def test_custom_req_rep(
 
     called = False
 
-    class CustomRequest(RawClientRequest):
+    class CustomRequest(ClientRequest):
         async def _send(self, conn: Connection) -> ClientResponse:
             resp = self.response_class(
                 self.method,
@@ -1542,7 +1581,7 @@ async def test_custom_req_rep(
             return resp
 
     async def create_connection(
-        req: RawClientRequest, traces: object, timeout: object
+        req: ClientRequest, traces: object, timeout: object
     ) -> Connection:
         assert isinstance(req, CustomRequest)
         return create_mocked_conn()  # type: ignore[no-any-return]
@@ -1579,27 +1618,6 @@ def test_insecure_fingerprint_sha1(loop: asyncio.AbstractEventLoop) -> None:
         Fingerprint(hashlib.sha1(b"foo").digest())
 
 
-def test_loose_cookies_types(loop: asyncio.AbstractEventLoop) -> None:
-    req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    morsel: "Morsel[str]" = Morsel()
-    morsel.set(key="string", val="Another string", coded_val="really")
-
-    accepted_types: List[LooseCookies] = [
-        [("str", BaseCookie())],
-        [("str", morsel)],
-        [
-            ("str", "str"),
-        ],
-        {"str": BaseCookie()},
-        {"str": morsel},
-        {"str": "str"},
-        SimpleCookie(),
-    ]
-
-    for loose_cookies_type in accepted_types:
-        req._update_cookies(cookies=loose_cookies_type)
-
-
 @pytest.mark.parametrize(
     "has_brotli,has_zstd,expected",
     [
@@ -1629,11 +1647,11 @@ def test_gen_default_accept_encoding(
 )
 @pytest.mark.usefixtures("netrc_contents")
 def test_basicauth_from_netrc_present(  # type: ignore[misc]
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
     expected_auth: helpers.BasicAuth,
 ) -> None:
     """Test appropriate Authorization header is sent when netrc is not empty."""
-    req = make_request("get", "http://example.com", trust_env=True)
+    req = make_client_request("get", URL("http://example.com"), trust_env=True)
     assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
 
 
@@ -1644,10 +1662,10 @@ def test_basicauth_from_netrc_present(  # type: ignore[misc]
 )
 @pytest.mark.usefixtures("netrc_contents")
 def test_basicauth_from_netrc_present_untrusted_env(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test no authorization header is sent via netrc if trust_env is False"""
-    req = make_request("get", "http://example.com", trust_env=False)
+    req = make_client_request("get", URL("http://example.com"), trust_env=False)
     assert hdrs.AUTHORIZATION not in req.headers
 
 
@@ -1658,34 +1676,38 @@ def test_basicauth_from_netrc_present_untrusted_env(
 )
 @pytest.mark.usefixtures("netrc_contents")
 def test_basicauth_from_empty_netrc(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that no Authorization header is sent when netrc is empty"""
-    req = make_request("get", "http://example.com", trust_env=True)
+    req = make_client_request("get", URL("http://example.com"), trust_env=True)
     assert hdrs.AUTHORIZATION not in req.headers
 
 
-async def test_connection_key_with_proxy() -> None:
+async def test_connection_key_with_proxy(
+    make_client_request: _RequestMaker,
+) -> None:
     """Verify the proxy headers are included in the ConnectionKey when a proxy is used."""
     proxy = URL("http://proxy.example.com")
-    req = ClientRequest(
+    req = make_client_request(
         "GET",
         URL("http://example.com"),
         proxy=proxy,
-        proxy_headers={"X-Proxy": "true"},
+        proxy_headers=CIMultiDict({"X-Proxy": "true"}),
         loop=asyncio.get_running_loop(),
     )
     assert req.connection_key.proxy_headers_hash is not None
     await req._close()
 
 
-async def test_connection_key_without_proxy() -> None:
+async def test_connection_key_without_proxy(
+    make_client_request: _RequestMaker,
+) -> None:
     """Verify the proxy headers are not included in the ConnectionKey when a proxy is used."""
     # If proxy is unspecified, proxy_headers should be ignored
-    req = ClientRequest(
+    req = make_client_request(
         "GET",
         URL("http://example.com"),
-        proxy_headers={"X-Proxy": "true"},
+        proxy_headers=CIMultiDict({"X-Proxy": "true"}),
         loop=asyncio.get_running_loop(),
     )
     assert req.connection_key.proxy_headers_hash is None
@@ -1735,9 +1757,9 @@ def test_request_info_tuple_new() -> None:
     )
 
 
-def test_get_content_length(make_request: _RequestMaker) -> None:
+def test_get_content_length(make_client_request: _RequestMaker) -> None:
     """Test _get_content_length method extracts Content-Length correctly."""
-    req = make_request("get", "http://python.org/")
+    req = make_client_request("get", URL("http://python.org/"))
 
     # No Content-Length header
     assert req._get_content_length() is None
@@ -1753,12 +1775,13 @@ def test_get_content_length(make_request: _RequestMaker) -> None:
 
 
 async def test_write_bytes_with_content_length_limit(
-    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that write_bytes respects content_length limit for different body types."""
     # Test with bytes data
     data = b"Hello World"
-    req = ClientRequest("post", URL("http://python.org/"), loop=loop)
+    req = make_client_request("post", URL("http://python.org/"), loop=loop)
 
     await req.update_body(data)
 
@@ -1783,10 +1806,11 @@ async def test_write_bytes_with_iterable_content_length_limit(
     buf: bytearray,
     conn: mock.Mock,
     data: Union[List[bytes], bytes],
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that write_bytes respects content_length limit for iterable data."""
     # Test with iterable data
-    req = ClientRequest("post", URL("http://python.org/"), loop=loop)
+    req = make_client_request("post", URL("http://python.org/"), loop=loop)
 
     # Convert list to async generator if needed
     if isinstance(data, list):
@@ -1808,10 +1832,11 @@ async def test_write_bytes_with_iterable_content_length_limit(
 
 
 async def test_write_bytes_empty_iterable_with_content_length(
-    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock
+    loop: asyncio.AbstractEventLoop, buf: bytearray, conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that write_bytes handles empty iterable body with content_length."""
-    req = ClientRequest("post", URL("http://python.org/"), loop=loop)
+    req = make_client_request("post", URL("http://python.org/"), loop=loop)
 
     # Create an empty async generator
     async def gen() -> AsyncIterator[bytes]:
@@ -1830,10 +1855,10 @@ async def test_write_bytes_empty_iterable_with_content_length(
 
 
 async def test_warn_if_unclosed_payload_via_body_setter(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that _warn_if_unclosed_payload is called when setting body with unclosed payload."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # First set a payload that needs manual closing (autoclose=False)
     file_payload = payload.BufferedReaderPayload(
@@ -1853,10 +1878,10 @@ async def test_warn_if_unclosed_payload_via_body_setter(
 
 
 async def test_no_warn_for_autoclose_payload_via_body_setter(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that no warning is issued for payloads with autoclose=True."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # First set BytesIOPayload which has autoclose=True
     bytes_payload = payload.BytesIOPayload(io.BytesIO(b"test data"))
@@ -1877,10 +1902,10 @@ async def test_no_warn_for_autoclose_payload_via_body_setter(
 
 
 async def test_no_warn_for_consumed_payload_via_body_setter(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that no warning is issued for already consumed payloads."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # Create a payload that needs manual closing
     file_payload = payload.BufferedReaderPayload(
@@ -1907,10 +1932,10 @@ async def test_no_warn_for_consumed_payload_via_body_setter(
 
 
 async def test_warn_if_unclosed_payload_via_update_body_from_data(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that _warn_if_unclosed_payload is called via update_body_from_data."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # First set a payload that needs manual closing
     file_payload = payload.BufferedReaderPayload(
@@ -1934,10 +1959,10 @@ async def test_warn_if_unclosed_payload_via_update_body_from_data(
 
 
 async def test_warn_via_update_with_file_payload(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test warning via update_body_from_data with file-like object."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # First create a file-like object that results in BufferedReaderPayload
     buffered1 = io.BufferedReader(io.BytesIO(b"file content 1"))
@@ -1956,10 +1981,10 @@ async def test_warn_via_update_with_file_payload(
 
 
 async def test_no_warn_for_simple_data_via_update_body_from_data(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that no warning is issued for simple data types."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # Simple bytes data should not trigger warning
     with warnings.catch_warnings(record=True) as warning_list:
@@ -1976,10 +2001,10 @@ async def test_no_warn_for_simple_data_via_update_body_from_data(
 
 
 async def test_update_body_closes_previous_payload(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that update_body properly closes the previous payload."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # Create a mock payload that tracks if it was closed
     mock_payload = mock.Mock(spec=payload.Payload)
@@ -2001,10 +2026,10 @@ async def test_update_body_closes_previous_payload(
 
 
 async def test_body_setter_closes_previous_payload(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that body setter properly closes the previous payload."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # Create a mock payload that tracks if it was closed
     # We need to use create_autospec to ensure all methods are available
@@ -2026,10 +2051,10 @@ async def test_body_setter_closes_previous_payload(
 
 
 async def test_update_body_with_different_types(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test update_body with various data types."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # Test with bytes
     await req.update_body(b"bytes data")
@@ -2047,11 +2072,11 @@ async def test_update_body_with_different_types(
 
 
 async def test_update_body_with_chunked_encoding(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that update_body properly handles chunked transfer encoding."""
     # Create request with chunked=True
-    req = make_request("POST", "http://python.org/", chunked=True)
+    req = make_client_request("POST", URL("http://python.org/"), chunked=True)
 
     # Verify Transfer-Encoding header is set
     assert req.headers["Transfer-Encoding"] == "chunked"
@@ -2077,11 +2102,11 @@ async def test_update_body_with_chunked_encoding(
 
 
 async def test_update_body_get_method_with_none_body(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that update_body with GET method and None body doesn't call update_transfer_encoding."""
     # Create GET request
-    req = make_request("GET", "http://python.org/")
+    req = make_client_request("GET", URL("http://python.org/"))
 
     # GET requests shouldn't have Transfer-Encoding or Content-Length initially
     assert "Transfer-Encoding" not in req.headers
@@ -2099,10 +2124,10 @@ async def test_update_body_get_method_with_none_body(
 
 
 async def test_update_body_updates_content_length(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that update_body properly updates Content-Length header when body size changes."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # Set initial body with known size
     await req.update_body(b"initial data")
@@ -2127,10 +2152,10 @@ async def test_update_body_updates_content_length(
 
 
 async def test_warn_stacklevel_points_to_user_code(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that the warning stacklevel correctly points to user code."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # First set a payload that needs manual closing (autoclose=False)
     file_payload = payload.BufferedReaderPayload(
@@ -2165,10 +2190,10 @@ async def test_warn_stacklevel_points_to_user_code(
 
 
 async def test_warn_stacklevel_update_body_from_data(
-    make_request: _RequestMaker,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that warning stacklevel is correct when called from update_body_from_data."""
-    req = make_request("POST", "http://python.org/")
+    req = make_client_request("POST", URL("http://python.org/"))
 
     # First set a payload that needs manual closing (autoclose=False)
     file_payload = payload.BufferedReaderPayload(
@@ -2198,14 +2223,16 @@ async def test_warn_stacklevel_update_body_from_data(
     await req._close()
 
 
-async def test_expect100_with_body_becomes_none() -> None:
+async def test_expect100_with_body_becomes_none(
+    make_client_request: _RequestMaker,
+) -> None:
     """Test that write_bytes handles body becoming None after expect100 handling."""
     # Create a mock writer and connection
     mock_writer = mock.AsyncMock()
     mock_conn = mock.Mock()
 
     # Create a request
-    req = ClientRequest(
+    req = make_client_request(
         "POST", URL("http://test.example.com/"), loop=asyncio.get_event_loop()
     )
     req._body = mock.Mock()  # Start with a body
@@ -2248,9 +2275,10 @@ def test_content_length_for_methods(
     data: Optional[bytes],
     expected_content_length: Optional[str],
     loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that Content-Length header is set correctly for all HTTP methods."""
-    req = ClientRequest(method, URL("http://python.org/"), data=data, loop=loop)
+    req = make_client_request(method, URL("http://python.org/"), data=data, loop=loop)
 
     actual_content_length = req.headers.get(hdrs.CONTENT_LENGTH)
     assert actual_content_length == expected_content_length
@@ -2259,19 +2287,22 @@ def test_content_length_for_methods(
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
 def test_get_methods_classification(method: str) -> None:
     """Test that GET-like methods are correctly classified."""
-    assert method in RawClientRequest.GET_METHODS
+    assert method in ClientRequest.GET_METHODS
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
 def test_non_get_methods_classification(method: str) -> None:
     """Test that POST-like methods are not in GET_METHODS."""
-    assert method not in RawClientRequest.GET_METHODS
+    assert method not in ClientRequest.GET_METHODS
 
 
-async def test_content_length_with_string_data(loop: asyncio.AbstractEventLoop) -> None:
+async def test_content_length_with_string_data(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     """Test Content-Length when data is a string."""
     data = "Hello, World!"
-    req = ClientRequest("POST", URL("http://python.org/"), data=data, loop=loop)
+    req = make_client_request("POST", URL("http://python.org/"), data=data, loop=loop)
     # String should be encoded to bytes, default encoding is utf-8
     assert req.headers[hdrs.CONTENT_LENGTH] == str(len(data.encode("utf-8")))
     await req._close()
@@ -2279,26 +2310,30 @@ async def test_content_length_with_string_data(loop: asyncio.AbstractEventLoop) 
 
 async def test_content_length_with_async_iterable(
     loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that async iterables use chunked encoding, not Content-Length."""
 
     async def data_gen() -> AsyncIterator[bytes]:
         yield b"chunk1"  # pragma: no cover
 
-    req = ClientRequest("POST", URL("http://python.org/"), data=data_gen(), loop=loop)
+    req = make_client_request("POST", URL("http://python.org/"), data=data_gen(), loop=loop)
     assert hdrs.CONTENT_LENGTH not in req.headers
     assert req.chunked
     assert req.headers[hdrs.TRANSFER_ENCODING] == "chunked"
     await req._close()
 
 
-async def test_content_length_not_overridden(loop: asyncio.AbstractEventLoop) -> None:
+async def test_content_length_not_overridden(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     """Test that explicitly set Content-Length is not overridden."""
-    req = ClientRequest(
+    req = make_client_request(
         "POST",
         URL("http://python.org/"),
         data=b"test",
-        headers={hdrs.CONTENT_LENGTH: "100"},
+        headers=CIMultiDict({hdrs.CONTENT_LENGTH: "100"}),
         loop=loop,
     )
     # Should keep the explicitly set value
@@ -2306,20 +2341,26 @@ async def test_content_length_not_overridden(loop: asyncio.AbstractEventLoop) ->
     await req._close()
 
 
-async def test_content_length_with_formdata(loop: asyncio.AbstractEventLoop) -> None:
+async def test_content_length_with_formdata(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     """Test Content-Length with FormData."""
     form = aiohttp.FormData()
     form.add_field("field", "value")
 
-    req = ClientRequest("POST", URL("http://python.org/"), data=form, loop=loop)
+    req = make_client_request("POST", URL("http://python.org/"), data=form, loop=loop)
     # FormData with known size should set Content-Length
     assert hdrs.CONTENT_LENGTH in req.headers
     await req._close()
 
 
-async def test_no_content_length_with_chunked(loop: asyncio.AbstractEventLoop) -> None:
+async def test_no_content_length_with_chunked(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
     """Test that chunked encoding prevents Content-Length header."""
-    req = ClientRequest(
+    req = make_client_request(
         "POST",
         URL("http://python.org/"),
         data=b"test",
@@ -2333,11 +2374,12 @@ async def test_no_content_length_with_chunked(loop: asyncio.AbstractEventLoop) -
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
 async def test_update_body_none_sets_content_length_zero(
-    method: str, loop: asyncio.AbstractEventLoop
+    method: str, loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that updating body to None sets Content-Length: 0 for POST-like methods."""
     # Create request with initial body
-    req = ClientRequest(method, URL("http://python.org/"), data=b"initial", loop=loop)
+    req = make_client_request(method, URL("http://python.org/"), data=b"initial", loop=loop)
     assert req.headers[hdrs.CONTENT_LENGTH] == "7"
 
     # Update body to None
@@ -2349,11 +2391,12 @@ async def test_update_body_none_sets_content_length_zero(
 
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
 async def test_update_body_none_no_content_length_for_get_methods(
-    method: str, loop: asyncio.AbstractEventLoop
+    method: str, loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that updating body to None doesn't set Content-Length for GET-like methods."""
     # Create request with initial body
-    req = ClientRequest(method, URL("http://python.org/"), data=b"initial", loop=loop)
+    req = make_client_request(method, URL("http://python.org/"), data=b"initial", loop=loop)
     assert req.headers[hdrs.CONTENT_LENGTH] == "7"
 
     # Update body to None
