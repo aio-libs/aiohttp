@@ -25,6 +25,8 @@ if sys.version_info >= (3, 11):
 
     _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
 else:
+    from typing import Any
+
     _RequestMaker = Any
 
 

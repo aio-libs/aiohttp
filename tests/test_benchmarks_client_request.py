@@ -26,7 +26,7 @@ else:
 def test_client_request_update_cookies(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
-    make_client_request: Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest],
+    make_client_request: _RequestMaker,
 ) -> None:
     url = URL("http://python.org")
     req = make_client_request("get", url, loop=loop)
@@ -124,7 +124,7 @@ def test_create_client_request_with_headers(
 def test_send_client_request_one_hundred(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
-    make_client_request: Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest],
+    make_client_request: _RequestMaker,
 ) -> None:
     url = URL("http://python.org")
     req = make_client_request("get", url, loop=loop)
