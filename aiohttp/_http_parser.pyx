@@ -282,6 +282,9 @@ cdef class HttpParser:
         bytes _raw_value
         bint      _has_value
 
+        size_t _content_length_received  # Track bytes received for content-length responses
+        size_t _original_content_length  # Store original content length
+
         object _protocol
         object _loop
         object _timer
@@ -340,6 +343,8 @@ cdef class HttpParser:
         cparser.llhttp_init(self._cparser, mode, self._csettings)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
+        self._content_length_received = 0
+        self._original_content_length = 0
 
         self._protocol = protocol
         self._loop = loop
@@ -416,6 +421,10 @@ cdef class HttpParser:
         should_close = not cparser.llhttp_should_keep_alive(self._cparser)
         upgrade = self._cparser.upgrade
         chunked = self._cparser.flags & cparser.F_CHUNKED
+
+        # Store original content length for error reporting
+        if self._cparser.flags & cparser.F_CONTENT_LENGTH:
+            self._original_content_length = self._cparser.content_length
 
         raw_headers = tuple(self._raw_headers)
         headers = CIMultiDictProxy(CIMultiDict(self._headers))
@@ -508,8 +517,13 @@ cdef class HttpParser:
                 raise TransferEncodingError(
                     "Not enough data to satisfy transfer length header.")
             elif self._cparser.flags & cparser.F_CONTENT_LENGTH:
+                # Get expected content length and received bytes
+                expected = self._original_content_length
+                received = self._content_length_received
                 raise ContentLengthError(
-                    "Not enough data to satisfy content length header.")
+                    f"Not enough data to satisfy content length header. "
+                    f"Expected {expected} bytes, got {received} bytes."
+                )
             elif cparser.llhttp_get_errno(self._cparser) != cparser.HPE_OK:
                 desc = cparser.llhttp_get_error_reason(self._cparser)
                 raise PayloadEncodingError(desc.decode('latin-1'))
@@ -668,6 +682,8 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except -1:
     pyparser._started = True
     pyparser._headers = []
     pyparser._raw_headers = []
+    pyparser._content_length_received = 0  # Reset counter for new message
+    pyparser._original_content_length = 0  # Reset original content length
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
     pyparser._reason = None
@@ -759,6 +775,11 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
                     const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef bytes body = at[:length]
+
+    # Track bytes received for content-length responses
+    if parser.flags & cparser.F_CONTENT_LENGTH:
+        pyparser._content_length_received += length
+
     try:
         pyparser._payload.feed_data(body)
     except BaseException as underlying_exc:
