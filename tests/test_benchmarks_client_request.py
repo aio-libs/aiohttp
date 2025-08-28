@@ -58,7 +58,7 @@ def test_create_client_request_with_cookies(
             proxy_auth=None,
             proxy_headers=None,
             timer=timer,
-            session=None,
+            session=None,  # type: ignore[arg-type]
             ssl=True,
             traces=traces,
             trust_env=False,
@@ -97,7 +97,7 @@ def test_create_client_request_with_headers(
             proxy_auth=None,
             proxy_headers=None,
             timer=timer,
-            session=None,
+            session=None,  # type: ignore[arg-type]
             ssl=True,
             traces=traces,
             trust_env=False,

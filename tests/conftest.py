@@ -394,7 +394,7 @@ async def cleanup_payload_pending_file_closes(
 
 @pytest.fixture
 async def make_client_request() -> (
-    Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+    AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]
 ):
     """Fixture to help creating test ClientRequest objects with defaults."""
     request = session = None
@@ -433,4 +433,5 @@ async def make_client_request() -> (
 
     if request is not None:
         await request._close()
+        assert session is not None
         await session.close()

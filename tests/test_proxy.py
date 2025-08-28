@@ -5,6 +5,7 @@ from typing import Callable, Unpack
 from unittest import mock
 
 import pytest
+from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
@@ -16,6 +17,7 @@ from aiohttp.client_reqrep import (
 )
 from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
+from aiohttp.http import HttpVersion
 
 _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
 

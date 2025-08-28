@@ -805,7 +805,7 @@ class ClientRequestBase:
         return self._ssl
 
     @property
-    def connection_key(self) -> ConnectionKey:  # type: ignore[misc]
+    def connection_key(self) -> ConnectionKey:
         url = self.url
         return tuple.__new__(
             ConnectionKey,
@@ -992,7 +992,7 @@ class ClientRequestArgs(TypedDict, total=False):
 
 
 class ClientRequest(ClientRequestBase):
-    body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
+    _body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
     _continue = None  # waiter future for '100 Continue' response
 
     GET_METHODS = {
@@ -1065,11 +1065,15 @@ class ClientRequest(ClientRequestBase):
         self._traces = traces
 
     @property
+    def body(self) -> payload.Payload:
+        return self._body
+
+    @property
     def skip_auto_headers(self) -> CIMultiDict[None]:
         return self._skip_auto_headers or CIMultiDict()
 
     @property
-    def connection_key(self) -> ConnectionKey:  # type: ignore[misc]
+    def connection_key(self) -> ConnectionKey:
         if proxy_headers := self.proxy_headers:
             h: Optional[int] = hash(tuple(proxy_headers.items()))
         else:
@@ -1229,11 +1233,11 @@ class ClientRequest(ClientRequestBase):
 
         # Now update the body using the existing method
         # Called from _update_body, add 1 to stacklevel from caller
-        self.update_body_from_data(body, _stacklevel=4)
+        self._update_body_from_data(body, _stacklevel=4)
 
         # Update transfer encoding headers if needed (same logic as __init__)
         if body is not None or self.method not in self.GET_METHODS:
-            self.update_transfer_encoding()
+            self._update_transfer_encoding()
 
     async def update_body(self, body: Any) -> None:
         """

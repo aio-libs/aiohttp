@@ -457,7 +457,7 @@ def test_basic_auth_utf8(make_client_request: _RequestMaker) -> None:
 
 def test_basic_auth_tuple_forbidden(make_client_request: _RequestMaker) -> None:
     with pytest.raises(TypeError):
-        make_client_request("get", URL("http://python.org"), auth=("nkim", "1234"))
+        make_client_request("get", URL("http://python.org"), auth=("nkim", "1234"))  # type: ignore[arg-type]
 
 
 def test_basic_auth_from_url(make_client_request: _RequestMaker) -> None:
@@ -576,7 +576,7 @@ def test_query_str_param(make_client_request: _RequestMaker) -> None:
 def test_query_bytes_param_raises(make_client_request: _RequestMaker) -> None:
     for meth in ALL_METHODS:
         with pytest.raises(TypeError):
-            make_client_request(meth, URL("http://python.org"), params=b"test=foo")
+            make_client_request(meth, URL("http://python.org"), params=b"test=foo")  # type: ignore[arg-type]
 
 
 def test_query_str_param_is_not_encoded(make_client_request: _RequestMaker) -> None:
