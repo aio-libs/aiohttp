@@ -227,12 +227,16 @@ async def test_host_header_host_first(make_client_request: _RequestMaker) -> Non
     assert list(req.headers)[0] == hdrs.HOST
 
 
-async def test_host_header_host_without_port(make_client_request: _RequestMaker) -> None:
+async def test_host_header_host_without_port(
+    make_client_request: _RequestMaker,
+) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     assert req.headers[hdrs.HOST] == "python.org"
 
 
-async def test_host_header_host_with_default_port(make_client_request: _RequestMaker) -> None:
+async def test_host_header_host_with_default_port(
+    make_client_request: _RequestMaker,
+) -> None:
     req = make_client_request("get", URL("http://python.org:80/"))
     assert req.headers[hdrs.HOST] == "python.org"
 
@@ -346,7 +350,9 @@ async def test_default_headers_useragent(make_client_request: _RequestMaker) -> 
     assert "USER-AGENT" in req.headers
 
 
-async def test_default_headers_useragent_custom(make_client_request: _RequestMaker) -> None:
+async def test_default_headers_useragent_custom(
+    make_client_request: _RequestMaker,
+) -> None:
     req = make_client_request(
         "get",
         URL("http://python.org/"),
@@ -357,7 +363,9 @@ async def test_default_headers_useragent_custom(make_client_request: _RequestMak
     assert "my custom agent" == req.headers["User-Agent"]
 
 
-async def test_skip_default_useragent_header(make_client_request: _RequestMaker) -> None:
+async def test_skip_default_useragent_header(
+    make_client_request: _RequestMaker,
+) -> None:
     req = make_client_request(
         "get", URL("http://python.org/"), skip_auto_headers={istr("user-agent")}
     )
@@ -471,7 +479,9 @@ async def test_basic_auth_no_user_from_url(make_client_request: _RequestMaker) -
     assert "python.org" == req.url.host
 
 
-async def test_basic_auth_from_url_overridden(make_client_request: _RequestMaker) -> None:
+async def test_basic_auth_from_url_overridden(
+    make_client_request: _RequestMaker,
+) -> None:
     req = make_client_request(
         "get", URL("http://garbage@python.org"), auth=aiohttp.BasicAuth("nkim", "1234")
     )
@@ -500,14 +510,18 @@ async def test_path_safe_chars_preserved(make_client_request: _RequestMaker) -> 
     assert req.url.path == "/get/:=+/+/"
 
 
-async def test_params_are_added_before_fragment1(make_client_request: _RequestMaker) -> None:
+async def test_params_are_added_before_fragment1(
+    make_client_request: _RequestMaker,
+) -> None:
     req = make_client_request(
         "GET", URL("http://example.com/path#fragment"), params={"a": "b"}
     )
     assert str(req.url) == "http://example.com/path?a=b"
 
 
-async def test_params_are_added_before_fragment2(make_client_request: _RequestMaker) -> None:
+async def test_params_are_added_before_fragment2(
+    make_client_request: _RequestMaker,
+) -> None:
     req = make_client_request(
         "GET", URL("http://example.com/path?key=value#fragment"), params={"a": "b"}
     )
@@ -576,7 +590,9 @@ async def test_query_bytes_param_raises(make_client_request: _RequestMaker) -> N
             make_client_request(meth, URL("http://python.org"), params=b"test=foo")  # type: ignore[arg-type]
 
 
-async def test_query_str_param_is_not_encoded(make_client_request: _RequestMaker) -> None:
+async def test_query_str_param_is_not_encoded(
+    make_client_request: _RequestMaker,
+) -> None:
     for meth in ALL_METHODS:
         req = make_client_request(meth, URL("http://python.org"), params="test=f+oo")
         assert str(req.url) == "http://python.org/?test=f+oo"
