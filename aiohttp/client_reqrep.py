@@ -766,7 +766,7 @@ class ClientRequestBase:
         self._update_headers(headers)
         self._update_auth(auth, trust_env)
 
-    def __reset_writer(self, _: object = None) -> None:
+    def _reset_writer(self, _: object = None) -> None:
         self._writer_task = None
 
     def _get_content_length(self) -> Optional[int]:
@@ -793,9 +793,9 @@ class ClientRequestBase:
     @_writer.setter
     def _writer(self, writer: "asyncio.Task[None]") -> None:
         if self._writer_task is not None:
-            self._writer_task.remove_done_callback(self.__reset_writer)
+            self._writer_task.remove_done_callback(self._reset_writer)
         self._writer_task = writer
-        writer.add_done_callback(self.__reset_writer)
+        writer.add_done_callback(self._reset_writer)
 
     def is_ssl(self) -> bool:
         return self.url.scheme in _SSL_SCHEMES
@@ -1462,7 +1462,7 @@ class ClientRequest(ClientRequestBase):
         if self._writer_task is not None:
             if not self.loop.is_closed():
                 self._writer_task.cancel()
-            self._writer_task.remove_done_callback(self.__reset_writer)
+            self._writer_task.remove_done_callback(self._reset_writer)
             self._writer_task = None
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
