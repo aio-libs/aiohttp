@@ -10,16 +10,7 @@ from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import (
-    Any,
-    AsyncIterator,
-    Callable,
-    Iterable,
-    Iterator,
-    Optional,
-    TypedDict,
-    Union,
-)
+from typing import Any, AsyncIterator, Callable, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -399,6 +390,7 @@ async def cleanup_payload_pending_file_closes(
 
 @pytest.fixture
 async def make_client_request() -> (
+    loop: asyncio.AbstractEventLoop,
     AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]
 ):
     """Fixture to help creating test ClientRequest objects with defaults."""
