@@ -1303,7 +1303,7 @@ async def test_data_stream(
         await asyncio.sleep(0)
         await original_write_bytes(writer, conn, content_length)
 
-    with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+    with mock.patch.object(req, "_write_bytes", _mock_write_bytes):
         resp = await req._send(conn)
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
@@ -1567,7 +1567,7 @@ async def test_terminate(
         # Ensure the task is scheduled
         await asyncio.sleep(0)
 
-    with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+    with mock.patch.object(req, "_write_bytes", _mock_write_bytes):
         resp = await req._send(conn)
 
     assert req._writer is not None
@@ -1602,7 +1602,7 @@ def test_terminate_with_closed_loop(
             # Ensure the task is scheduled
             await asyncio.sleep(0)
 
-        with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+        with mock.patch.object(req, "_write_bytes", _mock_write_bytes):
             resp = await req._send(conn)
 
         assert req._writer is not None
