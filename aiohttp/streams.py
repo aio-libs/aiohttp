@@ -252,6 +252,12 @@ class StreamReader(AsyncStreamReaderMixin):
         finally:
             self._eof_waiter = None
 
+    @property
+    def total_raw_bytes(self) -> int:
+        if self.total_compressed_bytes is None:
+            return self.total_bytes
+        return self.total_compressed_bytes
+
     def unread_data(self, data: bytes) -> None:
         """rollback reading some data from stream, inserting it to buffer head."""
         warnings.warn(
