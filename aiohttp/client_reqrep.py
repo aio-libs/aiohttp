@@ -726,7 +726,7 @@ class ClientRequestBase:
     url = URL()
     method = "GET"
 
-    __writer: Optional["asyncio.Task[None]"] = None  # async task for streaming data
+    _writer_task: Optional["asyncio.Task[None]"] = None  # async task for streaming data
 
     _skip_auto_headers: Optional["CIMultiDict[None]"] = None
 
@@ -767,7 +767,7 @@ class ClientRequestBase:
         self._update_auth(auth, trust_env)
 
     def __reset_writer(self, _: object = None) -> None:
-        self.__writer = None
+        self._writer_task = None
 
     def _get_content_length(self) -> Optional[int]:
         """Extract and validate Content-Length header value.
@@ -788,13 +788,13 @@ class ClientRequestBase:
 
     @property
     def _writer(self) -> Optional["asyncio.Task[None]"]:
-        return self.__writer
+        return self._writer_task
 
     @_writer.setter
     def _writer(self, writer: "asyncio.Task[None]") -> None:
-        if self.__writer is not None:
-            self.__writer.remove_done_callback(self.__reset_writer)
-        self.__writer = writer
+        if self._writer_task is not None:
+            self._writer_task.remove_done_callback(self.__reset_writer)
+        self._writer_task = writer
         writer.add_done_callback(self.__reset_writer)
 
     def is_ssl(self) -> bool:
@@ -1447,9 +1447,9 @@ class ClientRequest(ClientRequestBase):
             protocol.start_timeout()
 
     async def _close(self) -> None:
-        if self.__writer is not None:
+        if self._writer_task is not None:
             try:
-                await self.__writer
+                await self._writer_task
             except asyncio.CancelledError:
                 if (
                     sys.version_info >= (3, 11)
@@ -1459,11 +1459,11 @@ class ClientRequest(ClientRequestBase):
                     raise
 
     def _terminate(self) -> None:
-        if self.__writer is not None:
+        if self._writer_task is not None:
             if not self.loop.is_closed():
-                self.__writer.cancel()
-            self.__writer.remove_done_callback(self.__reset_writer)
-            self.__writer = None
+                self._writer_task.cancel()
+            self._writer_task.remove_done_callback(self.__reset_writer)
+            self._writer_task = None
 
     async def _on_chunk_request_sent(self, method: str, url: URL, chunk: bytes) -> None:
         for trace in self._traces:
