@@ -979,8 +979,7 @@ async def test_content_encoding_dont_set_headers_if_no_body(
     req = make_client_request(
         "post", URL("http://python.org/"), compress="deflate", loop=loop
     )
-    with mock.patch("aiohttp.client_reqrep.http"):
-        resp = await req._send(conn)
+    resp = await req._send(conn)
     assert "TRANSFER-ENCODING" not in req.headers
     assert "CONTENT-ENCODING" not in req.headers
     await req._close()
