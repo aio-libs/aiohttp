@@ -103,44 +103,44 @@ def conn(transport: asyncio.Transport, protocol: BaseProtocol) -> Connection:
     return mock.Mock(transport=transport, protocol=protocol)
 
 
-def test_method1(make_client_request: _RequestMaker) -> None:
+async def test_method1(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     assert req.method == "GET"
 
 
-def test_method2(make_client_request: _RequestMaker) -> None:
+async def test_method2(make_client_request: _RequestMaker) -> None:
     req = make_client_request("head", URL("http://python.org/"))
     assert req.method == "HEAD"
 
 
-def test_method3(make_client_request: _RequestMaker) -> None:
+async def test_method3(make_client_request: _RequestMaker) -> None:
     req = make_client_request("HEAD", URL("http://python.org/"))
     assert req.method == "HEAD"
 
 
-def test_method_invalid(make_client_request: _RequestMaker) -> None:
+async def test_method_invalid(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError, match="Method cannot contain non-token characters"):
         make_client_request("METHOD WITH\nWHITESPACES", URL("http://python.org/"))
 
 
-def test_version_1_0(make_client_request: _RequestMaker) -> None:
+async def test_version_1_0(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"), version=HttpVersion10)
     assert req.version == (1, 0)
 
 
-def test_version_default(make_client_request: _RequestMaker) -> None:
+async def test_version_default(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     assert req.version == (1, 1)
 
 
-def test_request_info(make_client_request: _RequestMaker) -> None:
+async def test_request_info(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     url = URL("http://python.org/")
     h = CIMultiDictProxy(req.headers)
     assert req._request_info == aiohttp.RequestInfo(url, "GET", h, url)
 
 
-def test_request_info_with_fragment(make_client_request: _RequestMaker) -> None:
+async def test_request_info_with_fragment(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/#urlfragment"))
     h = CIMultiDictProxy(req.headers)
     assert req._request_info == aiohttp.RequestInfo(
@@ -151,117 +151,117 @@ def test_request_info_with_fragment(make_client_request: _RequestMaker) -> None:
     )
 
 
-def test_host_port_default_http(make_client_request: _RequestMaker) -> None:
+async def test_host_port_default_http(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     assert req.url.host == "python.org"
     assert req.url.port == 80
     assert not req.is_ssl()
 
 
-def test_host_port_default_https(make_client_request: _RequestMaker) -> None:
+async def test_host_port_default_https(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("https://python.org/"))
     assert req.url.host == "python.org"
     assert req.url.port == 443
     assert req.is_ssl()
 
 
-def test_host_port_nondefault_http(make_client_request: _RequestMaker) -> None:
+async def test_host_port_nondefault_http(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org:960/"))
     assert req.url.host == "python.org"
     assert req.url.port == 960
     assert not req.is_ssl()
 
 
-def test_host_port_nondefault_https(make_client_request: _RequestMaker) -> None:
+async def test_host_port_nondefault_https(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("https://python.org:960/"))
     assert req.url.host == "python.org"
     assert req.url.port == 960
     assert req.is_ssl()
 
 
-def test_host_port_default_ws(make_client_request: _RequestMaker) -> None:
+async def test_host_port_default_ws(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("ws://python.org/"))
     assert req.url.host == "python.org"
     assert req.url.port == 80
     assert not req.is_ssl()
 
 
-def test_host_port_default_wss(make_client_request: _RequestMaker) -> None:
+async def test_host_port_default_wss(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("wss://python.org/"))
     assert req.url.host == "python.org"
     assert req.url.port == 443
     assert req.is_ssl()
 
 
-def test_host_port_nondefault_ws(make_client_request: _RequestMaker) -> None:
+async def test_host_port_nondefault_ws(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("ws://python.org:960/"))
     assert req.url.host == "python.org"
     assert req.url.port == 960
     assert not req.is_ssl()
 
 
-def test_host_port_nondefault_wss(make_client_request: _RequestMaker) -> None:
+async def test_host_port_nondefault_wss(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("wss://python.org:960/"))
     assert req.url.host == "python.org"
     assert req.url.port == 960
     assert req.is_ssl()
 
 
-def test_host_port_none_port(make_client_request: _RequestMaker) -> None:
+async def test_host_port_none_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("unix://localhost/path"))
     assert req.headers[hdrs.HOST] == "localhost"
 
 
-def test_host_port_err(make_client_request: _RequestMaker) -> None:
+async def test_host_port_err(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError):
         make_client_request("get", URL("http://python.org:123e/"))
 
 
-def test_hostname_err(make_client_request: _RequestMaker) -> None:
+async def test_hostname_err(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError):
         make_client_request("get", URL("http://:8080/"))
 
 
-def test_host_header_host_first(make_client_request: _RequestMaker) -> None:
+async def test_host_header_host_first(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     assert list(req.headers)[0] == hdrs.HOST
 
 
-def test_host_header_host_without_port(make_client_request: _RequestMaker) -> None:
+async def test_host_header_host_without_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     assert req.headers[hdrs.HOST] == "python.org"
 
 
-def test_host_header_host_with_default_port(make_client_request: _RequestMaker) -> None:
+async def test_host_header_host_with_default_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org:80/"))
     assert req.headers[hdrs.HOST] == "python.org"
 
 
-def test_host_header_host_with_nondefault_port(
+async def test_host_header_host_with_nondefault_port(
     make_client_request: _RequestMaker,
 ) -> None:
     req = make_client_request("get", URL("http://python.org:99/"))
     assert req.headers["HOST"] == "python.org:99"
 
 
-def test_host_header_host_idna_encode(make_client_request: _RequestMaker) -> None:
+async def test_host_header_host_idna_encode(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://xn--9caa.com"))
     assert req.headers["HOST"] == "xn--9caa.com"
 
 
-def test_host_header_host_unicode(make_client_request: _RequestMaker) -> None:
+async def test_host_header_host_unicode(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://éé.com"))
     assert req.headers["HOST"] == "xn--9caa.com"
 
 
-def test_host_header_explicit_host(make_client_request: _RequestMaker) -> None:
+async def test_host_header_explicit_host(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get", URL("http://python.org/"), headers=CIMultiDict({"host": "example.com"})
     )
     assert req.headers["HOST"] == "example.com"
 
 
-def test_host_header_explicit_host_with_port(
+async def test_host_header_explicit_host_with_port(
     make_client_request: _RequestMaker,
 ) -> None:
     req = make_client_request(
@@ -272,22 +272,22 @@ def test_host_header_explicit_host_with_port(
     assert req.headers["HOST"] == "example.com:99"
 
 
-def test_host_header_ipv4(make_client_request: _RequestMaker) -> None:
+async def test_host_header_ipv4(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://127.0.0.2"))
     assert req.headers["HOST"] == "127.0.0.2"
 
 
-def test_host_header_ipv6(make_client_request: _RequestMaker) -> None:
+async def test_host_header_ipv6(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://[::2]"))
     assert req.headers["HOST"] == "[::2]"
 
 
-def test_host_header_ipv4_with_port(make_client_request: _RequestMaker) -> None:
+async def test_host_header_ipv4_with_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://127.0.0.2:99"))
     assert req.headers["HOST"] == "127.0.0.2:99"
 
 
-def test_host_header_ipv6_with_port(make_client_request: _RequestMaker) -> None:
+async def test_host_header_ipv6_with_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://[::2]:99"))
     assert req.headers["HOST"] == "[::2]:99"
 
@@ -329,7 +329,7 @@ def test_host_header_ipv6_with_port(make_client_request: _RequestMaker) -> None:
         ),
     ),
 )
-def test_host_header_fqdn(
+async def test_host_header_fqdn(
     make_client_request: _RequestMaker,
     url: str,
     headers: CIMultiDict[str],
@@ -339,14 +339,14 @@ def test_host_header_fqdn(
     assert req.headers["HOST"] == expected
 
 
-def test_default_headers_useragent(make_client_request: _RequestMaker) -> None:
+async def test_default_headers_useragent(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
 
     assert "SERVER" not in req.headers
     assert "USER-AGENT" in req.headers
 
 
-def test_default_headers_useragent_custom(make_client_request: _RequestMaker) -> None:
+async def test_default_headers_useragent_custom(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get",
         URL("http://python.org/"),
@@ -357,7 +357,7 @@ def test_default_headers_useragent_custom(make_client_request: _RequestMaker) ->
     assert "my custom agent" == req.headers["User-Agent"]
 
 
-def test_skip_default_useragent_header(make_client_request: _RequestMaker) -> None:
+async def test_skip_default_useragent_header(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get", URL("http://python.org/"), skip_auto_headers={istr("user-agent")}
     )
@@ -365,7 +365,7 @@ def test_skip_default_useragent_header(make_client_request: _RequestMaker) -> No
     assert "User-Agent" not in req.headers
 
 
-def test_headers(make_client_request: _RequestMaker) -> None:
+async def test_headers(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "post",
         URL("http://python.org/"),
@@ -377,7 +377,7 @@ def test_headers(make_client_request: _RequestMaker) -> None:
     assert "gzip" in req.headers[hdrs.ACCEPT_ENCODING]
 
 
-def test_headers_list(make_client_request: _RequestMaker) -> None:
+async def test_headers_list(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "post",
         URL("http://python.org/"),
@@ -387,7 +387,7 @@ def test_headers_list(make_client_request: _RequestMaker) -> None:
     assert req.headers["CONTENT-TYPE"] == "text/plain"
 
 
-def test_headers_default(make_client_request: _RequestMaker) -> None:
+async def test_headers_default(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get",
         URL("http://python.org/"),
@@ -396,45 +396,45 @@ def test_headers_default(make_client_request: _RequestMaker) -> None:
     assert req.headers["ACCEPT-ENCODING"] == "deflate"
 
 
-def test_invalid_url(make_client_request: _RequestMaker) -> None:
+async def test_invalid_url(make_client_request: _RequestMaker) -> None:
     with pytest.raises(aiohttp.InvalidURL):
         make_client_request("get", URL("hiwpefhipowhefopw"))
 
 
-def test_no_path(make_client_request: _RequestMaker) -> None:
+async def test_no_path(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org"))
     assert "/" == req.url.path
 
 
-def test_ipv6_default_http_port(make_client_request: _RequestMaker) -> None:
+async def test_ipv6_default_http_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://[2001:db8::1]/"))
     assert req.url.host == "2001:db8::1"
     assert req.url.port == 80
     assert not req.is_ssl()
 
 
-def test_ipv6_default_https_port(make_client_request: _RequestMaker) -> None:
+async def test_ipv6_default_https_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("https://[2001:db8::1]/"))
     assert req.url.host == "2001:db8::1"
     assert req.url.port == 443
     assert req.is_ssl()
 
 
-def test_ipv6_nondefault_http_port(make_client_request: _RequestMaker) -> None:
+async def test_ipv6_nondefault_http_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://[2001:db8::1]:960/"))
     assert req.url.host == "2001:db8::1"
     assert req.url.port == 960
     assert not req.is_ssl()
 
 
-def test_ipv6_nondefault_https_port(make_client_request: _RequestMaker) -> None:
+async def test_ipv6_nondefault_https_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("https://[2001:db8::1]:960/"))
     assert req.url.host == "2001:db8::1"
     assert req.url.port == 960
     assert req.is_ssl()
 
 
-def test_basic_auth(make_client_request: _RequestMaker) -> None:
+async def test_basic_auth(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get", URL("http://python.org"), auth=aiohttp.BasicAuth("nkim", "1234")
     )
@@ -442,7 +442,7 @@ def test_basic_auth(make_client_request: _RequestMaker) -> None:
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
 
 
-def test_basic_auth_utf8(make_client_request: _RequestMaker) -> None:
+async def test_basic_auth_utf8(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get",
         URL("http://python.org"),
@@ -452,26 +452,26 @@ def test_basic_auth_utf8(make_client_request: _RequestMaker) -> None:
     assert "Basic bmtpbTrRgdC10LrRgNC10YI=" == req.headers["AUTHORIZATION"]
 
 
-def test_basic_auth_tuple_forbidden(make_client_request: _RequestMaker) -> None:
+async def test_basic_auth_tuple_forbidden(make_client_request: _RequestMaker) -> None:
     with pytest.raises(TypeError):
         make_client_request("get", URL("http://python.org"), auth=("nkim", "1234"))  # type: ignore[arg-type]
 
 
-def test_basic_auth_from_url(make_client_request: _RequestMaker) -> None:
+async def test_basic_auth_from_url(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://nkim:1234@python.org"))
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
     assert "python.org" == req.url.host
 
 
-def test_basic_auth_no_user_from_url(make_client_request: _RequestMaker) -> None:
+async def test_basic_auth_no_user_from_url(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://:1234@python.org"))
     assert "AUTHORIZATION" in req.headers
     assert "Basic OjEyMzQ=" == req.headers["AUTHORIZATION"]
     assert "python.org" == req.url.host
 
 
-def test_basic_auth_from_url_overridden(make_client_request: _RequestMaker) -> None:
+async def test_basic_auth_from_url_overridden(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get", URL("http://garbage@python.org"), auth=aiohttp.BasicAuth("nkim", "1234")
     )
@@ -480,51 +480,51 @@ def test_basic_auth_from_url_overridden(make_client_request: _RequestMaker) -> N
     assert "python.org" == req.url.host
 
 
-def test_path_is_not_double_encoded1(make_client_request: _RequestMaker) -> None:
+async def test_path_is_not_double_encoded1(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://0.0.0.0/get/test case"))
     assert req.url.raw_path == "/get/test%20case"
 
 
-def test_path_is_not_double_encoded2(make_client_request: _RequestMaker) -> None:
+async def test_path_is_not_double_encoded2(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://0.0.0.0/get/test%2fcase"))
     assert req.url.raw_path == "/get/test%2Fcase"
 
 
-def test_path_is_not_double_encoded3(make_client_request: _RequestMaker) -> None:
+async def test_path_is_not_double_encoded3(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://0.0.0.0/get/test%20case"))
     assert req.url.raw_path == "/get/test%20case"
 
 
-def test_path_safe_chars_preserved(make_client_request: _RequestMaker) -> None:
+async def test_path_safe_chars_preserved(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://0.0.0.0/get/:=+/%2B/"))
     assert req.url.path == "/get/:=+/+/"
 
 
-def test_params_are_added_before_fragment1(make_client_request: _RequestMaker) -> None:
+async def test_params_are_added_before_fragment1(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "GET", URL("http://example.com/path#fragment"), params={"a": "b"}
     )
     assert str(req.url) == "http://example.com/path?a=b"
 
 
-def test_params_are_added_before_fragment2(make_client_request: _RequestMaker) -> None:
+async def test_params_are_added_before_fragment2(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "GET", URL("http://example.com/path?key=value#fragment"), params={"a": "b"}
     )
     assert str(req.url) == "http://example.com/path?key=value&a=b"
 
 
-def test_path_not_contain_fragment1(make_client_request: _RequestMaker) -> None:
+async def test_path_not_contain_fragment1(make_client_request: _RequestMaker) -> None:
     req = make_client_request("GET", URL("http://example.com/path#fragment"))
     assert req.url.path == "/path"
 
 
-def test_path_not_contain_fragment2(make_client_request: _RequestMaker) -> None:
+async def test_path_not_contain_fragment2(make_client_request: _RequestMaker) -> None:
     req = make_client_request("GET", URL("http://example.com/path?key=value#fragment"))
     assert str(req.url) == "http://example.com/path?key=value"
 
 
-def test_cookies(make_client_request: _RequestMaker) -> None:
+async def test_cookies(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get", URL("http://test.com/path"), cookies=BaseCookie({"cookie1": "val1"})
     )
@@ -533,7 +533,7 @@ def test_cookies(make_client_request: _RequestMaker) -> None:
     assert "cookie1=val1" == req.headers["COOKIE"]
 
 
-def test_cookies_is_quoted_with_special_characters(
+async def test_cookies_is_quoted_with_special_characters(
     make_client_request: _RequestMaker,
 ) -> None:
     req = make_client_request(
@@ -544,7 +544,7 @@ def test_cookies_is_quoted_with_special_characters(
     assert 'cookie1="val/one"' == req.headers["COOKIE"]
 
 
-def test_cookies_merge_with_headers(make_client_request: _RequestMaker) -> None:
+async def test_cookies_merge_with_headers(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get",
         URL("http://test.com/path"),
@@ -555,7 +555,7 @@ def test_cookies_merge_with_headers(make_client_request: _RequestMaker) -> None:
     assert "cookie1=val1; cookie2=val2" == req.headers["COOKIE"]
 
 
-def test_query_multivalued_param(make_client_request: _RequestMaker) -> None:
+async def test_query_multivalued_param(make_client_request: _RequestMaker) -> None:
     for meth in ALL_METHODS:
         req = make_client_request(
             meth, URL("http://python.org"), params=(("test", "foo"), ("test", "baz"))
@@ -564,39 +564,39 @@ def test_query_multivalued_param(make_client_request: _RequestMaker) -> None:
         assert str(req.url) == "http://python.org/?test=foo&test=baz"
 
 
-def test_query_str_param(make_client_request: _RequestMaker) -> None:
+async def test_query_str_param(make_client_request: _RequestMaker) -> None:
     for meth in ALL_METHODS:
         req = make_client_request(meth, URL("http://python.org"), params="test=foo")
         assert str(req.url) == "http://python.org/?test=foo"
 
 
-def test_query_bytes_param_raises(make_client_request: _RequestMaker) -> None:
+async def test_query_bytes_param_raises(make_client_request: _RequestMaker) -> None:
     for meth in ALL_METHODS:
         with pytest.raises(TypeError):
             make_client_request(meth, URL("http://python.org"), params=b"test=foo")  # type: ignore[arg-type]
 
 
-def test_query_str_param_is_not_encoded(make_client_request: _RequestMaker) -> None:
+async def test_query_str_param_is_not_encoded(make_client_request: _RequestMaker) -> None:
     for meth in ALL_METHODS:
         req = make_client_request(meth, URL("http://python.org"), params="test=f+oo")
         assert str(req.url) == "http://python.org/?test=f+oo"
 
 
-def test_params_update_path_and_url(make_client_request: _RequestMaker) -> None:
+async def test_params_update_path_and_url(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get", URL("http://python.org"), params=(("test", "foo"), ("test", "baz"))
     )
     assert str(req.url) == "http://python.org/?test=foo&test=baz"
 
 
-def test_params_empty_path_and_url(make_client_request: _RequestMaker) -> None:
+async def test_params_empty_path_and_url(make_client_request: _RequestMaker) -> None:
     req_empty = make_client_request("get", URL("http://python.org"), params={})
     assert str(req_empty.url) == "http://python.org"
     req_none = make_client_request("get", URL("http://python.org"))
     assert str(req_none.url) == "http://python.org"
 
 
-def test_gen_netloc_all(make_client_request: _RequestMaker) -> None:
+async def test_gen_netloc_all(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get",
         URL(
@@ -609,7 +609,7 @@ def test_gen_netloc_all(make_client_request: _RequestMaker) -> None:
     )
 
 
-def test_gen_netloc_no_port(make_client_request: _RequestMaker) -> None:
+async def test_gen_netloc_no_port(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get",
         URL(
@@ -621,7 +621,7 @@ def test_gen_netloc_no_port(make_client_request: _RequestMaker) -> None:
     )
 
 
-def test_cookie_coded_value_preserved(
+async def test_cookie_coded_value_preserved(
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
@@ -632,7 +632,7 @@ def test_cookie_coded_value_preserved(
     assert req.headers["COOKIE"] == 'ip-cookie="second"'
 
 
-def test_update_cookies_with_special_chars_in_existing_header(
+async def test_update_cookies_with_special_chars_in_existing_header(
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
@@ -657,7 +657,7 @@ def test_update_cookies_with_special_chars_in_existing_header(
     )
 
 
-def test_update_cookies_with_quoted_existing_header(
+async def test_update_cookies_with_quoted_existing_header(
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
@@ -1587,7 +1587,7 @@ async def test_terminate(
     resp.close()
 
 
-def test_terminate_with_closed_loop(
+async def test_terminate_with_closed_loop(
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
     make_client_request: _RequestMaker,
@@ -1625,7 +1625,7 @@ def test_terminate_with_closed_loop(
     resp.close()
 
 
-def test_terminate_without_writer(
+async def test_terminate_without_writer(
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
@@ -1737,7 +1737,7 @@ def test_gen_default_accept_encoding(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_from_netrc_present(  # type: ignore[misc]
+async def test_basicauth_from_netrc_present(  # type: ignore[misc]
     make_client_request: _RequestMaker,
     expected_auth: helpers.BasicAuth,
 ) -> None:
@@ -1752,7 +1752,7 @@ def test_basicauth_from_netrc_present(  # type: ignore[misc]
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_from_netrc_present_untrusted_env(
+async def test_basicauth_from_netrc_present_untrusted_env(
     make_client_request: _RequestMaker,
 ) -> None:
     """Test no authorization header is sent via netrc if trust_env is False"""
@@ -1766,7 +1766,7 @@ def test_basicauth_from_netrc_present_untrusted_env(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_from_empty_netrc(
+async def test_basicauth_from_empty_netrc(
     make_client_request: _RequestMaker,
 ) -> None:
     """Test that no Authorization header is sent when netrc is empty"""
@@ -1848,7 +1848,7 @@ def test_request_info_tuple_new() -> None:
     )
 
 
-def test_get_content_length(make_client_request: _RequestMaker) -> None:
+async def test_get_content_length(make_client_request: _RequestMaker) -> None:
     """Test _get_content_length method extracts Content-Length correctly."""
     req = make_client_request("get", URL("http://python.org/"))
 
@@ -2365,7 +2365,7 @@ async def test_expect100_with_body_becomes_empty(
         ("DELETE", b"x", "1"),
     ],
 )
-def test_content_length_for_methods(
+async def test_content_length_for_methods(
     method: str,
     data: Optional[bytes],
     expected_content_length: Optional[str],
