@@ -389,8 +389,7 @@ async def cleanup_payload_pending_file_closes(
 
 
 @pytest.fixture
-async def make_client_request() -> (
-    loop: asyncio.AbstractEventLoop,
+async def make_client_request(loop: asyncio.AbstractEventLoop) -> (
     AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]
 ):
     """Fixture to help creating test ClientRequest objects with defaults."""
