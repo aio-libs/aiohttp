@@ -1072,7 +1072,7 @@ async def test_chunked_empty_body(
         loop=loop,
         data=b"",
     )
-    with mock.patch.object(req, "write_bytes") as write_bytes:
+    with mock.patch.object(req, "_write_bytes") as write_bytes:
         resp = await req._send(conn)
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
     assert write_bytes.called
