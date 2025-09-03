@@ -249,7 +249,7 @@ tomli==2.2.1
     #   slotscheck
     #   sphinx
     #   towncrier
-towncrier==24.8.0
+towncrier==25.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
