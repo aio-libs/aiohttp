@@ -93,11 +93,3 @@ exclude-modules = "(^aiohttp\\.helpers)"
 # TODO: Remove when project metadata is moved here.
 # Black can read the value from [project.requires-python].
 target-version = ["py39", "py310", "py311", "py312", "py313"]
-
-[tool.local.cythonize.kwargs.directive]
-# This section can contain compiler directives. Ref:
-# https://cython.rtfd.io/en/latest/src/userguide/source_files_and_compilation.html#compiler-directives
-embedsignature = "True"
-emit_code_comments = "True"
-language_level = "3"
-freethreading_compatible = "True"

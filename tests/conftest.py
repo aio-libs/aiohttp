@@ -96,14 +96,14 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
 
 
 @pytest.fixture
-def tls_certificate_authority() -> "trustme.CA":
+def tls_certificate_authority() -> trustme.CA:
     if not TRUSTME:
         pytest.xfail("trustme is not supported")
     return trustme.CA()
 
 
 @pytest.fixture
-def tls_certificate(tls_certificate_authority: "trustme.CA") -> "trustme.LeafCert":
+def tls_certificate(tls_certificate_authority: trustme.CA) -> trustme.LeafCert:
     return tls_certificate_authority.issue_cert(
         "localhost",
         "xn--prklad-4va.localhost",
@@ -113,33 +113,33 @@ def tls_certificate(tls_certificate_authority: "trustme.CA") -> "trustme.LeafCer
 
 
 @pytest.fixture
-def ssl_ctx(tls_certificate: "trustme.LeafCert") -> ssl.SSLContext:
+def ssl_ctx(tls_certificate: trustme.LeafCert) -> ssl.SSLContext:
     ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls_certificate.configure_cert(ssl_ctx)
     return ssl_ctx
 
 
 @pytest.fixture
-def client_ssl_ctx(tls_certificate_authority: "trustme.CA") -> ssl.SSLContext:
+def client_ssl_ctx(tls_certificate_authority: trustme.CA) -> ssl.SSLContext:
     ssl_ctx = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
     tls_certificate_authority.configure_trust(ssl_ctx)
     return ssl_ctx
 
 
 @pytest.fixture
-def tls_ca_certificate_pem_path(tls_certificate_authority: "trustme.CA") -> Iterator[str]:
+def tls_ca_certificate_pem_path(tls_certificate_authority: trustme.CA) -> Iterator[str]:
     with tls_certificate_authority.cert_pem.tempfile() as ca_cert_pem:
         yield ca_cert_pem
 
 
 @pytest.fixture
-def tls_certificate_pem_path(tls_certificate: "trustme.LeafCert") -> Iterator[str]:
+def tls_certificate_pem_path(tls_certificate: trustme.LeafCert) -> Iterator[str]:
     with tls_certificate.private_key_and_cert_chain_pem.tempfile() as cert_pem:
         yield cert_pem
 
 
 @pytest.fixture
-def tls_certificate_pem_bytes(tls_certificate: "trustme.LeafCert") -> bytes:
+def tls_certificate_pem_bytes(tls_certificate: trustme.LeafCert) -> bytes:
     return tls_certificate.cert_chain_pems[0].bytes()
 
 
