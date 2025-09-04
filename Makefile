@@ -59,14 +59,14 @@ aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 # Special case for reader since we want to be able to disable
 # the extension with AIOHTTP_NO_EXTENSIONS
 aiohttp/_websocket/reader_c.c: aiohttp/_websocket/reader_c.py
-	cython -3 -o $@ $< -I aiohttp -Werror
+	cython -3 -X freethreading_compatible=True -o $@ $< -I aiohttp -Werror
 
 # _find_headers generator creates _headers.pyi as well
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
-	cython -3 -o $@ $< -I aiohttp -Werror
+	cython -3 -X freethreading_compatible=True -o $@ $< -I aiohttp -Werror
 
 aiohttp/_websocket/%.c: aiohttp/_websocket/%.pyx $(call to-hash,$(CYS))
-	cython -3 -o $@ $< -I aiohttp -Werror
+	cython -3 -X freethreading_compatible=True -o $@ $< -I aiohttp -Werror
 
 vendor/llhttp/node_modules: vendor/llhttp/package.json
 	cd vendor/llhttp; npm ci

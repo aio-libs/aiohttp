@@ -1,5 +1,3 @@
-#cython: language_level=3
-#
 # Based on https://github.com/MagicStack/httptools
 #
 
