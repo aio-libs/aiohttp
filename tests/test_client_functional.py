@@ -1715,7 +1715,7 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
 
     write_mock = None
     writelines_mock = None
-    original_write_bytes = ClientRequest.write_bytes
+    original_write_bytes = ClientRequest._write_bytes
 
     async def write_bytes(
         self: ClientRequest,
@@ -1745,7 +1745,7 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
         ):
             await original_write_bytes(self, writer, conn, content_length)
 
-    with mock.patch.object(ClientRequest, "write_bytes", write_bytes):
+    with mock.patch.object(ClientRequest, "_write_bytes", write_bytes):
         app = web.Application()
         app.router.add_get("/", handler)
         client = await aiohttp_client(app)
@@ -1775,7 +1775,7 @@ async def test_GET_DEFLATE_no_body(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
-    with mock.patch.object(ClientRequest, "write_bytes") as mock_write_bytes:
+    with mock.patch.object(ClientRequest, "_write_bytes") as mock_write_bytes:
         app = web.Application()
         app.router.add_get("/", handler)
         client = await aiohttp_client(app)
