@@ -127,7 +127,9 @@ def client_ssl_ctx(tls_certificate_authority: "trustme.CA") -> ssl.SSLContext:
 
 
 @pytest.fixture
-def tls_ca_certificate_pem_path(tls_certificate_authority: "trustme.CA") -> Iterator[str]:
+def tls_ca_certificate_pem_path(
+    tls_certificate_authority: "trustme.CA",
+) -> Iterator[str]:
     with tls_certificate_authority.cert_pem.tempfile() as ca_cert_pem:
         yield ca_cert_pem
 
