@@ -215,6 +215,12 @@ def test_can_prepare_unknown_protocol(make_request: _RequestMaker) -> None:
     assert WebSocketReady(True, None) == ws.can_prepare(req)
 
 
+def test_can_prepare_invalid_method(make_request: _RequestMaker) -> None:
+    req = make_request("POST", "/")
+    ws = web.WebSocketResponse()
+    assert WebSocketReady(False, None) == ws.can_prepare(req)
+
+
 def test_can_prepare_without_upgrade(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/", headers=CIMultiDict({}))
     ws = web.WebSocketResponse()
@@ -369,11 +375,11 @@ async def test_close_idempotent(make_request: _RequestMaker) -> None:
     assert close_code == 0
 
 
-async def test_prepare_post_method_ok(make_request: _RequestMaker) -> None:
+async def test_prepare_invalid_method(make_request: _RequestMaker) -> None:
     req = make_request("POST", "/")
     ws = web.WebSocketResponse()
-    await ws.prepare(req)
-    assert ws.prepared
+    with pytest.raises(web.HTTPMethodNotAllowed):
+        await ws.prepare(req)
 
 
 async def test_prepare_without_upgrade(make_request: _RequestMaker) -> None:
