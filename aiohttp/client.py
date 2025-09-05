@@ -4,7 +4,6 @@ import asyncio
 import base64
 import dataclasses
 import hashlib
-import json
 import os
 import sys
 import traceback
@@ -107,7 +106,16 @@ from .helpers import (
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
+from .typedefs import (
+    DEFAULT_JSON_BYTES_ENCODER,
+    DEFAULT_JSON_ENCODER,
+    JSONBytesEncoder,
+    JSONEncoder,
+    LooseCookies,
+    LooseHeaders,
+    Query,
+    StrOrURL,
+)
 
 __all__ = (
     # client_exceptions
@@ -277,7 +285,8 @@ class ClientSession:
         proxy_auth: Optional[BasicAuth] = None,
         skip_auto_headers: Optional[Iterable[str]] = None,
         auth: Optional[BasicAuth] = None,
-        json_serialize: JSONEncoder = json.dumps,
+        json_serialize: JSONEncoder = DEFAULT_JSON_ENCODER,
+        json_serialize_bytes: JSONBytesEncoder = DEFAULT_JSON_BYTES_ENCODER,
         request_class: Type[ClientRequest] = ClientRequest,
         response_class: Type[ClientResponse] = ClientResponse,
         ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,
@@ -357,6 +366,7 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
+        self._json_serialize_bytes = json_serialize_bytes
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -484,7 +494,11 @@ class ClientSession:
                 "data and json parameters can not be used at the same time"
             )
         elif json is not None:
-            data = payload.JsonPayload(json, dumps=self._json_serialize)
+            data = payload.JsonPayload(
+                json,
+                dumps=self._json_serialize,
+                dumps_bytes=self._json_serialize_bytes,
+            )
 
         redirects = 0
         history: List[ClientResponse] = []
@@ -1315,6 +1329,11 @@ class ClientSession:
     def json_serialize(self) -> JSONEncoder:
         """Json serializer callable"""
         return self._json_serialize
+
+    @property
+    def json_serialize_bytes(self) -> JSONBytesEncoder:
+        """Json bytes serializer callable"""
+        return self._json_serialize_bytes
 
     @property
     def connector_owner(self) -> bool:
