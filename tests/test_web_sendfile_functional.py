@@ -16,9 +16,12 @@ from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
 
 try:
-    import brotlicffi as brotli
+    try:
+        import brotlicffi as brotli
+    except ImportError:
+        import brotli
 except ImportError:
-    import brotli
+    brotli = None
 
 try:
     import ssl
@@ -44,6 +47,8 @@ def hello_txt(
     The uncompressed text file path is returned by default. Alternatively, an
     indirect parameter can be passed with an encoding to get a compressed path.
     """
+    if brotli is None:
+        pytest.skip("brotli is not installed")
     txt = tmp_path_factory.mktemp("hello-") / "hello.txt"
     hello = {
         None: txt,

@@ -40,9 +40,12 @@ from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
 
 try:
-    import brotlicffi as brotli
+    try:
+        import brotlicffi as brotli
+    except ImportError:
+        import brotli
 except ImportError:
-    import brotli
+    brotli = None
 
 try:
     import ssl
@@ -1141,6 +1144,7 @@ async def test_response_with_precompressed_body(
     resp.release()
 
 
+@pytest.mark.skipif(brotli is None, reason="brotli is not installed")
 async def test_response_with_precompressed_body_brotli(
     aiohttp_client: AiohttpClient,
 ) -> None:

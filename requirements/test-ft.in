@@ -1,0 +1,23 @@
+aiohappyeyeballs >= 2.5.0
+aiosignal >= 1.4.0
+async-timeout >= 4.0, < 6.0 ; python_version < "3.11"
+blockbuster
+coverage
+freezegun
+frozenlist >= 1.1.1
+gunicorn
+multidict >=4.5, < 7.0
+mypy; implementation_name == "cpython"
+pkgconfig
+propcache >= 0.2.0
+proxy.py >= 2.4.4rc5
+pytest
+pytest-cov
+pytest-mock
+pytest-xdist
+pytest_codspeed
+setuptools-git
+wait-for-it
+yarl >= 1.17.0, < 2.0
+zlib_ng
+zstandard; platform_python_implementation == 'CPython' and python_version < "3.14"
