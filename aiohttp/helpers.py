@@ -585,7 +585,7 @@ class TimeoutHandle:
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
-        timeout: Optional[Union[float,int]],
+        timeout: Optional[Union[float, int]],
         ceil_threshold: float = 5.0,
     ) -> None:
         self._timeout = timeout
@@ -719,7 +719,7 @@ class TimerContext(BaseTimerContext):
 
 
 def ceil_timeout(
-    delay: Optional[Union[float,int]], ceil_threshold: float = 5.0
+    delay: Optional[Union[float, int]], ceil_threshold: float = 5.0
 ) -> async_timeout.Timeout:
     if delay is None or delay <= 0:
         return async_timeout.timeout(None)
