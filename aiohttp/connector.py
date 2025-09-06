@@ -270,7 +270,7 @@ class BaseConnector:
         limit: int = 100,
         limit_per_host: int = 0,
         enable_cleanup_closed: bool = False,
-        timeout_ceil_threshold: float = 5,
+        timeout_ceil_threshold: float = 5.0,
     ) -> None:
         if force_close:
             if keepalive_timeout is not None and keepalive_timeout is not sentinel:
@@ -782,7 +782,7 @@ class BaseConnector:
 
 
 class _DNSCacheTable:
-    def __init__(self, ttl: Optional[float] = None) -> None:
+    def __init__(self, ttl: float | int | None = None) -> None:
         self._addrs_rr: Dict[Tuple[str, int], Tuple[Iterator[ResolveResult], int]] = {}
         self._timestamps: Dict[Tuple[str, int], float] = {}
         self._ttl = ttl
@@ -906,7 +906,7 @@ class TCPConnector(BaseConnector):
         limit: int = 100,
         limit_per_host: int = 0,
         enable_cleanup_closed: bool = False,
-        timeout_ceil_threshold: float = 5,
+        timeout_ceil_threshold: float = 5.0,
         happy_eyeballs_delay: Optional[float] = 0.25,
         interleave: Optional[int] = None,
         socket_factory: Optional[SocketFactoryType] = None,
