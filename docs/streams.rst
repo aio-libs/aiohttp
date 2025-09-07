@@ -20,7 +20,7 @@ Streaming API
    :attr:`aiohttp.ClientResponse.content` properties for accessing raw
    BODY data.
 
-Reading Methods
+Reading Attributes and Methods
 ---------------
 
 .. method:: StreamReader.read(n=-1)
@@ -107,6 +107,13 @@ Reading Methods
    :return tuple[bytes, bool]: a chunk of data and a :class:`bool` that is ``True``
                                when the end of the returned chunk corresponds
                                to the end of a HTTP chunk.
+
+
+.. attribute:: StreamReader.total_raw_bytes
+
+   The number of bytes of raw data downloaded.
+
+   Readonly :class:`int` property.
 
 
 Asynchronous Iteration Support
