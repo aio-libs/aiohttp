@@ -80,7 +80,7 @@ pytest==8.4.2
     #   pytest-mock
 pytest-codspeed==4.0.0
     # via -r requirements/lint.in
-pytest-mock==3.14.1
+pytest-mock==3.15.0
     # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
