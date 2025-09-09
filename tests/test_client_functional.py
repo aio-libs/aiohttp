@@ -15,6 +15,7 @@ import time
 import zipfile
 from contextlib import suppress
 from typing import (
+    TYPE_CHECKING,
     Any,
     AsyncIterator,
     Awaitable,
@@ -29,7 +30,6 @@ from typing import (
 from unittest import mock
 
 import pytest
-import trustme
 from multidict import MultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
@@ -61,6 +61,9 @@ from aiohttp.payload import (
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestClient, TestServer, unused_port
 from aiohttp.typedefs import Handler, Query
+
+if TYPE_CHECKING:
+    import trustme
 
 
 @pytest.fixture(autouse=True)
@@ -3259,7 +3262,7 @@ async def test_creds_in_auth_and_redirect_url(
 
 @pytest.fixture
 def create_server_for_url_and_handler(
-    aiohttp_server: AiohttpServer, tls_certificate_authority: trustme.CA
+    aiohttp_server: AiohttpServer, tls_certificate_authority: "trustme.CA"
 ) -> Callable[[URL, Handler], Awaitable[TestServer]]:
     def create(url: URL, srv: Handler) -> Awaitable[TestServer]:
         app = web.Application()
