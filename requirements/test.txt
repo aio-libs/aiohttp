@@ -18,7 +18,7 @@ blockbuster==1.5.25
     # via -r requirements/test.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-cffi==1.17.1
+cffi==2.0.0
     # via
     #   cryptography
     #   pycares
@@ -37,7 +37,7 @@ execnet==2.1.1
     # via pytest-xdist
 forbiddenfruit==0.1.4
     # via blockbuster
-freezegun==1.5.4
+freezegun==1.5.5
     # via -r requirements/test.in
 frozenlist==1.7.0
     # via
@@ -95,7 +95,7 @@ pygments==2.19.2
     # via
     #   pytest
     #   rich
-pytest==8.4.1
+pytest==8.4.2
     # via
     #   -r requirements/test.in
     #   pytest-codspeed
@@ -104,9 +104,9 @@ pytest==8.4.1
     #   pytest-xdist
 pytest-codspeed==4.0.0
     # via -r requirements/test.in
-pytest-cov==6.2.1
+pytest-cov==6.3.0
     # via -r requirements/test.in
-pytest-mock==3.14.1
+pytest-mock==3.15.0
     # via -r requirements/test.in
 pytest-xdist==3.8.0
     # via -r requirements/test.in

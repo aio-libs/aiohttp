@@ -14,7 +14,7 @@ async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-cffi==1.17.1
+cffi==2.0.0
     # via pycares
 frozenlist==1.7.0
     # via
