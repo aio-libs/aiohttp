@@ -197,6 +197,9 @@ jobs:
       if: ${{ endsWith(matrix.pyver, 't') }}
       run: |
         python -m pip install -r requirements/test-ft.in -c requirements/test-ft.txt
+    - name: Set PYTHON_GIL=0 for free-threading builds
+      if: ${{ endsWith(matrix.pyver, 't') }}
+      run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
       uses: actions/download-artifact@v5
