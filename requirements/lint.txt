@@ -12,7 +12,7 @@ async-timeout==5.0.1
     # via valkey
 blockbuster==1.5.25
     # via -r requirements/lint.in
-cffi==1.17.1
+cffi==2.0.0
     # via
     #   cryptography
     #   pycares
