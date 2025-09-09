@@ -18,7 +18,7 @@ blockbuster==1.5.25
     # via -r requirements/test-common.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-cffi==1.17.1
+cffi==2.0.0
     # via
     #   pycares
     #   pytest-codspeed
@@ -40,6 +40,8 @@ frozenlist==1.7.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
+gunicorn==23.0.0
+    # via -r requirements/test-ft.in
 idna==3.10
     # via yarl
 iniconfig==2.1.0
@@ -59,7 +61,9 @@ mypy==1.17.1 ; implementation_name == "cpython"
 mypy-extensions==1.1.0
     # via mypy
 packaging==25.0
-    # via pytest
+    # via
+    #   gunicorn
+    #   pytest
 pathspec==0.12.1
     # via mypy
 pkgconfig==1.5.5
