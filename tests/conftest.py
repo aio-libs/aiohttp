@@ -1,3 +1,5 @@
+from __future__ import annotations  # TODO(PY311): Remove
+
 import asyncio
 import base64
 import os
@@ -5,13 +7,16 @@ import socket
 import ssl
 import sys
 from hashlib import md5, sha1, sha256
+from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncIterator, Callable, Generator, Iterator
+from typing import Any, AsyncIterator, Callable, Iterator
 from unittest import mock
 from uuid import uuid4
 
 import pytest
+from multidict import CIMultiDict
+from yarl import URL
 
 try:
     from blockbuster import blockbuster_ctx
@@ -21,10 +26,20 @@ except ImportError:  # For downstreams only  # pragma: no cover
     HAS_BLOCKBUSTER = False
 
 from aiohttp import payload
+from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
+from aiohttp.client_reqrep import (
+    ClientRequest,
+    ClientRequestArgs,
+    ClientResponse,
+    Fingerprint,
+)
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
-from aiohttp.http import WS_KEY
+from aiohttp.helpers import BaseTimerContext, BasicAuth, TimerNoop
+from aiohttp.http import WS_KEY, HttpVersion, HttpVersion11
 from aiohttp.test_utils import get_unused_port_socket, loop_context
+from aiohttp.tracing import Trace
+from aiohttp.typedefs import Query
 
 try:
     import trustme
@@ -44,6 +59,11 @@ try:
         import uvloop
 except ImportError:
     uvloop = None  # type: ignore[assignment]
+
+if sys.version_info >= (3, 11):
+    from typing import Unpack
+else:
+    from typing import Any as Unpack
 
 
 pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
@@ -318,7 +338,7 @@ def ws_key(key: bytes) -> str:
 
 
 @pytest.fixture
-def enable_cleanup_closed() -> Generator[None, None, None]:
+def enable_cleanup_closed() -> Iterator[None]:
     """Fixture to override the NEEDS_CLEANUP_CLOSED flag.
 
     On Python 3.12.7+ and 3.13.1+ enable_cleanup_closed is not needed,
@@ -329,7 +349,7 @@ def enable_cleanup_closed() -> Generator[None, None, None]:
 
 
 @pytest.fixture
-def unused_port_socket() -> Generator[socket.socket, None, None]:
+def unused_port_socket() -> Iterator[socket.socket]:
     """Return a socket that is unused on the current host.
 
     Unlike aiohttp_used_port, the socket is yielded so there is no
@@ -346,7 +366,7 @@ def unused_port_socket() -> Generator[socket.socket, None, None]:
 @pytest.fixture(params=["zlib", "zlib_ng.zlib_ng", "isal.isal_zlib"])
 def parametrize_zlib_backend(
     request: pytest.FixtureRequest,
-) -> Generator[None, None, None]:
+) -> Iterator[None]:
     original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
     backend = pytest.importorskip(request.param)
     set_zlib_backend(backend)
@@ -366,3 +386,48 @@ async def cleanup_payload_pending_file_closes(
         loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
         if loop_futures:
             await asyncio.gather(*loop_futures, return_exceptions=True)
+
+
+@pytest.fixture
+async def make_client_request(
+    loop: asyncio.AbstractEventLoop,
+) -> AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]:
+    """Fixture to help creating test ClientRequest objects with defaults."""
+    request = session = None
+
+    def maker(
+        method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+    ) -> ClientRequest:
+        nonlocal request, session
+        session = ClientSession()
+        default_args: ClientRequestArgs = {
+            "params": {},
+            "headers": CIMultiDict[str](),
+            "skip_auto_headers": None,
+            "data": None,
+            "cookies": BaseCookie[str](),
+            "auth": None,
+            "version": HttpVersion11,
+            "compress": False,
+            "chunked": None,
+            "expect100": False,
+            "response_class": ClientResponse,
+            "proxy": None,
+            "proxy_auth": None,
+            "timer": TimerNoop(),
+            "session": session,
+            "ssl": True,
+            "proxy_headers": None,
+            "traces": [],
+            "trust_env": False,
+            "server_hostname": None,
+        }
+        request = ClientRequest(method, url, **(default_args | kwargs))
+        return request
+
+    yield maker
+
+    if request is not None:
+        await request._close()
+        assert session is not None
+        await session.close()

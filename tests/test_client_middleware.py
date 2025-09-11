@@ -1083,10 +1083,7 @@ async def test_middleware_can_check_request_body(
             self.secretkey = secretkey
 
         def get_hash(self, request: ClientRequest) -> str:
-            if request.body:
-                data = request.body.decode("utf-8")
-            else:
-                data = "{}"
+            data = request.body.decode("utf-8") or "{}"
 
             # Simulate authentication hash without using real crypto
             return f"SIGNATURE-{self.secretkey}-{len(data)}-{data[:10]}"

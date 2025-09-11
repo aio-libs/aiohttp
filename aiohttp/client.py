@@ -684,7 +684,7 @@ class ClientSession:
                             max_field_size=max_field_size,
                         )
                         try:
-                            resp = await req.send(conn)
+                            resp = await req._send(conn)
                             try:
                                 await resp.start(conn)
                             except BaseException:
