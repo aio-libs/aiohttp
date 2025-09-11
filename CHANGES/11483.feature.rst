@@ -1,0 +1,2 @@
+Added ``StreamReader.total_raw_bytes`` to check the number of bytes downloaded
+-- by :user:`robpats`.
