@@ -1,4 +1,5 @@
 import asyncio
+from io import BytesIO
 from pathlib import Path
 from stat import S_IFREG, S_IRUSR, S_IWUSR
 from unittest import mock
@@ -6,7 +7,7 @@ from unittest import mock
 from aiohttp import hdrs
 from aiohttp.http_writer import StreamWriter
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web_fileresponse import FileResponse
+from aiohttp.web_fileresponse import FALLBACK_CONTENT_TYPE, FileResponse, IOResponse
 
 MOCK_MODE = S_IFREG | S_IRUSR | S_IWUSR
 
@@ -23,6 +24,7 @@ def test_using_gzip_if_header_present_and_file_available(
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
     gz_filepath.lstat.return_value.st_size = 1024
+    gz_filepath.lstat.return_value.st_mtime = 1603733507222449291 / 1_000_000
     gz_filepath.lstat.return_value.st_mtime_ns = 1603733507222449291
     gz_filepath.lstat.return_value.st_mode = MOCK_MODE
 
@@ -47,6 +49,7 @@ def test_gzip_if_header_not_present_and_file_available(
 
     gz_filepath = mock.create_autospec(Path, spec_set=True)
     gz_filepath.lstat.return_value.st_size = 1024
+    gz_filepath.lstat.return_value.st_mtime = 1603733507222449291 / 1_000_000
     gz_filepath.lstat.return_value.st_mtime_ns = 1603733507222449291
     gz_filepath.lstat.return_value.st_mode = MOCK_MODE
 
@@ -54,6 +57,7 @@ def test_gzip_if_header_not_present_and_file_available(
     filepath.name = "logo.png"
     filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
+    filepath.stat.return_value.st_mtime = 1603733507222449291 / 1_000_000
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
     filepath.stat.return_value.st_mode = MOCK_MODE
 
@@ -79,6 +83,7 @@ def test_gzip_if_header_not_present_and_file_not_available(
     filepath.name = "logo.png"
     filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
+    filepath.stat.return_value.st_mtime = 1603733507222449291 / 1_000_000
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
     filepath.stat.return_value.st_mode = MOCK_MODE
 
@@ -106,6 +111,7 @@ def test_gzip_if_header_present_and_file_not_available(
     filepath.name = "logo.png"
     filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
+    filepath.stat.return_value.st_mtime = 1603733507222449291 / 1_000_000
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
     filepath.stat.return_value.st_mode = MOCK_MODE
 
@@ -125,6 +131,7 @@ def test_status_controlled_by_user(loop: asyncio.AbstractEventLoop) -> None:
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
     filepath.stat.return_value.st_size = 1024
+    filepath.stat.return_value.st_mtime = 1603733507222449291 / 1_000_000
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
     filepath.stat.return_value.st_mode = MOCK_MODE
 
@@ -149,6 +156,7 @@ async def test_file_response_sends_headers_immediately() -> None:
     filepath = mock.create_autospec(Path, spec_set=True)
     filepath.name = "logo.png"
     filepath.stat.return_value.st_size = 1024
+    filepath.stat.return_value.st_mtime = 1603733507222449291 / 1_000_000
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
     filepath.stat.return_value.st_mode = MOCK_MODE
 
@@ -164,3 +172,15 @@ async def test_file_response_sends_headers_immediately() -> None:
 
     # Headers should be sent immediately
     writer.send_headers.assert_called_once()
+
+
+async def test_io_response_open():
+    data = b"hello"
+    fobj = BytesIO(data)
+    response = IOResponse(fobj, etag="test-etag", last_modified=1234)
+    open_file = await response._open("")
+    assert open_file.size == len(data)
+    assert open_file.encoding is None
+    assert open_file.etag == "test-etag"
+    assert open_file.last_modified == 1234
+    assert open_file.guessed_content_type == FALLBACK_CONTENT_TYPE
