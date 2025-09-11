@@ -120,7 +120,7 @@ valkey==6.1.1
     # via -r requirements/lint.in
 virtualenv==20.34.0
     # via pre-commit
-zlib-ng==0.5.1
+zlib-ng==1.0.0
     # via -r requirements/lint.in
 zstandard==0.24.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
