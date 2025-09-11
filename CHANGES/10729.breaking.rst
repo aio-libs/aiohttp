@@ -1,0 +1,1 @@
+Stopped processing non-``GET`` method in WebSocket connection handshake (this might confuse proxies) as demanded by :rfc:`6455#section-4.2.1` -- by :user:`pajod`.
