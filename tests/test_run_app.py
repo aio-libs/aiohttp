@@ -621,14 +621,13 @@ def test_run_app_preexisting_inet6_socket(patched_loop) -> None:
 
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
-def test_run_app_preexisting_unix_socket(patched_loop, mocker) -> None:
+def test_run_app_preexisting_unix_socket(patched_loop, unix_sockname, mocker) -> None:
     app = web.Application()
 
-    sock_path = "/tmp/test_preexisting_sock1"
     sock = socket.socket(socket.AF_UNIX)
     with contextlib.closing(sock):
-        sock.bind(sock_path)
-        os.unlink(sock_path)
+        sock.bind(unix_sockname)
+        os.unlink(unix_sockname)
 
         printer = mock.Mock(wraps=stopper(patched_loop))
         web.run_app(app, sock=sock, print=printer, loop=patched_loop)
@@ -636,7 +635,7 @@ def test_run_app_preexisting_unix_socket(patched_loop, mocker) -> None:
         patched_loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
-        assert f"http://unix:{sock_path}:" in printer.call_args[0][0]
+        assert f"http://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
 def test_run_app_multiple_preexisting_sockets(patched_loop) -> None:
