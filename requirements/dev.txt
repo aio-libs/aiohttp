@@ -285,7 +285,7 @@ wheel==0.46.0
     # via pip-tools
 yarl==1.20.1
     # via -r requirements/runtime-deps.in
-zlib-ng==0.5.1
+zlib-ng==1.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
