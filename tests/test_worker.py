@@ -31,6 +31,7 @@ class BaseTestWorker:
     def __init__(self) -> None:
         self.servers: Dict[object, object] = {}
         self.exit_code = 0
+        self.started = False
         self._notify_waiter: Optional[asyncio.Future[bool]] = None
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
