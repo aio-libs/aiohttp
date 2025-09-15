@@ -289,7 +289,7 @@ zlib-ng==1.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test.in
-zstandard==0.24.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+zstandard==0.25.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
