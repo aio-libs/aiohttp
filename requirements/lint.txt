@@ -65,7 +65,7 @@ proxy-py==2.4.10
     # via -r requirements/lint.in
 pycares==4.11.0
     # via aiodns
-pycparser==2.22
+pycparser==2.23
     # via cffi
 pydantic==2.11.9
     # via python-on-whales
