@@ -48,5 +48,5 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     # via -r requirements/base.in
 yarl==1.20.1
     # via -r requirements/runtime-deps.in
-zstandard==0.24.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+zstandard==0.25.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via -r requirements/runtime-deps.in
