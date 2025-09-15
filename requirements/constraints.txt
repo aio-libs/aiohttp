@@ -160,7 +160,7 @@ pydantic==2.12.0a1
     # via python-on-whales
 pydantic-core==2.37.2
     # via pydantic
-pyenchant==3.2.2
+pyenchant==3.3.0
     # via sphinxcontrib-spelling
 pygments==2.19.2
     # via

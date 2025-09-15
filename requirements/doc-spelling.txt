@@ -30,7 +30,7 @@ markupsafe==3.0.2
     # via jinja2
 packaging==25.0
     # via sphinx
-pyenchant==3.2.2
+pyenchant==3.3.0
     # via sphinxcontrib-spelling
 pygments==2.19.2
     # via sphinx
