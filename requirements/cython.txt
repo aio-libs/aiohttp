@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/cython.txt --resolver=backtracking --strip-extras requirements/cython.in
 #
-cython==3.1.3
+cython==3.1.4
     # via -r requirements/cython.in
 multidict==6.6.4
     # via -r requirements/multidict.in
