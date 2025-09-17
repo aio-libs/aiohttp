@@ -57,7 +57,9 @@ markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.6.4
+
+# Temporarily redirect it to me, I will revert when 6.7 gets released
+multidict @ git+https://github.com/Vizonex/multidict@capi
     # via
     #   -r requirements/runtime-deps.in
     #   yarl

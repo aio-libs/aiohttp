@@ -1,19 +1,38 @@
 # Based on https://github.com/MagicStack/httptools
 #
 
+# NOTE: I have scattered notes around this file
+# Temporarily as I hunt for things to improve, Please know
+# that my notes are all temporary and I plan to remove them
+# when I convert the pull request from a draft to a real pull
+# request. - Vizonex
+
 from cpython cimport (
     Py_buffer,
     PyBUF_SIMPLE,
     PyBuffer_Release,
-    PyBytes_AsString,
     PyBytes_AsStringAndSize,
     PyObject_GetBuffer,
 )
 from cpython.mem cimport PyMem_Free, PyMem_Malloc
+from cpython.object cimport PyObject
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
+from multidict cimport (
+    CIMultiDict,
+    CIMultiDict_Add,
+    CIMultiDict_Clear,
+    CIMultiDict_New,
+    CIMultiDict_UpdateFromDict,
+    CIMultiDict_UpdateFromMultiDict,
+    CIMultiDictProxy,
+    CIMultiDictProxy_Contains,
+    CIMultiDictProxy_GetOne,
+    CIMultiDictProxy_New,
+    istr,
+    multidict_import,
+)
 
-from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiDictProxy
 from yarl import URL as _URL
 
 from aiohttp import hdrs
@@ -46,10 +65,13 @@ include "_headers.pxi"
 
 from aiohttp cimport _find_header
 
+multidict_import()
+
 ALLOWED_UPGRADES = frozenset({"websocket"})
 DEF DEFAULT_FREELIST_SIZE = 250
 
 cdef extern from "Python.h":
+    bytearray PyByteArray_FromStringAndSize(const char *string, Py_ssize_t len)
     int PyByteArray_Resize(object, Py_ssize_t) except -1
     Py_ssize_t PyByteArray_Size(object) except -1
     char* PyByteArray_AsString(object)
@@ -59,29 +81,27 @@ __all__ = ('HttpRequestParser', 'HttpResponseParser',
 
 cdef object URL = _URL
 cdef object URL_build = URL.build
-cdef object CIMultiDict = _CIMultiDict
-cdef object CIMultiDictProxy = _CIMultiDictProxy
 cdef object HttpVersion = _HttpVersion
 cdef object HttpVersion10 = _HttpVersion10
 cdef object HttpVersion11 = _HttpVersion11
-cdef object SEC_WEBSOCKET_KEY1 = hdrs.SEC_WEBSOCKET_KEY1
-cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
+cdef istr SEC_WEBSOCKET_KEY1 = hdrs.SEC_WEBSOCKET_KEY1
+cdef istr CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
 cdef bytes EMPTY_BYTES = b""
 
-cdef inline object extend(object buf, const char* at, size_t length):
+cdef inline int extend(object buf, const char* at, size_t length) except -1:
     cdef Py_ssize_t s
     cdef char* ptr
     s = PyByteArray_Size(buf)
-    PyByteArray_Resize(buf, s + length)
+    if PyByteArray_Resize(buf, s + length) < 0:
+        return -1
     ptr = PyByteArray_AsString(buf)
     memcpy(ptr + s, at, length)
-
+    return 0
 
 DEF METHODS_COUNT = 46;
-
 cdef list _http_method = []
 
 for i in range(METHODS_COUNT):
@@ -106,12 +126,13 @@ cdef inline object find_header(bytes raw_header):
     return headers[idx]
 
 
+
 @cython.freelist(DEFAULT_FREELIST_SIZE)
 cdef class RawRequestMessage:
     cdef readonly str method
     cdef readonly str path
     cdef readonly object version  # HttpVersion
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly CIMultiDictProxy headers  # CIMultiDictProxy[str]
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -133,7 +154,8 @@ cdef class RawRequestMessage:
         self.url = url
 
     def __repr__(self):
-        info = []
+        # NOTE: This is Experimental, I might revert this later...
+        cdef list info = []
         info.append(("method", self.method))
         info.append(("path", self.path))
         info.append(("version", self.version))
@@ -184,7 +206,7 @@ cdef class RawRequestMessage:
 cdef _new_request_message(str method,
                            str path,
                            object version,
-                           object headers,
+                           CIMultiDictProxy headers,
                            object raw_headers,
                            bint should_close,
                            object compression,
@@ -206,12 +228,17 @@ cdef _new_request_message(str method,
     return ret
 
 
+# TODO: headers can sometimes come in as a different objects other than
+# CIMultiDictProxy, this might be a problem if we wish to optimize these
+# class datatypes further since some tests like to throw in a few
+# curve balls int the headers argument.
+
 @cython.freelist(DEFAULT_FREELIST_SIZE)
 cdef class RawResponseMessage:
     cdef readonly object version  # HttpVersion
     cdef readonly int code
     cdef readonly str reason
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly CIMultiDictProxy headers  # CIMultiDictProxy[str]
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -231,7 +258,7 @@ cdef class RawResponseMessage:
         self.chunked = chunked
 
     def __repr__(self):
-        info = []
+        cdef list info = []
         info.append(("version", self.version))
         info.append(("code", self.code))
         info.append(("reason", self.reason))
@@ -248,7 +275,7 @@ cdef class RawResponseMessage:
 cdef _new_response_message(object version,
                            int code,
                            str reason,
-                           object headers,
+                           CIMultiDictProxy headers,
                            object raw_headers,
                            bint should_close,
                            object compression,
@@ -295,7 +322,7 @@ cdef class HttpParser:
         bytearray   _buf
         str     _path
         str     _reason
-        list    _headers
+        CIMultiDict    _headers
         list    _raw_headers
         bint    _upgraded
         list    _messages
@@ -343,7 +370,7 @@ cdef class HttpParser:
         self._loop = loop
         self._timer = timer
 
-        self._buf = bytearray()
+        self._buf = PyByteArray_FromStringAndSize(NULL, 0)
         self._payload = None
         self._payload_error = 0
         self._payload_exception = payload_exception
@@ -382,7 +409,7 @@ cdef class HttpParser:
             name = find_header(self._raw_name)
             value = self._raw_value.decode('utf-8', 'surrogateescape')
 
-            self._headers.append((name, value))
+            CIMultiDict_Add(self._headers, name, value)
 
             if name is CONTENT_ENCODING:
                 self._content_encoding = value
@@ -396,6 +423,8 @@ cdef class HttpParser:
         if self._has_value:
             self._process_header()
 
+        # TODO: I would like to use the CAPI for Python bytes
+        # instead, python slices can be a bottlekneck
         if self._raw_name is EMPTY_BYTES:
             self._raw_name = at[:length]
         else:
@@ -409,6 +438,11 @@ cdef class HttpParser:
         self._has_value = True
 
     cdef _on_headers_complete(self):
+        cdef CIMultiDictProxy headers
+        cdef PyObject* upgrade_value
+        cdef unsigned char upgrade
+        cdef int chunked
+
         self._process_header()
 
         should_close = not cparser.llhttp_should_keep_alive(self._cparser)
@@ -416,18 +450,18 @@ cdef class HttpParser:
         chunked = self._cparser.flags & cparser.F_CHUNKED
 
         raw_headers = tuple(self._raw_headers)
-        headers = CIMultiDictProxy(CIMultiDict(self._headers))
+        headers = CIMultiDictProxy_New(self._headers)
 
         if self._cparser.type == cparser.HTTP_REQUEST:
-            allowed = upgrade and headers.get("upgrade", "").lower() in ALLOWED_UPGRADES
-            if allowed or self._cparser.method == cparser.HTTP_CONNECT:
-                self._upgraded = True
+            if CIMultiDictProxy_GetOne(headers, "upgrade", &upgrade_value):
+                self._upgraded = (<str>upgrade_value).lower() in ALLOWED_UPGRADES
+            self._upgraded = self._upgraded or self._cparser.method == cparser.HTTP_CONNECT
         else:
             if upgrade and self._cparser.status_code == 101:
                 self._upgraded = True
 
         # do not support old websocket spec
-        if SEC_WEBSOCKET_KEY1 in headers:
+        if CIMultiDictProxy_Contains(headers, SEC_WEBSOCKET_KEY1):
             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
         encoding = None
@@ -567,7 +601,7 @@ cdef class HttpParser:
             return messages, False, b""
 
     def set_upgraded(self, val):
-        self._upgraded = val
+        self._upgraded = <bint>val
 
 
 cdef class HttpRequestParser(HttpParser):
@@ -594,7 +628,7 @@ cdef class HttpRequestParser(HttpParser):
             if self._cparser.method == cparser.HTTP_CONNECT:
                 # authority-form,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
-                self._url = URL.build(authority=self._path, encoded=True)
+                self._url = URL_build(authority=self._path, encoded=True)
             elif idx3 > 1 and self._path[0] == '/':
                 # origin-form,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
@@ -620,7 +654,7 @@ cdef class HttpRequestParser(HttpParser):
                         query = self._path[idx1: idx2]
                         fragment = self._path[idx2+1:]
 
-                self._url = URL.build(
+                self._url = URL_build(
                     path=path,
                     query_string=query,
                     fragment=fragment,
@@ -664,7 +698,8 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
 
     pyparser._started = True
-    pyparser._headers = []
+    # I would assume 5 is a good starting number let me know if it should be higher...
+    pyparser._headers = CIMultiDict_New(5)
     pyparser._raw_headers = []
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
