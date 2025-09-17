@@ -4,13 +4,12 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/cython.txt --resolver=backtracking --strip-extras requirements/cython.in
 #
-cython==3.1.2
+cython==3.1.4
     # via -r requirements/cython.in
 
 # Temporarily redirect it to me, will revert when 6.7 gets released
 multidict @ git+https://github.com/Vizonex/multidict@capi
-
-# multidict==6.6.3
     # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-lngh7e/dependabot_20250715-1382-a7k872/requirements/multidict.in
 typing-extensions==4.14.1
-    # via multidict
+    # via -r requirements/multidict.in
+typing-extensions==4.15.0

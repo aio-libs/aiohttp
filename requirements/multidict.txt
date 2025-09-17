@@ -7,5 +7,5 @@
 # Temporarily redirect it to me, will revert when 6.7 gets released
 multidict @ git+https://github.com/Vizonex/multidict@capi
     # via -r requirements/multidict.in
-typing-extensions==4.14.1
+typing-extensions==4.15.0
     # via multidict

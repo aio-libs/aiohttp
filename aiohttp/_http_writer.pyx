@@ -36,7 +36,6 @@ cdef extern from "Python.h":
 multidict_import()
 
 DEF BUF_SIZE = 16 * 1024  # 16KiB
-cdef char BUFFER[BUF_SIZE]
 
 
 # ----------------- writer ---------------------------
@@ -45,16 +44,20 @@ cdef struct Writer:
     char *buf
     Py_ssize_t size
     Py_ssize_t pos
+    bint heap_allocated
 
 
-cdef inline void _init_writer(Writer* writer) noexcept:
-    writer.buf = &BUFFER[0]
+cdef inline void _init_writer(Writer* writer, char *buf):
+    writer.buf = buf
     writer.size = BUF_SIZE
     writer.pos = 0
+    writer.heap_allocated = 0
 
 
-cdef inline void _release_writer(Writer* writer) noexcept:
-    if writer.buf != BUFFER:
+
+
+cdef inline void _release_writer(Writer* writer):
+    if writer.heap_allocated:
         PyMem_Free(writer.buf)
 
 
@@ -65,7 +68,7 @@ cdef inline int _write_byte(Writer* writer, uint8_t ch) except -1:
     if writer.pos == writer.size:
         # reallocate
         size = writer.size + BUF_SIZE
-        if writer.buf == BUFFER:
+        if not writer.heap_allocated:
             buf = <char*>PyMem_Malloc(size)
             if buf == NULL:
                 PyErr_NoMemory()
@@ -78,6 +81,7 @@ cdef inline int _write_byte(Writer* writer, uint8_t ch) except -1:
                 return -1
         writer.buf = buf
         writer.size = size
+        writer.heap_allocated = 1
     writer.buf[writer.pos] = <char>ch
     writer.pos += 1
     return 0
@@ -154,14 +158,14 @@ cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s) except -1:
 
 # --------------- _serialize_headers ----------------------
 
-
-
-def _serialize_headers(str status_line, object headers):
+def _serialize_headers(str status_line, headers):
     cdef Writer writer
     cdef PyObject* key
     cdef PyObject* val
     cdef object multidict_iter
-    _init_writer(&writer)
+    cdef char buf[BUF_SIZE]
+
+    _init_writer(&writer, buf)
 
     try:
         multidict_iter = MultiDictIter_New(headers)

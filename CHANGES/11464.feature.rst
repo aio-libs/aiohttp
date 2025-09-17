@@ -1,0 +1,1 @@
+Implemented support for free-threading builds of CPython -- by :user:`kumaraditya303`.
