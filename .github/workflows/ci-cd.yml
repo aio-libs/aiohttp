@@ -189,10 +189,13 @@ jobs:
       run: |
         python -m pip install -U pip wheel setuptools build
     - name: Install dependencies
-      env:
-        DEPENDENCY_GROUP: test${{ endsWith(matrix.pyver, 't') && '-ft' || '' }}
+      if: ${{ endsWith(matrix.pyver, 't') }}
       run: |
-        python -Im pip install -r requirements/${DEPENDENCY_GROUP}.in -c requirements/${DEPENDENCY_GROUP}.txt
+        python -Im pip install -r requirements/test-ft.in -c requirements/test-ft.txt
+    - name: Install dependencies
+      if: ${{ !endsWith(matrix.pyver, 't') }}
+      run: |
+        python -Im pip install -r requirements/test.in -c requirements/test.txt
     - name: Set PYTHON_GIL=0 for free-threading builds
       if: ${{ endsWith(matrix.pyver, 't') }}
       run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
