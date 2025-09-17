@@ -1131,6 +1131,49 @@ async def test_empty_stream_reader_iter_chunks() -> None:
         await iter_chunks.__anext__()
 
 
+async def test_empty_stream_reader_function() -> None:
+    """Test the empty_stream_reader() function creates fresh instances."""
+    reader1 = streams.empty_stream_reader()
+    reader2 = streams.empty_stream_reader()
+
+    # Should be different instances
+    assert reader1 is not reader2
+    assert reader1 is not streams.EMPTY_PAYLOAD
+    assert reader2 is not streams.EMPTY_PAYLOAD
+
+    # Both should start with fresh state
+    assert reader1._read_eof_chunk is False
+    assert reader2._read_eof_chunk is False
+
+
+async def test_empty_stream_reader_no_state_sharing() -> None:
+    """Test that fresh EmptyStreamReader instances don't share state."""
+    reader1 = streams.empty_stream_reader()
+    reader2 = streams.empty_stream_reader()
+
+    # Use reader1 - this will modify its internal state
+    chunks = []
+    async for chunk in reader1.iter_chunks():
+        chunks.append(chunk)
+        if len(chunks) > 5:  # Safety break
+            break
+
+    assert len(chunks) == 0  # Should terminate normally with no chunks
+    assert reader1._read_eof_chunk is True  # State should be modified
+
+    # reader2 should still have fresh state and work correctly
+    assert reader2._read_eof_chunk is False
+
+    chunks = []
+    async for chunk in reader2.iter_chunks():
+        chunks.append(chunk)
+        if len(chunks) > 5:  # Safety break
+            break
+
+    assert len(chunks) == 0  # Should also terminate normally with no chunks
+    assert reader2._read_eof_chunk is True
+
+
 @pytest.fixture
 async def buffer(loop: asyncio.AbstractEventLoop) -> streams.DataQueue[bytes]:
     return streams.DataQueue(loop)
