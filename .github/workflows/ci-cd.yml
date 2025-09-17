@@ -190,8 +190,7 @@ jobs:
         python -m pip install -U pip wheel setuptools build
     - name: Install dependencies
       env:
-        DEPENDENCY_GROUP: >-
-          test${{ endsWith(matrix.pyver, 't') && '-ft' || '' }}
+        DEPENDENCY_GROUP: test${{ endsWith(matrix.pyver, 't') && '-ft' || '' }}
       run: |
         python -Im pip install -r requirements/${DEPENDENCY_GROUP}.in -c requirements/${DEPENDENCY_GROUP}.txt
     - name: Set PYTHON_GIL=0 for free-threading builds
