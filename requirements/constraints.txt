@@ -58,7 +58,7 @@ coverage==7.10.6
     # via
     #   -r requirements/test.in
     #   pytest-cov
-cryptography==45.0.7
+cryptography==46.0.1
     # via
     #   pyjwt
     #   trustme
@@ -269,6 +269,7 @@ trustme==1.2.1 ; platform_machine != "i686"
 typing-extensions==4.15.0
     # via
     #   aiosignal
+    #   cryptography
     #   exceptiongroup
     #   multidict
     #   mypy
