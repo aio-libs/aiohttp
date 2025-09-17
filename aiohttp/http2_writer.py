@@ -2,21 +2,12 @@
 
 import asyncio
 import sys
-from typing import (  # noqa
-    Awaitable,
-    Callable,
-    Iterable,
-    Optional,
-    Union,
-    Sequence,
-)
-
+from typing import Awaitable, Callable, Iterable, Optional, Sequence, Union
 
 # Reflects h2/connection from a lower-level prespective so
 # socket writing can be a bit more optimized.
 from hpack.hpack import Decoder, Encoder
-from hyperframe.frame import HeadersFrame, ContinuationFrame, Frame, DataFrame
-
+from hyperframe.frame import ContinuationFrame, DataFrame, Frame, HeadersFrame
 from multidict import CIMultiDict
 
 from .abc import AbstractStreamWriter
@@ -24,7 +15,6 @@ from .base_protocol import BaseProtocol
 from .client_exceptions import ClientConnectionResetError
 from .compression_utils import ZLibCompressor
 from .helpers import NO_EXTENSIONS
-
 
 MIN_PAYLOAD_FOR_WRITELINES = 2048
 IS_PY313_BEFORE_313_2 = (3, 13, 0) <= sys.version_info < (3, 13, 2)
