@@ -111,7 +111,7 @@ Reading Attributes and Methods
 
 .. attribute:: StreamReader.total_raw_bytes
 
-   The number of bytes of raw data downloaded.
+   The number of bytes of raw data downloaded (before decompression).
 
    Readonly :class:`int` property.
 
