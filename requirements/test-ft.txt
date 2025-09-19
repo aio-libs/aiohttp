@@ -63,7 +63,7 @@ multidict==6.6.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.18.1 ; implementation_name == "cpython"
+mypy==1.18.2 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
