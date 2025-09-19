@@ -5607,6 +5607,7 @@ async def test_stream_reader_total_raw_bytes(aiohttp_client: AiohttpClient) -> N
         "/", headers={"Accept-Encoding": "gzip"}, auto_decompress=True
     ) as resp:
         assert resp.headers["Content-Encoding"] == "gzip"
+        assert int(resp.headers["Content-Length"]) < len(source_data)
         data = await resp.content.read()
         assert len(data) == len(source_data)
         assert resp.content.total_raw_bytes == int(resp.headers["Content-Length"])
