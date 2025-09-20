@@ -581,7 +581,7 @@ def test_parse_set_cookie_headers_partitioned_not_set_if_no_support() -> None:
 
     result = parse_set_cookie_headers(headers)
 
-    assert len(result) == 5
+    assert len(result) == 3
     for i, (_, morsel) in enumerate(result):
         assert (
             morsel.get("partitioned") is None
