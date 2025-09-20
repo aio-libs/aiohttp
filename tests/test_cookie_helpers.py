@@ -568,6 +568,26 @@ def test_parse_set_cookie_headers_partitioned_not_set() -> None:
 
 
 # Tests that don't require partitioned support in SimpleCookie
+@pytest.mark.skipif(
+    sys.version_info >= (3, 14),
+    reason="Python 3.14+ has built-in partitioned cookie support",
+)
+def test_parse_set_cookie_headers_partitioned_not_set_if_no_support() -> None:
+    headers = [
+        "cookie1=value1; Partitioned",
+        "cookie2=value2; Partitioned=",
+        "cookie3=value3; Partitioned=true",
+    ]
+
+    result = parse_set_cookie_headers(headers)
+
+    assert len(result) == 5
+    for i, (_, morsel) in enumerate(result):
+        assert (
+            morsel.get("partitioned") is None
+        ), f"Cookie {i+1} should not have partitioned flag"
+
+
 def test_parse_set_cookie_headers_partitioned_with_other_attrs_manual() -> None:
     """
     Test parsing logic for partitioned cookies combined with all other attributes.
