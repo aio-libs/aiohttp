@@ -1,2 +1,2 @@
-Fix saved cookiejars fail to be loaded if cookies have ``partitioned`` flag when
+Fix saved ``CookieJar`` fail to be loaded if cookies have ``partitioned`` flag when
 ``http.cookie`` does not have partitioned cookies supports. -- by :user:`Cycloctane`.
