@@ -6,6 +6,7 @@ from http.cookies import (
     SimpleCookie,
     _unquote as simplecookie_unquote,
 )
+import sys
 
 import pytest
 
@@ -427,6 +428,10 @@ def test_parse_set_cookie_headers_boolean_attrs() -> None:
         assert morsel.get("httponly") is True, f"{name} should have httponly=True"
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 14),
+    reason="Partitioned cookies support requires Python 3.14+",
+)
 def test_parse_set_cookie_headers_boolean_attrs_with_partitioned() -> None:
     """Test that boolean attributes including partitioned work correctly."""
     # Test secure attribute variations
@@ -482,6 +487,10 @@ def test_parse_set_cookie_headers_encoded_values() -> None:
     assert result[2][1].value == "%21%40%23%24%25%5E%26*%28%29"
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 14),
+    reason="Partitioned cookies support requires Python 3.14+",
+)
 def test_parse_set_cookie_headers_partitioned() -> None:
     """
     Test that parse_set_cookie_headers handles partitioned attribute correctly.
@@ -518,6 +527,10 @@ def test_parse_set_cookie_headers_partitioned() -> None:
     assert result[4][1].get("path") == "/"
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 14),
+    reason="Partitioned cookies support requires Python 3.14+",
+)
 def test_parse_set_cookie_headers_partitioned_case_insensitive() -> None:
     """Test that partitioned attribute is recognized case-insensitively."""
     headers = [
