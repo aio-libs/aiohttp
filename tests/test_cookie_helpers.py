@@ -1,12 +1,12 @@
 """Tests for internal cookie helper functions."""
 
+import sys
 from http.cookies import (
     CookieError,
     Morsel,
     SimpleCookie,
     _unquote as simplecookie_unquote,
 )
-import sys
 
 import pytest
 
