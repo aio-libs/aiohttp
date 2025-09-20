@@ -14,7 +14,6 @@ from freezegun import freeze_time
 from yarl import URL
 
 from aiohttp import CookieJar, DummyCookieJar
-from aiohttp._cookie_helpers import parse_set_cookie_headers
 from aiohttp.typedefs import LooseCookies
 
 
