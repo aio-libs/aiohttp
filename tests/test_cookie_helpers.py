@@ -1,5 +1,6 @@
 """Tests for internal cookie helper functions."""
 
+import sys
 from http.cookies import (
     CookieError,
     Morsel,
@@ -427,6 +428,10 @@ def test_parse_set_cookie_headers_boolean_attrs() -> None:
         assert morsel.get("httponly") is True, f"{name} should have httponly=True"
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 14),
+    reason="Partitioned cookies support requires Python 3.14+",
+)
 def test_parse_set_cookie_headers_boolean_attrs_with_partitioned() -> None:
     """Test that boolean attributes including partitioned work correctly."""
     # Test secure attribute variations
@@ -482,6 +487,10 @@ def test_parse_set_cookie_headers_encoded_values() -> None:
     assert result[2][1].value == "%21%40%23%24%25%5E%26*%28%29"
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 14),
+    reason="Partitioned cookies support requires Python 3.14+",
+)
 def test_parse_set_cookie_headers_partitioned() -> None:
     """
     Test that parse_set_cookie_headers handles partitioned attribute correctly.
@@ -518,6 +527,10 @@ def test_parse_set_cookie_headers_partitioned() -> None:
     assert result[4][1].get("path") == "/"
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 14),
+    reason="Partitioned cookies support requires Python 3.14+",
+)
 def test_parse_set_cookie_headers_partitioned_case_insensitive() -> None:
     """Test that partitioned attribute is recognized case-insensitively."""
     headers = [
@@ -555,6 +568,26 @@ def test_parse_set_cookie_headers_partitioned_not_set() -> None:
 
 
 # Tests that don't require partitioned support in SimpleCookie
+@pytest.mark.skipif(
+    sys.version_info >= (3, 14),
+    reason="Python 3.14+ has built-in partitioned cookie support",
+)
+def test_parse_set_cookie_headers_partitioned_not_set_if_no_support() -> None:
+    headers = [
+        "cookie1=value1; Partitioned",
+        "cookie2=value2; Partitioned=",
+        "cookie3=value3; Partitioned=true",
+    ]
+
+    result = parse_set_cookie_headers(headers)
+
+    assert len(result) == 3
+    for i, (_, morsel) in enumerate(result):
+        assert (
+            morsel.get("partitioned") is None
+        ), f"Cookie {i+1} should not have partitioned flag"
+
+
 def test_parse_set_cookie_headers_partitioned_with_other_attrs_manual() -> None:
     """
     Test parsing logic for partitioned cookies combined with all other attributes.

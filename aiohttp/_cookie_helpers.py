@@ -6,7 +6,6 @@ These are not part of the public API and may change without notice.
 """
 
 import re
-import sys
 from http.cookies import Morsel
 from typing import List, Optional, Sequence, Tuple, cast
 
@@ -270,11 +269,8 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> List[Tuple[str, Morsel[s
                     break
                 if lower_key in _COOKIE_BOOL_ATTRS:
                     # Boolean attribute with any value should be True
-                    if current_morsel is not None:
-                        if lower_key == "partitioned" and sys.version_info < (3, 14):
-                            dict.__setitem__(current_morsel, lower_key, True)
-                        else:
-                            current_morsel[lower_key] = True
+                    if current_morsel is not None and current_morsel.isReservedKey(key):
+                        current_morsel[lower_key] = True
                 elif value is None:
                     # Invalid cookie string - non-boolean attribute without value
                     break

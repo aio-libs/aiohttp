@@ -199,6 +199,19 @@ def test_save_load(tmp_path, loop, cookies_to_send, cookies_to_receive) -> None:
     assert jar_test == cookies_to_receive
 
 
+def test_save_load_partitioned_cookies(tmp_path, loop) -> None:
+    file_path = pathlib.Path(str(tmp_path)) / "aiohttp.test2.cookie"
+    # export cookie jar
+    jar_save = CookieJar(loop=loop)
+    jar_save.update_cookies_from_headers(
+        ["session=cookie; Partitioned"], URL("https://example.com/")
+    )
+    jar_save.save(file_path=file_path)
+    jar_load = CookieJar(loop=loop)
+    jar_load.load(file_path=file_path)
+    assert jar_save._cookies == jar_load._cookies
+
+
 async def test_update_cookie_with_unicode_domain(loop) -> None:
     cookies = (
         "idna-domain-first=first; Domain=xn--9caa.com; Path=/;",
