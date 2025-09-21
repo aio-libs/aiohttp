@@ -200,7 +200,7 @@ def test_save_load(tmp_path, loop, cookies_to_send, cookies_to_receive) -> None:
 
 
 def test_save_load_partitioned_cookies(tmp_path) -> None:
-    file_path = Path(str(tmp_path)) / "aiohttp.test2.cookie"
+    file_path = pathlib.Path(str(tmp_path)) / "aiohttp.test2.cookie"
     # export cookie jar
     jar_save = CookieJar()
     jar_save.update_cookies_from_headers(
