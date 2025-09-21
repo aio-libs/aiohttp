@@ -199,7 +199,7 @@ def test_save_load(tmp_path, loop, cookies_to_send, cookies_to_receive) -> None:
     assert jar_test == cookies_to_receive
 
 
-def test_save_load_partitioned_cookies(tmp_path: Path) -> None:
+def test_save_load_partitioned_cookies(tmp_path) -> None:
     file_path = Path(str(tmp_path)) / "aiohttp.test2.cookie"
     # export cookie jar
     jar_save = CookieJar()
