@@ -21,7 +21,7 @@ Streaming API
    BODY data.
 
 Reading Attributes and Methods
----------------
+------------------------------
 
 .. method:: StreamReader.read(n=-1)
       :async:
