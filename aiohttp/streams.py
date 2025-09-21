@@ -160,7 +160,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._eof_callbacks: List[Callable[[], None]] = []
         self._eof_counter = 0
         self.total_bytes = 0
-        self.total_compressed_bytes = None
+        self.total_compressed_bytes: Optional[int] = None
 
     def __repr__(self) -> str:
         info = [self.__class__.__name__]
