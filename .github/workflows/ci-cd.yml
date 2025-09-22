@@ -154,6 +154,8 @@ jobs:
             experimental: false
           - os: ubuntu
             pyver: "3.14t"
+            no-extensions: ''
+            experimental: false
       fail-fast: true
     runs-on: ${{ matrix.os }}-latest
     continue-on-error: ${{ matrix.experimental }}
