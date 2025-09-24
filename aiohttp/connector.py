@@ -1215,26 +1215,43 @@ class TCPConnector(BaseConnector):
         client_error: Type[Exception] = ClientConnectorError,
         **kwargs: Any,
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
+        # Add ssl_shutdown_timeout for Python 3.11+ when SSL is used
+        if (
+            kwargs.get("ssl")
+            and self._ssl_shutdown_timeout
+            and sys.version_info >= (3, 11)
+        ):
+            kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
         try:
             async with ceil_timeout(
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
-                sock = await aiohappyeyeballs.start_connection(
-                    addr_infos=addr_infos,
-                    local_addr_infos=self._local_addr_infos,
-                    happy_eyeballs_delay=self._happy_eyeballs_delay,
-                    interleave=self._interleave,
-                    loop=self._loop,
-                    socket_factory=self._socket_factory,
-                )
-                # Add ssl_shutdown_timeout for Python 3.11+ when SSL is used
-                if (
-                    kwargs.get("ssl")
-                    and self._ssl_shutdown_timeout
-                    and sys.version_info >= (3, 11)
-                ):
-                    kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
-                return await self._loop.create_connection(*args, **kwargs, sock=sock)
+                if self._happy_eyeballs_delay is None:
+                    # If happyeyeballs is disabled, connect in sequence
+                    # this avoids a bug in uvloop where it can lose track
+                    # of sockets passed between aiohappyeyeballs.start_connect
+                    # and create_connection and try to reuse the same fd.
+                    # https://github.com/aio-libs/aiohttp/issues/10506
+                    # https://github.com/MagicStack/uvloop/issues/645
+                    first_addr_infos = addr_infos[0]
+                    address_tuple = first_addr_infos[4]
+                    host: str = address_tuple[0]
+                    port: int = address_tuple[1]
+                    return await self._loop.create_connection(
+                        *args, host=host, port=port, **kwargs
+                    )
+                else:
+                    sock = await aiohappyeyeballs.start_connection(
+                        addr_infos=addr_infos,
+                        local_addr_infos=self._local_addr_infos,
+                        happy_eyeballs_delay=self._happy_eyeballs_delay,
+                        interleave=self._interleave,
+                        loop=self._loop,
+                        socket_factory=self._socket_factory,
+                    )
+                    return await self._loop.create_connection(
+                        *args, **kwargs, sock=sock
+                    )
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1447,7 +1464,12 @@ class TCPConnector(BaseConnector):
                 )
             except (ClientConnectorError, asyncio.TimeoutError) as exc:
                 last_exc = exc
-                aiohappyeyeballs.pop_addr_infos_interleave(addr_infos, self._interleave)
+                if self._happy_eyeballs_delay is None:
+                    addr_infos.pop(0)
+                else:
+                    aiohappyeyeballs.pop_addr_infos_interleave(
+                        addr_infos, self._interleave
+                    )
                 continue
 
             if req.is_ssl() and fingerprint:
