@@ -1229,8 +1229,9 @@ class TCPConnector(BaseConnector):
                 if self._happy_eyeballs_delay is None:
                     # If happyeyeballs is disabled, connect in sequence
                     # this avoids a bug in uvloop where it can lose track
-                    # of sockets passed between aiohappyeyeballs.start_connect
-                    # and create_connection and try to reuse the same fd.
+                    # of sockets passed directly to create_connection and
+                    # try to reuse the same fd. The problem does not
+                    # happen when passing host/port to create_connection.
                     # https://github.com/aio-libs/aiohttp/issues/10506
                     # https://github.com/MagicStack/uvloop/issues/645
                     first_addr_infos = addr_infos[0]
