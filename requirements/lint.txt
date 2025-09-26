@@ -86,7 +86,7 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.78.0
     # via -r requirements/lint.in
-pyyaml==6.0.2
+pyyaml==6.0.3
     # via pre-commit
 rich==14.1.0
     # via pytest-codspeed
