@@ -1,0 +1,2 @@
+Fixed ``test_send_compress_text`` failing when stdlib uses alternative zlib
+backends (zlib-ng in cpython3.14 windows) -- by :user:`Cycloctane`.
