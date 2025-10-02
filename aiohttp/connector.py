@@ -38,6 +38,7 @@ from .client_proto import ResponseHandler
 from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
+    ClientRequestBase,
     Fingerprint,
     _extract_ssl_object,
 )

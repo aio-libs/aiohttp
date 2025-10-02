@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Optional, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Optional, TypedDict, Union
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
@@ -83,12 +83,23 @@ _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
 
 
-def _extract_ssl_object(connection: Optional["Connection"]) -> Optional[object]:
-    """Extract SSL object from connection if available."""
+def _extract_ssl_object(
+    connection: Optional[Union["Connection", object]],
+) -> Optional[object]:
+    """Extract SSL object from connection or transport if available."""
     if connection is None:
         return None
 
-    transport = connection.transport
+    # Handle both Connection objects and Transport objects
+    if hasattr(connection, "transport"):
+        # This is a Connection object
+        transport = connection.transport
+    elif hasattr(connection, "get_extra_info"):
+        # This is a Transport object
+        transport = connection
+    else:
+        return None
+
     if transport is None:
         return None
 
