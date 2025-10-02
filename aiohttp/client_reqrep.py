@@ -104,16 +104,18 @@ _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
-def _extract_ssl_object(connection: Optional[Union["Connection", object]]) -> Optional[object]:
+def _extract_ssl_object(
+    connection: Optional[Union["Connection", object]],
+) -> Optional[object]:
     """Extract SSL object from connection or transport if available."""
     if connection is None:
         return None
 
     # Handle both Connection objects and Transport objects
-    if hasattr(connection, 'transport'):
+    if hasattr(connection, "transport"):
         # This is a Connection object
         transport = connection.transport
-    elif hasattr(connection, 'get_extra_info'):
+    elif hasattr(connection, "get_extra_info"):
         # This is a Transport object
         transport = connection
     else:
