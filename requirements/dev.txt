@@ -56,7 +56,7 @@ coverage==7.10.7
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==46.0.1
+cryptography==46.0.2
     # via
     #   pyjwt
     #   trustme
