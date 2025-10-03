@@ -12,7 +12,7 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pytest-codspeed
-click==8.2.1
+click==8.3.0
     # via wait-for-it
 coverage==7.10.7
     # via
