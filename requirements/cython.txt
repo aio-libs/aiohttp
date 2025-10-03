@@ -6,7 +6,10 @@
 #
 cython==3.1.4
     # via -r requirements/cython.in
-multidict==6.6.4
+
+# Temporarily redirect it to me, will revert when 6.7 gets released
+multidict @ git+https://github.com/Vizonex/multidict@capi
+    # via -r /home/dependabot/dependabot-updater/tmp/20250715-1382-lngh7e/dependabot_20250715-1382-a7k872/requirements/multidict.in
+typing-extensions==4.14.1
     # via -r requirements/multidict.in
 typing-extensions==4.15.0
-    # via multidict
