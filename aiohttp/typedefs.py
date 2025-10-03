@@ -17,8 +17,33 @@ from yarl import URL, Query as _Query
 
 Query = _Query
 
-DEFAULT_JSON_ENCODER = json.dumps
-DEFAULT_JSON_DECODER = json.loads
+# Try to use orjson for better performance, fallback to standard json
+try:
+    import orjson
+
+    def _orjson_dumps(obj: Any) -> str:
+        """orjson encoder that returns str (like json.dumps)."""
+        return orjson.dumps(obj).decode("utf-8")
+
+    def _orjson_dumps_bytes(obj: Any) -> bytes:
+        """orjson encoder that returns bytes directly (fast path)."""
+        return orjson.dumps(obj)
+
+    def _orjson_loads(s: str) -> Any:
+        """orjson decoder that accepts str (like json.loads)."""
+        return orjson.loads(s)
+
+    DEFAULT_JSON_ENCODER = _orjson_dumps
+    DEFAULT_JSON_DECODER = _orjson_loads
+    DEFAULT_JSON_BYTES_ENCODER = _orjson_dumps_bytes
+except ImportError:
+    DEFAULT_JSON_ENCODER = json.dumps
+    DEFAULT_JSON_DECODER = json.loads
+
+    def _json_dumps_bytes_fallback(obj: Any) -> bytes:
+        return json.dumps(obj).encode("utf-8")
+
+    DEFAULT_JSON_BYTES_ENCODER = _json_dumps_bytes_fallback
 
 if TYPE_CHECKING:
     _CIMultiDict = CIMultiDict[str]
@@ -37,6 +62,7 @@ else:
 Byteish = Union[bytes, bytearray, memoryview]
 JSONEncoder = Callable[[Any], str]
 JSONDecoder = Callable[[str], Any]
+JSONBytesEncoder = Callable[[Any], bytes]
 LooseHeaders = Union[
     Mapping[str, str],
     Mapping[istr, str],
