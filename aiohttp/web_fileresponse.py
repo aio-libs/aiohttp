@@ -3,16 +3,16 @@ import io
 import os
 import pathlib
 import sys
+from abc import ABC, abstractmethod
 from contextlib import suppress
-from enum import Enum, auto
+from dataclasses import dataclass
 from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
 from typing import (
-    IO,
     TYPE_CHECKING,
-    Any,
     Awaitable,
+    BinaryIO,
     Callable,
     Final,
     Optional,
@@ -67,15 +67,6 @@ ADDITIONAL_CONTENT_TYPES = MappingProxyType(
 )
 
 
-class _FileResponseResult(Enum):
-    """The result of the file response."""
-
-    SEND_FILE = auto()  # Ie a regular file to send
-    NOT_ACCEPTABLE = auto()  # Ie a socket, or non-regular file
-    PRE_CONDITION_FAILED = auto()  # Ie If-Match or If-None-Match failed
-    NOT_MODIFIED = auto()  # 304 Not Modified
-
-
 # Add custom pairs and clear the encodings map so guess_type ignores them.
 CONTENT_TYPES.encodings_map.clear()
 for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
@@ -85,28 +76,41 @@ for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
 _CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
 
 
-class FileResponse(StreamResponse):
-    """A response object can be used to send files."""
+@dataclass
+class _ResponseOpenFile:
+    fobj: BinaryIO
+    size: int
+    guessed_content_type: str
+    etag: Optional[str]
+    last_modified: Optional[float]
+    encoding: Optional[str]
+
+
+class BaseIOResponse(StreamResponse, ABC):
+    _chunk_size: int
 
     def __init__(
         self,
-        path: PathLike,
         chunk_size: int = 256 * 1024,
         status: int = 200,
         reason: Optional[str] = None,
         headers: Optional[LooseHeaders] = None,
     ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
-
-        self._path = pathlib.Path(path)
         self._chunk_size = chunk_size
 
-    def _seek_and_read(self, fobj: IO[Any], offset: int, chunk_size: int) -> bytes:
+    @abstractmethod
+    async def _open(self, accept_encoding: str) -> _ResponseOpenFile: ...
+
+    @abstractmethod
+    async def _close(self, open_file: _ResponseOpenFile) -> None: ...
+
+    def _seek_and_read(self, fobj: BinaryIO, offset: int, chunk_size: int) -> bytes:
         fobj.seek(offset)
-        return fobj.read(chunk_size)  # type: ignore[no-any-return]
+        return fobj.read(chunk_size)
 
     async def _sendfile_fallback(
-        self, writer: AbstractStreamWriter, fobj: IO[Any], offset: int, count: int
+        self, writer: AbstractStreamWriter, fobj: BinaryIO, offset: int, count: int
     ) -> AbstractStreamWriter:
         # To keep memory usage low,fobj is transferred in chunks
         # controlled by the constructor's chunk_size argument.
@@ -127,7 +131,7 @@ class FileResponse(StreamResponse):
         return writer
 
     async def _sendfile(
-        self, request: "BaseRequest", fobj: IO[Any], offset: int, count: int
+        self, request: "BaseRequest", fobj: BinaryIO, offset: int, count: int
     ) -> AbstractStreamWriter:
         writer = await super().prepare(request)
         assert writer is not None
@@ -156,12 +160,17 @@ class FileResponse(StreamResponse):
         )
 
     async def _not_modified(
-        self, request: "BaseRequest", etag_value: str, last_modified: float
+        self,
+        request: "BaseRequest",
+        etag: Optional[str],
+        last_modified: Optional[float],
     ) -> Optional[AbstractStreamWriter]:
         self.set_status(HTTPNotModified.status_code)
         self._length_check = False
-        self.etag = etag_value
-        self.last_modified = last_modified
+        if etag is not None:
+            self.etag = etag
+        if last_modified is not None:
+            self.last_modified = last_modified
         # Delete any Content-Length headers provided by user. HTTP 304
         # should always have empty response body
         return await super().prepare(request)
@@ -173,90 +182,56 @@ class FileResponse(StreamResponse):
         self.content_length = 0
         return await super().prepare(request)
 
-    def _make_response(
-        self, request: "BaseRequest", accept_encoding: str
-    ) -> Tuple[
-        _FileResponseResult, Optional[io.BufferedReader], os.stat_result, Optional[str]
-    ]:
-        """Return the response result, io object, stat result, and encoding.
-
-        If an uncompressed file is returned, the encoding is set to
-        :py:data:`None`.
-
-        This method should be called from a thread executor
-        since it calls os.stat which may block.
-        """
-        file_path, st, file_encoding = self._get_file_path_stat_encoding(
-            accept_encoding
-        )
-        if not file_path:
-            return _FileResponseResult.NOT_ACCEPTABLE, None, st, None
-
-        etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
-
-        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
-        if (ifmatch := request.if_match) is not None and not self._etag_match(
-            etag_value, ifmatch, weak=False
-        ):
-            return _FileResponseResult.PRE_CONDITION_FAILED, None, st, file_encoding
-
-        if (
-            (unmodsince := request.if_unmodified_since) is not None
-            and ifmatch is None
-            and st.st_mtime > unmodsince.timestamp()
-        ):
-            return _FileResponseResult.PRE_CONDITION_FAILED, None, st, file_encoding
-
-        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
-        if (ifnonematch := request.if_none_match) is not None and self._etag_match(
-            etag_value, ifnonematch, weak=True
-        ):
-            return _FileResponseResult.NOT_MODIFIED, None, st, file_encoding
-
-        if (
-            (modsince := request.if_modified_since) is not None
-            and ifnonematch is None
-            and st.st_mtime <= modsince.timestamp()
-        ):
-            return _FileResponseResult.NOT_MODIFIED, None, st, file_encoding
-
-        fobj = file_path.open("rb")
-        with suppress(OSError):
-            # fstat() may not be available on all platforms
-            # Once we open the file, we want the fstat() to ensure
-            # the file has not changed between the first stat()
-            # and the open().
-            st = os.stat(fobj.fileno())
-        return _FileResponseResult.SEND_FILE, fobj, st, file_encoding
-
-    def _get_file_path_stat_encoding(
-        self, accept_encoding: str
-    ) -> Tuple[Optional[pathlib.Path], os.stat_result, Optional[str]]:
-        file_path = self._path
-        for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
-            if file_encoding not in accept_encoding:
-                continue
-
-            compressed_path = file_path.with_suffix(file_path.suffix + file_extension)
-            with suppress(OSError):
-                # Do not follow symlinks and ignore any non-regular files.
-                st = compressed_path.lstat()
-                if S_ISREG(st.st_mode):
-                    return compressed_path, st, file_encoding
-
-        # Fallback to the uncompressed file
-        st = file_path.stat()
-        return file_path if S_ISREG(st.st_mode) else None, st, None
-
     async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
-        loop = asyncio.get_running_loop()
         # Encoding comparisons should be case-insensitive
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
+
+        open_file = None
         try:
-            response_result, fobj, st, file_encoding = await loop.run_in_executor(
-                None, self._make_response, request, accept_encoding
-            )
+            open_file = await self._open(accept_encoding)
+
+            if hdrs.CONTENT_TYPE not in self.headers:
+                self.headers[hdrs.CONTENT_TYPE] = open_file.guessed_content_type
+
+            # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
+            if (ifmatch := request.if_match) is not None and (
+                open_file.etag is None
+                or not self._etag_match(open_file.etag, ifmatch, weak=False)
+            ):
+                return await self._precondition_failed(request)
+
+            if (
+                (unmodsince := request.if_unmodified_since) is not None
+                and request.if_match is None
+                and (
+                    open_file.last_modified is None
+                    or open_file.last_modified > unmodsince.timestamp()
+                )
+            ):
+                return await self._precondition_failed(request)
+
+            # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2-2
+            if (
+                open_file.etag is not None
+                and (ifnonematch := request.if_none_match) is not None
+                and self._etag_match(open_file.etag, ifnonematch, weak=True)
+            ):
+                return await self._not_modified(
+                    request, open_file.etag, open_file.last_modified
+                )
+
+            if (
+                open_file.last_modified is not None
+                and (modsince := request.if_modified_since) is not None
+                and open_file.last_modified <= modsince.timestamp()
+            ):
+                return await self._not_modified(
+                    request, open_file.etag, open_file.last_modified
+                )
+
+            return await self._prepare_open_file(request, open_file)
+
         except PermissionError:
             self.set_status(HTTPForbidden.status_code)
             return await super().prepare(request)
@@ -265,48 +240,32 @@ class FileResponse(StreamResponse):
             # symlinks in python >= 3.13, so respond with 404.
             self.set_status(HTTPNotFound.status_code)
             return await super().prepare(request)
-
-        # Forbid special files like sockets, pipes, devices, etc.
-        if response_result is _FileResponseResult.NOT_ACCEPTABLE:
-            self.set_status(HTTPForbidden.status_code)
-            return await super().prepare(request)
-
-        if response_result is _FileResponseResult.PRE_CONDITION_FAILED:
-            return await self._precondition_failed(request)
-
-        if response_result is _FileResponseResult.NOT_MODIFIED:
-            etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
-            last_modified = st.st_mtime
-            return await self._not_modified(request, etag_value, last_modified)
-
-        assert fobj is not None
-        try:
-            return await self._prepare_open_file(request, fobj, st, file_encoding)
         finally:
             # We do not await here because we do not want to wait
             # for the executor to finish before returning the response
             # so the connection can begin servicing another request
             # as soon as possible.
-            close_future = loop.run_in_executor(None, fobj.close)
-            # Hold a strong reference to the future to prevent it from being
-            # garbage collected before it completes.
-            _CLOSE_FUTURES.add(close_future)
-            close_future.add_done_callback(_CLOSE_FUTURES.remove)
+            if open_file is not None:
+                close_future = asyncio.ensure_future(self._close(open_file))
+                # Hold a strong reference to the future to prevent it from being
+                # garbage collected before it completes.
+                _CLOSE_FUTURES.add(close_future)
+                close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
     async def _prepare_open_file(
         self,
         request: "BaseRequest",
-        fobj: io.BufferedReader,
-        st: os.stat_result,
-        file_encoding: Optional[str],
+        open_file: _ResponseOpenFile,
     ) -> Optional[AbstractStreamWriter]:
         status = self._status
-        file_size: int = st.st_size
-        file_mtime: float = st.st_mtime
-        count: int = file_size
+        count: int = open_file.size
         start: Optional[int] = None
 
-        if (ifrange := request.if_range) is None or file_mtime <= ifrange.timestamp():
+        if (
+            (ifrange := request.if_range) is None
+            or open_file.last_modified is None
+            or open_file.last_modified <= ifrange.timestamp()
+        ):
             # If-Range header check:
             # condition = cached date >= last modification date
             # return 206 if True else 200.
@@ -328,7 +287,7 @@ class FileResponse(StreamResponse):
                 #
                 # Will do the same below. Many servers ignore this and do not
                 # send a Content-Range header with HTTP 416
-                self._headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
+                self._headers[hdrs.CONTENT_RANGE] = f"bytes */{open_file.size}"
                 self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                 return await super().prepare(request)
 
@@ -336,12 +295,12 @@ class FileResponse(StreamResponse):
             # notation into file pointer offset and count
             if start is not None:
                 if start < 0 and end is None:  # return tail of file
-                    start += file_size
+                    start += open_file.size
                     if start < 0:
                         # if Range:bytes=-1000 in request header but file size
                         # is only 200, there would be trouble without this
                         start = 0
-                    count = file_size - start
+                    count = open_file.size - start
                 else:
                     # rfc7233:If the last-byte-pos value is
                     # absent, or if the value is greater than or equal to
@@ -351,10 +310,11 @@ class FileResponse(StreamResponse):
                     # value of last-byte-pos with a value that is one less than
                     # the current length of the selected representation).
                     count = (
-                        min(end if end is not None else file_size, file_size) - start
+                        min(end if end is not None else open_file.size, open_file.size)
+                        - start
                     )
 
-                if start >= file_size:
+                if start >= open_file.size:
                     # HTTP 416 should be returned in this case.
                     #
                     # According to https://tools.ietf.org/html/rfc7233:
@@ -364,7 +324,7 @@ class FileResponse(StreamResponse):
                     # suffix-byte-range-spec with a non-zero suffix-length,
                     # then the byte-range-set is satisfiable. Otherwise, the
                     # byte-range-set is unsatisfiable.
-                    self._headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
+                    self._headers[hdrs.CONTENT_RANGE] = f"bytes */{open_file.size}"
                     self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                     return await super().prepare(request)
 
@@ -373,26 +333,18 @@ class FileResponse(StreamResponse):
                 # return a HTTP 206 for a Range request.
                 self.set_status(status)
 
-        # If the Content-Type header is not already set, guess it based on the
-        # extension of the request path. The encoding returned by guess_type
-        #  can be ignored since the map was cleared above.
-        if hdrs.CONTENT_TYPE not in self._headers:
-            if sys.version_info >= (3, 13):
-                guesser = CONTENT_TYPES.guess_file_type
-            else:
-                guesser = CONTENT_TYPES.guess_type
-            self.content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
-
-        if file_encoding:
-            self._headers[hdrs.CONTENT_ENCODING] = file_encoding
+        if open_file.encoding:
+            self._headers[hdrs.CONTENT_ENCODING] = open_file.encoding
             self._headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
             # Disable compression if we are already sending
             # a compressed file since we don't want to double
             # compress.
             self._compression = False
 
-        self.etag = f"{st.st_mtime_ns:x}-{st.st_size:x}"
-        self.last_modified = file_mtime
+        if open_file.etag is not None:
+            self.etag = open_file.etag
+        if open_file.last_modified is not None:
+            self.last_modified = open_file.last_modified
         self.content_length = count
 
         self._headers[hdrs.ACCEPT_RANGES] = "bytes"
@@ -401,7 +353,7 @@ class FileResponse(StreamResponse):
             real_start = start
             assert real_start is not None
             self._headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
-                real_start, real_start + count - 1, file_size
+                real_start, real_start + count - 1, open_file.size
             )
 
         # If we are sending 0 bytes calling sendfile() will throw a ValueError
@@ -411,4 +363,118 @@ class FileResponse(StreamResponse):
         # be aware that start could be None or int=0 here.
         offset = start or 0
 
-        return await self._sendfile(request, fobj, offset, count)
+        return await self._sendfile(request, open_file.fobj, offset, count)
+
+
+class FileResponse(BaseIOResponse):
+    """A response object can be used to send files."""
+
+    _path: pathlib.Path
+
+    def __init__(
+        self,
+        path: PathLike,
+        chunk_size: int = 256 * 1024,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: Optional[LooseHeaders] = None,
+    ) -> None:
+        self._path = pathlib.Path(path)
+        super().__init__(status=status, reason=reason, headers=headers)
+
+    def _get_file_path_stat_encoding(
+        self, accept_encoding: str
+    ) -> Tuple[Optional[pathlib.Path], os.stat_result, Optional[str]]:
+        file_path = self._path
+        for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
+            if file_encoding not in accept_encoding:
+                continue
+
+            compressed_path = file_path.with_suffix(file_path.suffix + file_extension)
+            with suppress(OSError):
+                # Do not follow symlinks and ignore any non-regular files.
+                st = compressed_path.lstat()
+                if S_ISREG(st.st_mode):
+                    return compressed_path, st, file_encoding
+
+        # Fallback to the uncompressed file
+        st = file_path.stat()
+        return file_path if S_ISREG(st.st_mode) else None, st, None
+
+    async def _open(self, accept_encoding: str) -> _ResponseOpenFile:
+        def open_func() -> _ResponseOpenFile:
+            # Guess a fallback content type, used if no Content-Type header is provided
+            if sys.version_info >= (3, 13):
+                guesser = CONTENT_TYPES.guess_file_type
+            else:
+                guesser = CONTENT_TYPES.guess_type
+            content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
+
+            file_path, st, encoding = self._get_file_path_stat_encoding(accept_encoding)
+
+            if file_path is None:
+                # Forbid special files like sockets, pipes, devices, etc.
+                raise PermissionError()
+
+            return _ResponseOpenFile(
+                fobj=file_path.open("rb"),
+                size=st.st_size,
+                guessed_content_type=content_type,
+                etag=f"{st.st_mtime_ns:x}-{st.st_size:x}",
+                last_modified=st.st_mtime,
+                encoding=encoding,
+            )
+
+        return await asyncio.get_running_loop().run_in_executor(None, func=open_func)
+
+    async def _close(self, open_file: _ResponseOpenFile) -> None:
+        return await asyncio.get_running_loop().run_in_executor(
+            None, open_file.fobj.close
+        )
+
+
+class IOResponse(BaseIOResponse):
+    """A response object using any binary IO object"""
+
+    _fobj: BinaryIO
+    _etag: Optional[str]
+    _last_modified: Optional[float]
+    _close_after_response: bool
+
+    def __init__(
+        self,
+        fobj: BinaryIO,
+        etag: Optional[str] = None,
+        last_modified: Optional[float] = None,
+        close_after_response: bool = True,
+        chunk_size: int = 256 * 1024,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: Optional[LooseHeaders] = None,
+    ) -> None:
+        self._fobj = fobj
+        self._etag = etag
+        self._last_modified = last_modified
+        self._close_after_response = close_after_response
+        super().__init__(status=status, reason=reason, headers=headers)
+
+    async def _open(self, accept_encoding: str) -> _ResponseOpenFile:
+        def get_size() -> int:
+            self._fobj.seek(0, io.SEEK_END)
+            size = self._fobj.tell()
+            self._fobj.seek(0)
+            return size
+
+        size = await asyncio.get_running_loop().run_in_executor(None, get_size)
+        return _ResponseOpenFile(
+            self._fobj,
+            size,
+            FALLBACK_CONTENT_TYPE,
+            self._etag,
+            self._last_modified,
+            None,
+        )
+
+    async def _close(self, open_file: _ResponseOpenFile) -> None:
+        if self._close_after_response:
+            await asyncio.get_running_loop().run_in_executor(None, open_file.fobj.close)

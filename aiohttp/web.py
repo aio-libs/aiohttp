@@ -88,7 +88,7 @@ from .web_exceptions import (
     HTTPVersionNotSupported,
     NotAppKeyWarning,
 )
-from .web_fileresponse import FileResponse
+from .web_fileresponse import FileResponse, IOResponse
 from .web_log import AccessLogger
 from .web_middlewares import middleware, normalize_path_middleware
 from .web_protocol import PayloadAccessError, RequestHandler, RequestPayloadError
@@ -204,6 +204,7 @@ __all__ = (
     "HTTPVersionNotSupported",
     # web_fileresponse
     "FileResponse",
+    "IOResponse",
     # web_middlewares
     "middleware",
     "normalize_path_middleware",
