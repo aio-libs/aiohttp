@@ -2718,6 +2718,27 @@ Response errors
 
       .. deprecated:: 3.1
 
+   .. attribute:: ssl_object
+
+      SSL object from the connection transport, if available
+      (:class:`ssl.SSLSocket` or ``None``).
+
+      This attribute provides access to SSL certificate information even after
+      the connection has been closed. Useful for advanced certificate
+      validation and debugging SSL-related issues.
+
+      Example usage::
+
+          try:
+              async with session.get('https://example.com') as resp:
+                  resp.raise_for_status()
+          except aiohttp.ClientResponseError as e:
+              if e.ssl_object:
+                  peer_cert = e.ssl_object.getpeercert()
+                  print(f"Certificate subject: {peer_cert.get('subject')}")
+
+      .. versionadded:: 3.13
+
 
 .. class:: ContentTypeError
 

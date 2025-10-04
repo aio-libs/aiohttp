@@ -711,6 +711,38 @@ DER with e.g::
    to :class:`TCPConnector` as default, the value from
    :meth:`ClientSession.get` and others override default.
 
+Example: Access SSL certificate information from exceptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. versionadded:: 3.13
+
+When :class:`ClientResponseError` or its subclasses are raised, you can access
+SSL certificate information even after the connection has been closed using
+the :attr:`~ClientResponseError.ssl_object` attribute::
+
+  try:
+      async with session.get('https://example.com') as resp:
+          resp.raise_for_status()
+  except aiohttp.ClientResponseError as e:
+      if e.ssl_object:
+          # Access peer certificate information
+          peer_cert = e.ssl_object.getpeercert()
+          print(f"Certificate subject: {peer_cert.get('subject')}")
+          print(f"Certificate issuer: {peer_cert.get('issuer')}")
+
+          # Check certificate validity dates
+          not_before = peer_cert.get('notBefore')
+          not_after = peer_cert.get('notAfter')
+          print(f"Valid from {not_before} to {not_after}")
+
+          # Access cipher information
+          cipher = e.ssl_object.cipher()
+          if cipher:
+              print(f"Cipher: {cipher[0]}, Protocol: {cipher[1]}")
+
+This is particularly useful for advanced certificate validation, debugging
+SSL-related issues, or implementing custom certificate verification logic.
+
 .. _aiohttp-client-proxy-support:
 
 Proxy support

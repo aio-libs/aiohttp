@@ -50,7 +50,12 @@ from .client_exceptions import (
     ssl_errors,
 )
 from .client_proto import ResponseHandler
-from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
+from .client_reqrep import (
+    SSL_ALLOWED_TYPES,
+    ClientRequest,
+    Fingerprint,
+    _extract_ssl_object,
+)
 from .helpers import (
     _SENTINEL,
     ceil_timeout,
@@ -1547,6 +1552,7 @@ class TCPConnector(BaseConnector):
                             status=resp.status,
                             message=message,
                             headers=resp.headers,
+                            ssl_object=_extract_ssl_object(transport),
                         )
                 except BaseException:
                     # It shouldn't be closed in `finally` because it's fed to
