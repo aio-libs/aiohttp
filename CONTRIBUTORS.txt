@@ -216,6 +216,7 @@ Kilian Guillaume
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Kirill Potapenko
 Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
