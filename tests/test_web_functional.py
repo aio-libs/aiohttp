@@ -2100,6 +2100,10 @@ async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
     await client.close()
 
 
+@pytest.mark.skipif(
+    hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled(),
+    reason="Fails to capture the warning",
+)
 async def test_return_http_exception_deprecated(aiohttp_client) -> None:
     async def handler(request):
         return web.HTTPForbidden()
