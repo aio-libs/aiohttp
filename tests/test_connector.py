@@ -492,10 +492,11 @@ async def test_release(loop, key) -> None:
     conn._acquired_per_host[key].add(proto)
 
     conn._release(key, proto)
+    loop_time = loop.time()
     assert conn._release_waiter.called
     assert conn._cleanup_handle is not None
     assert conn._conns[key][0][0] == proto
-    assert conn._conns[key][0][1] == pytest.approx(loop.time(), abs=0.1)
+    assert conn._conns[key][0][1] == pytest.approx(loop_time, abs=0.1)
     assert not conn._cleanup_closed_transports
     await conn.close()
 
