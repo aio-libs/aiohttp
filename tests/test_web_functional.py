@@ -2110,6 +2110,8 @@ async def test_return_http_exception_deprecated(aiohttp_client) -> None:
 
     with pytest.warns(DeprecationWarning):
         await client.get("/")
+        # Yield to allow some time for the warning to make it here.
+        await asyncio.sleep(0)
 
 
 async def test_request_path(aiohttp_client) -> None:
