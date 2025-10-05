@@ -116,7 +116,7 @@ jobs:
         path:  vendor/llhttp/build
     - name: Setup NodeJS
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: 18
     - name: Generate llhttp sources
