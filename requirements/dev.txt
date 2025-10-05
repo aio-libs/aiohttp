@@ -97,7 +97,7 @@ imagesize==1.4.1
     # via sphinx
 iniconfig==2.1.0
     # via pytest
-isal==1.7.2 ; python_version < "3.14"
+isal==1.8.0 ; python_version < "3.14"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
