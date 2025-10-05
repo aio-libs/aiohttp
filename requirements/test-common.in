@@ -1,0 +1,17 @@
+blockbuster
+coverage
+freezegun
+isal; python_version < "3.14" # no wheel for 3.14
+mypy; implementation_name == "cpython"
+pkgconfig
+proxy.py >= 2.4.4rc5
+pytest
+pytest-cov
+pytest-mock
+pytest-xdist
+pytest_codspeed
+python-on-whales
+setuptools-git
+trustme; platform_machine != "i686"  # no 32-bit wheels
+wait-for-it
+zlib_ng
