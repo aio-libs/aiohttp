@@ -1,0 +1,2 @@
+Made `AccessLogger` use `tm_gmtoff` for timestamps to be aware of DST.
+-- by :user:`sgaist`

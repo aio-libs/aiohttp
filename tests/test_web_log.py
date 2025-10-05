@@ -2,6 +2,7 @@ import datetime
 import logging
 import platform
 import sys
+import time
 from contextvars import ContextVar
 from typing import Dict, NoReturn, Optional
 from unittest import mock
@@ -96,8 +97,11 @@ def test_access_logger_atoms(
         def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
             return cls(1843, 1, 1, 0, 30, tzinfo=tz)
 
+    def patched_localtime(sec: int = None):
+        return time.struct_time((0, 0, 0, 0, 0, 0, 0, 0, 0, "test-tz", 28800))
+
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
-    monkeypatch.setattr("time.timezone", -28800)
+    monkeypatch.setattr("time.localtime", patched_localtime)
     monkeypatch.setattr("os.getpid", lambda: 42)
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
