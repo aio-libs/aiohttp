@@ -97,7 +97,7 @@ def test_access_logger_atoms(
         def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
             return cls(1843, 1, 1, 0, 30, tzinfo=tz)
 
-    def patched_localtime(sec: int = None):
+    def patched_localtime(sec: Optional[int] = None) -> time.struct_time:
         return time.struct_time((0, 0, 0, 0, 0, 0, 0, 0, 0, "test-tz", 28800))
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
