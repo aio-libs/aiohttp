@@ -266,7 +266,7 @@ typing-extensions==4.15.0
     #   python-on-whales
     #   typing-inspection
     #   virtualenv
-typing-inspection==0.4.1
+typing-inspection==0.4.2
     # via pydantic
 uritemplate==4.2.0
     # via gidgethub
