@@ -15,7 +15,7 @@ annotated-types==0.7.0
 async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
 blockbuster==1.5.25
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 cffi==2.0.0
@@ -25,9 +25,9 @@ cffi==2.0.0
     #   pytest-codspeed
 click==8.1.8
     # via wait-for-it
-coverage==7.10.6
+coverage==7.10.7
     # via
-    #   -r requirements/test.in
+    #   -r requirements/test-common.in
     #   pytest-cov
 cryptography==46.0.1
     # via trustme
@@ -38,7 +38,7 @@ execnet==2.1.1
 forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 frozenlist==1.7.0
     # via
     #   -r requirements/runtime-deps.in
@@ -52,7 +52,7 @@ idna==3.6
 iniconfig==2.1.0
     # via pytest
 isal==1.7.2 ; python_version < "3.14"
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 markdown-it-py==3.0.0
     # via rich
 mdurl==0.1.2
@@ -64,7 +64,7 @@ multidict @ git+https://github.com/Vizonex/multidict@capi
     #   -r requirements/runtime-deps.in
     #   yarl
 mypy==1.17.1 ; implementation_name == "cpython"
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
 packaging==25.0
@@ -74,7 +74,7 @@ packaging==25.0
 pathspec==0.12.1
     # via mypy
 pkgconfig==1.5.5
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 pluggy==1.6.0
     # via
     #   pytest
@@ -84,7 +84,7 @@ propcache==0.3.2
     #   -r requirements/runtime-deps.in
     #   yarl
 proxy-py==2.4.10
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 pycares==4.11.0
     # via aiodns
 pycparser==2.23
@@ -99,27 +99,27 @@ pygments==2.19.2
     #   rich
 pytest==8.4.2
     # via
-    #   -r requirements/test.in
+    #   -r requirements/test-common.in
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
 pytest-codspeed==4.0.0
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 pytest-cov==7.0.0
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 pytest-mock==3.15.1
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 pytest-xdist==3.8.0
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.78.0
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 rich==14.1.0
     # via pytest-codspeed
 setuptools-git==1.2
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 six==1.17.0
     # via python-dateutil
 tomli==2.2.1
@@ -128,7 +128,7 @@ tomli==2.2.1
     #   mypy
     #   pytest
 trustme==1.2.1 ; platform_machine != "i686"
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 typing-extensions==4.15.0
     # via
     #   aiosignal
@@ -145,10 +145,10 @@ typing-inspection==0.4.1
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 wait-for-it==2.3.0
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 yarl==1.20.1
     # via -r requirements/runtime-deps.in
 zlib-ng==1.0.0
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 zstandard==0.25.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via -r requirements/runtime-deps.in

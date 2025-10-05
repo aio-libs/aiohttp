@@ -51,7 +51,7 @@ jobs:
       with:
         python-version: 3.11
     - name: Cache PyPI
-      uses: actions/cache@v4.2.4
+      uses: actions/cache@v4.3.0
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -109,7 +109,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v4.2.4
+      uses: actions/cache@v4.3.0
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
@@ -138,7 +138,7 @@ jobs:
     needs: gen_llhttp
     strategy:
       matrix:
-        pyver: [3.9, '3.10', '3.11', '3.12', '3.13']
+        pyver: [3.9, '3.10', '3.11', '3.12', '3.13', '3.14']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
@@ -153,12 +153,9 @@ jobs:
             os: ubuntu
             experimental: false
           - os: ubuntu
-            pyver: "3.14"
-            experimental: true
-            no-extensions: 'Y'
-          - os: ubuntu
             pyver: "3.14t"
-            experimental: true
+            no-extensions: ''
+            experimental: false
       fail-fast: true
     runs-on: ${{ matrix.os }}-latest
     continue-on-error: ${{ matrix.experimental }}
@@ -179,7 +176,7 @@ jobs:
         echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
       shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v4.2.4
+      uses: actions/cache@v4.3.0
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -450,7 +447,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v3.1.4
+      uses: pypa/cibuildwheel@v3.2.0
       env:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2

@@ -297,7 +297,6 @@ def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
     timer = loop.time() + timeout
 
     handle = helpers.TimeoutHandle(loop, timeout)
-    assert handle is not None
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
@@ -314,7 +313,6 @@ def test_when_timeout_smaller_second_with_low_threshold(
     timer = loop.time() + timeout
 
     handle = helpers.TimeoutHandle(loop, timeout, 0.01)
-    assert handle is not None
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
