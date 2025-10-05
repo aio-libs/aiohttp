@@ -11,6 +11,13 @@ from aiohttp.abc import AbstractAccessLogger
 from aiohttp.test_utils import get_unused_port_socket
 from aiohttp.web_log import AccessLogger
 
+try:
+    Server = asyncio.Server
+except AttributeError:
+    import asyncio.base_events
+
+    Server = asyncio.base_events.Server
+
 
 class _RunnerMaker(Protocol):
     def __call__(self, handle_signals: bool = ..., **kwargs: Any) -> web.AppRunner: ...
@@ -265,7 +272,7 @@ async def test_tcpsite_default_host(make_runner: _RunnerMaker) -> None:
     assert site.name == "http://0.0.0.0:8080"
 
     m = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
-    m.create_server.return_value = mock.create_autospec(asyncio.Server, spec_set=True)
+    m.create_server.return_value = mock.create_autospec(Server, spec_set=True)
     with mock.patch(
         "asyncio.get_event_loop", autospec=True, spec_set=True, return_value=m
     ):

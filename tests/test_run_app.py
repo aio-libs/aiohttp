@@ -34,6 +34,14 @@ from aiohttp.log import access_logger
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_runner import BaseRunner
 
+try:
+    Server = asyncio.Server
+except AttributeError:
+    import asyncio.base_events
+
+    Server = asyncio.base_events.Server
+
+
 _has_unix_domain_socks = hasattr(socket, "AF_UNIX")
 if _has_unix_domain_socks:
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _abstract_path_sock:
@@ -77,9 +85,9 @@ def skip_if_on_windows() -> None:
 def patched_loop(
     loop: asyncio.AbstractEventLoop,
 ) -> Iterator[asyncio.AbstractEventLoop]:
-    server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
+    server = mock.create_autospec(Server, spec_set=True, instance=True)
     server.wait_closed.return_value = None
-    unix_server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
+    unix_server = mock.create_autospec(Server, spec_set=True, instance=True)
     unix_server.wait_closed.return_value = None
     with mock.patch.object(
         loop, "create_server", autospec=True, spec_set=True, return_value=server
@@ -892,7 +900,7 @@ def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> 
     async def coro() -> int:
         return 123
 
-    async def on_startup(app: web.Application) -> None:
+    async def on_startup(_: web.Application) -> None:
         nonlocal task
         loop = asyncio.get_event_loop()
         task = loop.create_task(coro())
