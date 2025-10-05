@@ -2,12 +2,12 @@ import datetime
 import logging
 import platform
 import sys
-import time
 from contextvars import ContextVar
 from typing import Dict, NoReturn, Optional
 from unittest import mock
 
 import pytest
+from freezegun import freeze_time
 
 import aiohttp
 from aiohttp import web
@@ -92,16 +92,22 @@ def test_access_logger_atoms(
     expected: str,
     extra: Dict[str, object],
 ) -> None:
+    class TestTimeZone(datetime.tzinfo):
+        def __init__(self):
+            self.stdoffset = datetime.timedelta(hours=8)
+
+        def utcoffset(self, dt):
+            return self.stdoffset
+
+        def dst(self, dt):
+            return datetime.timedelta(0)
+
     class PatchedDatetime(datetime.datetime):
         @classmethod
         def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
-            return cls(1843, 1, 1, 0, 30, tzinfo=tz)
-
-    def patched_localtime(sec: Optional[int] = None) -> time.struct_time:
-        return time.struct_time((0, 0, 0, 0, 0, 0, 0, 0, 0, "test-tz", -28800))
+            return cls(1843, 1, 1, 0, 30, tzinfo=TestTimeZone())
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
-    monkeypatch.setattr("time.localtime", patched_localtime)
     monkeypatch.setattr("os.getpid", lambda: 42)
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
@@ -117,6 +123,144 @@ def test_access_logger_atoms(
     assert not mock_logger.exception.called, mock_logger.exception.call_args
 
     mock_logger.info.assert_called_with(expected, extra=extra)
+
+
+@pytest.mark.skipif(
+    IS_PYPY,
+    reason="""
+    Because of patching :py:class:`datetime.datetime`, under PyPy it
+    fails in :py:func:`isinstance` call in
+    :py:meth:`datetime.datetime.__sub__` (called from
+    :py:meth:`aiohttp.AccessLogger._format_t`):
+
+    *** TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
+
+    (Pdb) from datetime import datetime
+    (Pdb) isinstance(now, datetime)
+    *** TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
+    (Pdb) datetime.__class__
+    <class 'unittest.mock.MagicMock'>
+    (Pdb) isinstance(now, datetime.__class__)
+    False
+
+    Ref: https://bitbucket.org/pypy/pypy/issues/1187/call-to-isinstance-in-__sub__-self-other
+    Ref: https://github.com/celery/celery/issues/811
+    Ref: https://stackoverflow.com/a/46102240/595220
+    """,
+)
+@pytest.mark.parametrize(
+    "input_date,is_dst,log_format,expected,extra",
+    [
+        (
+            "2011-09-19 02:30:00",
+            True,
+            "%t",
+            "[19/Sep/2011:02:29:56 +0200]",
+            {"request_start_time": "[19/Sep/2011:02:29:56 +0200]"},
+        ),
+        (
+            "2011-12-19 02:30:00",
+            False,
+            "%t",
+            "[19/Dec/2011:02:29:56 +0100]",
+            {"request_start_time": "[19/Dec/2011:02:29:56 +0100]"},
+        ),
+        (
+            "2011-09-19 02:30:00",
+            True,
+            '%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"',
+            (
+                "127.0.0.2 [19/Sep/2011:02:29:56 +0200] <42> "
+                'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"'
+            ),
+            {
+                "first_request_line": "GET /path HTTP/1.1",
+                "process_id": "<42>",
+                "remote_address": "127.0.0.2",
+                "request_start_time": "[19/Sep/2011:02:29:56 +0200]",
+                "request_time": "3",
+                "request_time_frac": "3.141593",
+                "request_time_micro": "3141593",
+                "response_size": 42,
+                "response_status": 200,
+                "request_header": {"H1": "a", "H2": "b"},
+            },
+        ),
+        (
+            "2011-12-19 02:30:00",
+            False,
+            '%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"',
+            (
+                "127.0.0.2 [19/Dec/2011:02:29:56 +0100] <42> "
+                'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"'
+            ),
+            {
+                "first_request_line": "GET /path HTTP/1.1",
+                "process_id": "<42>",
+                "remote_address": "127.0.0.2",
+                "request_start_time": "[19/Dec/2011:02:29:56 +0100]",
+                "request_time": "3",
+                "request_time_frac": "3.141593",
+                "request_time_micro": "3141593",
+                "response_size": 42,
+                "response_status": 200,
+                "request_header": {"H1": "a", "H2": "b"},
+            },
+        ),
+    ],
+)
+def test_access_logger_atoms_dst(
+    monkeypatch: pytest.MonkeyPatch,
+    input_date: str,
+    is_dst: int,
+    log_format: str,
+    expected: str,
+    extra: Dict[str, object],
+) -> None:
+
+    class TestTimeZone(datetime.tzinfo):
+        def __init__(self):
+            self.std_offset = datetime.timedelta(hours=1)
+
+        def utcoffset(self, dt):
+            return self.std_offset + self.dst(dt)
+
+        def dst(self, dt):
+            if is_dst:
+                return datetime.timedelta(hours=1)
+            else:
+                return datetime.timedelta(0)
+
+    class PatchedDatetime(datetime.datetime):
+        @classmethod
+        def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
+            dt = datetime.datetime.strptime(input_date, "%Y-%m-%d %H:%M:%S")
+            hour = dt.hour + 1
+            if is_dst:
+                hour = dt.hour + 2
+            return cls(
+                dt.year, dt.month, dt.day, hour, dt.minute, tzinfo=TestTimeZone()
+            )
+
+    monkeypatch.setattr("datetime.datetime", PatchedDatetime)
+    monkeypatch.setattr("os.getpid", lambda: 42)
+
+    mock_logger = mock.Mock()
+    access_logger = AccessLogger(mock_logger, log_format)
+    request = mock.Mock(
+        headers={"H1": "a", "H2": "b"},
+        method="GET",
+        path_qs="/path",
+        version=aiohttp.HttpVersion(1, 1),
+        remote="127.0.0.2",
+    )
+    response = mock.Mock(headers={}, body_length=42, status=200)
+
+    with freeze_time(input_date):
+        access_logger.log(request, response, 3.1415926)
+        assert not mock_logger.exception.called, mock_logger.exception.call_args
+
+        mock_logger.info.assert_called_with(expected, extra=extra)
 
 
 def test_access_logger_dicts() -> None:
