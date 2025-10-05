@@ -139,7 +139,7 @@ class AccessLogger(AbstractAccessLogger):
     @staticmethod
     def _format_t(request: BaseRequest, response: StreamResponse, time: float) -> str:
         tz = datetime.timezone(
-            datetime.timedelta(seconds=time_mod.localtime().tm_gmtoff)
+            datetime.timedelta(seconds=-time_mod.localtime().tm_gmtoff)
         )
         now = datetime.datetime.now(tz)
         start_time = now - datetime.timedelta(seconds=time)
