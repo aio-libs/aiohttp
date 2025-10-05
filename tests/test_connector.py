@@ -1604,10 +1604,11 @@ async def test_release_not_started(loop) -> None:
     key = 1
     conn._acquired.add(proto)
     conn._release(key, proto)
+    loop_time = loop.time()
     # assert conn._conns == {1: [(proto, 10)]}
     rec = conn._conns[1]
     assert rec[0][0] == proto
-    assert rec[0][1] == pytest.approx(loop.time(), abs=0.05)
+    assert rec[0][1] == pytest.approx(loop_time, abs=0.05)
     assert not proto.close.called
     await conn.close()
 
