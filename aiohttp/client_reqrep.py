@@ -57,6 +57,7 @@ from .helpers import (
     netrc_from_env,
     noop,
     reify,
+    sentinel,
     set_exception,
     set_result,
 )
@@ -136,14 +137,14 @@ class RequestInfo(_RequestInfo):
         url: URL,
         method: str,
         headers: "CIMultiDictProxy[str]",
-        real_url: URL = _SENTINEL,  # type: ignore[assignment]
+        real_url: Union[URL, _SENTINEL] = sentinel,
     ) -> "RequestInfo":
         """Create a new RequestInfo instance.
 
         For backwards compatibility, the real_url parameter is optional.
         """
         return tuple.__new__(
-            cls, (url, method, headers, url if real_url is _SENTINEL else real_url)
+            cls, (url, method, headers, url if real_url is sentinel else real_url)
         )
 
 
