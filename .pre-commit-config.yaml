@@ -48,7 +48,7 @@ repos:
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v5.0.0'
+  rev: 'v6.0.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
@@ -64,12 +64,12 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/psf/black
-  rev: '25.1.0'
+  rev: '25.9.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v5.0.0'
+  rev: 'v6.0.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
@@ -94,8 +94,6 @@ repos:
   - id: check-added-large-files
   - id: check-symlinks
   - id: fix-byte-order-marker
-  - id: fix-encoding-pragma
-    args: ['--remove']
   - id: detect-aws-credentials
     args: ['--allow-missing-credentials']
   - id: detect-private-key
