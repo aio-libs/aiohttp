@@ -10,6 +10,127 @@
 
 .. towncrier release notes start
 
+3.12.13 (2025-10-06)
+====================
+
+Features
+--------
+
+- Added support for Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`, :issue:`10872`.
+  
+  
+  
+- Added support for free-threading in Python 3.14+ -- by :user:`kumaraditya303`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11466`, :issue:`11464`.
+
+
+
+- Added support for Zstandard (aka Zstd) compression
+  -- by :user:`KGuillaume-chaps`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11161`.
+  
+  
+  
+- Added ``StreamReader.total_raw_bytes`` to check the number of bytes downloaded
+  -- by :user:`robpats`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11483`.
+
+
+
+Bug fixes
+---------
+
+- Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+  
+  
+  
+- Updated `Content-Disposition` header parsing to handle trailing semicolons and empty parts
+  -- by :user:`PLPeeters`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11243`.
+  
+  
+  
+- Fixed saved ``CookieJar`` failing to be loaded if cookies have ``partitioned`` flag when
+  ``http.cookie`` does not have partitioned cookies supports. -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11523`.
+  
+  
+  
+
+Improved documentation
+----------------------
+
+- Added ``Wireup`` to third-party libraries -- by :user:`maldoinc`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11233`.
+  
+  
+  
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- The `blockbuster` test dependency is now optional; the corresponding test fixture is disabled when it is unavailable
+  -- by :user:`musicinybrain`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11363`.
+  
+  
+  
+- Added ``riscv64`` build to releases -- by :user:`eshattow`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11425`.
+  
+  
+  
+
+Contributor-facing changes
+--------------------------
+  
+  
+  
+- Fixed ``test_send_compress_text`` failing when alternative zlib implementation
+  is used. (``zlib-ng`` in python 3.14 windows build) -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11546`.
+  
+  
+  
+
+----
+
+
 3.12.15 (2025-07-28)
 ====================
 
