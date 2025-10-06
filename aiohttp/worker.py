@@ -35,7 +35,7 @@ else:
 __all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker")
 
 
-class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
+class GunicornWebWorker(base.Worker):
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
@@ -114,7 +114,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         # If our parent changed then we shut down.
         pid = os.getpid()
         try:
-            while self.alive:  # type: ignore[has-type]
+            while self.alive:
                 self.notify()  # type: ignore[no-untyped-call]
 
                 cnt = server.requests_count
