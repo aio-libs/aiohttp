@@ -220,7 +220,7 @@ async def test__run_ok_parent_changed(
 
     await worker._run()
 
-    worker.notify.assert_called_with()
+    worker.notify.assert_called_with()  # type: ignore[attr-defined]
     worker.log.info.assert_called_with("Parent changed, shutting down: %s", worker)
 
 
@@ -248,7 +248,7 @@ async def test__run_exc(
     loop.call_later(0.1, raiser)
     await worker._run()
 
-    worker.notify.assert_called_with()
+    worker.notify.assert_called_with()  # type: ignore[attr-defined]
 
 
 def test__create_ssl_context_without_certs_and_ciphers(
