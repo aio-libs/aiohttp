@@ -110,6 +110,9 @@ def test_access_logger_atoms(
         def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
             return cls(1843, 1, 1, 0, 30, tzinfo=TestTimeZone())
 
+        def astimezone(self, tz: datetime.tzinfo | None = None) -> Self:
+            return self
+
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
     monkeypatch.setattr("os.getpid", lambda: 42)
     mock_logger = mock.Mock()
@@ -239,6 +242,9 @@ def test_access_logger_atoms_dst(
                 return "test-dst"
             else:
                 return "test-std"
+
+        def astimezone(self, tz: datetime.tzinfo | None = None) -> Self:
+            return self
 
     class PatchedDatetime(datetime.datetime):
         @classmethod
