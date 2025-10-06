@@ -21,9 +21,9 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`10851`, :issue:`10872`.
-  
-  
-  
+
+
+
 - Added support for free-threading in Python 3.14+ -- by :user:`kumaraditya303`.
 
 
@@ -38,9 +38,9 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`11161`.
-  
-  
-  
+
+
+
 - Added ``StreamReader.total_raw_bytes`` to check the number of bytes downloaded
   -- by :user:`robpats`.
 
@@ -58,27 +58,27 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`10851`.
-  
-  
-  
+
+
+
 - Updated `Content-Disposition` header parsing to handle trailing semicolons and empty parts
   -- by :user:`PLPeeters`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11243`.
-  
-  
-  
+
+
+
 - Fixed saved ``CookieJar`` failing to be loaded if cookies have ``partitioned`` flag when
   ``http.cookie`` does not have partitioned cookies supports. -- by :user:`Cycloctane`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11523`.
-  
-  
-  
+
+
+
 
 Improved documentation
 ----------------------
@@ -88,9 +88,9 @@ Improved documentation
 
   *Related issues and pull requests on GitHub:*
   :issue:`11233`.
-  
-  
-  
+
+
+
 
 Packaging updates and notes for downstreams
 -------------------------------------------
@@ -101,32 +101,32 @@ Packaging updates and notes for downstreams
 
   *Related issues and pull requests on GitHub:*
   :issue:`11363`.
-  
-  
-  
+
+
+
 - Added ``riscv64`` build to releases -- by :user:`eshattow`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11425`.
-  
-  
-  
+
+
+
 
 Contributor-facing changes
 --------------------------
-  
-  
-  
+
+
+
 - Fixed ``test_send_compress_text`` failing when alternative zlib implementation
   is used. (``zlib-ng`` in python 3.14 windows build) -- by :user:`Cycloctane`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11546`.
-  
-  
-  
+
+
+
 
 ----
 
