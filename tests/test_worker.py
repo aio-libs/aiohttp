@@ -3,7 +3,7 @@ import asyncio
 import os
 import socket
 import ssl
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional, Type
 from unittest import mock
 
 import pytest
@@ -42,7 +42,7 @@ class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
     pass
 
 
-PARAMS = [AsyncioWorker]
+PARAMS: list[Type[BaseTestWorker]] = [AsyncioWorker]
 if uvloop is not None:
 
     class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
