@@ -1,1 +1,0 @@
-Added free-threading CI job for CPython 3.14 -- by :user:`kumaraditya303`.
