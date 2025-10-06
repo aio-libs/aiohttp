@@ -22,7 +22,10 @@ frozenlist==1.8.0
     #   aiosignal
 idna==3.6
     # via yarl
-multidict==6.6.4
+
+# Temporarily redirect it to me, will revert when 6.7 gets released
+multidict @ git+https://github.com/Vizonex/multidict@capi
+
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
