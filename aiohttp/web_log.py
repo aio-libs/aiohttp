@@ -137,8 +137,7 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_t(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        tz = datetime.datetime.now(datetime.timezone.utc).astimezone()
-        now = datetime.datetime.now(tz.tzinfo)
+        now = datetime.datetime.now(datetime.timezone.utc).astimezone()
         start_time = now - datetime.timedelta(seconds=time)
         return start_time.strftime("[%d/%b/%Y:%H:%M:%S %z]")
 
