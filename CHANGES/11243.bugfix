@@ -1,2 +1,0 @@
-Updated `Content-Disposition` header parsing to handle trailing semicolons and empty parts
--- by :user:`PLPeeters`.
