@@ -1,3 +1,3 @@
-Made ``AccessLogger`` use ``tm_gmtoff`` for timestamps to be aware of DST.
+Made ``AccessLogger`` timestamps aware of DST.
 
 -- by :user:`sgaist`
