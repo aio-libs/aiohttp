@@ -1,0 +1,3 @@
+Added ``ssl_object`` attribute to ``ClientResponseError`` and its subclasses
+to provide access to SSL certificate information even after connection closure
+-- by :user:`fed239`.

@@ -1,11 +1,14 @@
 import errno
 import pickle
+import ssl
+from unittest.mock import Mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 from aiohttp import client, client_reqrep
+from aiohttp.client_reqrep import _extract_ssl_object
 
 
 class TestClientResponseError:
@@ -82,6 +85,35 @@ class TestClientResponseError:
             headers=CIMultiDict(),
         )
         assert str(err) == ("400, message='Something wrong', url='http://example.com'")
+
+    def test_ssl_object_none_by_default(self) -> None:
+        err = client.ClientResponseError(request_info=self.request_info, history=())
+        assert err.ssl_object is None
+
+    def test_ssl_object_stored(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ClientResponseError(
+            request_info=self.request_info, history=(), ssl_object=mock_ssl_object
+        )
+        assert err.ssl_object is mock_ssl_object
+
+    def test_repr_with_ssl_object(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        mock_ssl_object.__repr__ = Mock(return_value="<MockSSLObject>")
+        err = client.ClientResponseError(
+            request_info=self.request_info,
+            history=(),
+            status=400,
+            message="Something wrong",
+            headers=CIMultiDict(),
+            ssl_object=mock_ssl_object,
+        )
+        expected_repr = (
+            "ClientResponseError(%r, (), status=400, "
+            "message='Something wrong', headers=<CIMultiDict()>, ssl_object=<MockSSLObject>)"
+            % (self.request_info,)
+        )
+        assert repr(err) == expected_repr
 
 
 class TestClientConnectorError:
@@ -305,3 +337,37 @@ class TestInvalidURL:
     def test_str_with_description(self) -> None:
         err = client.InvalidURL(url=":wrong:url:", description=":description:")
         assert str(err) == ":wrong:url: - :description:"
+
+
+class TestExtractSSLObject:
+    def test_extract_ssl_object_none_connection(self) -> None:
+        result = _extract_ssl_object(None)
+        assert result is None
+
+    def test_extract_ssl_object_no_transport(self) -> None:
+        mock_connection = Mock()
+        mock_connection.transport = None
+        result = _extract_ssl_object(mock_connection)
+        assert result is None
+
+    def test_extract_ssl_object_success(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        mock_transport = Mock()
+        mock_transport.get_extra_info.return_value = mock_ssl_object
+        mock_connection = Mock()
+        mock_connection.transport = mock_transport
+
+        result = _extract_ssl_object(mock_connection)
+
+        assert result is mock_ssl_object
+        mock_transport.get_extra_info.assert_called_once_with("ssl_object")
+
+    def test_extract_ssl_object_exception_handling(self) -> None:
+        mock_transport = Mock()
+        mock_transport.get_extra_info.side_effect = Exception("Transport error")
+        mock_connection = Mock()
+        mock_connection.transport = mock_transport
+
+        result = _extract_ssl_object(mock_connection)
+
+        assert result is None

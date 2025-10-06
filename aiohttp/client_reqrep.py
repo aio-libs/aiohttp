@@ -105,6 +105,33 @@ _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 
 
+def _extract_ssl_object(
+    connection: Optional[Union["Connection", object]],
+) -> Optional[object]:
+    """Extract SSL object from connection or transport if available."""
+    if connection is None:
+        return None
+
+    # Handle both Connection objects and Transport objects
+    if hasattr(connection, "transport"):
+        # This is a Connection object
+        transport = connection.transport
+    elif hasattr(connection, "get_extra_info"):
+        # This is a Transport object
+        transport = connection
+    else:
+        return None
+
+    if transport is None:
+        return None
+
+    try:
+        return transport.get_extra_info("ssl_object")
+    except Exception:
+        # If we can't get the SSL object for any reason, return None
+        return None
+
+
 def _gen_default_accept_encoding() -> str:
     encodings = [
         "gzip",
@@ -477,6 +504,7 @@ class ClientResponse(HeadersMixin):
                         status=exc.code,
                         message=exc.message,
                         headers=exc.headers,
+                        ssl_object=_extract_ssl_object(connection),
                     ) from exc
 
                 if message.code < 100 or message.code > 199 or message.code == 101:
@@ -571,6 +599,7 @@ class ClientResponse(HeadersMixin):
                 status=self.status,
                 message=self.reason,
                 headers=self.headers,
+                ssl_object=_extract_ssl_object(self._connection),
             )
 
     def _release_connection(self) -> None:
@@ -692,6 +721,7 @@ class ClientResponse(HeadersMixin):
                         "unexpected mimetype: %s" % self.content_type
                     ),
                     headers=self.headers,
+                    ssl_object=_extract_ssl_object(self._connection),
                 )
 
         if encoding is None:

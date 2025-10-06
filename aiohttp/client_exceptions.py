@@ -69,6 +69,7 @@ class ClientResponseError(ClientError):
     status: HTTP status code.
     message: Error message.
     headers: Response headers.
+    ssl_object: SSL object from the connection, if available.
     """
 
     def __init__(
@@ -79,6 +80,7 @@ class ClientResponseError(ClientError):
         status: Optional[int] = None,
         message: str = "",
         headers: Optional[MultiMapping[str]] = None,
+        ssl_object: Optional[object] = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
@@ -88,6 +90,7 @@ class ClientResponseError(ClientError):
         self.message = message
         self.headers = headers
         self.history = history
+        self.ssl_object = ssl_object
         self.args = (request_info, history)
 
     def __str__(self) -> str:
@@ -105,6 +108,8 @@ class ClientResponseError(ClientError):
             args += f", message={self.message!r}"
         if self.headers is not None:
             args += f", headers={self.headers!r}"
+        if self.ssl_object is not None:
+            args += f", ssl_object={self.ssl_object!r}"
         return f"{type(self).__name__}({args})"
 
 
