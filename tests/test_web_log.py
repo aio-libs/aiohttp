@@ -93,14 +93,17 @@ def test_access_logger_atoms(
     extra: Dict[str, object],
 ) -> None:
     class TestTimeZone(datetime.tzinfo):
-        def __init__(self):
+        def __init__(self) -> None:
             self.stdoffset = datetime.timedelta(hours=8)
 
-        def utcoffset(self, dt):
+        def utcoffset(self, dt: datetime.datetime | None) -> datetime.timedelta:
             return self.stdoffset
 
-        def dst(self, dt):
+        def dst(self, dt: datetime.datetime | None) -> datetime.timedelta:
             return datetime.timedelta(0)
+
+        def tzname(self, dt: datetime.datetime | None) -> str:
+            return "test-tz"
 
     class PatchedDatetime(datetime.datetime):
         @classmethod
@@ -219,17 +222,23 @@ def test_access_logger_atoms_dst(
 ) -> None:
 
     class TestTimeZone(datetime.tzinfo):
-        def __init__(self):
+        def __init__(self) -> None:
             self.std_offset = datetime.timedelta(hours=1)
 
-        def utcoffset(self, dt):
+        def utcoffset(self, dt: datetime.datetime | None) -> datetime.timedelta:
             return self.std_offset + self.dst(dt)
 
-        def dst(self, dt):
+        def dst(self, dt: datetime.datetime | None) -> datetime.timedelta:
             if is_dst:
                 return datetime.timedelta(hours=1)
             else:
                 return datetime.timedelta(0)
+
+        def tzname(self, dt: datetime.datetime | None) -> str:
+            if is_dst:
+                return "test-dst"
+            else:
+                return "test-std"
 
     class PatchedDatetime(datetime.datetime):
         @classmethod
