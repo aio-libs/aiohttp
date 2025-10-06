@@ -23,6 +23,7 @@ env:
   FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
   MYPY_FORCE_COLOR: 1
   PY_COLORS: 1
+  PYPY_DISABLE_JIT: 1  # Tests are faster without JIT
 
 permissions: {}
 jobs:
