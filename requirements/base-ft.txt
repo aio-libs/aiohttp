@@ -12,6 +12,8 @@ aiosignal==1.4.0
     # via -r requirements/runtime-deps.in
 async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
+attrs==25.3.0
+    # via -r requirements/runtime-deps.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 cffi==2.0.0
@@ -42,7 +44,7 @@ typing-extensions==4.15.0
     # via
     #   aiosignal
     #   multidict
-yarl==1.20.1
+yarl==1.21.0
     # via -r requirements/runtime-deps.in
 zstandard==0.25.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via -r requirements/runtime-deps.in
