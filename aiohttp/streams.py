@@ -130,6 +130,7 @@ class StreamReader(AsyncStreamReaderMixin):
         "_eof_callbacks",
         "_eof_counter",
         "total_bytes",
+        "total_compressed_bytes",
     )
 
     def __init__(
@@ -159,6 +160,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._eof_callbacks: List[Callable[[], None]] = []
         self._eof_counter = 0
         self.total_bytes = 0
+        self.total_compressed_bytes: Optional[int] = None
 
     def __repr__(self) -> str:
         info = [self.__class__.__name__]
@@ -249,6 +251,12 @@ class StreamReader(AsyncStreamReaderMixin):
             await self._eof_waiter
         finally:
             self._eof_waiter = None
+
+    @property
+    def total_raw_bytes(self) -> int:
+        if self.total_compressed_bytes is None:
+            return self.total_bytes
+        return self.total_compressed_bytes
 
     def unread_data(self, data: bytes) -> None:
         """rollback reading some data from stream, inserting it to buffer head."""

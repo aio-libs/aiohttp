@@ -964,6 +964,7 @@ class DeflateBuffer:
     def __init__(self, out: StreamReader, encoding: Optional[str]) -> None:
         self.out = out
         self.size = 0
+        out.total_compressed_bytes = self.size
         self.encoding = encoding
         self._started_decoding = False
 
@@ -997,6 +998,7 @@ class DeflateBuffer:
             return
 
         self.size += size
+        self.out.total_compressed_bytes = self.size
 
         # RFC1950
         # bits 0..3 = CM = 0b1000 = 8 = "deflate"
