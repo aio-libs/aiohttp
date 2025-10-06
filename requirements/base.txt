@@ -30,7 +30,7 @@ multidict==6.6.4
     #   yarl
 packaging==25.0
     # via gunicorn
-propcache==0.3.2
+propcache==0.4.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
