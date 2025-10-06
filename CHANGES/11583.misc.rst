@@ -1,0 +1,3 @@
+Fixed mypy warnings
+
+-- by :user:`sgaist`.
