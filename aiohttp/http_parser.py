@@ -936,7 +936,7 @@ class DeflateBuffer:
     def __init__(self, out: StreamReader, encoding: Optional[str]) -> None:
         self.out = out
         self.size = 0
-        self.out.total_compressed_bytes = self.size
+        out.total_compressed_bytes = self.size
         self.encoding = encoding
         self._started_decoding = False
 
