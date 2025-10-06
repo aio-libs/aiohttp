@@ -40,7 +40,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
     def __init__(self, *args: Any, **kw: Any) -> None:
-        super().__init__(*args, **kw)
+        super().__init__(*args, **kw)  # type: ignore[no-untyped-call]
 
         self._task: Optional[asyncio.Task[None]] = None
         self.exit_code = 0
@@ -51,7 +51,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        super().init_process()
+        super().init_process()  # type: ignore[no-untyped-call]
 
     def run(self) -> None:
         self._task = self.loop.create_task(self._run())
@@ -115,7 +115,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         pid = os.getpid()
         try:
             while self.alive:  # type: ignore[has-type]
-                self.notify()
+                self.notify()  # type: ignore[no-untyped-call]
 
                 cnt = server.requests_count
                 if self.max_requests and cnt > self.max_requests:
