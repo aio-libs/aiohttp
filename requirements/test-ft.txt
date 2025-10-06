@@ -142,7 +142,7 @@ typing-inspection==0.4.2
     # via pydantic
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
-yarl==1.20.1
+yarl==1.21.0
     # via -r requirements/runtime-deps.in
 zlib-ng==1.0.0
     # via -r requirements/test-common.in
