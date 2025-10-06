@@ -208,4 +208,3 @@ https://github.com/python/asyncio/wiki/Benchmarks
 .. image:: https://insights.linuxfoundation.org/api/badge/health-score?project=aiohttp
    :target: https://insights.linuxfoundation.org/project/aiohttp
    :alt: LFX Health Score
-
