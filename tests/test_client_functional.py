@@ -5586,3 +5586,46 @@ async def test_file_upload_307_302_redirect_chain(
 
     finally:
         await asyncio.to_thread(f.close)
+
+
+async def test_stream_reader_total_raw_bytes(aiohttp_client: AiohttpClient) -> None:
+    """Test whether StreamReader.total_raw_bytes returns the number of bytes downloaded"""
+    source_data = b"@dKal^pH>1h|YW1:c2J$" * 4096
+
+    async def handler(request: web.Request) -> web.Response:
+        response = web.Response(body=source_data)
+        response.enable_compression()
+        return response
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    client = await aiohttp_client(app)
+
+    # Check for decompressed data
+    async with client.get(
+        "/", headers={"Accept-Encoding": "gzip"}, auto_decompress=True
+    ) as resp:
+        assert resp.headers["Content-Encoding"] == "gzip"
+        assert int(resp.headers["Content-Length"]) < len(source_data)
+        data = await resp.content.read()
+        assert len(data) == len(source_data)
+        assert resp.content.total_raw_bytes == int(resp.headers["Content-Length"])
+
+    # Check for compressed data
+    async with client.get(
+        "/", headers={"Accept-Encoding": "gzip"}, auto_decompress=False
+    ) as resp:
+        assert resp.headers["Content-Encoding"] == "gzip"
+        data = await resp.content.read()
+        assert resp.content.total_raw_bytes == len(data)
+        assert resp.content.total_raw_bytes == int(resp.headers["Content-Length"])
+
+    # Check for non-compressed data
+    async with client.get(
+        "/", headers={"Accept-Encoding": "identity"}, auto_decompress=True
+    ) as resp:
+        assert "Content-Encoding" not in resp.headers
+        data = await resp.content.read()
+        assert resp.content.total_raw_bytes == len(data)
+        assert resp.content.total_raw_bytes == int(resp.headers["Content-Length"])
