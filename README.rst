@@ -29,6 +29,10 @@ Async http client/server framework
    :target: https://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
+.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
+   :target: https://codspeed.io/aio-libs/aiohttp
+   :alt: Codspeed.io status for aiohttp
+
 
 Key Features
 ============
@@ -192,10 +196,6 @@ list of benchmarks on the official wiki:
 https://github.com/python/asyncio/wiki/Benchmarks
 
 --------
-
-.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
-   :target: https://codspeed.io/aio-libs/aiohttp
-   :alt: Codspeed.io status for aiohttp
 
 .. image:: https://img.shields.io/matrix/aio-libs:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
    :target: https://matrix.to/#/%23aio-libs:matrix.org
