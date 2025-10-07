@@ -63,7 +63,6 @@ __all__ = ("BasicAuth", "ChainMapProxy", "ETag", "reify")
 IS_MACOS = platform.system() == "Darwin"
 IS_WINDOWS = platform.system() == "Windows"
 
-PY_310 = sys.version_info >= (3, 10)
 PY_311 = sys.version_info >= (3, 11)
 
 

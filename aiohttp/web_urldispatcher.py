@@ -78,11 +78,7 @@ if TYPE_CHECKING:
 else:
     BaseDict = dict
 
-CIRCULAR_SYMLINK_ERROR = (
-    (OSError,)
-    if sys.version_info < (3, 10) and sys.platform.startswith("win32")
-    else (RuntimeError,) if sys.version_info < (3, 13) else ()
-)
+CIRCULAR_SYMLINK_ERROR = (RuntimeError,) if sys.version_info < (3, 13) else ()
 
 YARL_VERSION: Final[Tuple[int, ...]] = tuple(map(int, yarl_version.split(".")[:2]))
 
