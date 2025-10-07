@@ -1,7 +1,7 @@
 import asyncio
 import gc
-from typing import NoReturn
 from collections.abc import AsyncIterator, Callable, Iterator
+from typing import NoReturn
 from unittest import mock
 
 import pytest

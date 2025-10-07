@@ -4,8 +4,8 @@ import json
 import pathlib
 import socket
 import sys
-from typing import Any, NoReturn
 from collections.abc import Generator
+from typing import Any, NoReturn
 from unittest import mock
 
 import pytest

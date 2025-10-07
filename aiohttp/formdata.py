@@ -1,7 +1,7 @@
 import io
 import warnings
-from typing import Any
 from collections.abc import Iterable
+from typing import Any
 from urllib.parse import urlencode
 
 from multidict import MultiDict, MultiDictProxy

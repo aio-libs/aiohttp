@@ -7,19 +7,11 @@ import re
 import sys
 import traceback
 import warnings
-from collections.abc import Mapping
+from collections.abc import Callable, Iterable, Mapping
 from hashlib import md5, sha1, sha256
 from http.cookies import Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Literal,
-    NamedTuple,
-    Optional,
-    Union,
-)
-from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Optional, Union
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy

@@ -1,9 +1,9 @@
 import json
 import subprocess
 import sys
+from collections.abc import Generator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from collections.abc import Generator
 
 import pytest
 from pytest import TempPathFactory

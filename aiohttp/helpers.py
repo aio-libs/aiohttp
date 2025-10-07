@@ -16,6 +16,7 @@ import sys
 import time
 import weakref
 from collections import namedtuple
+from collections.abc import Callable, Generator, Iterable, Iterator, Mapping
 from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
@@ -32,7 +33,6 @@ from typing import (
     get_args,
     overload,
 )
-from collections.abc import Callable, Generator, Iterable, Iterator, Mapping
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 

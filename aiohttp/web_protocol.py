@@ -4,17 +4,12 @@ import sys
 import traceback
 import warnings
 from collections import deque
+from collections.abc import Awaitable, Callable, Sequence
 from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    cast,
-)
-from collections.abc import Awaitable, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 import attr
 import yarl

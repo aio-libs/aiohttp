@@ -2,12 +2,8 @@ import asyncio
 import contextlib
 import inspect
 import warnings
-from typing import (
-    Any,
-    Protocol,
-    overload,
-)
 from collections.abc import Awaitable, Callable, Iterator
+from typing import Any, Protocol, overload
 
 import pytest
 

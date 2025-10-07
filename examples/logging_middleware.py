@@ -13,8 +13,8 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any
 from collections.abc import Coroutine
+from typing import Any
 
 from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession, web
 

@@ -24,8 +24,8 @@ Then you can use `file_sender` like this:
 
 import types
 import warnings
-from typing import Any
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 from .abc import AbstractStreamWriter
 from .payload import Payload, payload_type

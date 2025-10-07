@@ -10,13 +10,10 @@ import sys
 import uuid
 import warnings
 from collections import defaultdict, deque
+from collections.abc import Callable, Sequence
 from concurrent import futures
 from contextlib import closing, suppress
-from typing import (
-    Any,
-    Literal,
-)
-from collections.abc import Callable, Sequence
+from typing import Any, Literal
 from unittest import mock
 
 import pytest

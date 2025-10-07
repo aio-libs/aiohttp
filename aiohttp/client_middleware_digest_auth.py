@@ -11,12 +11,8 @@ import hashlib
 import os
 import re
 import time
-from typing import (
-    Final,
-    Literal,
-    TypedDict,
-)
 from collections.abc import Callable
+from typing import Final, Literal, TypedDict
 
 from yarl import URL
 

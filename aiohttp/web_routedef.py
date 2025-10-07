@@ -1,12 +1,7 @@
 import abc
 import os  # noqa
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Union,
-    overload,
-)
 from collections.abc import Callable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Union, overload
 
 import attr
 

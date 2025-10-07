@@ -1,12 +1,8 @@
 import asyncio
 import collections
 import warnings
-from typing import (
-    Final,
-    Generic,
-    TypeVar,
-)
 from collections.abc import Awaitable, Callable
+from typing import Final, Generic, TypeVar
 
 from .base_protocol import BaseProtocol
 from .helpers import (

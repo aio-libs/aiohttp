@@ -4,11 +4,11 @@ import os
 import socket
 import ssl
 import sys
+from collections.abc import AsyncIterator, Generator, Iterator
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
-from collections.abc import AsyncIterator, Generator, Iterator
 from unittest import mock
 from uuid import uuid4
 

@@ -6,9 +6,9 @@ These are not part of the public API and may change without notice.
 """
 
 import re
+from collections.abc import Sequence
 from http.cookies import Morsel
 from typing import cast
-from collections.abc import Sequence
 
 from .log import internal_logger
 

@@ -11,12 +11,9 @@ import re
 import time
 import warnings
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import (
-    Union,
-)
-from collections.abc import Iterable, Iterator
+from typing import Union
 
 from yarl import URL
 

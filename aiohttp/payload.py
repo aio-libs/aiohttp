@@ -9,13 +9,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from itertools import chain
-from typing import (
-    IO,
-    TYPE_CHECKING,
-    Any,
-    Final,
-    TextIO,
-)
+from typing import IO, TYPE_CHECKING, Any, Final, TextIO
 
 from multidict import CIMultiDict
 

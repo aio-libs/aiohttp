@@ -6,20 +6,13 @@ import sys
 import traceback
 import warnings
 from collections import OrderedDict, defaultdict, deque
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from contextlib import suppress
 from http import HTTPStatus
 from itertools import chain, cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Literal,
-    Optional,
-    Union,
-    cast,
-)
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType

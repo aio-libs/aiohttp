@@ -1,6 +1,6 @@
+from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, TypeVar
-from collections.abc import Mapping
 
 import attr
 from aiosignal import Signal

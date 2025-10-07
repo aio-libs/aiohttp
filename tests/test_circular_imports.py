@@ -14,11 +14,11 @@ import pkgutil
 import socket
 import subprocess
 import sys
+from collections.abc import Generator
 from itertools import chain
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, Union
-from collections.abc import Generator
 
 import pytest
 

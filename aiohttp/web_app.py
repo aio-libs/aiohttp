@@ -1,16 +1,18 @@
 import asyncio
 import logging
 import warnings
-from functools import lru_cache, partial, update_wrapper
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    TypeVar,
-    cast,
-    overload,
+from collections.abc import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Sequence,
 )
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Iterator, Mapping, MutableMapping, Sequence
+from functools import lru_cache, partial, update_wrapper
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, cast, overload
 
 from aiosignal import Signal
 from frozenlist import FrozenList

@@ -3,8 +3,8 @@ import bz2
 import gzip
 import pathlib
 import socket
-from typing import Any
 from collections.abc import Iterable
+from typing import Any
 from unittest import mock
 
 import pytest

@@ -1,6 +1,6 @@
 import sys
-from http import HTTPStatus
 from collections.abc import Mapping
+from http import HTTPStatus
 
 from . import __version__
 from .http_exceptions import HttpProcessingError as HttpProcessingError

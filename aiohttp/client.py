@@ -8,17 +8,18 @@ import os
 import sys
 import traceback
 import warnings
+from collections.abc import (
+    Awaitable,
+    Callable,
+    Coroutine,
+    Generator,
+    Iterable,
+    Mapping,
+    Sequence,
+)
 from contextlib import suppress
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Final,
-    Generic,
-    TypedDict,
-    TypeVar,
-)
-from collections.abc import Awaitable, Callable, Coroutine, Generator, Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Final, Generic, TypedDict, TypeVar
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr

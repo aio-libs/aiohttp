@@ -4,16 +4,8 @@ import re
 import string
 from contextlib import suppress
 from enum import IntEnum
-from typing import (
-    Any,
-    ClassVar,
-    Final,
-    Generic,
-    Literal,
-    NamedTuple,
-    TypeVar,
-)
 from re import Pattern
+from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL

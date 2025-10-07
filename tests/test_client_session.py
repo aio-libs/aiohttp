@@ -6,9 +6,9 @@ import json
 import sys
 import warnings
 from collections import deque
+from collections.abc import Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
 from typing import Any, cast
-from collections.abc import Awaitable, Callable, Iterator
 from unittest import mock
 from uuid import uuid4
 

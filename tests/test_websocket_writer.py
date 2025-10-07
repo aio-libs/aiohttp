@@ -1,7 +1,7 @@
 import asyncio
 import random
-from typing import Any
 from collections.abc import Callable
+from typing import Any
 from unittest import mock
 
 import pytest

@@ -5,10 +5,9 @@ import pathlib
 import sys
 import urllib.parse
 import warnings
-from collections.abc import Callable, Iterable
+from collections.abc import AsyncIterator, Callable, Iterable
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import Any, Protocol
-from collections.abc import AsyncIterator
 from unittest import mock
 
 import pytest

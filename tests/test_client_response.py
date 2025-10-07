@@ -3,8 +3,8 @@
 import asyncio
 import gc
 import sys
-from http.cookies import SimpleCookie
 from collections.abc import Callable
+from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest

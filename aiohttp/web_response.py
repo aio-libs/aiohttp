@@ -6,16 +6,11 @@ import json
 import math
 import time
 import warnings
+from collections.abc import Iterator, MutableMapping
 from concurrent.futures import Executor
 from http import HTTPStatus
 from http.cookies import SimpleCookie
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    cast,
-)
-from collections.abc import Iterator, MutableMapping
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from multidict import CIMultiDict, istr
 

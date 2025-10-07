@@ -7,16 +7,10 @@ import string
 import tempfile
 import types
 import warnings
-from types import MappingProxyType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Final,
-    Optional,
-    cast,
-)
-from re import Pattern
 from collections.abc import Iterator, Mapping, MutableMapping
+from re import Pattern
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Final, Optional, cast
 from urllib.parse import parse_qsl
 
 import attr

@@ -5,15 +5,10 @@ import socket
 import sys
 import warnings
 from argparse import ArgumentParser
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable, Iterable as TypingIterable
 from contextlib import suppress
 from importlib import import_module
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    cast,
-)
-from collections.abc import Awaitable, Callable, Iterable as TypingIterable
+from typing import TYPE_CHECKING, Any, cast
 
 from .abc import AbstractAccessLogger
 from .helpers import AppKey as AppKey

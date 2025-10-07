@@ -4,8 +4,8 @@ import gzip
 import io
 import json
 import sys
-from concurrent.futures import ThreadPoolExecutor
 from collections.abc import AsyncIterator
+from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
 import aiosignal

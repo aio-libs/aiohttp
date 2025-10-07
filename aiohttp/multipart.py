@@ -6,15 +6,9 @@ import sys
 import uuid
 import warnings
 from collections import deque
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Union,
-    cast,
-)
-from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Union, cast
 from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy

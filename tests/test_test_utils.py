@@ -1,9 +1,9 @@
 import asyncio
 import gzip
 import sys
+from collections.abc import Iterator
 from socket import socket
 from typing import Any
-from collections.abc import Iterator
 from unittest import mock
 
 import pytest

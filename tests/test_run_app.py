@@ -9,10 +9,8 @@ import ssl
 import subprocess
 import sys
 import time
-from typing import (
-    NoReturn,
-)
 from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
+from typing import NoReturn
 from unittest import mock
 from uuid import uuid4
 

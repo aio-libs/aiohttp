@@ -10,20 +10,21 @@ import os
 import re
 import sys
 import warnings
+from collections.abc import (
+    Awaitable,
+    Callable,
+    Container,
+    Generator,
+    Iterable,
+    Iterator,
+    Mapping,
+    Sized,
+)
 from functools import wraps
 from pathlib import Path
-from types import MappingProxyType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Final,
-    NoReturn,
-    Optional,
-    TypedDict,
-    cast,
-)
 from re import Pattern
-from collections.abc import Awaitable, Callable, Container, Generator, Iterable, Iterator, Mapping, Sized
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Final, NoReturn, Optional, TypedDict, cast
 
 from yarl import URL, __version__ as yarl_version
 
