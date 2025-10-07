@@ -123,16 +123,6 @@ define run_tests_in_docker
 	docker run --rm -ti -v `pwd`:/src -w /src "aiohttp-test-$(1)-$(2)" $(TEST_SPEC)
 endef
 
-.PHONY: test-3.9-no-extensions test
-test-3.9-no-extensions:
-	$(call run_tests_in_docker,3.9,y)
-test-3.9:
-	$(call run_tests_in_docker,3.9,n)
-test-3.10-no-extensions:
-	$(call run_tests_in_docker,3.10,y)
-test-3.10:
-	$(call run_tests_in_docker,3.10,n)
-
 .PHONY: clean
 clean:
 	@rm -rf `find . -name __pycache__`

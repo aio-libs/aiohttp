@@ -3,7 +3,6 @@ import asyncio
 import pathlib
 import socket
 import ssl
-from typing import List
 
 import aiohttp
 from aiohttp import web
@@ -25,7 +24,7 @@ class FakeResolver(AbstractResolver):
         host: str,
         port: int = 0,
         family: socket.AddressFamily = socket.AF_INET,
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         fake_port = self._fakes.get(host)
         if fake_port is not None:
             return [
