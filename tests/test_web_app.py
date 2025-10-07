@@ -129,8 +129,8 @@ def test_appkey_repr_nonconcrete() -> None:
     key = web.AppKey("key", Iterator[int])
     assert repr(key) in (
         # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-        "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+        "<AppKey(__main__.key, type=collections.abc.Iterator)>",
     )
 
 
@@ -138,8 +138,8 @@ def test_appkey_repr_annotated() -> None:
     key = web.AppKey[Iterator[int]]("key")
     assert repr(key) in (
         # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-        "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+        "<AppKey(__main__.key, type=collections.abc.Iterator)>",
     )
 
 
