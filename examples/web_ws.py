@@ -6,12 +6,11 @@
 # mypy: disallow-any-expr, disallow-any-unimported, disallow-subclassing-any
 
 import os
-from typing import List
 
 from aiohttp import web
 
 WS_FILE = os.path.join(os.path.dirname(__file__), "websocket.html")
-sockets = web.AppKey("sockets", List[web.WebSocketResponse])
+sockets = web.AppKey("sockets", list[web.WebSocketResponse])
 
 
 async def wshandler(request: web.Request) -> web.StreamResponse:
@@ -54,7 +53,7 @@ async def on_shutdown(app: web.Application) -> None:
 
 def init() -> web.Application:
     app = web.Application()
-    l: List[web.WebSocketResponse] = []
+    l: list[web.WebSocketResponse] = []
     app[sockets] = l
     app.router.add_get("/", wshandler)
     app.on_shutdown.append(on_shutdown)

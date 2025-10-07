@@ -2,7 +2,6 @@ import asyncio
 import pickle
 import random
 import struct
-from typing import Union
 from unittest import mock
 
 import pytest
@@ -29,14 +28,14 @@ class PatchableWebSocketReader(WebSocketReader):
 
     def parse_frame(
         self, data: bytes
-    ) -> list[tuple[bool, int, Union[bytes, bytearray], int]]:
+    ) -> list[tuple[bool, int, bytes | bytearray, int]]:
         # This method is overridden to allow for patching in tests.
-        frames: list[tuple[bool, int, Union[bytes, bytearray], int]] = []
+        frames: list[tuple[bool, int, bytes | bytearray, int]] = []
 
         def _handle_frame(
             fin: bool,
             opcode: int,
-            payload: Union[bytes, bytearray],
+            payload: bytes | bytearray,
             compressed: int,
         ) -> None:
             # This method is overridden to allow for patching in tests.
@@ -259,7 +258,7 @@ def test_parse_frame_header_payload_size(
 def test_ping_frame(
     out: WebSocketDataQueue,
     parser: PatchableWebSocketReader,
-    data: Union[bytes, bytearray, memoryview],
+    data: bytes | bytearray | memoryview,
 ) -> None:
     parser._handle_frame(True, WSMsgType.PING, b"data", 0)
     res = out._buffer[0]

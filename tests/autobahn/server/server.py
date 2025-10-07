@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 import logging
-from typing import List
 
 from aiohttp import WSCloseCode, web
 
-websockets = web.AppKey("websockets", List[web.WebSocketResponse])
+websockets = web.AppKey("websockets", list[web.WebSocketResponse])
 
 
 async def wshandler(request: web.Request) -> web.WebSocketResponse:
@@ -46,7 +45,7 @@ if __name__ == "__main__":
     )
 
     app = web.Application()
-    l: List[web.WebSocketResponse] = []
+    l: list[web.WebSocketResponse] = []
     app[websockets] = l
     app.router.add_route("GET", "/", wshandler)
     app.on_shutdown.append(on_shutdown)

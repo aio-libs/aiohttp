@@ -2,7 +2,6 @@ import asyncio
 import io
 import json
 import pathlib
-import sys
 from unittest import mock
 
 import pytest
@@ -784,7 +783,6 @@ class TestMultipartReader:
             with pytest.raises(ValueError):
                 await reader.next()
 
-    @pytest.mark.skipif(sys.version_info < (3, 10), reason="Needs anext()")
     async def test_read_boundary_across_chunks(self) -> None:
         class SplitBoundaryStream:
             def __init__(self) -> None:

@@ -13,17 +13,9 @@ import sys
 import tarfile
 import time
 import zipfile
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
-from typing import (
-    Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    List,
-    NoReturn,
-    Optional,
-    Type,
-)
+from typing import Any, NoReturn
 from unittest import mock
 
 import pytest
@@ -1714,7 +1706,7 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
         self: ClientRequest,
         writer: StreamWriter,
         conn: Connection,
-        content_length: Optional[int] = None,
+        content_length: int | None = None,
     ) -> None:
         nonlocal write_mock, writelines_mock
         original_write = writer._write
@@ -3239,7 +3231,7 @@ async def test_creds_in_auth_and_redirect_url(
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             server = etc_hosts[(host, port)]
             assert server.port is not None
 
@@ -4367,7 +4359,7 @@ async def test_rejected_upload(
     [(42, TypeError), ("InvalidUrl", InvalidURL)],
 )
 async def test_request_with_wrong_proxy(
-    aiohttp_client: AiohttpClient, value: Any, exc_type: Type[Exception]
+    aiohttp_client: AiohttpClient, value: Any, exc_type: type[Exception]
 ) -> None:
     app = web.Application()
     session = await aiohttp_client(app)
@@ -5156,7 +5148,7 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
 
         async def resolve(
             self, host: str, port: int = 0, family: int = 0
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             if host in ("amazon.it", "www.amazon.it"):
                 return [
                     {

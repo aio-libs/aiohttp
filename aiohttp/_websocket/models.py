@@ -1,8 +1,9 @@
 """Models for WebSocket protocol versions 13 and 8."""
 
 import json
+from collections.abc import Callable
 from enum import IntEnum
-from typing import Any, Callable, Final, NamedTuple, Optional, cast
+from typing import Any, Final, NamedTuple, cast
 
 WS_DEFLATE_TRAILING: Final[bytes] = bytes([0x00, 0x00, 0xFF, 0xFF])
 
@@ -51,7 +52,7 @@ class WSMessage(NamedTuple):
     type: WSMsgType
     # To type correctly, this would need some kind of tagged union for each type.
     data: Any
-    extra: Optional[str]
+    extra: str | None
 
     def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
         """Return parsed JSON data.

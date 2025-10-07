@@ -2,17 +2,8 @@ import asyncio
 import contextlib
 import inspect
 import warnings
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterator,
-    Optional,
-    Protocol,
-    Union,
-    overload,
-)
+from collections.abc import Awaitable, Callable, Iterator
+from typing import Any, Protocol, overload
 
 import pytest
 
@@ -41,7 +32,7 @@ class AiohttpClient(Protocol):
         self,
         __param: Application,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
     @overload
@@ -49,20 +40,20 @@ class AiohttpClient(Protocol):
         self,
         __param: BaseTestServer,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[BaseRequest, None]: ...
 
 
 class AiohttpServer(Protocol):
     def __call__(
-        self, app: Application, *, port: Optional[int] = None, **kwargs: Any
+        self, app: Application, *, port: int | None = None, **kwargs: Any
     ) -> Awaitable[TestServer]: ...
 
 
 class AiohttpRawServer(Protocol):
     def __call__(
-        self, handler: _RequestHandler, *, port: Optional[int] = None, **kwargs: Any
+        self, handler: _RequestHandler, *, port: int | None = None, **kwargs: Any
     ) -> Awaitable[RawTestServer]: ...
 
 
@@ -168,7 +159,7 @@ def _runtime_warning_context():  # type: ignore[no-untyped-def]
     with warnings.catch_warnings(record=True) as _warnings:
         yield
         rw = [
-            "{w.filename}:{w.lineno}:{w.message}".format(w=w)
+            f"{w.filename}:{w.lineno}:{w.message}"
             for w in _warnings
             if w.category == RuntimeWarning
         ]
@@ -308,7 +299,7 @@ def aiohttp_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
         app: Application,
         *,
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ) -> TestServer:
         server = TestServer(app, host=host, port=port)
@@ -344,7 +335,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
     servers = []
 
     async def go(
-        handler: _RequestHandler, *, port: Optional[int] = None, **kwargs: Any
+        handler: _RequestHandler, *, port: int | None = None, **kwargs: Any
     ) -> RawTestServer:
         server = RawTestServer(handler, port=port)
         await server.start_server(loop=loop, **kwargs)
@@ -386,7 +377,7 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
     async def go(
         __param: Application,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
 
@@ -394,14 +385,14 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
     async def go(
         __param: BaseTestServer,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[BaseRequest, None]: ...
 
     async def go(
-        __param: Union[Application, BaseTestServer],
+        __param: Application | BaseTestServer,
         *args: Any,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[Any, Any]:
         if isinstance(__param, Callable) and not isinstance(  # type: ignore[arg-type]

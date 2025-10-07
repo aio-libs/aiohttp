@@ -11,17 +11,8 @@ import hashlib
 import os
 import re
 import time
-from typing import (
-    Callable,
-    Dict,
-    Final,
-    FrozenSet,
-    List,
-    Literal,
-    Tuple,
-    TypedDict,
-    Union,
-)
+from collections.abc import Callable
+from typing import Final, Literal, TypedDict
 
 from yarl import URL
 
@@ -42,7 +33,7 @@ class DigestAuthChallenge(TypedDict, total=False):
     stale: str
 
 
-DigestFunctions: Dict[str, Callable[[bytes], "hashlib._Hash"]] = {
+DigestFunctions: dict[str, Callable[[bytes], "hashlib._Hash"]] = {
     "MD5": hashlib.md5,
     "MD5-SESS": hashlib.md5,
     "SHA": hashlib.sha1,
@@ -83,7 +74,7 @@ _HEADER_PAIRS_PATTERN = re.compile(
 
 # RFC 7616: Challenge parameters to extract
 CHALLENGE_FIELDS: Final[
-    Tuple[
+    tuple[
         Literal["realm", "nonce", "qop", "algorithm", "opaque", "domain", "stale"], ...
     ]
 ] = (
@@ -98,14 +89,14 @@ CHALLENGE_FIELDS: Final[
 
 # Supported digest authentication algorithms
 # Use a tuple of sorted keys for predictable documentation and error messages
-SUPPORTED_ALGORITHMS: Final[Tuple[str, ...]] = tuple(sorted(DigestFunctions.keys()))
+SUPPORTED_ALGORITHMS: Final[tuple[str, ...]] = tuple(sorted(DigestFunctions.keys()))
 
 # RFC 7616: Fields that require quoting in the Digest auth header
 # These fields must be enclosed in double quotes in the Authorization header.
 # Algorithm, qop, and nc are never quoted per RFC specifications.
 # This frozen set is used by the template-based header construction to
 # automatically determine which fields need quotes.
-QUOTED_AUTH_FIELDS: Final[FrozenSet[str]] = frozenset(
+QUOTED_AUTH_FIELDS: Final[frozenset[str]] = frozenset(
     {"username", "realm", "nonce", "uri", "response", "opaque", "cnonce"}
 )
 
@@ -120,7 +111,7 @@ def unescape_quotes(value: str) -> str:
     return value.replace('\\"', '"')
 
 
-def parse_header_pairs(header: str) -> Dict[str, str]:
+def parse_header_pairs(header: str) -> dict[str, str]:
     """
     Parse key-value pairs from WWW-Authenticate or similar HTTP headers.
 
@@ -202,11 +193,9 @@ class DigestAuthMiddleware:
         self._challenge: DigestAuthChallenge = {}
         self._preemptive: bool = preemptive
         # Set of URLs defining the protection space
-        self._protection_space: List[str] = []
+        self._protection_space: list[str] = []
 
-    async def _encode(
-        self, method: str, url: URL, body: Union[Payload, Literal[b""]]
-    ) -> str:
+    async def _encode(self, method: str, url: URL, body: Payload | Literal[b""]) -> str:
         """
         Build digest authorization header for the current challenge.
 
@@ -358,7 +347,7 @@ class DigestAuthMiddleware:
             header_fields["cnonce"] = cnonce
 
         # Build header using templates for each field type
-        pairs: List[str] = []
+        pairs: list[str] = []
         for field, value in header_fields.items():
             if field in QUOTED_AUTH_FIELDS:
                 pairs.append(f'{field}="{value}"')

@@ -17,13 +17,13 @@ class Server:
         self,
         handler: _RequestHandler,
         *,
-        request_factory: Optional[_RequestFactory] = None,
+        request_factory: _RequestFactory | None = None,
         handler_cancellation: bool = False,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
+        loop: asyncio.AbstractEventLoop | None = None,
         **kwargs: Any,
     ) -> None:
         self._loop = loop or asyncio.get_running_loop()
-        self._connections: Dict[RequestHandler, asyncio.Transport] = {}
+        self._connections: dict[RequestHandler, asyncio.Transport] = {}
         self._kwargs = kwargs
         # requests_count is the number of requests being processed by the server
         # for the lifetime of the server.
@@ -33,7 +33,7 @@ class Server:
         self.handler_cancellation = handler_cancellation
 
     @property
-    def connections(self) -> List[RequestHandler]:
+    def connections(self) -> list[RequestHandler]:
         return list(self._connections.keys())
 
     def connection_made(
@@ -42,7 +42,7 @@ class Server:
         self._connections[handler] = transport
 
     def connection_lost(
-        self, handler: RequestHandler, exc: Optional[BaseException] = None
+        self, handler: RequestHandler, exc: BaseException | None = None
     ) -> None:
         if handler in self._connections:
             if handler._task_handler:
@@ -66,7 +66,7 @@ class Server:
         for conn in self._connections:
             conn.close()
 
-    async def shutdown(self, timeout: Optional[float] = None) -> None:
+    async def shutdown(self, timeout: float | None = None) -> None:
         coros = (conn.shutdown(timeout) for conn in self._connections)
         await asyncio.gather(*coros)
         self._connections.clear()

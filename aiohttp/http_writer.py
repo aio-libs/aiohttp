@@ -51,10 +51,10 @@ _T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
 
 class StreamWriter(AbstractStreamWriter):
 
-    length: Optional[int] = None
+    length: int | None = None
     chunked: bool = False
     _eof: bool = False
-    _compress: Optional[ZLibCompressor] = None
+    _compress: ZLibCompressor | None = None
 
     def __init__(
         self,
@@ -67,11 +67,11 @@ class StreamWriter(AbstractStreamWriter):
         self.loop = loop
         self._on_chunk_sent: _T_OnChunkSent = on_chunk_sent
         self._on_headers_sent: _T_OnHeadersSent = on_headers_sent
-        self._headers_buf: Optional[bytes] = None
+        self._headers_buf: bytes | None = None
         self._headers_written: bool = False
 
     @property
-    def transport(self) -> Optional[asyncio.Transport]:
+    def transport(self) -> asyncio.Transport | None:
         return self._protocol.transport
 
     @property
@@ -82,11 +82,11 @@ class StreamWriter(AbstractStreamWriter):
         self.chunked = True
 
     def enable_compression(
-        self, encoding: str = "deflate", strategy: Optional[int] = None
+        self, encoding: str = "deflate", strategy: int | None = None
     ) -> None:
         self._compress = ZLibCompressor(encoding=encoding, strategy=strategy)
 
-    def _write(self, chunk: Union[bytes, bytearray, memoryview]) -> None:
+    def _write(self, chunk: bytes | bytearray | memoryview) -> None:
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
@@ -154,7 +154,7 @@ class StreamWriter(AbstractStreamWriter):
 
     async def write(
         self,
-        chunk: Union[bytes, bytearray, memoryview],
+        chunk: bytes | bytearray | memoryview,
         *,
         drain: bool = True,
         LIMIT: int = 0x10000,
@@ -269,7 +269,7 @@ class StreamWriter(AbstractStreamWriter):
 
         # Handle body/compression
         if self._compress:
-            chunks: List[bytes] = []
+            chunks: list[bytes] = []
             chunks_len = 0
             if chunk and (compressed_chunk := await self._compress.compress(chunk)):
                 chunks_len = len(compressed_chunk)

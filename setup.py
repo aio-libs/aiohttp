@@ -4,8 +4,8 @@ import sys
 
 from setuptools import Extension, setup
 
-if sys.version_info < (3, 9):
-    raise RuntimeError("aiohttp 3.x requires Python 3.9+")
+if sys.version_info < (3, 10):
+    raise RuntimeError("aiohttp 3.x requires Python 3.10+")
 
 
 USE_SYSTEM_DEPS = bool(

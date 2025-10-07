@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from typing import Any, List, NoReturn, Optional
+from typing import Any, NoReturn
 from unittest import mock
 
 import pytest
@@ -932,7 +932,7 @@ async def test_close_websocket_while_ping_inflight(
     ping_started = loop.create_future()
 
     async def delayed_send_frame(
-        message: bytes, opcode: int, compress: Optional[int] = None
+        message: bytes, opcode: int, compress: int | None = None
     ) -> None:
         assert opcode == WSMsgType.PING
         nonlocal cancelled
@@ -1248,7 +1248,7 @@ async def test_websocket_connection_cancellation(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    sync_future: "asyncio.Future[List[aiohttp.ClientWebSocketResponse]]" = (
+    sync_future: asyncio.Future[list[aiohttp.ClientWebSocketResponse]] = (
         loop.create_future()
     )
     client = await aiohttp_client(app)

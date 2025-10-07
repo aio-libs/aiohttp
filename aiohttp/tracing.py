@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Mapping, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import attr
 from aiosignal import Signal
@@ -40,7 +41,7 @@ class TraceConfig:
     """First-class used to trace requests launched via ClientSession objects."""
 
     def __init__(
-        self, trace_config_ctx_factory: Type[SimpleNamespace] = SimpleNamespace
+        self, trace_config_ctx_factory: type[SimpleNamespace] = SimpleNamespace
     ) -> None:
         self._on_request_start: _TracingSignal[TraceRequestStartParams] = Signal(self)
         self._on_request_chunk_sent: _TracingSignal[TraceRequestChunkSentParams] = (
@@ -86,7 +87,7 @@ class TraceConfig:
         self._trace_config_ctx_factory = trace_config_ctx_factory
 
     def trace_config_ctx(
-        self, trace_request_ctx: Optional[Mapping[str, str]] = None
+        self, trace_request_ctx: Mapping[str, str] | None = None
     ) -> SimpleNamespace:
         """Return a new trace_config_ctx instance"""
         return self._trace_config_ctx_factory(trace_request_ctx=trace_request_ctx)

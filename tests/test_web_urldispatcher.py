@@ -4,8 +4,9 @@ import os
 import pathlib
 import socket
 import sys
+from collections.abc import Generator
 from stat import S_IFIFO, S_IMODE
-from typing import Any, Generator, NoReturn, Optional
+from typing import Any, NoReturn
 
 import pytest
 import yarl
@@ -57,7 +58,7 @@ async def test_access_root_of_static_handler(
     status: int,
     prefix: str,
     request_path: str,
-    data: Optional[bytes],
+    data: bytes | None,
 ) -> None:
     # Tests the operation of static file server.
     # Try to access the root of static file server, and make
@@ -143,7 +144,7 @@ async def test_access_root_of_static_handler_xss(
     status: int,
     prefix: str,
     request_path: str,
-    data: Optional[bytes],
+    data: bytes | None,
 ) -> None:
     # Tests the operation of static file server.
     # Try to access the root of static file server, and make

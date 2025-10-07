@@ -1,6 +1,6 @@
 __version__ = "3.13.1.dev0"
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 from . import hdrs as hdrs
 from .client import (
@@ -130,7 +130,7 @@ if TYPE_CHECKING:
         GunicornWebWorker as GunicornWebWorker,
     )
 
-__all__: Tuple[str, ...] = (
+__all__: tuple[str, ...] = (
     "hdrs",
     # client
     "AddrInfoType",
@@ -257,7 +257,7 @@ __all__: Tuple[str, ...] = (
 )
 
 
-def __dir__() -> Tuple[str, ...]:
+def __dir__() -> tuple[str, ...]:
     return __all__ + ("__doc__",)
 
 

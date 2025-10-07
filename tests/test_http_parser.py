@@ -4,7 +4,7 @@ import asyncio
 import re
 import sys
 from contextlib import nullcontext
-from typing import Any, Dict, List
+from typing import Any
 from unittest import mock
 from urllib.parse import quote
 
@@ -59,7 +59,7 @@ def protocol():
     return mock.Mock()
 
 
-def _gen_ids(parsers: List[Any]) -> List[str]:
+def _gen_ids(parsers: list[Any]) -> list[str]:
     return [
         "py-parser" if parser.__module__ == "aiohttp.http_parser" else "c-parser"
         for parser in parsers
@@ -630,7 +630,7 @@ def test_headers_content_length_err_2(parser) -> None:
         parser.feed_data(text)
 
 
-_pad: Dict[bytes, str] = {
+_pad: dict[bytes, str] = {
     b"": "empty",
     # not a typo. Python likes triple zero
     b"\000": "NUL",
@@ -783,7 +783,7 @@ def test_http_request_bad_status_line(parser) -> None:
     assert r"\n" not in exc_info.value.message
 
 
-_num: Dict[bytes, str] = {
+_num: dict[bytes, str] = {
     # dangerous: accepted by Python int()
     # unicodedata.category("\U0001D7D9") == 'Nd'
     "\N{mathematical double-struck digit one}".encode(): "utf8digit",

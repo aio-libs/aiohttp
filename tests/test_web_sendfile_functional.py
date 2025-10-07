@@ -3,7 +3,8 @@ import bz2
 import gzip
 import pathlib
 import socket
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -308,7 +309,7 @@ async def test_static_file_with_encoding_and_enable_compression(
     sender: Any,
     accept_encoding: str,
     expect_encoding: str,
-    forced_compression: Optional[web.ContentCoding],
+    forced_compression: web.ContentCoding | None,
 ):
     """Test that enable_compression does not double compress when an encoded file is also present."""
 
@@ -706,18 +707,18 @@ async def test_static_file_range(aiohttp_client: Any, sender: Any) -> None:
     )
     assert len(responses) == 3
     assert responses[0].status == 206, "failed 'bytes=0-999': %s" % responses[0].reason
-    assert responses[0].headers["Content-Range"] == "bytes 0-999/{}".format(
-        filesize
+    assert (
+        responses[0].headers["Content-Range"] == f"bytes 0-999/{filesize}"
     ), "failed: Content-Range Error"
     assert responses[1].status == 206, (
         "failed 'bytes=1000-1999': %s" % responses[1].reason
     )
-    assert responses[1].headers["Content-Range"] == "bytes 1000-1999/{}".format(
-        filesize
+    assert (
+        responses[1].headers["Content-Range"] == f"bytes 1000-1999/{filesize}"
     ), "failed: Content-Range Error"
     assert responses[2].status == 206, "failed 'bytes=2000-': %s" % responses[2].reason
-    assert responses[2].headers["Content-Range"] == "bytes 2000-{}/{}".format(
-        filesize - 1, filesize
+    assert (
+        responses[2].headers["Content-Range"] == f"bytes 2000-{filesize - 1}/{filesize}"
     ), "failed: Content-Range Error"
 
     body = await asyncio.gather(

@@ -3,7 +3,7 @@
 # After changing the file content call ./tools/gen.py
 # to regenerate the headers parser
 import itertools
-from typing import Final, Set
+from typing import Final
 
 from multidict import istr
 
@@ -18,7 +18,7 @@ METH_POST: Final[str] = "POST"
 METH_PUT: Final[str] = "PUT"
 METH_TRACE: Final[str] = "TRACE"
 
-METH_ALL: Final[Set[str]] = {
+METH_ALL: Final[set[str]] = {
     METH_CONNECT,
     METH_HEAD,
     METH_GET,

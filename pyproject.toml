@@ -92,4 +92,4 @@ exclude-modules = "(^aiohttp\\.helpers)"
 [tool.black]
 # TODO: Remove when project metadata is moved here.
 # Black can read the value from [project.requires-python].
-target-version = ["py39", "py310", "py311", "py312"]
+target-version = ["py310", "py311", "py312"]

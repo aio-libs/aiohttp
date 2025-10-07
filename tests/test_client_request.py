@@ -5,9 +5,9 @@ import pathlib
 import sys
 import urllib.parse
 import warnings
-from collections.abc import Callable, Iterable
+from collections.abc import AsyncIterator, Callable, Iterable
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, AsyncIterator, Optional, Protocol, Union
+from typing import Any, Protocol
 from unittest import mock
 
 import pytest
@@ -1124,7 +1124,7 @@ async def test_data_stream(loop, buf, conn) -> None:
     original_write_bytes = req.write_bytes
 
     async def _mock_write_bytes(
-        writer: AbstractStreamWriter, conn: mock.Mock, content_length: Optional[int]
+        writer: AbstractStreamWriter, conn: mock.Mock, content_length: int | None
     ) -> None:
         # Ensure the task is scheduled
         await asyncio.sleep(0)
@@ -1558,7 +1558,7 @@ def test_gen_default_accept_encoding(
 @pytest.mark.usefixtures("netrc_contents")
 def test_basicauth_from_netrc_present(
     make_request: Any,
-    expected_auth: Optional[helpers.BasicAuth],
+    expected_auth: helpers.BasicAuth | None,
 ):
     """Test appropriate Authorization header is sent when netrc is not empty."""
     req = make_request("get", "http://example.com", trust_env=True)
@@ -1710,7 +1710,7 @@ async def test_write_bytes_with_iterable_content_length_limit(
     loop: asyncio.AbstractEventLoop,
     buf: bytearray,
     conn: mock.Mock,
-    data: Union[list[bytes], bytes],
+    data: list[bytes] | bytes,
 ) -> None:
     """Test that write_bytes respects content_length limit for iterable data."""
     # Test with iterable data
@@ -2173,8 +2173,8 @@ async def test_expect100_with_body_becomes_none() -> None:
 )
 def test_content_length_for_methods(
     method: str,
-    data: Optional[bytes],
-    expected_content_length: Optional[str],
+    data: bytes | None,
+    expected_content_length: str | None,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test that Content-Length header is set correctly for all HTTP methods."""

@@ -9,7 +9,6 @@ import sys
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
-from typing import List, Set
 from unittest import mock
 
 import pytest
@@ -1260,12 +1259,12 @@ async def test_update_cookies_from_headers_duplicate_names() -> None:
     assert len(jar) == 3
 
     # Verify we have both session-id cookies
-    all_cookies: List[Morsel[str]] = list(jar)
-    session_ids: List[Morsel[str]] = [c for c in all_cookies if c.key == "session-id"]
+    all_cookies: list[Morsel[str]] = list(jar)
+    session_ids: list[Morsel[str]] = [c for c in all_cookies if c.key == "session-id"]
     assert len(session_ids) == 2
 
     # Check their domains are different
-    domains: Set[str] = {c["domain"] for c in session_ids}
+    domains: set[str] = {c["domain"] for c in session_ids}
     assert domains == {"example.com", "www.example.com"}
 
 
