@@ -1,4 +1,5 @@
 import sys
+
 if sys.version_info < (3, 14):
     from __future__ import annotations
 
@@ -46,7 +47,7 @@ class AbstractRouter(ABC):
         self._frozen = True
 
     @abstractmethod
-    async def resolve(self, request: Request) -> "AbstractMatchInfo":
+    async def resolve(self, request: Request) -> AbstractMatchInfo:
         """Return MATCH_INFO for given request"""
 
 
@@ -188,7 +189,7 @@ class AbstractCookieJar(Sized, IterableBase):
             self.update_cookies(cookies_to_update, response_url)
 
     @abstractmethod
-    def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
+    def filter_cookies(self, request_url: URL) -> BaseCookie[str]:
         """Return the jar's cookies filtered by their attributes."""
 
 
@@ -201,7 +202,7 @@ class AbstractStreamWriter(ABC):
 
     @abstractmethod
     async def write(
-        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        self, chunk: bytes | bytearray | memoryview[int] | memoryview[bytes]
     ) -> None:
         """Write chunk into stream."""
 
@@ -225,7 +226,7 @@ class AbstractStreamWriter(ABC):
 
     @abstractmethod
     async def write_headers(
-        self, status_line: str, headers: "CIMultiDict[str]"
+        self, status_line: str, headers: CIMultiDict[str]
     ) -> None:
         """Write HTTP headers"""
 
