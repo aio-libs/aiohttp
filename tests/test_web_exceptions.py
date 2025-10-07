@@ -1,5 +1,6 @@
 import collections
 import re
+import sys
 from traceback import format_exception
 from unittest import mock
 
@@ -50,6 +51,7 @@ def http_request(buf):
     return req
 
 
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="Breaks on Iterable")
 def test_all_http_exceptions_exported() -> None:
     assert "HTTPException" in web.__all__
     for name in dir(web):
@@ -78,6 +80,7 @@ async def test_HTTPOk(buf, http_request) -> None:
     )
 
 
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="Breaks on Iterable")
 def test_terminal_classes_has_status_code() -> None:
     terminals = set()
     for name in dir(web):
