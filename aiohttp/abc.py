@@ -3,7 +3,7 @@ import socket
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence, Sized
 from http.cookies import BaseCookie, Morsel
-from typing import TYPE_CHECKING, Any, TypedDict, Union
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from multidict import CIMultiDict
 from yarl import URL
@@ -27,10 +27,10 @@ class AbstractRouter(ABC):
 
     def post_init(self, app: Application) -> None:
         """Post init stage.
-        "
-                Not an abstract method for sake of backward compatibility,
-                but if the router wants to be aware of the application
-                it can override this.
+
+        Not an abstract method for sake of backward compatibility,
+        but if the router wants to be aware of the application
+        it can override this.
         """
 
     @property
