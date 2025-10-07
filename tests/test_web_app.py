@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from collections.abc import AsyncIterator, Callable, Iterator
 from typing import NoReturn
 from unittest import mock
@@ -127,20 +128,34 @@ def test_appkey_repr_concrete() -> None:
 
 def test_appkey_repr_nonconcrete() -> None:
     key = web.AppKey("key", Iterator[int])
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-        "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
-    )
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
 
 
 def test_appkey_repr_annotated() -> None:
     key = web.AppKey[Iterator[int]]("key")
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-        "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
-    )
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
 
 
 def test_app_str_keys() -> None:
