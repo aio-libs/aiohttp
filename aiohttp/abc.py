@@ -27,7 +27,7 @@ class AbstractRouter(ABC):
 
     def post_init(self, app: Application) -> None:
         """Post init stage.
-
+"
         Not an abstract method for sake of backward compatibility,
         but if the router wants to be aware of the application
         it can override this.
@@ -42,7 +42,7 @@ class AbstractRouter(ABC):
         self._frozen = True
 
     @abstractmethod
-    async def resolve(self, request: Request) -> AbstractMatchInfo:
+    async def resolve(self, request: Request) -> "AbstractMatchInfo":
         """Return MATCH_INFO for given request"""
 
 
