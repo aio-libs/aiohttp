@@ -1,3 +1,4 @@
+from __future__ import annotations  # TODO(PY314): Remove
 """Utilities shared by tests."""
 
 import asyncio
