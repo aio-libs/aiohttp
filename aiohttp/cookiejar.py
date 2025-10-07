@@ -13,17 +13,9 @@ from collections import defaultdict
 from collections.abc import Mapping
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from typing import (
-    DefaultDict,
-    Dict,
-    FrozenSet,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Set,
-    Tuple,
     Union,
 )
+from collections.abc import Iterable, Iterator
 
 from yarl import URL
 
@@ -89,19 +81,19 @@ class CookieJar(AbstractCookieJar):
         *,
         unsafe: bool = False,
         quote_cookie: bool = True,
-        treat_as_secure_origin: Union[StrOrURL, Iterable[StrOrURL], None] = None,
+        treat_as_secure_origin: StrOrURL | Iterable[StrOrURL] | None = None,
     ) -> None:
-        self._cookies: DefaultDict[Tuple[str, str], SimpleCookie] = defaultdict(
+        self._cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(
             SimpleCookie
         )
-        self._morsel_cache: DefaultDict[Tuple[str, str], Dict[str, Morsel[str]]] = (
+        self._morsel_cache: defaultdict[tuple[str, str], dict[str, Morsel[str]]] = (
             defaultdict(dict)
         )
-        self._host_only_cookies: Set[Tuple[str, str]] = set()
+        self._host_only_cookies: set[tuple[str, str]] = set()
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
         if treat_as_secure_origin is None:
-            self._treat_as_secure_origin: FrozenSet[URL] = frozenset()
+            self._treat_as_secure_origin: frozenset[URL] = frozenset()
         elif isinstance(treat_as_secure_origin, URL):
             self._treat_as_secure_origin = frozenset({treat_as_secure_origin.origin()})
         elif isinstance(treat_as_secure_origin, str):
@@ -115,8 +107,8 @@ class CookieJar(AbstractCookieJar):
                     for url in treat_as_secure_origin
                 }
             )
-        self._expire_heap: List[Tuple[float, Tuple[str, str, str]]] = []
-        self._expirations: Dict[Tuple[str, str, str], float] = {}
+        self._expire_heap: list[tuple[float, tuple[str, str, str]]] = []
+        self._expirations: dict[tuple[str, str, str], float] = {}
 
     @property
     def quote_cookie(self) -> bool:
@@ -132,7 +124,7 @@ class CookieJar(AbstractCookieJar):
         with file_path.open(mode="rb") as f:
             self._cookies = pickle.load(f)
 
-    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
+    def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         if predicate is None:
             self._expire_heap.clear()
             self._cookies.clear()
@@ -197,7 +189,7 @@ class CookieJar(AbstractCookieJar):
             heapq.heapify(self._expire_heap)
 
         now = time.time()
-        to_del: List[Tuple[str, str, str]] = []
+        to_del: list[tuple[str, str, str]] = []
         # Find any expired cookies and add them to the to-delete list
         while self._expire_heap:
             when, cookie_key = self._expire_heap[0]
@@ -214,7 +206,7 @@ class CookieJar(AbstractCookieJar):
         if to_del:
             self._delete_cookies(to_del)
 
-    def _delete_cookies(self, to_del: List[Tuple[str, str, str]]) -> None:
+    def _delete_cookies(self, to_del: list[tuple[str, str, str]]) -> None:
         for domain, path, name in to_del:
             self._host_only_cookies.discard((domain, name))
             self._cookies[(domain, path)].pop(name, None)
@@ -307,9 +299,7 @@ class CookieJar(AbstractCookieJar):
         """Returns this jar's cookies filtered by their attributes."""
         if not isinstance(request_url, URL):
             warnings.warn(  # type: ignore[unreachable]
-                "The method accepts yarl.URL instances only, got {}".format(
-                    type(request_url)
-                ),
+                f"The method accepts yarl.URL instances only, got {type(request_url)}",
                 DeprecationWarning,
             )
             request_url = URL(request_url)
@@ -424,7 +414,7 @@ class CookieJar(AbstractCookieJar):
         return not is_ip_address(hostname)
 
     @classmethod
-    def _parse_date(cls, date_str: str) -> Optional[int]:
+    def _parse_date(cls, date_str: str) -> int | None:
         """Implements date string parsing adhering to RFC 6265."""
         if not date_str:
             return None
@@ -505,7 +495,7 @@ class DummyCookieJar(AbstractCookieJar):
     def quote_cookie(self) -> bool:
         return True
 
-    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
+    def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         pass
 
     def clear_domain(self, domain: str) -> None:

@@ -113,7 +113,7 @@ if TYPE_CHECKING:
     # At runtime these are lazy-loaded at the bottom of the file.
     from .worker import GunicornUVLoopWebWorker, GunicornWebWorker
 
-__all__: Tuple[str, ...] = (
+__all__: tuple[str, ...] = (
     "hdrs",
     # client
     "AddrInfoType",
@@ -237,7 +237,7 @@ __all__: Tuple[str, ...] = (
 )
 
 
-def __dir__() -> Tuple[str, ...]:
+def __dir__() -> tuple[str, ...]:
     return __all__ + ("__doc__",)
 
 

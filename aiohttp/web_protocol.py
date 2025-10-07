@@ -10,18 +10,13 @@ from logging import Logger
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
-    Deque,
     Generic,
     Optional,
-    Sequence,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     cast,
 )
+from collections.abc import Awaitable, Callable, Sequence
 
 import yarl
 from propcache import under_cached_property
@@ -67,8 +62,8 @@ _RequestFactory = Callable[
 
 _RequestHandler = Callable[[_Request], Awaitable[StreamResponse]]
 _AnyAbstractAccessLogger = Union[
-    Type[AbstractAsyncAccessLogger],
-    Type[AbstractAccessLogger],
+    type[AbstractAsyncAccessLogger],
+    type[AbstractAccessLogger],
 ]
 
 ERROR = RawRequestMessage(
@@ -126,7 +121,7 @@ class _ErrInfo:
     message: str
 
 
-_MsgType = Tuple[Union[RawRequestMessage, _ErrInfo], StreamReader]
+_MsgType = tuple[RawRequestMessage | _ErrInfo, StreamReader]
 
 
 class RequestHandler(BaseProtocol, Generic[_Request]):
@@ -206,7 +201,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         tcp_keepalive: bool = True,
         logger: Logger = server_logger,
         access_log_class: _AnyAbstractAccessLogger = AccessLogger,
-        access_log: Optional[Logger] = access_logger,
+        access_log: Logger | None = access_logger,
         access_log_format: str = AccessLogger.LOG_FORMAT,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
@@ -220,32 +215,32 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # _request_count is the number of requests processed with the same connection.
         self._request_count = 0
         self._keepalive = False
-        self._current_request: Optional[_Request] = None
-        self._manager: Optional[Server[_Request]] = manager
-        self._request_handler: Optional[_RequestHandler[_Request]] = (
+        self._current_request: _Request | None = None
+        self._manager: Server[_Request] | None = manager
+        self._request_handler: _RequestHandler[_Request] | None = (
             manager.request_handler
         )
-        self._request_factory: Optional[_RequestFactory[_Request]] = (
+        self._request_factory: _RequestFactory[_Request] | None = (
             manager.request_factory
         )
 
         self._tcp_keepalive = tcp_keepalive
         # placeholder to be replaced on keepalive timeout setup
         self._next_keepalive_close_time = 0.0
-        self._keepalive_handle: Optional[asyncio.Handle] = None
+        self._keepalive_handle: asyncio.Handle | None = None
         self._keepalive_timeout = keepalive_timeout
         self._lingering_time = float(lingering_time)
 
-        self._messages: Deque[_MsgType] = deque()
+        self._messages: deque[_MsgType] = deque()
         self._message_tail = b""
 
-        self._waiter: Optional[asyncio.Future[None]] = None
-        self._handler_waiter: Optional[asyncio.Future[None]] = None
-        self._task_handler: Optional[asyncio.Task[None]] = None
+        self._waiter: asyncio.Future[None] | None = None
+        self._handler_waiter: asyncio.Future[None] | None = None
+        self._task_handler: asyncio.Task[None] | None = None
 
         self._upgrade = False
         self._payload_parser: Any = None
-        self._request_parser: Optional[HttpRequestParser] = HttpRequestParser(
+        self._request_parser: HttpRequestParser | None = HttpRequestParser(
             self,
             loop,
             read_bufsize,
@@ -265,7 +260,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self.access_log = access_log
         if access_log:
             if issubclass(access_log_class, AbstractAsyncAccessLogger):
-                self.access_logger: Optional[AbstractAsyncAccessLogger] = (
+                self.access_logger: AbstractAsyncAccessLogger | None = (
                     access_log_class()
                 )
             else:
@@ -302,7 +297,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     @under_cached_property
     def peername(
         self,
-    ) -> Optional[Union[str, Tuple[str, int, int, int], Tuple[str, int]]]:
+    ) -> str | tuple[str, int, int, int] | tuple[str, int] | None:
         """Return peername if available."""
         return (
             None
@@ -314,7 +309,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     def keepalive_timeout(self) -> float:
         return self._keepalive_timeout
 
-    async def shutdown(self, timeout: Optional[float] = 15.0) -> None:
+    async def shutdown(self, timeout: float | None = 15.0) -> None:
         """Do worker process exit preparations.
 
         We need to clean up everything and stop accepting requests.
@@ -381,7 +376,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             task = loop.create_task(self.start())
         self._task_handler = task
 
-    def connection_lost(self, exc: Optional[BaseException]) -> None:
+    def connection_lost(self, exc: BaseException | None) -> None:
         if self._manager is None:
             return
         self._manager.connection_lost(self, exc)
@@ -498,7 +493,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self,
         request: BaseRequest,
         response: StreamResponse,
-        request_start: Optional[float],
+        request_start: float | None,
     ) -> None:
         if self._logging_enabled and self.access_logger is not None:
             if TYPE_CHECKING:
@@ -532,9 +527,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     async def _handle_request(
         self,
         request: _Request,
-        start_time: Optional[float],
+        start_time: float | None,
         request_handler: Callable[[_Request], Awaitable[StreamResponse]],
-    ) -> Tuple[StreamResponse, bool]:
+    ) -> tuple[StreamResponse, bool]:
         self._request_in_progress = True
         try:
             try:
@@ -706,8 +701,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 self.transport.close()
 
     async def finish_response(
-        self, request: BaseRequest, resp: StreamResponse, start_time: Optional[float]
-    ) -> Tuple[StreamResponse, bool]:
+        self, request: BaseRequest, resp: StreamResponse, start_time: float | None
+    ) -> tuple[StreamResponse, bool]:
         """Prepare the response and write_eof, then log access.
 
         This has to
@@ -730,7 +725,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             else:
                 self.log_exception(
                     "Web-handler should return a response instance, "
-                    "got {!r}".format(resp)
+                    f"got {resp!r}"
                 )
             exc = HTTPInternalServerError()
             resp = Response(
@@ -751,8 +746,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self,
         request: BaseRequest,
         status: int = 500,
-        exc: Optional[BaseException] = None,
-        message: Optional[str] = None,
+        exc: BaseException | None = None,
+        message: str | None = None,
     ) -> StreamResponse:
         """Handle errors.
 
@@ -781,7 +776,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         ct = "text/plain"
         if status == HTTPStatus.INTERNAL_SERVER_ERROR:
-            title = "{0.value} {0.phrase}".format(HTTPStatus.INTERNAL_SERVER_ERROR)
+            title = f"{HTTPStatus.INTERNAL_SERVER_ERROR.value} {HTTPStatus.INTERNAL_SERVER_ERROR.phrase}"
             msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
             tb = None
             if self._loop.get_debug():
@@ -794,10 +789,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     msg = f"<h2>Traceback:</h2>\n<pre>{tb}</pre>"
                 message = (
                     "<html><head>"
-                    "<title>{title}</title>"
-                    "</head><body>\n<h1>{title}</h1>"
-                    "\n{msg}\n</body></html>\n"
-                ).format(title=title, msg=msg)
+                    f"<title>{title}</title>"
+                    f"</head><body>\n<h1>{title}</h1>"
+                    f"\n{msg}\n</body></html>\n"
+                )
                 ct = "text/html"
             else:
                 if tb:

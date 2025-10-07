@@ -5,7 +5,8 @@ import json
 import unittest.mock
 from io import StringIO
 from pathlib import Path
-from typing import AsyncIterator, Iterator, List, Optional, TextIO, Union
+from typing import TextIO, Union
+from collections.abc import AsyncIterator, Iterator
 
 import pytest
 from multidict import CIMultiDict
@@ -33,7 +34,7 @@ class BufferWriter(AbstractStreamWriter):
         """No-op for test writer."""
 
     def enable_compression(
-        self, encoding: str = "deflate", strategy: Optional[int] = None
+        self, encoding: str = "deflate", strategy: int | None = None
     ) -> None:
         """Compression not implemented for test writer."""
 
@@ -170,7 +171,7 @@ class MockStreamWriter(AbstractStreamWriter):
     """Mock stream writer for testing payload writes."""
 
     def __init__(self) -> None:
-        self.written: List[bytes] = []
+        self.written: list[bytes] = []
 
     async def write(
         self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
@@ -178,14 +179,14 @@ class MockStreamWriter(AbstractStreamWriter):
         """Store the chunk in the written list."""
         self.written.append(bytes(chunk))
 
-    async def write_eof(self, chunk: Optional[bytes] = None) -> None:
+    async def write_eof(self, chunk: bytes | None = None) -> None:
         """write_eof implementation - no-op for tests."""
 
     async def drain(self) -> None:
         """Drain implementation - no-op for tests."""
 
     def enable_compression(
-        self, encoding: str = "deflate", strategy: Optional[int] = None
+        self, encoding: str = "deflate", strategy: int | None = None
     ) -> None:
         """Enable compression - no-op for tests."""
 
@@ -310,7 +311,7 @@ async def test_bytesio_payload_write_with_length_remaining_zero() -> None:
     original_read = bio.read
     read_calls = 0
 
-    def mock_read(size: Optional[int] = None) -> bytes:
+    def mock_read(size: int | None = None) -> bytes:
         nonlocal read_calls
         read_calls += 1
         if read_calls == 1:
@@ -414,9 +415,9 @@ async def test_iobase_payload_large_content_length() -> None:
     class TrackingBytesIO(io.BytesIO):
         def __init__(self, data: bytes) -> None:
             super().__init__(data)
-            self.read_sizes: List[int] = []
+            self.read_sizes: list[int] = []
 
-        def read(self, size: Optional[int] = -1) -> bytes:
+        def read(self, size: int | None = -1) -> bytes:
             self.read_sizes.append(size if size is not None else -1)
             return super().read(size)
 
@@ -489,9 +490,9 @@ async def test_textio_payload_large_content_length() -> None:
     class TrackingStringIO(io.StringIO):
         def __init__(self, data: str) -> None:
             super().__init__(data)
-            self.read_sizes: List[int] = []
+            self.read_sizes: list[int] = []
 
-        def read(self, size: Optional[int] = -1) -> str:
+        def read(self, size: int | None = -1) -> str:
             self.read_sizes.append(size if size is not None else -1)
             return super().read(size)
 

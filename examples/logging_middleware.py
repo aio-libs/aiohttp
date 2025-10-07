@@ -13,7 +13,8 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Coroutine, List
+from typing import Any
+from collections.abc import Coroutine
 
 from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession, web
 
@@ -141,7 +142,7 @@ async def run_tests() -> None:
 
         # Test 6: Multiple concurrent requests
         print("\n=== Test 6: Multiple concurrent requests ===")
-        coros: List[Coroutine[Any, Any, ClientResponse]] = []
+        coros: list[Coroutine[Any, Any, ClientResponse]] = []
         for i in range(3):
             coro = session.get(f"http://localhost:8080/hello/User{i}")
             coros.append(coro)

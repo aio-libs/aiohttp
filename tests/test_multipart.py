@@ -4,7 +4,6 @@ import json
 import pathlib
 import sys
 from types import TracebackType
-from typing import Dict, Optional, Tuple, Type
 from unittest import mock
 
 import pytest
@@ -79,7 +78,7 @@ class Stream(StreamReader):
     def __init__(self, content: bytes) -> None:
         self.content = io.BytesIO(content)
 
-    async def read(self, size: Optional[int] = None) -> bytes:
+    async def read(self, size: int | None = None) -> bytes:
         return self.content.read(size)
 
     def at_eof(self) -> bool:
@@ -96,9 +95,9 @@ class Stream(StreamReader):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         self.content.close()
 
@@ -114,7 +113,7 @@ class StreamWithShortenRead(Stream):
         self._first = True
         super().__init__(content)
 
-    async def read(self, size: Optional[int] = None) -> bytes:
+    async def read(self, size: int | None = None) -> bytes:
         if size is not None and self._first:
             self._first = False
             size = size // 2
@@ -734,7 +733,7 @@ class TestMultipartReader:
                     b"oobar--",
                 ]
 
-            async def read(self, size: Optional[int] = None) -> bytes:
+            async def read(self, size: int | None = None) -> bytes:
                 chunk = self.content.pop(0)
                 assert size is not None and len(chunk) <= size
                 return chunk
@@ -1448,7 +1447,7 @@ class TestMultipartWriter:
 
 
 async def test_async_for_reader() -> None:
-    data: Tuple[Dict[str, str], int, bytes, bytes, bytes] = (
+    data: tuple[dict[str, str], int, bytes, bytes, bytes] = (
         {"test": "passed"},
         42,
         b"plain text",

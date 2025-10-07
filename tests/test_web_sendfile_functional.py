@@ -3,7 +3,8 @@ import bz2
 import gzip
 import pathlib
 import socket
-from typing import Iterable, Iterator, NoReturn, Optional, Protocol, Tuple
+from typing import NoReturn, Protocol
+from collections.abc import Iterable, Iterator
 from unittest import mock
 
 import pytest
@@ -320,7 +321,7 @@ async def test_static_file_with_encoding_and_enable_compression(
     sender: _Sender,
     accept_encoding: str,
     expect_encoding: str,
-    forced_compression: Optional[web.ContentCoding],
+    forced_compression: web.ContentCoding | None,
 ) -> None:
     """Test that enable_compression does not double compress when an encoded file is also present."""
 
@@ -491,7 +492,7 @@ async def test_static_file_if_match_custom_tags(
     aiohttp_client: AiohttpClient,
     app_with_static_route: web.Application,
     if_unmodified_since: str,
-    etags: Tuple[str],
+    etags: tuple[str],
     expected_status: int,
 ) -> None:
     client = await aiohttp_client(app_with_static_route)
@@ -721,19 +722,13 @@ async def test_static_file_range(
     )
     assert len(responses) == 3
     assert responses[0].status == 206, "failed 'bytes=0-999': %s" % responses[0].reason
-    assert responses[0].headers["Content-Range"] == "bytes 0-999/{}".format(
-        filesize
-    ), "failed: Content-Range Error"
+    assert responses[0].headers["Content-Range"] == f"bytes 0-999/{filesize}", "failed: Content-Range Error"
     assert responses[1].status == 206, (
         "failed 'bytes=1000-1999': %s" % responses[1].reason
     )
-    assert responses[1].headers["Content-Range"] == "bytes 1000-1999/{}".format(
-        filesize
-    ), "failed: Content-Range Error"
+    assert responses[1].headers["Content-Range"] == f"bytes 1000-1999/{filesize}", "failed: Content-Range Error"
     assert responses[2].status == 206, "failed 'bytes=2000-': %s" % responses[2].reason
-    assert responses[2].headers["Content-Range"] == "bytes 2000-{}/{}".format(
-        filesize - 1, filesize
-    ), "failed: Content-Range Error"
+    assert responses[2].headers["Content-Range"] == f"bytes 2000-{filesize - 1}/{filesize}", "failed: Content-Range Error"
 
     body = await asyncio.gather(
         *(resp.read() for resp in responses),

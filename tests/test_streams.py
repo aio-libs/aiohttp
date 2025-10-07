@@ -6,7 +6,8 @@ import gc
 import types
 from collections import defaultdict
 from itertools import groupby
-from typing import DefaultDict, Iterator, Sequence, TypeVar
+from typing import TypeVar
+from collections.abc import Iterator, Sequence
 from unittest import mock
 
 import pytest
@@ -49,7 +50,7 @@ def get_memory_usage(obj: object) -> int:
     objs = [obj]
     # Memory leak may be caused by leaked links to same objects.
     # Without link counting, [1,2,3] is indistinguishable from [1,2,3,3,3,3,3,3]
-    known: DefaultDict[int, int] = defaultdict(int)
+    known: defaultdict[int, int] = defaultdict(int)
     known[id(obj)] += 1
 
     while objs:

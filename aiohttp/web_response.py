@@ -11,13 +11,11 @@ from http import HTTPStatus
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    Iterator,
-    MutableMapping,
     Optional,
     Union,
     cast,
 )
+from collections.abc import Iterator, MutableMapping
 
 from multidict import CIMultiDict, istr
 
@@ -76,18 +74,18 @@ CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
 
 class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
-    _body: Union[None, bytes, bytearray, Payload]
+    _body: None | bytes | bytearray | Payload
     _length_check = True
     _body = None
-    _keep_alive: Optional[bool] = None
+    _keep_alive: bool | None = None
     _chunked: bool = False
     _compression: bool = False
-    _compression_strategy: Optional[int] = None
-    _compression_force: Optional[ContentCoding] = None
+    _compression_strategy: int | None = None
+    _compression_force: ContentCoding | None = None
     _req: Optional["BaseRequest"] = None
-    _payload_writer: Optional[AbstractStreamWriter] = None
+    _payload_writer: AbstractStreamWriter | None = None
     _eof_sent: bool = False
-    _must_be_empty_body: Optional[bool] = None
+    _must_be_empty_body: bool | None = None
     _body_length = 0
     _send_headers_immediately = True
 
@@ -95,9 +93,9 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self,
         *,
         status: int = 200,
-        reason: Optional[str] = None,
-        headers: Optional[LooseHeaders] = None,
-        _real_headers: Optional[CIMultiDict[str]] = None,
+        reason: str | None = None,
+        headers: LooseHeaders | None = None,
+        _real_headers: CIMultiDict[str] | None = None,
     ) -> None:
         """Initialize a new stream response object.
 
@@ -106,7 +104,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         the headers when creating a new response object. It is not intended
         to be used by external code.
         """
-        self._state: Dict[str, Any] = {}
+        self._state: dict[str, Any] = {}
 
         if _real_headers is not None:
             self._headers = _real_headers
@@ -122,7 +120,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         return self._eof_sent or self._payload_writer is not None
 
     @property
-    def task(self) -> "Optional[asyncio.Task[None]]":
+    def task(self) -> "asyncio.Task[None] | None":
         if self._req:
             return self._req.task
         else:
@@ -147,14 +145,14 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
     def set_status(
         self,
         status: int,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> None:
         assert (
             not self.prepared
         ), "Cannot change the response status code after the headers have been sent"
         self._set_status(status, reason)
 
-    def _set_status(self, status: int, reason: Optional[str]) -> None:
+    def _set_status(self, status: int, reason: str | None) -> None:
         self._status = status
         if reason is None:
             reason = REASON_PHRASES.get(self._status, "")
@@ -163,7 +161,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._reason = reason
 
     @property
-    def keep_alive(self) -> Optional[bool]:
+    def keep_alive(self) -> bool | None:
         return self._keep_alive
 
     def force_close(self) -> None:
@@ -183,8 +181,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     def enable_compression(
         self,
-        force: Optional[ContentCoding] = None,
-        strategy: Optional[int] = None,
+        force: ContentCoding | None = None,
+        strategy: int | None = None,
     ) -> None:
         """Enables response compression encoding."""
         # Don't enable compression if content is already encoded.
@@ -203,12 +201,12 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         return self._headers
 
     @property
-    def content_length(self) -> Optional[int]:
+    def content_length(self) -> int | None:
         # Just a placeholder for adding setter
         return super().content_length
 
     @content_length.setter
-    def content_length(self, value: Optional[int]) -> None:
+    def content_length(self, value: int | None) -> None:
         if value is not None:
             value = int(value)
             if self._chunked:
@@ -231,12 +229,12 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._generate_content_type_header()
 
     @property
-    def charset(self) -> Optional[str]:
+    def charset(self) -> str | None:
         # Just a placeholder for adding setter
         return super().charset
 
     @charset.setter
-    def charset(self, value: Optional[str]) -> None:
+    def charset(self, value: str | None) -> None:
         ctype = self.content_type  # read header values if needed
         if ctype == "application/octet-stream":
             raise RuntimeError(
@@ -251,7 +249,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._generate_content_type_header()
 
     @property
-    def last_modified(self) -> Optional[datetime.datetime]:
+    def last_modified(self) -> datetime.datetime | None:
         """The value of Last-Modified HTTP header, or None.
 
         This header is represented as a `datetime` object.
@@ -260,7 +258,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
     @last_modified.setter
     def last_modified(
-        self, value: Optional[Union[int, float, datetime.datetime, str]]
+        self, value: int | float | datetime.datetime | str | None
     ) -> None:
         if value is None:
             self._headers.pop(hdrs.LAST_MODIFIED, None)
@@ -279,7 +277,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             raise TypeError(msg)
 
     @property
-    def etag(self) -> Optional[ETag]:
+    def etag(self) -> ETag | None:
         quoted_value = self._headers.get(hdrs.ETAG)
         if not quoted_value:
             return None
@@ -295,7 +293,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         )
 
     @etag.setter
-    def etag(self, value: Optional[Union[ETag, str]]) -> None:
+    def etag(self, value: ETag | str | None) -> None:
         if value is None:
             self._headers.pop(hdrs.ETAG, None)
         elif (isinstance(value, str) and value == ETAG_ANY) or (
@@ -351,7 +349,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
                 await self._do_start_compression(coding)
                 return
 
-    async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
+    async def prepare(self, request: "BaseRequest") -> AbstractStreamWriter | None:
         if self._eof_sent:
             return None
         if self._payload_writer is not None:
@@ -392,7 +390,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             if version != HttpVersion11:
                 raise RuntimeError(
                     "Using chunked encoding is forbidden "
-                    "for HTTP/{0.major}.{0.minor}".format(request.version)
+                    f"for HTTP/{request.version.major}.{request.version.minor}"
                 )
             if not self._must_be_empty_body:
                 writer.enable_chunking()
@@ -523,7 +521,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
 
 class Response(StreamResponse):
 
-    _compressed_body: Optional[bytes] = None
+    _compressed_body: bytes | None = None
     _send_headers_immediately = False
 
     def __init__(
@@ -531,13 +529,13 @@ class Response(StreamResponse):
         *,
         body: Any = None,
         status: int = 200,
-        reason: Optional[str] = None,
-        text: Optional[str] = None,
-        headers: Optional[LooseHeaders] = None,
-        content_type: Optional[str] = None,
-        charset: Optional[str] = None,
-        zlib_executor_size: Optional[int] = None,
-        zlib_executor: Optional[Executor] = None,
+        reason: str | None = None,
+        text: str | None = None,
+        headers: LooseHeaders | None = None,
+        content_type: str | None = None,
+        charset: str | None = None,
+        zlib_executor_size: int | None = None,
+        zlib_executor: Executor | None = None,
     ) -> None:
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
@@ -592,7 +590,7 @@ class Response(StreamResponse):
         self._zlib_executor = zlib_executor
 
     @property
-    def body(self) -> Optional[Union[bytes, bytearray, Payload]]:
+    def body(self) -> bytes | bytearray | Payload | None:
         return self._body
 
     @body.setter
@@ -622,7 +620,7 @@ class Response(StreamResponse):
         self._compressed_body = None
 
     @property
-    def text(self) -> Optional[str]:
+    def text(self) -> str | None:
         if self._body is None:
             return None
         # Note: When _body is a Payload (e.g. FilePayload), this may do blocking I/O
@@ -643,7 +641,7 @@ class Response(StreamResponse):
         self._compressed_body = None
 
     @property
-    def content_length(self) -> Optional[int]:
+    def content_length(self) -> int | None:
         if self._chunked:
             return None
 
@@ -662,7 +660,7 @@ class Response(StreamResponse):
             return 0
 
     @content_length.setter
-    def content_length(self, value: Optional[int]) -> None:
+    def content_length(self, value: int | None) -> None:
         raise RuntimeError("Content length is set automatically")
 
     async def write_eof(self, data: bytes = b"") -> None:
@@ -732,11 +730,11 @@ class Response(StreamResponse):
 def json_response(
     data: Any = sentinel,
     *,
-    text: Optional[str] = None,
-    body: Optional[bytes] = None,
+    text: str | None = None,
+    body: bytes | None = None,
     status: int = 200,
-    reason: Optional[str] = None,
-    headers: Optional[LooseHeaders] = None,
+    reason: str | None = None,
+    headers: LooseHeaders | None = None,
     content_type: str = "application/json",
     dumps: JSONEncoder = json.dumps,
 ) -> Response:

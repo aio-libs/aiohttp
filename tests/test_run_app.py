@@ -11,18 +11,9 @@ import sys
 import time
 from typing import (
     Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Coroutine,
-    Dict,
-    Iterator,
-    List,
     NoReturn,
-    Optional,
-    Set,
-    Tuple,
 )
+from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -175,8 +166,8 @@ mock_server_default_8989 = [
     )
 ]
 mock_socket = mock.Mock(getsockname=lambda: ("mock-socket", 123))
-mixed_bindings_tests: Tuple[
-    Tuple[str, Dict[str, Any], List[mock._Call], List[mock._Call]], ...
+mixed_bindings_tests: tuple[
+    tuple[str, dict[str, Any], list[mock._Call], list[mock._Call]], ...
 ] = (
     (
         "Nothing Specified",
@@ -442,9 +433,9 @@ mixed_bindings_test_params = [test[1:] for test in mixed_bindings_tests]
     ids=mixed_bindings_test_ids,
 )
 def test_run_app_mixed_bindings(  # type: ignore[misc]
-    run_app_kwargs: Dict[str, Any],
-    expected_server_calls: List[mock._Call],
-    expected_unix_server_calls: List[mock._Call],
+    run_app_kwargs: dict[str, Any],
+    expected_server_calls: list[mock._Call],
+    expected_unix_server_calls: list[mock._Call],
     patched_loop: asyncio.AbstractEventLoop,
 ) -> None:
     app = web.Application()
@@ -1024,13 +1015,13 @@ class TestShutdown:
         sock: socket.socket,
         timeout: int,
         task: Callable[[], Coroutine[None, None, None]],
-        extra_test: Optional[Callable[[ClientSession], Awaitable[None]]] = None,
-    ) -> Tuple["asyncio.Task[None]", int]:
+        extra_test: Callable[[ClientSession], Awaitable[None]] | None = None,
+    ) -> tuple["asyncio.Task[None]", int]:
         num_connections = -1
         t = test_task = None
         port = sock.getsockname()[1]
 
-        class DictRecordClear(Dict[RequestHandler[web.Request], asyncio.Transport]):
+        class DictRecordClear(dict[RequestHandler[web.Request], asyncio.Transport]):
             def clear(self) -> None:
                 nonlocal num_connections
                 # During Server.shutdown() we want to know how many connections still
@@ -1255,7 +1246,7 @@ class TestShutdown:
     def test_shutdown_close_websockets(self, unused_port_socket: socket.socket) -> None:
         sock = unused_port_socket
         port = sock.getsockname()[1]
-        WS = web.AppKey("ws", Set[web.WebSocketResponse])
+        WS = web.AppKey("ws", set[web.WebSocketResponse])
         client_finished = server_finished = False
         t = None
 

@@ -2,7 +2,8 @@ import asyncio
 import gzip
 import socket
 import sys
-from typing import Iterator, Mapping, NoReturn
+from typing import NoReturn
+from collections.abc import Iterator, Mapping
 from unittest import mock
 
 import pytest

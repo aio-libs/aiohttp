@@ -12,18 +12,12 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
     Generic,
-    Iterator,
-    List,
-    Optional,
-    Type,
     TypeVar,
-    Union,
     cast,
     overload,
 )
+from collections.abc import Callable, Iterator
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
@@ -111,15 +105,15 @@ class BaseTestServer(ABC, Generic[_Request]):
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         skip_url_asserts: bool = False,
         socket_factory: Callable[
             [str, int, socket.AddressFamily], socket.socket
         ] = get_port_socket,
         **kwargs: Any,
     ) -> None:
-        self.runner: Optional[BaseRunner[_Request]] = None
-        self._root: Optional[URL] = None
+        self.runner: BaseRunner[_Request] | None = None
+        self._root: URL | None = None
         self.host = host
         self.port = port or 0
         self._closed = False
@@ -210,9 +204,9 @@ class BaseTestServer(ABC, Generic[_Request]):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         await self.close()
 
@@ -224,7 +218,7 @@ class TestServer(BaseTestServer[Request]):
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ):
         self.app = app
@@ -242,7 +236,7 @@ class RawTestServer(BaseTestServer[BaseRequest]):
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ) -> None:
         self._handler = handler
@@ -269,7 +263,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self: "TestClient[Request, Application]",
         server: TestServer,
         *,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
     ) -> None: ...
     @overload
@@ -277,14 +271,14 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self: "TestClient[_Request, None]",
         server: BaseTestServer[_Request],
         *,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
     ) -> None: ...
     def __init__(  # type: ignore[misc]
         self,
         server: BaseTestServer[_Request],
         *,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
     ) -> None:
         # TODO(PY311): Use Unpack to specify ClientSession kwargs.
@@ -298,14 +292,14 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self._session = ClientSession(cookie_jar=cookie_jar, **kwargs)
         self._session._retry_connection = False
         self._closed = False
-        self._responses: List[ClientResponse] = []
-        self._websockets: List[ClientWebSocketResponse] = []
+        self._responses: list[ClientResponse] = []
+        self._websockets: list[ClientWebSocketResponse] = []
 
     async def start_server(self) -> None:
         await self._server.start_server()
 
     @property
-    def scheme(self) -> Union[str, object]:
+    def scheme(self) -> str | object:
         return self._server.scheme
 
     @property
@@ -484,9 +478,9 @@ class TestClient(Generic[_Request, _ApplicationNone]):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc: Optional[BaseException],
-        tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
     ) -> None:
         await self.close()
 
@@ -591,10 +585,10 @@ def _create_app_mock() -> mock.MagicMock:
     return app
 
 
-def _create_transport(sslcontext: Optional[SSLContext] = None) -> mock.Mock:
+def _create_transport(sslcontext: SSLContext | None = None) -> mock.Mock:
     transport = mock.Mock()
 
-    def get_extra_info(key: str) -> Optional[SSLContext]:
+    def get_extra_info(key: str) -> SSLContext | None:
         if key == "sslcontext":
             return sslcontext
         else:
@@ -607,17 +601,17 @@ def _create_transport(sslcontext: Optional[SSLContext] = None) -> mock.Mock:
 def make_mocked_request(
     method: str,
     path: str,
-    headers: Optional[LooseHeaders] = None,
+    headers: LooseHeaders | None = None,
     *,
-    match_info: Optional[Dict[str, str]] = None,
+    match_info: dict[str, str] | None = None,
     version: HttpVersion = HttpVersion(1, 1),
     closing: bool = False,
-    app: Optional[Application] = None,
-    writer: Optional[AbstractStreamWriter] = None,
-    protocol: Optional[RequestHandler[Request]] = None,
-    transport: Optional[asyncio.Transport] = None,
+    app: Application | None = None,
+    writer: AbstractStreamWriter | None = None,
+    protocol: RequestHandler[Request] | None = None,
+    transport: asyncio.Transport | None = None,
     payload: StreamReader = EMPTY_PAYLOAD,
-    sslcontext: Optional[SSLContext] = None,
+    sslcontext: SSLContext | None = None,
     client_max_size: int = 1024**2,
     loop: Any = ...,
 ) -> Request:

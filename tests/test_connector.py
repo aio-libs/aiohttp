@@ -12,18 +12,10 @@ from collections import defaultdict, deque
 from concurrent import futures
 from contextlib import closing, suppress
 from typing import (
-    Awaitable,
-    Callable,
-    DefaultDict,
-    Deque,
-    Iterator,
-    List,
     Literal,
     NoReturn,
-    Optional,
-    Sequence,
-    Tuple,
 )
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from unittest import mock
 
 import pytest
@@ -118,7 +110,7 @@ def named_pipe_server(
 
 
 def create_mocked_conn(
-    conn_closing_result: Optional[asyncio.AbstractEventLoop] = None,
+    conn_closing_result: asyncio.AbstractEventLoop | None = None,
     should_close: bool = True,
     **kwargs: object,
 ) -> mock.Mock:
@@ -744,7 +736,7 @@ async def test_tcp_connector_multiple_hosts_errors(
 
     async def _resolve_host(
         host: str, port: int, traces: object = None
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         return [
             {
                 "hostname": host,
@@ -772,8 +764,8 @@ async def test_tcp_connector_multiple_hosts_errors(
         return mock_socket  # type: ignore[no-any-return]
 
     async def create_connection(
-        *args: object, sock: Optional[socket.socket] = None, **kwargs: object
-    ) -> Tuple[ResponseHandler, ResponseHandler]:
+        *args: object, sock: socket.socket | None = None, **kwargs: object
+    ) -> tuple[ResponseHandler, ResponseHandler]:
         nonlocal os_error, certificate_error, ssl_error, fingerprint_error
         nonlocal connected
 
@@ -889,7 +881,7 @@ async def test_tcp_connector_multiple_hosts_errors(
     [0.1, 0.25, None],
 )
 async def test_tcp_connector_happy_eyeballs(
-    loop: asyncio.AbstractEventLoop, happy_eyeballs_delay: Optional[float]
+    loop: asyncio.AbstractEventLoop, happy_eyeballs_delay: float | None
 ) -> None:
     conn = aiohttp.TCPConnector(happy_eyeballs_delay=happy_eyeballs_delay)
 
@@ -906,7 +898,7 @@ async def test_tcp_connector_happy_eyeballs(
 
     async def _resolve_host(
         host: str, port: int, traces: object = None
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         return [
             {
                 "hostname": host,
@@ -922,7 +914,7 @@ async def test_tcp_connector_happy_eyeballs(
     os_error = False
     connected = False
 
-    async def sock_connect(*args: Tuple[str, int], **kwargs: object) -> None:
+    async def sock_connect(*args: tuple[str, int], **kwargs: object) -> None:
         addr = args[1]
         nonlocal os_error
 
@@ -933,8 +925,8 @@ async def test_tcp_connector_happy_eyeballs(
             raise OSError
 
     async def create_connection(
-        *args: object, sock: Optional[socket.socket] = None, **kwargs: object
-    ) -> Tuple[ResponseHandler, ResponseHandler]:
+        *args: object, sock: socket.socket | None = None, **kwargs: object
+    ) -> tuple[ResponseHandler, ResponseHandler]:
         assert isinstance(sock, socket.socket)
         # Close the socket since we are not actually connecting
         # and we don't want to leak it.
@@ -995,7 +987,7 @@ async def test_tcp_connector_interleave(loop: asyncio.AbstractEventLoop) -> None
 
     async def _resolve_host(
         host: str, port: int, traces: object = None
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         return [
             {
                 "hostname": host,
@@ -1011,7 +1003,7 @@ async def test_tcp_connector_interleave(loop: asyncio.AbstractEventLoop) -> None
     async def start_connection(
         addr_infos: Sequence[AddrInfoType],
         *,
-        interleave: Optional[int] = None,
+        interleave: int | None = None,
         **kwargs: object,
     ) -> socket.socket:
         nonlocal interleave_val
@@ -1024,8 +1016,8 @@ async def test_tcp_connector_interleave(loop: asyncio.AbstractEventLoop) -> None
         return mock_socket  # type: ignore[no-any-return]
 
     async def create_connection(
-        *args: object, sock: Optional[socket.socket] = None, **kwargs: object
-    ) -> Tuple[ResponseHandler, ResponseHandler]:
+        *args: object, sock: socket.socket | None = None, **kwargs: object
+    ) -> tuple[ResponseHandler, ResponseHandler]:
         assert isinstance(sock, socket.socket)
         addr_info = sock.getpeername()
         ip = addr_info[0]
@@ -1085,7 +1077,7 @@ async def test_tcp_connector_family_is_respected(
 
     async def _resolve_host(
         host: str, port: int, traces: object = None
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         return [
             {
                 "hostname": host,
@@ -1100,13 +1092,13 @@ async def test_tcp_connector_family_is_respected(
 
     connected = False
 
-    async def sock_connect(*args: Tuple[str, int], **kwargs: object) -> None:
+    async def sock_connect(*args: tuple[str, int], **kwargs: object) -> None:
         addr = args[1]
         addrs_tried.append(addr)
 
     async def create_connection(
-        *args: object, sock: Optional[socket.socket] = None, **kwargs: object
-    ) -> Tuple[ResponseHandler, ResponseHandler]:
+        *args: object, sock: socket.socket | None = None, **kwargs: object
+    ) -> tuple[ResponseHandler, ResponseHandler]:
         assert isinstance(sock, socket.socket)
         # Close the socket since we are not actually connecting
         # and we don't want to leak it.
@@ -1175,7 +1167,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
 
     async def _resolve_host(
         host: str, port: int, traces: object = None
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         return [
             {
                 "hostname": host,
@@ -1191,7 +1183,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
     async def start_connection(
         addr_infos: Sequence[AddrInfoType],
         *,
-        interleave: Optional[int] = None,
+        interleave: int | None = None,
         **kwargs: object,
     ) -> socket.socket:
         nonlocal timeout_error
@@ -1216,8 +1208,8 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
         assert False
 
     async def create_connection(
-        *args: object, sock: Optional[socket.socket] = None, **kwargs: object
-    ) -> Tuple[ResponseHandler, ResponseHandler]:
+        *args: object, sock: socket.socket | None = None, **kwargs: object
+    ) -> tuple[ResponseHandler, ResponseHandler]:
         nonlocal connected
 
         assert isinstance(sock, socket.socket)
@@ -1288,8 +1280,8 @@ async def test_tcp_connector_resolve_host(loop: asyncio.AbstractEventLoop) -> No
 
 
 @pytest.fixture
-def dns_response(loop: asyncio.AbstractEventLoop) -> Callable[[], Awaitable[List[str]]]:
-    async def coro() -> List[str]:
+def dns_response(loop: asyncio.AbstractEventLoop) -> Callable[[], Awaitable[list[str]]]:
+    async def coro() -> list[str]:
         # simulates a network operation
         await asyncio.sleep(0)
         return ["127.0.0.1"]
@@ -1298,7 +1290,7 @@ def dns_response(loop: asyncio.AbstractEventLoop) -> Callable[[], Awaitable[List
 
 
 async def test_tcp_connector_dns_cache_not_expired(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[List[str]]]
+    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
@@ -1312,7 +1304,7 @@ async def test_tcp_connector_dns_cache_not_expired(
 
 
 async def test_tcp_connector_dns_cache_forever(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[List[str]]]
+    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
@@ -1326,7 +1318,7 @@ async def test_tcp_connector_dns_cache_forever(
 
 
 async def test_tcp_connector_use_dns_cache_disabled(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[List[str]]]
+    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=False)
@@ -1345,7 +1337,7 @@ async def test_tcp_connector_use_dns_cache_disabled(
 
 
 async def test_tcp_connector_dns_throttle_requests(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[List[str]]]
+    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
@@ -1385,7 +1377,7 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(
 
 
 async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[List[str]]]
+    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
@@ -1452,7 +1444,7 @@ async def test_tcp_connector_cancel_dns_error_captured(
 
 
 async def test_tcp_connector_dns_tracing(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[List[str]]]
+    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
@@ -1500,7 +1492,7 @@ async def test_tcp_connector_dns_tracing(
 
 
 async def test_tcp_connector_dns_tracing_cache_disabled(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[List[str]]]
+    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
@@ -1558,7 +1550,7 @@ async def test_tcp_connector_dns_tracing_cache_disabled(
 
 
 async def test_tcp_connector_dns_tracing_throttle_requests(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[List[str]]]
+    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
@@ -1957,7 +1949,7 @@ async def test_cleanup(key: ConnectionKey) -> None:
     m2 = mock.Mock()
     m1.is_connected.return_value = True
     m2.is_connected.return_value = False
-    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+    testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
     testset[key] = deque([(m1, 10), (m2, 300)])
@@ -1982,7 +1974,7 @@ async def test_cleanup_close_ssl_transport(  # type: ignore[misc]
 ) -> None:
     proto = create_mocked_conn(loop)
     transport = proto.transport
-    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+    testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
     testset[ssl_key] = deque([(proto, 10)])
@@ -2008,7 +2000,7 @@ async def test_cleanup_close_ssl_transport(  # type: ignore[misc]
 async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn()
     m.is_connected.return_value = True
-    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+    testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
     testset[key] = deque([(m, 300)])
@@ -2029,7 +2021,7 @@ async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
 async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn(loop)
     m.is_connected.return_value = True
-    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+    testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
     testset[key] = deque([(m, 290.1), (create_mocked_conn(loop), 305.1)])
@@ -2796,7 +2788,7 @@ async def test_multiple_dns_resolution_requests_success(
 ) -> None:
     """Verify that multiple DNS resolution requests are handled correctly."""
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         for _ in range(3):
             await asyncio.sleep(0)
@@ -2858,7 +2850,7 @@ async def test_multiple_dns_resolution_requests_failure(
 ) -> None:
     """Verify that DNS resolution failure for multiple requests is handled correctly."""
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         for _ in range(3):
             await asyncio.sleep(0)
@@ -2911,7 +2903,7 @@ async def test_multiple_dns_resolution_requests_cancelled(
 ) -> None:
     """Verify that DNS resolution cancellation does not affect other tasks."""
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         for _ in range(3):
             await asyncio.sleep(0)
@@ -2963,7 +2955,7 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
 ) -> None:
     """Verify that first DNS resolution cancellation does not make other resolutions fail."""
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         for _ in range(3):
             await asyncio.sleep(0)
@@ -3027,7 +3019,7 @@ async def test_multiple_dns_resolution_requests_first_fails_second_successful(
     """Verify that first DNS resolution fails the first time and is successful the second time."""
     attempt = 0
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         nonlocal attempt
         for _ in range(3):
@@ -3880,7 +3872,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     # resolving something.localhost with the real DNS resolver does not work on macOS, so we have a stub.
     async def _resolve_host(
         host: str, port: int, traces: object = None
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         return [
             {
                 "hostname": host,
@@ -4221,7 +4213,7 @@ async def test_connector_resolve_in_case_of_trace_cache_miss_exception(
             if request_count <= 1:
                 raise Exception("first attempt")
 
-    async def resolve_response() -> List[ResolveResult]:
+    async def resolve_response() -> list[ResolveResult]:
         await asyncio.sleep(0)
         return [token]
 

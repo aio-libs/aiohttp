@@ -6,18 +6,10 @@ from http.cookies import BaseCookie, Morsel
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
     TypedDict,
     Union,
 )
+from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence
 
 from multidict import CIMultiDict
 from yarl import URL
@@ -73,21 +65,21 @@ class AbstractMatchInfo(ABC):
     @abstractmethod
     def expect_handler(
         self,
-    ) -> Callable[[Request], Awaitable[Optional[StreamResponse]]]:
+    ) -> Callable[[Request], Awaitable[StreamResponse | None]]:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def http_exception(self) -> Optional[HTTPException]:
+    def http_exception(self) -> HTTPException | None:
         """HTTPException instance raised on router's resolving, or None"""
 
     @abstractmethod  # pragma: no branch
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> dict[str, Any]:
         """Return a dict with additional info useful for introspection"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def apps(self) -> Tuple[Application, ...]:
+    def apps(self) -> tuple[Application, ...]:
         """Stack of nested applications.
 
         Top level application is left-most element.
@@ -153,7 +145,7 @@ class AbstractResolver(ABC):
     @abstractmethod
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         """Return IP address for given hostname"""
 
     @abstractmethod
@@ -179,7 +171,7 @@ class AbstractCookieJar(Sized, IterableBase):
         """Return True if cookies should be quoted."""
 
     @abstractmethod
-    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
+    def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         """Clear all cookies if no predicate is passed."""
 
     @abstractmethod
@@ -207,7 +199,7 @@ class AbstractStreamWriter(ABC):
 
     buffer_size: int = 0
     output_size: int = 0
-    length: Optional[int] = 0
+    length: int | None = 0
 
     @abstractmethod
     async def write(
@@ -225,7 +217,7 @@ class AbstractStreamWriter(ABC):
 
     @abstractmethod
     def enable_compression(
-        self, encoding: str = "deflate", strategy: Optional[int] = None
+        self, encoding: str = "deflate", strategy: int | None = None
     ) -> None:
         """Enable HTTP body compression"""
 

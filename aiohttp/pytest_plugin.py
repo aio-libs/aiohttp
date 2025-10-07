@@ -4,17 +4,11 @@ import inspect
 import warnings
 from typing import (
     Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterator,
-    Optional,
     Protocol,
-    Type,
     TypeVar,
-    Union,
     overload,
 )
+from collections.abc import Awaitable, Callable, Iterator
 
 import pytest
 
@@ -46,7 +40,7 @@ class AiohttpClient(Protocol):
         self,
         __param: Application,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
     @overload
@@ -54,14 +48,14 @@ class AiohttpClient(Protocol):
         self,
         __param: BaseTestServer[_Request],
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[_Request, None]: ...
 
 
 class AiohttpServer(Protocol):
     def __call__(
-        self, app: Application, *, port: Optional[int] = None, **kwargs: Any
+        self, app: Application, *, port: int | None = None, **kwargs: Any
     ) -> Awaitable[TestServer]: ...
 
 
@@ -70,7 +64,7 @@ class AiohttpRawServer(Protocol):
         self,
         handler: _RequestHandler[BaseRequest],
         *,
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ) -> Awaitable[RawTestServer]: ...
 
@@ -177,7 +171,7 @@ def _runtime_warning_context() -> Iterator[None]:
     with warnings.catch_warnings(record=True) as _warnings:
         yield
         rw = [
-            "{w.filename}:{w.lineno}:{w.message}".format(w=w)
+            f"{w.filename}:{w.lineno}:{w.message}"
             for w in _warnings
             if w.category == RuntimeWarning
         ]
@@ -197,7 +191,7 @@ def _runtime_warning_context() -> Iterator[None]:
 
 @contextlib.contextmanager
 def _passthrough_loop_context(
-    loop: Optional[asyncio.AbstractEventLoop], fast: bool = False
+    loop: asyncio.AbstractEventLoop | None, fast: bool = False
 ) -> Iterator[asyncio.AbstractEventLoop]:
     """Passthrough loop context.
 
@@ -315,7 +309,7 @@ def aiohttp_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
         app: Application,
         *,
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ) -> TestServer:
         server = TestServer(app, host=host, port=port)
@@ -343,7 +337,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
     async def go(
         handler: _RequestHandler[BaseRequest],
         *,
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ) -> RawTestServer:
         server = RawTestServer(handler, port=port)
@@ -361,7 +355,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
 
 
 @pytest.fixture
-def aiohttp_client_cls() -> Type[TestClient[Any, Any]]:
+def aiohttp_client_cls() -> type[TestClient[Any, Any]]:
     """
     Client class to use in ``aiohttp_client`` factory.
 
@@ -389,7 +383,7 @@ def aiohttp_client_cls() -> Type[TestClient[Any, Any]]:
 
 @pytest.fixture
 def aiohttp_client(
-    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: Type[TestClient[Any, Any]]
+    loop: asyncio.AbstractEventLoop, aiohttp_client_cls: type[TestClient[Any, Any]]
 ) -> Iterator[AiohttpClient]:
     """Factory to create a TestClient instance.
 
@@ -403,20 +397,20 @@ def aiohttp_client(
     async def go(
         __param: Application,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
     @overload
     async def go(
         __param: BaseTestServer[_Request],
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[_Request, None]: ...
     async def go(
-        __param: Union[Application, BaseTestServer[Any]],
+        __param: Application | BaseTestServer[Any],
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[Any, Any]:
         # TODO(PY311): Use Unpack to specify ClientSession kwargs and server_kwargs.

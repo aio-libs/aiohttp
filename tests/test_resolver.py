@@ -6,15 +6,9 @@ from collections.abc import Generator
 from ipaddress import ip_address
 from typing import (
     Any,
-    Awaitable,
-    Callable,
-    Collection,
-    Iterable,
-    List,
     NamedTuple,
-    Tuple,
-    Union,
 )
+from collections.abc import Awaitable, Callable, Collection, Iterable
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
@@ -35,16 +29,16 @@ except ImportError:
     aiodns = None  # type: ignore[assignment]
     getaddrinfo = False
 
-_AddrInfo4 = List[
-    Tuple[socket.AddressFamily, None, socket.SocketKind, None, Tuple[str, int]]
+_AddrInfo4 = list[
+    tuple[socket.AddressFamily, None, socket.SocketKind, None, tuple[str, int]]
 ]
-_AddrInfo6 = List[
-    Tuple[
-        socket.AddressFamily, None, socket.SocketKind, None, Tuple[str, int, int, int]
+_AddrInfo6 = list[
+    tuple[
+        socket.AddressFamily, None, socket.SocketKind, None, tuple[str, int, int, int]
     ]
 ]
-_UnknownAddrInfo = List[
-    Tuple[socket.AddressFamily, socket.SocketKind, int, str, Tuple[int, bytes]]
+_UnknownAddrInfo = list[
+    tuple[socket.AddressFamily, socket.SocketKind, int, str, tuple[int, bytes]]
 ]
 
 
@@ -93,7 +87,7 @@ def dns_resolver_manager() -> Generator[_DNSResolverManager, None, None]:
 class FakeAIODNSAddrInfoNode(NamedTuple):
 
     family: int
-    addr: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]]
+    addr: tuple[bytes, int] | tuple[bytes, int, int, int]
 
 
 class FakeAIODNSAddrInfoIPv4Result:
@@ -143,7 +137,7 @@ async def fake_aiodns_getnameinfo_ipv6_result(
     return FakeAIODNSNameInfoIPv6Result(host)
 
 
-async def fake_query_result(result: Iterable[str]) -> List[FakeQueryResult]:
+async def fake_query_result(result: Iterable[str]) -> list[FakeQueryResult]:
     return [FakeQueryResult(host=h) for h in result]
 
 
@@ -176,8 +170,8 @@ def fake_ipv6_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[_AddrI
     return fake
 
 
-def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Tuple[str, int]]]:
-    async def fake(*args: Any, **kwargs: Any) -> Tuple[str, int]:
+def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[tuple[str, int]]]:
+    async def fake(*args: Any, **kwargs: Any) -> tuple[str, int]:
         return host, 0
 
     return fake
@@ -321,7 +315,7 @@ async def test_threaded_resolver_multiple_replies() -> None:
 
 async def test_threaded_negative_lookup() -> None:
     loop = Mock()
-    ips: List[str] = []
+    ips: list[str] = []
     loop.getaddrinfo = fake_addrinfo(ips)
     resolver = ThreadedResolver()
     resolver._loop = loop
@@ -331,7 +325,7 @@ async def test_threaded_negative_lookup() -> None:
 
 async def test_threaded_negative_ipv6_lookup() -> None:
     loop = Mock()
-    ips: List[str] = []
+    ips: list[str] = []
     loop.getaddrinfo = fake_ipv6_addrinfo(ips)
     resolver = ThreadedResolver()
     resolver._loop = loop

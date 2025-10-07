@@ -1,6 +1,7 @@
 import warnings
 from http import HTTPStatus
-from typing import Any, Iterable, Optional, Set, Tuple
+from typing import Any
+from collections.abc import Iterable
 
 from multidict import CIMultiDict
 from yarl import URL
@@ -91,10 +92,10 @@ class HTTPException(CookieMixin, Exception):
     def __init__(
         self,
         *,
-        headers: Optional[LooseHeaders] = None,
-        reason: Optional[str] = None,
-        text: Optional[str] = None,
-        content_type: Optional[str] = None,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
+        text: str | None = None,
+        content_type: str | None = None,
     ) -> None:
         if reason is None:
             reason = self.default_reason
@@ -107,11 +108,9 @@ class HTTPException(CookieMixin, Exception):
         else:
             if self.empty_body:
                 warnings.warn(
-                    "text argument is deprecated for HTTP status {} "
+                    f"text argument is deprecated for HTTP status {self.status_code} "
                     "since 4.0 and scheduled for removal in 5.0 (#3462),"
-                    "the response should be provided without a body".format(
-                        self.status_code
-                    ),
+                    "the response should be provided without a body",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -151,7 +150,7 @@ class HTTPException(CookieMixin, Exception):
         return self._reason
 
     @property
-    def text(self) -> Optional[str]:
+    def text(self) -> str | None:
         return self._text
 
     @property
@@ -166,7 +165,7 @@ class HTTPException(CookieMixin, Exception):
 
     __reduce__ = object.__reduce__
 
-    def __getnewargs__(self) -> Tuple[Any, ...]:
+    def __getnewargs__(self) -> tuple[Any, ...]:
         return self.args
 
 
@@ -222,10 +221,10 @@ class HTTPMove(HTTPRedirection):
         self,
         location: StrOrURL,
         *,
-        headers: Optional[LooseHeaders] = None,
-        reason: Optional[str] = None,
-        text: Optional[str] = None,
-        content_type: Optional[str] = None,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
+        text: str | None = None,
+        content_type: str | None = None,
     ) -> None:
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
@@ -314,21 +313,21 @@ class HTTPMethodNotAllowed(HTTPClientError):
         method: str,
         allowed_methods: Iterable[str],
         *,
-        headers: Optional[LooseHeaders] = None,
-        reason: Optional[str] = None,
-        text: Optional[str] = None,
-        content_type: Optional[str] = None,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
+        text: str | None = None,
+        content_type: str | None = None,
     ) -> None:
         allow = ",".join(sorted(allowed_methods))
         super().__init__(
             headers=headers, reason=reason, text=text, content_type=content_type
         )
         self.headers["Allow"] = allow
-        self._allowed: Set[str] = set(allowed_methods)
+        self._allowed: set[str] = set(allowed_methods)
         self._method = method
 
     @property
-    def allowed_methods(self) -> Set[str]:
+    def allowed_methods(self) -> set[str]:
         return self._allowed
 
     @property
@@ -370,8 +369,8 @@ class HTTPRequestEntityTooLarge(HTTPClientError):
     def __init__(self, max_size: int, actual_size: int, **kwargs: Any) -> None:
         kwargs.setdefault(
             "text",
-            "Maximum request body size {} exceeded, "
-            "actual body size {}".format(max_size, actual_size),
+            f"Maximum request body size {max_size} exceeded, "
+            f"actual body size {actual_size}",
         )
         super().__init__(**kwargs)
 
@@ -425,12 +424,12 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
 
     def __init__(
         self,
-        link: Optional[StrOrURL],
+        link: StrOrURL | None,
         *,
-        headers: Optional[LooseHeaders] = None,
-        reason: Optional[str] = None,
-        text: Optional[str] = None,
-        content_type: Optional[str] = None,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
+        text: str | None = None,
+        content_type: str | None = None,
     ) -> None:
         super().__init__(
             headers=headers, reason=reason, text=text, content_type=content_type
@@ -441,7 +440,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
             self.headers["Link"] = f'<{str(self._link)}>; rel="blocked-by"'
 
     @property
-    def link(self) -> Optional[URL]:
+    def link(self) -> URL | None:
         return self._link
 
 

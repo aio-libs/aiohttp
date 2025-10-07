@@ -2,7 +2,7 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Generic, List, Optional, Set, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from yarl import URL
 
@@ -54,7 +54,7 @@ class BaseSite(ABC):
         self,
         runner: "BaseRunner[Any]",
         *,
-        ssl_context: Optional[SSLContext] = None,
+        ssl_context: SSLContext | None = None,
         backlog: int = 128,
     ) -> None:
         if runner.server is None:
@@ -62,7 +62,7 @@ class BaseSite(ABC):
         self._runner = runner
         self._ssl_context = ssl_context
         self._backlog = backlog
-        self._server: Optional[asyncio.Server] = None
+        self._server: asyncio.Server | None = None
 
     @property
     @abstractmethod
@@ -87,13 +87,13 @@ class TCPSite(BaseSite):
     def __init__(
         self,
         runner: "BaseRunner[Any]",
-        host: Optional[str] = None,
-        port: Optional[int] = None,
+        host: str | None = None,
+        port: int | None = None,
         *,
-        ssl_context: Optional[SSLContext] = None,
+        ssl_context: SSLContext | None = None,
         backlog: int = 128,
-        reuse_address: Optional[bool] = None,
-        reuse_port: Optional[bool] = None,
+        reuse_address: bool | None = None,
+        reuse_port: bool | None = None,
     ) -> None:
         super().__init__(
             runner,
@@ -137,7 +137,7 @@ class UnixSite(BaseSite):
         runner: "BaseRunner[Any]",
         path: PathLike,
         *,
-        ssl_context: Optional[SSLContext] = None,
+        ssl_context: SSLContext | None = None,
         backlog: int = 128,
     ) -> None:
         super().__init__(
@@ -202,7 +202,7 @@ class SockSite(BaseSite):
         runner: "BaseRunner[Any]",
         sock: socket.socket,
         *,
-        ssl_context: Optional[SSLContext] = None,
+        ssl_context: SSLContext | None = None,
         backlog: int = 128,
     ) -> None:
         super().__init__(
@@ -245,17 +245,17 @@ class BaseRunner(ABC, Generic[_Request]):
     ) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._server: Optional[Server[_Request]] = None
-        self._sites: List[BaseSite] = []
+        self._server: Server[_Request] | None = None
+        self._sites: list[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
 
     @property
-    def server(self) -> Optional[Server[_Request]]:
+    def server(self) -> Server[_Request] | None:
         return self._server
 
     @property
-    def addresses(self) -> List[Any]:
-        ret: List[Any] = []
+    def addresses(self) -> list[Any]:
+        ret: list[Any] = []
         for site in self._sites:
             server = site._server
             if server is not None:
@@ -266,7 +266,7 @@ class BaseRunner(ABC, Generic[_Request]):
         return ret
 
     @property
-    def sites(self) -> Set[BaseSite]:
+    def sites(self) -> set[BaseSite]:
         return set(self._sites)
 
     async def setup(self) -> None:
@@ -371,13 +371,13 @@ class AppRunner(BaseRunner[Request]):
         app: Application,
         *,
         handle_signals: bool = False,
-        access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+        access_log_class: type[AbstractAccessLogger] = AccessLogger,
         **kwargs: Any,
     ) -> None:
         if not isinstance(app, Application):
             raise TypeError(
                 "The first argument should be web.Application "
-                "instance, got {!r}".format(app)
+                f"instance, got {app!r}"
             )
         kwargs["access_log_class"] = access_log_class
 
@@ -421,7 +421,7 @@ class AppRunner(BaseRunner[Request]):
         protocol: RequestHandler[Request],
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
-        _cls: Type[Request] = Request,
+        _cls: type[Request] = Request,
     ) -> Request:
         loop = asyncio.get_running_loop()
         return _cls(

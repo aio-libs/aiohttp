@@ -6,7 +6,7 @@ import sys
 import weakref
 from math import ceil, modf
 from pathlib import Path
-from typing import Dict, Iterator, Optional, Union
+from collections.abc import Iterator
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -528,7 +528,7 @@ async def test_ceil_timeout_small_with_overriden_threshold(
     ],
 )
 def test_content_disposition(
-    params: Dict[str, str], quote_fields: bool, _charset: str, expected: str
+    params: dict[str, str], quote_fields: bool, _charset: str, expected: str
 ) -> None:
     result = helpers.content_disposition_header(
         "attachment", quote_fields=quote_fields, _charset=_charset, params=params
@@ -601,9 +601,7 @@ def test_proxies_from_env_skipped(
     url = URL(url_input)
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
-    log_message = "{proto!s} proxies {url!s} are not supported, ignoring".format(
-        proto=expected_scheme.upper(), url=url
-    )
+    log_message = f"{expected_scheme.upper()!s} proxies {url!s} are not supported, ignoring"
     assert caplog.record_tuples == [("aiohttp.client", 30, log_message)]
 
 
@@ -716,7 +714,7 @@ def test_get_env_proxy_for_url_negative(url_input: str, expected_err_msg: str) -
         "url_scheme_match_http_proxy_list_multiple",
     ),
 )
-def test_get_env_proxy_for_url(proxy_env_vars: Dict[str, str], url_input: str) -> None:
+def test_get_env_proxy_for_url(proxy_env_vars: dict[str, str], url_input: str) -> None:
     url = URL(url_input)
     proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
     proxy_list = proxy_env_vars[url.scheme + "_proxy"]
@@ -760,7 +758,7 @@ async def test_set_exception_cancelled(loop: asyncio.AbstractEventLoop) -> None:
 
 # ----------- ChainMapProxy --------------------------
 
-AppKeyDict = Dict[Union[str, web.AppKey[object]], object]
+AppKeyDict = dict[str | web.AppKey[object], object]
 
 
 class TestChainMapProxy:
@@ -1040,7 +1038,7 @@ def test_populate_with_cookies() -> None:
         ),
     ],
 )
-def test_parse_http_date(value: str, expected: Optional[datetime.datetime]) -> None:
+def test_parse_http_date(value: str, expected: datetime.datetime | None) -> None:
     assert parse_http_date(value) == expected
 
 

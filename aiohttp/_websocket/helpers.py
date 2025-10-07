@@ -3,7 +3,8 @@
 import functools
 import re
 from struct import Struct
-from typing import TYPE_CHECKING, Final, List, Optional, Pattern, Tuple
+from typing import TYPE_CHECKING, Final
+from re import Pattern
 
 from ..helpers import NO_EXTENSIONS
 from .models import WSHandshakeError
@@ -23,7 +24,7 @@ WS_KEY: Final[bytes] = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 # Used by _websocket_mask_python
 @functools.lru_cache
-def _xor_table() -> List[bytes]:
+def _xor_table() -> list[bytes]:
     return [bytes(a ^ b for a in range(256)) for b in range(256)]
 
 
@@ -74,7 +75,7 @@ _WS_EXT_RE: Final[Pattern[str]] = re.compile(
 _WS_EXT_RE_SPLIT: Final[Pattern[str]] = re.compile(r"permessage-deflate([^,]+)?")
 
 
-def ws_ext_parse(extstr: Optional[str], isserver: bool = False) -> Tuple[int, bool]:
+def ws_ext_parse(extstr: str | None, isserver: bool = False) -> tuple[int, bool]:
     if not extstr:
         return 0, False
 

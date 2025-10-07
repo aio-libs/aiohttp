@@ -3,14 +3,10 @@ import os
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
-    Iterable,
-    Mapping,
     Protocol,
-    Tuple,
     Union,
 )
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 from yarl import URL, Query as _Query
@@ -42,14 +38,14 @@ LooseHeaders = Union[
     Mapping[istr, str],
     _CIMultiDict,
     _CIMultiDictProxy,
-    Iterable[Tuple[Union[str, istr], str]],
+    Iterable[tuple[str | istr, str]],
 ]
-RawHeaders = Tuple[Tuple[bytes, bytes], ...]
+RawHeaders = tuple[tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
 
 LooseCookiesMappings = Mapping[str, Union[str, "BaseCookie[str]", "Morsel[Any]"]]
 LooseCookiesIterables = Iterable[
-    Tuple[str, Union[str, "BaseCookie[str]", "Morsel[Any]"]]
+    tuple[str, Union[str, "BaseCookie[str]", "Morsel[Any]"]]
 ]
 LooseCookies = Union[
     LooseCookiesMappings,
