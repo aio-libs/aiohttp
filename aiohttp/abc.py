@@ -1,7 +1,4 @@
-import sys
-
-if sys.version_info < (3, 14):
-    from __future__ import annotations
+from __future__ import annotations  # TODO(PY314): Remove
 
 import logging
 import socket
