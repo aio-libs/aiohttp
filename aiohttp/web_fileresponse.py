@@ -404,7 +404,9 @@ class FileResponse(StreamResponse):
         if status == HTTPPartialContent.status_code:
             real_start = start
             assert real_start is not None
-            self._headers[hdrs.CONTENT_RANGE] = f"bytes {real_start}-{real_start + count - 1}/{file_size}"
+            self._headers[hdrs.CONTENT_RANGE] = (
+                f"bytes {real_start}-{real_start + count - 1}/{file_size}"
+            )
 
         # If we are sending 0 bytes calling sendfile() will throw a ValueError
         if count == 0 or must_be_empty_body(request.method, status):

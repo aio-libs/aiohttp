@@ -558,7 +558,9 @@ def test_proxies_from_env_skipped(caplog, url_input, expected_scheme) -> None:
     url = URL(url_input)
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
-    log_message = f"{expected_scheme.upper()!s} proxies {url!s} are not supported, ignoring"
+    log_message = (
+        f"{expected_scheme.upper()!s} proxies {url!s} are not supported, ignoring"
+    )
     assert caplog.record_tuples == [("aiohttp.client", 30, log_message)]
 
 

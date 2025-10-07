@@ -63,7 +63,9 @@ __all__ = (
 )
 
 
-SERVER_SOFTWARE: str = f"Python/{sys.version_info[0]}.{sys.version_info[1]} aiohttp/{__version__}"
+SERVER_SOFTWARE: str = (
+    f"Python/{sys.version_info[0]}.{sys.version_info[1]} aiohttp/{__version__}"
+)
 
 RESPONSES: Mapping[int, tuple[str, str]] = {
     v: (v.phrase, v.description) for v in HTTPStatus.__members__.values()

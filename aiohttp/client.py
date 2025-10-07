@@ -415,8 +415,7 @@ class ClientSession:
 
     def __init_subclass__(cls: type["ClientSession"]) -> None:
         warnings.warn(
-            f"Inheritance class {cls.__name__} from ClientSession "
-            "is discouraged",
+            f"Inheritance class {cls.__name__} from ClientSession " "is discouraged",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -426,8 +425,7 @@ class ClientSession:
         def __setattr__(self, name: str, val: Any) -> None:
             if name not in self.ATTRS:
                 warnings.warn(
-                    f"Setting custom ClientSession.{name} attribute "
-                    "is discouraged",
+                    f"Setting custom ClientSession.{name} attribute " "is discouraged",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -484,7 +482,9 @@ class ClientSession:
         compress: str | bool | None = None,
         chunked: bool | None = None,
         expect100: bool = False,
-        raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]] = None,
+        raise_for_status: (
+            None | bool | Callable[[ClientResponse], Awaitable[None]]
+        ) = None,
         read_until_eof: bool = True,
         proxy: StrOrURL | None = None,
         proxy_auth: BasicAuth | None = None,

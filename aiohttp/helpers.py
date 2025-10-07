@@ -838,8 +838,7 @@ class ChainMapProxy(Mapping[str | AppKey[Any], Any]):
 
     def __init_subclass__(cls) -> None:
         raise TypeError(
-            f"Inheritance class {cls.__name__} from ChainMapProxy "
-            "is forbidden"
+            f"Inheritance class {cls.__name__} from ChainMapProxy " "is forbidden"
         )
 
     @overload  # type: ignore[override]

@@ -166,8 +166,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
 
     def __init_subclass__(cls: type["Application"]) -> None:
         warnings.warn(
-            f"Inheritance class {cls.__name__} from web.Application "
-            "is discouraged",
+            f"Inheritance class {cls.__name__} from web.Application " "is discouraged",
             DeprecationWarning,
             stacklevel=3,
         )

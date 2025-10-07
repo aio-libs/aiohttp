@@ -965,9 +965,9 @@ class TCPConnector(BaseConnector):
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
-        self._throttle_dns_futures: dict[
-            tuple[str, int], set[asyncio.Future[None]]
-        ] = {}
+        self._throttle_dns_futures: dict[tuple[str, int], set[asyncio.Future[None]]] = (
+            {}
+        )
         self._family = family
         self._local_addr_infos = aiohappyeyeballs.addr_to_addr_infos(local_addr)
         self._happy_eyeballs_delay = happy_eyeballs_delay
@@ -1036,9 +1036,7 @@ class TCPConnector(BaseConnector):
         """True if local DNS caching is enabled."""
         return self._use_dns_cache
 
-    def clear_dns_cache(
-        self, host: str | None = None, port: int | None = None
-    ) -> None:
+    def clear_dns_cache(self, host: str | None = None, port: int | None = None) -> None:
         """Remove specified host/port or clear all dns local cache."""
         if host is not None and port is not None:
             self._cached_hosts.remove((host, port))

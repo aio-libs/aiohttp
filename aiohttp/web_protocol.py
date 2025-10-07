@@ -690,8 +690,7 @@ class RequestHandler(BaseProtocol):
                 self.log_exception("Missing return statement on request handler")
             else:
                 self.log_exception(
-                    "Web-handler should return a response instance, "
-                    f"got {resp!r}"
+                    "Web-handler should return a response instance, " f"got {resp!r}"
                 )
             exc = HTTPInternalServerError()
             resp = Response(

@@ -195,9 +195,7 @@ class DigestAuthMiddleware:
         # Set of URLs defining the protection space
         self._protection_space: list[str] = []
 
-    async def _encode(
-        self, method: str, url: URL, body: Payload | Literal[b""]
-    ) -> str:
+    async def _encode(self, method: str, url: URL, body: Payload | Literal[b""]) -> str:
         """
         Build digest authorization header for the current challenge.
 

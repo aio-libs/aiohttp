@@ -145,7 +145,9 @@ class Payload(ABC):
     def __init__(
         self,
         value: Any,
-        headers: _CIMultiDict | dict[str, str] | Iterable[tuple[str, str]] | None = None,
+        headers: (
+            _CIMultiDict | dict[str, str] | Iterable[tuple[str, str]] | None
+        ) = None,
         content_type: str | None | _SENTINEL = sentinel,
         filename: str | None = None,
         encoding: str | None = None,
