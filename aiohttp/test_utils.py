@@ -1,4 +1,5 @@
 from __future__ import annotations  # TODO(PY314): Remove
+
 """Utilities shared by tests."""
 
 import asyncio
@@ -254,7 +255,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
 
     @overload
     def __init__(
-        self: "TestClient[Request, Application]",
+        self: TestClient[Request, Application],
         server: TestServer,
         *,
         cookie_jar: AbstractCookieJar | None = None,
@@ -262,7 +263,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
     ) -> None: ...
     @overload
     def __init__(
-        self: "TestClient[_Request, None]",
+        self: TestClient[_Request, None],
         server: BaseTestServer[_Request],
         *,
         cookie_jar: AbstractCookieJar | None = None,
