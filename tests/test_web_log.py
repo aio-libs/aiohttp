@@ -3,7 +3,7 @@ import logging
 import platform
 import sys
 from contextvars import ContextVar
-from typing import Dict, NoReturn, Optional
+from typing import NoReturn
 from unittest import mock
 
 import pytest
@@ -89,11 +89,11 @@ def test_access_logger_atoms(
     monkeypatch: pytest.MonkeyPatch,
     log_format: str,
     expected: str,
-    extra: Dict[str, object],
+    extra: dict[str, object],
 ) -> None:
     class PatchedDatetime(datetime.datetime):
         @classmethod
-        def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
             return cls(1843, 1, 1, 0, 30, tzinfo=tz)
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)

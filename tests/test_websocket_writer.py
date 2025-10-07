@@ -1,6 +1,6 @@
 import asyncio
 import random
-from typing import Callable
+from collections.abc import Callable
 from unittest import mock
 
 import pytest
@@ -8,6 +8,7 @@ import pytest
 from aiohttp import WSMsgType
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.compression_utils import ZLibBackend
 from aiohttp.http import WebSocketReader, WebSocketWriter
 
 
@@ -86,24 +87,48 @@ async def test_send_text_masked(
     writer.transport.write.assert_called_with(b"\x81\x84\rg\xb3fy\x02\xcb\x12")  # type: ignore[attr-defined]
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_send_compress_text(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
+    compress_obj = ZLibBackend.compressobj(level=ZLibBackend.Z_BEST_SPEED, wbits=-15)
     writer = WebSocketWriter(protocol, transport, compress=15)
+
+    msg = (
+        compress_obj.compress(b"text") + compress_obj.flush(ZLibBackend.Z_SYNC_FLUSH)
+    ).removesuffix(b"\x00\x00\xff\xff")
     await writer.send_frame(b"text", WSMsgType.TEXT)
-    writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\xc1" + len(msg).to_bytes(1, "big") + msg
+    )
+
+    msg = (
+        compress_obj.compress(b"text") + compress_obj.flush(ZLibBackend.Z_SYNC_FLUSH)
+    ).removesuffix(b"\x00\x00\xff\xff")
     await writer.send_frame(b"text", WSMsgType.TEXT)
-    writer.transport.write.assert_called_with(b"\xc1\x05*\x01b\x00\x00")  # type: ignore[attr-defined]
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\xc1" + len(msg).to_bytes(1, "big") + msg
+    )
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_send_compress_text_notakeover(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
+    compress_obj = ZLibBackend.compressobj(level=ZLibBackend.Z_BEST_SPEED, wbits=-15)
     writer = WebSocketWriter(protocol, transport, compress=15, notakeover=True)
+
+    msg = (
+        compress_obj.compress(b"text") + compress_obj.flush(ZLibBackend.Z_FULL_FLUSH)
+    ).removesuffix(b"\x00\x00\xff\xff")
     await writer.send_frame(b"text", WSMsgType.TEXT)
-    writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\xc1" + len(msg).to_bytes(1, "big") + msg
+    )
     await writer.send_frame(b"text", WSMsgType.TEXT)
-    writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\xc1" + len(msg).to_bytes(1, "big") + msg
+    )
 
 
 async def test_send_compress_text_per_message(

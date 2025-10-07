@@ -1,6 +1,6 @@
 import sys
 from types import SimpleNamespace
-from typing import Any, Tuple
+from typing import Any
 from unittest import mock
 from unittest.mock import Mock
 
@@ -119,7 +119,7 @@ class TestTrace:
         ],
     )
     async def test_send(  # type: ignore[misc]
-        self, signal: str, params: Tuple[Mock, ...], param_obj: Any
+        self, signal: str, params: tuple[Mock, ...], param_obj: Any
     ) -> None:
         session = Mock()
         trace_request_ctx = Mock()

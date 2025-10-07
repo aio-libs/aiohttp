@@ -3,22 +3,13 @@ import io
 import os
 import pathlib
 import sys
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from enum import Enum, auto
 from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
-from typing import (
-    IO,
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Final,
-    Optional,
-    Set,
-    Tuple,
-)
+from typing import IO, TYPE_CHECKING, Any, Final, Optional
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -82,7 +73,7 @@ for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
     CONTENT_TYPES.add_type(content_type, extension)
 
 
-_CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
+_CLOSE_FUTURES: set[asyncio.Future[None]] = set()
 
 
 class FileResponse(StreamResponse):
@@ -93,8 +84,8 @@ class FileResponse(StreamResponse):
         path: PathLike,
         chunk_size: int = 256 * 1024,
         status: int = 200,
-        reason: Optional[str] = None,
-        headers: Optional[LooseHeaders] = None,
+        reason: str | None = None,
+        headers: LooseHeaders | None = None,
     ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
 
@@ -148,7 +139,7 @@ class FileResponse(StreamResponse):
         return writer
 
     @staticmethod
-    def _etag_match(etag_value: str, etags: Tuple[ETag, ...], *, weak: bool) -> bool:
+    def _etag_match(etag_value: str, etags: tuple[ETag, ...], *, weak: bool) -> bool:
         if len(etags) == 1 and etags[0].value == ETAG_ANY:
             return True
         return any(
@@ -157,7 +148,7 @@ class FileResponse(StreamResponse):
 
     async def _not_modified(
         self, request: "BaseRequest", etag_value: str, last_modified: float
-    ) -> Optional[AbstractStreamWriter]:
+    ) -> AbstractStreamWriter | None:
         self.set_status(HTTPNotModified.status_code)
         self._length_check = False
         self.etag = etag_value
@@ -168,15 +159,15 @@ class FileResponse(StreamResponse):
 
     async def _precondition_failed(
         self, request: "BaseRequest"
-    ) -> Optional[AbstractStreamWriter]:
+    ) -> AbstractStreamWriter | None:
         self.set_status(HTTPPreconditionFailed.status_code)
         self.content_length = 0
         return await super().prepare(request)
 
     def _make_response(
         self, request: "BaseRequest", accept_encoding: str
-    ) -> Tuple[
-        _FileResponseResult, Optional[io.BufferedReader], os.stat_result, Optional[str]
+    ) -> tuple[
+        _FileResponseResult, io.BufferedReader | None, os.stat_result, str | None
     ]:
         """Return the response result, io object, stat result, and encoding.
 
@@ -231,7 +222,7 @@ class FileResponse(StreamResponse):
 
     def _get_file_path_stat_encoding(
         self, accept_encoding: str
-    ) -> Tuple[Optional[pathlib.Path], os.stat_result, Optional[str]]:
+    ) -> tuple[pathlib.Path | None, os.stat_result, str | None]:
         file_path = self._path
         for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
             if file_encoding not in accept_encoding:
@@ -248,7 +239,7 @@ class FileResponse(StreamResponse):
         st = file_path.stat()
         return file_path if S_ISREG(st.st_mode) else None, st, None
 
-    async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
+    async def prepare(self, request: "BaseRequest") -> AbstractStreamWriter | None:
         loop = asyncio.get_running_loop()
         # Encoding comparisons should be case-insensitive
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
@@ -298,13 +289,13 @@ class FileResponse(StreamResponse):
         request: "BaseRequest",
         fobj: io.BufferedReader,
         st: os.stat_result,
-        file_encoding: Optional[str],
-    ) -> Optional[AbstractStreamWriter]:
+        file_encoding: str | None,
+    ) -> AbstractStreamWriter | None:
         status = self._status
         file_size: int = st.st_size
         file_mtime: float = st.st_mtime
         count: int = file_size
-        start: Optional[int] = None
+        start: int | None = None
 
         if (ifrange := request.if_range) is None or file_mtime <= ifrange.timestamp():
             # If-Range header check:
@@ -317,7 +308,7 @@ class FileResponse(StreamResponse):
             try:
                 rng = request.http_range
                 start = rng.start
-                end: Optional[int] = rng.stop
+                end: int | None = rng.stop
             except ValueError:
                 # https://tools.ietf.org/html/rfc7233:
                 # A server generating a 416 (Range Not Satisfiable) response to
@@ -400,8 +391,8 @@ class FileResponse(StreamResponse):
         if status == HTTPPartialContent.status_code:
             real_start = start
             assert real_start is not None
-            self._headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
-                real_start, real_start + count - 1, file_size
+            self._headers[hdrs.CONTENT_RANGE] = (
+                f"bytes {real_start}-{real_start + count - 1}/{file_size}"
             )
 
         # If we are sending 0 bytes calling sendfile() will throw a ValueError

@@ -3,8 +3,9 @@
 import asyncio
 import re
 import sys
+from collections.abc import Iterable
 from contextlib import suppress
-from typing import Any, Dict, Iterable, List, Type
+from typing import Any
 from unittest import mock
 from urllib.parse import quote
 
@@ -59,7 +60,7 @@ def protocol() -> Any:
     return mock.create_autospec(BaseProtocol, spec_set=True, instance=True)
 
 
-def _gen_ids(parsers: Iterable[Type[HttpParser[Any]]]) -> List[str]:
+def _gen_ids(parsers: Iterable[type[HttpParser[Any]]]) -> list[str]:
     return [
         "py-parser" if parser.__module__ == "aiohttp.http_parser" else "c-parser"
         for parser in parsers
@@ -83,7 +84,7 @@ def parser(
 
 
 @pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
-def request_cls(request: pytest.FixtureRequest) -> Type[HttpRequestParser]:
+def request_cls(request: pytest.FixtureRequest) -> type[HttpRequestParser]:
     # Request Parser class
     return request.param  # type: ignore[no-any-return]
 
@@ -106,7 +107,7 @@ def response(
 
 
 @pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
-def response_cls(request: pytest.FixtureRequest) -> Type[HttpResponseParser]:
+def response_cls(request: pytest.FixtureRequest) -> type[HttpResponseParser]:
     # Parser implementations
     return request.param  # type: ignore[no-any-return]
 
@@ -644,7 +645,7 @@ def test_headers_content_length_err_2(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
-_pad: Dict[bytes, str] = {
+_pad: dict[bytes, str] = {
     b"": "empty",
     # not a typo. Python likes triple zero
     b"\000": "NUL",
@@ -804,7 +805,7 @@ def test_http_request_bad_status_line(parser: HttpRequestParser) -> None:
     assert r"\n" not in exc_info.value.message
 
 
-_num: Dict[bytes, str] = {
+_num: dict[bytes, str] = {
     # dangerous: accepted by Python int()
     # unicodedata.category("\U0001D7D9") == 'Nd'
     "\N{MATHEMATICAL DOUBLE-STRUCK DIGIT ONE}".encode(): "utf8digit",
@@ -1356,7 +1357,7 @@ def test_parse_no_length_or_te_on_post(
 def test_parse_payload_response_without_body(
     loop: asyncio.AbstractEventLoop,
     protocol: BaseProtocol,
-    response_cls: Type[HttpResponseParser],
+    response_cls: type[HttpResponseParser],
 ) -> None:
     parser = response_cls(protocol, loop, 2**16, response_with_body=False)
     text = b"HTTP/1.1 200 Ok\r\ncontent-length: 10\r\n\r\n"
@@ -1574,7 +1575,7 @@ def test_partial_url(parser: HttpRequestParser) -> None:
     ],
 )
 def test_parse_uri_percent_encoded(
-    parser: HttpRequestParser, uri: str, path: str, query: Dict[str, str], fragment: str
+    parser: HttpRequestParser, uri: str, path: str, query: dict[str, str], fragment: str
 ) -> None:
     text = (f"GET {uri} HTTP/1.1\r\n\r\n").encode()
     messages, upgrade, tail = parser.feed_data(text)

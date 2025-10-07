@@ -3,7 +3,6 @@ import atexit
 import math
 import os
 import signal
-from typing import List, Tuple
 
 PORT = 8888
 
@@ -52,7 +51,7 @@ def fm_time(s, _fms=("", "m", "µ", "n")):
     return f"{s:.2f}{_fms[i]}s"
 
 
-def _job(j: List[int]) -> Tuple[str, List[bytes]]:
+def _job(j: list[int]) -> tuple[str, list[bytes]]:
     # Always start with a 256B headers chunk
     body = [b"0" * s for s in [256] + list(j)]
     job_title = f"{fm_size(sum(j))} / {len(j)}"
