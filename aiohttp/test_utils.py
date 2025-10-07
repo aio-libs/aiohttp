@@ -253,7 +253,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
 
     @overload
     def __init__(
-        self: TestClient[Request, Application],
+        self: "TestClient[Request, Application]",
         server: TestServer,
         *,
         cookie_jar: AbstractCookieJar | None = None,
