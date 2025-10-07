@@ -4546,7 +4546,7 @@ Bugfixes
   `#5853 <https://github.com/aio-libs/aiohttp/issues/5853>`_
 - Added ``params`` keyword argument to ``ClientSession.ws_connect``. --  :user:`hoh`.
   `#5868 <https://github.com/aio-libs/aiohttp/issues/5868>`_
-- Uses :py:class:`~asyncio.ThreadedChildWatcher` under POSIX to allow setting up test loop in non-main thread.
+- Uses ``asyncio.ThreadedChildWatcher`` under POSIX to allow setting up test loop in non-main thread.
   `#5877 <https://github.com/aio-libs/aiohttp/issues/5877>`_
 - Fix the error in handling the return value of `getaddrinfo`.
   `getaddrinfo` will return an `(int, bytes)` tuple, if CPython could not handle the address family.
