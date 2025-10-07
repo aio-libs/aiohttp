@@ -14,7 +14,7 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
-attrs==25.3.0
+attrs==25.4.0
     # via -r requirements/runtime-deps.in
 blockbuster==1.5.25
     # via -r requirements/test-common.in
