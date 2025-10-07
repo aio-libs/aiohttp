@@ -1,5 +1,3 @@
-from __future__ import annotations  # TODO(PY314): Remove
-
 """Utilities shared by tests."""
 
 import asyncio
@@ -50,7 +48,7 @@ from .web_protocol import _RequestHandler
 if TYPE_CHECKING:
     from ssl import SSLContext
 else:
-    SSLContext = None
+    SSLContext = Any
 
 if sys.version_info >= (3, 11) and TYPE_CHECKING:
     from typing import Unpack
