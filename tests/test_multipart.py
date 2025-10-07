@@ -717,7 +717,6 @@ class TestMultipartReader:
             with pytest.raises(ValueError):
                 await reader.next()
 
-    @pytest.mark.skipif(sys.version_info < (3, 10), reason="Needs anext()")
     async def test_read_boundary_across_chunks(self) -> None:
         class SplitBoundaryStream(StreamReader):
             def __init__(self) -> None:

@@ -57,16 +57,12 @@ else:
 
 if TYPE_CHECKING:
     from dataclasses import dataclass as frozen_dataclass_decorator
-elif sys.version_info < (3, 10):
-    frozen_dataclass_decorator = functools.partial(dataclasses.dataclass, frozen=True)
 else:
     frozen_dataclass_decorator = functools.partial(
         dataclasses.dataclass, frozen=True, slots=True
     )
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
-
-PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
 

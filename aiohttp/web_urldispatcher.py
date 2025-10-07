@@ -64,11 +64,7 @@ if TYPE_CHECKING:
 else:
     BaseDict = dict
 
-CIRCULAR_SYMLINK_ERROR = (
-    (OSError,)
-    if sys.version_info < (3, 10) and sys.platform.startswith("win32")
-    else (RuntimeError,) if sys.version_info < (3, 13) else ()
-)
+CIRCULAR_SYMLINK_ERROR = (RuntimeError,) if sys.version_info < (3, 13) else ()
 
 HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
     r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$"
