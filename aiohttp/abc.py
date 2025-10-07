@@ -1,3 +1,7 @@
+import sys
+if sys.version_info < (3, 14):
+    from __future__ import annotations
+
 import logging
 import socket
 from abc import ABC, abstractmethod
