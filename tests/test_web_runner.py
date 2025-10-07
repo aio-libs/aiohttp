@@ -1,7 +1,8 @@
 import asyncio
 import platform
 import signal
-from typing import Any, Iterator, NoReturn, Protocol, Union
+from collections.abc import Iterator
+from typing import Any, NoReturn, Protocol
 from unittest import mock
 
 import pytest
@@ -158,7 +159,7 @@ async def test_app_handler_args_failure() -> None:
     ),
 )
 async def test_app_handler_args_ceil_threshold(
-    value: Union[int, str, None], expected: int
+    value: int | str | None, expected: int
 ) -> None:
     app = web.Application(handler_args={"timeout_ceil_threshold": value})
     runner = web.AppRunner(app)

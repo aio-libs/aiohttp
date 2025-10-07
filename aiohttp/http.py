@@ -55,6 +55,6 @@ __all__ = (
 )
 
 
-SERVER_SOFTWARE: str = "Python/{0[0]}.{0[1]} aiohttp/{1}".format(
-    sys.version_info, __version__
+SERVER_SOFTWARE: str = (
+    f"Python/{sys.version_info[0]}.{sys.version_info[1]} aiohttp/{__version__}"
 )

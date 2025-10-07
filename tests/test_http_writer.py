@@ -2,7 +2,8 @@
 import array
 import asyncio
 import zlib
-from typing import Any, Generator, Iterable, Union
+from collections.abc import Generator, Iterable
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -66,7 +67,7 @@ def decompress(data: bytes) -> bytes:
     return d.decompress(data)
 
 
-def decode_chunked(chunked: Union[bytes, bytearray]) -> bytes:
+def decode_chunked(chunked: bytes | bytearray) -> bytes:
     i = 0
     out = b""
     while i < len(chunked):

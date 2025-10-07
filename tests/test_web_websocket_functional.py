@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import sys
 import weakref
-from typing import NoReturn, Optional
+from typing import NoReturn
 from unittest import mock
 
 import pytest
@@ -381,7 +381,7 @@ async def test_concurrent_close_multiple_tasks(
 async def test_close_op_code_from_client(
     loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
 ) -> None:
-    srv_ws: Optional[web.WebSocketResponse] = None
+    srv_ws: web.WebSocketResponse | None = None
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         nonlocal srv_ws
@@ -1271,7 +1271,7 @@ async def test_abnormal_closure_when_client_does_not_close(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Test abnormal closure when the server closes and the client doesn't respond."""
-    close_code: Optional[WSCloseCode] = None
+    close_code: WSCloseCode | None = None
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         # Setting a short close timeout
@@ -1298,7 +1298,7 @@ async def test_normal_closure_while_client_sends_msg(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Test normal closure when the server closes and the client responds properly."""
-    close_code: Optional[WSCloseCode] = None
+    close_code: WSCloseCode | None = None
     got_close_code = asyncio.Event()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:

@@ -3,7 +3,7 @@
 import asyncio
 import builtins
 from collections import deque
-from typing import Deque, Final, Optional, Set, Tuple, Type, Union
+from typing import Final
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
@@ -23,7 +23,7 @@ from .models import (
     WSMsgType,
 )
 
-ALLOWED_CLOSE_CODES: Final[Set[int]] = {int(i) for i in WSCloseCode}
+ALLOWED_CLOSE_CODES: Final[set[int]] = {int(i) for i in WSCloseCode}
 
 # States for the reader, used to parse the WebSocket frame
 # integer values are used so they can be cythonized
@@ -70,21 +70,21 @@ class WebSocketDataQueue:
         self._limit = limit * 2
         self._loop = loop
         self._eof = False
-        self._waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Union[Type[BaseException], BaseException, None] = None
-        self._buffer: Deque[WSMessage] = deque()
+        self._waiter: asyncio.Future[None] | None = None
+        self._exception: type[BaseException] | BaseException | None = None
+        self._buffer: deque[WSMessage] = deque()
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
 
     def is_eof(self) -> bool:
         return self._eof
 
-    def exception(self) -> Optional[Union[Type[BaseException], BaseException]]:
+    def exception(self) -> type[BaseException] | BaseException | None:
         return self._exception
 
     def set_exception(
         self,
-        exc: Union[Type[BaseException], BaseException],
+        exc: type[BaseException] | BaseException,
         exc_cause: builtins.BaseException = _EXC_SENTINEL,
     ) -> None:
         self._eof = True
@@ -144,7 +144,7 @@ class WebSocketReader:
         self.queue = queue
         self._max_msg_size = max_msg_size
 
-        self._exc: Optional[Exception] = None
+        self._exc: Exception | None = None
         self._partial = bytearray()
         self._state = READ_HEADER
 
@@ -156,11 +156,11 @@ class WebSocketReader:
 
         self._tail: bytes = b""
         self._has_mask = False
-        self._frame_mask: Optional[bytes] = None
+        self._frame_mask: bytes | None = None
         self._payload_bytes_to_read = 0
         self._payload_len_flag = 0
         self._compressed: int = COMPRESSED_NOT_SET
-        self._decompressobj: Optional[ZLibDecompressor] = None
+        self._decompressobj: ZLibDecompressor | None = None
         self._compress = compress
 
     def feed_eof(self) -> None:
@@ -169,9 +169,7 @@ class WebSocketReader:
     # data can be bytearray on Windows because proactor event loop uses bytearray
     # and asyncio types this to Union[bytes, bytearray, memoryview] so we need
     # coerce data to bytes if it is not
-    def feed_data(
-        self, data: Union[bytes, bytearray, memoryview]
-    ) -> Tuple[bool, bytes]:
+    def feed_data(self, data: bytes | bytearray | memoryview) -> tuple[bool, bytes]:
         if type(data) is not bytes:
             data = bytes(data)
 
@@ -190,9 +188,9 @@ class WebSocketReader:
     def _handle_frame(
         self,
         fin: bool,
-        opcode: Union[int, cython_int],  # Union intended: Cython pxd uses C int
-        payload: Union[bytes, bytearray],
-        compressed: Union[int, cython_int],  # Union intended: Cython pxd uses C int
+        opcode: int | cython_int,  # Union intended: Cython pxd uses C int
+        payload: bytes | bytearray,
+        compressed: int | cython_int,  # Union intended: Cython pxd uses C int
     ) -> None:
         msg: WSMessage
         if opcode in {OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION}:
@@ -228,7 +226,7 @@ class WebSocketReader:
                     f"to be zero, got {opcode!r}",
                 )
 
-            assembled_payload: Union[bytes, bytearray]
+            assembled_payload: bytes | bytearray
             if has_partial:
                 assembled_payload = self._partial + payload
                 self._partial.clear()
@@ -452,7 +450,7 @@ class WebSocketReader:
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     break
 
-                payload: Union[bytes, bytearray]
+                payload: bytes | bytearray
                 if had_fragments:
                     # We have to join the payload fragments get the payload
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])

@@ -7,7 +7,6 @@ import sys
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
-from typing import List, Set, Tuple, Union
 from unittest import mock
 
 import pytest
@@ -310,7 +309,7 @@ async def test_filter_cookies_str_deprecated() -> None:
 )
 async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
     url: str,
-    expected_cookies: Set[str],
+    expected_cookies: set[str],
 ) -> None:
     jar = CookieJar()
     cookie = SimpleCookie(
@@ -439,7 +438,7 @@ class TestCookieJarSafe:
 
     def request_reply_with_same_url(
         self, url: str
-    ) -> Tuple["BaseCookie[str]", SimpleCookie]:
+    ) -> tuple["BaseCookie[str]", SimpleCookie]:
         jar = CookieJar()
         jar.update_cookies(self.cookies_to_send)
         cookies_sent = jar.filter_cookies(URL(url))
@@ -459,8 +458,8 @@ class TestCookieJarSafe:
         self, url: str, update_time: float, send_time: float
     ) -> "BaseCookie[str]":
         jar = CookieJar()
-        freeze_update_time: Union[datetime.datetime, datetime.timedelta]
-        freeze_send_time: Union[datetime.datetime, datetime.timedelta]
+        freeze_update_time: datetime.datetime | datetime.timedelta
+        freeze_send_time: datetime.datetime | datetime.timedelta
         if isinstance(update_time, int):
             freeze_update_time = datetime.timedelta(seconds=update_time)
         else:
@@ -1073,7 +1072,7 @@ def test_pickle_format(cookies_to_send: SimpleCookie) -> None:
     ],
 )
 async def test_treat_as_secure_origin_init(
-    url: Union[str, URL, List[str], List[URL]],
+    url: str | URL | list[str] | list[URL],
 ) -> None:
     jar = CookieJar(unsafe=True, treat_as_secure_origin=url)
     assert jar._treat_as_secure_origin == frozenset({URL("http://127.0.0.1")})
@@ -1204,12 +1203,12 @@ def test_update_cookies_from_headers_duplicate_names() -> None:
     assert len(jar) == 3
 
     # Verify we have both session-id cookies
-    all_cookies: List[Morsel[str]] = list(jar)
-    session_ids: List[Morsel[str]] = [c for c in all_cookies if c.key == "session-id"]
+    all_cookies: list[Morsel[str]] = list(jar)
+    session_ids: list[Morsel[str]] = [c for c in all_cookies if c.key == "session-id"]
     assert len(session_ids) == 2
 
     # Check their domains are different
-    domains: Set[str] = {c["domain"] for c in session_ids}
+    domains: set[str] = {c["domain"] for c in session_ids}
     assert domains == {"example.com", "www.example.com"}
 
 

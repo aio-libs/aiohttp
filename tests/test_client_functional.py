@@ -13,19 +13,9 @@ import sys
 import tarfile
 import time
 import zipfile
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
-from typing import (
-    Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Dict,
-    List,
-    NoReturn,
-    Optional,
-    Type,
-    Union,
-)
+from typing import Any, NoReturn
 from unittest import mock
 
 import pytest
@@ -1721,7 +1711,7 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
         self: ClientRequest,
         writer: StreamWriter,
         conn: Connection,
-        content_length: Optional[int] = None,
+        content_length: int | None = None,
     ) -> None:
         nonlocal write_mock, writelines_mock
         original_write = writer._write
@@ -2590,7 +2580,7 @@ async def test_cookies(aiohttp_client: AiohttpClient) -> None:
         assert request.cookies["test3"] == "456"
         return web.Response()
 
-    c: "http.cookies.Morsel[str]" = http.cookies.Morsel()
+    c: http.cookies.Morsel[str] = http.cookies.Morsel()
     c.set("test3", "456", "456")
 
     app = web.Application()
@@ -2610,17 +2600,17 @@ async def test_cookies_per_request(aiohttp_client: AiohttpClient) -> None:
         assert request.cookies["test6"] == "abc"
         return web.Response()
 
-    c: "http.cookies.Morsel[str]" = http.cookies.Morsel()
+    c: http.cookies.Morsel[str] = http.cookies.Morsel()
     c.set("test3", "456", "456")
 
     app = web.Application()
     app.router.add_get("/", handler)
     client = await aiohttp_client(app, cookies={"test1": "123", "test2": c})
 
-    rc: "http.cookies.Morsel[str]" = http.cookies.Morsel()
+    rc: http.cookies.Morsel[str] = http.cookies.Morsel()
     rc.set("test6", "abc", "abc")
 
-    cookies: Dict[str, Union[str, "http.cookies.Morsel[str]"]]
+    cookies: dict[str, str | http.cookies.Morsel[str]]
     cookies = {"test4": "789", "test5": rc}
     async with client.get("/", cookies=cookies) as resp:
         assert 200 == resp.status
@@ -2681,7 +2671,7 @@ async def test_morsel_with_attributes(aiohttp_client: AiohttpClient) -> None:
         assert request.cookies["test3"] == "456"
         return web.Response()
 
-    c: "http.cookies.Morsel[str]" = http.cookies.Morsel()
+    c: http.cookies.Morsel[str] = http.cookies.Morsel()
     c.set("test3", "456", "456")
     c["httponly"] = True
     c["secure"] = True
@@ -2946,7 +2936,7 @@ NON_HTTP_URL_WITH_ERROR_MESSAGE = (
     ),
 )
 async def test_invalid_and_non_http_url(
-    url: str, error_message_url: str, expected_exception_class: Type[Exception]
+    url: str, error_message_url: str, expected_exception_class: type[Exception]
 ) -> None:
     async with aiohttp.ClientSession() as http_session:
         with pytest.raises(
@@ -2973,7 +2963,7 @@ async def test_invalid_redirect_url(
     aiohttp_client: AiohttpClient,
     invalid_redirect_url: str,
     error_message_url: str,
-    expected_exception_class: Type[Exception],
+    expected_exception_class: type[Exception],
 ) -> None:
     headers = {hdrs.LOCATION: invalid_redirect_url}
 
@@ -3008,7 +2998,7 @@ async def test_invalid_redirect_url_multiple_redirects(
     aiohttp_client: AiohttpClient,
     invalid_redirect_url: str,
     error_message_url: str,
-    expected_exception_class: Type[Exception],
+    expected_exception_class: type[Exception],
 ) -> None:
     app = web.Application()
 
@@ -3225,7 +3215,7 @@ async def test_creds_in_auth_and_redirect_url(
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             server = etc_hosts[(host, port)]
             assert server.port is not None
 
@@ -3338,7 +3328,7 @@ async def test_drop_auth_on_redirect_to_other_host(
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             server = etc_hosts[(host, port)]
             assert server.port is not None
 
@@ -3409,7 +3399,7 @@ async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             server = etc_hosts[(host, port)]
             assert server.port is not None
 
@@ -3474,7 +3464,7 @@ async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             server = etc_hosts[(host, port)]
             assert server.port is not None
 
@@ -3588,7 +3578,7 @@ async def test_close_detached_session_on_non_existing_addr() -> None:
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             return []
 
         async def close(self) -> None:
@@ -3845,7 +3835,7 @@ async def test_server_close_keepalive_connection() -> None:
     class Proto(asyncio.Protocol):
         def connection_made(self, transport: asyncio.BaseTransport) -> None:
             assert isinstance(transport, asyncio.Transport)
-            self.transp: Optional[asyncio.Transport] = transport
+            self.transp: asyncio.Transport | None = transport
             self.data = b""
 
         def data_received(self, data: bytes) -> None:
@@ -3861,7 +3851,7 @@ async def test_server_close_keepalive_connection() -> None:
             )
             self.transp.close()
 
-        def connection_lost(self, exc: Optional[BaseException]) -> None:
+        def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
     server = await loop.create_server(Proto, "127.0.0.1", unused_port())
@@ -3886,7 +3876,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
     class Proto(asyncio.Protocol):
         def connection_made(self, transport: asyncio.BaseTransport) -> None:
             assert isinstance(transport, asyncio.Transport)
-            self.transp: Optional[asyncio.Transport] = transport
+            self.transp: asyncio.Transport | None = transport
             self.data = b""
 
         def data_received(self, data: bytes) -> None:
@@ -3896,7 +3886,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
             self.transp.write(b"HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 2\r\n\r\nok")
             self.transp.close()
 
-        def connection_lost(self, exc: Optional[BaseException]) -> None:
+        def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
     server = await loop.create_server(Proto, "127.0.0.1", unused_port())
@@ -4421,7 +4411,7 @@ async def test_request_with_wrong_ssl_type(aiohttp_client: AiohttpClient) -> Non
     [(42, TypeError), ("InvalidUrl", InvalidURL)],
 )
 async def test_request_with_wrong_proxy(
-    aiohttp_client: AiohttpClient, value: Union[int, str], exc_type: Type[Exception]
+    aiohttp_client: AiohttpClient, value: int | str, exc_type: type[Exception]
 ) -> None:
     app = web.Application()
     session = await aiohttp_client(app)
@@ -5227,7 +5217,7 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
 
         async def resolve(
             self, host: str, port: int = 0, family: int = 0
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             if host in ("amazon.it", "www.amazon.it"):
                 return [
                     {

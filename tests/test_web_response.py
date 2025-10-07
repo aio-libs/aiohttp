@@ -5,8 +5,8 @@ import io
 import json
 import re
 import weakref
+from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncIterator, Optional, Union
 from unittest import mock
 
 import aiosignal
@@ -29,8 +29,8 @@ def make_request(
     headers: LooseHeaders = CIMultiDict(),
     version: HttpVersion = HttpVersion11,
     *,
-    app: Optional[web.Application] = None,
-    writer: Optional[AbstractStreamWriter] = None,
+    app: web.Application | None = None,
+    writer: AbstractStreamWriter | None = None,
 ) -> web.Request:
     if app is None:
         app = mock.create_autospec(
@@ -305,7 +305,7 @@ def test_etag_any() -> None:
         ETag(value="bad ©®"),
     ),
 )
-def test_etag_invalid_value_set(invalid_value: Union[str, ETag]) -> None:
+def test_etag_invalid_value_set(invalid_value: str | ETag) -> None:
     resp = web.StreamResponse()
     with pytest.raises(ValueError, match="is not a valid etag"):
         resp.etag = invalid_value
@@ -325,7 +325,7 @@ def test_etag_invalid_value_get(header: str) -> None:
 
 
 @pytest.mark.parametrize("invalid", (123, ETag(value=123, is_weak=True)))  # type: ignore[arg-type]
-def test_etag_invalid_value_class(invalid: Union[int, ETag]) -> None:
+def test_etag_invalid_value_class(invalid: int | ETag) -> None:
     resp = web.StreamResponse()
     with pytest.raises(ValueError, match="Unsupported etag type"):
         resp.etag = invalid  # type: ignore[assignment]
@@ -1115,7 +1115,7 @@ class CustomIO(io.IOBase):
         ),
     ),
 )
-def test_payload_body_get_text(payload: object, expected: Optional[str]) -> None:
+def test_payload_body_get_text(payload: object, expected: str | None) -> None:
     resp = web.Response(body=payload)
     if expected is None:
         with pytest.raises(TypeError):

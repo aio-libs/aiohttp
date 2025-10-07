@@ -3,7 +3,7 @@
 import asyncio
 import random
 from functools import partial
-from typing import Any, Final, Optional, Union
+from typing import Any, Final
 
 from ..base_protocol import BaseProtocol
 from ..client_exceptions import ClientConnectionResetError
@@ -65,7 +65,7 @@ class WebSocketWriter:
         self._compressobj: Any = None  # actually compressobj
 
     async def send_frame(
-        self, message: bytes, opcode: int, compress: Optional[int] = None
+        self, message: bytes, opcode: int, compress: int | None = None
     ) -> None:
         """Send a frame over the websocket with message as its payload."""
         if self._closing and not (opcode & WSMsgType.CLOSE):
@@ -166,7 +166,7 @@ class WebSocketWriter:
             max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
         )
 
-    async def close(self, code: int = 1000, message: Union[bytes, str] = b"") -> None:
+    async def close(self, code: int = 1000, message: bytes | str = b"") -> None:
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode("utf-8")

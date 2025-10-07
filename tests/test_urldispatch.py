@@ -1,9 +1,17 @@
 import asyncio
 import pathlib
 import re
-from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
+from collections.abc import (
+    Awaitable,
+    Callable,
+    Container,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Sized,
+)
 from functools import partial
-from typing import Awaitable, Callable, Dict, List, NoReturn, Optional, Type
+from typing import NoReturn
 from urllib.parse import quote, unquote
 
 import pytest
@@ -46,8 +54,8 @@ def router(app: web.Application) -> web.UrlDispatcher:
 
 
 @pytest.fixture
-def fill_routes(router: web.UrlDispatcher) -> Callable[[], List[web.AbstractRoute]]:
-    def go() -> List[web.AbstractRoute]:
+def fill_routes(router: web.UrlDispatcher) -> Callable[[], list[web.AbstractRoute]]:
+    def go() -> list[web.AbstractRoute]:
         route1 = router.add_route("GET", "/plain", make_handler())
         route2 = router.add_route("GET", "/variable/{name}", make_handler())
         resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
@@ -614,7 +622,7 @@ def test_static_remove_trailing_slash(router: web.UrlDispatcher) -> None:
     ),
 )
 async def test_add_route_with_re(
-    router: web.UrlDispatcher, pattern: str, url: str, expected: Dict[str, str]
+    router: web.UrlDispatcher, pattern: str, url: str, expected: dict[str, str]
 ) -> None:
     handler = make_handler()
     router.add_route("GET", f"/handler/{pattern}", handler)
@@ -853,21 +861,21 @@ def test_add_route_invalid_method(router: web.UrlDispatcher) -> None:
 
 
 def test_routes_view_len(
-    router: web.UrlDispatcher, fill_routes: Callable[[], List[web.AbstractRoute]]
+    router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]
 ) -> None:
     fill_routes()
     assert 4 == len(router.routes())
 
 
 def test_routes_view_iter(
-    router: web.UrlDispatcher, fill_routes: Callable[[], List[web.AbstractRoute]]
+    router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]
 ) -> None:
     routes = fill_routes()
     assert list(routes) == list(router.routes())
 
 
 def test_routes_view_contains(
-    router: web.UrlDispatcher, fill_routes: Callable[[], List[web.AbstractRoute]]
+    router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]
 ) -> None:
     routes = fill_routes()
     for route in routes:
@@ -1119,7 +1127,7 @@ def test_subapp_get_info(app: web.Application) -> None:
         ("example$com", ValueError),
     ],
 )
-def test_domain_validation_error(domain: Optional[str], error: Type[Exception]) -> None:
+def test_domain_validation_error(domain: str | None, error: type[Exception]) -> None:
     with pytest.raises(error):
         Domain(domain)  # type: ignore[arg-type]
 

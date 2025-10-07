@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Optional, Protocol
+from typing import Protocol
 from unittest import mock
 
 import aiosignal
@@ -21,7 +21,7 @@ class _RequestMaker(Protocol):
         self,
         method: str,
         path: str,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         protocols: bool = False,
     ) -> web.Request: ...
 
@@ -48,7 +48,7 @@ def make_request(
     def maker(
         method: str,
         path: str,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         protocols: bool = False,
     ) -> web.Request:
         if headers is None:
@@ -658,7 +658,7 @@ async def test_no_transfer_encoding_header(
 async def test_get_extra_info(
     make_request: _RequestMaker,
     mocker: MockerFixture,
-    ws_transport: Optional[mock.MagicMock],
+    ws_transport: mock.MagicMock | None,
     expected_result: str,
 ) -> None:
     valid_key = "test"
