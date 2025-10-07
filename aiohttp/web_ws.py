@@ -4,8 +4,8 @@ import binascii
 import hashlib
 import json
 import sys
-from typing import Any, Final, Union
 from collections.abc import Iterable
+from typing import Any, Final, Union
 
 from multidict import CIMultiDict
 

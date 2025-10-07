@@ -4,12 +4,9 @@ import io
 import pathlib
 import sys
 import warnings
-from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import (
-    Any,
-    Protocol,
-)
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
+from http.cookies import BaseCookie, Morsel, SimpleCookie
+from typing import Any, Protocol
 from unittest import mock
 
 import pytest

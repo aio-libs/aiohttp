@@ -6,20 +6,13 @@ import sys
 import traceback
 import warnings
 from collections import OrderedDict, defaultdict, deque
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from contextlib import suppress
 from http import HTTPStatus
 from itertools import chain, cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Literal,
-    Optional,
-    Union,
-    cast,
-)
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType
@@ -998,9 +991,7 @@ class TCPConnector(BaseConnector):
         """True if local DNS caching is enabled."""
         return self._use_dns_cache
 
-    def clear_dns_cache(
-        self, host: str | None = None, port: int | None = None
-    ) -> None:
+    def clear_dns_cache(self, host: str | None = None, port: int | None = None) -> None:
         """Remove specified host/port or clear all dns local cache."""
         if host is not None and port is not None:
             self._cached_hosts.remove((host, port))

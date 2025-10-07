@@ -6,14 +6,9 @@ import json
 import sys
 import warnings
 from collections import deque
-from http.cookies import BaseCookie, SimpleCookie
-from typing import (
-    Any,
-    NoReturn,
-    TypedDict,
-    cast,
-)
 from collections.abc import Awaitable, Callable, Iterator
+from http.cookies import BaseCookie, SimpleCookie
+from typing import Any, NoReturn, TypedDict, cast
 from unittest import mock
 from uuid import uuid4
 

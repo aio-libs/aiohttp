@@ -1,15 +1,9 @@
 import logging
 import socket
 from abc import ABC, abstractmethod
-from collections.abc import Sized
+from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence, Sized
 from http.cookies import BaseCookie, Morsel
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    TypedDict,
-    Union,
-)
-from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, TypedDict, Union
 
 from multidict import CIMultiDict
 from yarl import URL

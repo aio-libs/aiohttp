@@ -18,6 +18,7 @@ import time
 import warnings
 import weakref
 from collections import namedtuple
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import suppress
 from email.parser import HeaderParser
 from email.utils import parsedate
@@ -38,7 +39,6 @@ from typing import (
     get_args,
     overload,
 )
-from collections.abc import Callable, Iterable, Iterator, Mapping
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
@@ -869,8 +869,7 @@ class ChainMapProxy(Mapping[str | AppKey[Any], Any]):
 
     def __init_subclass__(cls) -> None:
         raise TypeError(
-            f"Inheritance class {cls.__name__} from ChainMapProxy "
-            "is forbidden"
+            f"Inheritance class {cls.__name__} from ChainMapProxy " "is forbidden"
         )
 
     @overload  # type: ignore[override]

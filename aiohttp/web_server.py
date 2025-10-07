@@ -2,13 +2,8 @@
 
 import asyncio
 import warnings
-from typing import (
-    Any,
-    Generic,
-    TypeVar,
-    overload,
-)
 from collections.abc import Awaitable, Callable
+from typing import Any, Generic, TypeVar, overload
 
 from .abc import AbstractStreamWriter
 from .http_parser import RawRequestMessage

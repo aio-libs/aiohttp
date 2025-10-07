@@ -9,18 +9,19 @@ import os
 import sys
 import traceback
 import warnings
+from collections.abc import (
+    Awaitable,
+    Callable,
+    Collection,
+    Coroutine,
+    Generator,
+    Iterable,
+    Mapping,
+    Sequence,
+)
 from contextlib import suppress
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Final,
-    Generic,
-    TypedDict,
-    TypeVar,
-    final,
-)
-from collections.abc import Awaitable, Callable, Collection, Coroutine, Generator, Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Final, Generic, TypedDict, TypeVar, final
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
@@ -377,8 +378,7 @@ class ClientSession:
 
     def __init_subclass__(cls: type["ClientSession"]) -> None:
         raise TypeError(
-            f"Inheritance class {cls.__name__} from ClientSession "
-            "is forbidden"
+            f"Inheritance class {cls.__name__} from ClientSession " "is forbidden"
         )
 
     def __del__(self, _warnings: Any = warnings) -> None:
@@ -433,7 +433,9 @@ class ClientSession:
         compress: str | bool = False,
         chunked: bool | None = None,
         expect100: bool = False,
-        raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]] = None,
+        raise_for_status: (
+            None | bool | Callable[[ClientResponse], Awaitable[None]]
+        ) = None,
         read_until_eof: bool = True,
         proxy: StrOrURL | None = None,
         proxy_auth: BasicAuth | None = None,

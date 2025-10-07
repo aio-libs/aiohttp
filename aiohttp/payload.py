@@ -9,13 +9,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from itertools import chain
-from typing import (
-    IO,
-    TYPE_CHECKING,
-    Any,
-    Final,
-    TextIO,
-)
+from typing import IO, TYPE_CHECKING, Any, Final, TextIO
 
 from multidict import CIMultiDict
 
@@ -150,7 +144,9 @@ class Payload(ABC):
     def __init__(
         self,
         value: Any,
-        headers: _CIMultiDict | dict[str, str] | Iterable[tuple[str, str]] | None = None,
+        headers: (
+            _CIMultiDict | dict[str, str] | Iterable[tuple[str, str]] | None
+        ) = None,
         content_type: None | str | _SENTINEL = sentinel,
         filename: str | None = None,
         encoding: str | None = None,

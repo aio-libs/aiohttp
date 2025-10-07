@@ -3,9 +3,9 @@
 import asyncio
 import re
 import sys
+from collections.abc import Iterable
 from contextlib import suppress
 from typing import Any
-from collections.abc import Iterable
 from unittest import mock
 from urllib.parse import quote
 

@@ -8,16 +8,9 @@ import os
 import socket
 import sys
 from abc import ABC, abstractmethod
-from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generic,
-    TypeVar,
-    cast,
-    overload,
-)
 from collections.abc import Callable, Iterator
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, overload
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal

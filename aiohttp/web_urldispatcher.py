@@ -9,19 +9,20 @@ import keyword
 import os
 import re
 import sys
-from pathlib import Path
-from types import MappingProxyType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Final,
-    NoReturn,
-    Optional,
-    TypedDict,
-    cast,
+from collections.abc import (
+    Awaitable,
+    Callable,
+    Container,
+    Generator,
+    Iterable,
+    Iterator,
+    Mapping,
+    Sized,
 )
+from pathlib import Path
 from re import Pattern
-from collections.abc import Awaitable, Callable, Container, Generator, Iterable, Iterator, Mapping, Sized
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Final, NoReturn, Optional, TypedDict, cast
 
 from yarl import URL
 
@@ -178,8 +179,7 @@ class AbstractRoute(abc.ABC):
             pass
         else:
             raise TypeError(
-                "Only async functions are allowed as web-handlers "
-                f", got {handler!r}"
+                "Only async functions are allowed as web-handlers " f", got {handler!r}"
             )
 
         self._method = method

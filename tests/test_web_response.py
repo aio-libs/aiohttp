@@ -5,8 +5,8 @@ import io
 import json
 import re
 import weakref
-from concurrent.futures import ThreadPoolExecutor
 from collections.abc import AsyncIterator
+from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
 import aiosignal

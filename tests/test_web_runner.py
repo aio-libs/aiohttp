@@ -1,8 +1,8 @@
 import asyncio
 import platform
 import signal
-from typing import Any, NoReturn, Protocol
 from collections.abc import Iterator
+from typing import Any, NoReturn, Protocol
 from unittest import mock
 
 import pytest

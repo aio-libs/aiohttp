@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Example of aiohttp.web.Application.on_startup signal handler"""
 import asyncio
-from contextlib import suppress
 from collections.abc import AsyncIterator
+from contextlib import suppress
 
 import valkey.asyncio as valkey
 

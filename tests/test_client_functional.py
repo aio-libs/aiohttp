@@ -13,12 +13,9 @@ import sys
 import tarfile
 import time
 import zipfile
-from contextlib import suppress
-from typing import (
-    Any,
-    NoReturn,
-)
 from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import suppress
+from typing import Any, NoReturn
 from unittest import mock
 
 import pytest

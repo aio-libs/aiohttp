@@ -9,13 +9,10 @@ import sys
 import uuid
 import warnings
 from collections import defaultdict, deque
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from concurrent import futures
 from contextlib import closing, suppress
-from typing import (
-    Literal,
-    NoReturn,
-)
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from typing import Literal, NoReturn
 from unittest import mock
 
 import pytest

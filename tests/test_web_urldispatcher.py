@@ -4,9 +4,9 @@ import os
 import pathlib
 import socket
 import sys
+from collections.abc import Generator
 from stat import S_IFIFO, S_IMODE
 from typing import Any, NoReturn
-from collections.abc import Generator
 
 import pytest
 import yarl

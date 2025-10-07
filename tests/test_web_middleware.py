@@ -1,6 +1,6 @@
 import asyncio
-from typing import NoReturn
 from collections.abc import Awaitable, Callable, Iterable
+from typing import NoReturn
 
 import pytest
 from yarl import URL

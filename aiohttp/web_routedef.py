@@ -1,12 +1,7 @@
 import abc
 import dataclasses
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Union,
-    overload,
-)
 from collections.abc import Callable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Union, overload
 
 from . import hdrs
 from .abc import AbstractView

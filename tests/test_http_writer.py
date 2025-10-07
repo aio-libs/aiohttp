@@ -2,8 +2,8 @@
 import array
 import asyncio
 import zlib
-from typing import Any
 from collections.abc import Generator, Iterable
+from typing import Any
 from unittest import mock
 
 import pytest

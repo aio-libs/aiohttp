@@ -1,9 +1,9 @@
 """Models for WebSocket protocol versions 13 and 8."""
 
 import json
+from collections.abc import Callable
 from enum import IntEnum
 from typing import Any, Final, Literal, NamedTuple, Union, cast
-from collections.abc import Callable
 
 WS_DEFLATE_TRAILING: Final[bytes] = bytes([0x00, 0x00, 0xFF, 0xFF])
 

@@ -3,19 +3,13 @@ import io
 import os
 import pathlib
 import sys
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from enum import Enum, auto
 from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
-from typing import (
-    IO,
-    TYPE_CHECKING,
-    Any,
-    Final,
-    Optional,
-)
-from collections.abc import Awaitable, Callable
+from typing import IO, TYPE_CHECKING, Any, Final, Optional
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -397,7 +391,9 @@ class FileResponse(StreamResponse):
         if status == HTTPPartialContent.status_code:
             real_start = start
             assert real_start is not None
-            self._headers[hdrs.CONTENT_RANGE] = f"bytes {real_start}-{real_start + count - 1}/{file_size}"
+            self._headers[hdrs.CONTENT_RANGE] = (
+                f"bytes {real_start}-{real_start + count - 1}/{file_size}"
+            )
 
         # If we are sending 0 bytes calling sendfile() will throw a ValueError
         if count == 0 or must_be_empty_body(request.method, status):

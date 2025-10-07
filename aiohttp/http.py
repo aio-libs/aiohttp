@@ -55,4 +55,6 @@ __all__ = (
 )
 
 
-SERVER_SOFTWARE: str = f"Python/{sys.version_info[0]}.{sys.version_info[1]} aiohttp/{__version__}"
+SERVER_SOFTWARE: str = (
+    f"Python/{sys.version_info[0]}.{sys.version_info[1]} aiohttp/{__version__}"
+)

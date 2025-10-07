@@ -4,10 +4,8 @@ import json
 import pathlib
 import socket
 import sys
-from typing import (
-    NoReturn,
-)
 from collections.abc import AsyncIterator, Awaitable, Callable, Generator
+from typing import NoReturn
 from unittest import mock
 
 import pytest

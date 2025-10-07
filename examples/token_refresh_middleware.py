@@ -20,9 +20,9 @@ import json
 import logging
 import secrets
 import time
+from collections.abc import Coroutine
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
-from collections.abc import Coroutine
 
 from aiohttp import (
     ClientHandlerType,

@@ -1,8 +1,8 @@
 import collections
 import pickle
+from collections.abc import Mapping
 from traceback import format_exception
 from typing import NoReturn
-from collections.abc import Mapping
 
 import pytest
 from yarl import URL

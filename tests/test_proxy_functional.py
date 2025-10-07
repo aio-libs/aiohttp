@@ -4,13 +4,10 @@ import pathlib
 import platform
 import ssl
 import sys
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import suppress
 from re import match as match_regex
-from typing import (
-    TYPE_CHECKING,
-    TypedDict,
-)
-from collections.abc import Awaitable, Callable, Iterator
+from typing import TYPE_CHECKING, TypedDict
 from unittest import mock
 from uuid import uuid4
 

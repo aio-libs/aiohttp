@@ -3,20 +3,12 @@ import asyncio.streams
 import sys
 import traceback
 from collections import deque
+from collections.abc import Awaitable, Callable, Sequence
 from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generic,
-    Optional,
-    TypeVar,
-    Union,
-    cast,
-)
-from collections.abc import Awaitable, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 import yarl
 from propcache import under_cached_property
@@ -724,8 +716,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 self.log_exception("Missing return statement on request handler")  # type: ignore[unreachable]
             else:
                 self.log_exception(
-                    "Web-handler should return a response instance, "
-                    f"got {resp!r}"
+                    "Web-handler should return a response instance, " f"got {resp!r}"
                 )
             exc = HTTPInternalServerError()
             resp = Response(

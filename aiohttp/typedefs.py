@@ -1,12 +1,7 @@
 import json
 import os
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Protocol,
-    Union,
-)
 from collections.abc import Awaitable, Callable, Iterable, Mapping
+from typing import TYPE_CHECKING, Any, Protocol, Union
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 from yarl import URL, Query as _Query

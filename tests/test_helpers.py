@@ -4,9 +4,9 @@ import datetime
 import gc
 import sys
 import weakref
+from collections.abc import Iterator
 from math import ceil, modf
 from pathlib import Path
-from collections.abc import Iterator
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -601,7 +601,9 @@ def test_proxies_from_env_skipped(
     url = URL(url_input)
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
-    log_message = f"{expected_scheme.upper()!s} proxies {url!s} are not supported, ignoring"
+    log_message = (
+        f"{expected_scheme.upper()!s} proxies {url!s} are not supported, ignoring"
+    )
     assert caplog.record_tuples == [("aiohttp.client", 30, log_message)]
 
 

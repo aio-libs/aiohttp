@@ -2,9 +2,9 @@
 
 import io
 import re
+from collections.abc import Generator
 from hashlib import md5, sha1
 from typing import Literal
-from collections.abc import Generator
 from unittest import mock
 
 import pytest

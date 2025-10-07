@@ -3,10 +3,10 @@ import asyncio
 import io
 import json
 import unittest.mock
+from collections.abc import AsyncIterator, Iterator
 from io import StringIO
 from pathlib import Path
 from typing import TextIO, Union
-from collections.abc import AsyncIterator, Iterator
 
 import pytest
 from multidict import CIMultiDict

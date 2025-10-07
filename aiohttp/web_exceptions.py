@@ -1,7 +1,7 @@
 import warnings
+from collections.abc import Iterable
 from http import HTTPStatus
 from typing import Any
-from collections.abc import Iterable
 
 from multidict import CIMultiDict
 from yarl import URL
