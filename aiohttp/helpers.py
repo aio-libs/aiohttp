@@ -377,13 +377,13 @@ class EnsureOctetStream(Message):
     def get_content_type(self) -> Any:
         """Re-implementation from Message
 
-        In this case, return application/octet-stream in all
-        bad cases
+        Returns application/octet-stream in place of plain/text when
+        value is wrong.
+
+        The way this class is used guarantees that content-type will
+        be present so simplify the checks wrt to the base implementation.
         """
-        missing = object()
-        value = self.get("content-type", missing)
-        if value is missing:
-            return self.get_default_type()
+        value = self.get("content-type")
         ctype = _splitparam(value)[0].lower()
         if ctype.count("/") != 1:
             return self.get_default_type()
