@@ -222,9 +222,7 @@ class AbstractStreamWriter(ABC):
         """Enable HTTP chunked mode"""
 
     @abstractmethod
-    async def write_headers(
-        self, status_line: str, headers: CIMultiDict[str]
-    ) -> None:
+    async def write_headers(self, status_line: str, headers: CIMultiDict[str]) -> None:
         """Write HTTP headers"""
 
     def send_headers(self) -> None:
