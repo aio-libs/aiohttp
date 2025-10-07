@@ -1,6 +1,6 @@
 __version__ = "4.0.0a2.dev0"
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 from . import hdrs
 from .client import (
