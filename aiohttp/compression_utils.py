@@ -300,7 +300,7 @@ class ZSTDDecompressor:
         if sys.version_info >= (3, 14):
             self._obj = compression.zstd.ZstdDecompressor()
         else:
-            self._obj = zstandard.ZstdDecompressor()
+            self._obj = zstandard.ZstdDecompressor().decompressobj(read_across_frames=True)
 
     def decompress_sync(self, data: bytes) -> bytes:
         return self._obj.decompress(data)
