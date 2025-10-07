@@ -197,7 +197,7 @@ class AbstractStreamWriter(ABC):
 
     @abstractmethod
     async def write(
-        self, chunk: bytes | bytearray | memoryview[int] | memoryview[bytes]
+        self, chunk: bytes | bytearray | "memoryview[int]" | "memoryview[bytes]"
     ) -> None:
         """Write chunk into stream."""
 
