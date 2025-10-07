@@ -2,7 +2,7 @@ import asyncio
 import base64
 import hashlib
 import os
-from typing import Any, Type
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -513,7 +513,7 @@ async def test_close_exc2(loop, ws_key, key_data) -> None:
 
 @pytest.mark.parametrize("exc", (ClientConnectionResetError, ConnectionResetError))
 async def test_send_data_after_close(
-    exc: Type[Exception],
+    exc: type[Exception],
     ws_key: bytes,
     key_data: bytes,
     loop: asyncio.AbstractEventLoop,

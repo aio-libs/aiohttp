@@ -1,6 +1,6 @@
 import sys
 from http import HTTPStatus
-from typing import Mapping, Tuple
+from collections.abc import Mapping
 
 from . import __version__
 from .http_exceptions import HttpProcessingError as HttpProcessingError
@@ -63,10 +63,8 @@ __all__ = (
 )
 
 
-SERVER_SOFTWARE: str = "Python/{0[0]}.{0[1]} aiohttp/{1}".format(
-    sys.version_info, __version__
-)
+SERVER_SOFTWARE: str = f"Python/{sys.version_info[0]}.{sys.version_info[1]} aiohttp/{__version__}"
 
-RESPONSES: Mapping[int, Tuple[str, str]] = {
+RESPONSES: Mapping[int, tuple[str, str]] = {
     v: (v.phrase, v.description) for v in HTTPStatus.__members__.values()
 }

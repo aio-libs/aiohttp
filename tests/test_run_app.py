@@ -10,16 +10,9 @@ import subprocess
 import sys
 import time
 from typing import (
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Coroutine,
-    Iterator,
     NoReturn,
-    Optional,
-    Set,
-    Tuple,
 )
+from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -973,8 +966,8 @@ class TestShutdown:
         sock: socket.socket,
         timeout: int,
         task: Callable[[], Coroutine[None, None, None]],
-        extra_test: Optional[Callable[[ClientSession], Awaitable[None]]] = None,
-    ) -> Tuple["asyncio.Task[None]", int]:
+        extra_test: Callable[[ClientSession], Awaitable[None]] | None = None,
+    ) -> tuple["asyncio.Task[None]", int]:
         num_connections = -1
         t = test_task = None
         port = sock.getsockname()[1]
@@ -1203,7 +1196,7 @@ class TestShutdown:
     def test_shutdown_close_websockets(self, unused_port_socket: socket.socket) -> None:
         sock = unused_port_socket
         port = sock.getsockname()[1]
-        WS = web.AppKey("ws", Set[web.WebSocketResponse])
+        WS = web.AppKey("ws", set[web.WebSocketResponse])
         client_finished = server_finished = False
 
         async def ws_handler(request: web.Request) -> web.WebSocketResponse:

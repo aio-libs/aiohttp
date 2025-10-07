@@ -4,7 +4,8 @@ import ipaddress
 import socket
 from collections.abc import Generator
 from ipaddress import ip_address
-from typing import Any, Awaitable, Callable, Collection, List, NamedTuple, Tuple, Union
+from typing import Any, NamedTuple
+from collections.abc import Awaitable, Callable, Collection
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
@@ -71,7 +72,7 @@ def dns_resolver_manager() -> Generator[_DNSResolverManager, None, None]:
 class FakeAIODNSAddrInfoNode(NamedTuple):
 
     family: int
-    addr: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]]
+    addr: tuple[bytes, int] | tuple[bytes, int, int, int]
 
 
 class FakeAIODNSAddrInfoIPv4Result:
@@ -126,7 +127,7 @@ async def fake_query_result(result):
 
 
 def fake_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
-    async def fake(*args: Any, **kwargs: Any) -> List[Any]:
+    async def fake(*args: Any, **kwargs: Any) -> list[Any]:
         if not hosts:
             raise socket.gaierror
 
@@ -136,7 +137,7 @@ def fake_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
 
 
 def fake_ipv6_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
-    async def fake(*args: Any, **kwargs: Any) -> List[Any]:
+    async def fake(*args: Any, **kwargs: Any) -> list[Any]:
         if not hosts:
             raise socket.gaierror
 
@@ -155,7 +156,7 @@ def fake_ipv6_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[Any]]:
 
 
 def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[Any]]:
-    async def fake(*args: Any, **kwargs: Any) -> Tuple[str, int]:
+    async def fake(*args: Any, **kwargs: Any) -> tuple[str, int]:
         return host, 0
 
     return fake
@@ -306,7 +307,7 @@ async def test_threaded_negative_lookup() -> None:
 
 async def test_threaded_negative_ipv6_lookup() -> None:
     loop = Mock()
-    ips: List[Any] = []
+    ips: list[Any] = []
     loop.getaddrinfo = fake_ipv6_addrinfo(ips)
     resolver = ThreadedResolver()
     resolver._loop = loop
@@ -319,7 +320,7 @@ async def test_threaded_negative_lookup_with_unknown_result() -> None:
 
     # If compile CPython with `--disable-ipv6` option,
     # we will get an (int, bytes) tuple, instead of a Exception.
-    async def unknown_addrinfo(*args: Any, **kwargs: Any) -> List[Any]:
+    async def unknown_addrinfo(*args: Any, **kwargs: Any) -> list[Any]:
         return [
             (
                 socket.AF_INET6,

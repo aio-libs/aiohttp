@@ -5,7 +5,7 @@ import io
 import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 from unittest import mock
 
 import aiosignal
@@ -1254,7 +1254,7 @@ class CustomIO(io.IOBase):
         ),
     ),
 )
-def test_payload_body_get_text(payload, expected: Optional[str]) -> None:
+def test_payload_body_get_text(payload, expected: str | None) -> None:
     resp = Response(body=payload)
     if expected is None:
         with pytest.raises(TypeError):

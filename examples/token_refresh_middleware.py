@@ -21,7 +21,8 @@ import logging
 import secrets
 import time
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any, Coroutine, Dict, List, Union
+from typing import TYPE_CHECKING, Any
+from collections.abc import Coroutine
 
 from aiohttp import (
     ClientHandlerType,
@@ -42,8 +43,8 @@ class TokenRefreshMiddleware:
     def __init__(self, token_endpoint: str, refresh_token: str) -> None:
         self.token_endpoint = token_endpoint
         self.refresh_token = refresh_token
-        self.access_token: Union[str, None] = None
-        self.token_expires_at: Union[float, None] = None
+        self.access_token: str | None = None
+        self.token_expires_at: float | None = None
         self._refresh_lock = asyncio.Lock()
 
     async def _refresh_access_token(self, session: ClientSession) -> str:
@@ -121,8 +122,8 @@ class TestServer:
     """Test server with JWT-like token authentication."""
 
     def __init__(self) -> None:
-        self.tokens_db: Dict[str, Dict[str, Union[str, float]]] = {}
-        self.refresh_tokens_db: Dict[str, Dict[str, Union[str, float]]] = {
+        self.tokens_db: dict[str, dict[str, str | float]] = {}
+        self.refresh_tokens_db: dict[str, dict[str, str | float]] = {
             # Hash of refresh token -> user data
             hashlib.sha256(b"demo_refresh_token_12345").hexdigest(): {
                 "user_id": "user123",
@@ -135,7 +136,7 @@ class TestServer:
         """Generate a secure random access token."""
         return secrets.token_urlsafe(32)
 
-    async def _process_token_refresh(self, data: Dict[str, str]) -> web.Response:
+    async def _process_token_refresh(self, data: dict[str, str]) -> web.Response:
         """Process the token refresh request."""
         refresh_token = data.get("refresh_token")
 
@@ -189,7 +190,7 @@ class TestServer:
 
     async def verify_bearer_token(
         self, request: web.Request
-    ) -> Union[Dict[str, Union[str, float]], None]:
+    ) -> dict[str, str | float] | None:
         """Verify bearer token and return user data if valid."""
         auth_header = request.headers.get(hdrs.AUTHORIZATION, "")
 
@@ -285,7 +286,7 @@ async def run_tests() -> None:
 
         print("\n=== Test 3: Multiple concurrent requests ===")
         print("(Should only refresh token once)")
-        coros: List[Coroutine[Any, Any, ClientResponse]] = []
+        coros: list[Coroutine[Any, Any, ClientResponse]] = []
         for i in range(3):
             coro = session.get("http://localhost:8080/api/protected")
             coros.append(coro)

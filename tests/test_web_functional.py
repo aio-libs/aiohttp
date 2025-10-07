@@ -4,7 +4,8 @@ import json
 import pathlib
 import socket
 import sys
-from typing import Any, Dict, Generator, NoReturn, Optional, Tuple
+from typing import Any, NoReturn
+from collections.abc import Generator
 from unittest import mock
 
 import pytest
@@ -634,7 +635,7 @@ async def test_expect_handler_custom_response(aiohttp_client) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="handler")
 
-    async def expect_handler(request: web.Request) -> Optional[web.Response]:
+    async def expect_handler(request: web.Request) -> web.Response | None:
         k = request.headers.get("X-Key")
         cached_value = cache.get(k)
         if cached_value:
@@ -1137,11 +1138,11 @@ async def test_response_with_payload_stringio(aiohttp_client, fname) -> None:
 def compressor_case(
     request: pytest.FixtureRequest,
     parametrize_zlib_backend: None,
-) -> Generator[Tuple[ZLibCompressObjProtocol, str], None, None]:
+) -> Generator[tuple[ZLibCompressObjProtocol, str], None, None]:
     encoding: str = request.param
     max_wbits: int = ZLibBackend.MAX_WBITS
 
-    encoding_to_wbits: Dict[str, int] = {
+    encoding_to_wbits: dict[str, int] = {
         "deflate": max_wbits,
         "deflate-raw": -max_wbits,
         "gzip": 16 + max_wbits,
@@ -1153,7 +1154,7 @@ def compressor_case(
 
 async def test_response_with_precompressed_body(
     aiohttp_client: AiohttpClient,
-    compressor_case: Tuple[ZLibCompressObjProtocol, str],
+    compressor_case: tuple[ZLibCompressObjProtocol, str],
 ) -> None:
     compressor, encoding = compressor_case
 

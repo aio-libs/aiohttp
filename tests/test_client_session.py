@@ -7,7 +7,8 @@ import sys
 import warnings
 from collections import deque
 from http.cookies import BaseCookie, SimpleCookie
-from typing import Any, Awaitable, Callable, Iterator, List, Optional, cast
+from typing import Any, cast
+from collections.abc import Awaitable, Callable, Iterator
 from unittest import mock
 from uuid import uuid4
 
@@ -687,7 +688,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(
     original_connect = session._connector.connect
 
     async def connect(
-        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+        req: ClientRequest, traces: list[Trace], timeout: aiohttp.ClientTimeout
     ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
@@ -726,13 +727,13 @@ async def test_cookie_jar_usage(loop: Any, aiohttp_client: Any) -> None:
             self._filter_cookies_mock = mock.Mock(return_value=BaseCookie())
             self._clear_mock = mock.Mock()
             self._clear_domain_mock = mock.Mock()
-            self._items: List[Any] = []
+            self._items: list[Any] = []
 
         @property
         def quote_cookie(self) -> bool:
             return True
 
-        def clear(self, predicate: Optional[abc.ClearCookiePredicate] = None) -> None:
+        def clear(self, predicate: abc.ClearCookiePredicate | None = None) -> None:
             self._clear_mock(predicate)
 
         def clear_domain(self, domain: str) -> None:
@@ -995,7 +996,7 @@ async def test_request_tracing_url_params(loop: Any, aiohttp_client: Any) -> Non
         for m in mocks:
             m.reset_mock()
 
-    def to_trace_urls(mock_func: mock.Mock) -> List[URL]:
+    def to_trace_urls(mock_func: mock.Mock) -> list[URL]:
         return [call_args[0][-1].url for call_args in mock_func.call_args_list]
 
     def to_url(path: str) -> URL:

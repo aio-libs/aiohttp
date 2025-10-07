@@ -5,24 +5,12 @@ from functools import lru_cache, partial, update_wrapper
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    MutableMapping,
     Optional,
-    Sequence,
-    Tuple,
-    Type,
     TypeVar,
-    Union,
     cast,
     overload,
 )
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 
 from aiosignal import Signal
 from frozenlist import FrozenList
@@ -65,15 +53,15 @@ if TYPE_CHECKING:
     _AppSignal = Signal["Application"]
     _RespPrepareSignal = Signal[Request, StreamResponse]
     _Middlewares = FrozenList[Middleware]
-    _MiddlewaresHandlers = Optional[Sequence[Tuple[Middleware, bool]]]
-    _Subapps = List["Application"]
+    _MiddlewaresHandlers = Optional[Sequence[tuple[Middleware, bool]]]
+    _Subapps = list["Application"]
 else:
     # No type checker mode, skip types
     _AppSignal = Signal
     _RespPrepareSignal = Signal
     _Middlewares = FrozenList
     _MiddlewaresHandlers = Optional[Sequence]
-    _Subapps = List
+    _Subapps = list
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
@@ -81,7 +69,7 @@ _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
 def _build_middlewares(
-    handler: Handler, apps: Tuple["Application", ...]
+    handler: Handler, apps: tuple["Application", ...]
 ) -> Callable[[Request], Awaitable[StreamResponse]]:
     """Apply middlewares to handler."""
     for app in apps[::-1]:
@@ -93,7 +81,7 @@ def _build_middlewares(
 _cached_build_middleware = lru_cache(maxsize=1024)(_build_middlewares)
 
 
-class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
+class Application(MutableMapping[str | AppKey[Any], Any]):
     ATTRS = frozenset(
         [
             "logger",
@@ -122,11 +110,11 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self,
         *,
         logger: logging.Logger = web_logger,
-        router: Optional[UrlDispatcher] = None,
+        router: UrlDispatcher | None = None,
         middlewares: Iterable[Middleware] = (),
-        handler_args: Optional[Mapping[str, Any]] = None,
+        handler_args: Mapping[str, Any] | None = None,
         client_max_size: int = 1024**2,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
+        loop: asyncio.AbstractEventLoop | None = None,
         debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
         if router is None:
@@ -157,10 +145,10 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         # initialized on freezing
         self._middlewares_handlers: _MiddlewaresHandlers = None
         # initialized on freezing
-        self._run_middlewares: Optional[bool] = None
+        self._run_middlewares: bool | None = None
         self._has_legacy_middlewares: bool = True
 
-        self._state: Dict[Union[AppKey[Any], str], object] = {}
+        self._state: dict[AppKey[Any] | str, object] = {}
         self._frozen = False
         self._pre_frozen = False
         self._subapps: _Subapps = []
@@ -174,10 +162,10 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
 
-    def __init_subclass__(cls: Type["Application"]) -> None:
+    def __init_subclass__(cls: type["Application"]) -> None:
         warnings.warn(
-            "Inheritance class {} from web.Application "
-            "is discouraged".format(cls.__name__),
+            f"Inheritance class {cls.__name__} from web.Application "
+            "is discouraged",
             DeprecationWarning,
             stacklevel=3,
         )
@@ -187,8 +175,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         def __setattr__(self, name: str, val: Any) -> None:
             if name not in self.ATTRS:
                 warnings.warn(
-                    "Setting custom web.Application.{} attribute "
-                    "is discouraged".format(name),
+                    f"Setting custom web.Application.{name} attribute "
+                    "is discouraged",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -205,7 +193,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     @overload
     def __getitem__(self, key: str) -> Any: ...
 
-    def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
+    def __getitem__(self, key: str | AppKey[_T]) -> Any:
         return self._state[key]
 
     def _check_frozen(self) -> None:
@@ -222,7 +210,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     @overload
     def __setitem__(self, key: str, value: Any) -> None: ...
 
-    def __setitem__(self, key: Union[str, AppKey[_T]], value: Any) -> None:
+    def __setitem__(self, key: str | AppKey[_T], value: Any) -> None:
         self._check_frozen()
         if not isinstance(key, AppKey):
             warnings.warn(
@@ -234,29 +222,29 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             )
         self._state[key] = value
 
-    def __delitem__(self, key: Union[str, AppKey[_T]]) -> None:
+    def __delitem__(self, key: str | AppKey[_T]) -> None:
         self._check_frozen()
         del self._state[key]
 
     def __len__(self) -> int:
         return len(self._state)
 
-    def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
+    def __iter__(self) -> Iterator[str | AppKey[Any]]:
         return iter(self._state)
 
     def __hash__(self) -> int:
         return id(self)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
+    def get(self, key: AppKey[_T], default: None = ...) -> _T | None: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]: ...
+    def get(self, key: AppKey[_T], default: _U) -> _T | _U: ...
 
     @overload
     def get(self, key: str, default: Any = ...) -> Any: ...
 
-    def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+    def get(self, key: str | AppKey[_T], default: Any = None) -> Any:
         return self._state.get(key, default)
 
     ########
@@ -268,7 +256,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         warnings.warn("loop property is deprecated", DeprecationWarning, stacklevel=2)
         return cast(asyncio.AbstractEventLoop, self._loop)
 
-    def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
+    def _set_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
         if loop is None:
             loop = asyncio.get_event_loop()
         if self._loop is not None and self._loop is not loop:
@@ -385,7 +373,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         factory = partial(MatchedSubAppResource, rule, subapp)
         return self._add_subapp(factory, subapp)
 
-    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
+    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> list[AbstractRoute]:
         return self.router.add_routes(routes)
 
     @property
@@ -419,15 +407,15 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def _make_handler(
         self,
         *,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+        loop: asyncio.AbstractEventLoop | None = None,
+        access_log_class: type[AbstractAccessLogger] = AccessLogger,
         **kwargs: Any,
     ) -> Server:
 
         if not issubclass(access_log_class, AbstractAccessLogger):
             raise TypeError(
                 "access_log_class must be subclass of "
-                "aiohttp.abc.AbstractAccessLogger, got {}".format(access_log_class)
+                f"aiohttp.abc.AbstractAccessLogger, got {access_log_class}"
             )
 
         self._set_loop(loop)
@@ -449,8 +437,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def make_handler(
         self,
         *,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+        loop: asyncio.AbstractEventLoop | None = None,
+        access_log_class: type[AbstractAccessLogger] = AccessLogger,
         **kwargs: Any,
     ) -> Server:
 
@@ -496,7 +484,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         protocol: RequestHandler,
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
-        _cls: Type[Request] = Request,
+        _cls: type[Request] = Request,
     ) -> Request:
         if TYPE_CHECKING:
             assert self._loop is not None
@@ -510,7 +498,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             client_max_size=self._client_max_size,
         )
 
-    def _prepare_middleware(self) -> Iterator[Tuple[Middleware, bool]]:
+    def _prepare_middleware(self) -> Iterator[tuple[Middleware, bool]]:
         for m in reversed(self._middlewares):
             if getattr(m, "__middleware_version__", None) == 1:
                 yield m, True
@@ -532,7 +520,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             if not isinstance(match_info, AbstractMatchInfo):
                 raise TypeError(
                     "match_info should be AbstractMatchInfo "
-                    "instance, not {!r}".format(match_info)
+                    f"instance, not {match_info!r}"
                 )
         match_info.add_app(self)
 
@@ -581,8 +569,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
 class CleanupError(RuntimeError):
     @property
-    def exceptions(self) -> List[BaseException]:
-        return cast(List[BaseException], self.args[1])
+    def exceptions(self) -> list[BaseException]:
+        return cast(list[BaseException], self.args[1])
 
 
 if TYPE_CHECKING:
@@ -594,7 +582,7 @@ else:
 class CleanupContext(_CleanupContextBase):
     def __init__(self) -> None:
         super().__init__()
-        self._exits: List[AsyncIterator[None]] = []
+        self._exits: list[AsyncIterator[None]] = []
 
     async def _on_startup(self, app: Application) -> None:
         for cb in self:

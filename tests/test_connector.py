@@ -14,15 +14,9 @@ from concurrent import futures
 from contextlib import closing, suppress
 from typing import (
     Any,
-    Callable,
-    DefaultDict,
-    Deque,
-    List,
     Literal,
-    Optional,
-    Sequence,
-    Tuple,
 )
+from collections.abc import Callable, Sequence
 from unittest import mock
 
 import pytest
@@ -771,7 +765,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop) -> None:
     connected = False
 
     async def start_connection(*args, **kwargs):
-        addr_infos: List[AddrInfoType] = kwargs["addr_infos"]
+        addr_infos: list[AddrInfoType] = kwargs["addr_infos"]
 
         first_addr_info = addr_infos[0]
         first_addr_info_addr = first_addr_info[-1]
@@ -899,7 +893,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop) -> None:
     [0.1, 0.25, None],
 )
 async def test_tcp_connector_happy_eyeballs(
-    loop: Any, happy_eyeballs_delay: Optional[float]
+    loop: Any, happy_eyeballs_delay: float | None
 ) -> None:
     conn = aiohttp.TCPConnector(happy_eyeballs_delay=happy_eyeballs_delay)
 
@@ -1005,7 +999,7 @@ async def test_tcp_connector_interleave(loop: Any) -> None:
 
     async def start_connection(*args, **kwargs):
         nonlocal interleave
-        addr_infos: List[AddrInfoType] = kwargs["addr_infos"]
+        addr_infos: list[AddrInfoType] = kwargs["addr_infos"]
         interleave = kwargs["interleave"]
         # Mock the 4th host connecting successfully
         fourth_addr_info = addr_infos[3]
@@ -1147,7 +1141,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
 
     async def _resolve_host(
         host: str, port: int, traces: object = None
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         return [
             {
                 "hostname": host,
@@ -1163,7 +1157,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
     async def start_connection(
         addr_infos: Sequence[AddrInfoType],
         *,
-        interleave: Optional[int] = None,
+        interleave: int | None = None,
         **kwargs: object,
     ) -> socket.socket:
         nonlocal timeout_error
@@ -1188,8 +1182,8 @@ async def test_tcp_connector_multiple_hosts_one_timeout(
         assert False
 
     async def create_connection(
-        *args: object, sock: Optional[socket.socket] = None, **kwargs: object
-    ) -> Tuple[ResponseHandler, ResponseHandler]:
+        *args: object, sock: socket.socket | None = None, **kwargs: object
+    ) -> tuple[ResponseHandler, ResponseHandler]:
         nonlocal connected
 
         assert isinstance(sock, socket.socket)
@@ -1897,7 +1891,7 @@ async def test_cleanup(key: ConnectionKey) -> None:
     m2 = mock.Mock()
     m1.is_connected.return_value = True
     m2.is_connected.return_value = False
-    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+    testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
     testset[key] = deque([(m1, 10), (m2, 300)])
@@ -1922,7 +1916,7 @@ async def test_cleanup_close_ssl_transport(
 ) -> None:
     proto = create_mocked_conn(loop)
     transport = proto.transport
-    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+    testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
     testset[ssl_key] = deque([(proto, 10)])
@@ -1948,7 +1942,7 @@ async def test_cleanup_close_ssl_transport(
 async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn()
     m.is_connected.return_value = True
-    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+    testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
     testset[key] = deque([(m, 300)])
@@ -1969,7 +1963,7 @@ async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
 async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn(loop)
     m.is_connected.return_value = True
-    testset: DefaultDict[ConnectionKey, Deque[Tuple[ResponseHandler, float]]] = (
+    testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
     testset[key] = deque([(m, 290.1), (create_mocked_conn(loop), 305.1)])
@@ -2722,7 +2716,7 @@ async def test_multiple_dns_resolution_requests_success(
 ) -> None:
     """Verify that multiple DNS resolution requests are handled correctly."""
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         for _ in range(3):
             await asyncio.sleep(0)
@@ -2784,7 +2778,7 @@ async def test_multiple_dns_resolution_requests_failure(
 ) -> None:
     """Verify that DNS resolution failure for multiple requests is handled correctly."""
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         for _ in range(3):
             await asyncio.sleep(0)
@@ -2837,7 +2831,7 @@ async def test_multiple_dns_resolution_requests_cancelled(
 ) -> None:
     """Verify that DNS resolution cancellation does not affect other tasks."""
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         for _ in range(3):
             await asyncio.sleep(0)
@@ -2889,7 +2883,7 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
 ) -> None:
     """Verify that first DNS resolution cancellation does not make other resolutions fail."""
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         for _ in range(3):
             await asyncio.sleep(0)
@@ -2953,7 +2947,7 @@ async def test_multiple_dns_resolution_requests_first_fails_second_successful(
     """Verify that first DNS resolution fails the first time and is successful the second time."""
     attempt = 0
 
-    async def delay_resolve(*args: object, **kwargs: object) -> List[ResolveResult]:
+    async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
         nonlocal attempt
         for _ in range(3):
@@ -4077,7 +4071,7 @@ async def test_connector_resolve_in_case_of_trace_cache_miss_exception(
             if request_count <= 1:
                 raise Exception("first attempt")
 
-    async def resolve_response() -> List[ResolveResult]:
+    async def resolve_response() -> list[ResolveResult]:
         await asyncio.sleep(0)
         return [token]
 

@@ -14,17 +14,12 @@ from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
     Literal,
     NamedTuple,
     Optional,
-    Tuple,
-    Type,
     Union,
 )
+from collections.abc import Callable, Iterable
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -118,9 +113,9 @@ def _gen_default_accept_encoding() -> str:
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
 class ContentDisposition:
-    type: Optional[str]
+    type: str | None
     parameters: "MappingProxyType[str, str]"
-    filename: Optional[str]
+    filename: str | None
 
 
 class _RequestInfo(NamedTuple):
@@ -137,7 +132,7 @@ class RequestInfo(_RequestInfo):
         url: URL,
         method: str,
         headers: "CIMultiDictProxy[str]",
-        real_url: Union[URL, _SENTINEL] = sentinel,
+        real_url: URL | _SENTINEL = sentinel,
     ) -> "RequestInfo":
         """Create a new RequestInfo instance.
 
@@ -188,9 +183,9 @@ else:  # pragma: no cover
 
 def _merge_ssl_params(
     ssl: Union["SSLContext", bool, Fingerprint],
-    verify_ssl: Optional[bool],
+    verify_ssl: bool | None,
     ssl_context: Optional["SSLContext"],
-    fingerprint: Optional[bytes],
+    fingerprint: bytes | None,
 ) -> Union["SSLContext", bool, Fingerprint]:
     if ssl is None:
         ssl = True  # Double check for backwards compatibility
@@ -236,7 +231,7 @@ def _merge_ssl_params(
     if not isinstance(ssl, SSL_ALLOWED_TYPES):
         raise TypeError(
             "ssl should be SSLContext, bool, Fingerprint or None, "
-            "got {!r} instead.".format(ssl)
+            f"got {ssl!r} instead."
         )
     return ssl
 
@@ -251,12 +246,12 @@ class ConnectionKey(NamedTuple):
     # the key should contain an information about used proxy / TLS
     # to prevent reusing wrong connections from a pool
     host: str
-    port: Optional[int]
+    port: int | None
     is_ssl: bool
-    ssl: Union[SSLContext, bool, Fingerprint]
-    proxy: Optional[URL]
-    proxy_auth: Optional[BasicAuth]
-    proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
+    ssl: SSLContext | bool | Fingerprint
+    proxy: URL | None
+    proxy_auth: BasicAuth | None
+    proxy_headers_hash: int | None  # hash(CIMultiDict)
 
 
 def _is_expected_content_type(
@@ -292,21 +287,21 @@ class ClientResponse(HeadersMixin):
     # but will be set by the start() method.
     # As the end user will likely never see the None values, we cheat the types below.
     # from the Status-Line of the response
-    version: Optional[HttpVersion] = None  # HTTP-Version
+    version: HttpVersion | None = None  # HTTP-Version
     status: int = None  # type: ignore[assignment] # Status-Code
-    reason: Optional[str] = None  # Reason-Phrase
+    reason: str | None = None  # Reason-Phrase
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
-    _body: Optional[bytes] = None
+    _body: bytes | None = None
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
-    _history: Tuple["ClientResponse", ...] = ()
+    _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection: Optional["Connection"] = None  # current connection
-    _cookies: Optional[SimpleCookie] = None
-    _raw_cookie_headers: Optional[Tuple[str, ...]] = None
+    _cookies: SimpleCookie | None = None
+    _raw_cookie_headers: tuple[str, ...] | None = None
     _continue: Optional["asyncio.Future[bool]"] = None
-    _source_traceback: Optional[traceback.StackSummary] = None
+    _source_traceback: traceback.StackSummary | None = None
     _session: Optional["ClientSession"] = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
@@ -323,11 +318,11 @@ class ClientResponse(HeadersMixin):
         method: str,
         url: URL,
         *,
-        writer: "Optional[asyncio.Task[None]]",
+        writer: "asyncio.Task[None] | None",
         continue100: Optional["asyncio.Future[bool]"],
         timer: BaseTimerContext,
         request_info: RequestInfo,
-        traces: List["Trace"],
+        traces: list["Trace"],
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
     ) -> None:
@@ -344,7 +339,7 @@ class ClientResponse(HeadersMixin):
             self._continue = continue100
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self._traces = traces
         self._loop = loop
         # Save reference to _resolve_charset, so that get_encoding() will still
@@ -439,7 +434,7 @@ class ClientResponse(HeadersMixin):
         return self._request_info
 
     @reify
-    def content_disposition(self) -> Optional[ContentDisposition]:
+    def content_disposition(self) -> ContentDisposition | None:
         raw = self._headers.get(hdrs.CONTENT_DISPOSITION)
         if raw is None:
             return None
@@ -474,9 +469,7 @@ class ClientResponse(HeadersMixin):
         else:
             ascii_encodable_reason = "None"
         print(
-            "<ClientResponse({}) [{} {}]>".format(
-                ascii_encodable_url, self.status, ascii_encodable_reason
-            ),
+            f"<ClientResponse({ascii_encodable_url}) [{self.status} {ascii_encodable_reason}]>",
             file=out,
         )
         print(self.headers, file=out)
@@ -487,18 +480,18 @@ class ClientResponse(HeadersMixin):
         return self._connection
 
     @reify
-    def history(self) -> Tuple["ClientResponse", ...]:
+    def history(self) -> tuple["ClientResponse", ...]:
         """A sequence of of responses, if redirects occurred."""
         return self._history
 
     @reify
-    def links(self) -> "MultiDictProxy[MultiDictProxy[Union[str, URL]]]":
+    def links(self) -> "MultiDictProxy[MultiDictProxy[str | URL]]":
         links_str = ", ".join(self.headers.getall("link", []))
 
         if not links_str:
             return MultiDictProxy(MultiDict())
 
-        links: MultiDict[MultiDictProxy[Union[str, URL]]] = MultiDict()
+        links: MultiDict[MultiDictProxy[str | URL]] = MultiDict()
 
         for val in re.split(r",(?=\s*<)", links_str):
             match = re.match(r"\s*<(.*)>(.*)", val)
@@ -508,7 +501,7 @@ class ClientResponse(HeadersMixin):
             url, params_str = match.groups()
             params = params_str.split(";")[1:]
 
-            link: MultiDict[Union[str, URL]] = MultiDict()
+            link: MultiDict[str | URL] = MultiDict()
 
             for param in params:
                 match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
@@ -731,7 +724,7 @@ class ClientResponse(HeadersMixin):
 
         return self._resolve_charset(self, self._body)
 
-    async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
+    async def text(self, encoding: str | None = None, errors: str = "strict") -> str:
         """Read response payload and decode."""
         if self._body is None:
             await self.read()
@@ -744,9 +737,9 @@ class ClientResponse(HeadersMixin):
     async def json(
         self,
         *,
-        encoding: Optional[str] = None,
+        encoding: str | None = None,
         loads: JSONDecoder = DEFAULT_JSON_DECODER,
-        content_type: Optional[str] = "application/json",
+        content_type: str | None = "application/json",
     ) -> Any:
         """Read and decodes JSON response."""
         if self._body is None:
@@ -780,9 +773,9 @@ class ClientResponse(HeadersMixin):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         self._in_context = False
         # similar to _RequestContextManager, we do not need to check
@@ -808,7 +801,7 @@ class ClientRequest:
     }
 
     # Type of body depends on PAYLOAD_REGISTRY, which is dynamic.
-    _body: Union[None, payload.Payload] = None
+    _body: None | payload.Payload = None
     auth = None
     response = None
 
@@ -834,26 +827,26 @@ class ClientRequest:
         url: URL,
         *,
         params: Query = None,
-        headers: Optional[LooseHeaders] = None,
-        skip_auto_headers: Optional[Iterable[str]] = None,
+        headers: LooseHeaders | None = None,
+        skip_auto_headers: Iterable[str] | None = None,
         data: Any = None,
-        cookies: Optional[LooseCookies] = None,
-        auth: Optional[BasicAuth] = None,
+        cookies: LooseCookies | None = None,
+        auth: BasicAuth | None = None,
         version: http.HttpVersion = http.HttpVersion11,
-        compress: Union[str, bool, None] = None,
-        chunked: Optional[bool] = None,
+        compress: str | bool | None = None,
+        chunked: bool | None = None,
         expect100: bool = False,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-        response_class: Optional[Type["ClientResponse"]] = None,
-        proxy: Optional[URL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
-        timer: Optional[BaseTimerContext] = None,
+        loop: asyncio.AbstractEventLoop | None = None,
+        response_class: type["ClientResponse"] | None = None,
+        proxy: URL | None = None,
+        proxy_auth: BasicAuth | None = None,
+        timer: BaseTimerContext | None = None,
         session: Optional["ClientSession"] = None,
-        ssl: Union[SSLContext, bool, Fingerprint] = True,
-        proxy_headers: Optional[LooseHeaders] = None,
-        traces: Optional[List["Trace"]] = None,
+        ssl: SSLContext | bool | Fingerprint = True,
+        proxy_headers: LooseHeaders | None = None,
+        traces: list["Trace"] | None = None,
         trust_env: bool = False,
-        server_hostname: Optional[str] = None,
+        server_hostname: str | None = None,
     ):
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -884,7 +877,7 @@ class ClientRequest:
             real_response_class = ClientResponse
         else:
             real_response_class = response_class
-        self.response_class: Type[ClientResponse] = real_response_class
+        self.response_class: type[ClientResponse] = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
         self._ssl = ssl if ssl is not None else True
         self.server_hostname = server_hostname
@@ -910,7 +903,7 @@ class ClientRequest:
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
 
-    def _get_content_length(self) -> Optional[int]:
+    def _get_content_length(self) -> int | None:
         """Extract and validate Content-Length header value.
 
         Returns parsed Content-Length value or None if not set.
@@ -952,7 +945,7 @@ class ClientRequest:
     @property
     def connection_key(self) -> ConnectionKey:
         if proxy_headers := self.proxy_headers:
-            h: Optional[int] = hash(tuple(proxy_headers.items()))
+            h: int | None = hash(tuple(proxy_headers.items()))
         else:
             h = None
         url = self.url
@@ -976,11 +969,11 @@ class ClientRequest:
         return ret
 
     @property
-    def port(self) -> Optional[int]:
+    def port(self) -> int | None:
         return self.url.port
 
     @property
-    def body(self) -> Union[payload.Payload, Literal[b""]]:
+    def body(self) -> payload.Payload | Literal[b""]:
         """Request body."""
         # empty body is represented as bytes for backwards compatibility
         return self._body or b""
@@ -1040,7 +1033,7 @@ class ClientRequest:
         if url.raw_user or url.raw_password:
             self.auth = helpers.BasicAuth(url.user or "", url.password or "")
 
-    def update_version(self, version: Union[http.HttpVersion, str]) -> None:
+    def update_version(self, version: http.HttpVersion | str) -> None:
         """Convert request version to two elements tuple.
 
         parser HTTP version '1.1' => (1, 1)
@@ -1055,7 +1048,7 @@ class ClientRequest:
                 ) from None
         self.version = version
 
-    def update_headers(self, headers: Optional[LooseHeaders]) -> None:
+    def update_headers(self, headers: LooseHeaders | None) -> None:
         """Update request headers."""
         self.headers: CIMultiDict[str] = CIMultiDict()
 
@@ -1080,7 +1073,7 @@ class ClientRequest:
             else:
                 self.headers.add(key, value)
 
-    def update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
+    def update_auto_headers(self, skip_auto_headers: Iterable[str] | None) -> None:
         if skip_auto_headers is not None:
             self._skip_auto_headers = CIMultiDict(
                 (hdr, None) for hdr in sorted(skip_auto_headers)
@@ -1099,7 +1092,7 @@ class ClientRequest:
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
 
-    def update_cookies(self, cookies: Optional[LooseCookies]) -> None:
+    def update_cookies(self, cookies: LooseCookies | None) -> None:
         """Update request cookies header."""
         if not cookies:
             return
@@ -1160,7 +1153,7 @@ class ClientRequest:
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
 
-    def update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
+    def update_auth(self, auth: BasicAuth | None, trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
@@ -1311,9 +1304,9 @@ class ClientRequest:
 
     def update_proxy(
         self,
-        proxy: Optional[URL],
-        proxy_auth: Optional[BasicAuth],
-        proxy_headers: Optional[LooseHeaders],
+        proxy: URL | None,
+        proxy_auth: BasicAuth | None,
+        proxy_headers: LooseHeaders | None,
     ) -> None:
         self.proxy = proxy
         if proxy is None:
@@ -1335,7 +1328,7 @@ class ClientRequest:
         self,
         writer: AbstractStreamWriter,
         conn: "Connection",
-        content_length: Optional[int] = None,
+        content_length: int | None = None,
     ) -> None:
         """
         Write the request body to the connection stream.
@@ -1475,7 +1468,7 @@ class ClientRequest:
         # Buffer headers for potential coalescing with body
         await writer.write_headers(status_line, self.headers)
 
-        task: Optional["asyncio.Task[None]"]
+        task: asyncio.Task[None] | None
         if self._body or self._continue is not None or protocol.writing_paused:
             coro = self.write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 12):

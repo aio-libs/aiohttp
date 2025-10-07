@@ -90,11 +90,11 @@ class HTTPException(Response, Exception):
     def __init__(
         self,
         *,
-        headers: Optional[LooseHeaders] = None,
-        reason: Optional[str] = None,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
         body: Any = None,
-        text: Optional[str] = None,
-        content_type: Optional[str] = None,
+        text: str | None = None,
+        content_type: str | None = None,
     ) -> None:
         if body is not None:
             warnings.warn(
@@ -170,11 +170,11 @@ class HTTPMove(HTTPRedirection):
         self,
         location: StrOrURL,
         *,
-        headers: Optional[LooseHeaders] = None,
-        reason: Optional[str] = None,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
         body: Any = None,
-        text: Optional[str] = None,
-        content_type: Optional[str] = None,
+        text: str | None = None,
+        content_type: str | None = None,
     ) -> None:
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
@@ -263,11 +263,11 @@ class HTTPMethodNotAllowed(HTTPClientError):
         method: str,
         allowed_methods: Iterable[str],
         *,
-        headers: Optional[LooseHeaders] = None,
-        reason: Optional[str] = None,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
         body: Any = None,
-        text: Optional[str] = None,
-        content_type: Optional[str] = None,
+        text: str | None = None,
+        content_type: str | None = None,
     ) -> None:
         allow = ",".join(sorted(allowed_methods))
         super().__init__(
@@ -278,7 +278,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
             content_type=content_type,
         )
         self.headers["Allow"] = allow
-        self.allowed_methods: Set[str] = set(allowed_methods)
+        self.allowed_methods: set[str] = set(allowed_methods)
         self.method = method.upper()
 
 
@@ -316,8 +316,8 @@ class HTTPRequestEntityTooLarge(HTTPClientError):
     def __init__(self, max_size: float, actual_size: float, **kwargs: Any) -> None:
         kwargs.setdefault(
             "text",
-            "Maximum request body size {} exceeded, "
-            "actual body size {}".format(max_size, actual_size),
+            f"Maximum request body size {max_size} exceeded, "
+            f"actual body size {actual_size}",
         )
         super().__init__(**kwargs)
 
@@ -371,13 +371,13 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
 
     def __init__(
         self,
-        link: Optional[StrOrURL],
+        link: StrOrURL | None,
         *,
-        headers: Optional[LooseHeaders] = None,
-        reason: Optional[str] = None,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
         body: Any = None,
-        text: Optional[str] = None,
-        content_type: Optional[str] = None,
+        text: str | None = None,
+        content_type: str | None = None,
     ) -> None:
         super().__init__(
             headers=headers,
@@ -392,7 +392,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
             self.headers["Link"] = f'<{str(self._link)}>; rel="blocked-by"'
 
     @property
-    def link(self) -> Optional[URL]:
+    def link(self) -> URL | None:
         return self._link
 
 

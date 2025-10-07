@@ -11,16 +11,9 @@ from importlib import import_module
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
-    Iterable as TypingIterable,
-    List,
-    Optional,
-    Set,
-    Type,
-    Union,
     cast,
 )
+from collections.abc import Awaitable, Callable, Iterable as TypingIterable
 
 from .abc import AbstractAccessLogger
 from .helpers import AppKey as AppKey
@@ -303,23 +296,23 @@ HostSequence = TypingIterable[str]
 
 
 async def _run_app(
-    app: Union[Application, Awaitable[Application]],
+    app: Application | Awaitable[Application],
     *,
-    host: Optional[Union[str, HostSequence]] = None,
-    port: Optional[int] = None,
-    path: Union[PathLike, TypingIterable[PathLike], None] = None,
-    sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
+    host: str | HostSequence | None = None,
+    port: int | None = None,
+    path: PathLike | TypingIterable[PathLike] | None = None,
+    sock: socket.socket | TypingIterable[socket.socket] | None = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
-    ssl_context: Optional[SSLContext] = None,
-    print: Optional[Callable[..., None]] = print,
+    ssl_context: SSLContext | None = None,
+    print: Callable[..., None] | None = print,
     backlog: int = 128,
-    access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+    access_log_class: type[AbstractAccessLogger] = AccessLogger,
     access_log_format: str = AccessLogger.LOG_FORMAT,
-    access_log: Optional[logging.Logger] = access_logger,
+    access_log: logging.Logger | None = access_logger,
     handle_signals: bool = True,
-    reuse_address: Optional[bool] = None,
-    reuse_port: Optional[bool] = None,
+    reuse_address: bool | None = None,
+    reuse_port: bool | None = None,
     handler_cancellation: bool = False,
 ) -> None:
     # An internal function to actually do all dirty job for application running
@@ -341,7 +334,7 @@ async def _run_app(
 
     await runner.setup()
 
-    sites: List[BaseSite] = []
+    sites: list[BaseSite] = []
 
     try:
         if host is not None:
@@ -441,7 +434,7 @@ async def _run_app(
 
 
 def _cancel_tasks(
-    to_cancel: Set["asyncio.Task[Any]"], loop: asyncio.AbstractEventLoop
+    to_cancel: set["asyncio.Task[Any]"], loop: asyncio.AbstractEventLoop
 ) -> None:
     if not to_cancel:
         return
@@ -465,25 +458,25 @@ def _cancel_tasks(
 
 
 def run_app(
-    app: Union[Application, Awaitable[Application]],
+    app: Application | Awaitable[Application],
     *,
-    host: Optional[Union[str, HostSequence]] = None,
-    port: Optional[int] = None,
-    path: Union[PathLike, TypingIterable[PathLike], None] = None,
-    sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
+    host: str | HostSequence | None = None,
+    port: int | None = None,
+    path: PathLike | TypingIterable[PathLike] | None = None,
+    sock: socket.socket | TypingIterable[socket.socket] | None = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
-    ssl_context: Optional[SSLContext] = None,
-    print: Optional[Callable[..., None]] = print,
+    ssl_context: SSLContext | None = None,
+    print: Callable[..., None] | None = print,
     backlog: int = 128,
-    access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+    access_log_class: type[AbstractAccessLogger] = AccessLogger,
     access_log_format: str = AccessLogger.LOG_FORMAT,
-    access_log: Optional[logging.Logger] = access_logger,
+    access_log: logging.Logger | None = access_logger,
     handle_signals: bool = True,
-    reuse_address: Optional[bool] = None,
-    reuse_port: Optional[bool] = None,
+    reuse_address: bool | None = None,
+    reuse_port: bool | None = None,
     handler_cancellation: bool = False,
-    loop: Optional[asyncio.AbstractEventLoop] = None,
+    loop: asyncio.AbstractEventLoop | None = None,
 ) -> None:
     """Run an app locally"""
     if loop is None:
@@ -534,7 +527,7 @@ def run_app(
             loop.close()
 
 
-def main(argv: List[str]) -> None:
+def main(argv: list[str]) -> None:
     arg_parser = ArgumentParser(
         description="aiohttp.web Application server", prog="aiohttp.web"
     )

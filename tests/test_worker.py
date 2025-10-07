@@ -3,7 +3,7 @@ import asyncio
 import os
 import socket
 import ssl
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
@@ -29,9 +29,9 @@ ACCEPTABLE_LOG_FORMAT = '%a "%{Referrer}i" %s'
 
 class BaseTestWorker:
     def __init__(self) -> None:
-        self.servers: Dict[object, object] = {}
+        self.servers: dict[object, object] = {}
         self.exit_code = 0
-        self._notify_waiter: Optional[asyncio.Future[bool]] = None
+        self._notify_waiter: asyncio.Future[bool] | None = None
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
         self.pid = "pid"
