@@ -21,17 +21,28 @@ try:
 except ImportError:
     HAS_BROTLI = False
 
-if sys.version_info >= (3, 14):
-    import compression.zstd  # noqa: I900
+try:
+    from compression.zstd import (  # type: ignore[import-not-found]  # noqa: I900
+        ZstdDecompressor,
+    )
+
+    def create_zstd_decompressor():
+        return ZstdDecompressor()
 
     HAS_ZSTD = True
-else:
+except ImportError:
     try:
-        import zstandard
+        from zstandard import ZstdDecompressor
+
+        def create_zstd_decompressor():
+            return ZstdDecompressor().decompressobj(
+                read_across_frames=True
+            )
 
         HAS_ZSTD = True
     except ImportError:
         HAS_ZSTD = False
+
 
 MAX_SYNC_CHUNK_SIZE = 1024
 
@@ -297,15 +308,10 @@ class ZSTDDecompressor:
                 "The zstd decompression is not available. "
                 "Please install `zstandard` module"
             )
-        if sys.version_info >= (3, 14):
-            self._obj = compression.zstd.ZstdDecompressor()
-        else:
-            self._obj = zstandard.ZstdDecompressor().decompressobj(
-                read_across_frames=True
-            )
+        self._obj = create_zstd_decompressor()
 
     def decompress_sync(self, data: bytes) -> bytes:
-        return self._obj.decompress(data)
+        return self._obj.decompress(data)  # type: ignore[no-any-return]
 
     def flush(self) -> bytes:
         return b""
