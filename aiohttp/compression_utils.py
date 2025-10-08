@@ -22,9 +22,9 @@ except ImportError:
     HAS_BROTLI = False
 
 try:
-    from compression.zstd import (
+    from compression.zstd import (  # type: ignore[import-not-found]  # noqa: I900
         ZstdDecompressor,
-    )  # type: ignore[import-not-found]  # noqa: I900
+    )
 
     HAS_ZSTD = True
 except ImportError:
