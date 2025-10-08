@@ -22,7 +22,7 @@ except ImportError:
     HAS_BROTLI = False
 
 try:
-    from compression.zstd import ZstdDecompressor  # noqa: I900
+    from compression.zstd import ZstdDecompressor  # type: ignore[import-not-found]  # noqa: I900
 
     HAS_ZSTD = True
 except ImportError:
@@ -301,7 +301,7 @@ class ZSTDDecompressor:
         self._obj = ZstdDecompressor()
 
     def decompress_sync(self, data: bytes) -> bytes:
-        return self._obj.decompress(data)
+        return self._obj.decompress(data)  # type: ignore[no-any-return]
 
     def flush(self) -> bytes:
         return b""
