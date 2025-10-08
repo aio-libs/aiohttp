@@ -1,0 +1,1 @@
+Fixed zstd decompression if no content size header is available -- by :user:`AlbertoJimenezRuiz`.
