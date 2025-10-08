@@ -35,9 +35,7 @@ except ImportError:
         from zstandard import ZstdDecompressor
 
         def create_zstd_decompressor():
-            return ZstdDecompressor().decompressobj(
-                read_across_frames=True
-            )
+            return ZstdDecompressor().decompressobj(read_across_frames=True)
 
         HAS_ZSTD = True
     except ImportError:
