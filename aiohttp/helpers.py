@@ -19,7 +19,6 @@ import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
-from email.message import _splitparam  # type: ignore[attr-defined]
 from email.message import Message
 from email.parser import HeaderParser
 from email.utils import parsedate
@@ -383,8 +382,12 @@ class EnsureOctetStream(Message):
         The way this class is used guarantees that content-type will
         be present so simplify the checks wrt to the base implementation.
         """
-        value = self.get("content-type")
-        ctype = _splitparam(value)[0].lower()
+        value = self.get("content-type").lower()
+
+        # Based on the implementation of _splitparam in the standard library
+        ctype, sep, _ = value.partition(";")
+        if not sep:
+            ctype = ctype.strip()
         if ctype.count("/") != 1:
             return self.get_default_type()
         return ctype
