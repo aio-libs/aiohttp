@@ -1,0 +1,1 @@
+Fixed Python 3.14 support when built without ``zstd`` support -- by :user:`JacobHenner`.
