@@ -10,6 +10,8 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
+backports-zstd==0.5.0 ; implementation_name == "cpython"
+    # via -r requirements/lint.in
 blockbuster==1.5.25
     # via -r requirements/lint.in
 cffi==2.0.0
@@ -39,7 +41,7 @@ idna==3.7
     # via trustme
 iniconfig==2.1.0
     # via pytest
-isal==1.7.2
+isal==1.8.0
     # via -r requirements/lint.in
 markdown-it-py==3.0.0
     # via rich
@@ -122,6 +124,4 @@ valkey==6.1.1
 virtualenv==20.34.0
     # via pre-commit
 zlib-ng==1.0.0
-    # via -r requirements/lint.in
-backports.zstd==0.5.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
