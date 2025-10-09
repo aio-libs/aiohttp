@@ -22,18 +22,14 @@ except ImportError:
     HAS_BROTLI = False
 
 try:
-    from compression.zstd import (  # type: ignore[import-not-found]  # noqa: I900
-        ZstdDecompressor,
-    )
+    if sys.version_info >= (3, 14):
+        from compression.zstd import ZstdDecompressor  # noqa: I900
+    else:  # TODO(PY314): Remove mentions of backports.zstd across codebase
+        from backports.zstd import ZstdDecompressor
 
     HAS_ZSTD = True
 except ImportError:
-    try:
-        from backports.zstd import ZstdDecompressor
-
-        HAS_ZSTD = True
-    except ImportError:
-        HAS_ZSTD = False
+    HAS_ZSTD = False
 
 
 MAX_SYNC_CHUNK_SIZE = 1024
