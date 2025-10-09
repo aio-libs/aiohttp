@@ -980,7 +980,7 @@ class DeflateBuffer:
             if not HAS_ZSTD:
                 raise ContentEncodingError(
                     "Can not decode content-encoding: zstandard (zstd). "
-                    "Please install `zstandard`"
+                    "Please install `backports.zstd`"
                 )
             self.decompressor = ZSTDDecompressor()
         else:
