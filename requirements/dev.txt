@@ -24,6 +24,10 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   valkey
 babel==2.17.0
     # via sphinx
+backports-zstd==0.5.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 blockbuster==1.5.25
     # via
     #   -r requirements/lint.in
@@ -68,7 +72,7 @@ exceptiongroup==1.3.0
     # via pytest
 execnet==2.1.1
     # via pytest-xdist
-filelock==3.19.1
+filelock==3.20.0
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
@@ -109,7 +113,7 @@ markupsafe==3.0.3
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.6.4
+multidict==6.7.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -134,7 +138,7 @@ pip-tools==7.5.1
     # via -r requirements/dev.in
 pkgconfig==1.5.5
     # via -r requirements/test-common.in
-platformdirs==4.4.0
+platformdirs==4.5.0
     # via virtualenv
 pluggy==1.6.0
     # via
@@ -142,7 +146,7 @@ pluggy==1.6.0
     #   pytest-cov
 pre-commit==4.3.0
     # via -r requirements/lint.in
-propcache==0.4.0
+propcache==0.4.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -154,9 +158,9 @@ pycares==4.11.0
     # via aiodns
 pycparser==2.23
     # via cffi
-pydantic==2.11.9
+pydantic==2.12.0
     # via python-on-whales
-pydantic-core==2.33.2
+pydantic-core==2.41.1
     # via pydantic
 pygments==2.19.2
     # via
@@ -179,7 +183,7 @@ pytest==8.4.2
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.0.0
+pytest-codspeed==4.1.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -235,7 +239,7 @@ stamina==25.1.0
     # via cherry-picker
 tenacity==9.1.2
     # via stamina
-tomli==2.2.1
+tomli==2.3.0
     # via
     #   build
     #   cherry-picker
@@ -284,16 +288,12 @@ wait-for-it==2.3.0
     # via -r requirements/test-common.in
 wheel==0.46.0
     # via pip-tools
-yarl==1.21.0
+yarl==1.22.0
     # via -r requirements/runtime-deps.in
 zlib-ng==1.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-zstandard==0.25.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
-    # via
-    #   -r requirements/lint.in
-    #   -r requirements/runtime-deps.in
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.2

@@ -4,19 +4,9 @@ import io
 import pathlib
 import sys
 import warnings
+from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import (
-    Any,
-    AsyncIterator,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Protocol,
-    Union,
-)
+from typing import Any, Protocol
 from unittest import mock
 
 import pytest
@@ -321,7 +311,7 @@ def test_host_header_ipv6_with_port(make_request: _RequestMaker) -> None:
     ),
 )
 def test_host_header_fqdn(
-    make_request: _RequestMaker, url: str, headers: Dict[str, str], expected: str
+    make_request: _RequestMaker, url: str, headers: dict[str, str], expected: str
 ) -> None:
     req = make_request("get", url, headers=headers)
     assert req.headers["HOST"] == expected
@@ -1171,7 +1161,7 @@ async def test_data_stream(
     original_write_bytes = req.write_bytes
 
     async def _mock_write_bytes(
-        writer: AbstractStreamWriter, conn: mock.Mock, content_length: Optional[int]
+        writer: AbstractStreamWriter, conn: mock.Mock, content_length: int | None
     ) -> None:
         # Ensure the task is scheduled
         await asyncio.sleep(0)
@@ -1548,10 +1538,10 @@ def test_insecure_fingerprint_sha1(loop: asyncio.AbstractEventLoop) -> None:
 
 def test_loose_cookies_types(loop: asyncio.AbstractEventLoop) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
-    morsel: "Morsel[str]" = Morsel()
+    morsel: Morsel[str] = Morsel()
     morsel.set(key="string", val="Another string", coded_val="really")
 
-    accepted_types: List[LooseCookies] = [
+    accepted_types: list[LooseCookies] = [
         [("str", BaseCookie())],
         [("str", morsel)],
         [
@@ -1749,7 +1739,7 @@ async def test_write_bytes_with_iterable_content_length_limit(
     loop: asyncio.AbstractEventLoop,
     buf: bytearray,
     conn: mock.Mock,
-    data: Union[List[bytes], bytes],
+    data: list[bytes] | bytes,
 ) -> None:
     """Test that write_bytes respects content_length limit for iterable data."""
     # Test with iterable data
@@ -2212,8 +2202,8 @@ async def test_expect100_with_body_becomes_none() -> None:
 )
 def test_content_length_for_methods(
     method: str,
-    data: Optional[bytes],
-    expected_content_length: Optional[str],
+    data: bytes | None,
+    expected_content_length: str | None,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Test that Content-Length header is set correctly for all HTTP methods."""

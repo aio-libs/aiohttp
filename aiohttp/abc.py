@@ -1,23 +1,9 @@
 import logging
 import socket
 from abc import ABC, abstractmethod
-from collections.abc import Sized
+from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence, Sized
 from http.cookies import BaseCookie, Morsel
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    TypedDict,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from multidict import CIMultiDict
 from yarl import URL
@@ -31,8 +17,8 @@ if TYPE_CHECKING:
     from .web_request import BaseRequest, Request
     from .web_response import StreamResponse
 else:
-    BaseRequest = Request = Application = StreamResponse = None
-    HTTPException = None
+    BaseRequest = Request = Application = StreamResponse = Any
+    HTTPException = Any
 
 
 class AbstractRouter(ABC):
@@ -73,21 +59,21 @@ class AbstractMatchInfo(ABC):
     @abstractmethod
     def expect_handler(
         self,
-    ) -> Callable[[Request], Awaitable[Optional[StreamResponse]]]:
+    ) -> Callable[[Request], Awaitable[StreamResponse | None]]:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def http_exception(self) -> Optional[HTTPException]:
+    def http_exception(self) -> HTTPException | None:
         """HTTPException instance raised on router's resolving, or None"""
 
     @abstractmethod  # pragma: no branch
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> dict[str, Any]:
         """Return a dict with additional info useful for introspection"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def apps(self) -> Tuple[Application, ...]:
+    def apps(self) -> tuple[Application, ...]:
         """Stack of nested applications.
 
         Top level application is left-most element.
@@ -153,7 +139,7 @@ class AbstractResolver(ABC):
     @abstractmethod
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         """Return IP address for given hostname"""
 
     @abstractmethod
@@ -179,7 +165,7 @@ class AbstractCookieJar(Sized, IterableBase):
         """Return True if cookies should be quoted."""
 
     @abstractmethod
-    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
+    def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         """Clear all cookies if no predicate is passed."""
 
     @abstractmethod
@@ -198,7 +184,7 @@ class AbstractCookieJar(Sized, IterableBase):
             self.update_cookies(cookies_to_update, response_url)
 
     @abstractmethod
-    def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
+    def filter_cookies(self, request_url: URL) -> BaseCookie[str]:
         """Return the jar's cookies filtered by their attributes."""
 
 
@@ -207,11 +193,11 @@ class AbstractStreamWriter(ABC):
 
     buffer_size: int = 0
     output_size: int = 0
-    length: Optional[int] = 0
+    length: int | None = 0
 
     @abstractmethod
     async def write(
-        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
     ) -> None:
         """Write chunk into stream."""
 
@@ -225,7 +211,7 @@ class AbstractStreamWriter(ABC):
 
     @abstractmethod
     def enable_compression(
-        self, encoding: str = "deflate", strategy: Optional[int] = None
+        self, encoding: str = "deflate", strategy: int | None = None
     ) -> None:
         """Enable HTTP body compression"""
 
@@ -234,9 +220,7 @@ class AbstractStreamWriter(ABC):
         """Enable HTTP chunked mode"""
 
     @abstractmethod
-    async def write_headers(
-        self, status_line: str, headers: "CIMultiDict[str]"
-    ) -> None:
+    async def write_headers(self, status_line: str, headers: CIMultiDict[str]) -> None:
         """Write HTTP headers"""
 
     def send_headers(self) -> None:

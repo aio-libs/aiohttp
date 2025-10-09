@@ -4,22 +4,8 @@ import re
 import string
 from contextlib import suppress
 from enum import IntEnum
-from typing import (
-    Any,
-    ClassVar,
-    Final,
-    Generic,
-    List,
-    Literal,
-    NamedTuple,
-    Optional,
-    Pattern,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from re import Pattern
+from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
@@ -68,7 +54,7 @@ __all__ = (
 
 _SEP = Literal[b"\r\n", b"\n"]
 
-ASCIISET: Final[Set[str]] = set(string.printable)
+ASCIISET: Final[set[str]] = set(string.printable)
 
 # See https://www.rfc-editor.org/rfc/rfc9110.html#name-overview
 # and https://www.rfc-editor.org/rfc/rfc9110.html#name-tokens
@@ -91,7 +77,7 @@ class RawRequestMessage(NamedTuple):
     headers: CIMultiDictProxy[str]
     raw_headers: RawHeaders
     should_close: bool
-    compression: Optional[str]
+    compression: str | None
     upgrade: bool
     chunked: bool
     url: URL
@@ -104,7 +90,7 @@ class RawResponseMessage(NamedTuple):
     headers: CIMultiDictProxy[str]
     raw_headers: RawHeaders
     should_close: bool
-    compression: Optional[str]
+    compression: str | None
     upgrade: bool
     chunked: bool
 
@@ -135,8 +121,8 @@ class HeadersParser:
         self._lax = lax
 
     def parse_headers(
-        self, lines: List[bytes]
-    ) -> Tuple["CIMultiDictProxy[str]", RawHeaders]:
+        self, lines: list[bytes]
+    ) -> tuple["CIMultiDictProxy[str]", RawHeaders]:
         headers: CIMultiDict[str] = CIMultiDict()
         # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
@@ -244,10 +230,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         limit: int,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
-        timer: Optional[BaseTimerContext] = None,
-        code: Optional[int] = None,
-        method: Optional[str] = None,
-        payload_exception: Optional[Type[BaseException]] = None,
+        timer: BaseTimerContext | None = None,
+        code: int | None = None,
+        method: str | None = None,
+        payload_exception: type[BaseException] | None = None,
         response_with_body: bool = True,
         read_until_eof: bool = False,
         auto_decompress: bool = True,
@@ -263,22 +249,22 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self.response_with_body = response_with_body
         self.read_until_eof = read_until_eof
 
-        self._lines: List[bytes] = []
+        self._lines: list[bytes] = []
         self._tail = b""
         self._upgraded = False
         self._payload = None
-        self._payload_parser: Optional[HttpPayloadParser] = None
+        self._payload_parser: HttpPayloadParser | None = None
         self._auto_decompress = auto_decompress
         self._limit = limit
         self._headers_parser = HeadersParser(max_line_size, max_field_size, self.lax)
 
     @abc.abstractmethod
-    def parse_message(self, lines: List[bytes]) -> _MsgT: ...
+    def parse_message(self, lines: list[bytes]) -> _MsgT: ...
 
     @abc.abstractmethod
     def _is_chunked_te(self, te: str) -> bool: ...
 
-    def feed_eof(self) -> Optional[_MsgT]:
+    def feed_eof(self) -> _MsgT | None:
         if self._payload_parser is not None:
             self._payload_parser.feed_eof()
             self._payload_parser = None
@@ -302,7 +288,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         CONTENT_LENGTH: istr = hdrs.CONTENT_LENGTH,
         METH_CONNECT: str = hdrs.METH_CONNECT,
         SEC_WEBSOCKET_KEY1: istr = hdrs.SEC_WEBSOCKET_KEY1,
-    ) -> Tuple[List[Tuple[_MsgT, StreamReader]], bool, bytes]:
+    ) -> tuple[list[tuple[_MsgT, StreamReader]], bool, bytes]:
         messages = []
 
         if self._tail:
@@ -341,7 +327,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         finally:
                             self._lines.clear()
 
-                        def get_content_length() -> Optional[int]:
+                        def get_content_length() -> int | None:
                             # payload length
                             length_hdr = msg.headers.get(CONTENT_LENGTH)
                             if length_hdr is None:
@@ -490,9 +476,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         return messages, self._upgraded, data
 
     def parse_headers(
-        self, lines: List[bytes]
-    ) -> Tuple[
-        "CIMultiDictProxy[str]", RawHeaders, Optional[bool], Optional[str], bool, bool
+        self, lines: list[bytes]
+    ) -> tuple[
+        "CIMultiDictProxy[str]", RawHeaders, bool | None, str | None, bool, bool
     ]:
         """Parses RFC 5322 headers from a stream.
 
@@ -571,7 +557,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
     Returns RawRequestMessage.
     """
 
-    def parse_message(self, lines: List[bytes]) -> RawRequestMessage:
+    def parse_message(self, lines: list[bytes]) -> RawRequestMessage:
         # request line
         line = lines[0].decode("utf-8", "surrogateescape")
         try:
@@ -676,15 +662,15 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     def feed_data(
         self,
         data: bytes,
-        SEP: Optional[_SEP] = None,
+        SEP: _SEP | None = None,
         *args: Any,
         **kwargs: Any,
-    ) -> Tuple[List[Tuple[RawResponseMessage, StreamReader]], bool, bytes]:
+    ) -> tuple[list[tuple[RawResponseMessage, StreamReader]], bool, bytes]:
         if SEP is None:
             SEP = b"\r\n" if DEBUG else b"\n"
         return super().feed_data(data, SEP, *args, **kwargs)
 
-    def parse_message(self, lines: List[bytes]) -> RawResponseMessage:
+    def parse_message(self, lines: list[bytes]) -> RawResponseMessage:
         line = lines[0].decode("utf-8", "surrogateescape")
         try:
             version, status = line.split(maxsplit=1)
@@ -756,11 +742,11 @@ class HttpPayloadParser:
     def __init__(
         self,
         payload: StreamReader,
-        length: Optional[int] = None,
+        length: int | None = None,
         chunked: bool = False,
-        compression: Optional[str] = None,
-        code: Optional[int] = None,
-        method: Optional[str] = None,
+        compression: str | None = None,
+        code: int | None = None,
+        method: str | None = None,
         response_with_body: bool = True,
         auto_decompress: bool = True,
         lax: bool = False,
@@ -780,7 +766,7 @@ class HttpPayloadParser:
 
         # payload decompression wrapper
         if response_with_body and compression and self._auto_decompress:
-            real_payload: Union[StreamReader, DeflateBuffer] = DeflateBuffer(
+            real_payload: StreamReader | DeflateBuffer = DeflateBuffer(
                 payload, compression
             )
         else:
@@ -817,7 +803,7 @@ class HttpPayloadParser:
 
     def feed_data(
         self, chunk: bytes, SEP: _SEP = b"\r\n", CHUNK_EXT: bytes = b";"
-    ) -> Tuple[bool, bytes]:
+    ) -> tuple[bool, bytes]:
         # Read specified amount of bytes
         if self._type == ParseState.PARSE_LENGTH:
             required = self._length
@@ -933,14 +919,14 @@ class HttpPayloadParser:
 class DeflateBuffer:
     """DeflateStream decompress stream and feed data into specified stream."""
 
-    def __init__(self, out: StreamReader, encoding: Optional[str]) -> None:
+    def __init__(self, out: StreamReader, encoding: str | None) -> None:
         self.out = out
         self.size = 0
         out.total_compressed_bytes = self.size
         self.encoding = encoding
         self._started_decoding = False
 
-        self.decompressor: Union[BrotliDecompressor, ZLibDecompressor, ZSTDDecompressor]
+        self.decompressor: BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor
         if encoding == "br":
             if not HAS_BROTLI:
                 raise ContentEncodingError(
@@ -952,7 +938,7 @@ class DeflateBuffer:
             if not HAS_ZSTD:
                 raise ContentEncodingError(
                     "Can not decode content-encoding: zstandard (zstd). "
-                    "Please install `zstandard`"
+                    "Please install `backports.zstd`"
                 )
             self.decompressor = ZSTDDecompressor()
         else:
@@ -960,7 +946,7 @@ class DeflateBuffer:
 
     def set_exception(
         self,
-        exc: Union[Type[BaseException], BaseException],
+        exc: type[BaseException] | BaseException,
         exc_cause: BaseException = _EXC_SENTINEL,
     ) -> None:
         set_exception(self.out, exc, exc_cause)

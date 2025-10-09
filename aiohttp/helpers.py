@@ -18,6 +18,7 @@ import time
 import warnings
 import weakref
 from collections import namedtuple
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import suppress
 from email.message import Message
 from email.parser import HeaderParser
@@ -29,18 +30,10 @@ from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ContextManager,
-    Dict,
     Generic,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
     Optional,
     Protocol,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     final,
@@ -65,16 +58,12 @@ else:
 
 if TYPE_CHECKING:
     from dataclasses import dataclass as frozen_dataclass_decorator
-elif sys.version_info < (3, 10):
-    frozen_dataclass_decorator = functools.partial(dataclasses.dataclass, frozen=True)
 else:
     frozen_dataclass_decorator = functools.partial(
         dataclasses.dataclass, frozen=True, slots=True
     )
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
-
-PY_310 = sys.version_info >= (3, 10)
 
 COOKIE_MAX_LENGTH = 4096
 
@@ -191,7 +180,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         return "Basic %s" % base64.b64encode(creds).decode(self.encoding)
 
 
-def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
+def strip_auth_from_url(url: URL) -> tuple[URL, BasicAuth | None]:
     """Remove user and password from URL if present and return BasicAuth object."""
     # Check raw_user and raw_password first as yarl is likely
     # to already have these values parsed from the netloc in the cache.
@@ -200,7 +189,7 @@ def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
     return url.with_user(None), BasicAuth(url.user or "", url.password or "")
 
 
-def netrc_from_env() -> Optional[netrc.netrc]:
+def netrc_from_env() -> netrc.netrc | None:
     """Load netrc from file.
 
     Attempt to load it from the path specified by the env-var
@@ -248,10 +237,10 @@ def netrc_from_env() -> Optional[netrc.netrc]:
 @frozen_dataclass_decorator
 class ProxyInfo:
     proxy: URL
-    proxy_auth: Optional[BasicAuth]
+    proxy_auth: BasicAuth | None
 
 
-def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAuth:
+def basicauth_from_netrc(netrc_obj: netrc.netrc | None, host: str) -> BasicAuth:
     """
     Return :py:class:`~aiohttp.BasicAuth` credentials for ``host`` from ``netrc_obj``.
 
@@ -280,7 +269,7 @@ def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAu
     return BasicAuth(username, password)
 
 
-def proxies_from_env() -> Dict[str, ProxyInfo]:
+def proxies_from_env() -> dict[str, ProxyInfo]:
     proxy_urls = {
         k: URL(v)
         for k, v in getproxies().items()
@@ -306,7 +295,7 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
+def get_env_proxy_for_url(url: URL) -> tuple[URL, BasicAuth | None]:
     """Get a permitted proxy for the given URL from the env."""
     if url.host is not None and proxy_bypass(url.host):
         raise LookupError(f"Proxying is disallowed for `{url.host!r}`")
@@ -394,7 +383,7 @@ class EnsureOctetStream(Message):
 
 
 @functools.lru_cache(maxsize=56)
-def parse_content_type(raw: str) -> Tuple[str, MappingProxyType[str, str]]:
+def parse_content_type(raw: str) -> tuple[str, MappingProxyType[str, str]]:
     """Parse Content-Type header.
 
     Returns a tuple of the parsed content type and a
@@ -408,7 +397,7 @@ def parse_content_type(raw: str) -> Tuple[str, MappingProxyType[str, str]]:
     return content_type, MappingProxyType(content_dict)
 
 
-def guess_filename(obj: Any, default: Optional[str] = None) -> Optional[str]:
+def guess_filename(obj: Any, default: str | None = None) -> str | None:
     name = getattr(obj, "name", None)
     if name and isinstance(name, str) and name[0] != "<" and name[-1] != ">":
         return Path(name).name
@@ -436,7 +425,7 @@ def content_disposition_header(
     disptype: str,
     quote_fields: bool = True,
     _charset: str = "utf-8",
-    params: Optional[Dict[str, str]] = None,
+    params: dict[str, str] | None = None,
 ) -> str:
     """Sets ``Content-Disposition`` header for MIME.
 
@@ -498,7 +487,7 @@ def is_expected_content_type(
     return expected_content_type in response_content_type
 
 
-def is_ip_address(host: Optional[str]) -> bool:
+def is_ip_address(host: str | None) -> bool:
     """Check if host looks like an IP Address.
 
     This check is only meant as a heuristic to ensure that
@@ -511,7 +500,7 @@ def is_ip_address(host: Optional[str]) -> bool:
     return ":" in host or host.replace(".", "").isdigit()
 
 
-_cached_current_datetime: Optional[int] = None
+_cached_current_datetime: int | None = None
 _cached_formatted_datetime = ""
 
 
@@ -555,7 +544,7 @@ def rfc822_formatted_time() -> str:
     return _cached_formatted_datetime
 
 
-def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
+def _weakref_handle(info: "tuple[weakref.ref[object], str]") -> None:
     ref, name = info
     ob = ref()
     if ob is not None:
@@ -566,10 +555,10 @@ def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
 def weakref_handle(
     ob: object,
     name: str,
-    timeout: Optional[float],
+    timeout: float | None,
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
-) -> Optional[asyncio.TimerHandle]:
+) -> asyncio.TimerHandle | None:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
         if timeout >= timeout_ceil_threshold:
@@ -581,10 +570,10 @@ def weakref_handle(
 
 def call_later(
     cb: Callable[[], Any],
-    timeout: Optional[float],
+    timeout: float | None,
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
-) -> Optional[asyncio.TimerHandle]:
+) -> asyncio.TimerHandle | None:
     if timeout is None or timeout <= 0:
         return None
     now = loop.time()
@@ -612,14 +601,14 @@ class TimeoutHandle:
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
-        timeout: Optional[float],
+        timeout: float | None,
         ceil_threshold: float = 5,
     ) -> None:
         self._timeout = timeout
         self._loop = loop
         self._ceil_threshold = ceil_threshold
-        self._callbacks: List[
-            Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]
+        self._callbacks: list[
+            tuple[Callable[..., None], tuple[Any, ...], dict[str, Any]]
         ] = []
 
     def register(
@@ -630,7 +619,7 @@ class TimeoutHandle:
     def close(self) -> None:
         self._callbacks.clear()
 
-    def start(self) -> Optional[asyncio.TimerHandle]:
+    def start(self) -> asyncio.TimerHandle | None:
         timeout = self._timeout
         if timeout is not None and timeout > 0:
             when = self._loop.time() + timeout
@@ -673,9 +662,9 @@ class TimerNoop(BaseTimerContext):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         return
 
@@ -687,7 +676,7 @@ class TimerContext(BaseTimerContext):
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._tasks: List[asyncio.Task[Any]] = []
+        self._tasks: list[asyncio.Task[Any]] = []
         self._cancelled = False
         self._cancelling = 0
 
@@ -715,11 +704,11 @@ class TimerContext(BaseTimerContext):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> Optional[bool]:
-        enter_task: Optional[asyncio.Task[Any]] = None
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool | None:
+        enter_task: asyncio.Task[Any] | None = None
         if self._tasks:
             enter_task = self._tasks.pop()
 
@@ -746,7 +735,7 @@ class TimerContext(BaseTimerContext):
 
 
 def ceil_timeout(
-    delay: Optional[float], ceil_threshold: float = 5
+    delay: float | None, ceil_threshold: float = 5
 ) -> async_timeout.Timeout:
     if delay is None or delay <= 0:
         return async_timeout.timeout(None)
@@ -763,11 +752,11 @@ class HeadersMixin:
     """Mixin for handling headers."""
 
     _headers: MultiMapping[str]
-    _content_type: Optional[str] = None
-    _content_dict: Optional[Dict[str, str]] = None
-    _stored_content_type: Union[str, None, _SENTINEL] = sentinel
+    _content_type: str | None = None
+    _content_dict: dict[str, str] | None = None
+    _stored_content_type: str | None | _SENTINEL = sentinel
 
-    def _parse_content_type(self, raw: Optional[str]) -> None:
+    def _parse_content_type(self, raw: str | None) -> None:
         self._stored_content_type = raw
         if raw is None:
             # default value according to RFC 2616
@@ -789,7 +778,7 @@ class HeadersMixin:
         return self._content_type
 
     @property
-    def charset(self) -> Optional[str]:
+    def charset(self) -> str | None:
         """The value of charset part for Content-Type HTTP header."""
         raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
@@ -798,7 +787,7 @@ class HeadersMixin:
         return self._content_dict.get("charset")
 
     @property
-    def content_length(self) -> Optional[int]:
+    def content_length(self) -> int | None:
         """The value of Content-Length HTTP header."""
         content_length = self._headers.get(hdrs.CONTENT_LENGTH)
         return None if content_length is None else int(content_length)
@@ -815,14 +804,14 @@ _EXC_SENTINEL = BaseException()
 class ErrorableProtocol(Protocol):
     def set_exception(
         self,
-        exc: Union[Type[BaseException], BaseException],
+        exc: type[BaseException] | BaseException,
         exc_cause: BaseException = ...,
     ) -> None: ...
 
 
 def set_exception(
     fut: Union["asyncio.Future[_T]", ErrorableProtocol],
-    exc: Union[Type[BaseException], BaseException],
+    exc: type[BaseException] | BaseException,
     exc_cause: BaseException = _EXC_SENTINEL,
 ) -> None:
     """Set future exception.
@@ -852,10 +841,10 @@ class AppKey(Generic[_T]):
     # This may be set by Python when instantiating with a generic type. We need to
     # support this, in order to support types that are not concrete classes,
     # like Iterable, which can't be passed as the second parameter to __init__.
-    __orig_class__: Type[object]
+    __orig_class__: type[object]
 
     # TODO(PY314): Change Type to TypeForm (this should resolve unreachable below).
-    def __init__(self, name: str, t: Optional[Type[_T]] = None):
+    def __init__(self, name: str, t: type[_T] | None = None):
         # Prefix with module name to help deduplicate key names.
         frame = inspect.currentframe()
         while frame:
@@ -895,16 +884,15 @@ class AppKey(Generic[_T]):
 
 
 @final
-class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
+class ChainMapProxy(Mapping[str | AppKey[Any], Any]):
     __slots__ = ("_maps",)
 
-    def __init__(self, maps: Iterable[Mapping[Union[str, AppKey[Any]], Any]]) -> None:
+    def __init__(self, maps: Iterable[Mapping[str | AppKey[Any], Any]]) -> None:
         self._maps = tuple(maps)
 
     def __init_subclass__(cls) -> None:
         raise TypeError(
-            "Inheritance class {} from ChainMapProxy "
-            "is forbidden".format(cls.__name__)
+            f"Inheritance class {cls.__name__} from ChainMapProxy " "is forbidden"
         )
 
     @overload  # type: ignore[override]
@@ -913,7 +901,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
     @overload
     def __getitem__(self, key: str) -> Any: ...
 
-    def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
+    def __getitem__(self, key: str | AppKey[_T]) -> Any:
         for mapping in self._maps:
             try:
                 return mapping[key]
@@ -922,15 +910,15 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         raise KeyError(key)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]: ...
+    def get(self, key: AppKey[_T], default: _S) -> _T | _S: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
+    def get(self, key: AppKey[_T], default: None = ...) -> _T | None: ...
 
     @overload
     def get(self, key: str, default: Any = ...) -> Any: ...
 
-    def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+    def get(self, key: str | AppKey[_T], default: Any = None) -> Any:
         try:
             return self[key]
         except KeyError:
@@ -940,8 +928,8 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         # reuses stored hash values if possible
         return len(set().union(*self._maps))
 
-    def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
-        d: Dict[Union[str, AppKey[Any]], Any] = {}
+    def __iter__(self) -> Iterator[str | AppKey[Any]]:
+        d: dict[str | AppKey[Any], Any] = {}
         for mapping in reversed(self._maps):
             # reuses stored hash values if possible
             d.update(mapping)
@@ -961,7 +949,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 class CookieMixin:
     """Mixin for handling cookies."""
 
-    _cookies: Optional[SimpleCookie] = None
+    _cookies: SimpleCookie | None = None
 
     @property
     def cookies(self) -> SimpleCookie:
@@ -974,14 +962,14 @@ class CookieMixin:
         name: str,
         value: str,
         *,
-        expires: Optional[str] = None,
-        domain: Optional[str] = None,
-        max_age: Optional[Union[int, str]] = None,
+        expires: str | None = None,
+        domain: str | None = None,
+        max_age: int | str | None = None,
         path: str = "/",
-        secure: Optional[bool] = None,
-        httponly: Optional[bool] = None,
-        samesite: Optional[str] = None,
-        partitioned: Optional[bool] = None,
+        secure: bool | None = None,
+        httponly: bool | None = None,
+        samesite: str | None = None,
+        partitioned: bool | None = None,
     ) -> None:
         """Set or update response cookie.
 
@@ -1032,11 +1020,11 @@ class CookieMixin:
         self,
         name: str,
         *,
-        domain: Optional[str] = None,
+        domain: str | None = None,
         path: str = "/",
-        secure: Optional[bool] = None,
-        httponly: Optional[bool] = None,
-        samesite: Optional[str] = None,
+        secure: bool | None = None,
+        httponly: bool | None = None,
+        samesite: str | None = None,
     ) -> None:
         """Delete cookie.
 
@@ -1087,7 +1075,7 @@ def validate_etag_value(value: str) -> None:
         )
 
 
-def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
+def parse_http_date(date_str: str | None) -> datetime.datetime | None:
     """Process a date string, return a datetime object"""
     if date_str is not None:
         timetuple = parsedate(date_str)
