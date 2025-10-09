@@ -24,6 +24,10 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   valkey
 babel==2.17.0
     # via sphinx
+backports-zstd==0.5.0 ; implementation_name == "cpython"
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 blockbuster==1.5.25
     # via
     #   -r requirements/lint.in
@@ -293,16 +297,12 @@ wait-for-it==2.3.0
     # via -r requirements/test-common.in
 wheel==0.46.0
     # via pip-tools
-yarl==1.21.0
+yarl==1.22.0
     # via -r requirements/runtime-deps.in
 zlib-ng==1.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-backports.zstd==0.5.0 ; implementation_name == "cpython"
-    # via
-    #   -r requirements/lint.in
-    #   -r requirements/runtime-deps.in
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.2
