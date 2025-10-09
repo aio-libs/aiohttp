@@ -1,4 +1,5 @@
 aiodns
+backports.zstd; implementation_name == "cpython"
 blockbuster
 freezegun
 isal
@@ -14,4 +15,3 @@ trustme
 uvloop; platform_system != "Windows"
 valkey
 zlib_ng
-zstandard; implementation_name == "cpython"
