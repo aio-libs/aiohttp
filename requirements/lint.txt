@@ -121,5 +121,5 @@ virtualenv==20.34.0
     # via pre-commit
 zlib-ng==1.0.0
     # via -r requirements/lint.in
-zstandard==0.25.0 ; implementation_name == "cpython"
+backports.zstd==0.5.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
