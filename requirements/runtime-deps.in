@@ -10,4 +10,4 @@ frozenlist >= 1.1.1
 multidict >=4.5, < 7.0
 propcache >= 0.2.0
 yarl >= 1.17.0, < 2.0
-zstandard; platform_python_implementation == 'CPython' and python_version < "3.14"
+backports.zstd; platform_python_implementation == 'CPython' and python_version < "3.14"

@@ -29,7 +29,7 @@ try:
     HAS_ZSTD = True
 except ImportError:
     try:
-        from zstandard import ZstdDecompressor
+        from backports.zstd import ZstdDecompressor
 
         HAS_ZSTD = True
     except ImportError:
@@ -298,7 +298,7 @@ class ZSTDDecompressor:
         if not HAS_ZSTD:
             raise RuntimeError(
                 "The zstd decompression is not available. "
-                "Please install `zstandard` module"
+                "Please install `backports.zstd` module"
             )
         self._obj = ZstdDecompressor()
 
