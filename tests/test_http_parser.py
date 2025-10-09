@@ -37,13 +37,13 @@ try:
 except ImportError:
     brotli = None
 
-if sys.version_info >= (3, 14):
-    import compression.zstd as zstandard  # noqa: I900
-else:
-    try:
+try:
+    if sys.version_info >= (3, 14):
+        import compression.zstd as zstandard  # noqa: I900
+    else:
         import backports.zstd as zstandard
-    except ImportError:
-        zstandard = None  # type: ignore[assignment]
+except ImportError:
+    zstandard = None  # type: ignore[assignment]
 
 REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
