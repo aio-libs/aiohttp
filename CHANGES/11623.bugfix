@@ -1,0 +1,1 @@
+Switched to `backports.zstd` and fixed zstd decompression for chunked zstd streams -- by :user:`ZhaoMJ`.
