@@ -302,7 +302,7 @@ zlib-ng==1.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-zstandard==0.25.0 ; implementation_name == "cpython"
+backports.zstd==0.5.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
