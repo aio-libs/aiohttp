@@ -299,7 +299,7 @@ class ZSTDDecompressor:
         self._obj = ZstdDecompressor()
 
     def decompress_sync(self, data: bytes) -> bytes:
-        return self._obj.decompress(data)  # type: ignore[no-any-return]
+        return self._obj.decompress(data)
 
     def flush(self) -> bytes:
         return b""
