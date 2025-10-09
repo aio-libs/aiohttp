@@ -27,7 +27,7 @@ distlib==0.4.0
     # via virtualenv
 exceptiongroup==1.3.0
     # via pytest
-filelock==3.19.1
+filelock==3.20.0
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
