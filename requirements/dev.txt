@@ -146,7 +146,7 @@ pluggy==1.6.0
     #   pytest-cov
 pre-commit==4.3.0
     # via -r requirements/lint.in
-propcache==0.4.0
+propcache==0.4.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
