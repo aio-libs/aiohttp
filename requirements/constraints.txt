@@ -247,7 +247,7 @@ stamina==25.1.0
     # via cherry-picker
 tenacity==9.1.2
     # via stamina
-tomli==2.2.1
+tomli==2.3.0
     # via
     #   build
     #   cherry-picker
