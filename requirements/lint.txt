@@ -41,7 +41,7 @@ idna==3.7
     # via trustme
 iniconfig==2.1.0
     # via pytest
-isal==1.7.2
+isal==1.8.0
     # via -r requirements/lint.in
 markdown-it-py==3.0.0
     # via rich

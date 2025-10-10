@@ -53,7 +53,7 @@ idna==3.6
     #   yarl
 iniconfig==2.1.0
     # via pytest
-isal==1.7.2 ; python_version < "3.14"
+isal==1.8.0 ; python_version < "3.14"
     # via -r requirements/test-common.in
 markdown-it-py==3.0.0
     # via rich
