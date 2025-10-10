@@ -87,7 +87,7 @@ re-assert==1.1.0
     # via -r requirements/test-common.in
 regex==2025.9.18
     # via re-assert
-rich==14.1.0
+rich==14.2.0
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
