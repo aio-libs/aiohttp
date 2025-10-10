@@ -26,6 +26,10 @@ attrs==25.4.0
     # via -r requirements/runtime-deps.in
 babel==2.17.0
     # via sphinx
+backports-zstd==1.0.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 blockbuster==1.5.25
     # via
     #   -r requirements/lint.in
@@ -293,10 +297,6 @@ zlib-ng==1.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-backports.zstd==0.5.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
-    # via
-    #   -r requirements/lint.in
-    #   -r requirements/runtime-deps.in
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.2
