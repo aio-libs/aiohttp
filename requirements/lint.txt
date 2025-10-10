@@ -10,7 +10,7 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
-backports-zstd==0.5.0 ; implementation_name == "cpython"
+backports-zstd==1.0.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 blockbuster==1.5.25
     # via -r requirements/lint.in
