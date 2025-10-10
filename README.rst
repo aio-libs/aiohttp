@@ -17,10 +17,6 @@ Async http client/server framework
    :target: https://codecov.io/gh/aio-libs/aiohttp
    :alt: codecov.io status for master branch
 
-.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
-   :target: https://codspeed.io/aio-libs/aiohttp
-   :alt: Codspeed.io status for aiohttp
-
 .. image:: https://badge.fury.io/py/aiohttp.svg
    :target: https://pypi.org/project/aiohttp
    :alt: Latest PyPI package version
@@ -33,13 +29,9 @@ Async http client/server framework
    :target: https://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
-.. image:: https://img.shields.io/matrix/aio-libs:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
-   :target: https://matrix.to/#/%23aio-libs:matrix.org
-   :alt: Matrix Room — #aio-libs:matrix.org
-
-.. image:: https://img.shields.io/matrix/aio-libs-space:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs-space%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
-   :target: https://matrix.to/#/%23aio-libs-space:matrix.org
-   :alt: Matrix Space — #aio-libs-space:matrix.org
+.. image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
+   :target: https://codspeed.io/aio-libs/aiohttp
+   :alt: Codspeed.io status for aiohttp
 
 
 Key Features
@@ -202,3 +194,17 @@ Benchmarks
 If you are interested in efficiency, the AsyncIO community maintains a
 list of benchmarks on the official wiki:
 https://github.com/python/asyncio/wiki/Benchmarks
+
+--------
+
+.. image:: https://img.shields.io/matrix/aio-libs:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs:matrix.org
+   :alt: Matrix Room — #aio-libs:matrix.org
+
+.. image:: https://img.shields.io/matrix/aio-libs-space:matrix.org?label=Discuss%20on%20Matrix%20at%20%23aio-libs-space%3Amatrix.org&logo=matrix&server_fqdn=matrix.org&style=flat
+   :target: https://matrix.to/#/%23aio-libs-space:matrix.org
+   :alt: Matrix Space — #aio-libs-space:matrix.org
+
+.. image:: https://insights.linuxfoundation.org/api/badge/health-score?project=aiohttp
+   :target: https://insights.linuxfoundation.org/project/aiohttp
+   :alt: LFX Health Score

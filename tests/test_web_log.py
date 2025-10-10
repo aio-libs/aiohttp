@@ -3,7 +3,7 @@ import logging
 import platform
 import sys
 from contextvars import ContextVar
-from typing import Dict, NoReturn, Optional
+from typing import Dict, NoReturn
 from unittest import mock
 
 import pytest
@@ -90,7 +90,7 @@ def test_access_logger_atoms(
     monkeypatch: pytest.MonkeyPatch,
     log_format: str,
     expected: str,
-    extra: Dict[str, object],
+    extra: dict[str, object],
 ) -> None:
     class TestTimeZone(datetime.tzinfo):
         def __init__(self) -> None:
@@ -107,7 +107,7 @@ def test_access_logger_atoms(
 
     class PatchedDatetime(datetime.datetime):
         @classmethod
-        def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
             return cls(1843, 1, 1, 0, 30, tzinfo=TestTimeZone())
 
         def astimezone(self, tz: datetime.tzinfo | None = None) -> Self:
@@ -248,7 +248,7 @@ def test_access_logger_atoms_dst(
 
     class PatchedDatetime(datetime.datetime):
         @classmethod
-        def now(cls, tz: Optional[datetime.tzinfo] = None) -> Self:
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
             dt = datetime.datetime.strptime(input_date, "%Y-%m-%d %H:%M:%S")
             hour = dt.hour + 1
             if is_dst:

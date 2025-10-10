@@ -1,7 +1,7 @@
 import asyncio
 import socket
 import weakref
-from typing import Any, List, Optional, Tuple, Type, Union
+from typing import Any, Optional
 
 from .abc import AbstractResolver, ResolveResult
 
@@ -36,7 +36,7 @@ class ThreadedResolver(AbstractResolver):
 
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         infos = await self._loop.getaddrinfo(
             host,
             port,
@@ -45,7 +45,7 @@ class ThreadedResolver(AbstractResolver):
             flags=_AI_ADDRCONFIG,
         )
 
-        hosts: List[ResolveResult] = []
+        hosts: list[ResolveResult] = []
         for family, _, proto, _, address in infos:
             if family == socket.AF_INET6:
                 if len(address) < 3:
@@ -90,7 +90,7 @@ class AsyncResolver(AbstractResolver):
             raise RuntimeError("Resolver requires aiodns library")
 
         self._loop = asyncio.get_running_loop()
-        self._manager: Optional[_DNSResolverManager] = None
+        self._manager: _DNSResolverManager | None = None
         # If custom args are provided, create a dedicated resolver instance
         # This means each AsyncResolver with custom args gets its own
         # aiodns.DNSResolver instance
@@ -103,7 +103,7 @@ class AsyncResolver(AbstractResolver):
 
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
-    ) -> List[ResolveResult]:
+    ) -> list[ResolveResult]:
         try:
             resp = await self._resolver.getaddrinfo(
                 host,
@@ -115,9 +115,9 @@ class AsyncResolver(AbstractResolver):
         except aiodns.error.DNSError as exc:
             msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
             raise OSError(None, msg) from exc
-        hosts: List[ResolveResult] = []
+        hosts: list[ResolveResult] = []
         for node in resp.nodes:
-            address: Union[Tuple[bytes, int], Tuple[bytes, int, int, int]] = node.addr
+            address: tuple[bytes, int] | tuple[bytes, int, int, int] = node.addr
             family = node.family
             if family == socket.AF_INET6:
                 if len(address) > 3 and address[3]:
@@ -184,7 +184,7 @@ class _DNSResolverManager:
         # Use WeakKeyDictionary to allow event loops to be garbage collected
         self._loop_data: weakref.WeakKeyDictionary[
             asyncio.AbstractEventLoop,
-            tuple["aiodns.DNSResolver", weakref.WeakSet["AsyncResolver"]],
+            tuple[aiodns.DNSResolver, weakref.WeakSet[AsyncResolver]],
         ] = weakref.WeakKeyDictionary()
 
     def get_resolver(
@@ -200,7 +200,7 @@ class _DNSResolverManager:
         # Create a new resolver and client set for this loop if it doesn't exist
         if loop not in self._loop_data:
             resolver = aiodns.DNSResolver(loop=loop)
-            client_set: weakref.WeakSet["AsyncResolver"] = weakref.WeakSet()
+            client_set: weakref.WeakSet[AsyncResolver] = weakref.WeakSet()
             self._loop_data[loop] = (resolver, client_set)
         else:
             # Get the existing resolver and client set
@@ -232,5 +232,5 @@ class _DNSResolverManager:
             del self._loop_data[loop]
 
 
-_DefaultType = Type[Union[AsyncResolver, ThreadedResolver]]
+_DefaultType = type[AsyncResolver | ThreadedResolver]
 DefaultResolver: _DefaultType = AsyncResolver if aiodns_default else ThreadedResolver

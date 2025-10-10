@@ -2,8 +2,9 @@
 
 import io
 import re
+from collections.abc import Generator
 from hashlib import md5, sha1
-from typing import Generator, Literal, Union
+from typing import Literal
 from unittest import mock
 
 import pytest
@@ -323,7 +324,7 @@ def compute_expected_digest(
 async def test_digest_response_exact_match(
     qop: str,
     algorithm: str,
-    body: Union[Literal[b""], BytesIOPayload],
+    body: Literal[b""] | BytesIOPayload,
     body_str: str,
     mock_sha1_digest: mock.MagicMock,
 ) -> None:
