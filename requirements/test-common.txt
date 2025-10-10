@@ -83,7 +83,7 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.78.0
     # via -r requirements/test-common.in
-rich==14.1.0
+rich==14.2.0
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
