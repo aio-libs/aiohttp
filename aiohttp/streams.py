@@ -1,19 +1,8 @@
 import asyncio
 import collections
 import warnings
-from typing import (
-    Awaitable,
-    Callable,
-    Deque,
-    Final,
-    Generic,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from collections.abc import Awaitable, Callable
+from typing import Final, Generic, TypeVar
 
 from .base_protocol import BaseProtocol
 from .helpers import (
@@ -69,7 +58,7 @@ class ChunkTupleAsyncStreamIterator:
     def __aiter__(self) -> "ChunkTupleAsyncStreamIterator":
         return self
 
-    async def __anext__(self) -> Tuple[bytes, bool]:
+    async def __anext__(self) -> tuple[bytes, bool]:
         rv = await self._stream.readchunk()
         if rv == (b"", False):
             raise StopAsyncIteration
@@ -132,6 +121,7 @@ class StreamReader(AsyncStreamReaderMixin):
         "_eof_callbacks",
         "_eof_counter",
         "total_bytes",
+        "total_compressed_bytes",
     )
 
     def __init__(
@@ -139,7 +129,7 @@ class StreamReader(AsyncStreamReaderMixin):
         protocol: BaseProtocol,
         limit: int,
         *,
-        timer: Optional[BaseTimerContext] = None,
+        timer: BaseTimerContext | None = None,
         loop: asyncio.AbstractEventLoop,
     ) -> None:
         self._protocol = protocol
@@ -148,17 +138,18 @@ class StreamReader(AsyncStreamReaderMixin):
         self._loop = loop
         self._size = 0
         self._cursor = 0
-        self._http_chunk_splits: Optional[List[int]] = None
-        self._buffer: Deque[bytes] = collections.deque()
+        self._http_chunk_splits: list[int] | None = None
+        self._buffer: collections.deque[bytes] = collections.deque()
         self._buffer_offset = 0
         self._eof = False
-        self._waiter: Optional[asyncio.Future[None]] = None
-        self._eof_waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Optional[Union[Type[BaseException], BaseException]] = None
+        self._waiter: asyncio.Future[None] | None = None
+        self._eof_waiter: asyncio.Future[None] | None = None
+        self._exception: type[BaseException] | BaseException | None = None
         self._timer = TimerNoop() if timer is None else timer
-        self._eof_callbacks: List[Callable[[], None]] = []
+        self._eof_callbacks: list[Callable[[], None]] = []
         self._eof_counter = 0
         self.total_bytes = 0
+        self.total_compressed_bytes: int | None = None
 
     def __repr__(self) -> str:
         info = [self.__class__.__name__]
@@ -174,15 +165,15 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("e=%r" % self._exception)
         return "<%s>" % " ".join(info)
 
-    def get_read_buffer_limits(self) -> Tuple[int, int]:
+    def get_read_buffer_limits(self) -> tuple[int, int]:
         return (self._low_water, self._high_water)
 
-    def exception(self) -> Optional[Union[Type[BaseException], BaseException]]:
+    def exception(self) -> type[BaseException] | BaseException | None:
         return self._exception
 
     def set_exception(
         self,
-        exc: Union[Type[BaseException], BaseException],
+        exc: type[BaseException] | BaseException,
         exc_cause: BaseException = _EXC_SENTINEL,
     ) -> None:
         self._exception = exc
@@ -249,6 +240,12 @@ class StreamReader(AsyncStreamReaderMixin):
             await self._eof_waiter
         finally:
             self._eof_waiter = None
+
+    @property
+    def total_raw_bytes(self) -> int:
+        if self.total_compressed_bytes is None:
+            return self.total_bytes
+        return self.total_compressed_bytes
 
     def unread_data(self, data: bytes) -> None:
         """rollback reading some data from stream, inserting it to buffer head."""
@@ -426,7 +423,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
         return self._read_nowait(-1)
 
-    async def readchunk(self) -> Tuple[bytes, bool]:
+    async def readchunk(self) -> tuple[bytes, bool]:
         """Returns a tuple of (data, end_of_http_chunk).
 
         When chunked transfer
@@ -464,7 +461,7 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        blocks: List[bytes] = []
+        blocks: list[bytes] = []
         while n > 0:
             block = await self.read(n)
             if not block:
@@ -545,12 +542,12 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
 
-    def exception(self) -> Optional[BaseException]:
+    def exception(self) -> BaseException | None:
         return None
 
     def set_exception(
         self,
-        exc: Union[Type[BaseException], BaseException],
+        exc: type[BaseException] | BaseException,
         exc_cause: BaseException = _EXC_SENTINEL,
     ) -> None:
         pass
@@ -587,7 +584,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def readany(self) -> bytes:
         return b""
 
-    async def readchunk(self) -> Tuple[bytes, bool]:
+    async def readchunk(self) -> tuple[bytes, bool]:
         if not self._read_eof_chunk:
             self._read_eof_chunk = True
             return (b"", False)
@@ -610,9 +607,9 @@ class DataQueue(Generic[_T]):
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
-        self._waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Union[Type[BaseException], BaseException, None] = None
-        self._buffer: Deque[_T] = collections.deque()
+        self._waiter: asyncio.Future[None] | None = None
+        self._exception: type[BaseException] | BaseException | None = None
+        self._buffer: collections.deque[_T] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -623,12 +620,12 @@ class DataQueue(Generic[_T]):
     def at_eof(self) -> bool:
         return self._eof and not self._buffer
 
-    def exception(self) -> Optional[Union[Type[BaseException], BaseException]]:
+    def exception(self) -> type[BaseException] | BaseException | None:
         return self._exception
 
     def set_exception(
         self,
-        exc: Union[Type[BaseException], BaseException],
+        exc: type[BaseException] | BaseException,
         exc_cause: BaseException = _EXC_SENTINEL,
     ) -> None:
         self._eof = True

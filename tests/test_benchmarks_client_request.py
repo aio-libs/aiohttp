@@ -2,7 +2,6 @@
 
 import asyncio
 from http.cookies import BaseCookie
-from typing import Union
 
 from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
@@ -122,7 +121,7 @@ def test_send_client_request_one_hundred(
             """Swallow is_closing."""
             return False
 
-        def write(self, data: Union[bytes, bytearray, memoryview]) -> None:
+        def write(self, data: bytes | bytearray | memoryview) -> None:
             """Swallow writes."""
 
     class MockProtocol(asyncio.BaseProtocol):

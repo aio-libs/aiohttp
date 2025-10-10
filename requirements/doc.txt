@@ -10,7 +10,7 @@ alabaster==1.0.0
     # via sphinx
 babel==2.17.0
     # via sphinx
-certifi==2025.8.3
+certifi==2025.10.5
     # via requests
 charset-normalizer==3.4.3
     # via requests
@@ -26,13 +26,13 @@ jinja2==3.1.6
     # via
     #   sphinx
     #   towncrier
-markupsafe==3.0.2
+markupsafe==3.0.3
     # via jinja2
 packaging==25.0
     # via sphinx
 pygments==2.19.2
     # via sphinx
-requests==2.32.4
+requests==2.32.5
     # via sphinx
 snowballstemmer==3.0.1
     # via sphinx
@@ -54,11 +54,11 @@ sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
 sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
-tomli==2.2.1
+tomli==2.3.0
     # via
     #   sphinx
     #   towncrier
-towncrier==24.8.0
+towncrier==25.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier

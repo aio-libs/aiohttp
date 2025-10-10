@@ -6,7 +6,7 @@ import pathlib
 import random
 import string
 from pathlib import Path
-from typing import NoReturn, Optional, cast
+from typing import NoReturn, cast
 from unittest import mock
 
 import pytest
@@ -68,7 +68,7 @@ def test_resolve_root_route(
     router = app.router
     request = _mock_request(method="GET", path="/")
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for _ in range(resolve_count):
             ret = await router.resolve(request)
@@ -106,7 +106,7 @@ def test_resolve_root_route_with_many_fixed_routes(
     router = app.router
     request = _mock_request(method="GET", path="/")
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for _ in range(resolve_count):
             ret = await router.resolve(request)
@@ -136,7 +136,7 @@ def test_resolve_static_root_route(
     router = app.router
     request = _mock_request(method="GET", path="/")
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for _ in range(resolve_count):
             ret = await router.resolve(request)
@@ -169,7 +169,7 @@ def test_resolve_single_fixed_url_with_many_routes(
     router = app.router
     request = _mock_request(method="GET", path="/api/server/dispatch/1/update")
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for _ in range(resolve_count):
             ret = await router.resolve(request)
@@ -205,7 +205,7 @@ def test_resolve_multiple_fixed_url_with_many_routes(
         for count in range(250)
     ]
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for request in requests:
             ret = await router.resolve(request)
@@ -245,7 +245,7 @@ def test_resolve_multiple_level_fixed_url_with_many_routes(
 
     requests = [(_mock_request(method="GET", path=url), url) for url in urls]
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for request, path in requests:
             ret = await router.resolve(request)
@@ -282,7 +282,7 @@ def test_resolve_dynamic_resource_url_with_many_static_routes(
         for customer in range(250)
     ]
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for request in requests:
             ret = await router.resolve(request)
@@ -323,7 +323,7 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
         for customer in range(250)
     ]
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for request in requests:
             ret = await router.resolve(request)
@@ -362,7 +362,7 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
         for customer in range(250)
     ]
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for request in requests:
             ret = await router.resolve(request)
@@ -411,7 +411,7 @@ def test_resolve_gitapi(
             )
         )
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for request in requests:
             ret = await router.resolve(request)
@@ -482,7 +482,7 @@ def test_resolve_gitapi_subapps(
             )
         )
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for request in requests:
             ret = await router.resolve(request)
@@ -518,7 +518,7 @@ def test_resolve_gitapi_root(
 
     request = _mock_request(method="GET", path="/")
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for i in range(250):
             ret = await router.resolve(request)
@@ -558,7 +558,7 @@ def test_resolve_prefix_resources_many_prefix_many_plain(
         for customer in range(250)
     ]
 
-    async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
+    async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
         ret = None
         for request in requests:
             ret = await router.resolve(request)

@@ -177,6 +177,7 @@ Ivan Lakovic
 Ivan Larin
 J. Nick Koston
 Jacob Champion
+Jacob Henner
 Jaesung Lee
 Jake Davis
 Jakob Ackermann
@@ -223,6 +224,7 @@ Kilian Guillaume
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Kirill Potapenko
 Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
@@ -268,6 +270,7 @@ Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov
+Mingjie Zhao
 Misha Behersky
 Mitchell Ferree
 Morgan Delahaye-Prat
@@ -286,6 +289,7 @@ Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
 Parag Jain
+Patrick Lee
 Pau Freixes
 Paul Colomiets
 Paul J. Dorn

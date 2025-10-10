@@ -24,17 +24,21 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   valkey
 babel==2.17.0
     # via sphinx
+backports-zstd==1.0.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 blockbuster==1.5.25
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
+    #   -r requirements/test-common.in
 brotli==1.1.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 build==1.3.0
     # via pip-tools
-certifi==2025.8.3
+certifi==2025.10.5
     # via requests
-cffi==1.17.1
+cffi==2.0.0
     # via
     #   cryptography
     #   pycares
@@ -43,7 +47,7 @@ cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.4.3
     # via requests
-cherry-picker==2.5.0
+cherry-picker==2.6.0
     # via -r requirements/dev.in
 click==8.1.8
     # via
@@ -52,11 +56,11 @@ click==8.1.8
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.10.3
+coverage==7.10.7
     # via
-    #   -r requirements/test.in
+    #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==45.0.6
+cryptography==46.0.2
     # via
     #   pyjwt
     #   trustme
@@ -68,15 +72,15 @@ exceptiongroup==1.3.0
     # via pytest
 execnet==2.1.1
     # via pytest-xdist
-filelock==3.18.0
+filelock==3.20.0
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
-freezegun==1.5.4
+freezegun==1.5.5
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
-frozenlist==1.7.0
+    #   -r requirements/test-common.in
+frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
@@ -84,7 +88,7 @@ gidgethub==5.4.0
     # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.6.13
+identify==2.6.15
     # via pre-commit
 idna==3.6
     # via
@@ -98,25 +102,25 @@ iniconfig==2.1.0
 isal==1.7.2 ; python_version < "3.14"
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
+    #   -r requirements/test-common.in
 jinja2==3.1.6
     # via
     #   sphinx
     #   towncrier
 markdown-it-py==3.0.0
     # via rich
-markupsafe==3.0.2
+markupsafe==3.0.3
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.6.4
+multidict==6.7.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.17.1 ; implementation_name == "cpython"
+mypy==1.18.2 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
+    #   -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.9.1
@@ -130,11 +134,11 @@ packaging==25.0
     #   wheel
 pathspec==0.12.1
     # via mypy
-pip-tools==7.5.0
+pip-tools==7.5.1
     # via -r requirements/dev.in
 pkgconfig==1.5.5
-    # via -r requirements/test.in
-platformdirs==4.3.8
+    # via -r requirements/test-common.in
+platformdirs==4.5.0
     # via virtualenv
 pluggy==1.6.0
     # via
@@ -142,21 +146,21 @@ pluggy==1.6.0
     #   pytest-cov
 pre-commit==4.3.0
     # via -r requirements/lint.in
-propcache==0.3.2
+propcache==0.4.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
 proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
-pycares==4.10.0
+    #   -r requirements/test-common.in
+pycares==4.11.0
     # via aiodns
-pycparser==2.22
+pycparser==2.23
     # via cffi
-pydantic==2.12.0a1
+pydantic==2.12.0
     # via python-on-whales
-pydantic-core==2.37.2
+pydantic-core==2.41.1
     # via pydantic
 pygments==2.19.2
     # via
@@ -171,42 +175,42 @@ pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
-pytest==8.4.1
+pytest==8.4.2
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
+    #   -r requirements/test-common.in
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.0.0
+pytest-codspeed==4.1.1
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
-pytest-cov==6.2.1
-    # via -r requirements/test.in
-pytest-mock==3.14.1
+    #   -r requirements/test-common.in
+pytest-cov==7.0.0
+    # via -r requirements/test-common.in
+pytest-mock==3.15.1
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
+    #   -r requirements/test-common.in
 pytest-xdist==3.8.0
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.78.0
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
-pyyaml==6.0.2
+    #   -r requirements/test-common.in
+pyyaml==6.0.3
     # via pre-commit
-requests==2.32.4
+requests==2.32.5
     # via
     #   cherry-picker
     #   sphinx
-rich==14.1.0
+rich==14.2.0
     # via pytest-codspeed
 setuptools-git==1.2
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
@@ -235,7 +239,7 @@ stamina==25.1.0
     # via cherry-picker
 tenacity==9.1.2
     # via stamina
-tomli==2.2.1
+tomli==2.3.0
     # via
     #   build
     #   cherry-picker
@@ -246,17 +250,18 @@ tomli==2.2.1
     #   slotscheck
     #   sphinx
     #   towncrier
-towncrier==24.8.0
+towncrier==25.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
 trustme==1.2.1 ; platform_machine != "i686"
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
-typing-extensions==4.14.1
+    #   -r requirements/test-common.in
+typing-extensions==4.15.0
     # via
     #   aiosignal
+    #   cryptography
     #   exceptiongroup
     #   multidict
     #   mypy
@@ -264,7 +269,8 @@ typing-extensions==4.14.1
     #   pydantic-core
     #   python-on-whales
     #   typing-inspection
-typing-inspection==0.4.1
+    #   virtualenv
+typing-inspection==0.4.2
     # via pydantic
 uritemplate==4.2.0
     # via gidgethub
@@ -274,24 +280,20 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-valkey==6.1.0
+valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==20.33.1
+virtualenv==20.35.1
     # via pre-commit
 wait-for-it==2.3.0
-    # via -r requirements/test.in
+    # via -r requirements/test-common.in
 wheel==0.46.0
     # via pip-tools
-yarl==1.20.1
+yarl==1.22.0
     # via -r requirements/runtime-deps.in
-zlib-ng==0.5.1
+zlib-ng==1.0.0
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test.in
-zstandard==0.23.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
-    # via
-    #   -r requirements/lint.in
-    #   -r requirements/runtime-deps.in
+    #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
 pip==25.2

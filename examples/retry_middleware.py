@@ -13,14 +13,14 @@ and can return different status codes on sequential requests.
 import asyncio
 import logging
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Dict, List, Set, Union
+from typing import TYPE_CHECKING
 
 from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession, web
 
 logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_RETRY_STATUSES: Set[HTTPStatus] = {
+DEFAULT_RETRY_STATUSES: set[HTTPStatus] = {
     HTTPStatus.TOO_MANY_REQUESTS,
     HTTPStatus.INTERNAL_SERVER_ERROR,
     HTTPStatus.BAD_GATEWAY,
@@ -35,7 +35,7 @@ class RetryMiddleware:
     def __init__(
         self,
         max_retries: int = 3,
-        retry_statuses: Union[Set[HTTPStatus], None] = None,
+        retry_statuses: set[HTTPStatus] | None = None,
         initial_delay: float = 1.0,
         backoff_factor: float = 2.0,
     ) -> None:
@@ -50,7 +50,7 @@ class RetryMiddleware:
         handler: ClientHandlerType,
     ) -> ClientResponse:
         """Execute request with retry logic."""
-        last_response: Union[ClientResponse, None] = None
+        last_response: ClientResponse | None = None
         delay = self.initial_delay
 
         for attempt in range(self.max_retries + 1):
@@ -92,8 +92,8 @@ class TestServer:
     """Test server with stateful endpoints for retry testing."""
 
     def __init__(self) -> None:
-        self.request_counters: Dict[str, int] = {}
-        self.status_sequences: Dict[str, List[int]] = {
+        self.request_counters: dict[str, int] = {}
+        self.status_sequences: dict[str, list[int]] = {
             "eventually-ok": [500, 503, 502, 200],  # Fails 3 times, then succeeds
             "always-error": [500, 500, 500, 500],  # Always fails
             "immediate-ok": [200],  # Succeeds immediately
