@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from .abc import AbstractAccessLogger
 from .helpers import AppKey
-from .log import access_logger
+from .log import access_logger, server_logger
 from .typedefs import PathLike
 from .web_app import Application, CleanupError
 from .web_exceptions import (
@@ -277,18 +277,12 @@ async def _run_app(
     port: int | None = None,
     path: PathLike | TypingIterable[PathLike] | None = None,
     sock: socket.socket | TypingIterable[socket.socket] | None = None,
-    shutdown_timeout: float = 60.0,
-    keepalive_timeout: float = 75.0,
     ssl_context: SSLContext | None = None,
     print: Callable[..., None] | None = print,
     backlog: int = 128,
-    access_log_class: type[AbstractAccessLogger] = AccessLogger,
-    access_log_format: str = AccessLogger.LOG_FORMAT,
-    access_log: logging.Logger | None = access_logger,
-    handle_signals: bool = True,
     reuse_address: bool | None = None,
     reuse_port: bool | None = None,
-    handler_cancellation: bool = False,
+    **kwargs: Any,
 ) -> None:
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
@@ -296,16 +290,7 @@ async def _run_app(
 
     app = cast(Application, app)
 
-    runner = AppRunner(
-        app,
-        handle_signals=handle_signals,
-        access_log_class=access_log_class,
-        access_log_format=access_log_format,
-        access_log=access_log,
-        keepalive_timeout=keepalive_timeout,
-        shutdown_timeout=shutdown_timeout,
-        handler_cancellation=handler_cancellation,
-    )
+    runner = AppRunner(app, **kwargs)
 
     await runner.setup()
 
@@ -453,6 +438,7 @@ def run_app(
     reuse_port: bool | None = None,
     handler_cancellation: bool = False,
     loop: asyncio.AbstractEventLoop | None = None,
+    **kwargs: Any,
 ) -> None:
     """Run an app locally"""
     if loop is None:
@@ -485,6 +471,7 @@ def run_app(
             reuse_address=reuse_address,
             reuse_port=reuse_port,
             handler_cancellation=handler_cancellation,
+            **kwargs,
         )
     )
 
