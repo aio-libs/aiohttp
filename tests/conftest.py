@@ -306,7 +306,7 @@ def no_netrc(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def netrc_other_host(tmp_path: Path) -> Path:
+def netrc_other_host(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Create a temporary netrc file with credentials for a different host and set NETRC env var."""
     netrc_file = tmp_path / ".netrc"
     netrc_file.write_text("machine other.example.com login user password pass\n")
