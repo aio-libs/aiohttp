@@ -293,6 +293,26 @@ def netrc_contents(
 
 
 @pytest.fixture
+def netrc_default_contents(tmp_path: Path) -> Iterator[Path]:
+    """Create a temporary netrc file with default test credentials and set NETRC env var."""
+    netrc_file = tmp_path / ".netrc"
+    netrc_file.write_text("default login netrc_user password netrc_pass\n")
+
+    with mock.patch.dict(os.environ, {"NETRC": str(netrc_file)}):
+        yield netrc_file
+
+
+@pytest.fixture
+def no_netrc() -> Iterator[None]:
+    """Ensure NETRC environment variable is not set."""
+    env = os.environ.copy()
+    env.pop("NETRC", None)
+
+    with mock.patch.dict(os.environ, env, clear=True):
+        yield
+
+
+@pytest.fixture
 def start_connection() -> Iterator[mock.Mock]:
     with mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",

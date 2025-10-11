@@ -3746,6 +3746,72 @@ async def test_session_auth_header_conflict(aiohttp_client: AiohttpClient) -> No
         await client.get("/", headers=headers)
 
 
+async def test_netrc_auth_from_env(
+    aiohttp_client: AiohttpClient, netrc_default_contents: pathlib.Path
+) -> None:
+    """Test that netrc authentication works when NETRC env var is set and trust_env=True."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"headers": dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    # Create client with trust_env=True
+    client = await aiohttp_client(app, trust_env=True)
+    async with client.get("/") as r:
+        assert r.status == 200
+        content = await r.json()
+    # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+    assert content["headers"]["Authorization"] == "Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+
+
+async def test_netrc_auth_skipped_without_env_var(
+    aiohttp_client: AiohttpClient, no_netrc: None
+) -> None:
+    """Test that netrc authentication is skipped when NETRC env var is not set."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"headers": dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    # Create client with trust_env=True but no NETRC env var
+    client = await aiohttp_client(app, trust_env=True)
+    async with client.get("/") as r:
+        assert r.status == 200
+        content = await r.json()
+    # No Authorization header should be present
+    assert "Authorization" not in content["headers"]
+
+
+async def test_netrc_auth_overridden_by_explicit_auth(
+    aiohttp_client: AiohttpClient, netrc_default_contents: pathlib.Path
+) -> None:
+    """Test that explicit auth parameter overrides netrc authentication."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"headers": dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    # Create client with trust_env=True
+    client = await aiohttp_client(app, trust_env=True)
+    # Make request with explicit auth (should override netrc)
+    async with client.get(
+        "/", auth=aiohttp.BasicAuth("explicit_user", "explicit_pass")
+    ) as r:
+        assert r.status == 200
+        content = await r.json()
+    # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+    assert (
+        content["headers"]["Authorization"]
+        == "Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+    )
+
+
 async def test_session_headers(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"headers": dict(request.headers)})

@@ -3,6 +3,7 @@ import contextlib
 import gc
 import io
 import json
+import pathlib
 import sys
 import warnings
 from collections import deque
@@ -87,6 +88,18 @@ def params() -> _Params:
         expect100=True,
         read_until_eof=False,
     )
+
+
+def _make_auth_handler() -> Callable[[web.Request], Awaitable[web.Response]]:
+    """Create a handler that returns auth header or 'no_auth'."""
+
+    async def handler(request: web.Request) -> web.Response:
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        if auth_header:
+            return web.Response(text=f"auth:{auth_header}")
+        return web.Response(text="no_auth")
+
+    return handler
 
 
 async def test_close_coro(
@@ -1326,3 +1339,76 @@ async def test_properties(
     value = uuid4()
     setattr(session, inner_name, value)
     assert value == getattr(session, outer_name)
+
+
+async def test_netrc_auth_with_trust_env(
+    aiohttp_server: AiohttpServer, netrc_default_contents: pathlib.Path
+) -> None:
+    """Test that netrc authentication works with ClientSession when NETRC env var is set."""
+    app = web.Application()
+    app.router.add_get("/", _make_auth_handler())
+
+    server = await aiohttp_server(app)
+    # Create session with trust_env=True to test ClientSession directly
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+        assert text == "auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+
+
+async def test_netrc_auth_skipped_without_trust_env(
+    aiohttp_server: AiohttpServer, netrc_default_contents: pathlib.Path
+) -> None:
+    """Test that netrc authentication is skipped when trust_env=False."""
+    app = web.Application()
+    app.router.add_get("/", _make_auth_handler())
+
+    server = await aiohttp_server(app)
+    # Create session with trust_env=False (default) to test ClientSession directly
+    async with (
+        ClientSession(trust_env=False) as session,
+        session.get(server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "no_auth"
+
+
+async def test_netrc_auth_skipped_without_netrc_env(
+    aiohttp_server: AiohttpServer, no_netrc: None
+) -> None:
+    """Test that netrc authentication is skipped when NETRC env var is not set."""
+    app = web.Application()
+    app.router.add_get("/", _make_auth_handler())
+
+    server = await aiohttp_server(app)
+    # Create session with trust_env=True but no NETRC env var to test ClientSession directly
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "no_auth"
+
+
+async def test_netrc_auth_overridden_by_explicit_auth(
+    aiohttp_server: AiohttpServer, netrc_default_contents: pathlib.Path
+) -> None:
+    """Test that explicit auth parameter overrides netrc authentication."""
+    app = web.Application()
+    app.router.add_get("/", _make_auth_handler())
+
+    server = await aiohttp_server(app)
+    # Create session with trust_env=True to test ClientSession directly
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(
+            server.make_url("/"),
+            auth=aiohttp.BasicAuth("explicit_user", "explicit_pass"),
+        ) as resp,
+    ):
+        text = await resp.text()
+        # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+        assert text == "auth:Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
