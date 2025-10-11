@@ -954,12 +954,7 @@ def test_run_app_pass_apprunner_kwargs(
 
     app = web.Application()
     monkeypatch.setattr(BaseRunner, "__init__", base_runner_init_spy)
-    web.run_app(
-        app,
-        print=stopper(patched_loop),
-        loop=patched_loop,
-        **{param: m},  # type: ignore[arg-type]
-    )
+    web.run_app(app, print=stopper(patched_loop), loop=patched_loop, **{param: m})
 
 
 def test_run_app_context_vars(patched_loop: asyncio.AbstractEventLoop) -> None:
