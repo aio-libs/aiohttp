@@ -1412,3 +1412,21 @@ async def test_netrc_auth_overridden_by_explicit_auth(
         text = await resp.text()
         # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
         assert text == "auth:Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+
+
+async def test_netrc_auth_host_not_in_netrc(
+    aiohttp_server: AiohttpServer, netrc_other_host: pathlib.Path
+) -> None:
+    """Test that netrc lookup returns None when host is not in netrc file."""
+    app = web.Application()
+    app.router.add_get("/", _make_auth_handler())
+
+    server = await aiohttp_server(app)
+
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        # Should not have auth since the host is not in netrc
+        assert text == "no_auth"

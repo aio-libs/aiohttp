@@ -309,6 +309,16 @@ def no_netrc() -> Iterator[None]:
 
 
 @pytest.fixture
+def netrc_other_host(tmp_path: Path) -> Iterator[Path]:
+    """Create a temporary netrc file with credentials for a different host and set NETRC env var."""
+    netrc_file = tmp_path / ".netrc"
+    netrc_file.write_text("machine other.example.com login user password pass\n")
+
+    with mock.patch.dict(os.environ, {"NETRC": str(netrc_file)}):
+        yield netrc_file
+
+
+@pytest.fixture
 def start_connection() -> Iterator[mock.Mock]:
     with mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
