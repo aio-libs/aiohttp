@@ -1392,9 +1392,8 @@ async def test_netrc_auth_skipped_without_netrc_env(
         assert text == "no_auth"
 
 
-async def test_netrc_auth_overridden_by_explicit_auth(
-    aiohttp_server: AiohttpServer, netrc_default_contents: pathlib.Path
-) -> None:
+@pytest.mark.usefixtures('netrc_default_contents')
+async def test_netrc_auth_overridden_by_explicit_auth(aiohttp_server: AiohttpServer) -> None:
     """Test that explicit auth parameter overrides netrc authentication."""
     app = web.Application()
     app.router.add_get("/", _make_auth_handler())
