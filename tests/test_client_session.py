@@ -1359,9 +1359,8 @@ async def test_netrc_auth_with_trust_env(
         assert text == "auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
 
 
-async def test_netrc_auth_skipped_without_trust_env(
-    aiohttp_server: AiohttpServer, netrc_default_contents: pathlib.Path
-) -> None:
+@pytest.mark.usefixtures('netrc_default_contents')
+async def test_netrc_auth_skipped_without_trust_env(aiohttp_server: AiohttpServer) -> None:
     """Test that netrc authentication is skipped when trust_env=False."""
     app = web.Application()
     app.router.add_get("/", _make_auth_handler())
