@@ -1412,9 +1412,8 @@ async def test_netrc_auth_overridden_by_explicit_auth(aiohttp_server: AiohttpSer
         assert text == "auth:Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
 
 
-async def test_netrc_auth_host_not_in_netrc(
-    aiohttp_server: AiohttpServer, netrc_other_host: pathlib.Path
-) -> None:
+@pytest.mark.usefixtures('netrc_other_host')
+async def test_netrc_auth_host_not_in_netrc(aiohttp_server: AiohttpServer) -> None:
     """Test that netrc lookup returns None when host is not in netrc file."""
     app = web.Application()
     app.router.add_get("/", _make_auth_handler())
