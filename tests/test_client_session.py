@@ -1341,9 +1341,8 @@ async def test_properties(
     assert value == getattr(session, outer_name)
 
 
-async def test_netrc_auth_with_trust_env(
-    aiohttp_server: AiohttpServer, netrc_default_contents: pathlib.Path
-) -> None:
+@pytest.mark.usefixtures('netrc_default_contents')
+async def test_netrc_auth_with_trust_env(aiohttp_server: AiohttpServer) -> None:
     """Test that netrc authentication works with ClientSession when NETRC env var is set."""
     app = web.Application()
     app.router.add_get("/", _make_auth_handler())
