@@ -1157,6 +1157,7 @@ class ClientSession:
         netrc_obj = netrc_from_env()
         with suppress(LookupError):
             return basicauth_from_netrc(netrc_obj, host)
+        return None
 
     if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
