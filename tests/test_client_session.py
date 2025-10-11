@@ -26,6 +26,7 @@ from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConne
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
+from aiohttp.test_utils import TestServer
 from aiohttp.tracing import Trace
 
 
@@ -89,8 +90,9 @@ def params() -> _Params:
     )
 
 
-def _make_auth_handler() -> Callable[[web.Request], Awaitable[web.Response]]:
-    """Create a handler that returns auth header or 'no_auth'."""
+@pytest.fixture
+async def auth_server(aiohttp_server: AiohttpServer) -> TestServer:
+    """Create a server with an auth handler that returns auth header or 'no_auth'."""
 
     async def handler(request: web.Request) -> web.Response:
         auth_header = request.headers.get(hdrs.AUTHORIZATION)
@@ -98,7 +100,9 @@ def _make_auth_handler() -> Callable[[web.Request], Awaitable[web.Response]]:
             return web.Response(text=f"auth:{auth_header}")
         return web.Response(text="no_auth")
 
-    return handler
+    app = web.Application()
+    app.router.add_get("/", handler)
+    return await aiohttp_server(app)
 
 
 async def test_close_coro(
@@ -1341,16 +1345,11 @@ async def test_properties(
 
 
 @pytest.mark.usefixtures("netrc_default_contents")
-async def test_netrc_auth_with_trust_env(aiohttp_server: AiohttpServer) -> None:
+async def test_netrc_auth_with_trust_env(auth_server: TestServer) -> None:
     """Test that netrc authentication works with ClientSession when NETRC env var is set."""
-    app = web.Application()
-    app.router.add_get("/", _make_auth_handler())
-
-    server = await aiohttp_server(app)
-    # Create session with trust_env=True to test ClientSession directly
     async with (
         ClientSession(trust_env=True) as session,
-        session.get(server.make_url("/")) as resp,
+        session.get(auth_server.make_url("/")) as resp,
     ):
         text = await resp.text()
         # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
@@ -1358,55 +1357,34 @@ async def test_netrc_auth_with_trust_env(aiohttp_server: AiohttpServer) -> None:
 
 
 @pytest.mark.usefixtures("netrc_default_contents")
-async def test_netrc_auth_skipped_without_trust_env(
-    aiohttp_server: AiohttpServer,
-) -> None:
+async def test_netrc_auth_skipped_without_trust_env(auth_server: TestServer) -> None:
     """Test that netrc authentication is skipped when trust_env=False."""
-    app = web.Application()
-    app.router.add_get("/", _make_auth_handler())
-
-    server = await aiohttp_server(app)
-    # Create session with trust_env=False (default) to test ClientSession directly
     async with (
         ClientSession(trust_env=False) as session,
-        session.get(server.make_url("/")) as resp,
+        session.get(auth_server.make_url("/")) as resp,
     ):
         text = await resp.text()
         assert text == "no_auth"
 
 
 @pytest.mark.usefixtures("no_netrc")
-async def test_netrc_auth_skipped_without_netrc_env(
-    aiohttp_server: AiohttpServer,
-) -> None:
+async def test_netrc_auth_skipped_without_netrc_env(auth_server: TestServer) -> None:
     """Test that netrc authentication is skipped when NETRC env var is not set."""
-    app = web.Application()
-    app.router.add_get("/", _make_auth_handler())
-
-    server = await aiohttp_server(app)
-    # Create session with trust_env=True but no NETRC env var to test ClientSession directly
     async with (
         ClientSession(trust_env=True) as session,
-        session.get(server.make_url("/")) as resp,
+        session.get(auth_server.make_url("/")) as resp,
     ):
         text = await resp.text()
         assert text == "no_auth"
 
 
 @pytest.mark.usefixtures("netrc_default_contents")
-async def test_netrc_auth_overridden_by_explicit_auth(
-    aiohttp_server: AiohttpServer,
-) -> None:
+async def test_netrc_auth_overridden_by_explicit_auth(auth_server: TestServer) -> None:
     """Test that explicit auth parameter overrides netrc authentication."""
-    app = web.Application()
-    app.router.add_get("/", _make_auth_handler())
-
-    server = await aiohttp_server(app)
-    # Create session with trust_env=True to test ClientSession directly
     async with (
         ClientSession(trust_env=True) as session,
         session.get(
-            server.make_url("/"),
+            auth_server.make_url("/"),
             auth=aiohttp.BasicAuth("explicit_user", "explicit_pass"),
         ) as resp,
     ):
@@ -1416,16 +1394,11 @@ async def test_netrc_auth_overridden_by_explicit_auth(
 
 
 @pytest.mark.usefixtures("netrc_other_host")
-async def test_netrc_auth_host_not_in_netrc(aiohttp_server: AiohttpServer) -> None:
+async def test_netrc_auth_host_not_in_netrc(auth_server: TestServer) -> None:
     """Test that netrc lookup returns None when host is not in netrc file."""
-    app = web.Application()
-    app.router.add_get("/", _make_auth_handler())
-
-    server = await aiohttp_server(app)
-
     async with (
         ClientSession(trust_env=True) as session,
-        session.get(server.make_url("/")) as resp,
+        session.get(auth_server.make_url("/")) as resp,
     ):
         text = await resp.text()
         # Should not have auth since the host is not in netrc
