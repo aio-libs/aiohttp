@@ -289,33 +289,31 @@ def netrc_contents(
 
 
 @pytest.fixture
-def netrc_default_contents(tmp_path: Path) -> Iterator[Path]:
+def netrc_default_contents(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Create a temporary netrc file with default test credentials and set NETRC env var."""
     netrc_file = tmp_path / ".netrc"
     netrc_file.write_text("default login netrc_user password netrc_pass\n")
 
-    with mock.patch.dict(os.environ, {"NETRC": str(netrc_file)}):
-        yield netrc_file
+    monkeypatch.setenv("NETRC", str(netrc_file))
+
+    return netrc_file
 
 
 @pytest.fixture
-def no_netrc() -> Iterator[None]:
+def no_netrc(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure NETRC environment variable is not set."""
-    env = os.environ.copy()
-    env.pop("NETRC", None)
-
-    with mock.patch.dict(os.environ, env, clear=True):
-        yield
+    monkeypatch.delenv("NETRC", raising=False)
 
 
 @pytest.fixture
-def netrc_other_host(tmp_path: Path) -> Iterator[Path]:
+def netrc_other_host(tmp_path: Path) -> Path:
     """Create a temporary netrc file with credentials for a different host and set NETRC env var."""
     netrc_file = tmp_path / ".netrc"
     netrc_file.write_text("machine other.example.com login user password pass\n")
 
-    with mock.patch.dict(os.environ, {"NETRC": str(netrc_file)}):
-        yield netrc_file
+    monkeypatch.setenv("NETRC", str(netrc_file))
+
+    return netrc_file
 
 
 @pytest.fixture
