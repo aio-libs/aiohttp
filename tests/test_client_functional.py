@@ -3765,9 +3765,8 @@ async def test_netrc_auth_from_env(aiohttp_client: AiohttpClient) -> None:
     assert content["headers"]["Authorization"] == "Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
 
 
-async def test_netrc_auth_skipped_without_env_var(
-    aiohttp_client: AiohttpClient, no_netrc: None
-) -> None:
+@pytest.mark.usefixtures('no_netrc')
+async def test_netrc_auth_skipped_without_env_var(aiohttp_client: AiohttpClient) -> None:
     """Test that netrc authentication is skipped when NETRC env var is not set."""
 
     async def handler(request: web.Request) -> web.Response:
