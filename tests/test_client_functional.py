@@ -3765,8 +3765,10 @@ async def test_netrc_auth_from_env(aiohttp_client: AiohttpClient) -> None:
     assert content["headers"]["Authorization"] == "Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
 
 
-@pytest.mark.usefixtures('no_netrc')
-async def test_netrc_auth_skipped_without_env_var(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("no_netrc")
+async def test_netrc_auth_skipped_without_env_var(
+    aiohttp_client: AiohttpClient,
+) -> None:
     """Test that netrc authentication is skipped when NETRC env var is not set."""
 
     async def handler(request: web.Request) -> web.Response:
@@ -3784,8 +3786,10 @@ async def test_netrc_auth_skipped_without_env_var(aiohttp_client: AiohttpClient)
     assert "Authorization" not in content["headers"]
 
 
-@pytest.mark.usefixtures('netrc_default_contents')
-async def test_netrc_auth_overridden_by_explicit_auth(aiohttp_client: AiohttpClient) -> None:
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_overridden_by_explicit_auth(
+    aiohttp_client: AiohttpClient,
+) -> None:
     """Test that explicit auth parameter overrides netrc authentication."""
 
     async def handler(request: web.Request) -> web.Response:
