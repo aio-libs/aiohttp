@@ -3746,9 +3746,8 @@ async def test_session_auth_header_conflict(aiohttp_client: AiohttpClient) -> No
         await client.get("/", headers=headers)
 
 
-async def test_netrc_auth_from_env(
-    aiohttp_client: AiohttpClient, netrc_default_contents: pathlib.Path
-) -> None:
+@pytest.mark.usefixtures('netrc_default_contents')
+async def test_netrc_auth_from_env(aiohttp_client: AiohttpClient) -> None:
     """Test that netrc authentication works when NETRC env var is set and trust_env=True."""
 
     async def handler(request: web.Request) -> web.Response:
