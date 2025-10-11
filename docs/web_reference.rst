@@ -3032,6 +3032,9 @@ Utilities
                                      scalability is a concern.
                                      :ref:`aiohttp-web-peer-disconnection`
 
+   :param kwargs: additional named parameters to pass into
+                  :class:`AppRunner` constructor.
+
    .. versionadded:: 3.0
 
       Support *access_log_class* parameter.
