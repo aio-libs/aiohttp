@@ -926,28 +926,35 @@ def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -
     exc_handler.assert_called_with(patched_loop, msg)
 
 
-def test_run_app_keepalive_timeout(
+@pytest.mark.parametrize(
+    "param",
+    (
+        "keepalive_timeout",
+        "max_line_size",
+        "max_headers",
+        "max_field_size",
+        "lingering_time",
+        "read_bufsize",
+        "auto_decompress",
+    ),
+)
+def test_run_app_pass_apprunner_kwargs(
+    param: str,
     patched_loop: asyncio.AbstractEventLoop,
-    mocker: MockerFixture,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    new_timeout = 1234
+    m = mock.Mock()
     base_runner_init_orig = BaseRunner.__init__
 
     def base_runner_init_spy(
         self: BaseRunner[web.Request], *args: Any, **kwargs: Any
     ) -> None:
-        assert kwargs["keepalive_timeout"] == new_timeout
+        assert kwargs[param] is m
         base_runner_init_orig(self, *args, **kwargs)
 
     app = web.Application()
     monkeypatch.setattr(BaseRunner, "__init__", base_runner_init_spy)
-    web.run_app(
-        app,
-        keepalive_timeout=new_timeout,
-        print=stopper(patched_loop),
-        loop=patched_loop,
-    )
+    web.run_app(app, print=stopper(patched_loop), loop=patched_loop, **{param: m})
 
 
 def test_run_app_context_vars(patched_loop: asyncio.AbstractEventLoop) -> None:
