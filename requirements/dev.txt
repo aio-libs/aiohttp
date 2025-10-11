@@ -24,7 +24,7 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   valkey
 babel==2.17.0
     # via sphinx
-backports-zstd==0.5.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+backports-zstd==1.0.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -207,7 +207,7 @@ requests==2.32.5
     # via
     #   cherry-picker
     #   sphinx
-rich==14.1.0
+rich==14.2.0
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
@@ -282,7 +282,7 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==20.34.0
+virtualenv==20.35.1
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
