@@ -3,7 +3,6 @@ import contextlib
 import gc
 import io
 import json
-import pathlib
 import sys
 import warnings
 from collections import deque
@@ -1341,7 +1340,7 @@ async def test_properties(
     assert value == getattr(session, outer_name)
 
 
-@pytest.mark.usefixtures('netrc_default_contents')
+@pytest.mark.usefixtures("netrc_default_contents")
 async def test_netrc_auth_with_trust_env(aiohttp_server: AiohttpServer) -> None:
     """Test that netrc authentication works with ClientSession when NETRC env var is set."""
     app = web.Application()
@@ -1376,8 +1375,10 @@ async def test_netrc_auth_skipped_without_trust_env(
         assert text == "no_auth"
 
 
-@pytest.mark.usefixtures('no_netrc')
-async def test_netrc_auth_skipped_without_netrc_env(aiohttp_server: AiohttpServer) -> None:
+@pytest.mark.usefixtures("no_netrc")
+async def test_netrc_auth_skipped_without_netrc_env(
+    aiohttp_server: AiohttpServer,
+) -> None:
     """Test that netrc authentication is skipped when NETRC env var is not set."""
     app = web.Application()
     app.router.add_get("/", _make_auth_handler())
