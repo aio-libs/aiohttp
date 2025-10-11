@@ -1376,9 +1376,8 @@ async def test_netrc_auth_skipped_without_trust_env(
         assert text == "no_auth"
 
 
-async def test_netrc_auth_skipped_without_netrc_env(
-    aiohttp_server: AiohttpServer, no_netrc: None
-) -> None:
+@pytest.mark.usefixtures('no_netrc')
+async def test_netrc_auth_skipped_without_netrc_env(aiohttp_server: AiohttpServer) -> None:
     """Test that netrc authentication is skipped when NETRC env var is not set."""
     app = web.Application()
     app.router.add_get("/", _make_auth_handler())
