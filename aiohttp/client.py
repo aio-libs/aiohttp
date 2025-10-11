@@ -1148,7 +1148,8 @@ class ClientSession:
         return result
 
     def _get_netrc_auth(self, host: str) -> BasicAuth | None:
-        """Get auth from netrc for the given host.
+        """
+        Get auth from netrc for the given host.
 
         This method is designed to be called in an executor to avoid
         blocking I/O in the event loop.
@@ -1156,7 +1157,6 @@ class ClientSession:
         netrc_obj = netrc_from_env()
         with suppress(LookupError):
             return basicauth_from_netrc(netrc_obj, host)
-        return None
 
     if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
