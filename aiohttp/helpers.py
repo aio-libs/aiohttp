@@ -20,6 +20,7 @@ import weakref
 from collections import namedtuple
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import suppress
+from email.message import Message
 from email.parser import HeaderParser
 from email.utils import parsedate
 from http.cookies import SimpleCookie
@@ -356,14 +357,40 @@ def parse_mimetype(mimetype: str) -> MimeType:
     )
 
 
+class EnsureOctetStream(Message):
+    def __init__(self) -> None:
+        super().__init__()
+        self.set_default_type("application/octet-stream")
+
+    def get_content_type(self) -> Any:
+        """Re-implementation from Message
+
+        Returns application/octet-stream in place of plain/text when
+        value is wrong.
+
+        The way this class is used guarantees that content-type will
+        be present so simplify the checks wrt to the base implementation.
+        """
+        value = str(self.get("content-type")).lower()
+
+        # Based on the implementation of _splitparam in the standard library
+        ctype, sep, _ = value.partition(";")
+        if not sep:
+            ctype = ctype.strip()
+        if ctype.count("/") != 1:
+            return self.get_default_type()
+        return ctype
+
+
 @functools.lru_cache(maxsize=56)
 def parse_content_type(raw: str) -> tuple[str, MappingProxyType[str, str]]:
     """Parse Content-Type header.
 
     Returns a tuple of the parsed content type and a
-    MappingProxyType of parameters.
+    MappingProxyType of parameters. The default returned value
+    is `application/octet-stream`
     """
-    msg = HeaderParser().parsestr(f"Content-Type: {raw}")
+    msg = HeaderParser(EnsureOctetStream).parsestr(f"Content-Type: {raw}")
     content_type = msg.get_content_type()
     params = msg.get_params(())
     content_dict = dict(params[1:])  # First element is content type again

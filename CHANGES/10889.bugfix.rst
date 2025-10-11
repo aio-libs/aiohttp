@@ -1,0 +1,4 @@
+Updated ``Content-Type`` header parsing to return ``application/octet-stream`` when empty or wrong.
+See `RFC9110 <https://www.rfc-editor.org/rfc/rfc9110#section-8.3-5>`_
+
+-- by :user:`sgaist`.
