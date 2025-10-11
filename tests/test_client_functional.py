@@ -3760,7 +3760,7 @@ async def test_session_auth_header_conflict(aiohttp_client: AiohttpClient) -> No
 
 
 @pytest.mark.usefixtures("netrc_default_contents")
-async def test_netrc_auth_from_env(
+async def test_netrc_auth_from_env(  # type: ignore[misc]
     headers_echo_client: Callable[
         ..., Awaitable[TestClient[web.Request, web.Application]]
     ],
@@ -3775,7 +3775,7 @@ async def test_netrc_auth_from_env(
 
 
 @pytest.mark.usefixtures("no_netrc")
-async def test_netrc_auth_skipped_without_env_var(
+async def test_netrc_auth_skipped_without_env_var(  # type: ignore[misc]
     headers_echo_client: Callable[
         ..., Awaitable[TestClient[web.Request, web.Application]]
     ],
@@ -3790,7 +3790,7 @@ async def test_netrc_auth_skipped_without_env_var(
 
 
 @pytest.mark.usefixtures("netrc_default_contents")
-async def test_netrc_auth_overridden_by_explicit_auth(
+async def test_netrc_auth_overridden_by_explicit_auth(  # type: ignore[misc]
     headers_echo_client: Callable[
         ..., Awaitable[TestClient[web.Request, web.Application]]
     ],
