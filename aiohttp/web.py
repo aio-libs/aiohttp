@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from .abc import AbstractAccessLogger
 from .helpers import AppKey
-from .log import access_logger, server_logger
+from .log import access_logger
 from .typedefs import PathLike
 from .web_app import Application, CleanupError
 from .web_exceptions import (
