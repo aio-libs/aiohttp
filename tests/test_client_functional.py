@@ -73,10 +73,10 @@ def fname(here: pathlib.Path) -> pathlib.Path:
 @pytest.fixture
 def headers_echo_client(
     aiohttp_client: AiohttpClient,
-) -> Callable[..., Awaitable[TestClient]]:
+) -> Callable[..., Awaitable[TestClient[web.Request, web.Application]]]:
     """Create a client with an app that echoes request headers as JSON."""
 
-    async def factory(**kwargs: Any) -> TestClient:
+    async def factory(**kwargs: Any) -> TestClient[web.Request, web.Application]:
         async def handler(request: web.Request) -> web.Response:
             return web.json_response({"headers": dict(request.headers)})
 
@@ -3720,7 +3720,9 @@ async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> N
 
 
 async def test_session_auth(
-    headers_echo_client: Callable[..., Awaitable[TestClient]],
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
 ) -> None:
     client = await headers_echo_client(auth=aiohttp.BasicAuth("login", "pass"))
 
@@ -3731,7 +3733,9 @@ async def test_session_auth(
 
 
 async def test_session_auth_override(
-    headers_echo_client: Callable[..., Awaitable[TestClient]],
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
 ) -> None:
     client = await headers_echo_client(auth=aiohttp.BasicAuth("login", "pass"))
 
@@ -3757,7 +3761,9 @@ async def test_session_auth_header_conflict(aiohttp_client: AiohttpClient) -> No
 
 @pytest.mark.usefixtures("netrc_default_contents")
 async def test_netrc_auth_from_env(
-    headers_echo_client: Callable[..., Awaitable[TestClient]],
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
 ) -> None:
     """Test that netrc authentication works when NETRC env var is set and trust_env=True."""
     client = await headers_echo_client(trust_env=True)
@@ -3770,7 +3776,9 @@ async def test_netrc_auth_from_env(
 
 @pytest.mark.usefixtures("no_netrc")
 async def test_netrc_auth_skipped_without_env_var(
-    headers_echo_client: Callable[..., Awaitable[TestClient]],
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
 ) -> None:
     """Test that netrc authentication is skipped when NETRC env var is not set."""
     client = await headers_echo_client(trust_env=True)
@@ -3783,7 +3791,9 @@ async def test_netrc_auth_skipped_without_env_var(
 
 @pytest.mark.usefixtures("netrc_default_contents")
 async def test_netrc_auth_overridden_by_explicit_auth(
-    headers_echo_client: Callable[..., Awaitable[TestClient]],
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
 ) -> None:
     """Test that explicit auth parameter overrides netrc authentication."""
     client = await headers_echo_client(trust_env=True)
@@ -3801,7 +3811,9 @@ async def test_netrc_auth_overridden_by_explicit_auth(
 
 
 async def test_session_headers(
-    headers_echo_client: Callable[..., Awaitable[TestClient]],
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
 ) -> None:
     client = await headers_echo_client(headers={"X-Real-IP": "192.168.0.1"})
 
@@ -3812,7 +3824,9 @@ async def test_session_headers(
 
 
 async def test_session_headers_merge(
-    headers_echo_client: Callable[..., Awaitable[TestClient]],
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
 ) -> None:
     client = await headers_echo_client(
         headers=[("X-Real-IP", "192.168.0.1"), ("X-Sent-By", "requests")]
