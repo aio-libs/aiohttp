@@ -7,7 +7,7 @@ from pathlib import Path
 if sys.version_info >= (3, 11):
     import tomllib
 else:
-    import tomli as tomllib
+    import tomli as tomllib  # noqa: I900
 
 data = tomllib.loads(Path("pyproject.toml").read_text())
 reqs = (
