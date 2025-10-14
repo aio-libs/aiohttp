@@ -221,12 +221,12 @@ class ClientResponse(HeadersMixin):
     _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
-    _connection: Optional["Connection"] = None  # current connection
+    _connection: "Connection" | None = None  # current connection
     _cookies: SimpleCookie | None = None
     _raw_cookie_headers: tuple[str, ...] | None = None
-    _continue: Optional["asyncio.Future[bool]"] = None
+    _continue: "asyncio.Future[bool] | None" = None
     _source_traceback: traceback.StackSummary | None = None
-    _session: Optional["ClientSession"] = None
+    _session: "ClientSession | None" = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
@@ -235,7 +235,7 @@ class ClientResponse(HeadersMixin):
 
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
 
-    __writer: Optional["asyncio.Task[None]"] = None
+    __writer: "asyncio.Task[None] | None" = None
 
     def __init__(
         self,
@@ -243,7 +243,7 @@ class ClientResponse(HeadersMixin):
         url: URL,
         *,
         writer: "asyncio.Task[None] | None",
-        continue100: Optional["asyncio.Future[bool]"],
+        continue100: "asyncio.Future[bool] | None",
         timer: BaseTimerContext | None,
         request_info: RequestInfo,
         traces: Sequence["Trace"],
@@ -279,7 +279,7 @@ class ClientResponse(HeadersMixin):
         self.__writer = None
 
     @property
-    def _writer(self) -> Optional["asyncio.Task[None]"]:
+    def _writer(self) -> "asyncio.Task[None] | None":
         """The writer task for streaming data.
 
         _writer is only provided for backwards compatibility
@@ -288,7 +288,7 @@ class ClientResponse(HeadersMixin):
         return self.__writer
 
     @_writer.setter
-    def _writer(self, writer: Optional["asyncio.Task[None]"]) -> None:
+    def _writer(self, writer: "asyncio.Task[None] | None") -> None:
         """Set the writer task for streaming data."""
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
@@ -395,7 +395,7 @@ class ClientResponse(HeadersMixin):
         return out.getvalue()
 
     @property
-    def connection(self) -> Optional["Connection"]:
+    def connection(self) -> "Connection | None":
         return self._connection
 
     @reify
@@ -702,9 +702,9 @@ class ClientRequestBase:
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
 
     auth = None
-    proxy: Optional[URL] = None
+    proxy: URL | None = None
     response_class = ClientResponse
-    server_hostname: Optional[str] = None  # Needed in connector.py
+    server_hostname: str | None = None  # Needed in connector.py
     version = HttpVersion11
     _response = None
 
@@ -713,9 +713,9 @@ class ClientRequestBase:
     url = URL()
     method = "GET"
 
-    _writer_task: Optional["asyncio.Task[None]"] = None  # async task for streaming data
+    _writer_task: "asyncio.Task[None] | None" = None  # async task for streaming data
 
-    _skip_auto_headers: Optional["CIMultiDict[None]"] = None
+    _skip_auto_headers: "CIMultiDict[None] | None" = None
 
     # N.B.
     # Adding __del__ method with self._writer closing doesn't make sense
@@ -774,7 +774,7 @@ class ClientRequestBase:
             ) from None
 
     @property
-    def _writer(self) -> Optional["asyncio.Task[None]"]:
+    def _writer(self) -> "asyncio.Task[None] | None":
         return self._writer_task
 
     @_writer.setter
@@ -788,7 +788,7 @@ class ClientRequestBase:
         return self.url.scheme in _SSL_SCHEMES
 
     @property
-    def ssl(self) -> Union["SSLContext", bool, Fingerprint]:
+    def ssl(self) -> "SSLContext" | bool | Fingerprint:
         return self._ssl
 
     @property
@@ -818,7 +818,7 @@ class ClientRequestBase:
             RequestInfo, (self.url, self.method, headers, self.original_url)
         )
 
-    def _update_auth(self, auth: Optional[BasicAuth], trust_env: bool = False) -> None:
+    def _update_auth(self, auth: BasicAuth | None, trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
@@ -857,7 +857,7 @@ class ClientRequestBase:
         self.headers[hdrs.HOST] = headers.pop(hdrs.HOST, host)
         self.headers.extend(headers)
 
-    def _create_response(self, task: Optional[asyncio.Task[None]]) -> ClientResponse:
+    def _create_response(self, task: asyncio.Task[None] | None) -> ClientResponse:
         return self.response_class(
             self.method,
             self.original_url,
@@ -919,7 +919,7 @@ class ClientRequestBase:
         # Buffer headers for potential coalescing with body
         await writer.write_headers(status_line, self.headers)
 
-        task: Optional["asyncio.Task[None]"]
+        task: "asyncio.Task[None] | None"
         if self._should_write(protocol):
             coro = self._write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 12):
@@ -948,7 +948,7 @@ class ClientRequestBase:
         self,
         writer: AbstractStreamWriter,
         conn: "Connection",
-        content_length: Optional[int],
+        content_length: int | None,
     ) -> None:
         # Base class never has a body, this will never be run.
         assert False
@@ -957,25 +957,25 @@ class ClientRequestBase:
 class ClientRequestArgs(TypedDict, total=False):
     params: Query
     headers: CIMultiDict[str]
-    skip_auto_headers: Optional[Iterable[str]]
+    skip_auto_headers: Iterable[str] | None
     data: Any
     cookies: BaseCookie[str]
-    auth: Optional[BasicAuth]
+    auth: BasicAuth | None
     version: HttpVersion
-    compress: Union[str, bool]
-    chunked: Optional[bool]
+    compress: str | bool
+    chunked: bool | None
     expect100: bool
     loop: asyncio.AbstractEventLoop
     response_class: type[ClientResponse]
-    proxy: Optional[URL]
-    proxy_auth: Optional[BasicAuth]
+    proxy: URL | None
+    proxy_auth: BasicAuth | None
     timer: BaseTimerContext
     session: "ClientSession"
-    ssl: Union[SSLContext, bool, Fingerprint]
-    proxy_headers: Optional[CIMultiDict[str]]
+    ssl: SSLContext | bool | Fingerprint
+    proxy_headers: CIMultiDict[str] | None
     traces: list["Trace"]
     trust_env: bool
-    server_hostname: Optional[str]
+    server_hostname: str | None
 
 
 class ClientRequest(ClientRequestBase):
@@ -1000,25 +1000,25 @@ class ClientRequest(ClientRequestBase):
         *,
         params: Query,
         headers: CIMultiDict[str],
-        skip_auto_headers: Optional[Iterable[str]],
+        skip_auto_headers: Iterable[str] | None,
         data: Any,
         cookies: BaseCookie[str],
-        auth: Optional[BasicAuth],
+        auth: BasicAuth | None,
         version: HttpVersion,
-        compress: Union[str, bool],
-        chunked: Optional[bool],
+        compress: str | bool,
+        chunked: bool | None,
         expect100: bool,
         loop: asyncio.AbstractEventLoop,
         response_class: type[ClientResponse],
-        proxy: Optional[URL],
-        proxy_auth: Optional[BasicAuth],
+        proxy: URL | None,
+        proxy_auth: BasicAuth | None,
         timer: BaseTimerContext,
         session: "ClientSession",
-        ssl: Union[SSLContext, bool, Fingerprint],
-        proxy_headers: Optional[CIMultiDict[str]],
+        ssl: SSLContext | bool | Fingerprint,
+        proxy_headers: CIMultiDict[str] | None,
         traces: list["Trace"],
         trust_env: bool,
-        server_hostname: Optional[str],
+        server_hostname: str | None,
         **kwargs: object,
     ):
         # kwargs exists so authors of subclasses should expect to pass through unknown
@@ -1062,7 +1062,7 @@ class ClientRequest(ClientRequestBase):
     @property
     def connection_key(self) -> ConnectionKey:
         if proxy_headers := self.proxy_headers:
-            h: Optional[int] = hash(tuple(proxy_headers.items()))
+            h: int | None = hash(tuple(proxy_headers.items()))
         else:
             h = None
         url = self.url
@@ -1317,7 +1317,7 @@ class ClientRequest(ClientRequestBase):
         self.proxy_auth = proxy_auth
         self.proxy_headers = proxy_headers
 
-    def _create_response(self, task: Optional[asyncio.Task[None]]) -> ClientResponse:
+    def _create_response(self, task: asyncio.Task[None] | None) -> ClientResponse:
         return self.response_class(
             self.method,
             self.original_url,
