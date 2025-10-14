@@ -24,7 +24,7 @@ else:
     _RequestMaker = Any
 
 
-def test_client_request_update_cookies(
+async def test_client_request_update_cookies(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     make_client_request: _RequestMaker,
@@ -122,7 +122,7 @@ def test_create_client_request_with_headers(
         )
 
 
-def test_send_client_request_one_hundred(
+async def test_send_client_request_one_hundred(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     make_client_request: _RequestMaker,

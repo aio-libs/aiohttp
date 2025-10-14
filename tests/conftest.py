@@ -402,6 +402,7 @@ async def make_client_request(
         nonlocal request, session
         session = ClientSession()
         default_args: ClientRequestArgs = {
+            "loop": loop,
             "params": {},
             "headers": CIMultiDict[str](),
             "skip_auto_headers": None,

@@ -36,7 +36,7 @@ else:
     autospec=True,
     spec_set=True,
 )
-def test_connect(  # type: ignore[misc]
+async def test_connect(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -101,7 +101,7 @@ def test_connect(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_headers(  # type: ignore[misc]
+async def test_proxy_headers(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -166,7 +166,7 @@ def test_proxy_headers(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_auth(  # type: ignore[misc]
+async def test_proxy_auth(  # type: ignore[misc]
     start_connection: mock.Mock,
     make_client_request: _RequestMaker,
 ) -> None:
@@ -186,7 +186,7 @@ def test_proxy_auth(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_dns_error(  # type: ignore[misc]
+async def test_proxy_dns_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
@@ -223,7 +223,7 @@ def test_proxy_dns_error(  # type: ignore[misc]
     spec_set=True,
     return_value=mock.create_autospec(socket.socket, spec_set=True, instance=True),
 )
-def test_proxy_connection_error(  # type: ignore[misc]
+async def test_proxy_connection_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
@@ -266,7 +266,7 @@ def test_proxy_connection_error(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_server_hostname_default(  # type: ignore[misc]
+async def test_proxy_server_hostname_default(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -349,7 +349,7 @@ def test_proxy_server_hostname_default(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_proxy_server_hostname_override(  # type: ignore[misc]
+async def test_proxy_server_hostname_override(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -437,7 +437,7 @@ def test_proxy_server_hostname_override(  # type: ignore[misc]
 )
 @pytest.mark.usefixtures("enable_cleanup_closed")
 @pytest.mark.parametrize("cleanup", (True, False))
-def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
+async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     cleanup: bool,
@@ -546,7 +546,7 @@ def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_https_connect(  # type: ignore[misc]
+async def test_https_connect(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -628,7 +628,7 @@ def test_https_connect(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_https_connect_certificate_error(  # type: ignore[misc]
+async def test_https_connect_certificate_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -705,7 +705,7 @@ def test_https_connect_certificate_error(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_https_connect_ssl_error(  # type: ignore[misc]
+async def test_https_connect_ssl_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -782,7 +782,7 @@ def test_https_connect_ssl_error(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_https_connect_http_proxy_error(  # type: ignore[misc]
+async def test_https_connect_http_proxy_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -860,7 +860,7 @@ def test_https_connect_http_proxy_error(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_https_connect_resp_start_error(  # type: ignore[misc]
+async def test_https_connect_resp_start_error(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -932,7 +932,7 @@ def test_https_connect_resp_start_error(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_request_port(  # type: ignore[misc]
+async def test_request_port(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -975,7 +975,7 @@ def test_request_port(  # type: ignore[misc]
     event_loop.run_until_complete(connector.close())
 
 
-def test_proxy_auth_property(
+async def test_proxy_auth_property(
     event_loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
 ) -> None:
     req = make_client_request(
@@ -988,7 +988,7 @@ def test_proxy_auth_property(
     assert ("user", "pass", "latin1") == req.proxy_auth
 
 
-def test_proxy_auth_property_default(
+async def test_proxy_auth_property_default(
     event_loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
@@ -1007,7 +1007,7 @@ def test_proxy_auth_property_default(
     autospec=True,
     spec_set=True,
 )
-def test_https_connect_pass_ssl_context(  # type: ignore[misc]
+async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
@@ -1098,7 +1098,7 @@ def test_https_connect_pass_ssl_context(  # type: ignore[misc]
     autospec=True,
     spec_set=True,
 )
-def test_https_auth(  # type: ignore[misc]
+async def test_https_auth(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     event_loop: asyncio.AbstractEventLoop,
