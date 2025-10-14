@@ -45,7 +45,7 @@ cffi==2.0.0
     #   pytest-codspeed
 cfgv==3.4.0
     # via pre-commit
-charset-normalizer==3.4.3
+charset-normalizer==3.4.4
     # via requests
 cherry-picker==2.6.0
     # via -r requirements/dev.in
