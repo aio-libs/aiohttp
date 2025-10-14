@@ -1155,9 +1155,10 @@ class ClientSession:
         blocking I/O in the event loop.
         """
         netrc_obj = netrc_from_env()
-        with suppress(LookupError):
+        try:
             return basicauth_from_netrc(netrc_obj, host)
-        return None
+        except LookupError:
+            return None
 
     if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
