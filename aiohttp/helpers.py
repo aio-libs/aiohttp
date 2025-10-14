@@ -22,6 +22,7 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import suppress
 from email.message import Message
 from email.parser import HeaderParser
+from email.policy import HTTP
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
@@ -389,7 +390,7 @@ def parse_content_type(raw: str) -> tuple[str, MappingProxyType[str, str]]:
     MappingProxyType of parameters. The default returned value
     is `application/octet-stream`
     """
-    msg = HeaderParser(EnsureOctetStream).parsestr(f"Content-Type: {raw}")
+    msg = HeaderParser(EnsureOctetStream, policy=HTTP).parsestr(f"Content-Type: {raw}")
     content_type = msg.get_content_type()
     params = msg.get_params(())
     content_dict = dict(params[1:])  # First element is content type again
