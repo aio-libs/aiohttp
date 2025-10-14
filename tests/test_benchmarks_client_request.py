@@ -25,12 +25,11 @@ else:
 
 
 async def test_client_request_update_cookies(
-    loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     make_client_request: _RequestMaker,
 ) -> None:
     url = URL("http://python.org")
-    req = make_client_request("get", url, loop=loop)
+    req = make_client_request("get", url)
     cookie_jar = CookieJar()
     cookie_jar.update_cookies({"string": "Another string"})
     cookies = cookie_jar.filter_cookies(url)
@@ -123,12 +122,11 @@ def test_create_client_request_with_headers(
 
 
 async def test_send_client_request_one_hundred(
-    loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     make_client_request: _RequestMaker,
 ) -> None:
     url = URL("http://python.org")
-    req = make_client_request("get", url, loop=loop)
+    req = make_client_request("get", url)
 
     class MockTransport(asyncio.Transport):
         """Mock transport for testing that do no real I/O."""
@@ -174,4 +172,4 @@ async def test_send_client_request_one_hundred(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(send_requests())
+        await send_requests()

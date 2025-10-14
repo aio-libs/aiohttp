@@ -12,7 +12,7 @@ from http import HTTPStatus
 from itertools import chain, cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType
@@ -54,7 +54,7 @@ from .resolver import DefaultResolver
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
 else:
-    Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+    Buffer = "bytes | bytearray | memoryview[int] | memoryview[bytes]"
 
 if TYPE_CHECKING:
     import ssl
@@ -1184,7 +1184,7 @@ class TCPConnector(BaseConnector):
             return _SSL_CONTEXT_UNVERIFIED
         return _SSL_CONTEXT_VERIFIED
 
-    def _get_fingerprint(self, req: ClientRequestBase) -> Optional["Fingerprint"]:
+    def _get_fingerprint(self, req: ClientRequestBase) -> "Fingerprint | None":
         ret = req.ssl
         if isinstance(ret, Fingerprint):
             return ret

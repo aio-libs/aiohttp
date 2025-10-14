@@ -898,7 +898,7 @@ async def test_pass_falsy_data(
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    with mock.patch("aiohttp.client_reqrep.ClientRequest.update_body_from_data") as m:
+    with mock.patch("aiohttp.client_reqrep.ClientRequest._update_body_from_data") as m:
         req = make_client_request("post", URL("http://python.org/"), data={}, loop=loop)
         m.assert_called_once_with({})
     await req._close()
@@ -1593,7 +1593,7 @@ async def test_terminate(
     resp.close()
 
 
-async def test_terminate_with_closed_loop(
+def test_terminate_with_closed_loop(
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
     make_client_request: _RequestMaker,
@@ -2167,7 +2167,7 @@ async def test_update_body_with_different_types(
 
     # Test with None (clears body)
     await req.update_body(None)
-    assert req.body == b""  # type: ignore[comparison-overlap]  # empty body is represented as b""
+    assert req.body._value == b""
 
     await req._close()
 

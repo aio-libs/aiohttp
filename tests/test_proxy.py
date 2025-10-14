@@ -30,7 +30,7 @@ else:
     _RequestMaker = Any
 
 
-@mock.patch("aiohttp.connector.ClientRequest")
+@mock.patch("aiohttp.connector.ClientRequestBase")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
     autospec=True,
@@ -42,11 +42,13 @@ async def test_connect(  # type: ignore[misc]
     make_client_request: _RequestMaker,
 ) -> None:
     event_loop = asyncio.get_running_loop()
-    req = make_client_request(
+    req = ClientRequestBase(
         "GET",
         URL("http://www.python.org"),
         proxy=URL("http://proxy.example.com"),
         loop=event_loop,
+        ssl=True,
+        headers=CIMultiDict({}),
     )
     assert str(req.proxy) == "http://proxy.example.com"
 
@@ -89,7 +91,7 @@ async def test_connect(  # type: ignore[misc]
     await connector.close()
 
 
-@mock.patch("aiohttp.connector.ClientRequest")
+@mock.patch("aiohttp.connector.ClientRequestBase")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
     autospec=True,
@@ -100,13 +102,15 @@ async def test_proxy_headers(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     make_client_request: _RequestMaker,
 ) -> None:
-    event_loop = asyncio.get_current_loop()
-    req = make_client_request(
+    event_loop = asyncio.get_running_loop()
+    req = ClientRequestBase(
         "GET",
         URL("http://www.python.org"),
         proxy=URL("http://proxy.example.com"),
         proxy_headers=CIMultiDict({"Foo": "Bar"}),
         loop=event_loop,
+        ssl=True,
+        headers=CIMultiDict({}),
     )
     assert str(req.proxy) == "http://proxy.example.com"
 
@@ -189,7 +193,7 @@ async def test_proxy_dns_error(  # type: ignore[misc]
             "GET",
             URL("http://www.python.org"),
             proxy=URL("http://proxy.example.com"),
-            loop=asyncio.get_current_loop(),
+            loop=asyncio.get_running_loop(),
         )
         expected_headers = dict(req.headers)
         with pytest.raises(aiohttp.ClientConnectorError):
@@ -296,10 +300,8 @@ async def test_proxy_server_hostname_default(  # type: ignore[misc]
                             proxy=URL("http://proxy.example.com"),
                             loop=event_loop,
                         )
-                        event_loop.run_until_complete(
-                            connector._create_connection(
-                                req, [], aiohttp.ClientTimeout()
-                            )
+                        await connector._create_connection(
+                            req, [], aiohttp.ClientTimeout()
                         )
 
                         assert (
@@ -727,6 +729,7 @@ async def test_https_connect_http_proxy_error(  # type: ignore[misc]
     ClientRequestMock: mock.Mock,
     make_client_request: _RequestMaker,
 ) -> None:
+    event_loop = asyncio.get_running_loop()
     proxy_req = make_client_request(
         "GET", URL("http://proxy.example.com"), loop=event_loop
     )
@@ -1010,7 +1013,7 @@ async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
             await connector.close()
 
 
-@mock.patch("aiohttp.connector.ClientRequest")
+@mock.patch("aiohttp.connector.ClientRequestBase")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
     autospec=True,
@@ -1022,11 +1025,13 @@ async def test_https_auth(  # type: ignore[misc]
     make_client_request: _RequestMaker,
 ) -> None:
     event_loop = asyncio.get_running_loop()
-    proxy_req = make_client_request(
+    proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
         auth=aiohttp.helpers.BasicAuth("user", "pass"),
         loop=event_loop,
+        ssl=True,
+        headers=CIMultiDict({}),
     )
     ClientRequestMock.return_value = proxy_req
 
