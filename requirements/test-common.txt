@@ -12,7 +12,7 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pytest-codspeed
-click==8.2.1
+click==8.3.0
     # via wait-for-it
 coverage==7.10.7
     # via
@@ -56,9 +56,9 @@ proxy-py==2.4.10
     # via -r requirements/test-common.in
 pycparser==2.23
     # via cffi
-pydantic==2.12.0
+pydantic==2.12.1
     # via python-on-whales
-pydantic-core==2.41.1
+pydantic-core==2.41.3
     # via pydantic
 pygments==2.19.2
     # via
