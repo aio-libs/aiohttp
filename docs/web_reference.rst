@@ -3060,7 +3060,8 @@ Utilities
                       handle_signals=True, \
                       reuse_address=None, \
                       reuse_port=None, \
-                      handler_cancellation=False)
+                      handler_cancellation=False, \
+					  **kwargs)
 
    A high-level function for running an application, serving it until
    keyboard interrupt and performing a
@@ -3169,6 +3170,9 @@ Utilities
                                      if familiar with asyncio behavior or
                                      scalability is a concern.
                                      :ref:`aiohttp-web-peer-disconnection`
+
+   :param kwargs: additional named parameters to pass into
+                  :class:`AppRunner` constructor.
 
    .. versionadded:: 3.0
 
