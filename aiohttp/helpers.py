@@ -361,6 +361,7 @@ def parse_mimetype(mimetype: str) -> MimeType:
 class EnsureOctetStream(EmailMessage):
     def __init__(self) -> None:
         super().__init__()
+        # https://www.rfc-editor.org/rfc/rfc9110#section-8.3-5
         self.set_default_type("application/octet-stream")
 
     def get_content_type(self) -> Any:
