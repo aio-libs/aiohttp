@@ -127,6 +127,7 @@ async def test_send_client_request_one_hundred(
     make_client_request: _RequestMaker,
 ) -> None:
     url = URL("http://python.org")
+
     async def make_req() -> ClientRequest:
         """Need async context."""
         return make_client_request("get", url)
