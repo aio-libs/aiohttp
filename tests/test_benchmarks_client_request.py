@@ -122,11 +122,16 @@ def test_create_client_request_with_headers(
 
 
 async def test_send_client_request_one_hundred(
+    loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     make_client_request: _RequestMaker,
 ) -> None:
     url = URL("http://python.org")
-    req = make_client_request("get", url)
+    async def make_req() -> ClientRequest:
+        """Need async context."""
+        return make_client_request("get", url)
+
+    req = loop.run_until_complete(make_req())
 
     class MockTransport(asyncio.Transport):
         """Mock transport for testing that do no real I/O."""
@@ -172,4 +177,4 @@ async def test_send_client_request_one_hundred(
 
     @benchmark
     def _run() -> None:
-        await send_requests()
+        loop.run_until_complete(send_requests())
