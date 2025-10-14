@@ -3,7 +3,7 @@
 import asyncio
 import sys
 from types import TracebackType
-from typing import Any, Final, Optional, Type
+from typing import Any, Final
 
 from ._websocket.reader import WebSocketDataQueue
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
@@ -34,8 +34,8 @@ else:
 
 @frozen_dataclass_decorator
 class ClientWSTimeout:
-    ws_receive: Optional[float] = None
-    ws_close: Optional[float] = None
+    ws_receive: float | None = None
+    ws_close: float | None = None
 
 
 DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
@@ -48,14 +48,14 @@ class ClientWebSocketResponse:
         self,
         reader: WebSocketDataQueue,
         writer: WebSocketWriter,
-        protocol: Optional[str],
+        protocol: str | None,
         response: ClientResponse,
         timeout: ClientWSTimeout,
         autoclose: bool,
         autoping: bool,
         loop: asyncio.AbstractEventLoop,
         *,
-        heartbeat: Optional[float] = None,
+        heartbeat: float | None = None,
         compress: int = 0,
         client_notakeover: bool = False,
     ) -> None:
@@ -67,23 +67,23 @@ class ClientWebSocketResponse:
         self._protocol = protocol
         self._closed = False
         self._closing = False
-        self._close_code: Optional[int] = None
+        self._close_code: int | None = None
         self._timeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
-        self._heartbeat_cb: Optional[asyncio.TimerHandle] = None
+        self._heartbeat_cb: asyncio.TimerHandle | None = None
         self._heartbeat_when: float = 0.0
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat / 2.0
-        self._pong_response_cb: Optional[asyncio.TimerHandle] = None
+        self._pong_response_cb: asyncio.TimerHandle | None = None
         self._loop = loop
         self._waiting: bool = False
-        self._close_wait: Optional[asyncio.Future[None]] = None
-        self._exception: Optional[BaseException] = None
+        self._close_wait: asyncio.Future[None] | None = None
+        self._exception: BaseException | None = None
         self._compress = compress
         self._client_notakeover = client_notakeover
-        self._ping_task: Optional[asyncio.Task[None]] = None
+        self._ping_task: asyncio.Task[None] | None = None
 
         self._reset_heartbeat()
 
@@ -199,11 +199,11 @@ class ClientWebSocketResponse:
         return self._closed
 
     @property
-    def close_code(self) -> Optional[int]:
+    def close_code(self) -> int | None:
         return self._close_code
 
     @property
-    def protocol(self) -> Optional[str]:
+    def protocol(self) -> str | None:
         return self._protocol
 
     @property
@@ -224,7 +224,7 @@ class ClientWebSocketResponse:
             return default
         return transport.get_extra_info(name, default)
 
-    def exception(self) -> Optional[BaseException]:
+    def exception(self) -> BaseException | None:
         return self._exception
 
     async def ping(self, message: bytes = b"") -> None:
@@ -234,19 +234,19 @@ class ClientWebSocketResponse:
         await self._writer.send_frame(message, WSMsgType.PONG)
 
     async def send_frame(
-        self, message: bytes, opcode: WSMsgType, compress: Optional[int] = None
+        self, message: bytes, opcode: WSMsgType, compress: int | None = None
     ) -> None:
         """Send a frame over the websocket."""
         await self._writer.send_frame(message, opcode, compress)
 
-    async def send_str(self, data: str, compress: Optional[int] = None) -> None:
+    async def send_str(self, data: str, compress: int | None = None) -> None:
         if not isinstance(data, str):
             raise TypeError("data argument must be str (%r)" % type(data))
         await self._writer.send_frame(
             data.encode("utf-8"), WSMsgType.TEXT, compress=compress
         )
 
-    async def send_bytes(self, data: bytes, compress: Optional[int] = None) -> None:
+    async def send_bytes(self, data: bytes, compress: int | None = None) -> None:
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError("data argument must be byte-ish (%r)" % type(data))
         await self._writer.send_frame(data, WSMsgType.BINARY, compress=compress)
@@ -254,7 +254,7 @@ class ClientWebSocketResponse:
     async def send_json(
         self,
         data: Any,
-        compress: Optional[int] = None,
+        compress: int | None = None,
         *,
         dumps: JSONEncoder = DEFAULT_JSON_ENCODER,
     ) -> None:
@@ -309,7 +309,7 @@ class ClientWebSocketResponse:
                 self._response.close()
                 return True
 
-    async def receive(self, timeout: Optional[float] = None) -> WSMessage:
+    async def receive(self, timeout: float | None = None) -> WSMessage:
         receive_timeout = timeout or self._timeout.ws_receive
 
         while True:
@@ -383,7 +383,7 @@ class ClientWebSocketResponse:
 
             return msg
 
-    async def receive_str(self, *, timeout: Optional[float] = None) -> str:
+    async def receive_str(self, *, timeout: float | None = None) -> str:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise WSMessageTypeError(
@@ -391,7 +391,7 @@ class ClientWebSocketResponse:
             )
         return msg.data
 
-    async def receive_bytes(self, *, timeout: Optional[float] = None) -> bytes:
+    async def receive_bytes(self, *, timeout: float | None = None) -> bytes:
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.BINARY:
             raise WSMessageTypeError(
@@ -403,7 +403,7 @@ class ClientWebSocketResponse:
         self,
         *,
         loads: JSONDecoder = DEFAULT_JSON_DECODER,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> Any:
         data = await self.receive_str(timeout=timeout)
         return loads(data)
@@ -422,8 +422,8 @@ class ClientWebSocketResponse:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         await self.close()

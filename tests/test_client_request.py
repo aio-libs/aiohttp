@@ -4,19 +4,9 @@ import io
 import pathlib
 import sys
 import warnings
+from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import (
-    Any,
-    AsyncIterator,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Protocol,
-    Union,
-)
+from typing import Any, Protocol
 from unittest import mock
 
 import pytest
@@ -1313,7 +1303,7 @@ async def test_data_stream(
     original_write_bytes = req._write_bytes
 
     async def _mock_write_bytes(
-        writer: AbstractStreamWriter, conn: mock.Mock, content_length: Optional[int]
+        writer: AbstractStreamWriter, conn: mock.Mock, content_length: int | None
     ) -> None:
         # Ensure the task is scheduled
         await asyncio.sleep(0)
@@ -1914,7 +1904,7 @@ async def test_write_bytes_with_iterable_content_length_limit(
     loop: asyncio.AbstractEventLoop,
     buf: bytearray,
     conn: mock.Mock,
-    data: Union[List[bytes], bytes],
+    data: list[bytes] | bytes,
     make_client_request: _RequestMaker,
 ) -> None:
     """Test that write_bytes respects content_length limit for iterable data."""
@@ -2383,8 +2373,8 @@ async def test_expect100_with_body_becomes_empty(
 )
 async def test_content_length_for_methods(
     method: str,
-    data: Optional[bytes],
-    expected_content_length: Optional[str],
+    data: bytes | None,
+    expected_content_length: str | None,
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:

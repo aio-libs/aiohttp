@@ -6,11 +6,12 @@ import os
 import socket
 import ssl
 import sys
+from collections.abc import AsyncIterator, Callable, Iterator
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncIterator, Callable, Iterator
+from typing import Any
 from unittest import mock
 from uuid import uuid4
 

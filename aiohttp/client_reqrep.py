@@ -7,23 +7,11 @@ import re
 import sys
 import traceback
 import warnings
-from collections.abc import Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Type,
-    TypedDict,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -58,6 +46,7 @@ from .helpers import (
     netrc_from_env,
     parse_mimetype,
     reify,
+    sentinel,
     set_exception,
     set_result,
 )
@@ -111,9 +100,9 @@ def _gen_default_accept_encoding() -> str:
 
 @frozen_dataclass_decorator
 class ContentDisposition:
-    type: Optional[str]
+    type: str | None
     parameters: "MappingProxyType[str, str]"
-    filename: Optional[str]
+    filename: str | None
 
 
 class _RequestInfo(NamedTuple):
@@ -130,14 +119,14 @@ class RequestInfo(_RequestInfo):
         url: URL,
         method: str,
         headers: "CIMultiDictProxy[str]",
-        real_url: URL = _SENTINEL,  # type: ignore[assignment]
+        real_url: URL | _SENTINEL = sentinel,
     ) -> "RequestInfo":
         """Create a new RequestInfo instance.
 
         For backwards compatibility, the real_url parameter is optional.
         """
         return tuple.__new__(
-            cls, (url, method, headers, url if real_url is _SENTINEL else real_url)
+            cls, (url, method, headers, url if real_url is sentinel else real_url)
         )
 
 
@@ -190,12 +179,12 @@ class ConnectionKey(NamedTuple):
     # the key should contain an information about used proxy / TLS
     # to prevent reusing wrong connections from a pool
     host: str
-    port: Optional[int]
+    port: int | None
     is_ssl: bool
-    ssl: Union[SSLContext, bool, Fingerprint]
-    proxy: Optional[URL]
-    proxy_auth: Optional[BasicAuth]
-    proxy_headers_hash: Optional[int]  # hash(CIMultiDict)
+    ssl: SSLContext | bool | Fingerprint
+    proxy: URL | None
+    proxy_auth: BasicAuth | None
+    proxy_headers_hash: int | None  # hash(CIMultiDict)
 
 
 def _warn_if_unclosed_payload(payload: payload.Payload, stacklevel: int = 2) -> None:
@@ -222,21 +211,21 @@ class ClientResponse(HeadersMixin):
     # but will be set by the start() method.
     # As the end user will likely never see the None values, we cheat the types below.
     # from the Status-Line of the response
-    version: Optional[HttpVersion] = None  # HTTP-Version
+    version: HttpVersion | None = None  # HTTP-Version
     status: int = None  # type: ignore[assignment] # Status-Code
-    reason: Optional[str] = None  # Reason-Phrase
+    reason: str | None = None  # Reason-Phrase
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
-    _body: Optional[bytes] = None
+    _body: bytes | None = None
     _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
-    _history: Tuple["ClientResponse", ...] = ()
+    _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
     _connection: Optional["Connection"] = None  # current connection
-    _cookies: Optional[SimpleCookie] = None
-    _raw_cookie_headers: Optional[Tuple[str, ...]] = None
+    _cookies: SimpleCookie | None = None
+    _raw_cookie_headers: tuple[str, ...] | None = None
     _continue: Optional["asyncio.Future[bool]"] = None
-    _source_traceback: Optional[traceback.StackSummary] = None
+    _source_traceback: traceback.StackSummary | None = None
     _session: Optional["ClientSession"] = None
     # set up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
@@ -253,13 +242,13 @@ class ClientResponse(HeadersMixin):
         method: str,
         url: URL,
         *,
-        writer: "Optional[asyncio.Task[None]]",
+        writer: "asyncio.Task[None] | None",
         continue100: Optional["asyncio.Future[bool]"],
-        timer: Optional[BaseTimerContext],
+        timer: BaseTimerContext | None,
         request_info: RequestInfo,
         traces: Sequence["Trace"],
         loop: asyncio.AbstractEventLoop,
-        session: Optional["ClientSession"],
+        session: "ClientSession | None",
     ) -> None:
         # URL forbids subclasses, so a simple type check is enough.
         assert type(url) is URL
@@ -274,7 +263,7 @@ class ClientResponse(HeadersMixin):
             self._continue = continue100
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self._traces = traces
         self._loop = loop
         # Save reference to _resolve_charset, so that get_encoding() will still
@@ -363,7 +352,7 @@ class ClientResponse(HeadersMixin):
         return self._request_info
 
     @reify
-    def content_disposition(self) -> Optional[ContentDisposition]:
+    def content_disposition(self) -> ContentDisposition | None:
         raw = self._headers.get(hdrs.CONTENT_DISPOSITION)
         if raw is None:
             return None
@@ -399,9 +388,7 @@ class ClientResponse(HeadersMixin):
         else:
             ascii_encodable_reason = "None"
         print(
-            "<ClientResponse({}) [{} {}]>".format(
-                ascii_encodable_url, self.status, ascii_encodable_reason
-            ),
+            f"<ClientResponse({ascii_encodable_url}) [{self.status} {ascii_encodable_reason}]>",
             file=out,
         )
         print(self.headers, file=out)
@@ -412,18 +399,18 @@ class ClientResponse(HeadersMixin):
         return self._connection
 
     @reify
-    def history(self) -> Tuple["ClientResponse", ...]:
+    def history(self) -> tuple["ClientResponse", ...]:
         """A sequence of responses, if redirects occurred."""
         return self._history
 
     @reify
-    def links(self) -> "MultiDictProxy[MultiDictProxy[Union[str, URL]]]":
+    def links(self) -> "MultiDictProxy[MultiDictProxy[str | URL]]":
         links_str = ", ".join(self.headers.getall("link", []))
 
         if not links_str:
             return MultiDictProxy(MultiDict())
 
-        links: MultiDict[MultiDictProxy[Union[str, URL]]] = MultiDict()
+        links: MultiDict[MultiDictProxy[str | URL]] = MultiDict()
 
         for val in re.split(r",(?=\s*<)", links_str):
             match = re.match(r"\s*<(.*)>(.*)", val)
@@ -432,7 +419,7 @@ class ClientResponse(HeadersMixin):
             url, params_str = match.groups()
             params = params_str.split(";")[1:]
 
-            link: MultiDict[Union[str, URL]] = MultiDict()
+            link: MultiDict[str | URL] = MultiDict()
 
             for param in params:
                 match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
@@ -654,7 +641,7 @@ class ClientResponse(HeadersMixin):
 
         return self._resolve_charset(self, self._body)
 
-    async def text(self, encoding: Optional[str] = None, errors: str = "strict") -> str:
+    async def text(self, encoding: str | None = None, errors: str = "strict") -> str:
         """Read response payload and decode."""
         await self.read()
 
@@ -666,9 +653,9 @@ class ClientResponse(HeadersMixin):
     async def json(
         self,
         *,
-        encoding: Optional[str] = None,
+        encoding: str | None = None,
         loads: JSONDecoder = DEFAULT_JSON_DECODER,
-        content_type: Optional[str] = "application/json",
+        content_type: str | None = "application/json",
     ) -> Any:
         """Read and decodes JSON response."""
         await self.read()
@@ -697,9 +684,9 @@ class ClientResponse(HeadersMixin):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         self._in_context = False
         # similar to _RequestContextManager, we do not need to check
@@ -741,9 +728,9 @@ class ClientRequestBase:
         url: URL,
         *,
         headers: CIMultiDict[str],
-        auth: Optional[BasicAuth],
+        auth: BasicAuth | None,
         loop: asyncio.AbstractEventLoop,
-        ssl: Union[SSLContext, bool, Fingerprint],
+        ssl: SSLContext | bool | Fingerprint,
         trust_env: bool = False,
     ):
         if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
@@ -769,7 +756,7 @@ class ClientRequestBase:
     def _reset_writer(self, _: object = None) -> None:
         self._writer_task = None
 
-    def _get_content_length(self) -> Optional[int]:
+    def _get_content_length(self) -> int | None:
         """Extract and validate Content-Length header value.
 
         Returns parsed Content-Length value or None if not set.
@@ -1102,7 +1089,7 @@ class ClientRequest(ClientRequestBase):
         """
         return self._session
 
-    def _update_auto_headers(self, skip_auto_headers: Optional[Iterable[str]]) -> None:
+    def _update_auto_headers(self, skip_auto_headers: Iterable[str] | None) -> None:
         if skip_auto_headers is not None:
             self._skip_auto_headers = CIMultiDict(
                 (hdr, None) for hdr in sorted(skip_auto_headers)
@@ -1138,7 +1125,7 @@ class ClientRequest(ClientRequestBase):
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
-    def _update_content_encoding(self, data: Any, compress: Union[bool, str]) -> None:
+    def _update_content_encoding(self, data: Any, compress: bool | str) -> None:
         """Set request content encoding."""
         self.compress = None
         if not data:
@@ -1315,9 +1302,9 @@ class ClientRequest(ClientRequestBase):
 
     def _update_proxy(
         self,
-        proxy: Optional[URL],
-        proxy_auth: Optional[BasicAuth],
-        proxy_headers: Optional[CIMultiDict[str]],
+        proxy: URL | None,
+        proxy_auth: BasicAuth | None,
+        proxy_headers: CIMultiDict[str] | None,
     ) -> None:
         self.proxy = proxy
         if proxy is None:
@@ -1375,7 +1362,7 @@ class ClientRequest(ClientRequestBase):
         self,
         writer: AbstractStreamWriter,
         conn: "Connection",
-        content_length: Optional[int],
+        content_length: int | None,
     ) -> None:
         """
         Write the request body to the connection stream.
