@@ -282,7 +282,7 @@ async def _run_app(
     backlog: int = 128,
     reuse_address: bool | None = None,
     reuse_port: bool | None = None,
-    **kwargs: Any,
+    **kwargs: Any,  # TODO(PY311): Use Unpack
 ) -> None:
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
