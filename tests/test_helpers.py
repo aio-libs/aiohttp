@@ -8,7 +8,6 @@ from collections.abc import Iterator
 from math import ceil, modf
 from pathlib import Path
 from types import MappingProxyType
-from typing import Tuple
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -100,7 +99,7 @@ def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
     ],
 )
 def test_parse_content_type(
-    content_type: str, expected: Tuple[str, MappingProxyType[str, str]]
+    content_type: str, expected: tuple[str, MappingProxyType[str, str]]
 ) -> None:
     result = helpers.parse_content_type(content_type)
 
