@@ -375,7 +375,7 @@ class EnsureOctetStream(EmailMessage):
         value = self.get("content-type", "").lower()
 
         # Based on the implementation of _splitparam in the standard library
-        ctype, sep, _ = value.partition(";")
+        ctype, _, _ = value.partition(";")
         ctype = ctype.strip()
         if ctype.count("/") != 1:
             return self.get_default_type()
