@@ -561,8 +561,8 @@ async def test_https_connect(  # type: ignore[misc]
                             loop=event_loop,
                         )
                         await connector._create_connection(
-                                req, [], aiohttp.ClientTimeout()
-                            )
+                            req, [], aiohttp.ClientTimeout()
+                        )
 
                         assert req.url.path == "/"
                         assert proxy_req.method == "CONNECT"
