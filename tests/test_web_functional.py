@@ -2230,7 +2230,7 @@ async def test_response_101_204_no_content_length_http11(
 
     app = web.Application()
     app.router.add_get("/", handler)
-    client = await aiohttp_client(app, version=HTTPVersion11)
+    client = await aiohttp_client(app, version=HttpVersion11)
     resp = await client.get("/")
     assert CONTENT_LENGTH not in resp.headers
     assert TRANSFER_ENCODING not in resp.headers
