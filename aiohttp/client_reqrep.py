@@ -788,7 +788,7 @@ class ClientRequestBase:
         return self.url.scheme in _SSL_SCHEMES
 
     @property
-    def ssl(self) -> "SSLContext" | bool | Fingerprint:
+    def ssl(self) -> "SSLContext | bool | Fingerprint":
         return self._ssl
 
     @property
