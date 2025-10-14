@@ -7,7 +7,7 @@ from pathlib import Path
 if sys.version_info >= (3, 11):
     import tomllib
 else:
-    import tomli as tomllib  # noqa: I900
+    raise RuntimeError("Use Python 3.11+ to run 'make sync-direct-runtime-deps'")
 
 data = tomllib.loads(Path("pyproject.toml").read_text())
 reqs = (

@@ -41,7 +41,9 @@ dependencies = [
   "propcache >= 0.2.0",
   "yarl >= 1.17.0, < 2.0",
 ]
-dynamic = ["version"]
+dynamic = [
+  "version",
+]
 
 [project.optional-dependencies]
 speedups = [
