@@ -221,7 +221,7 @@ class ClientResponse(HeadersMixin):
     _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
-    _connection: "Connection" | None = None  # current connection
+    _connection: "Connection | None" = None  # current connection
     _cookies: SimpleCookie | None = None
     _raw_cookie_headers: tuple[str, ...] | None = None
     _continue: "asyncio.Future[bool] | None" = None
