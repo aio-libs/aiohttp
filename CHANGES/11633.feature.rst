@@ -1,0 +1,2 @@
+Make configuration options in ``AppRunner`` also available in ``run_app()``
+-- by :user:`Cycloctane`.
