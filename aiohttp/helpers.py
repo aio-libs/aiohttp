@@ -371,12 +371,11 @@ class EnsureOctetStream(Message):
         The way this class is used guarantees that content-type will
         be present so simplify the checks wrt to the base implementation.
         """
-        value = str(self.get("content-type")).lower()
+        value = self.get("content-type", "").lower()
 
         # Based on the implementation of _splitparam in the standard library
         ctype, sep, _ = value.partition(";")
-        if not sep:
-            ctype = ctype.strip()
+        ctype = ctype.strip()
         if ctype.count("/") != 1:
             return self.get_default_type()
         return ctype
