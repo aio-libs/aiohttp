@@ -20,7 +20,7 @@ import weakref
 from collections import namedtuple
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import suppress
-from email.message import Message
+from email.message import EmailMessage
 from email.parser import HeaderParser
 from email.policy import HTTP
 from email.utils import parsedate
@@ -358,7 +358,7 @@ def parse_mimetype(mimetype: str) -> MimeType:
     )
 
 
-class EnsureOctetStream(Message):
+class EnsureOctetStream(EmailMessage):
     def __init__(self) -> None:
         super().__init__()
         self.set_default_type("application/octet-stream")
