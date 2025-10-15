@@ -364,7 +364,7 @@ class EnsureOctetStream(EmailMessage):
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.3-5
         self.set_default_type("application/octet-stream")
 
-    def get_content_type(self) -> Any:
+    def get_content_type(self) -> str:
         """Re-implementation from Message
 
         Returns application/octet-stream in place of plain/text when
