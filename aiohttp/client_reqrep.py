@@ -7,11 +7,11 @@ import re
 import sys
 import traceback
 import warnings
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -1137,7 +1137,6 @@ class ClientRequest(ClientRequestBase):
 
     def _update_body_from_data(self, body: Any) -> None:
         """Update request body from data."""
-
         if body is None:
             self._body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
             # Set Content-Length to 0 when body is None for methods that expect a body

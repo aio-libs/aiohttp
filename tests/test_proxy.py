@@ -19,7 +19,6 @@ from aiohttp.client_reqrep import (
 )
 from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
-from aiohttp.http import HttpVersion
 
 if sys.version_info >= (3, 11):
     from typing import Unpack

@@ -29,18 +29,11 @@ except ImportError:  # For downstreams only  # pragma: no cover
 from aiohttp import payload
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.client_reqrep import (
-    ClientRequest,
-    ClientRequestArgs,
-    ClientResponse,
-    Fingerprint,
-)
+from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
-from aiohttp.helpers import BaseTimerContext, BasicAuth, TimerNoop
-from aiohttp.http import WS_KEY, HttpVersion, HttpVersion11
+from aiohttp.helpers import TimerNoop
+from aiohttp.http import WS_KEY, HttpVersion11
 from aiohttp.test_utils import get_unused_port_socket, loop_context
-from aiohttp.tracing import Trace
-from aiohttp.typedefs import Query
 
 try:
     import trustme

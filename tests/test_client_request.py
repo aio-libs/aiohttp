@@ -3,10 +3,9 @@ import hashlib
 import io
 import pathlib
 import sys
-import warnings
-from collections.abc import AsyncIterator, Callable, Iterable, Iterator
-from http.cookies import BaseCookie, Morsel, SimpleCookie
-from typing import Any, Protocol
+from collections.abc import AsyncIterator, Callable, Iterable
+from http.cookies import BaseCookie, SimpleCookie
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -28,10 +27,8 @@ from aiohttp.client_reqrep import (
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
 from aiohttp.hdrs import METH_DELETE
-from aiohttp.helpers import TimerNoop
-from aiohttp.http import HttpVersion, HttpVersion10, HttpVersion11, StreamWriter
+from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
-from aiohttp.typedefs import LooseCookies
 
 if sys.version_info >= (3, 11):
     from typing import Unpack
@@ -323,7 +320,7 @@ async def test_host_header_ipv6_with_port(make_client_request: _RequestMaker) ->
         ),
     ),
 )
-async def test_host_header_fqdn(
+async def test_host_header_fqdn(  # type: ignore[misc]
     make_client_request: _RequestMaker,
     url: str,
     headers: CIMultiDict[str],
@@ -948,7 +945,7 @@ async def test_bytes_data(
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_content_encoding(
+async def test_content_encoding(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
     make_client_request: _RequestMaker,
@@ -982,7 +979,7 @@ async def test_content_encoding_dont_set_headers_if_no_body(
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_content_encoding_header(
+async def test_content_encoding_header(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
     make_client_request: _RequestMaker,
@@ -1037,7 +1034,7 @@ async def test_chunked(
     resp.close()
 
 
-async def test_chunked2(
+async def test_chunked2(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
     make_client_request: _RequestMaker,
@@ -1532,7 +1529,7 @@ async def test_oserror_on_write_bytes(
 
 
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
-async def test_cancel_close(
+async def test_cancel_close(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
     make_client_request: _RequestMaker,
@@ -1583,15 +1580,39 @@ async def test_terminate(
 
 
 def test_terminate_with_closed_loop(
-    loop: asyncio.AbstractEventLoop,
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
 ) -> None:
-    req = resp = writer = None
+    req = resp = writer = session = None
 
     async def go() -> None:
-        nonlocal req, resp, writer
-        req = make_client_request("get", URL("http://python.org"), loop=loop)
+        nonlocal req, resp, writer, session
+        session = ClientSession()
+        # Can't use make_client_request here, due to closing the loop mid-test.
+        req = ClientRequest(
+            "get",
+            URL("http://python.org"),
+            loop=loop,
+            params={},
+            headers=CIMultiDict[str](),
+            skip_auto_headers=None,
+            data=None,
+            cookies=BaseCookie[str](),
+            auth=None,
+            version=HttpVersion11,
+            compress=False,
+            chunked=None,
+            expect100=False,
+            response_class=ClientResponse,
+            proxy=None,
+            proxy_auth=None,
+            timer=TimerNoop(),
+            session=session,
+            ssl=True,
+            proxy_headers=None,
+            traces=[],
+            trust_env=False,
+            server_hostname=None,
+        )
 
         async def _mock_write_bytes(*args: object, **kwargs: object) -> None:
             # Ensure the task is scheduled
@@ -1618,13 +1639,14 @@ def test_terminate_with_closed_loop(
     assert not writer.cancel.called
     assert resp is not None
     resp.close()
+    loop.run_until_complete(session.close())
 
 
 async def test_terminate_without_writer(
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
-    req = make_client_request("get", URL("http://python.org"), loop=loop)
+    req = await make_client_request("get", URL("http://python.org"), loop=loop)
     assert req._writer is None
 
     req._terminate()
@@ -1727,7 +1749,7 @@ def test_gen_default_accept_encoding(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-async def test_basicauth_from_netrc_present_untrusted_env(
+async def test_basicauth_from_netrc_present_untrusted_env(  # type: ignore[misc]
     make_client_request: _RequestMaker,
 ) -> None:
     """Test no authorization header is sent via netrc if trust_env is False"""
@@ -1741,7 +1763,7 @@ async def test_basicauth_from_netrc_present_untrusted_env(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-async def test_basicauth_from_empty_netrc(
+async def test_basicauth_from_empty_netrc(  # type: ignore[misc]
     make_client_request: _RequestMaker,
 ) -> None:
     """Test that no Authorization header is sent when netrc is empty"""
@@ -1869,7 +1891,7 @@ async def test_write_bytes_with_content_length_limit(
         b"Part1Part2Part3",
     ],
 )
-async def test_write_bytes_with_iterable_content_length_limit(
+async def test_write_bytes_with_iterable_content_length_limit(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     buf: bytearray,
     conn: mock.Mock,
@@ -2097,7 +2119,7 @@ async def test_expect100_with_body_becomes_empty(
         ("DELETE", b"x", "1"),
     ],
 )
-async def test_content_length_for_methods(
+async def test_content_length_for_methods(  # type: ignore[misc]
     method: str,
     data: bytes | None,
     expected_content_length: str | None,
@@ -2202,7 +2224,7 @@ async def test_no_content_length_with_chunked(
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
-async def test_update_body_none_sets_content_length_zero(
+async def test_update_body_none_sets_content_length_zero(  # type: ignore[misc]
     method: str,
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
@@ -2221,7 +2243,7 @@ async def test_update_body_none_sets_content_length_zero(
 
 
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
-async def test_update_body_none_no_content_length_for_get_methods(
+async def test_update_body_none_no_content_length_for_get_methods(  # type: ignore[misc]
     method: str,
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,

@@ -12,22 +12,18 @@ from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable, Iterator, Sequence
 from concurrent import futures
 from contextlib import closing, suppress
-from http.cookies import BaseCookie
 from typing import Any, Literal, NoReturn
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
 from aiohttp import (
     ClientRequest,
-    ClientResponse,
     ClientSession,
     ClientTimeout,
-    HttpVersion11,
     connector as connector_module,
     web,
 )
@@ -43,7 +39,6 @@ from aiohttp.connector import (
     _ConnectTunnelConnection,
     _DNSCacheTable,
 )
-from aiohttp.helpers import TimerNoop
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import unused_port
 from aiohttp.tracing import Trace
@@ -895,7 +890,7 @@ async def test_tcp_connector_multiple_hosts_errors(
     ("happy_eyeballs_delay"),
     [0.1, 0.25, None],
 )
-async def test_tcp_connector_happy_eyeballs(
+async def test_tcp_connector_happy_eyeballs(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     happy_eyeballs_delay: float | None,
     make_client_request: _RequestMaker,
@@ -1164,7 +1159,7 @@ async def test_tcp_connector_family_is_respected(
         ("https://mocked.host"),
     ],
 )
-async def test_tcp_connector_multiple_hosts_one_timeout(
+async def test_tcp_connector_multiple_hosts_one_timeout(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     request_url: str,
     make_client_request: _RequestMaker,
@@ -1772,7 +1767,7 @@ async def test_connect_tracing(
         "on_connection_create_end",
     ],
 )
-async def test_exception_during_connetion_create_tracing(
+async def test_exception_during_connetion_create_tracing(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, signal: str, make_client_request: _RequestMaker
 ) -> None:
     session = mock.Mock()
@@ -2179,7 +2174,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_pre_311(
 @pytest.mark.skipif(
     sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
 )
-async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
+async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     start_connection: mock.AsyncMock,
     make_client_request: _RequestMaker,
@@ -2242,7 +2237,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
 
 
 @pytest.mark.skipif(sys.version_info >= (3, 11), reason="Test for Python < 3.11")
-async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
+async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     start_connection: mock.AsyncMock,
     make_client_request: _RequestMaker,
@@ -2445,7 +2440,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
 @pytest.mark.skipif(
     sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
 )
-async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
+async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     start_connection: mock.AsyncMock,
     make_client_request: _RequestMaker,
@@ -3785,7 +3780,7 @@ async def test_tcp_connector(
 
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
-async def test_unix_connector_not_found(
+async def test_unix_connector_not_found(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
 ) -> None:
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
@@ -3796,7 +3791,7 @@ async def test_unix_connector_not_found(
 
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
-async def test_unix_connector_permission(
+async def test_unix_connector_permission(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
 ) -> None:
     m = mock.AsyncMock(side_effect=PermissionError())
@@ -3821,7 +3816,7 @@ async def test_named_pipe_connector_wrong_loop(
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
-async def test_named_pipe_connector_not_found(
+async def test_named_pipe_connector_not_found(  # type: ignore[misc]
     proactor_loop: asyncio.AbstractEventLoop,
     pipe_name: str,
     make_client_request: _RequestMaker,
@@ -3837,7 +3832,7 @@ async def test_named_pipe_connector_not_found(
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
-async def test_named_pipe_connector_permission(
+async def test_named_pipe_connector_permission(  # type: ignore[misc]
     proactor_loop: asyncio.AbstractEventLoop,
     pipe_name: str,
     make_client_request: _RequestMaker,
