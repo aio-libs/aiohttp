@@ -43,7 +43,7 @@ async def test_connect(  # type: ignore[misc]
     make_client_request: _RequestMaker,
 ) -> None:
     event_loop = asyncio.get_running_loop()
-    req = ClientRequestBase(
+    req = make_client_request(
         "GET",
         URL("http://www.python.org"),
         proxy=URL("http://proxy.example.com"),
@@ -104,7 +104,7 @@ async def test_proxy_headers(  # type: ignore[misc]
     make_client_request: _RequestMaker,
 ) -> None:
     event_loop = asyncio.get_running_loop()
-    req = ClientRequestBase(
+    req = make_client_request(
         "GET",
         URL("http://www.python.org"),
         proxy=URL("http://proxy.example.com"),
@@ -1101,7 +1101,6 @@ async def test_https_auth(  # type: ignore[misc]
                             "proxy.example.com", 80, traces=mock.ANY
                         )
 
-                        await proxy_req._close()
                         proxy_resp.close()
                         await req._close()
             await connector.close()
