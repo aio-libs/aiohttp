@@ -12,6 +12,7 @@ from yarl import URL
 import aiohttp
 from aiohttp.client_reqrep import (
     ClientRequest,
+    ClientRequestBase,
     ClientRequestArgs,
     ClientResponse,
     Fingerprint,
