@@ -70,6 +70,23 @@ def fname(here: pathlib.Path) -> pathlib.Path:
     return here / "conftest.py"
 
 
+@pytest.fixture
+def headers_echo_client(
+    aiohttp_client: AiohttpClient,
+) -> Callable[..., Awaitable[TestClient[web.Request, web.Application]]]:
+    """Create a client with an app that echoes request headers as JSON."""
+
+    async def factory(**kwargs: Any) -> TestClient[web.Request, web.Application]:
+        async def handler(request: web.Request) -> web.Response:
+            return web.json_response({"headers": dict(request.headers)})
+
+        app = web.Application()
+        app.router.add_get("/", handler)
+        return await aiohttp_client(app, **kwargs)
+
+    return factory
+
+
 async def test_keepalive_two_requests_success(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()
@@ -3702,14 +3719,12 @@ async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> N
         assert resp.status == 200
 
 
-async def test_session_auth(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.json_response({"headers": dict(request.headers)})
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-
-    client = await aiohttp_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+async def test_session_auth(
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
+) -> None:
+    client = await headers_echo_client(auth=aiohttp.BasicAuth("login", "pass"))
 
     async with client.get("/") as r:
         assert r.status == 200
@@ -3717,14 +3732,12 @@ async def test_session_auth(aiohttp_client: AiohttpClient) -> None:
     assert content["headers"]["Authorization"] == "Basic bG9naW46cGFzcw=="
 
 
-async def test_session_auth_override(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.json_response({"headers": dict(request.headers)})
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-
-    client = await aiohttp_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+async def test_session_auth_override(
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
+) -> None:
+    client = await headers_echo_client(auth=aiohttp.BasicAuth("login", "pass"))
 
     async with client.get("/", auth=aiohttp.BasicAuth("other_login", "pass")) as r:
         assert r.status == 200
@@ -3746,14 +3759,63 @@ async def test_session_auth_header_conflict(aiohttp_client: AiohttpClient) -> No
         await client.get("/", headers=headers)
 
 
-async def test_session_headers(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.json_response({"headers": dict(request.headers)})
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_from_env(  # type: ignore[misc]
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
+) -> None:
+    """Test that netrc authentication works when NETRC env var is set and trust_env=True."""
+    client = await headers_echo_client(trust_env=True)
+    async with client.get("/") as r:
+        assert r.status == 200
+        content = await r.json()
+    # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+    assert content["headers"]["Authorization"] == "Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
 
-    app = web.Application()
-    app.router.add_get("/", handler)
 
-    client = await aiohttp_client(app, headers={"X-Real-IP": "192.168.0.1"})
+@pytest.mark.usefixtures("no_netrc")
+async def test_netrc_auth_skipped_without_env_var(  # type: ignore[misc]
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
+) -> None:
+    """Test that netrc authentication is skipped when NETRC env var is not set."""
+    client = await headers_echo_client(trust_env=True)
+    async with client.get("/") as r:
+        assert r.status == 200
+        content = await r.json()
+    # No Authorization header should be present
+    assert "Authorization" not in content["headers"]
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_overridden_by_explicit_auth(  # type: ignore[misc]
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
+) -> None:
+    """Test that explicit auth parameter overrides netrc authentication."""
+    client = await headers_echo_client(trust_env=True)
+    # Make request with explicit auth (should override netrc)
+    async with client.get(
+        "/", auth=aiohttp.BasicAuth("explicit_user", "explicit_pass")
+    ) as r:
+        assert r.status == 200
+        content = await r.json()
+    # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+    assert (
+        content["headers"]["Authorization"]
+        == "Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+    )
+
+
+async def test_session_headers(
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
+) -> None:
+    client = await headers_echo_client(headers={"X-Real-IP": "192.168.0.1"})
 
     async with client.get("/") as r:
         assert r.status == 200
@@ -3761,15 +3823,13 @@ async def test_session_headers(aiohttp_client: AiohttpClient) -> None:
     assert content["headers"]["X-Real-IP"] == "192.168.0.1"
 
 
-async def test_session_headers_merge(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        return web.json_response({"headers": dict(request.headers)})
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-
-    client = await aiohttp_client(
-        app, headers=[("X-Real-IP", "192.168.0.1"), ("X-Sent-By", "requests")]
+async def test_session_headers_merge(
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
+) -> None:
+    client = await headers_echo_client(
+        headers=[("X-Real-IP", "192.168.0.1"), ("X-Sent-By", "requests")]
     )
 
     async with client.get("/", headers={"X-Sent-By": "aiohttp"}) as r:
