@@ -1,0 +1,8 @@
+Refactored ``ClientRequest`` class. This simplifies a lot of code and improves our type
+checking accuracy. It also better aligns public/private attributes with what we expect
+developers to access safely from a client middleware.
+
+If code subclasses ``ClientRequest``, it is likely that the subclass will need tweaking
+to be compatible with the new version.
+
+-- by :user:`Dreamsorcerer`.
