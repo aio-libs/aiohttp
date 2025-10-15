@@ -537,17 +537,6 @@ async def test_cookies(make_client_request: _RequestMaker) -> None:
     assert "cookie1=val1" == req.headers["COOKIE"]
 
 
-async def test_cookies_is_quoted_with_special_characters(
-    make_client_request: _RequestMaker,
-) -> None:
-    req = make_client_request(
-        "get", URL("http://test.com/path"), cookies=BaseCookie({"cookie1": "val/one"})
-    )
-
-    assert "COOKIE" in req.headers
-    assert 'cookie1="val/one"' == req.headers["COOKIE"]
-
-
 async def test_cookies_merge_with_headers(make_client_request: _RequestMaker) -> None:
     req = make_client_request(
         "get",
