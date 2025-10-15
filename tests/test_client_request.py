@@ -1586,7 +1586,7 @@ def test_terminate_with_closed_loop(
 
     async def go() -> None:
         nonlocal req, resp, writer, session
-        session = ClientSession()
+        session = aiohttp.ClientSession()
         # Can't use make_client_request here, due to closing the loop mid-test.
         req = ClientRequest(
             "get",
