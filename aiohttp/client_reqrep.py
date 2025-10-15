@@ -185,25 +185,6 @@ class ConnectionKey(NamedTuple):
     proxy_headers_hash: int | None  # hash(CIMultiDict)
 
 
-def _warn_if_unclosed_payload(payload: payload.Payload, stacklevel: int = 2) -> None:
-    """Warn if the payload is not closed.
-
-    Callers must check that the body is a Payload before calling this method.
-
-    Args:
-        payload: The payload to check
-        stacklevel: Stack level for the warning (default 2 for direct callers)
-    """
-    if not payload.autoclose and not payload.consumed:
-        warnings.warn(
-            "The previous request body contains unclosed resources. "
-            "Use await request.update_body() instead of setting request.body "
-            "directly to properly close resources and avoid leaks.",
-            ResourceWarning,
-            stacklevel=stacklevel,
-        )
-
-
 class ClientResponse(HeadersMixin):
     # Some of these attributes are None when created,
     # but will be set by the start() method.
@@ -1154,10 +1135,8 @@ class ClientRequest(ClientRequestBase):
 
             self.headers[hdrs.TRANSFER_ENCODING] = "chunked"
 
-    def _update_body_from_data(self, body: Any, _stacklevel: int = 3) -> None:
+    def _update_body_from_data(self, body: Any) -> None:
         """Update request body from data."""
-        if self._body is not None:
-            _warn_if_unclosed_payload(self._body, stacklevel=_stacklevel)
 
         if body is None:
             self._body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
@@ -1213,8 +1192,7 @@ class ClientRequest(ClientRequestBase):
             del self.headers[hdrs.TRANSFER_ENCODING]
 
         # Now update the body using the existing method
-        # Called from _update_body, add 1 to stacklevel from caller
-        self._update_body_from_data(body, _stacklevel=4)
+        self._update_body_from_data(body)
 
         # Update transfer encoding headers if needed (same logic as __init__)
         if body is not None or self.method not in self.GET_METHODS:
