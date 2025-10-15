@@ -1720,7 +1720,9 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
-    with mock.patch.object(ClientRequest, "_write_bytes", autospec=True, spec_set=True) as m:
+    with mock.patch.object(
+        ClientRequest, "_write_bytes", autospec=True, spec_set=True
+    ) as m:
         app = web.Application()
         app.router.add_get("/", handler)
         client = await aiohttp_client(app)
