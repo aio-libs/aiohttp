@@ -2633,7 +2633,7 @@ async def test_cookies_is_quoted_with_special_characters(
     aiohttp_client: AiohttpClient,
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
-        assert 'cookie1="val/one"' == req.headers["Cookie"]
+        assert 'cookie1="val/one"' == request.headers["Cookie"]
         assert "cookie1" in request.cookies
         assert request.cookies["cookie1"] == "val/one"
         return web.Response()
