@@ -187,13 +187,21 @@ class BaseIOResponse(StreamResponse, ABC):
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
 
-        open_file = None
         try:
             open_file = await self._open(accept_encoding)
+        except PermissionError:
+            self.set_status(HTTPForbidden.status_code)
+            return await super().prepare(request)
+        except OSError:
+            # Most likely to be FileNotFoundError or OSError for circular
+            # symlinks in python >= 3.13, so respond with 404.
+            self.set_status(HTTPNotFound.status_code)
+            return await super().prepare(request)
 
-            if hdrs.CONTENT_TYPE not in self.headers:
-                self.headers[hdrs.CONTENT_TYPE] = open_file.guessed_content_type
+        if hdrs.CONTENT_TYPE not in self.headers:
+            self.headers[hdrs.CONTENT_TYPE] = open_file.guessed_content_type
 
+        try:
             # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
             if (ifmatch := request.if_match) is not None and (
                 open_file.etag is None
@@ -231,26 +239,16 @@ class BaseIOResponse(StreamResponse, ABC):
                 )
 
             return await self._prepare_open_file(request, open_file)
-
-        except PermissionError:
-            self.set_status(HTTPForbidden.status_code)
-            return await super().prepare(request)
-        except OSError:
-            # Most likely to be FileNotFoundError or OSError for circular
-            # symlinks in python >= 3.13, so respond with 404.
-            self.set_status(HTTPNotFound.status_code)
-            return await super().prepare(request)
         finally:
             # We do not await here because we do not want to wait
             # for the executor to finish before returning the response
             # so the connection can begin servicing another request
             # as soon as possible.
-            if open_file is not None:
-                close_future = asyncio.ensure_future(self._close(open_file))
-                # Hold a strong reference to the future to prevent it from being
-                # garbage collected before it completes.
-                _CLOSE_FUTURES.add(close_future)
-                close_future.add_done_callback(_CLOSE_FUTURES.remove)
+            close_future = asyncio.ensure_future(self._close(open_file))
+            # Hold a strong reference to the future to prevent it from being
+            # garbage collected before it completes.
+            _CLOSE_FUTURES.add(close_future)
+            close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
     async def _prepare_open_file(
         self,
