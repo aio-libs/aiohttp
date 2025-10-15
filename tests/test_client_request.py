@@ -1584,11 +1584,10 @@ def test_terminate_with_closed_loop(
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
 ) -> None:
-    req = resp = writer = session = None
+    req = resp = writer = None
 
     async def go() -> None:
-        nonlocal req, resp, writer, session
-        session = aiohttp.ClientSession()
+        nonlocal req, resp, writer
         # Can't use make_client_request here, due to closing the loop mid-test.
         req = ClientRequest(
             "get",
@@ -1608,7 +1607,7 @@ def test_terminate_with_closed_loop(
             proxy=None,
             proxy_auth=None,
             timer=TimerNoop(),
-            session=session,
+            session=None,  # type: ignore[arg-type]
             ssl=True,
             proxy_headers=None,
             traces=[],
@@ -1641,8 +1640,6 @@ def test_terminate_with_closed_loop(
     assert not writer.cancel.called
     assert resp is not None
     resp.close()
-    assert session is not None
-    loop.run_until_complete(session.close())
 
 
 async def test_terminate_without_writer(make_client_request: _RequestMaker) -> None:
