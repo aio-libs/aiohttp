@@ -1580,7 +1580,8 @@ async def test_terminate(
 
 
 def test_terminate_with_closed_loop(
-    loop: asyncio.AbstractEventLoop, conn: mock.Mock,
+    loop: asyncio.AbstractEventLoop,
+    conn: mock.Mock,
 ) -> None:
     req = resp = writer = session = None
 
