@@ -49,11 +49,8 @@ cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.4.4
     # via requests
-cherry-picker==2.6.0
-    # via -r requirements/dev.in
 click==8.3.0
     # via
-    #   cherry-picker
     #   pip-tools
     #   slotscheck
     #   towncrier
@@ -88,8 +85,6 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gidgethub==5.4.0
-    # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
 identify==2.6.15
@@ -173,7 +168,6 @@ pygments==2.19.2
     #   sphinx
 pyjwt==2.9.0
     # via
-    #   gidgethub
     #   pyjwt
 pyproject-hooks==1.2.0
     # via
@@ -213,7 +207,6 @@ regex==2025.9.18
     # via re-assert
 requests==2.32.5
     # via
-    #   cherry-picker
     #   sphinx
     #   sphinxcontrib-spelling
 rich==14.2.0
@@ -247,14 +240,9 @@ sphinxcontrib-spelling==8.0.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
-stamina==25.1.0
-    # via cherry-picker
-tenacity==9.1.2
-    # via stamina
 tomli==2.3.0
     # via
     #   build
-    #   cherry-picker
     #   coverage
     #   mypy
     #   pip-tools
@@ -284,8 +272,6 @@ typing-extensions==4.15.0
     #   virtualenv
 typing-inspection==0.4.2
     # via pydantic
-uritemplate==4.2.0
-    # via gidgethub
 urllib3==2.5.0
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows"
