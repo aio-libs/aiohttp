@@ -91,10 +91,6 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
     with blockbuster_ctx(
         "aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]
     ) as bb:
-        # TODO: Fix blocking call in ClientRequest's constructor.
-        # https://github.com/aio-libs/aiohttp/issues/10435
-        for func in ["io.TextIOWrapper.read", "os.stat"]:
-            bb.functions[func].can_block_in("aiohttp/client_reqrep.py", "update_auth")
         for func in [
             "os.getcwd",
             "os.readlink",
@@ -310,6 +306,34 @@ def netrc_contents(
     monkeypatch.setenv("NETRC", str(netrc_file_path))
 
     return netrc_file_path
+
+
+@pytest.fixture
+def netrc_default_contents(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Create a temporary netrc file with default test credentials and set NETRC env var."""
+    netrc_file = tmp_path / ".netrc"
+    netrc_file.write_text("default login netrc_user password netrc_pass\n")
+
+    monkeypatch.setenv("NETRC", str(netrc_file))
+
+    return netrc_file
+
+
+@pytest.fixture
+def no_netrc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure NETRC environment variable is not set."""
+    monkeypatch.delenv("NETRC", raising=False)
+
+
+@pytest.fixture
+def netrc_other_host(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Create a temporary netrc file with credentials for a different host and set NETRC env var."""
+    netrc_file = tmp_path / ".netrc"
+    netrc_file.write_text("machine other.example.com login user password pass\n")
+
+    monkeypatch.setenv("NETRC", str(netrc_file))
+
+    return netrc_file
 
 
 @pytest.fixture

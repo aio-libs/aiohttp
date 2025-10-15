@@ -14,7 +14,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, helpers, payload
+from aiohttp import BaseConnector, hdrs, payload
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_exceptions import ClientConnectionError
@@ -1730,26 +1730,6 @@ def test_gen_default_accept_encoding(
     with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
         with mock.patch("aiohttp.client_reqrep.HAS_ZSTD", has_zstd):
             assert _gen_default_accept_encoding() == expected
-
-
-@pytest.mark.parametrize(
-    ("netrc_contents", "expected_auth"),
-    [
-        (
-            "machine example.com login username password pass\n",
-            helpers.BasicAuth("username", "pass"),
-        )
-    ],
-    indirect=("netrc_contents",),
-)
-@pytest.mark.usefixtures("netrc_contents")
-async def test_basicauth_from_netrc_present(  # type: ignore[misc]
-    make_client_request: _RequestMaker,
-    expected_auth: helpers.BasicAuth,
-) -> None:
-    """Test appropriate Authorization header is sent when netrc is not empty."""
-    req = make_client_request("get", URL("http://example.com"), trust_env=True)
-    assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
 
 
 @pytest.mark.parametrize(

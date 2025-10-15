@@ -55,7 +55,7 @@ iniconfig==2.1.0
     # via pytest
 isal==1.7.2 ; python_version < "3.14"
     # via -r requirements/test-common.in
-markdown-it-py==3.0.0
+markdown-it-py==4.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
@@ -89,9 +89,9 @@ pycares==4.11.0
     # via aiodns
 pycparser==2.23
     # via cffi
-pydantic==2.12.1
+pydantic==2.12.2
     # via python-on-whales
-pydantic-core==2.41.3
+pydantic-core==2.41.4
     # via pydantic
 pygments==2.19.2
     # via
