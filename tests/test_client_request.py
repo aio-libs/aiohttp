@@ -27,6 +27,7 @@ from aiohttp.client_reqrep import (
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
 from aiohttp.hdrs import METH_DELETE
+from aiohttp.helpers import TimerNoop
 from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
 
@@ -1034,7 +1035,7 @@ async def test_chunked(
     resp.close()
 
 
-async def test_chunked2(  # type: ignore[misc]
+async def test_chunked2(
     loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
     make_client_request: _RequestMaker,
@@ -1134,7 +1135,7 @@ async def test_file_upload_not_chunked(
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_precompressed_data_stays_intact(
+async def test_precompressed_data_stays_intact(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
@@ -1640,14 +1641,12 @@ def test_terminate_with_closed_loop(
     assert not writer.cancel.called
     assert resp is not None
     resp.close()
+    assert session is not None
     loop.run_until_complete(session.close())
 
 
-async def test_terminate_without_writer(
-    loop: asyncio.AbstractEventLoop,
-    make_client_request: _RequestMaker,
-) -> None:
-    req = await make_client_request("get", URL("http://python.org"), loop=loop)
+async def test_terminate_without_writer(make_client_request: _RequestMaker) -> None:
+    req = make_client_request("get", URL("http://python.org"))
     assert req._writer is None
 
     req._terminate()
