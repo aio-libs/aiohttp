@@ -121,7 +121,7 @@ def test_create_client_request_with_headers(
         )
 
 
-async def test_send_client_request_one_hundred(
+def test_send_client_request_one_hundred(
     loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     make_client_request: _RequestMaker,
