@@ -1163,7 +1163,6 @@ def test_parse_cookie_gstate_header() -> None:
     result = parse_cookie_header(header)
     assert result[7][0] == 'g_state'
     assert result[8][0] == 'analytics_session_id.last_access'
-    print()
 
 
 def test_parse_cookie_header_quoted_values() -> None:
