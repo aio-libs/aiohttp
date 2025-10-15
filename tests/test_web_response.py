@@ -1164,10 +1164,10 @@ def test_ctor_content_type_with_extra() -> None:
     assert resp.headers["content-type"] == "text/plain; version=0.0.4; charset=utf-8"
 
 
-def test_invalid_content_type_parses_to_text_plain() -> None:
+def test_invalid_content_type_parses_to_application_octect_stream() -> None:
     resp = Response(text="test test", content_type="jpeg")
 
-    assert resp.content_type == "text/plain"
+    assert resp.content_type == "application/octet-stream"
     assert resp.headers["content-type"] == "jpeg; charset=utf-8"
 
 
