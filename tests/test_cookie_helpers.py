@@ -1140,28 +1140,28 @@ def test_parse_cookie_header_empty() -> None:
 @pytest.mark.xfail(reason="https://github.com/aio-libs/aiohttp/issues/11632")
 def test_parse_cookie_gstate_header() -> None:
     header = (
-        '_ga=ga; '
-        'ajs_anonymous_id=0anonymous; '
-        'analytics_session_id=session; '
-        'cookies-analytics=true; '
-        'cookies-functional=true; '
-        'cookies-marketing=true; '
-        'cookies-preferences=true; '
+        "_ga=ga; "
+        "ajs_anonymous_id=0anonymous; "
+        "analytics_session_id=session; "
+        "cookies-analytics=true; "
+        "cookies-functional=true; "
+        "cookies-marketing=true; "
+        "cookies-preferences=true; "
         'g_state={"i_l":0,"i_ll":12345,"i_b":"blah"}; '
-        'analytics_session_id.last_access=1760128947692; '
-        'landingPageURLRaw=landingPageURLRaw; '
-        'landingPageURL=landingPageURL; '
-        'referrerPageURLRaw=; '
-        'referrerPageURL=; '
-        'formURLRaw=formURLRaw; '
-        'formURL=formURL; '
-        'fbnAuthExpressCheckout=fbnAuthExpressCheckout; '
-        'is_express_checkout=1; '
+        "analytics_session_id.last_access=1760128947692; "
+        "landingPageURLRaw=landingPageURLRaw; "
+        "landingPageURL=landingPageURL; "
+        "referrerPageURLRaw=; "
+        "referrerPageURL=; "
+        "formURLRaw=formURLRaw; "
+        "formURL=formURL; "
+        "fbnAuthExpressCheckout=fbnAuthExpressCheckout; "
+        "is_express_checkout=1; "
     )
 
     result = parse_cookie_header(header)
-    assert result[7][0] == 'g_state'
-    assert result[8][0] == 'analytics_session_id.last_access'
+    assert result[7][0] == "g_state"
+    assert result[8][0] == "analytics_session_id.last_access"
 
 
 def test_parse_cookie_header_quoted_values() -> None:
