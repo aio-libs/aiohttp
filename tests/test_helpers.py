@@ -6,11 +6,12 @@ import sys
 import weakref
 from math import ceil, modf
 from pathlib import Path
+from types import MappingProxyType
 from unittest import mock
 from urllib.request import getproxies_environment
 
 import pytest
-from multidict import MultiDict
+from multidict import MultiDict, MultiDictProxy
 from yarl import URL
 
 from aiohttp import helpers
@@ -62,6 +63,30 @@ def test_parse_mimetype(mimetype, expected) -> None:
     result = helpers.parse_mimetype(mimetype)
 
     assert isinstance(result, helpers.MimeType)
+    assert result == expected
+
+
+# ------------------- parse_content_type ------------------------------
+
+
+@pytest.mark.parametrize(
+    "content_type, expected",
+    [
+        (
+            "text/plain",
+            ("text/plain", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "wrong",
+            ("application/octet-stream", MultiDictProxy(MultiDict())),
+        ),
+    ],
+)
+def test_parse_content_type(
+    content_type: str, expected: tuple[str, MappingProxyType[str, str]]
+) -> None:
+    result = helpers.parse_content_type(content_type)
+
     assert result == expected
 
 
