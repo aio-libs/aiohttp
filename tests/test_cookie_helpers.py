@@ -1137,8 +1137,7 @@ def test_parse_cookie_header_empty() -> None:
     assert parse_cookie_header("   ") == []
 
 
-# https://github.com/aio-libs/aiohttp/issues/11632
-@pytest.mark.xfail
+@pytest.mark.xfail(reason="https://github.com/aio-libs/aiohttp/issues/11632")
 def test_parse_cookie_gstate_header() -> None:
     header = (
         '_ga=ga; '
