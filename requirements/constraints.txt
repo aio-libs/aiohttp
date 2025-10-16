@@ -57,10 +57,8 @@ coverage==7.10.7
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==46.0.2
-    # via
-    #   pyjwt
-    #   trustme
+cryptography==46.0.3
+    # via trustme
 cython==3.1.4
     # via -r requirements/cython.in
 distlib==0.4.0
@@ -167,9 +165,6 @@ pygments==2.19.2
     #   pytest
     #   rich
     #   sphinx
-pyjwt==2.8.0
-    # via
-    #   pyjwt
 pyproject-hooks==1.2.0
     # via
     #   build
