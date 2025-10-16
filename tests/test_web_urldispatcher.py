@@ -986,6 +986,28 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
     await r.release()
 
 
+@pytest.mark.xfail(reason="https://github.com/aio-libs/aiohttp/issues/11665")
+async def test_subapp_domain_routing_same_path(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+    sub_app = web.Application()
+
+    async def mainapp_handler(request: web.Request) -> web.Response:
+        assert False
+
+    async def subapp_handler(request: web.Request) -> web.Response:
+        return web.Response(text="SUBAPP")
+
+    app.router.add_get("/", mainapp_handler)
+    sub_app.router.add_get("/", subapp_handler)
+    app.add_domain("different.example.com", sub_app)
+
+    client = await aiohttp_client(app)
+    async with client.get("/", headers={"Host": "different.example.com"}) as r:
+        assert r.status == 200
+        result = await r.text()
+        assert result == "SUBAPP"
+
+
 async def test_route_with_regex(aiohttp_client: AiohttpClient) -> None:
     """Test a route with a regex preceded by a fixed string."""
     app = web.Application()
