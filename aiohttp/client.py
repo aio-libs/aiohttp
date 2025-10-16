@@ -86,7 +86,9 @@ from .helpers import (
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
+    basicauth_from_netrc,
     get_env_proxy_for_url,
+    netrc_from_env,
     sentinel,
     strip_auth_from_url,
 )
@@ -641,6 +643,20 @@ class ClientSession:
                         )
                     ):
                         auth = self._default_auth
+
+                    # Try netrc if auth is still None and trust_env is enabled.
+                    # Only check if NETRC environment variable is set to avoid
+                    # creating an expensive executor job unnecessarily.
+                    if (
+                        auth is None
+                        and self._trust_env
+                        and url.host is not None
+                        and os.environ.get("NETRC")
+                    ):
+                        auth = await self._loop.run_in_executor(
+                            None, self._get_netrc_auth, url.host
+                        )
+
                     # It would be confusing if we support explicit
                     # Authorization header with auth argument
                     if (
@@ -1194,6 +1210,19 @@ class ClientSession:
                     result[key] = value
                     added_names.add(key)
         return result
+
+    def _get_netrc_auth(self, host: str) -> BasicAuth | None:
+        """
+        Get auth from netrc for the given host.
+
+        This method is designed to be called in an executor to avoid
+        blocking I/O in the event loop.
+        """
+        netrc_obj = netrc_from_env()
+        try:
+            return basicauth_from_netrc(netrc_obj, host)
+        except LookupError:
+            return None
 
     if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
