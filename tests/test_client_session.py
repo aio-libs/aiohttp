@@ -25,6 +25,7 @@ from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConne
 from aiohttp.helpers import DEBUG
 from aiohttp.http import RawResponseMessage
 from aiohttp.pytest_plugin import AiohttpServer
+from aiohttp.test_utils import TestServer
 from aiohttp.tracing import Trace
 
 
@@ -75,7 +76,24 @@ def params():
     )
 
 
-async def test_close_coro(create_session) -> None:
+@pytest.fixture
+async def auth_server(aiohttp_server: AiohttpServer) -> TestServer:
+    """Create a server with an auth handler that returns auth header or 'no_auth'."""
+
+    async def handler(request: web.Request) -> web.Response:
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        if auth_header:
+            return web.Response(text=f"auth:{auth_header}")
+        return web.Response(text="no_auth")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    return await aiohttp_server(app)
+
+
+async def test_close_coro(
+    create_session: Callable[..., Awaitable[ClientSession]],
+) -> None:
     session = await create_session()
     await session.close()
 
@@ -1321,3 +1339,64 @@ async def test_properties(
     value = uuid4()
     setattr(session, inner_name, value)
     assert value == getattr(session, outer_name)
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_with_trust_env(auth_server: TestServer) -> None:
+    """Test that netrc authentication works with ClientSession when NETRC env var is set."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+        assert text == "auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_skipped_without_trust_env(auth_server: TestServer) -> None:
+    """Test that netrc authentication is skipped when trust_env=False."""
+    async with (
+        ClientSession(trust_env=False) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "no_auth"
+
+
+@pytest.mark.usefixtures("no_netrc")
+async def test_netrc_auth_skipped_without_netrc_env(auth_server: TestServer) -> None:
+    """Test that netrc authentication is skipped when NETRC env var is not set."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "no_auth"
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_overridden_by_explicit_auth(auth_server: TestServer) -> None:
+    """Test that explicit auth parameter overrides netrc authentication."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(
+            auth_server.make_url("/"),
+            auth=aiohttp.BasicAuth("explicit_user", "explicit_pass"),
+        ) as resp,
+    ):
+        text = await resp.text()
+        # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+        assert text == "auth:Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+
+
+@pytest.mark.usefixtures("netrc_other_host")
+async def test_netrc_auth_host_not_in_netrc(auth_server: TestServer) -> None:
+    """Test that netrc lookup returns None when host is not in netrc file."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        # Should not have auth since the host is not in netrc
+        assert text == "no_auth"
