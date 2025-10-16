@@ -966,7 +966,7 @@ async def test_subapp_domain_routing(aiohttp_client: AiohttpClient) -> None:
     client = await aiohttp_client(app)
     async with client.get("/", headers={"Host": "different.example.com"}) as r:
         assert r.status == 200
-        result = await resp.text()
+        result = await r.text()
         assert result == "SUBAPP"
 
 
