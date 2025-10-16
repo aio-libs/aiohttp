@@ -1,0 +1,2 @@
+Fixed routing to a sub-application added via ``.add_domain()`` not working
+if the same path exists on the parent app. -- by :user:`Dreamsorcerer`.

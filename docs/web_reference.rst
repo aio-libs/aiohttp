@@ -1625,6 +1625,14 @@ Application and Router
       matches the pattern *domain* then
       further resolving is passed to *subapp*.
 
+      .. warning::
+
+         Registering many domains using this method may cause performance
+         issues with handler routing. If you have a substantial number of
+         applications for different domains, you may want to consider
+         using a reverse proxy (such as Nginx) to handle routing to
+         different apps, rather that registering them as sub-applications.
+
       :param str domain: domain or mask of domain for the resource.
 
       :param Application subapp: nested application.
