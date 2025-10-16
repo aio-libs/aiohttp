@@ -952,15 +952,18 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
 
 
 @pytest.mark.xfail(reason="https://github.com/aio-libs/aiohttp/issues/11665")
-async def test_subapp_domain_routing(aiohttp_client: AiohttpClient) -> None:
+async def test_subapp_domain_routing_same_path(aiohttp_client: AiohttpClient) -> None:
     app = web.Application()
     sub_app = web.Application()
 
-    class MyViewCorrect(web.View):
-        async def get(self) -> web.Response:
-            return web.Response(text="SUBAPP")
+    async def mainapp_handler(request: web.Request) -> web.Response:
+        assert False
 
-    sub_app.router.add_view("/", MyViewCorrect)
+    async def subapp_handler(request: web.Request) -> web.Response:
+        return web.Response(text="SUBAPP")
+
+    app.router.add_get("/", mainapp_handler)
+    sub_app.router.add_get("/", subapp_handler)
     app.add_domain("different.example.com", sub_app)
 
     client = await aiohttp_client(app)
