@@ -1034,6 +1034,21 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         resource_index = self._resource_index
         allowed_methods: Set[str] = set()
 
+        # MatchedSubAppResource is primarily used to match on domain names
+        # (though custom rules could match on other things). This means that
+        # the traversal algorithm below can't be applied, and that we likely
+        # need to check these first so a sub app that defines the same path
+        # as a parent app will get priority if there's a domain match.
+        #
+        # For most cases we do not expect there to be many of these since
+        # currently they are only added by `.add_domain()`.
+        for resource in self._matched_sub_app_resources:
+            match_dict, allowed = await resource.resolve(request)
+            if match_dict is not None:
+                return match_dict
+            else:
+                allowed_methods |= allowed
+
         # Walk the url parts looking for candidates. We walk the url backwards
         # to ensure the most explicit match is found first. If there are multiple
         # candidates for a given url part because there are multiple resources
@@ -1050,21 +1065,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             if url_part == "/":
                 break
             url_part = url_part.rpartition("/")[0] or "/"
-
-        #
-        # We didn't find any candidates, so we'll try the matched sub-app
-        # resources which we have to walk in a linear fashion because they
-        # have regex/wildcard match rules and we cannot index them.
-        #
-        # For most cases we do not expect there to be many of these since
-        # currently they are only added by `add_domain`
-        #
-        for resource in self._matched_sub_app_resources:
-            match_dict, allowed = await resource.resolve(request)
-            if match_dict is not None:
-                return match_dict
-            else:
-                allowed_methods |= allowed
 
         if allowed_methods:
             return MatchInfoError(HTTPMethodNotAllowed(request.method, allowed_methods))
