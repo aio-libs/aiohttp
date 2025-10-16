@@ -57,10 +57,8 @@ coverage==7.10.7
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==46.0.2
-    # via
-    #   pyjwt
-    #   trustme
+cryptography==46.0.3
+    # via trustme
 distlib==0.4.0
     # via virtualenv
 docutils==0.21.2
@@ -162,9 +160,6 @@ pygments==2.19.2
     #   pytest
     #   rich
     #   sphinx
-pyjwt==2.8.0
-    # via
-    #   pyjwt
 pyproject-hooks==1.2.0
     # via
     #   build
@@ -198,8 +193,7 @@ python-on-whales==0.78.0
 pyyaml==6.0.3
     # via pre-commit
 requests==2.32.5
-    # via
-    #   sphinx
+    # via sphinx
 rich==14.2.0
     # via pytest-codspeed
 setuptools-git==1.2
