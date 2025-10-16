@@ -1227,7 +1227,7 @@ class ClientSession:
                     added_names.add(key)
         return result
 
-    def _get_netrc_auth(self, host: str) -> BasicAuth | None:
+    def _get_netrc_auth(self, host: str) -> Optional[BasicAuth]:
         """
         Get auth from netrc for the given host.
 
