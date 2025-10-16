@@ -108,13 +108,13 @@ Best Practices
    .. code-block:: python
 
       session = ClientSession(middlewares=[middleware_session])
-      
+
       # Session middleware is used
       await session.get("http://example.com")
-      
+
       # Session middleware is NOT used, only request middleware
       await session.get("http://example.com", middlewares=[middleware_request])
-      
+
       # To use both, explicitly pass both
       await session.get(
           "http://example.com",
