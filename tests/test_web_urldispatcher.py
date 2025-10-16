@@ -987,8 +987,8 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
     await r.release()
 
 
-@pytest.mark.xfail(reason="https://github.com/aio-libs/aiohttp/issues/11665")
 async def test_subapp_domain_routing_same_path(aiohttp_client: AiohttpClient) -> None:
+    """Regression test for #11665."""
     app = web.Application()
     sub_app = web.Application()
 
