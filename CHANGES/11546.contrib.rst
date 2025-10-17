@@ -1,2 +1,0 @@
-Fixed ``test_send_compress_text`` failing when alternative zlib implementation
-is used. (``zlib-ng`` in python 3.14 windows build) -- by :user:`Cycloctane`.

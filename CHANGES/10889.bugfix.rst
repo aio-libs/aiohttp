@@ -1,4 +1,0 @@
-Updated ``Content-Type`` header parsing to return ``application/octet-stream`` when header contains invalid syntax.
-See :rfc:`9110#section-8.3-5`.
-
--- by :user:`sgaist`.
