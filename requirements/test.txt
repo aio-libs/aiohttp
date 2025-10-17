@@ -148,7 +148,7 @@ typing-extensions==4.15.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
-uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
