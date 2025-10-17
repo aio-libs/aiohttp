@@ -10,6 +10,8 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
+backports-zstd==1.0.0 ; implementation_name == "cpython"
+    # via -r requirements/lint.in
 blockbuster==1.5.25
     # via -r requirements/lint.in
 cffi==2.0.0
@@ -19,9 +21,9 @@ cffi==2.0.0
     #   pytest-codspeed
 cfgv==3.4.0
     # via pre-commit
-click==8.1.8
+click==8.3.0
     # via slotscheck
-cryptography==46.0.2
+cryptography==46.0.3
     # via trustme
 distlib==0.4.0
     # via virtualenv
@@ -41,7 +43,7 @@ iniconfig==2.1.0
     # via pytest
 isal==1.7.2
     # via -r requirements/lint.in
-markdown-it-py==3.0.0
+markdown-it-py==4.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
@@ -67,9 +69,9 @@ pycares==4.11.0
     # via aiodns
 pycparser==2.23
     # via cffi
-pydantic==2.12.0
+pydantic==2.12.2
     # via python-on-whales
-pydantic-core==2.41.1
+pydantic-core==2.41.4
     # via pydantic
 pygments==2.19.2
     # via
@@ -90,7 +92,7 @@ python-on-whales==0.78.0
     # via -r requirements/lint.in
 pyyaml==6.0.3
     # via pre-commit
-rich==14.1.0
+rich==14.2.0
     # via pytest-codspeed
 six==1.17.0
     # via python-dateutil
@@ -119,9 +121,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==20.34.0
+virtualenv==20.35.3
     # via pre-commit
 zlib-ng==1.0.0
-    # via -r requirements/lint.in
-backports.zstd==0.5.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in

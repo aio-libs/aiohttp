@@ -14,7 +14,7 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
-backports-zstd==0.5.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+backports-zstd==1.0.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via -r requirements/runtime-deps.in
 blockbuster==1.5.25
     # via -r requirements/test-common.in
@@ -25,13 +25,13 @@ cffi==2.0.0
     #   cryptography
     #   pycares
     #   pytest-codspeed
-click==8.2.1
+click==8.3.0
     # via wait-for-it
-coverage==7.10.7
+coverage==7.11.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==46.0.2
+cryptography==46.0.3
     # via trustme
 exceptiongroup==1.3.0
     # via pytest
@@ -89,9 +89,9 @@ pycares==4.11.0
     # via aiodns
 pycparser==2.23
     # via cffi
-pydantic==2.12.0
+pydantic==2.12.2
     # via python-on-whales
-pydantic-core==2.41.1
+pydantic-core==2.41.4
     # via pydantic
 pygments==2.19.2
     # via
@@ -116,7 +116,7 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.78.0
     # via -r requirements/test-common.in
-rich==14.1.0
+rich==14.2.0
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in

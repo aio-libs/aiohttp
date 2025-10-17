@@ -40,10 +40,8 @@ from .helpers import (
     BasicAuth,
     HeadersMixin,
     TimerNoop,
-    basicauth_from_netrc,
     frozen_dataclass_decorator,
     is_expected_content_type,
-    netrc_from_env,
     parse_mimetype,
     reify,
     sentinel,
@@ -1068,10 +1066,6 @@ class ClientRequest:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
-        if auth is None and trust_env and self.url.host is not None:
-            netrc_obj = netrc_from_env()
-            with contextlib.suppress(LookupError):
-                auth = basicauth_from_netrc(netrc_obj, self.url.host)
         if auth is None:
             return
 

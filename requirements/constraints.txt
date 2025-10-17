@@ -24,7 +24,7 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   valkey
 babel==2.17.0
     # via sphinx
-backports-zstd==0.5.0 ; implementation_name == "cpython"
+backports-zstd==1.0.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -45,25 +45,20 @@ cffi==2.0.0
     #   pytest-codspeed
 cfgv==3.4.0
     # via pre-commit
-charset-normalizer==3.4.3
+charset-normalizer==3.4.4
     # via requests
-cherry-picker==2.6.0
-    # via -r requirements/dev.in
-click==8.1.8
+click==8.3.0
     # via
-    #   cherry-picker
     #   pip-tools
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.10.7
+coverage==7.11.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==46.0.2
-    # via
-    #   pyjwt
-    #   trustme
+cryptography==46.0.3
+    # via trustme
 cython==3.1.4
     # via -r requirements/cython.in
 distlib==0.4.0
@@ -86,8 +81,6 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gidgethub==5.4.0
-    # via cherry-picker
 gunicorn==23.0.0
     # via -r requirements/base.in
 identify==2.6.15
@@ -109,7 +102,7 @@ jinja2==3.1.6
     # via
     #   sphinx
     #   towncrier
-markdown-it-py==3.0.0
+markdown-it-py==4.0.0
     # via rich
 markupsafe==3.0.3
     # via jinja2
@@ -161,9 +154,9 @@ pycares==4.11.0
     # via aiodns
 pycparser==2.23
     # via cffi
-pydantic==2.12.0
+pydantic==2.12.2
     # via python-on-whales
-pydantic-core==2.41.1
+pydantic-core==2.41.4
     # via pydantic
 pyenchant==3.3.0
     # via sphinxcontrib-spelling
@@ -172,10 +165,6 @@ pygments==2.19.2
     #   pytest
     #   rich
     #   sphinx
-pyjwt==2.8.0
-    # via
-    #   gidgethub
-    #   pyjwt
 pyproject-hooks==1.2.0
     # via
     #   build
@@ -210,10 +199,9 @@ pyyaml==6.0.3
     # via pre-commit
 requests==2.32.5
     # via
-    #   cherry-picker
     #   sphinx
     #   sphinxcontrib-spelling
-rich==14.1.0
+rich==14.2.0
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
@@ -244,14 +232,9 @@ sphinxcontrib-spelling==8.0.1 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
-stamina==25.1.0
-    # via cherry-picker
-tenacity==9.1.2
-    # via stamina
 tomli==2.3.0
     # via
     #   build
-    #   cherry-picker
     #   coverage
     #   mypy
     #   pip-tools
@@ -281,8 +264,6 @@ typing-extensions==4.15.0
     #   virtualenv
 typing-inspection==0.4.2
     # via pydantic
-uritemplate==4.2.0
-    # via gidgethub
 urllib3==2.5.0
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows"
@@ -291,7 +272,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==20.34.0
+virtualenv==20.35.3
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
