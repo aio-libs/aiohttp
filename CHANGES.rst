@@ -27,7 +27,7 @@ Features
 
 Bug fixes
 ---------
-  
+
 - Switched to `backports.zstd` for Python <3.14 and fixed zstd decompression for chunked zstd streams -- by :user:`ZhaoMJ`.
 
   Note: Users who installed ``zstandard`` for support on Python <3.14 will now need to install
@@ -47,34 +47,34 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`10889`.
-  
-  
-  
+
+
+
 - Fixed Python 3.14 support when built without ``zstd`` support -- by :user:`JacobHenner`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11603`.
-  
-  
-  
+
+
+
 - Fixed blocking I/O in the event loop when using netrc authentication by moving netrc file lookup to an executor -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11634`.
-  
-  
-  
+
+
+
 - Fixed routing to a sub-application added via ``.add_domain()`` not working
   if the same path exists on the parent app. -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11673`.
-  
-  
-  
+
+
+
 
 Packaging updates and notes for downstreams
 -------------------------------------------
@@ -85,9 +85,9 @@ Packaging updates and notes for downstreams
 
   *Related issues and pull requests on GitHub:*
   :issue:`9951`.
-  
-  
-  
+
+
+
 
 ----
 
