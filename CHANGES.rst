@@ -10,6 +10,88 @@
 
 .. towncrier release notes start
 
+3.13.1 (2025-10-17)
+===================
+
+Features
+--------
+
+- Make configuration options in ``AppRunner`` also available in ``run_app()``
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11633`.
+
+
+
+Bug fixes
+---------
+
+- Switched to `backports.zstd` for Python <3.14 and fixed zstd decompression for chunked zstd streams -- by :user:`ZhaoMJ`.
+
+  Note: Users who installed ``zstandard`` for support on Python <3.14 will now need to install
+  ``backports.zstd`` instead (installing ``aiohttp[speedups]`` will do this automatically).
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11623`.
+
+
+
+- Updated ``Content-Type`` header parsing to return ``application/octet-stream`` when header contains invalid syntax.
+  See :rfc:`9110#section-8.3-5`.
+
+  -- by :user:`sgaist`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10889`.
+
+
+
+- Fixed Python 3.14 support when built without ``zstd`` support -- by :user:`JacobHenner`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11603`.
+
+
+
+- Fixed blocking I/O in the event loop when using netrc authentication by moving netrc file lookup to an executor -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11634`.
+
+
+
+- Fixed routing to a sub-application added via ``.add_domain()`` not working
+  if the same path exists on the parent app. -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11673`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Moved core packaging metadata from :file:`setup.cfg` to :file:`pyproject.toml` per :pep:`621`
+  -- by :user:`cdce8p`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9951`.
+
+
+
+
+----
+
+
 3.13.0 (2025-10-06)
 ===================
 
