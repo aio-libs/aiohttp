@@ -262,7 +262,7 @@ jobs:
     needs: gen_llhttp
 
     runs-on: ubuntu-latest
-    timeout-minutes: 9
+    timeout-minutes: 12
     steps:
     - name: Checkout project
       uses: actions/checkout@v5
