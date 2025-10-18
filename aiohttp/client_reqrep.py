@@ -954,7 +954,8 @@ class ClientRequestArgs(TypedDict, total=False):
 
 
 class ClientRequest(ClientRequestBase):
-    _body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
+    _EMPTY_BODY = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
+    _body = _EMPTY_BODY
     _continue = None  # waiter future for '100 Continue' response
 
     GET_METHODS = {
@@ -1138,7 +1139,7 @@ class ClientRequest(ClientRequestBase):
     def _update_body_from_data(self, body: Any) -> None:
         """Update request body from data."""
         if body is None:
-            self._body = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
+            self._body = self._EMPTY_BODY
             # Set Content-Length to 0 when body is None for methods that expect a body
             if (
                 self.method not in self.GET_METHODS

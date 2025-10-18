@@ -2256,3 +2256,45 @@ async def test_update_body_none_no_content_length_for_get_methods(  # type: igno
     await req.update_body(None)
     assert hdrs.CONTENT_LENGTH not in req.headers
     await req._close()
+
+
+async def test_multiple_requests_share_empty_body_safely(
+    make_client_request: _RequestMaker,
+) -> None:
+    """Test that multiple ClientRequest objects safely share the empty body payload."""
+    requests: list[ClientRequest] = []
+    for i in range(5):
+        req = make_client_request("GET", URL(f"http://example.com/path{i}"))
+        requests.append(req)
+
+    empty_body = ClientRequest._EMPTY_BODY
+    for i, req in enumerate(requests):
+        assert req.body is empty_body, f"Request {i} has different empty body"
+        assert req.body.size == 0
+        assert req.body.consumed is False
+
+    assert empty_body.consumed is False
+    assert empty_body.size == 0
+
+
+async def test_empty_body_isolation_after_update(
+    make_client_request: _RequestMaker,
+) -> None:
+    """Test that updating one request's body doesn't affect other requests."""
+    req1 = make_client_request("POST", URL("http://example.com/1"))
+    req2 = make_client_request("POST", URL("http://example.com/2"))
+
+    assert req1.body is ClientRequest._EMPTY_BODY
+    assert req2.body is ClientRequest._EMPTY_BODY
+
+    await req1.update_body(b"new data")
+
+    assert req1.body is not ClientRequest._EMPTY_BODY
+    assert req1.body.size == 8
+
+    assert req2.body is ClientRequest._EMPTY_BODY
+    assert req2.body.size == 0
+    assert req2.body.consumed is False
+
+    assert ClientRequest._EMPTY_BODY.consumed is False
+    assert ClientRequest._EMPTY_BODY.size == 0
