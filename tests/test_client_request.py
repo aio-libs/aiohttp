@@ -125,13 +125,41 @@ async def test_request_info(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     url = URL("http://python.org/")
     h = CIMultiDictProxy(req.headers)
-    assert req._request_info == aiohttp.RequestInfo(url, "GET", h, url)
+    # Create a response to test request_info
+    resp = req.response_class(
+        "GET",
+        url,
+        writer=None,
+        continue100=None,
+        timer=TimerNoop(),
+        request_info=None,
+        traces=[],
+        loop=req.loop,
+        session=None,
+        request_headers=req.headers,
+        original_url=url,
+    )
+    assert resp.request_info == aiohttp.RequestInfo(url, "GET", h, url)
 
 
 async def test_request_info_with_fragment(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/#urlfragment"))
     h = CIMultiDictProxy(req.headers)
-    assert req._request_info == aiohttp.RequestInfo(
+    # Create a response to test request_info
+    resp = req.response_class(
+        "GET",
+        URL("http://python.org/"),
+        writer=None,
+        continue100=None,
+        timer=TimerNoop(),
+        request_info=None,
+        traces=[],
+        loop=req.loop,
+        session=None,
+        request_headers=req.headers,
+        original_url=URL("http://python.org/#urlfragment"),
+    )
+    assert resp.request_info == aiohttp.RequestInfo(
         URL("http://python.org/"),
         "GET",
         h,
@@ -1675,10 +1703,12 @@ async def test_custom_req_rep(
                 writer=self._writer,
                 continue100=self._continue,
                 timer=self._timer,
-                request_info=self._request_info,
+                request_info=None,
                 traces=self._traces,
                 loop=self.loop,
                 session=self._session,
+                request_headers=self.headers,
+                original_url=self.original_url,
             )
             self.response = resp
             nonlocal called

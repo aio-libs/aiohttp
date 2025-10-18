@@ -14,7 +14,6 @@ from types import MappingProxyType, TracebackType
 from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from propcache import cached_property
 from yarl import URL
 
 from . import hdrs, multipart, payload
@@ -225,10 +224,12 @@ class ClientResponse(HeadersMixin):
         writer: "asyncio.Task[None] | None",
         continue100: "asyncio.Future[bool] | None",
         timer: BaseTimerContext | None,
-        request_info: RequestInfo,
+        request_info: RequestInfo | None,  # Backwards compat; not normally used anymore
         traces: Sequence["Trace"],
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession | None",
+        request_headers: CIMultiDict[str] | None = None,
+        original_url: URL | None = None,
     ) -> None:
         # URL forbids subclasses, so a simple type check is enough.
         assert type(url) is URL
@@ -241,9 +242,13 @@ class ClientResponse(HeadersMixin):
             self._writer = writer
         if continue100 is not None:
             self._continue = continue100
-        self._request_info = request_info
+        self._request_headers = request_headers
+        self._original_url = original_url
         self._timer = timer if timer is not None else TimerNoop()
         self._cache: dict[str, Any] = {}
+        # Pre-populate cache if request_info is provided
+        if request_info is not None:
+            self._cache["request_info"] = request_info
         self._traces = traces
         self._loop = loop
         # Save reference to _resolve_charset, so that get_encoding() will still
@@ -329,7 +334,15 @@ class ClientResponse(HeadersMixin):
 
     @reify
     def request_info(self) -> RequestInfo:
-        return self._request_info
+        # Build RequestInfo lazily from components
+        # If request_info was passed to __init__, it's already in _cache
+        if TYPE_CHECKING:
+            assert self._request_headers is not None
+            assert self._original_url is not None
+        headers = CIMultiDictProxy(self._request_headers)
+        return tuple.__new__(
+            RequestInfo, (self._url, self.method, headers, self._original_url)
+        )
 
     @reify
     def content_disposition(self) -> ContentDisposition | None:
@@ -787,17 +800,6 @@ class ClientRequestBase:
             ),
         )
 
-    @cached_property
-    def _request_info(self) -> RequestInfo:
-        headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
-        # These are created on every request, so we use a NamedTuple
-        # for performance reasons. We don't use the RequestInfo.__new__
-        # method because it has a different signature which is provided
-        # for backwards compatibility only.
-        return tuple.__new__(
-            RequestInfo, (self.url, self.method, headers, self.original_url)
-        )
-
     def _update_auth(self, auth: BasicAuth | None, trust_env: bool = False) -> None:
         """Set basic auth."""
         if auth is None:
@@ -840,10 +842,12 @@ class ClientRequestBase:
             writer=task,
             continue100=None,
             timer=TimerNoop(),
-            request_info=self._request_info,
+            request_info=None,
             traces=(),
             loop=self.loop,
             session=None,
+            request_headers=self.headers,
+            original_url=self.original_url,
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
@@ -1297,10 +1301,12 @@ class ClientRequest(ClientRequestBase):
             writer=task,
             continue100=self._continue,
             timer=self._timer,
-            request_info=self._request_info,
+            request_info=None,
             traces=self._traces,
             loop=self.loop,
             session=self._session,
+            request_headers=self.headers,
+            original_url=self.original_url,
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
