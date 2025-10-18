@@ -14,6 +14,7 @@ from types import MappingProxyType, TracebackType
 from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from propcache import cached_property
 from yarl import URL
 
 from . import hdrs, multipart, payload
@@ -786,7 +787,7 @@ class ClientRequestBase:
             ),
         )
 
-    @property
+    @cached_property
     def _request_info(self) -> RequestInfo:
         headers: CIMultiDictProxy[str] = CIMultiDictProxy(self.headers)
         # These are created on every request, so we use a NamedTuple
