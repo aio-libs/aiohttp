@@ -233,12 +233,14 @@ jobs:
       run: pytest -m dev_mode --cov-append --numprocesses=0
       shell: bash
     - name: Turn coverage into xml
+      if: github.repository_owner == 'aio-libs'
       env:
         COLOR: 'yes'
         PIP_USER: 1
       run: |
         python -m coverage xml
     - name: Upload coverage
+      if: github.repository_owner == 'aio-libs'
       uses: codecov/codecov-action@v5
       with:
         file: ./coverage.xml
@@ -252,7 +254,7 @@ jobs:
           }}
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
-      if: ${{ !cancelled() }}
+      if: ${{ github.repository_owner == 'aio-libs' &&  !cancelled() }}
       uses: codecov/test-results-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -260,6 +262,7 @@ jobs:
   benchmark:
     name: Benchmark
     needs: gen_llhttp
+    if: github.repository_owner == 'aio-libs'
 
     runs-on: ubuntu-latest
     timeout-minutes: 12
