@@ -3,6 +3,7 @@ checking accuracy. It also better aligns public/private attributes with what we 
 developers to access safely from a client middleware.
 
 If code subclasses ``ClientRequest``, it is likely that the subclass will need tweaking
-to be compatible with the new version.
+to be compatible with the new version. Similarly, subclasses of ``ClientResponse`` may
+need to adjust ``__init__`` parameters.
 
 -- by :user:`Dreamsorcerer`.
