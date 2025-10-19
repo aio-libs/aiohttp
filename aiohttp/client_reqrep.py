@@ -203,7 +203,7 @@ class ClientResponse(HeadersMixin):
     _connection: "Connection | None" = None  # current connection
     _cookies: SimpleCookie | None = None
     _raw_cookie_headers: tuple[str, ...] | None = None
-    _continue: "asyncio.Future[bool] | None" = None
+    _continue: asyncio.Future[bool] | None = None
     _source_traceback: traceback.StackSummary | None = None
     _session: "ClientSession | None" = None
     # set up by ClientRequest after ClientResponse object creation
@@ -214,15 +214,15 @@ class ClientResponse(HeadersMixin):
 
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
 
-    __writer: "asyncio.Task[None] | None" = None
+    __writer: asyncio.Task[None] | None = None
 
     def __init__(
         self,
         method: str,
         url: URL,
         *,
-        writer: "asyncio.Task[None] | None",
-        continue100: "asyncio.Future[bool] | None",
+        writer: asyncio.Task[None] | None,
+        continue100: asyncio.Future[bool] | None,
         timer: BaseTimerContext | None,
         request_info: RequestInfo | None,  # Backwards compat; not normally used anymore
         traces: Sequence["Trace"],
@@ -264,7 +264,7 @@ class ClientResponse(HeadersMixin):
         self.__writer = None
 
     @property
-    def _writer(self) -> "asyncio.Task[None] | None":
+    def _writer(self) -> asyncio.Task[None] | None:
         """The writer task for streaming data.
 
         _writer is only provided for backwards compatibility
@@ -273,7 +273,7 @@ class ClientResponse(HeadersMixin):
         return self.__writer
 
     @_writer.setter
-    def _writer(self, writer: "asyncio.Task[None] | None") -> None:
+    def _writer(self, writer: asyncio.Task[None] | None) -> None:
         """Set the writer task for streaming data."""
         if self.__writer is not None:
             self.__writer.remove_done_callback(self.__reset_writer)
@@ -706,7 +706,7 @@ class ClientRequestBase:
     url = URL()
     method = "GET"
 
-    _writer_task: "asyncio.Task[None] | None" = None  # async task for streaming data
+    _writer_task: asyncio.Task[None] | None = None  # async task for streaming data
 
     _skip_auto_headers: "CIMultiDict[None] | None" = None
 
@@ -767,11 +767,11 @@ class ClientRequestBase:
             ) from None
 
     @property
-    def _writer(self) -> "asyncio.Task[None] | None":
+    def _writer(self) -> asyncio.Task[None] | None:
         return self._writer_task
 
     @_writer.setter
-    def _writer(self, writer: "asyncio.Task[None]") -> None:
+    def _writer(self, writer: asyncio.Task[None]) -> None:
         if self._writer_task is not None:
             self._writer_task.remove_done_callback(self._reset_writer)
         self._writer_task = writer
@@ -899,7 +899,7 @@ class ClientRequestBase:
         # Buffer headers for potential coalescing with body
         await writer.write_headers(status_line, self.headers)
 
-        task: "asyncio.Task[None] | None"
+        task: asyncio.Task[None] | None
         if self._should_write(protocol):
             coro = self._write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 12):
