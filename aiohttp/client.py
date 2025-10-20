@@ -318,15 +318,14 @@ class ClientSession:
             )
 
         if connector is None:
+            connector_owner = True
             connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
-        else:
-            if connector_owner:
-                warnings.warn(
-                    "connector_owner is deprecated and will be removed in aiohttp 4.0.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-            connector_owner = False
+        elif connector_owner:
+            warnings.warn(
+                "connector_owner is deprecated and will be removed in aiohttp 4.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
@@ -1292,7 +1291,7 @@ class ClientSession:
 
         A readonly property.
         """
-        return self._connector is None or self._connector.closed
+        return self._connector is None
 
     @property
     def connector(self) -> BaseConnector | None:
