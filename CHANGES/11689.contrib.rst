@@ -1,1 +1,1 @@
-Remove unused ``update-pre-commit`` github action -- by :user:`Cycloctane`.
+Removed unused ``update-pre-commit`` github action workflow -- by :user:`Cycloctane`.
