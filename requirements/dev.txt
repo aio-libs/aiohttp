@@ -92,7 +92,7 @@ idna==3.10
     #   yarl
 imagesize==1.4.1
     # via sphinx
-iniconfig==2.1.0
+iniconfig==2.3.0
     # via pytest
 isal==1.7.2 ; python_version < "3.14"
     # via
