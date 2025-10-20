@@ -28,7 +28,7 @@ forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
     # via -r requirements/test-common.in
-idna==3.10
+idna==3.11
     # via trustme
 iniconfig==2.3.0
     # via pytest

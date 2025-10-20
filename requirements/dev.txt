@@ -85,7 +85,7 @@ gunicorn==23.0.0
     # via -r requirements/base.in
 identify==2.6.15
     # via pre-commit
-idna==3.10
+idna==3.11
     # via
     #   requests
     #   trustme

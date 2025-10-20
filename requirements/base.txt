@@ -26,7 +26,7 @@ frozenlist==1.8.0
     #   aiosignal
 gunicorn==23.0.0
     # via -r requirements/base.in
-idna==3.10
+idna==3.11
     # via yarl
 multidict==6.7.0
     # via
