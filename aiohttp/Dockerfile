@@ -5,4 +5,3 @@ COPY . .
 
 RUN pip install -e .[test] pytest aiohttp
 CMD ["/bin/bash"]
-
