@@ -1,0 +1,1 @@
+Fixed an issue where ``aiohttp.ClientSession`` would raise an ``Unclosed connector`` warning for externally provided connectors -- by :user:`Ruke3663`.
