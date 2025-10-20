@@ -1293,7 +1293,7 @@ class ClientSession:
 
         A readonly property.
         """
-        return self._connector is None or self._connector.closed
+        return self._connector is None
 
     @property
     def connector(self) -> BaseConnector | None:
