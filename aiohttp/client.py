@@ -1284,7 +1284,6 @@ class ClientSession:
         if not self.closed:
             if self._connector is not None and self._connector_owner:
                 await self._connector.close()
-
             self._connector = None
 
     @property
@@ -1293,7 +1292,7 @@ class ClientSession:
 
         A readonly property.
         """
-        return self._connector is None
+        return self._connector is None or self._connector.closed
 
     @property
     def connector(self) -> BaseConnector | None:
