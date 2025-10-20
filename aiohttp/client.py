@@ -319,6 +319,8 @@ class ClientSession:
 
         if connector is None:
             connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
+        else:
+            connector_owner = False
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector = connector
@@ -1274,7 +1276,8 @@ class ClientSession:
         if not self.closed:
             if self._connector is not None and self._connector_owner:
                 await self._connector.close()
-            self._connector = None
+            else:
+                self._connector = None
 
     @property
     def closed(self) -> bool:
