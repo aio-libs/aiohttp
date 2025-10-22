@@ -1,0 +1,10 @@
+Add support for using async context managers as cleanup contexts
+---------------------------------------------------------------
+
+Previously, application cleanup contexts required a single-yielding
+async generator. This change allows cleanup context callbacks to return
+contextlib.asynccontextmanager instances as well. The async context
+manager is adapted internally so it behaves like a single-yield async
+iterator: its ``__aenter__`` is executed at startup and ``__aexit__`` at
+cleanup. Existing async generator-based cleanup contexts remain
+supported.
