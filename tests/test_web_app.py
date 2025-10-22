@@ -407,6 +407,52 @@ async def test_cleanup_ctx_multiple_yields() -> None:
     assert out == ["pre_1", "post_1"]
 
 
+async def test_cleanup_ctx_with_async_generator_and_asynccontextmanager() -> None:
+    # Reuse existing cleanup_ctx tests but explicitly ensure asynccontextmanager
+    # style contexts work alongside legacy async generators.
+    from contextlib import asynccontextmanager
+
+    entered = []
+
+    async def gen_ctx(app: web.Application) -> AsyncIterator[None]:
+        entered.append("enter-gen")
+        try:
+            yield
+        finally:
+            entered.append("exit-gen")
+
+    @asynccontextmanager
+    async def cm_ctx(app: web.Application) -> AsyncIterator[None]:
+        entered.append("enter-cm")
+        try:
+            yield
+        finally:
+            entered.append("exit-cm")
+
+    app = web.Application()
+    app.cleanup_ctx.append(gen_ctx)
+    app.cleanup_ctx.append(cm_ctx)
+    app.freeze()
+    await app.startup()
+    assert "enter-gen" in entered and "enter-cm" in entered
+    await app.cleanup()
+    assert "exit-gen" in entered and "exit-cm" in entered
+
+
+async def test_asynccm_adapter_aiter_returns_self() -> None:
+    # Cover adapter __aiter__ returning self (previously uncovered line)
+    from contextlib import asynccontextmanager
+    from aiohttp.web_app import _AsyncCMAsIterator
+
+    @asynccontextmanager
+    async def cm(app: web.Application) -> AsyncIterator[None]:
+        yield
+
+    cm_instance = cm(None)  # create the async context manager instance
+    adapter = _AsyncCMAsIterator(cm_instance)
+    assert adapter.__aiter__() is adapter
+
+
 async def test_subapp_chained_config_dict_visibility(
     aiohttp_client: AiohttpClient,
 ) -> None:

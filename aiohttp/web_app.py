@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import warnings
 from collections.abc import (
@@ -15,7 +16,6 @@ from functools import lru_cache, partial, update_wrapper
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncContextManager,
     TypeVar,
     cast,
     final,
@@ -428,7 +428,9 @@ if TYPE_CHECKING:
     # or async context managers (contextlib.asynccontextmanager). Accept
     # both for type checking clarity.
     _CleanupContextBase = FrozenList[
-        Callable[[Application], AsyncIterator[None] | AsyncContextManager[None]]
+        Callable[
+            [Application], AsyncIterator[None] | contextlib.AbstractAsyncContextManager[None]
+        ]
     ]
 else:
     _CleanupContextBase = FrozenList
@@ -450,20 +452,22 @@ class CleanupContext(_CleanupContextBase):
 
         """
         for cb in self:
+            # Call the registered callback and inspect its return value.
+            # If the callback returned a context manager instance, use it
+            # directly. Otherwise (legacy async generator callbacks) we
+            # convert the callback into an async context manager and
+            # call it to obtain a context manager instance.
             ctx = cb(app)
-            # If the callback returned an async context manager (has
-            # __aenter__ and __aexit__), wrap it so it behaves like an
-            # async iterator that yields once.
-            # Explicitly type the iterator variable so mypy infers a common
-            # supertype for both branches (adapter and generator).
-            it: AsyncIterator[None]
-            if hasattr(ctx, "__aenter__") and hasattr(ctx, "__aexit__"):
-                # Narrow type for mypy: ctx is an AsyncContextManager here.
-                it = _AsyncCMAsIterator(cast(AsyncContextManager[None], ctx))
-            else:
-                # Assume it's an async iterator / async generator
-                it = ctx.__aiter__()
 
+            if isinstance(ctx, contextlib.AbstractAsyncContextManager):
+                cm = cast(contextlib.AbstractAsyncContextManager[None], ctx)
+            else:
+                # cb is expected to be an async generator function; wrap
+                # it with asynccontextmanager to obtain a context manager
+                # and call it with the app to get an instance.
+                cm = contextlib.asynccontextmanager(cb)(app)
+
+            it = _AsyncCMAsIterator(cm)
             await it.__anext__()
             self._exits.append(it)
 
@@ -498,7 +502,7 @@ class _AsyncCMAsIterator(AsyncIterator[None]):
     and ``__aexit__`` on the second one (which then raises StopAsyncIteration).
     """
 
-    def __init__(self, cm: AsyncContextManager[None]) -> None:
+    def __init__(self, cm: contextlib.AbstractAsyncContextManager[None]) -> None:
         self._cm = cm
         self._entered = False
 
