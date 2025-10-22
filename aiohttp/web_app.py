@@ -418,14 +418,12 @@ class CleanupError(RuntimeError):
 
 if TYPE_CHECKING:
     # cleanup contexts may be either async generators (async iterator)
-    # or async context managers (contextlib.asynccontextmanager). Accept
-    # both for type checking clarity.
-    _CleanupContextBase = FrozenList[
-        Callable[
-            [Application],
-            AsyncIterator[None] | contextlib.AbstractAsyncContextManager[None],
-        ]
-    ]
+    # or async context managers (contextlib.asynccontextmanager). For
+    # the purposes of type checking we keep the callback return type
+    # permissive (Any) so that downstream checks which attempt to
+    # detect return value shapes at runtime are not considered
+    # unreachable by the type checker.
+    _CleanupContextBase = FrozenList[Callable[[Application], Any]]
 else:
     _CleanupContextBase = FrozenList
 
@@ -453,15 +451,26 @@ class CleanupContext(_CleanupContextBase):
             # call it to obtain a context manager instance.
             ctx = cb(app)
 
-            if isinstance(ctx, contextlib.AbstractAsyncContextManager):
-                cm = cast(contextlib.AbstractAsyncContextManager[None], ctx)
+            # If the callback returned an async iterator (legacy async
+            # generator), use it directly. If it returned an async
+            # context manager instance, adapt it to the iterator protocol
+            # with _AsyncCMAsIterator. As a final fallback, convert the
+            # callback into an async context manager (covers some edge
+            # cases) and adapt that.
+            if isinstance(ctx, AsyncIterator):
+                it = cast(AsyncIterator[None], ctx)
+            elif isinstance(ctx, contextlib.AbstractAsyncContextManager):
+                # isinstance already narrows the type; no cast needed.
+                cm = ctx
+                it = _AsyncCMAsIterator(cm)
             else:
-                # cb is expected to be an async generator function; wrap
-                # it with asynccontextmanager to obtain a context manager
-                # and call it with the app to get an instance.
-                cm = contextlib.asynccontextmanager(cb)(app)
+                # cb may have a broader annotated return type; tell mypy
+                # that here we are passing a generator function shape.
+                cm = contextlib.asynccontextmanager(
+                    cast(Callable[[Application], AsyncIterator[None]], cb)
+                )(app)
+                it = _AsyncCMAsIterator(cm)
 
-            it = _AsyncCMAsIterator(cm)
             await it.__anext__()
             self._exits.append(it)
 

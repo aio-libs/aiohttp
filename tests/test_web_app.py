@@ -449,7 +449,7 @@ async def test_asynccm_adapter_aiter_returns_self() -> None:
     async def cm(app: web.Application) -> AsyncIterator[None]:
         yield
 
-    cm_instance = cm(None)  # create the async context manager instance
+    cm_instance = cm(web.Application())  # create the async context manager instance
     adapter = _AsyncCMAsIterator(cm_instance)
     assert adapter.__aiter__() is adapter
 
