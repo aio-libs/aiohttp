@@ -454,6 +454,9 @@ class CleanupContext(_CleanupContextBase):
             # If the callback returned an async context manager (has
             # __aenter__ and __aexit__), wrap it so it behaves like an
             # async iterator that yields once.
+            # Explicitly type the iterator variable so mypy infers a common
+            # supertype for both branches (adapter and generator).
+            it: AsyncIterator[None]
             if hasattr(ctx, "__aenter__") and hasattr(ctx, "__aexit__"):
                 # Narrow type for mypy: ctx is an AsyncContextManager here.
                 it = _AsyncCMAsIterator(cast(AsyncContextManager[None], ctx))
@@ -488,7 +491,7 @@ class CleanupContext(_CleanupContextBase):
                 raise CleanupError("Multiple errors on cleanup stage", errors)
 
 
-class _AsyncCMAsIterator:
+class _AsyncCMAsIterator(AsyncIterator[None]):
     """Wrap an async context manager instance to expose async iterator protocol used by CleanupContext.
 
     The iterator will perform ``__aenter__`` on the first ``__anext__`` call
