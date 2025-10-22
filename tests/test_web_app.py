@@ -474,7 +474,7 @@ async def test_asynccm_adapter_aiter_returns_self() -> None:
 
     @asynccontextmanager
     async def cm(app: web.Application) -> AsyncIterator[None]:
-        yield  # type: ignore[unreachable]  # pragma: no cover
+        yield  # pragma: no cover
 
     cm_instance = cm(web.Application())  # create the async context manager instance
     adapter = _AsyncCMAsIterator(cm_instance)
