@@ -442,6 +442,7 @@ async def test_cleanup_ctx_with_async_generator_and_asynccontextmanager() -> Non
 async def test_asynccm_adapter_aiter_returns_self() -> None:
     # Cover adapter __aiter__ returning self (previously uncovered line)
     from contextlib import asynccontextmanager
+
     from aiohttp.web_app import _AsyncCMAsIterator
 
     @asynccontextmanager
