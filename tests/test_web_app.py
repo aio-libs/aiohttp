@@ -467,7 +467,7 @@ async def test_cleanup_ctx_fallback_wraps_non_iterator() -> None:
 
 
 async def test_asynccm_adapter_aiter_returns_self() -> None:
-    # Cover adapter __aiter__ returning self (previously uncovered line)
+    # Cover adapter __aiter__ returning self
     from contextlib import asynccontextmanager
 
     from aiohttp.web_app import _AsyncCMAsIterator
