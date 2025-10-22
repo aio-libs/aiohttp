@@ -439,6 +439,33 @@ async def test_cleanup_ctx_with_async_generator_and_asynccontextmanager() -> Non
     assert "exit-gen" in entered and "exit-cm" in entered
 
 
+async def test_cleanup_ctx_fallback_wraps_non_iterator() -> None:
+    """Force the fallback that wraps the callback using
+    `contextlib.asynccontextmanager(...)` when the callback's return
+    value is neither an async iterator nor an async context manager.
+
+    The wrapped result will raise when entered, which verifies the
+    fallback branch in `CleanupContext._on_startup` is executed.
+    """
+    app = web.Application()
+
+    def cb(app: web.Application):
+        # Return a plain int so it's neither an AsyncIterator nor
+        # an AbstractAsyncContextManager; the code will attempt to
+        # adapt the original `cb` with asynccontextmanager and then
+        # fail on __aenter__ which is expected here.
+        return 123
+
+    app.cleanup_ctx.append(cb)
+    app.freeze()
+    try:
+        with pytest.raises(TypeError):
+            await app.startup()
+    finally:
+        # Ensure cleanup attempt doesn't raise further errors.
+        await app.cleanup()
+
+
 async def test_asynccm_adapter_aiter_returns_self() -> None:
     # Cover adapter __aiter__ returning self (previously uncovered line)
     from contextlib import asynccontextmanager
