@@ -1,5 +1,6 @@
-Allowed async context managers for cleanup contexts.
-Legacy single-yield async-generator cleanup contexts continue to be
+Started accepting :term:`asynchronous context managers <asynchronous context manager>` for cleanup contexts.
+Legacy single-yield :term:`asynchronous generator` cleanup contexts continue to be
 supported; async context managers are adapted internally so they are
 entered at startup and exited during cleanup.
+
 -- by :user:`MannXo`.

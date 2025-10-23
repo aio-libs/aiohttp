@@ -438,7 +438,7 @@ class CleanupContext(_CleanupContextBase):
 
         Each callback may return either an async iterator (an async
         generator that yields exactly once) or an async context manager
-        (from contextlib.asynccontextmanager). If a context manager is
+        (from :func:`contextlib.asynccontextmanager`). If a context manager is
         returned we wrap it in `_AsyncCMAsIterator` so it behaves like an
         async iterator that yields once.
 

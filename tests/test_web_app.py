@@ -1,6 +1,7 @@
 import asyncio
 import sys
 from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import asynccontextmanager
 from typing import NoReturn
 from unittest import mock
 
@@ -9,6 +10,7 @@ import pytest
 from aiohttp import log, web
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
+from aiohttp.web_app import _AsyncCMAsIterator
 
 
 async def test_app_ctor() -> None:
@@ -408,9 +410,6 @@ async def test_cleanup_ctx_multiple_yields() -> None:
 
 
 async def test_cleanup_ctx_with_async_generator_and_asynccontextmanager() -> None:
-    # Reuse existing cleanup_ctx tests but explicitly ensure asynccontextmanager
-    # style contexts work alongside legacy async generators.
-    from contextlib import asynccontextmanager
 
     entered = []
 
@@ -467,10 +466,6 @@ async def test_cleanup_ctx_fallback_wraps_non_iterator() -> None:
 
 
 async def test_asynccm_adapter_aiter_returns_self() -> None:
-    # Cover adapter __aiter__ returning self
-    from contextlib import asynccontextmanager
-
-    from aiohttp.web_app import _AsyncCMAsIterator
 
     @asynccontextmanager
     async def cm(app: web.Application) -> AsyncIterator[None]:
