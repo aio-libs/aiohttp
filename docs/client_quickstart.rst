@@ -190,6 +190,10 @@ You can enable ``brotli`` transfer-encodings support,
 just install `Brotli <https://pypi.org/project/Brotli/>`_
 or `brotlicffi <https://pypi.org/project/brotlicffi/>`_.
 
+You can enable ``zstd`` transfer-encodings support,
+install `backports.zstd <https://pypi.org/project/backports.zstd/>`_.
+If you are using Python >= 3.14, no dependency should be required.
+
 JSON Request
 ============
 

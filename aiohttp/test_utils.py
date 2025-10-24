@@ -3,28 +3,14 @@
 import asyncio
 import contextlib
 import gc
-import inspect
 import ipaddress
 import os
 import socket
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterator
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    Iterator,
-    List,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, overload
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
@@ -42,7 +28,6 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar, AbstractStreamWriter
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import LooseHeaders, StrOrURL
@@ -63,7 +48,7 @@ from .web_protocol import _RequestHandler
 if TYPE_CHECKING:
     from ssl import SSLContext
 else:
-    SSLContext = None
+    SSLContext = Any
 
 if sys.version_info >= (3, 11) and TYPE_CHECKING:
     from typing import Unpack
@@ -113,15 +98,15 @@ class BaseTestServer(ABC, Generic[_Request]):
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         skip_url_asserts: bool = False,
         socket_factory: Callable[
             [str, int, socket.AddressFamily], socket.socket
         ] = get_port_socket,
         **kwargs: Any,
     ) -> None:
-        self.runner: Optional[BaseRunner[_Request]] = None
-        self._root: Optional[URL] = None
+        self.runner: BaseRunner[_Request] | None = None
+        self._root: URL | None = None
         self.host = host
         self.port = port or 0
         self._closed = False
@@ -157,7 +142,7 @@ class BaseTestServer(ABC, Generic[_Request]):
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod
-    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:  # type: ignore[misc]
+    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:
         """Return a new runner for the server."""
         # TODO(PY311): Use Unpack to specify Server kwargs.
 
@@ -212,9 +197,9 @@ class BaseTestServer(ABC, Generic[_Request]):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         await self.close()
 
@@ -226,7 +211,7 @@ class TestServer(BaseTestServer[Request]):
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ):
         self.app = app
@@ -244,7 +229,7 @@ class RawTestServer(BaseTestServer[BaseRequest]):
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ) -> None:
         self._handler = handler
@@ -267,26 +252,26 @@ class TestClient(Generic[_Request, _ApplicationNone]):
     __test__ = False
 
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self: "TestClient[Request, Application]",
         server: TestServer,
         *,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
     ) -> None: ...
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self: "TestClient[_Request, None]",
         server: BaseTestServer[_Request],
         *,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
     ) -> None: ...
     def __init__(  # type: ignore[misc]
         self,
         server: BaseTestServer[_Request],
         *,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
     ) -> None:
         # TODO(PY311): Use Unpack to specify ClientSession kwargs.
@@ -300,14 +285,14 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self._session = ClientSession(cookie_jar=cookie_jar, **kwargs)
         self._session._retry_connection = False
         self._closed = False
-        self._responses: List[ClientResponse] = []
-        self._websockets: List[ClientWebSocketResponse] = []
+        self._responses: list[ClientResponse] = []
+        self._websockets: list[ClientWebSocketResponse] = []
 
     async def start_server(self) -> None:
         await self._server.start_server()
 
     @property
-    def scheme(self) -> Union[str, object]:
+    def scheme(self) -> str | object:
         return self._server.scheme
 
     @property
@@ -486,9 +471,9 @@ class TestClient(Generic[_Request, _ApplicationNone]):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc: Optional[BaseException],
-        tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
     ) -> None:
         await self.close()
 
@@ -593,10 +578,10 @@ def _create_app_mock() -> mock.MagicMock:
     return app
 
 
-def _create_transport(sslcontext: Optional[SSLContext] = None) -> mock.Mock:
+def _create_transport(sslcontext: SSLContext | None = None) -> mock.Mock:
     transport = mock.Mock()
 
-    def get_extra_info(key: str) -> Optional[SSLContext]:
+    def get_extra_info(key: str) -> SSLContext | None:
         if key == "sslcontext":
             return sslcontext
         else:
@@ -609,17 +594,17 @@ def _create_transport(sslcontext: Optional[SSLContext] = None) -> mock.Mock:
 def make_mocked_request(
     method: str,
     path: str,
-    headers: Optional[LooseHeaders] = None,
+    headers: LooseHeaders | None = None,
     *,
-    match_info: Optional[Dict[str, str]] = None,
+    match_info: dict[str, str] | None = None,
     version: HttpVersion = HttpVersion(1, 1),
     closing: bool = False,
-    app: Optional[Application] = None,
-    writer: Optional[AbstractStreamWriter] = None,
-    protocol: Optional[RequestHandler[Request]] = None,
-    transport: Optional[asyncio.Transport] = None,
+    app: Application | None = None,
+    writer: AbstractStreamWriter | None = None,
+    protocol: RequestHandler[Request] | None = None,
+    transport: asyncio.Transport | None = None,
     payload: StreamReader = EMPTY_PAYLOAD,
-    sslcontext: Optional[SSLContext] = None,
+    sslcontext: SSLContext | None = None,
     client_max_size: int = 1024**2,
     loop: Any = ...,
 ) -> Request:
@@ -682,10 +667,10 @@ def make_mocked_request(
 
     if writer is None:
         writer = mock.Mock()
-        writer.write_headers = make_mocked_coro(None)
-        writer.write = make_mocked_coro(None)
-        writer.write_eof = make_mocked_coro(None)
-        writer.drain = make_mocked_coro(None)
+        writer.write_headers = mock.AsyncMock(return_value=None)
+        writer.write = mock.AsyncMock(return_value=None)
+        writer.write_eof = mock.AsyncMock(return_value=None)
+        writer.drain = mock.AsyncMock(return_value=None)
         writer.transport = transport
 
     protocol.transport = transport
@@ -701,18 +686,3 @@ def make_mocked_request(
     req._match_info = match_info
 
     return req
-
-
-def make_mocked_coro(
-    return_value: Any = sentinel, raise_exception: Any = sentinel
-) -> Any:
-    """Creates a coroutine mock."""
-
-    async def mock_coro(*args: Any, **kwargs: Any) -> Any:
-        if raise_exception is not sentinel:
-            raise raise_exception
-        if not inspect.isawaitable(return_value):
-            return return_value
-        await return_value
-
-    return mock.Mock(wraps=mock_coro)

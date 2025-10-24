@@ -2,7 +2,7 @@
 
 import json
 import socket
-from typing import Dict, List, NoReturn, Optional, Union
+from typing import NoReturn
 
 import pytest
 
@@ -74,13 +74,12 @@ async def test_client_middleware_retry(aiohttp_server: AiohttpServer) -> None:
     async def retry_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        retry_count = 0
-        while True:
+        response = None
+        for _ in range(2):  # pragma: no branch
             response = await handler(request)
-            if response.status == 503 and retry_count < 1:
-                retry_count += 1
-                continue
-            return response
+            if response.ok:
+                return response
+        assert False, "not reachable in test"
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -244,30 +243,28 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
     async def challenge_auth_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        challenge_data: Dict[str, Union[bool, str, None]] = {
-            "nonce": None,
-            "attempted": False,
-        }
+        nonce: str | None = None
+        attempted: bool = False
 
         while True:
             # If we have challenge data from previous attempt, add auth header
-            if challenge_data["nonce"] and challenge_data["attempted"]:
-                request.headers["Authorization"] = (
-                    f'Custom response="{challenge_data["nonce"]}-secret"'
-                )
+            if nonce and attempted:
+                request.headers["Authorization"] = f'Custom response="{nonce}-secret"'
 
             response = await handler(request)
 
             # If we get a 401 with challenge, store it and retry
-            if response.status == 401 and not challenge_data["attempted"]:
+            if response.status == 401 and not attempted:
                 www_auth = response.headers.get("WWW-Authenticate")
-                if www_auth and "nonce=" in www_auth:  # pragma: no branch
+                if www_auth and "nonce=" in www_auth:
                     # Extract nonce from authentication header
                     nonce_start = www_auth.find('nonce="') + 7
                     nonce_end = www_auth.find('"', nonce_start)
-                    challenge_data["nonce"] = www_auth[nonce_start:nonce_end]
-                    challenge_data["attempted"] = True
+                    nonce = www_auth[nonce_start:nonce_end]
+                    attempted = True
                     continue
+                else:
+                    assert False, "Should not reach here"
 
             return response
 
@@ -288,7 +285,7 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
 async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) -> None:
     """Test middleware with multi-step authentication flow."""
     auth_state: dict[str, int] = {}
-    middleware_state: Dict[str, Optional[Union[int, str]]] = {
+    middleware_state: dict[str, int | str | None] = {
         "step": 0,
         "session": None,
         "challenge": None,
@@ -324,7 +321,7 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) 
     ) -> ClientResponse:
         request.headers["X-Client-ID"] = "test-client"
 
-        while True:
+        for _ in range(3):
             # Apply auth based on current state
             if middleware_state["step"] == 1 and middleware_state["session"]:
                 request.headers["Authorization"] = (
@@ -347,13 +344,17 @@ async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) 
                     middleware_state["step"] = 1
                     continue
 
-                elif auth_step == "2":  # pragma: no branch
+                elif auth_step == "2":
                     # Second step: store challenge
                     middleware_state["challenge"] = response.headers.get("X-Challenge")
                     middleware_state["step"] = 2
                     continue
+                else:
+                    assert False, "Should not reach here"
 
             return response
+        # This should not be reached but keeps mypy happy
+        assert False, "Should not reach here"
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -371,7 +372,7 @@ async def test_client_middleware_conditional_retry(
 ) -> None:
     """Test middleware with conditional retry based on response content."""
     request_count = 0
-    token_state: Dict[str, Union[str, bool]] = {
+    token_state: dict[str, str | bool] = {
         "token": "old-token",
         "refreshed": False,
     }
@@ -396,7 +397,7 @@ async def test_client_middleware_conditional_retry(
     async def token_refresh_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        while True:
+        for _ in range(2):
             # Add token to request
             request.headers["X-Auth-Token"] = str(token_state["token"])
 
@@ -407,13 +408,17 @@ async def test_client_middleware_conditional_retry(
                 data = await response.json()
                 if data.get("error") == "token_expired" and data.get(
                     "refresh_required"
-                ):  # pragma: no branch
+                ):
                     # Simulate token refresh
                     token_state["token"] = "refreshed-token"
                     token_state["refreshed"] = True
                     continue
+                else:
+                    assert False, "Should not reach here"
 
             return response
+        # This should not be reached but keeps mypy happy
+        assert False, "Should not reach here"
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -490,7 +495,6 @@ async def test_client_middleware_stateful_retry(aiohttp_server: AiohttpServer) -
 
         def __init__(self, max_retries: int = 3) -> None:
             self.max_retries = max_retries
-            self.retry_counts: Dict[int, int] = {}  # Track retries per request
 
         async def __call__(
             self, request: ClientRequest, handler: ClientHandlerType
@@ -576,10 +580,55 @@ async def test_client_middleware_multiple_instances(
     assert headers_received.get("X-Custom-2") == "value2"
 
 
-async def test_client_middleware_disable_with_empty_tuple(
+async def test_request_middleware_overrides_session_middleware_with_empty(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    """Test that passing middlewares=() to a request disables session-level middlewares."""
+    """Test that passing empty middlewares tuple to a request disables session-level middlewares."""
+    session_middleware_called = False
+
+    async def handler(request: web.Request) -> web.Response:
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            return web.Response(text=f"Auth: {auth_header}")
+        return web.Response(text="No auth")
+
+    async def session_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        nonlocal session_middleware_called
+        session_middleware_called = True
+        request.headers["Authorization"] = "Bearer session-token"
+        response = await handler(request)
+        return response
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    # Create session with middleware
+    async with ClientSession(middlewares=(session_middleware,)) as session:
+        # First request uses session middleware
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "Auth: Bearer session-token"
+            assert session_middleware_called is True
+
+        # Reset flags
+        session_middleware_called = False
+
+        # Second request explicitly disables middlewares with empty tuple
+        async with session.get(server.make_url("/"), middlewares=()) as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "No auth"
+            assert session_middleware_called is False
+
+
+async def test_request_middleware_overrides_session_middleware_with_specific(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that passing specific middlewares to a request overrides session-level middlewares."""
     session_middleware_called = False
     request_middleware_called = False
 
@@ -625,19 +674,7 @@ async def test_client_middleware_disable_with_empty_tuple(
         session_middleware_called = False
         request_middleware_called = False
 
-        # Second request explicitly disables middlewares
-        async with session.get(server.make_url("/"), middlewares=()) as resp:
-            assert resp.status == 200
-            text = await resp.text()
-            assert text == "No auth"
-            assert session_middleware_called is False
-            assert request_middleware_called is False
-
-        # Reset flags
-        session_middleware_called = False
-        request_middleware_called = False
-
-        # Third request uses request-specific middleware
+        # Second request uses request-specific middleware
         async with session.get(
             server.make_url("/"), middlewares=(request_middleware,)
         ) as resp:
@@ -698,7 +735,7 @@ async def test_client_middleware_blocks_connection_before_established(
 ) -> None:
     """Test that middleware can block connections before they are established."""
     blocked_hosts = {"blocked.example.com", "evil.com"}
-    connection_attempts: List[str] = []
+    connection_attempts: list[str] = []
 
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="Reached")
@@ -745,12 +782,18 @@ async def test_client_middleware_blocks_connection_before_established(
 
     # Verify that connections were attempted in the correct order
     assert len(connection_attempts) == 3
-    assert allowed_url.host and allowed_url.host in connection_attempts[0]
-    assert "blocked.example.com" in connection_attempts[1]
-    assert "evil.com" in connection_attempts[2]
+    assert allowed_url.host
+
+    assert connection_attempts == [
+        str(server.make_url("/")),
+        "https://blocked.example.com/",
+        "https://evil.com/path",
+    ]
 
     # Check that no connections were leaked
     assert len(connector._conns) == 0
+
+    await connector.close()
 
 
 async def test_client_middleware_blocks_connection_without_dns_lookup(
@@ -758,7 +801,7 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
 ) -> None:
     """Test that middleware prevents DNS lookups for blocked hosts."""
     blocked_hosts = {"blocked.domain.tld"}
-    dns_lookups_made: List[str] = []
+    dns_lookups_made: list[str] = []
 
     # Create a simple server for the allowed request
     async def handler(request: web.Request) -> web.Response:
@@ -774,7 +817,7 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
             hostname: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             dns_lookups_made.append(hostname)
             return await super().resolve(hostname, port, family)
 
@@ -820,8 +863,13 @@ async def test_client_middleware_retry_reuses_connection(
     aiohttp_server: AiohttpServer,
 ) -> None:
     """Test that connections are reused when middleware performs retries."""
+    request_count = 0
 
     async def handler(request: web.Request) -> web.Response:
+        nonlocal request_count
+        request_count += 1
+        if request_count == 1:
+            return web.Response(status=400)  # First request returns 400 with no body
         return web.Response(text="OK")
 
     class TrackingConnector(TCPConnector):
@@ -830,7 +878,7 @@ async def test_client_middleware_retry_reuses_connection(
         connection_attempts = 0
 
         async def _create_connection(
-            self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+            self, req: ClientRequest, traces: list["Trace"], timeout: "ClientTimeout"
         ) -> ResponseHandler:
             self.connection_attempts += 1
             return await super()._create_connection(req, traces, timeout)
@@ -848,9 +896,8 @@ async def test_client_middleware_retry_reuses_connection(
             while True:
                 self.attempt_count += 1
                 response = await handler(request)
-                if retry_count == 0:
+                if response.status == 400 and retry_count == 0:
                     retry_count += 1
-                    response.release()  # Release the response to enable connection reuse
                     continue
                 return response
 
@@ -880,11 +927,11 @@ async def test_middleware_uses_session_avoids_recursion_with_path_check(
     aiohttp_server: AiohttpServer,
 ) -> None:
     """Test that middleware can avoid infinite recursion using a path check."""
-    log_collector: List[Dict[str, str]] = []
+    log_collector: list[dict[str, str]] = []
 
     async def log_api_handler(request: web.Request) -> web.Response:
         """Handle log API requests."""
-        data: Dict[str, str] = await request.json()
+        data: dict[str, str] = await request.json()
         log_collector.append(data)
         return web.Response(text="OK")
 
@@ -946,14 +993,14 @@ async def test_middleware_uses_session_avoids_recursion_with_disabled_middleware
     aiohttp_server: AiohttpServer,
 ) -> None:
     """Test that middleware can avoid infinite recursion by disabling middleware."""
-    log_collector: List[Dict[str, str]] = []
+    log_collector: list[dict[str, str]] = []
     request_count = 0
 
     async def log_api_handler(request: web.Request) -> web.Response:
         """Handle log API requests."""
         nonlocal request_count
         request_count += 1
-        data: Dict[str, str] = await request.json()
+        data: dict[str, str] = await request.json()
         log_collector.append(data)
         return web.Response(text="OK")
 
@@ -1014,8 +1061,8 @@ async def test_middleware_can_check_request_body(
     aiohttp_server: AiohttpServer,
 ) -> None:
     """Test that middleware can check request body."""
-    received_bodies: List[str] = []
-    received_headers: List[Dict[str, str]] = []
+    received_bodies: list[str] = []
+    received_headers: list[dict[str, str]] = []
 
     async def handler(request: web.Request) -> web.Response:
         """Server handler that receives requests."""
@@ -1036,14 +1083,10 @@ async def test_middleware_can_check_request_body(
             self.secretkey = secretkey
 
         def get_hash(self, request: ClientRequest) -> str:
-            if request.body:
-                data = request.body.decode("utf-8")
-            else:
-                data = "{}"
+            data = request.body.decode("utf-8") or "{}"
 
             # Simulate authentication hash without using real crypto
-            signature = f"SIGNATURE-{self.secretkey}-{len(data)}-{data[:10]}"
-            return signature
+            return f"SIGNATURE-{self.secretkey}-{len(data)}-{data[:10]}"
 
         async def __call__(
             self, request: ClientRequest, handler: ClientHandlerType
@@ -1115,3 +1158,111 @@ async def test_middleware_can_check_request_body(
     assert received_bodies[1] == json_str2
     assert received_bodies[2] == ""  # GET request has no body
     assert received_bodies[3] == text_data
+
+
+async def test_client_middleware_update_shorter_body(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that middleware can update request body using update_body method."""
+
+    async def handler(request: web.Request) -> web.Response:
+        body = await request.text()
+        return web.Response(text=body)
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    async def update_body_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        # Update the request body
+        await request.update_body(b"short body")
+        return await handler(request)
+
+    async with ClientSession(middlewares=(update_body_middleware,)) as session:
+        async with session.post(server.make_url("/"), data=b"original body") as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "short body"
+
+
+async def test_client_middleware_update_longer_body(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that middleware can update request body using update_body method."""
+
+    async def handler(request: web.Request) -> web.Response:
+        body = await request.text()
+        return web.Response(text=body)
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    async def update_body_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        # Update the request body
+        await request.update_body(b"much much longer body")
+        return await handler(request)
+
+    async with ClientSession(middlewares=(update_body_middleware,)) as session:
+        async with session.post(server.make_url("/"), data=b"original body") as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "much much longer body"
+
+
+async def test_client_middleware_update_string_body(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that middleware can update request body using update_body method."""
+
+    async def handler(request: web.Request) -> web.Response:
+        body = await request.text()
+        return web.Response(text=body)
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    async def update_body_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        # Update the request body
+        await request.update_body("this is a string")
+        return await handler(request)
+
+    async with ClientSession(middlewares=(update_body_middleware,)) as session:
+        async with session.post(server.make_url("/"), data="original string") as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "this is a string"
+
+
+async def test_client_middleware_switch_types(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that middleware can update request body using update_body method."""
+
+    async def handler(request: web.Request) -> web.Response:
+        body = await request.text()
+        return web.Response(text=body)
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    async def update_body_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        # Update the request body
+        await request.update_body("now a string")
+        return await handler(request)
+
+    async with ClientSession(middlewares=(update_body_middleware,)) as session:
+        async with session.post(server.make_url("/"), data=b"original bytes") as resp:
+            assert resp.status == 200
+            text = await resp.text()
+            assert text == "now a string"

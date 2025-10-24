@@ -4,17 +4,10 @@ import pathlib
 import platform
 import ssl
 import sys
+from collections.abc import Awaitable, Callable, Iterator
+from contextlib import suppress
 from re import match as match_regex
-from typing import (
-    TYPE_CHECKING,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterator,
-    Optional,
-    TypedDict,
-    Union,
-)
+from typing import TYPE_CHECKING, TypedDict
 from unittest import mock
 from uuid import uuid4
 
@@ -34,8 +27,8 @@ ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
 class _ResponseArgs(TypedDict):
     status: int
-    headers: Optional[Dict[str, str]]
-    body: Optional[bytes]
+    headers: dict[str, str] | None
+    body: bytes | None
 
 
 if sys.version_info >= (3, 11) and TYPE_CHECKING:
@@ -44,7 +37,7 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
     async def get_request(
         method: str = "GET",
         *,
-        url: Union[str, URL],
+        url: str | URL,
         trust_env: bool = False,
         **kwargs: Unpack[_RequestOptions],
     ) -> ClientResponse: ...
@@ -55,7 +48,7 @@ else:
     async def get_request(
         method: str = "GET",
         *,
-        url: Union[str, URL],
+        url: str | URL,
         trust_env: bool = False,
         **kwargs: Any,
     ) -> ClientResponse:
@@ -255,16 +248,22 @@ async def test_uvloop_secure_https_proxy(
     uvloop_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
-    conn = aiohttp.TCPConnector()
+    conn = aiohttp.TCPConnector(force_close=True)
     sess = aiohttp.ClientSession(connector=conn)
-    url = URL("https://example.com")
+    try:
+        url = URL("https://example.com")
 
-    async with sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx) as response:
-        assert response.status == 200
-
-    await sess.close()
-    await conn.close()
-    await asyncio.sleep(0.1)
+        async with sess.get(
+            url, proxy=secure_proxy_url, ssl=client_ssl_ctx
+        ) as response:
+            assert response.status == 200
+            # Ensure response body is read to completion
+            await response.read()
+    finally:
+        await sess.close()
+        await conn.close()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0.1)
 
 
 @pytest.fixture
@@ -457,6 +456,7 @@ async def test_proxy_http_acquired_cleanup(
     assert 0 == len(conn._acquired)
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -481,6 +481,7 @@ async def test_proxy_http_acquired_cleanup_force(
     assert 0 == len(conn._acquired)
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -515,6 +516,7 @@ async def test_proxy_http_multi_conn_limit(
     assert {resp.status for resp in responses} == {200}
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.xfail
@@ -830,10 +832,7 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
-    netrc_file_data = "machine 127.0.0.1 login {} password {}".format(
-        auth.login,
-        auth.password,
-    )
+    netrc_file_data = f"machine 127.0.0.1 login {auth.login} password {auth.password}"
     with netrc_file.open("w") as f:
         f.write(netrc_file_data)
     mocker.patch.dict(
@@ -858,10 +857,7 @@ async def test_proxy_from_env_http_without_auth_from_netrc(
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
-    netrc_file_data = "machine 127.0.0.2 login {} password {}".format(
-        auth.login,
-        auth.password,
-    )
+    netrc_file_data = f"machine 127.0.0.2 login {auth.login} password {auth.password}"
     with netrc_file.open("w") as f:
         f.write(netrc_file_data)
     mocker.patch.dict(
@@ -964,3 +960,46 @@ async def test_proxy_auth() -> None:
                 proxy_auth=("user", "pass"),  # type: ignore[arg-type]
             ):
                 pass
+
+
+async def test_https_proxy_connect_tunnel_session_close_no_hang(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that CONNECT tunnel connections are not pooled."""
+    # Regression test for issue #11273.
+
+    # Create a minimal proxy server
+    # The CONNECT method is handled at the protocol level, not by the handler
+    proxy_app = web.Application()
+    proxy_server = await aiohttp_server(proxy_app)
+    proxy_url = f"http://{proxy_server.host}:{proxy_server.port}"
+
+    # Create session and make HTTPS request through proxy
+    session = aiohttp.ClientSession()
+
+    try:
+        # This will fail during TLS upgrade because proxy doesn't establish tunnel
+        with suppress(aiohttp.ClientError):
+            async with session.get("https://example.com/test", proxy=proxy_url) as resp:
+                await resp.read()
+
+        # The critical test: Check if any connections were pooled with proxy=None
+        # This is the root cause of the hang - CONNECT tunnel connections
+        # should NOT be pooled
+        connector = session.connector
+        assert connector is not None
+
+        # Count connections with proxy=None in the pool
+        proxy_none_keys = [key for key in connector._conns if key.proxy is None]
+        proxy_none_count = len(proxy_none_keys)
+
+        # Before the fix, there would be a connection with proxy=None
+        # After the fix, CONNECT tunnel connections are not pooled
+        assert proxy_none_count == 0, (
+            f"Found {proxy_none_count} connections with proxy=None in pool. "
+            f"CONNECT tunnel connections should not be pooled - this is bug #11273"
+        )
+
+    finally:
+        # Clean close
+        await session.close()

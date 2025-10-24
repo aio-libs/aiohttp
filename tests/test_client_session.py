@@ -3,19 +3,12 @@ import contextlib
 import gc
 import io
 import json
+import sys
+import warnings
 from collections import deque
-from http.cookies import SimpleCookie
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    NoReturn,
-    TypedDict,
-    Union,
-)
+from collections.abc import Awaitable, Callable, Iterator
+from http.cookies import BaseCookie, SimpleCookie
+from typing import Any, NoReturn, TypedDict, cast
 from unittest import mock
 from uuid import uuid4
 
@@ -25,7 +18,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import client, hdrs, tracing, web
+from aiohttp import abc, client, hdrs, tracing, web
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ConnectionKey
@@ -33,12 +26,12 @@ from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConne
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.test_utils import make_mocked_coro
+from aiohttp.test_utils import TestServer
 from aiohttp.tracing import Trace
 
 
 class _Params(TypedDict):
-    headers: Dict[str, str]
+    headers: dict[str, str]
     max_redirects: int
     compress: str
     chunked: bool
@@ -62,7 +55,7 @@ def connector(
 
 
 @pytest.fixture
-def create_session(  # type: ignore[misc]
+def create_session(
     loop: asyncio.AbstractEventLoop,
 ) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
@@ -78,7 +71,7 @@ def create_session(  # type: ignore[misc]
 
 
 @pytest.fixture
-def session(  # type: ignore[misc]
+def session(
     create_session: Callable[..., Awaitable[ClientSession]],
     loop: asyncio.AbstractEventLoop,
 ) -> ClientSession:
@@ -95,6 +88,21 @@ def params() -> _Params:
         expect100=True,
         read_until_eof=False,
     )
+
+
+@pytest.fixture
+async def auth_server(aiohttp_server: AiohttpServer) -> TestServer:
+    """Create a server with an auth handler that returns auth header or 'no_auth'."""
+
+    async def handler(request: web.Request) -> web.Response:
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        if auth_header:
+            return web.Response(text=f"auth:{auth_header}")
+        return web.Response(text="no_auth")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    return await aiohttp_server(app)
 
 
 async def test_close_coro(
@@ -348,6 +356,93 @@ async def test_create_connector(
     assert m.called
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="Use test_ssl_shutdown_timeout_passed_to_connector_pre_311 for Python < 3.11",
+)
+async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
+    # Test default value (no warning expected)
+    async with ClientSession() as session:
+        assert isinstance(session.connector, TCPConnector)
+        assert session.connector._ssl_shutdown_timeout == 0
+
+    # Test custom value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        async with ClientSession(ssl_shutdown_timeout=1.0) as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout == 1.0
+
+    # Test None value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        async with ClientSession(ssl_shutdown_timeout=None) as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout is None
+
+    # Test that it doesn't affect when custom connector is provided
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        async with ClientSession(
+            connector=custom_conn, ssl_shutdown_timeout=1.0
+        ) as session:
+            assert session.connector is not None
+            assert isinstance(session.connector, TCPConnector)
+            assert (
+                session.connector._ssl_shutdown_timeout == 2.0
+            )  # Should use connector's value
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 11),
+    reason="This test is for Python < 3.11 runtime warning behavior",
+)
+async def test_ssl_shutdown_timeout_passed_to_connector_pre_311() -> None:
+    """Test that both deprecation and runtime warnings are issued on Python < 3.11."""
+    # Test custom value - expect both deprecation and runtime warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        async with ClientSession(ssl_shutdown_timeout=1.0) as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout == 1.0
+        # Should have deprecation warnings (from ClientSession and TCPConnector) and runtime warning
+        # ClientSession emits 1 DeprecationWarning, TCPConnector emits 1 DeprecationWarning + 1 RuntimeWarning = 3 total
+        assert len(w) == 3
+        deprecation_count = sum(
+            1 for warn in w if issubclass(warn.category, DeprecationWarning)
+        )
+        runtime_count = sum(
+            1 for warn in w if issubclass(warn.category, RuntimeWarning)
+        )
+        assert deprecation_count == 2  # One from ClientSession, one from TCPConnector
+        assert runtime_count == 1  # One from TCPConnector
+
+    # Test with custom connector
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        async with ClientSession(
+            connector=custom_conn, ssl_shutdown_timeout=1.0
+        ) as session:
+            assert session.connector is not None
+            assert isinstance(session.connector, TCPConnector)
+            assert (
+                session.connector._ssl_shutdown_timeout == 2.0
+            )  # Should use connector's value
+
+
 def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
@@ -460,9 +555,11 @@ async def test_reraise_os_error(
     create_mocked_conn: Callable[[], ResponseHandler],
 ) -> None:
     err = OSError(1, "permission error")
-    req = mock.Mock()
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.Mock(side_effect=err)
+    req._send = mock.AsyncMock(side_effect=err)
+    req._body = mock.Mock()
+    req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
 
     async def create_connection(
@@ -490,9 +587,11 @@ async def test_close_conn_on_error(
         pass
 
     err = UnexpectedException("permission error")
-    req = mock.Mock()
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.Mock(side_effect=err)
+    req._send = mock.AsyncMock(side_effect=err)
+    req._body = mock.Mock()
+    req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
 
     connections = []
@@ -500,7 +599,7 @@ async def test_close_conn_on_error(
     original_connect = session._connector.connect
 
     async def connect(
-        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+        req: ClientRequest, traces: list[Trace], timeout: aiohttp.ClientTimeout
     ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
@@ -550,8 +649,9 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.AsyncMock(return_value=resp)
+    req._send = mock.AsyncMock(return_value=resp)
     # BaseConnector allows all high level protocols by default
     connector = BaseConnector()
 
@@ -562,7 +662,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     original_connect = session._connector.connect
 
     async def connect(
-        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+        req: ClientRequest, traces: list[Trace], timeout: aiohttp.ClientTimeout
     ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
@@ -612,8 +712,9 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.AsyncMock(return_value=resp)
+    req._send = mock.AsyncMock(return_value=resp)
     # UnixConnector allows all high level protocols by default and unix sockets
     session = await create_session(
         connector=UnixConnector(path=""), request_class=req_factory
@@ -624,7 +725,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     original_connect = session._connector.connect
 
     async def connect(
-        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+        req: ClientRequest, traces: list[Trace], timeout: aiohttp.ClientTimeout
     ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
@@ -659,8 +760,43 @@ async def test_cookie_jar_usage(
 ) -> None:
     req_url = None
 
-    jar = mock.Mock()
-    jar.filter_cookies.return_value = None
+    class MockCookieJar(abc.AbstractCookieJar):
+        def __init__(self) -> None:
+            self._update_cookies_mock = mock.Mock()
+            self._filter_cookies_mock = mock.Mock(return_value=BaseCookie())
+            self._clear_mock = mock.Mock()
+            self._clear_domain_mock = mock.Mock()
+            self._items: list[Any] = []
+
+        @property
+        def quote_cookie(self) -> bool:
+            return True
+
+        def clear(self, predicate: abc.ClearCookiePredicate | None = None) -> None:
+            self._clear_mock(predicate)
+
+        def clear_domain(self, domain: str) -> None:
+            self._clear_domain_mock(domain)
+
+        def update_cookies(self, cookies: Any, response_url: URL = URL()) -> None:
+            self._update_cookies_mock(cookies, response_url)
+
+        def filter_cookies(self, request_url: URL) -> BaseCookie[str]:
+            return cast(BaseCookie[str], self._filter_cookies_mock(request_url))
+
+        def __len__(self) -> int:
+            return len(self._items)
+
+        def __iter__(self) -> Iterator[Any]:
+            return iter(self._items)
+
+    jar = MockCookieJar()
+
+    assert jar.quote_cookie is True
+    assert len(jar) == 0
+    assert list(jar) == []
+    jar.clear()
+    jar.clear_domain("example.com")
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal req_url
@@ -677,23 +813,25 @@ async def test_cookie_jar_usage(
     )
 
     # Updating the cookie jar with initial user defined cookies
-    jar.update_cookies.assert_called_with({"request": "req_value"})
+    jar._update_cookies_mock.assert_called_with({"request": "req_value"}, URL())
 
-    jar.update_cookies.reset_mock()
+    jar._update_cookies_mock.reset_mock()
     resp = await session.get("/")
     resp.release()
     assert req_url is not None
 
     # Filtering the cookie jar before sending the request,
     # getting the request URL as only parameter
-    jar.filter_cookies.assert_called_with(URL(req_url))
+    jar._filter_cookies_mock.assert_called_with(URL(req_url))
 
     # Updating the cookie jar with the response cookies
-    assert jar.update_cookies.called
-    resp_cookies = jar.update_cookies.call_args[0][0]
-    assert isinstance(resp_cookies, SimpleCookie)
-    assert "response" in resp_cookies
-    assert resp_cookies["response"].value == "resp_value"
+    assert jar._update_cookies_mock.called
+    resp_cookies = jar._update_cookies_mock.call_args[0][0]
+    # Now update_cookies is called with a list of tuples
+    assert isinstance(resp_cookies, list)
+    assert len(resp_cookies) == 1
+    assert resp_cookies[0][0] == "response"
+    assert resp_cookies[0][1].value == "resp_value"
 
 
 async def test_cookies_with_not_quoted_cookie_jar(
@@ -791,9 +929,9 @@ async def test_request_tracing(
     trace_config_ctx = mock.Mock()
     body = "This is request body"
     gathered_req_headers: CIMultiDict[str] = CIMultiDict()
-    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_start = mock.AsyncMock()
+    on_request_redirect = mock.AsyncMock()
+    on_request_end = mock.AsyncMock()
 
     with io.BytesIO() as gathered_req_body, io.BytesIO() as gathered_res_body:
 
@@ -816,7 +954,7 @@ async def test_request_tracing(
             context: object,
             params: tracing.TraceRequestHeadersSentParams,
         ) -> None:
-            gathered_req_headers.extend(**params.headers)
+            gathered_req_headers.extend(params.headers)
 
         trace_config = aiohttp.TraceConfig(
             trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -872,7 +1010,7 @@ async def test_request_tracing_url_params(
     app.router.add_get("/", root_handler)
     app.router.add_get("/redirect", redirect_handler)
 
-    mocks = [mock.Mock(side_effect=make_mocked_coro(mock.Mock())) for _ in range(7)]
+    mocks = [mock.AsyncMock() for _ in range(7)]
     (
         on_request_start,
         on_request_redirect,
@@ -900,7 +1038,7 @@ async def test_request_tracing_url_params(
         for m in mocks:
             m.reset_mock()
 
-    def to_trace_urls(mock_func: mock.Mock) -> List[URL]:
+    def to_trace_urls(mock_func: mock.Mock) -> list[URL]:
         return [call_args[0][-1].url for call_args in mock_func.call_args_list]
 
     def to_url(path: str) -> URL:
@@ -963,8 +1101,8 @@ async def test_request_tracing_url_params(
 
 
 async def test_request_tracing_exception() -> None:
-    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_exception = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_end = mock.AsyncMock()
+    on_request_exception = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_end.append(on_request_end)
@@ -1161,8 +1299,8 @@ async def test_requote_redirect_url_default_disable() -> None:
 )
 async def test_build_url_returns_expected_url(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
-    base_url: Union[URL, str, None],
-    url: Union[URL, str],
+    base_url: URL | str | None,
+    url: URL | str,
     expected_url: URL,
 ) -> None:
     session = await create_session(base_url)
@@ -1204,3 +1342,64 @@ async def test_properties(
     value = uuid4()
     setattr(session, inner_name, value)
     assert value == getattr(session, outer_name)
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_with_trust_env(auth_server: TestServer) -> None:
+    """Test that netrc authentication works with ClientSession when NETRC env var is set."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+        assert text == "auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_skipped_without_trust_env(auth_server: TestServer) -> None:
+    """Test that netrc authentication is skipped when trust_env=False."""
+    async with (
+        ClientSession(trust_env=False) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "no_auth"
+
+
+@pytest.mark.usefixtures("no_netrc")
+async def test_netrc_auth_skipped_without_netrc_env(auth_server: TestServer) -> None:
+    """Test that netrc authentication is skipped when NETRC env var is not set."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "no_auth"
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_overridden_by_explicit_auth(auth_server: TestServer) -> None:
+    """Test that explicit auth parameter overrides netrc authentication."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(
+            auth_server.make_url("/"),
+            auth=aiohttp.BasicAuth("explicit_user", "explicit_pass"),
+        ) as resp,
+    ):
+        text = await resp.text()
+        # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+        assert text == "auth:Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+
+
+@pytest.mark.usefixtures("netrc_other_host")
+async def test_netrc_auth_host_not_in_netrc(auth_server: TestServer) -> None:
+    """Test that netrc lookup returns None when host is not in netrc file."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        # Should not have auth since the host is not in netrc
+        assert text == "no_auth"

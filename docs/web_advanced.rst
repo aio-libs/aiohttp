@@ -568,9 +568,13 @@ A *middleware* is a coroutine that can modify either the request or
 response. For example, here's a simple *middleware* which appends
 ``' wink'`` to the response::
 
-    from aiohttp.web import middleware
+    from aiohttp import web
+    from typing import Callable, Awaitable
 
-    async def middleware(request, handler):
+    async def middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
         resp = await handler(request)
         resp.text = resp.text + ' wink'
         return resp
@@ -619,18 +623,25 @@ post-processing like handling *CORS* and so on.
 The following code demonstrates middlewares execution order::
 
    from aiohttp import web
+   from typing import Callable, Awaitable
 
-   async def test(request):
+   async def test(request: web.Request) -> web.Response:
        print('Handler function called')
        return web.Response(text="Hello")
 
-   async def middleware1(request, handler):
+   async def middleware1(
+       request: web.Request,
+       handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+   ) -> web.StreamResponse:
        print('Middleware 1 called')
        response = await handler(request)
        print('Middleware 1 finished')
        return response
 
-   async def middleware2(request, handler):
+   async def middleware2(
+       request: web.Request,
+       handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+   ) -> web.StreamResponse:
        print('Middleware 2 called')
        response = await handler(request)
        print('Middleware 2 finished')
@@ -648,6 +659,82 @@ Produced output::
    Handler function called
    Middleware 2 finished
    Middleware 1 finished
+
+Request Body Stream Consumption
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. warning::
+
+   When middleware reads the request body (using :meth:`~aiohttp.web.BaseRequest.read`,
+   :meth:`~aiohttp.web.BaseRequest.text`, :meth:`~aiohttp.web.BaseRequest.json`, or
+   :meth:`~aiohttp.web.BaseRequest.post`), the body stream is consumed. However, these
+   high-level methods cache their result, so subsequent calls from the handler or other
+   middleware will return the same cached value.
+
+   The important distinction is:
+
+   - High-level methods (:meth:`~aiohttp.web.BaseRequest.read`, :meth:`~aiohttp.web.BaseRequest.text`,
+     :meth:`~aiohttp.web.BaseRequest.json`, :meth:`~aiohttp.web.BaseRequest.post`) cache their
+     results internally, so they can be called multiple times and will return the same value.
+   - Direct stream access via :attr:`~aiohttp.web.BaseRequest.content` does NOT have this
+     caching behavior. Once you read from ``request.content`` directly (e.g., using
+     ``await request.content.read()``), subsequent reads will return empty bytes.
+
+Consider this middleware that logs request bodies::
+
+    from aiohttp import web
+    from typing import Callable, Awaitable
+
+    async def logging_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        # This consumes the request body stream
+        body = await request.text()
+        print(f"Request body: {body}")
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # This will return the same value that was read in the middleware
+        # (i.e., the cached result, not an empty string)
+        body = await request.text()
+        return web.Response(text=f"Received: {body}")
+
+In contrast, when accessing the stream directly (not recommended in middleware)::
+
+    async def stream_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        # Reading directly from the stream - this consumes it!
+        data = await request.content.read()
+        print(f"Stream data: {data}")
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # This will return empty bytes because the stream was already consumed
+        data = await request.content.read()
+        # data will be b'' (empty bytes)
+
+        # However, high-level methods would still work if called for the first time:
+        # body = await request.text()  # This would read from internal cache if available
+        return web.Response(text=f"Received: {data}")
+
+When working with raw stream data that needs to be shared between middleware and handlers::
+
+    async def stream_parsing_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        # Read stream once and store the data
+        raw_data = await request.content.read()
+        request['raw_body'] = raw_data
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # Access the stored data instead of reading the stream again
+        raw_data = request.get('raw_body', b'')
+        return web.Response(body=raw_data)
 
 Example
 ^^^^^^^
@@ -1181,20 +1268,13 @@ the middleware might use :meth:`BaseRequest.clone`.
    for modifying *scheme*, *host* and *remote* attributes according
    to ``Forwarded`` and ``X-Forwarded-*`` HTTP headers.
 
-Swagger support
----------------
-
-`aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_ is a
-library that allow to add Swagger documentation and embed the
-Swagger-UI into your :mod:`aiohttp.web` project.
-
 CORS support
 ------------
 
 :mod:`aiohttp.web` itself does not support `Cross-Origin Resource
 Sharing <https://en.wikipedia.org/wiki/Cross-origin_resource_sharing>`_, but
 there is an aiohttp plugin for it:
-`aiohttp_cors <https://github.com/aio-libs/aiohttp_cors>`_.
+`aiohttp-cors <https://github.com/aio-libs/aiohttp-cors>`_.
 
 
 Debug Toolbar
@@ -1237,10 +1317,8 @@ Install with ``pip``:
 
     $ pip install aiohttp-devtools
 
-* ``runserver`` provides a development server with auto-reload,
-  live-reload, static file serving.
-* ``start`` is a `cookiecutter command which does the donkey work
-  of creating new :mod:`aiohttp.web` Applications.
+``adev runserver`` provides a development server with auto-reload,
+live-reload, static file serving.
 
 Documentation and a complete tutorial of creating and running an app
 locally are available at `aiohttp-devtools`_.

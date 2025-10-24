@@ -151,6 +151,17 @@
 Environment Variables
 =====================
 
+.. envvar:: AIOHTTP_NO_EXTENSIONS
+
+   If set to a non-empty value while building from source, aiohttp will be built without speedups
+   written as C extensions. This option is primarily useful for debugging.
+
+.. envvar:: AIOHTTP_USE_SYSTEM_DEPS
+
+   If set to a non-empty value while building from source, aiohttp will be built against
+   the system installation of llhttp rather than the vendored library. This option is primarily
+   meant to be used by downstream redistributors.
+
 .. envvar:: NETRC
 
    If set, HTTP Basic Auth will be read from the file pointed to by this environment variable,

@@ -2,7 +2,7 @@ import asyncio
 import base64
 import hashlib
 import os
-from typing import Mapping, Type
+from collections.abc import Mapping
 from unittest import mock
 
 import pytest
@@ -18,7 +18,6 @@ from aiohttp import (
 from aiohttp.http import WS_KEY
 from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
-from aiohttp.test_utils import make_mocked_coro
 
 
 async def test_ws_connect(
@@ -383,7 +382,7 @@ async def test_close(
                 m_req.return_value.set_result(mresp)
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
-                writer.close = make_mocked_coro()
+                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
@@ -492,7 +491,7 @@ async def test_close_exc(
                 m_req.return_value.set_result(mresp)
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
-                writer.close = make_mocked_coro()
+                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
@@ -545,7 +544,7 @@ async def test_close_exc2(
 
 @pytest.mark.parametrize("exc", (ClientConnectionResetError, ConnectionResetError))
 async def test_send_data_after_close(
-    exc: Type[Exception],
+    exc: type[Exception],
     ws_key: str,
     key_data: bytes,
     loop: asyncio.AbstractEventLoop,
@@ -628,7 +627,7 @@ async def test_reader_read_exception(
 
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
-                writer.close = make_mocked_coro()
+                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
@@ -780,7 +779,7 @@ async def test_ws_connect_deflate_per_message(
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(mresp)
                 writer = WebSocketWriter.return_value = mock.Mock()
-                send_frame = writer.send_frame = make_mocked_coro()
+                send_frame = writer.send_frame = mock.AsyncMock()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")

@@ -2,7 +2,7 @@ import asyncio
 import sys
 import zlib
 from concurrent.futures import Executor
-from typing import Any, Final, Optional, Protocol, TypedDict, cast
+from typing import Any, Final, Protocol, TypedDict, cast
 
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
@@ -20,6 +20,17 @@ try:
     HAS_BROTLI = True
 except ImportError:
     HAS_BROTLI = False
+
+try:
+    if sys.version_info >= (3, 14):
+        from compression.zstd import ZstdDecompressor  # noqa: I900
+    else:  # TODO(PY314): Remove mentions of backports.zstd across codebase
+        from backports.zstd import ZstdDecompressor
+
+    HAS_ZSTD = True
+except ImportError:
+    HAS_ZSTD = False
+
 
 MAX_SYNC_CHUNK_SIZE = 1024
 
@@ -51,7 +62,7 @@ class ZLibBackendProtocol(Protocol):
         wbits: int = ...,
         memLevel: int = ...,
         strategy: int = ...,
-        zdict: Optional[Buffer] = ...,
+        zdict: Buffer | None = ...,
     ) -> ZLibCompressObjProtocol: ...
     def decompressobj(
         self, wbits: int = ..., zdict: Buffer = ...
@@ -124,7 +135,7 @@ def set_zlib_backend(new_zlib_backend: ZLibBackendProtocol) -> None:
 
 
 def encoding_to_mode(
-    encoding: Optional[str] = None,
+    encoding: str | None = None,
     suppress_deflate_header: bool = False,
 ) -> int:
     if encoding == "gzip":
@@ -137,8 +148,8 @@ class ZlibBaseHandler:
     def __init__(
         self,
         mode: int,
-        executor: Optional[Executor] = None,
-        max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
+        executor: Executor | None = None,
+        max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
     ):
         self._mode = mode
         self._executor = executor
@@ -148,13 +159,13 @@ class ZlibBaseHandler:
 class ZLibCompressor(ZlibBaseHandler):
     def __init__(
         self,
-        encoding: Optional[str] = None,
+        encoding: str | None = None,
         suppress_deflate_header: bool = False,
-        level: Optional[int] = None,
-        wbits: Optional[int] = None,
-        strategy: Optional[int] = None,
-        executor: Optional[Executor] = None,
-        max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
+        level: int | None = None,
+        wbits: int | None = None,
+        strategy: int | None = None,
+        executor: Executor | None = None,
+        max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
     ):
         super().__init__(
             mode=(
@@ -202,7 +213,7 @@ class ZLibCompressor(ZlibBaseHandler):
                 )
             return self.compress_sync(data)
 
-    def flush(self, mode: Optional[int] = None) -> bytes:
+    def flush(self, mode: int | None = None) -> bytes:
         return self._compressor.flush(
             mode if mode is not None else self._zlib_backend.Z_FINISH
         )
@@ -211,10 +222,10 @@ class ZLibCompressor(ZlibBaseHandler):
 class ZLibDecompressor(ZlibBaseHandler):
     def __init__(
         self,
-        encoding: Optional[str] = None,
+        encoding: str | None = None,
         suppress_deflate_header: bool = False,
-        executor: Optional[Executor] = None,
-        max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
+        executor: Executor | None = None,
+        max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
     ):
         super().__init__(
             mode=encoding_to_mode(encoding, suppress_deflate_header),
@@ -275,4 +286,20 @@ class BrotliDecompressor:
     def flush(self) -> bytes:
         if hasattr(self._obj, "flush"):
             return cast(bytes, self._obj.flush())
+        return b""
+
+
+class ZSTDDecompressor:
+    def __init__(self) -> None:
+        if not HAS_ZSTD:
+            raise RuntimeError(
+                "The zstd decompression is not available. "
+                "Please install `backports.zstd` module"
+            )
+        self._obj = ZstdDecompressor()
+
+    def decompress_sync(self, data: bytes) -> bytes:
+        return self._obj.decompress(data)
+
+    def flush(self) -> bytes:
         return b""

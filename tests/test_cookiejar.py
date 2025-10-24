@@ -1,13 +1,12 @@
-import asyncio
 import datetime
 import heapq
 import itertools
+import logging
 import pickle
-import unittest
+import sys
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
-from typing import List, Set, Tuple, Union
 from unittest import mock
 
 import pytest
@@ -187,7 +186,6 @@ async def test_constructor_with_expired(
 
 def test_save_load(
     tmp_path: Path,
-    loop: asyncio.AbstractEventLoop,
     cookies_to_send: SimpleCookie,
     cookies_to_receive: SimpleCookie,
 ) -> None:
@@ -208,9 +206,20 @@ def test_save_load(
     assert jar_test == cookies_to_receive
 
 
-async def test_update_cookie_with_unicode_domain(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+def test_save_load_partitioned_cookies(tmp_path: Path) -> None:
+    file_path = Path(str(tmp_path)) / "aiohttp.test2.cookie"
+    # export cookie jar
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["session=cookie; Partitioned"], URL("https://example.com/")
+    )
+    jar_save.save(file_path=file_path)
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+    assert jar_save._cookies == jar_load._cookies
+
+
+async def test_update_cookie_with_unicode_domain() -> None:
     cookies = (
         "idna-domain-first=first; Domain=xn--9caa.com; Path=/;",
         "idna-domain-second=second; Domain=xn--9caa.com; Path=/;",
@@ -227,9 +236,7 @@ async def test_update_cookie_with_unicode_domain(
     assert jar_test == SimpleCookie(" ".join(cookies))
 
 
-async def test_filter_cookie_with_unicode_domain(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_filter_cookie_with_unicode_domain() -> None:
     jar = CookieJar()
     jar.update_cookies(
         SimpleCookie("idna-domain-first=first; Domain=xn--9caa.com; Path=/; ")
@@ -238,7 +245,7 @@ async def test_filter_cookie_with_unicode_domain(
     assert len(jar.filter_cookies(URL("http://xn--9caa.com"))) == 1
 
 
-async def test_filter_cookies_str_deprecated(loop: asyncio.AbstractEventLoop) -> None:
+async def test_filter_cookies_str_deprecated() -> None:
     jar = CookieJar()
     with pytest.deprecated_call(
         match="The method accepts yarl.URL instances only, got <class 'str'>",
@@ -301,9 +308,8 @@ async def test_filter_cookies_str_deprecated(loop: asyncio.AbstractEventLoop) ->
     ),
 )
 async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
-    loop: asyncio.AbstractEventLoop,
     url: str,
-    expected_cookies: Set[str],
+    expected_cookies: set[str],
 ) -> None:
     jar = CookieJar()
     cookie = SimpleCookie(
@@ -336,7 +342,7 @@ async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
         assert c in expected_cookies
 
 
-async def test_domain_filter_ip_cookie_send(loop: asyncio.AbstractEventLoop) -> None:
+async def test_domain_filter_ip_cookie_send() -> None:
     jar = CookieJar()
     cookies = SimpleCookie(
         "shared-cookie=first; "
@@ -387,6 +393,8 @@ async def test_domain_filter_ip_cookie_receive(
         ("custom-cookie=value/one;", 'Cookie: custom-cookie="value/one"', True),
         ("custom-cookie=value1;", "Cookie: custom-cookie=value1", True),
         ("custom-cookie=value/one;", "Cookie: custom-cookie=value/one", False),
+        ('foo="quoted_value"', 'Cookie: foo="quoted_value"', True),
+        ('foo="quoted_value"; domain=127.0.0.1', 'Cookie: foo="quoted_value"', True),
     ],
     ids=(
         "IP domain preserved",
@@ -394,10 +402,12 @@ async def test_domain_filter_ip_cookie_receive(
         "quoted cookie with special char",
         "quoted cookie w/o special char",
         "unquoted cookie with special char",
+        "pre-quoted cookie",
+        "pre-quoted cookie with domain",
     ),
 )
 async def test_quotes_correctly_based_on_input(
-    loop: asyncio.AbstractEventLoop, cookies: str, expected: str, quote_bool: bool
+    cookies: str, expected: str, quote_bool: bool
 ) -> None:
     jar = CookieJar(unsafe=True, quote_cookie=quote_bool)
     jar.update_cookies(SimpleCookie(cookies))
@@ -405,7 +415,7 @@ async def test_quotes_correctly_based_on_input(
     assert cookies_sent == expected
 
 
-async def test_ignore_domain_ending_with_dot(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ignore_domain_ending_with_dot() -> None:
     jar = CookieJar(unsafe=True)
     jar.update_cookies(
         SimpleCookie("cookie=val; Domain=example.com.;"), URL("http://www.example.com")
@@ -416,92 +426,40 @@ async def test_ignore_domain_ending_with_dot(loop: asyncio.AbstractEventLoop) ->
     assert cookies_sent.output(header="Cookie:") == ""
 
 
-class TestCookieJarBase(unittest.TestCase):
-    cookies_to_receive: SimpleCookie
-    cookies_to_send: SimpleCookie
-    loop: asyncio.AbstractEventLoop
-    jar: CookieJar
-
-    def setUp(self) -> None:
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-        # N.B. those need to be overridden in child test cases
-        async def make_jar() -> CookieJar:
-            return CookieJar()
-
-        self.jar = self.loop.run_until_complete(make_jar())
-
-    def tearDown(self) -> None:
-        self.loop.close()
+class TestCookieJarSafe:
+    @pytest.fixture(autouse=True)
+    def setup_cookies(
+        self,
+        cookies_to_send_with_expired: SimpleCookie,
+        cookies_to_receive: SimpleCookie,
+    ) -> None:
+        self.cookies_to_send = cookies_to_send_with_expired
+        self.cookies_to_receive = cookies_to_receive
 
     def request_reply_with_same_url(
         self, url: str
-    ) -> Tuple["BaseCookie[str]", SimpleCookie]:
-        self.jar.update_cookies(self.cookies_to_send)
-        cookies_sent = self.jar.filter_cookies(URL(url))
+    ) -> tuple["BaseCookie[str]", SimpleCookie]:
+        jar = CookieJar()
+        jar.update_cookies(self.cookies_to_send)
+        cookies_sent = jar.filter_cookies(URL(url))
 
-        self.jar.clear()
+        jar.clear()
 
-        self.jar.update_cookies(self.cookies_to_receive, URL(url))
+        jar.update_cookies(self.cookies_to_receive, URL(url))
         cookies_received = SimpleCookie()
-        for cookie in self.jar:
+        for cookie in jar:
             dict.__setitem__(cookies_received, cookie.key, cookie)
 
-        self.jar.clear()
+        jar.clear()
 
         return cookies_sent, cookies_received
-
-
-class TestCookieJarSafe(TestCookieJarBase):
-    def setUp(self) -> None:
-        super().setUp()
-
-        self.cookies_to_send = SimpleCookie(
-            "shared-cookie=first; "
-            "domain-cookie=second; Domain=example.com; "
-            "subdomain1-cookie=third; Domain=test1.example.com; "
-            "subdomain2-cookie=fourth; Domain=test2.example.com; "
-            "dotted-domain-cookie=fifth; Domain=.example.com; "
-            "different-domain-cookie=sixth; Domain=different.org; "
-            "secure-cookie=seventh; Domain=secure.com; Secure; "
-            "no-path-cookie=eighth; Domain=pathtest.com; "
-            "path1-cookie=ninth; Domain=pathtest.com; Path=/; "
-            "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
-            "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
-            "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
-            "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
-            " Expires=Tue, 1 Jan 1980 12:00:00 GMT; "
-            "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
-            " Max-Age=60; "
-            "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
-            " Max-Age=string; "
-            "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
-            " Expires=string;"
-        )
-
-        self.cookies_to_receive = SimpleCookie(
-            "unconstrained-cookie=first; Path=/; "
-            "domain-cookie=second; Domain=example.com; Path=/; "
-            "subdomain1-cookie=third; Domain=test1.example.com; Path=/; "
-            "subdomain2-cookie=fourth; Domain=test2.example.com; Path=/; "
-            "dotted-domain-cookie=fifth; Domain=.example.com; Path=/; "
-            "different-domain-cookie=sixth; Domain=different.org; Path=/; "
-            "no-path-cookie=seventh; Domain=pathtest.com; "
-            "path-cookie=eighth; Domain=pathtest.com; Path=/somepath; "
-            "wrong-path-cookie=ninth; Domain=pathtest.com; Path=somepath;"
-        )
-
-        async def make_jar() -> CookieJar:
-            return CookieJar()
-
-        self.jar = self.loop.run_until_complete(make_jar())
 
     def timed_request(
         self, url: str, update_time: float, send_time: float
     ) -> "BaseCookie[str]":
-        freeze_update_time: Union[datetime.datetime, datetime.timedelta]
-        freeze_send_time: Union[datetime.datetime, datetime.timedelta]
+        jar = CookieJar()
+        freeze_update_time: datetime.datetime | datetime.timedelta
+        freeze_send_time: datetime.datetime | datetime.timedelta
         if isinstance(update_time, int):
             freeze_update_time = datetime.timedelta(seconds=update_time)
         else:
@@ -512,12 +470,12 @@ class TestCookieJarSafe(TestCookieJarBase):
             freeze_send_time = datetime.datetime.fromtimestamp(send_time)
 
         with freeze_time(freeze_update_time):
-            self.jar.update_cookies(self.cookies_to_send)
+            jar.update_cookies(self.cookies_to_send)
 
         with freeze_time(freeze_send_time):
-            cookies_sent = self.jar.filter_cookies(URL(url))
+            cookies_sent = jar.filter_cookies(URL(url))
 
-        self.jar.clear()
+        jar.clear()
 
         return cookies_sent
 
@@ -526,180 +484,169 @@ class TestCookieJarSafe(TestCookieJarBase):
             "http://example.com/"
         )
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {"shared-cookie", "domain-cookie", "dotted-domain-cookie"},
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "domain-cookie",
+            "dotted-domain-cookie",
+        }
 
-        self.assertEqual(
-            set(cookies_received.keys()),
-            {"unconstrained-cookie", "domain-cookie", "dotted-domain-cookie"},
-        )
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "domain-cookie",
+            "dotted-domain-cookie",
+        }
 
     def test_domain_filter_same_host_and_subdomain(self) -> None:
         cookies_sent, cookies_received = self.request_reply_with_same_url(
             "http://test1.example.com/"
         )
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {
-                "shared-cookie",
-                "domain-cookie",
-                "subdomain1-cookie",
-                "dotted-domain-cookie",
-            },
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "domain-cookie",
+            "subdomain1-cookie",
+            "dotted-domain-cookie",
+        }
 
-        self.assertEqual(
-            set(cookies_received.keys()),
-            {
-                "unconstrained-cookie",
-                "domain-cookie",
-                "subdomain1-cookie",
-                "dotted-domain-cookie",
-            },
-        )
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "domain-cookie",
+            "subdomain1-cookie",
+            "dotted-domain-cookie",
+        }
 
     def test_domain_filter_same_host_diff_subdomain(self) -> None:
         cookies_sent, cookies_received = self.request_reply_with_same_url(
             "http://different.example.com/"
         )
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {"shared-cookie", "domain-cookie", "dotted-domain-cookie"},
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "domain-cookie",
+            "dotted-domain-cookie",
+        }
 
-        self.assertEqual(
-            set(cookies_received.keys()),
-            {"unconstrained-cookie", "domain-cookie", "dotted-domain-cookie"},
-        )
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "domain-cookie",
+            "dotted-domain-cookie",
+        }
 
     def test_domain_filter_diff_host(self) -> None:
         cookies_sent, cookies_received = self.request_reply_with_same_url(
             "http://different.org/"
         )
 
-        self.assertEqual(
-            set(cookies_sent.keys()), {"shared-cookie", "different-domain-cookie"}
-        )
+        assert set(cookies_sent.keys()) == {"shared-cookie", "different-domain-cookie"}
 
-        self.assertEqual(
-            set(cookies_received.keys()),
-            {"unconstrained-cookie", "different-domain-cookie"},
-        )
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "different-domain-cookie",
+        }
 
-    def test_domain_filter_host_only(self) -> None:
-        self.jar.update_cookies(self.cookies_to_receive, URL("http://example.com/"))
+    def test_domain_filter_host_only(self, cookies_to_receive: SimpleCookie) -> None:
+        jar = CookieJar()
+        jar.update_cookies(cookies_to_receive, URL("http://example.com/"))
         sub_cookie = SimpleCookie("subdomain=spam; Path=/;")
-        self.jar.update_cookies(sub_cookie, URL("http://foo.example.com/"))
+        jar.update_cookies(sub_cookie, URL("http://foo.example.com/"))
 
-        cookies_sent = self.jar.filter_cookies(URL("http://foo.example.com/"))
-        self.assertIn("subdomain", set(cookies_sent.keys()))
-        self.assertNotIn("unconstrained-cookie", set(cookies_sent.keys()))
+        cookies_sent = jar.filter_cookies(URL("http://foo.example.com/"))
+        assert "subdomain" in set(cookies_sent.keys())
+        assert "unconstrained-cookie" not in set(cookies_sent.keys())
 
     def test_secure_filter(self) -> None:
         cookies_sent, _ = self.request_reply_with_same_url("http://secure.com/")
 
-        self.assertEqual(set(cookies_sent.keys()), {"shared-cookie"})
+        assert set(cookies_sent.keys()) == {"shared-cookie"}
 
         cookies_sent, _ = self.request_reply_with_same_url("https://secure.com/")
 
-        self.assertEqual(set(cookies_sent.keys()), {"shared-cookie", "secure-cookie"})
+        assert set(cookies_sent.keys()) == {"shared-cookie", "secure-cookie"}
 
     def test_path_filter_root(self) -> None:
         cookies_sent, _ = self.request_reply_with_same_url("http://pathtest.com/")
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {"shared-cookie", "no-path-cookie", "path1-cookie"},
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+        }
 
     def test_path_filter_folder(self) -> None:
         cookies_sent, _ = self.request_reply_with_same_url("http://pathtest.com/one/")
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {"shared-cookie", "no-path-cookie", "path1-cookie", "path2-cookie"},
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+            "path2-cookie",
+        }
 
     def test_path_filter_file(self) -> None:
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two"
         )
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {
-                "shared-cookie",
-                "no-path-cookie",
-                "path1-cookie",
-                "path2-cookie",
-                "path3-cookie",
-            },
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+            "path2-cookie",
+            "path3-cookie",
+        }
 
     def test_path_filter_subfolder(self) -> None:
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/"
         )
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {
-                "shared-cookie",
-                "no-path-cookie",
-                "path1-cookie",
-                "path2-cookie",
-                "path3-cookie",
-                "path4-cookie",
-            },
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+            "path2-cookie",
+            "path3-cookie",
+            "path4-cookie",
+        }
 
     def test_path_filter_subsubfolder(self) -> None:
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/one/two/three/"
         )
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {
-                "shared-cookie",
-                "no-path-cookie",
-                "path1-cookie",
-                "path2-cookie",
-                "path3-cookie",
-                "path4-cookie",
-            },
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+            "path2-cookie",
+            "path3-cookie",
+            "path4-cookie",
+        }
 
     def test_path_filter_different_folder(self) -> None:
         cookies_sent, _ = self.request_reply_with_same_url(
             "http://pathtest.com/hundred/"
         )
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {"shared-cookie", "no-path-cookie", "path1-cookie"},
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "no-path-cookie",
+            "path1-cookie",
+        }
 
     def test_path_value(self) -> None:
         _, cookies_received = self.request_reply_with_same_url("http://pathtest.com/")
 
-        self.assertEqual(
-            set(cookies_received.keys()),
-            {
-                "unconstrained-cookie",
-                "no-path-cookie",
-                "path-cookie",
-                "wrong-path-cookie",
-            },
-        )
+        assert set(cookies_received.keys()) == {
+            "unconstrained-cookie",
+            "no-path-cookie",
+            "path-cookie",
+            "wrong-path-cookie",
+        }
 
-        self.assertEqual(cookies_received["no-path-cookie"]["path"], "/")
-        self.assertEqual(cookies_received["path-cookie"]["path"], "/somepath")
-        self.assertEqual(cookies_received["wrong-path-cookie"]["path"], "/")
+        assert cookies_received["no-path-cookie"]["path"] == "/"
+        assert cookies_received["path-cookie"]["path"] == "/somepath"
+        assert cookies_received["wrong-path-cookie"]["path"] == "/"
 
     def test_expires(self) -> None:
         ts_before = datetime.datetime(
@@ -714,40 +661,41 @@ class TestCookieJarSafe(TestCookieJarBase):
             "http://expirestest.com/", ts_before, ts_before
         )
 
-        self.assertEqual(set(cookies_sent.keys()), {"shared-cookie", "expires-cookie"})
+        assert set(cookies_sent.keys()) == {"shared-cookie", "expires-cookie"}
 
         cookies_sent = self.timed_request(
             "http://expirestest.com/", ts_before, ts_after
         )
 
-        self.assertEqual(set(cookies_sent.keys()), {"shared-cookie"})
+        assert set(cookies_sent.keys()) == {"shared-cookie"}
 
     def test_max_age(self) -> None:
         cookies_sent = self.timed_request("http://maxagetest.com/", 1000, 1000)
 
-        self.assertEqual(set(cookies_sent.keys()), {"shared-cookie", "max-age-cookie"})
+        assert set(cookies_sent.keys()) == {"shared-cookie", "max-age-cookie"}
 
         cookies_sent = self.timed_request("http://maxagetest.com/", 1000, 2000)
 
-        self.assertEqual(set(cookies_sent.keys()), {"shared-cookie"})
+        assert set(cookies_sent.keys()) == {"shared-cookie"}
 
     def test_invalid_values(self) -> None:
         cookies_sent, cookies_received = self.request_reply_with_same_url(
             "http://invalid-values.com/"
         )
 
-        self.assertEqual(
-            set(cookies_sent.keys()),
-            {"shared-cookie", "invalid-max-age-cookie", "invalid-expires-cookie"},
-        )
+        assert set(cookies_sent.keys()) == {
+            "shared-cookie",
+            "invalid-max-age-cookie",
+            "invalid-expires-cookie",
+        }
 
         cookie = cookies_sent["invalid-max-age-cookie"]
-        self.assertEqual(cookie["max-age"], "")
+        assert cookie["max-age"] == ""
 
         cookie = cookies_sent["invalid-expires-cookie"]
-        self.assertEqual(cookie["expires"], "")
+        assert cookie["expires"] == ""
 
-    def test_cookie_not_expired_when_added_after_removal(self) -> None:
+    async def test_cookie_not_expired_when_added_after_removal(self) -> None:
         # Test case for https://github.com/aio-libs/aiohttp/issues/2084
         timestamps = [
             533588.993,
@@ -763,10 +711,7 @@ class TestCookieJarSafe(TestCookieJarBase):
             timestamps, itertools.cycle([timestamps[-1]])
         )
 
-        async def make_jar() -> CookieJar:
-            return CookieJar(unsafe=True)
-
-        jar = self.loop.run_until_complete(make_jar())
+        jar = CookieJar(unsafe=True)
         # Remove `foo` cookie.
         jar.update_cookies(SimpleCookie('foo=""; Max-Age=0'))
         # Set `foo` cookie to `bar`.
@@ -775,11 +720,8 @@ class TestCookieJarSafe(TestCookieJarBase):
         # Assert that there is a cookie.
         assert len(jar) == 1
 
-    def test_path_filter_diff_folder_same_name(self) -> None:
-        async def make_jar() -> CookieJar:
-            return CookieJar(unsafe=True)
-
-        jar = self.loop.run_until_complete(make_jar())
+    async def test_path_filter_diff_folder_same_name(self) -> None:
+        jar = CookieJar(unsafe=True)
 
         jar.update_cookies(
             SimpleCookie("path-cookie=zero; Domain=pathtest.com; Path=/; ")
@@ -787,23 +729,20 @@ class TestCookieJarSafe(TestCookieJarBase):
         jar.update_cookies(
             SimpleCookie("path-cookie=one; Domain=pathtest.com; Path=/one; ")
         )
-        self.assertEqual(len(jar), 2)
+        assert len(jar) == 2
 
         jar_filtered = jar.filter_cookies(URL("http://pathtest.com/"))
-        self.assertEqual(len(jar_filtered), 1)
-        self.assertEqual(jar_filtered["path-cookie"].value, "zero")
+        assert len(jar_filtered) == 1
+        assert jar_filtered["path-cookie"].value == "zero"
 
         jar_filtered = jar.filter_cookies(URL("http://pathtest.com/one"))
-        self.assertEqual(len(jar_filtered), 1)
-        self.assertEqual(jar_filtered["path-cookie"].value, "one")
+        assert len(jar_filtered) == 1
+        assert jar_filtered["path-cookie"].value == "one"
 
-    def test_path_filter_diff_folder_same_name_return_best_match_independent_from_put_order(
+    async def test_path_filter_diff_folder_same_name_return_best_match_independent_from_put_order(
         self,
     ) -> None:
-        async def make_jar() -> CookieJar:
-            return CookieJar(unsafe=True)
-
-        jar = self.loop.run_until_complete(make_jar())
+        jar = CookieJar(unsafe=True)
         jar.update_cookies(
             SimpleCookie("path-cookie=one; Domain=pathtest.com; Path=/one; ")
         )
@@ -813,19 +752,19 @@ class TestCookieJarSafe(TestCookieJarBase):
         jar.update_cookies(
             SimpleCookie("path-cookie=two; Domain=pathtest.com; Path=/second; ")
         )
-        self.assertEqual(len(jar), 3)
+        assert len(jar) == 3
 
         jar_filtered = jar.filter_cookies(URL("http://pathtest.com/"))
-        self.assertEqual(len(jar_filtered), 1)
-        self.assertEqual(jar_filtered["path-cookie"].value, "zero")
+        assert len(jar_filtered) == 1
+        assert jar_filtered["path-cookie"].value == "zero"
 
         jar_filtered = jar.filter_cookies(URL("http://pathtest.com/second"))
-        self.assertEqual(len(jar_filtered), 1)
-        self.assertEqual(jar_filtered["path-cookie"].value, "two")
+        assert len(jar_filtered) == 1
+        assert jar_filtered["path-cookie"].value == "two"
 
         jar_filtered = jar.filter_cookies(URL("http://pathtest.com/one"))
-        self.assertEqual(len(jar_filtered), 1)
-        self.assertEqual(jar_filtered["path-cookie"].value, "one")
+        assert len(jar_filtered) == 1
+        assert jar_filtered["path-cookie"].value == "one"
 
 
 async def test_dummy_cookie_jar() -> None:
@@ -1110,7 +1049,11 @@ def test_pickle_format(cookies_to_send: SimpleCookie) -> None:
         with file_path.open("wb") as f:
             pickle.dump(cookies, f, pickle.HIGHEST_PROTOCOL)
     """
-    pickled = b"\x80\x04\x95\xc8\x0b\x00\x00\x00\x00\x00\x00\x8c\x0bcollections\x94\x8c\x0bdefaultdict\x94\x93\x94\x8c\x0chttp.cookies\x94\x8c\x0cSimpleCookie\x94\x93\x94\x85\x94R\x94(\x8c\x00\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rshared-cookie\x94h\x03\x8c\x06Morsel\x94\x93\x94)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\x01/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x08\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(\x8c\x03key\x94h\x0b\x8c\x05value\x94\x8c\x05first\x94\x8c\x0bcoded_value\x94h\x1cubs\x8c\x0bexample.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\rdomain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x1e\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah!h\x1b\x8c\x06second\x94h\x1dh-ub\x8c\x14dotted-domain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0bexample.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah.h\x1b\x8c\x05fifth\x94h\x1dh;ubu\x8c\x11test1.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain1-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h<\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah?h\x1b\x8c\x05third\x94h\x1dhKubs\x8c\x11test2.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain2-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94hL\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ahOh\x1b\x8c\x06fourth\x94h\x1dh[ubs\x8c\rdifferent.org\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x17different-domain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\\\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah_h\x1b\x8c\x05sixth\x94h\x1dhkubs\x8c\nsecure.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rsecure-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94hl\x8c\x07max-age\x94h\x08\x8c\x06secure\x94\x88\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ahoh\x1b\x8c\x07seventh\x94h\x1dh{ubs\x8c\x0cpathtest.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x0eno-path-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h|\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x7fh\x1b\x8c\x06eighth\x94h\x1dh\x8bub\x8c\x0cpath1-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0cpathtest.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x8ch\x1b\x8c\x05ninth\x94h\x1dh\x99ubu\x8c\x0cpathtest.com\x94\x8c\x04/one\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath2-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x9b\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x9a\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x9eh\x1b\x8c\x05tenth\x94h\x1dh\xaaubs\x8c\x0cpathtest.com\x94\x8c\x08/one/two\x94\x86\x94h\x05)\x81\x94(\x8c\x0cpath3-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\xac\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xab\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xafh\x1b\x8c\x08eleventh\x94h\x1dh\xbbub\x8c\x0cpath4-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\t/one/two/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0cpathtest.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xbch\x1b\x8c\x07twelfth\x94h\x1dh\xcaubu\x8c\x0fexpirestest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0eexpires-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94\x8c\x1cTue, 1 Jan 2999 12:00:00 GMT\x94\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xcb\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xceh\x1b\x8c\nthirteenth\x94h\x1dh\xdbubs\x8c\x0emaxagetest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0emax-age-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xdc\x8c\x07max-age\x94\x8c\x0260\x94\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xdfh\x1b\x8c\nfourteenth\x94h\x1dh\xecubs\x8c\x12invalid-values.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x16invalid-max-age-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xed\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xf0h\x1b\x8c\tfifteenth\x94h\x1dh\xfcub\x8c\x16invalid-expires-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x12invalid-values.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xfdh\x1b\x8c\tsixteenth\x94h\x1dj\n\x01\x00\x00ubuu."
+    if sys.version_info < (3, 14):
+        pickled = b"\x80\x04\x95\xc8\x0b\x00\x00\x00\x00\x00\x00\x8c\x0bcollections\x94\x8c\x0bdefaultdict\x94\x93\x94\x8c\x0chttp.cookies\x94\x8c\x0cSimpleCookie\x94\x93\x94\x85\x94R\x94(\x8c\x00\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rshared-cookie\x94h\x03\x8c\x06Morsel\x94\x93\x94)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\x01/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x08\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(\x8c\x03key\x94h\x0b\x8c\x05value\x94\x8c\x05first\x94\x8c\x0bcoded_value\x94h\x1cubs\x8c\x0bexample.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\rdomain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x1e\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah!h\x1b\x8c\x06second\x94h\x1dh-ub\x8c\x14dotted-domain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0bexample.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah.h\x1b\x8c\x05fifth\x94h\x1dh;ubu\x8c\x11test1.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain1-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h<\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah?h\x1b\x8c\x05third\x94h\x1dhKubs\x8c\x11test2.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain2-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94hL\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ahOh\x1b\x8c\x06fourth\x94h\x1dh[ubs\x8c\rdifferent.org\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x17different-domain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\\\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah_h\x1b\x8c\x05sixth\x94h\x1dhkubs\x8c\nsecure.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rsecure-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94hl\x8c\x07max-age\x94h\x08\x8c\x06secure\x94\x88\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ahoh\x1b\x8c\x07seventh\x94h\x1dh{ubs\x8c\x0cpathtest.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x0eno-path-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h|\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x7fh\x1b\x8c\x06eighth\x94h\x1dh\x8bub\x8c\x0cpath1-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0cpathtest.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x8ch\x1b\x8c\x05ninth\x94h\x1dh\x99ubu\x8c\x0cpathtest.com\x94\x8c\x04/one\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath2-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x9b\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x9a\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x9eh\x1b\x8c\x05tenth\x94h\x1dh\xaaubs\x8c\x0cpathtest.com\x94\x8c\x08/one/two\x94\x86\x94h\x05)\x81\x94(\x8c\x0cpath3-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\xac\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xab\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xafh\x1b\x8c\x08eleventh\x94h\x1dh\xbbub\x8c\x0cpath4-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\t/one/two/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0cpathtest.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xbch\x1b\x8c\x07twelfth\x94h\x1dh\xcaubu\x8c\x0fexpirestest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0eexpires-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94\x8c\x1cTue, 1 Jan 2999 12:00:00 GMT\x94\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xcb\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xceh\x1b\x8c\nthirteenth\x94h\x1dh\xdbubs\x8c\x0emaxagetest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0emax-age-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xdc\x8c\x07max-age\x94\x8c\x0260\x94\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xdfh\x1b\x8c\nfourteenth\x94h\x1dh\xecubs\x8c\x12invalid-values.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x16invalid-max-age-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xed\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xf0h\x1b\x8c\tfifteenth\x94h\x1dh\xfcub\x8c\x16invalid-expires-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x12invalid-values.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xfdh\x1b\x8c\tsixteenth\x94h\x1dj\n\x01\x00\x00ubuu."
+    else:
+        pickled = b'\x80\x05\x95\x06\x08\x00\x00\x00\x00\x00\x00\x8c\x0bcollections\x94\x8c\x0bdefaultdict\x94\x93\x94\x8c\x0chttp.cookies\x94\x8c\x0cSimpleCookie\x94\x93\x94\x85\x94R\x94(\x8c\x00\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rshared-cookie\x94h\x03\x8c\x06Morsel\x94\x93\x94)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\x01/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x08\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08\x8c\x0bpartitioned\x94h\x08u}\x94(\x8c\x03key\x94h\x0b\x8c\x05value\x94\x8c\x05first\x94\x8c\x0bcoded_value\x94h\x1dubs\x8c\x0bexample.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\rdomain-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h\x1fh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh"h\x1c\x8c\x06second\x94h\x1eh%ub\x8c\x14dotted-domain-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13\x8c\x0bexample.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh&h\x1c\x8c\x05fifth\x94h\x1eh*ubu\x8c\x11test1.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain1-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h+h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh.h\x1c\x8c\x05third\x94h\x1eh1ubs\x8c\x11test2.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain2-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h2h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh5h\x1c\x8c\x06fourth\x94h\x1eh8ubs\x8c\rdifferent.org\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x17different-domain-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h9h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh<h\x1c\x8c\x05sixth\x94h\x1eh?ubs\x8c\nsecure.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rsecure-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h@h\x14h\x08h\x15\x88h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhCh\x1c\x8c\x07seventh\x94h\x1ehFubs\x8c\x0cpathtest.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x0eno-path-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13hGh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhJh\x1c\x8c\x06eighth\x94h\x1ehMub\x8c\x0cpath1-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13\x8c\x0cpathtest.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhNh\x1c\x8c\x05ninth\x94h\x1ehRubu\x8c\x0cpathtest.com\x94\x8c\x04/one\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath2-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10hTh\x12h\x08h\x13hSh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhWh\x1c\x8c\x05tenth\x94h\x1ehZubs\x8c\x0cpathtest.com\x94\x8c\x08/one/two\x94\x86\x94h\x05)\x81\x94(\x8c\x0cpath3-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\\h\x12h\x08h\x13h[h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh_h\x1c\x8c\x08eleventh\x94h\x1ehbub\x8c\x0cpath4-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10\x8c\t/one/two/\x94h\x12h\x08h\x13\x8c\x0cpathtest.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhch\x1c\x8c\x07twelfth\x94h\x1ehhubu\x8c\x0fexpirestest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0eexpires-cookie\x94h\r)\x81\x94(h\x0f\x8c\x1cTue, 1 Jan 2999 12:00:00 GMT\x94h\x10h\x11h\x12h\x08h\x13hih\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhlh\x1c\x8c\nthirteenth\x94h\x1ehpubs\x8c\x0emaxagetest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0emax-age-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13hqh\x14\x8c\x0260\x94h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhth\x1c\x8c\nfourteenth\x94h\x1ehxubs\x8c\x12invalid-values.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x16invalid-max-age-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13hyh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh|h\x1c\x8c\tfifteenth\x94h\x1eh\x7fub\x8c\x16invalid-expires-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13\x8c\x12invalid-values.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh\x80h\x1c\x8c\tsixteenth\x94h\x1eh\x84ubuu.'
+
     cookies = pickle.loads(pickled)
 
     cj = CookieJar()
@@ -1129,7 +1072,7 @@ def test_pickle_format(cookies_to_send: SimpleCookie) -> None:
     ],
 )
 async def test_treat_as_secure_origin_init(
-    url: Union[str, URL, List[str], List[URL]],
+    url: str | URL | list[str] | list[URL],
 ) -> None:
     jar = CookieJar(unsafe=True, treat_as_secure_origin=url)
     assert jar._treat_as_secure_origin == frozenset({URL("http://127.0.0.1")})
@@ -1151,3 +1094,473 @@ async def test_treat_as_secure_origin() -> None:
     assert len(jar) == 1
     filtered_cookies = jar.filter_cookies(request_url=endpoint)
     assert len(filtered_cookies) == 1
+
+
+async def test_filter_cookies_does_not_leak_memory() -> None:
+    """Test that filter_cookies doesn't create empty cookie entries.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/11052
+    """
+    jar = CookieJar()
+
+    # Set a cookie with Path=/
+    jar.update_cookies({"test_cookie": "value; Path=/"}, URL("http://example.com/"))
+
+    # Check initial state
+    assert len(jar) == 1
+    initial_storage_size = len(jar._cookies)
+    initial_morsel_cache_size = len(jar._morsel_cache)
+
+    # Make multiple requests with different paths
+    paths = [
+        "/",
+        "/api",
+        "/api/v1",
+        "/api/v1/users",
+        "/api/v1/users/123",
+        "/static/css/style.css",
+        "/images/logo.png",
+    ]
+
+    for path in paths:
+        url = URL(f"http://example.com{path}")
+        filtered = jar.filter_cookies(url)
+        # Should still get the cookie
+        assert len(filtered) == 1
+        assert "test_cookie" in filtered
+
+    # Storage size should not grow significantly
+    # Only the shared cookie entry ('', '') may be added
+    final_storage_size = len(jar._cookies)
+    assert final_storage_size <= initial_storage_size + 1
+
+    # Verify _morsel_cache doesn't leak either
+    # It should only have entries for domains/paths where cookies exist
+    final_morsel_cache_size = len(jar._morsel_cache)
+    assert final_morsel_cache_size <= initial_morsel_cache_size + 1
+
+    # Verify no empty entries were created for domain-path combinations
+    for key, cookies in jar._cookies.items():
+        if key != ("", ""):  # Skip the shared cookie entry
+            assert len(cookies) > 0, f"Empty cookie entry found for {key}"
+
+    # Verify _morsel_cache entries correspond to actual cookies
+    for key, morsels in jar._morsel_cache.items():
+        assert key in jar._cookies, f"Orphaned morsel cache entry for {key}"
+        assert len(morsels) > 0, f"Empty morsel cache entry found for {key}"
+
+
+def test_update_cookies_from_headers() -> None:
+    """Test update_cookies_from_headers method."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/path")
+
+    # Test with simple cookies
+    headers = [
+        "session-id=123456; Path=/",
+        "user-pref=dark-mode; Domain=.example.com",
+        "tracking=xyz789; Secure; HttpOnly",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # Verify all cookies were added to the jar
+    assert len(jar) == 3
+
+    # Check cookies available for HTTP URL (secure cookie should be filtered out)
+    filtered_http: BaseCookie[str] = jar.filter_cookies(url)
+    assert len(filtered_http) == 2
+    assert "session-id" in filtered_http
+    assert filtered_http["session-id"].value == "123456"
+    assert "user-pref" in filtered_http
+    assert filtered_http["user-pref"].value == "dark-mode"
+    assert "tracking" not in filtered_http  # Secure cookie not available on HTTP
+
+    # Check cookies available for HTTPS URL (all cookies should be available)
+    url_https: URL = URL("https://example.com/path")
+    filtered_https: BaseCookie[str] = jar.filter_cookies(url_https)
+    assert len(filtered_https) == 3
+    assert "tracking" in filtered_https
+    assert filtered_https["tracking"].value == "xyz789"
+
+
+def test_update_cookies_from_headers_duplicate_names() -> None:
+    """Test that duplicate cookie names with different domains are preserved."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://www.example.com/")
+
+    # Headers with duplicate names but different domains
+    headers = [
+        "session-id=123456; Domain=.example.com; Path=/",
+        "session-id=789012; Domain=.www.example.com; Path=/",
+        "user-pref=light; Domain=.example.com",
+        "user-pref=dark; Domain=sub.example.com",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # Should have 3 cookies (user-pref=dark for sub.example.com is rejected)
+    assert len(jar) == 3
+
+    # Verify we have both session-id cookies
+    all_cookies: list[Morsel[str]] = list(jar)
+    session_ids: list[Morsel[str]] = [c for c in all_cookies if c.key == "session-id"]
+    assert len(session_ids) == 2
+
+    # Check their domains are different
+    domains: set[str] = {c["domain"] for c in session_ids}
+    assert domains == {"example.com", "www.example.com"}
+
+
+def test_update_cookies_from_headers_invalid_cookies(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that invalid cookies are logged and skipped."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Mix of valid and invalid cookies
+    headers = [
+        "valid-cookie=value123",
+        "invalid,cookie=value; "  # Comma character is not allowed
+        "HttpOnly; Path=/",
+        "another-valid=value456",
+    ]
+
+    # Enable logging for the client logger
+    with caplog.at_level(logging.WARNING, logger="aiohttp.client"):
+        jar.update_cookies_from_headers(headers, url)
+
+    # Check that we logged warnings for invalid cookies
+    assert "Can not load cookies" in caplog.text
+
+    # Valid cookies should still be added
+    assert len(jar) >= 2  # At least the two clearly valid cookies
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "valid-cookie" in filtered
+    assert "another-valid" in filtered
+
+
+def test_update_cookies_from_headers_with_curly_braces() -> None:
+    """Test that cookies with curly braces in names are now accepted (#2683)."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Cookie names with curly braces should now be accepted
+    headers = [
+        "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}="
+        "{925EC0B8-CB17-4BEB-8A35-1033813B0523}; "
+        "HttpOnly; Path=/",
+        "regular-cookie=value123",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # Both cookies should be added
+    assert len(jar) == 2
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}" in filtered
+    assert "regular-cookie" in filtered
+
+
+def test_update_cookies_from_headers_with_special_chars() -> None:
+    """Test that cookies with various special characters are accepted."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Various special characters that should now be accepted
+    headers = [
+        "cookie_with_parens=(value)=test123",
+        "cookie-with-brackets[index]=value456",
+        "cookie@with@at=value789",
+        "cookie:with:colons=value000",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # All cookies should be added
+    assert len(jar) == 4
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "cookie_with_parens" in filtered
+    assert "cookie-with-brackets[index]" in filtered
+    assert "cookie@with@at" in filtered
+    assert "cookie:with:colons" in filtered
+
+
+def test_update_cookies_from_headers_empty_list() -> None:
+    """Test that empty header list is handled gracefully."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Should not raise any errors
+    jar.update_cookies_from_headers([], url)
+
+    assert len(jar) == 0
+
+
+def test_update_cookies_from_headers_with_attributes() -> None:
+    """Test cookies with various attributes are handled correctly."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("https://secure.example.com/app/page")
+
+    headers = [
+        "secure-cookie=value1; Secure; HttpOnly; SameSite=Strict",
+        "expiring-cookie=value2; Max-Age=3600; Path=/app",
+        "domain-cookie=value3; Domain=.example.com; Path=/",
+        "dated-cookie=value4; Expires=Wed, 09 Jun 2030 10:18:14 GMT",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # All cookies should be stored
+    assert len(jar) == 4
+
+    # Verify secure cookie (should work on HTTPS subdomain)
+    # Note: cookies without explicit path get path from URL (/app)
+    filtered_https_root: BaseCookie[str] = jar.filter_cookies(
+        URL("https://secure.example.com/")
+    )
+    assert len(filtered_https_root) == 1  # Only domain-cookie has Path=/
+    assert "domain-cookie" in filtered_https_root
+
+    # Check app path
+    filtered_https_app: BaseCookie[str] = jar.filter_cookies(
+        URL("https://secure.example.com/app/")
+    )
+    assert len(filtered_https_app) == 4  # All cookies match
+    assert "secure-cookie" in filtered_https_app
+    assert "expiring-cookie" in filtered_https_app
+    assert "domain-cookie" in filtered_https_app
+    assert "dated-cookie" in filtered_https_app
+
+    # Secure cookie should not be available on HTTP
+    filtered_http_app: BaseCookie[str] = jar.filter_cookies(
+        URL("http://secure.example.com/app/")
+    )
+    assert "secure-cookie" not in filtered_http_app
+    assert "expiring-cookie" in filtered_http_app  # Non-secure cookies still available
+    assert "domain-cookie" in filtered_http_app
+    assert "dated-cookie" in filtered_http_app
+
+
+def test_update_cookies_from_headers_preserves_existing() -> None:
+    """Test that update_cookies_from_headers preserves existing cookies."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Add some initial cookies
+    jar.update_cookies(
+        {
+            "existing1": "value1",
+            "existing2": "value2",
+        },
+        url,
+    )
+
+    # Add more cookies via headers
+    headers = [
+        "new-cookie1=value3",
+        "new-cookie2=value4",
+    ]
+
+    jar.update_cookies_from_headers(headers, url)
+
+    # Should have all 4 cookies
+    assert len(jar) == 4
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert "existing1" in filtered
+    assert "existing2" in filtered
+    assert "new-cookie1" in filtered
+    assert "new-cookie2" in filtered
+
+
+def test_update_cookies_from_headers_overwrites_same_cookie() -> None:
+    """Test that cookies with same name/domain/path are overwritten."""
+    jar: CookieJar = CookieJar()
+    url: URL = URL("http://example.com/")
+
+    # Add initial cookie
+    jar.update_cookies({"session": "old-value"}, url)
+
+    # Update with new value via headers
+    headers = ["session=new-value"]
+    jar.update_cookies_from_headers(headers, url)
+
+    # Should still have just 1 cookie with updated value
+    assert len(jar) == 1
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert filtered["session"].value == "new-value"
+
+
+def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
+    """Test that DummyCookieJar ignores update_cookies_from_headers."""
+    jar: DummyCookieJar = DummyCookieJar()
+    url: URL = URL("http://example.com/")
+
+    headers = [
+        "cookie1=value1",
+        "cookie2=value2",
+    ]
+
+    # Should not raise and should not store anything
+    jar.update_cookies_from_headers(headers, url)
+
+    assert len(jar) == 0
+    filtered: BaseCookie[str] = jar.filter_cookies(url)
+    assert len(filtered) == 0
+
+
+async def test_shared_cookie_cache_population() -> None:
+    """Test that shared cookies are cached correctly."""
+    jar = CookieJar(unsafe=True)
+
+    # Create a shared cookie (no domain/path restrictions)
+    sc = SimpleCookie()
+    sc["shared"] = "value"
+    sc["shared"]["path"] = "/"  # Will be stripped to ""
+
+    # Update with empty URL to avoid domain being set
+    jar.update_cookies(sc, URL())
+
+    # Verify cookie is stored at shared key
+    assert ("", "") in jar._cookies
+    assert "shared" in jar._cookies[("", "")]
+
+    # Filter cookies to populate cache
+    filtered = jar.filter_cookies(URL("http://example.com/"))
+    assert "shared" in filtered
+    assert filtered["shared"].value == "value"
+
+    # Verify cache was populated
+    assert ("", "") in jar._morsel_cache
+    assert "shared" in jar._morsel_cache[("", "")]
+
+    # Verify the cached morsel is the same one returned
+    cached_morsel = jar._morsel_cache[("", "")]["shared"]
+    assert cached_morsel is filtered["shared"]
+
+
+async def test_shared_cookie_cache_clearing_on_update() -> None:
+    """Test that shared cookie cache is cleared when cookie is updated."""
+    jar = CookieJar(unsafe=True)
+
+    # Create initial shared cookie
+    sc = SimpleCookie()
+    sc["shared"] = "value1"
+    sc["shared"]["path"] = "/"
+    jar.update_cookies(sc, URL())
+
+    # Filter to populate cache
+    filtered1 = jar.filter_cookies(URL("http://example.com/"))
+    assert filtered1["shared"].value == "value1"
+    assert "shared" in jar._morsel_cache[("", "")]
+
+    # Update the cookie with new value
+    sc2 = SimpleCookie()
+    sc2["shared"] = "value2"
+    sc2["shared"]["path"] = "/"
+    jar.update_cookies(sc2, URL())
+
+    # Verify cache was cleared
+    assert "shared" not in jar._morsel_cache[("", "")]
+
+    # Filter again to verify new value
+    filtered2 = jar.filter_cookies(URL("http://example.com/"))
+    assert filtered2["shared"].value == "value2"
+
+    # Verify cache was repopulated with new value
+    assert "shared" in jar._morsel_cache[("", "")]
+
+
+async def test_shared_cookie_cache_clearing_on_delete() -> None:
+    """Test that shared cookie cache is cleared when cookies are deleted."""
+    jar = CookieJar(unsafe=True)
+
+    # Create multiple shared cookies
+    sc = SimpleCookie()
+    sc["shared1"] = "value1"
+    sc["shared1"]["path"] = "/"
+    sc["shared2"] = "value2"
+    sc["shared2"]["path"] = "/"
+    jar.update_cookies(sc, URL())
+
+    # Filter to populate cache
+    jar.filter_cookies(URL("http://example.com/"))
+    assert "shared1" in jar._morsel_cache[("", "")]
+    assert "shared2" in jar._morsel_cache[("", "")]
+
+    # Delete one cookie using internal method
+    jar._delete_cookies([("", "", "shared1")])
+
+    # Verify cookie and its cache entry were removed
+    assert "shared1" not in jar._cookies[("", "")]
+    assert "shared1" not in jar._morsel_cache[("", "")]
+
+    # Verify other cookie remains
+    assert "shared2" in jar._cookies[("", "")]
+    assert "shared2" in jar._morsel_cache[("", "")]
+
+
+async def test_shared_cookie_cache_clearing_on_clear() -> None:
+    """Test that shared cookie cache is cleared when jar is cleared."""
+    jar = CookieJar(unsafe=True)
+
+    # Create shared and domain-specific cookies
+    # Shared cookie
+    sc1 = SimpleCookie()
+    sc1["shared"] = "shared_value"
+    sc1["shared"]["path"] = "/"
+    jar.update_cookies(sc1, URL())
+
+    # Domain-specific cookie
+    sc2 = SimpleCookie()
+    sc2["domain_cookie"] = "domain_value"
+    jar.update_cookies(sc2, URL("http://example.com/"))
+
+    # Filter to populate caches
+    jar.filter_cookies(URL("http://example.com/"))
+
+    # Verify caches are populated
+    assert ("", "") in jar._morsel_cache
+    assert "shared" in jar._morsel_cache[("", "")]
+    assert ("example.com", "") in jar._morsel_cache
+    assert "domain_cookie" in jar._morsel_cache[("example.com", "")]
+
+    # Clear all cookies
+    jar.clear()
+
+    # Verify all caches are cleared
+    assert len(jar._morsel_cache) == 0
+    assert len(jar._cookies) == 0
+
+    # Verify filtering returns no cookies
+    filtered = jar.filter_cookies(URL("http://example.com/"))
+    assert len(filtered) == 0
+
+
+async def test_shared_cookie_with_multiple_domains() -> None:
+    """Test that shared cookies work across different domains."""
+    jar = CookieJar(unsafe=True)
+
+    # Create a truly shared cookie
+    sc = SimpleCookie()
+    sc["universal"] = "everywhere"
+    sc["universal"]["path"] = "/"
+    jar.update_cookies(sc, URL())
+
+    # Test filtering for different domains
+    domains = [
+        "http://example.com/",
+        "http://test.org/",
+        "http://localhost/",
+        "http://192.168.1.1/",  # IP address (requires unsafe=True)
+    ]
+
+    for domain_url in domains:
+        filtered = jar.filter_cookies(URL(domain_url))
+        assert "universal" in filtered
+        assert filtered["universal"].value == "everywhere"
+
+    # Verify cache is reused efficiently
+    assert ("", "") in jar._morsel_cache
+    assert "universal" in jar._morsel_cache[("", "")]

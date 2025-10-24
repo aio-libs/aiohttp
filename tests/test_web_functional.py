@@ -4,17 +4,8 @@ import json
 import pathlib
 import socket
 import sys
-from typing import (
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    NoReturn,
-    Optional,
-    Tuple,
-)
+from collections.abc import AsyncIterator, Awaitable, Callable, Generator
+from typing import NoReturn
 from unittest import mock
 
 import pytest
@@ -36,7 +27,6 @@ from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
 
@@ -651,7 +641,7 @@ async def test_expect_handler_custom_response(aiohttp_client: AiohttpClient) -> 
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="handler")
 
-    async def expect_handler(request: web.Request) -> Optional[web.Response]:
+    async def expect_handler(request: web.Request) -> web.Response | None:
         k = request.headers["X-Key"]
         cached_value = cache.get(k)
         return web.Response(text=cached_value) if cached_value else None
@@ -1104,11 +1094,11 @@ async def test_response_with_payload_stringio(
 def compressor_case(
     request: pytest.FixtureRequest,
     parametrize_zlib_backend: None,
-) -> Generator[Tuple[ZLibCompressObjProtocol, str], None, None]:
+) -> Generator[tuple[ZLibCompressObjProtocol, str], None, None]:
     encoding: str = request.param
     max_wbits: int = ZLibBackend.MAX_WBITS
 
-    encoding_to_wbits: Dict[str, int] = {
+    encoding_to_wbits: dict[str, int] = {
         "deflate": max_wbits,
         "deflate-raw": -max_wbits,
         "gzip": 16 + max_wbits,
@@ -1120,7 +1110,7 @@ def compressor_case(
 
 async def test_response_with_precompressed_body(
     aiohttp_client: AiohttpClient,
-    compressor_case: Tuple[ZLibCompressObjProtocol, str],
+    compressor_case: tuple[ZLibCompressObjProtocol, str],
 ) -> None:
     compressor, encoding = compressor_case
 
@@ -1593,7 +1583,7 @@ async def test_subapp_on_cleanup(aiohttp_server: AiohttpServer) -> None:
     ],
 )
 async def test_subapp_middleware_context(
-    aiohttp_client: AiohttpClient, route: str, expected: List[str], middlewares: str
+    aiohttp_client: AiohttpClient, route: str, expected: list[str], middlewares: str
 ) -> None:
     values = []
 
@@ -1946,6 +1936,9 @@ async def test_response_context_manager_error(aiohttp_server: AiohttpServer) -> 
             await resp.read()
     assert resp.closed
 
+    # Wait for any pending operations to complete
+    await resp.wait_for_close()
+
     assert session._connector is not None
     assert len(session._connector._conns) == 1
 
@@ -2018,13 +2011,13 @@ async def test_iter_any(aiohttp_server: AiohttpServer) -> None:
 
 
 async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
-    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_dns_resolvehost_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_create_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_connection_create_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_start = mock.AsyncMock()
+    on_request_end = mock.AsyncMock()
+    on_dns_resolvehost_start = mock.AsyncMock()
+    on_dns_resolvehost_end = mock.AsyncMock()
+    on_request_redirect = mock.AsyncMock()
+    on_connection_create_start = mock.AsyncMock()
+    on_connection_create_end = mock.AsyncMock()
 
     async def redirector(request: web.Request) -> NoReturn:
         raise web.HTTPFound(location=URL("/redirected"))
@@ -2050,7 +2043,7 @@ async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
     class FakeResolver(AbstractResolver):
         _LOCAL_HOST = {0: "127.0.0.1", socket.AF_INET: "127.0.0.1"}
 
-        def __init__(self, fakes: Dict[str, int]):
+        def __init__(self, fakes: dict[str, int]):
             # fakes -- dns -> port dict
             self._fakes = fakes
             self._resolver = aiohttp.DefaultResolver()
@@ -2063,7 +2056,7 @@ async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             fake_port = self._fakes.get(host)
             assert fake_port is not None
             return [
@@ -2237,7 +2230,7 @@ async def test_response_101_204_no_content_length_http11(
 
     app = web.Application()
     app.router.add_get("/", handler)
-    client = await aiohttp_client(app, version="1.1")
+    client = await aiohttp_client(app, version=HttpVersion11)
     resp = await client.get("/")
     assert CONTENT_LENGTH not in resp.headers
     assert TRANSFER_ENCODING not in resp.headers
@@ -2293,7 +2286,7 @@ async def test_no_body_for_1xx_204_304_responses(
 
 
 async def test_keepalive_race_condition(aiohttp_client: AiohttpClient) -> None:
-    protocol: Optional[RequestHandler[web.Request]] = None
+    protocol: RequestHandler[web.Request] | None = None
     orig_data_received = RequestHandler.data_received
 
     def delay_received(self: RequestHandler[web.Request], data: bytes) -> None:

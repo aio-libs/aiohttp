@@ -1,7 +1,7 @@
 """HTTP related errors."""
 
 import asyncio
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Union
 
 from multidict import MultiMapping
 
@@ -74,11 +74,11 @@ class ClientResponseError(ClientError):
     def __init__(
         self,
         request_info: RequestInfo,
-        history: Tuple[ClientResponse, ...],
+        history: tuple[ClientResponse, ...],
         *,
-        status: Optional[int] = None,
+        status: int | None = None,
         message: str = "",
-        headers: Optional[MultiMapping[str]] = None,
+        headers: MultiMapping[str] | None = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
@@ -91,11 +91,7 @@ class ClientResponseError(ClientError):
         self.args = (request_info, history)
 
     def __str__(self) -> str:
-        return "{}, message={!r}, url={!r}".format(
-            self.status,
-            self.message,
-            str(self.request_info.real_url),
-        )
+        return f"{self.status}, message={self.message!r}, url={str(self.request_info.real_url)!r}"
 
     def __repr__(self) -> str:
         args = f"{self.request_info!r}, {self.history!r}"
@@ -163,7 +159,7 @@ class ClientConnectorError(ClientOSError):
         return self._conn_key.host
 
     @property
-    def port(self) -> Optional[int]:
+    def port(self) -> int | None:
         return self._conn_key.port
 
     @property
@@ -225,7 +221,7 @@ class ServerConnectionError(ClientConnectionError):
 class ServerDisconnectedError(ServerConnectionError):
     """Server disconnected."""
 
-    def __init__(self, message: Union[RawResponseMessage, str, None] = None) -> None:
+    def __init__(self, message: RawResponseMessage | str | None = None) -> None:
         if message is None:
             message = "Server disconnected"
 
@@ -256,9 +252,7 @@ class ServerFingerprintMismatch(ServerConnectionError):
         self.args = (expected, got, host, port)
 
     def __repr__(self) -> str:
-        return "<{} expected={!r} got={!r} host={!r} port={!r}>".format(
-            self.__class__.__name__, self.expected, self.got, self.host, self.port
-        )
+        return f"<{self.__class__.__name__} expected={self.expected!r} got={self.got!r} host={self.host!r} port={self.port!r}>"
 
 
 class ClientPayloadError(ClientError):
@@ -274,7 +268,7 @@ class InvalidURL(ClientError, ValueError):
 
     # Derive from ValueError for backward compatibility
 
-    def __init__(self, url: StrOrURL, description: Union[str, None] = None) -> None:
+    def __init__(self, url: StrOrURL, description: str | None = None) -> None:
         # The type of url is not yarl.URL because the exception can be raised
         # on URL(url) call
         self._url = url
@@ -369,7 +363,7 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
         return self._conn_key.host
 
     @property
-    def port(self) -> Optional[int]:
+    def port(self) -> int | None:
         return self._conn_key.port
 
     @property
@@ -378,9 +372,9 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
 
     def __str__(self) -> str:
         return (
-            "Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} "
-            "[{0.certificate_error.__class__.__name__}: "
-            "{0.certificate_error.args}]".format(self)
+            f"Cannot connect to host {self.host}:{self.port} ssl:{self.ssl} "
+            f"[{self.certificate_error.__class__.__name__}: "
+            f"{self.certificate_error.args}]"
         )
 
 

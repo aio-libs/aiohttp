@@ -1045,6 +1045,11 @@ and :ref:`aiohttp-web-signals` handlers::
       of closing.
       :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
+   .. attribute:: prepared
+
+      Read-only :class:`bool` property, ``True`` if :meth:`prepare` has
+      been called, ``False`` otherwise.
+
    .. attribute:: close_code
 
       Read-only property, close code from peer. It is set to ``None`` on
@@ -1082,7 +1087,9 @@ and :ref:`aiohttp-web-signals` handlers::
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-      :raise RuntimeError: if connections is not started or closing.
+      :raise RuntimeError: if the connections is not started.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1097,7 +1104,9 @@ and :ref:`aiohttp-web-signals` handlers::
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-      :raise RuntimeError: if connections is not started or closing.
+      :raise RuntimeError: if the connections is not started.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1114,9 +1123,11 @@ and :ref:`aiohttp-web-signals` handlers::
                            single message,
                            ``None`` for not overriding per-socket setting.
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if the connection is not started.
 
       :raise TypeError: if data is not :class:`str`
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1134,10 +1145,12 @@ and :ref:`aiohttp-web-signals` handlers::
                            single message,
                            ``None`` for not overriding per-socket setting.
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if the connection is not started.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1159,11 +1172,13 @@ and :ref:`aiohttp-web-signals` handlers::
                              returns a JSON string
                              (:func:`json.dumps` by default).
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if the connection is not started.
 
       :raise ValueError: if data is not serializable object
 
       :raise TypeError: if value returned by ``dumps`` param is not :class:`str`
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionchanged:: 3.0
 
@@ -1193,6 +1208,10 @@ and :ref:`aiohttp-web-signals` handlers::
       :param int compress: sets specific level of compression for
                            single message,
                            ``None`` for not overriding per-socket setting.
+
+      :raise RuntimeError: if the connection is not started.
+
+      :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
       .. versionadded:: 3.11
 
@@ -1519,6 +1538,14 @@ Application and Router
       In resolving process if request.headers['host']
       matches the pattern *domain* then
       further resolving is passed to *subapp*.
+
+      .. warning::
+
+         Registering many domains using this method may cause performance
+         issues with handler routing. If you have a substantial number of
+         applications for different domains, you may want to consider
+         using a reverse proxy (such as Nginx) to handle routing to
+         different apps, rather that registering them as sub-applications.
 
       :param str domain: domain or mask of domain for the resource.
 
@@ -2901,7 +2928,8 @@ Utilities
                       handle_signals=True, \
                       reuse_address=None, \
                       reuse_port=None, \
-                      handler_cancellation=False)
+                      handler_cancellation=False, \
+					  **kwargs)
 
    A high-level function for running an application, serving it until
    keyboard interrupt and performing a
@@ -3012,6 +3040,9 @@ Utilities
                                      if familiar with asyncio behavior or
                                      scalability is a concern.
                                      :ref:`aiohttp-web-peer-disconnection`
+
+   :param kwargs: additional named parameters to pass into
+                  :class:`AppRunner` constructor.
 
    .. versionadded:: 3.0
 

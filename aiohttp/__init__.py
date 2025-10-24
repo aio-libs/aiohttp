@@ -1,6 +1,6 @@
 __version__ = "4.0.0a2.dev0"
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 from . import hdrs
 from .client import (
@@ -47,6 +47,7 @@ from .client import (
     WSServerHandshakeError,
     request,
 )
+from .client_middleware_digest_auth import DigestAuthMiddleware
 from .client_middlewares import ClientHandlerType, ClientMiddlewareType
 from .compression_utils import set_zlib_backend
 from .connector import AddrInfoType, SocketFactoryType
@@ -112,7 +113,7 @@ if TYPE_CHECKING:
     # At runtime these are lazy-loaded at the bottom of the file.
     from .worker import GunicornUVLoopWebWorker, GunicornWebWorker
 
-__all__: Tuple[str, ...] = (
+__all__: tuple[str, ...] = (
     "hdrs",
     # client
     "AddrInfoType",
@@ -169,6 +170,7 @@ __all__: Tuple[str, ...] = (
     # helpers
     "BasicAuth",
     "ChainMapProxy",
+    "DigestAuthMiddleware",
     "ETag",
     "set_zlib_backend",
     # http
@@ -235,7 +237,7 @@ __all__: Tuple[str, ...] = (
 )
 
 
-def __dir__() -> Tuple[str, ...]:
+def __dir__() -> tuple[str, ...]:
     return __all__ + ("__doc__",)
 
 

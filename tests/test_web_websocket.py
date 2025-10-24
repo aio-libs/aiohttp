@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Optional, Protocol
+from typing import Protocol
 from unittest import mock
 
 import aiosignal
@@ -12,7 +12,7 @@ from aiohttp import WSMessageTypeError, WSMsgType, web
 from aiohttp.http import WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE
 from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
-from aiohttp.test_utils import make_mocked_coro, make_mocked_request
+from aiohttp.test_utils import make_mocked_request
 from aiohttp.web_ws import WebSocketReady
 
 
@@ -21,7 +21,7 @@ class _RequestMaker(Protocol):
         self,
         method: str,
         path: str,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         protocols: bool = False,
     ) -> web.Request: ...
 
@@ -48,7 +48,7 @@ def make_request(
     def maker(
         method: str,
         path: str,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         protocols: bool = False,
     ) -> web.Request:
         if headers is None:
@@ -421,9 +421,7 @@ async def test_receive_eofstream_in_reader(
 
     ws._reader = mock.Mock()
     exc = EofStream()
-    res = loop.create_future()
-    res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(side_effect=exc)
     assert ws._payload_writer is not None
     f = loop.create_future()
     f.set_result(True)
@@ -442,9 +440,7 @@ async def test_receive_exception_in_reader(
 
     ws._reader = mock.Mock()
     exc = Exception()
-    res = loop.create_future()
-    res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(side_effect=exc)
 
     f = loop.create_future()
     assert ws._payload_writer is not None
@@ -545,9 +541,7 @@ async def test_receive_timeouterror(
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
     ws._reader = mock.Mock()
-    res = loop.create_future()
-    res.set_exception(asyncio.TimeoutError())
-    ws._reader.read = make_mocked_coro(res)
+    ws._reader.read = mock.AsyncMock(side_effect=asyncio.TimeoutError())
 
     with pytest.raises(asyncio.TimeoutError):
         await ws.receive()
@@ -664,7 +658,7 @@ async def test_no_transfer_encoding_header(
 async def test_get_extra_info(
     make_request: _RequestMaker,
     mocker: MockerFixture,
-    ws_transport: Optional[mock.MagicMock],
+    ws_transport: mock.MagicMock | None,
     expected_result: str,
 ) -> None:
     valid_key = "test"
@@ -676,4 +670,4 @@ async def test_get_extra_info(
     await ws.prepare(req)
     ws._writer = ws_transport
 
-    assert ws.get_extra_info(valid_key, default_value) == expected_result
+    assert expected_result == ws.get_extra_info(valid_key, default_value)

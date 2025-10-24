@@ -59,6 +59,7 @@ Arthur Darcet
 Austin Scola
 Bai Haoran
 Ben Bader
+Ben Beasley
 Ben Greiner
 Ben Kallus
 Ben Timby
@@ -143,6 +144,7 @@ Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
 Gang Ji
+Gary Leung
 Gary Wilson Jr.
 Gennady Andreyev
 Georges Dubus
@@ -175,6 +177,7 @@ Ivan Lakovic
 Ivan Larin
 J. Nick Koston
 Jacob Champion
+Jacob Henner
 Jaesung Lee
 Jake Davis
 Jakob Ackermann
@@ -194,6 +197,7 @@ Jesus Cea
 Jian Zeng
 Jinkyu Yi
 Joel Watts
+John Feusi
 John Parton
 Jon Nabozny
 Jonas Krüger Svensson
@@ -216,9 +220,11 @@ Justin Foo
 Justin Turner Arthur
 Kay Zheng
 Kevin Samuel
+Kilian Guillaume
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Kirill Potapenko
 Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
@@ -264,6 +270,7 @@ Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov
+Mingjie Zhao
 Misha Behersky
 Mitchell Ferree
 Morgan Delahaye-Prat
@@ -282,6 +289,7 @@ Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
 Parag Jain
+Patrick Lee
 Pau Freixes
 Paul Colomiets
 Paul J. Dorn
@@ -294,6 +302,7 @@ Pavol Vargovčík
 Pawel Kowalski
 Pawel Miech
 Pepe Osca
+Phebe Polk
 Philipp A.
 Pierre-Louis Peeters
 Pieter van Beek
@@ -311,6 +320,7 @@ Roman Postnov
 Rong Zhang
 Samir Akarioh
 Samuel Colvin
+Samuel Gaist
 Sean Hunt
 Sebastian Acuna
 Sebastian Hanula
@@ -349,6 +359,7 @@ Tim Menninger
 Tolga Tezel
 Tomasz Trebski
 Toshiaki Tanaka
+Trevor Gamblin
 Trinh Hoang Nhu
 Tymofii Tsiapa
 Vadim Suharnikov
@@ -367,6 +378,7 @@ Vincent Maillol
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
+Vizonex
 Vladimir Kamarzin
 Vladimir Kozlovski
 Vladimir Rutsky
@@ -374,6 +386,7 @@ Vladimir Shulyak
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar
+Vojtěch Boček
 W. Trevor King
 Wei Lin
 Weiwei Wang

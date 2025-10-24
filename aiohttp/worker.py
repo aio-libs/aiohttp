@@ -42,9 +42,9 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
     def __init__(self, *args: Any, **kw: Any) -> None:
         super().__init__(*args, **kw)
 
-        self._task: Optional[asyncio.Task[None]] = None
+        self._task: asyncio.Task[None] | None = None
         self.exit_code = 0
-        self._notify_waiter: Optional[asyncio.Future[bool]] = None
+        self._notify_waiter: asyncio.Future[bool] | None = None
 
     def init_process(self) -> None:
         # create new event_loop after fork
@@ -81,7 +81,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         else:
             raise RuntimeError(
                 "wsgi app should be either Application or "
-                "async function returning Application, got {}".format(self.wsgi)
+                f"async function returning Application, got {self.wsgi}"
             )
 
         if runner is None:
@@ -187,7 +187,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         # Reset signals so Gunicorn doesn't swallow subprocess return codes
         # See: https://github.com/aio-libs/aiohttp/issues/6130
 
-    def handle_quit(self, sig: int, frame: Optional[FrameType]) -> None:
+    def handle_quit(self, sig: int, frame: FrameType | None) -> None:
         self.alive = False
 
         # worker_int callback
@@ -196,14 +196,14 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         # wakeup closing process
         self._notify_waiter_done()
 
-    def handle_abort(self, sig: int, frame: Optional[FrameType]) -> None:
+    def handle_abort(self, sig: int, frame: FrameType | None) -> None:
         self.alive = False
         self.exit_code = 1
         self.cfg.worker_abort(self)
         sys.exit(1)
 
     @staticmethod
-    def _create_ssl_context(cfg: Any) -> "SSLContext":  # type: ignore[misc]
+    def _create_ssl_context(cfg: Any) -> "SSLContext":
         """Creates SSLContext instance for usage in asyncio.create_server.
 
         See ssl.SSLSocket.__init__ for more details.

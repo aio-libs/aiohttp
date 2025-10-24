@@ -1,6 +1,6 @@
 """Client middleware support."""
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 
 from .client_reqrep import ClientRequest, ClientResponse
 
@@ -17,7 +17,7 @@ ClientMiddlewareType = Callable[
 
 def build_client_middlewares(
     handler: ClientHandlerType,
-    middlewares: tuple[ClientMiddlewareType, ...],
+    middlewares: Sequence[ClientMiddlewareType],
 ) -> ClientHandlerType:
     """
     Apply middlewares to request handler.
@@ -28,9 +28,6 @@ def build_client_middlewares(
     This implementation avoids using partial/update_wrapper to minimize overhead
     and doesn't cache to avoid holding references to stateful middleware.
     """
-    if not middlewares:
-        return handler
-
     # Optimize for single middleware case
     if len(middlewares) == 1:
         middleware = middlewares[0]

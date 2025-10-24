@@ -1,4 +1,5 @@
 aiodns
+backports.zstd; implementation_name == "cpython"
 blockbuster
 freezegun
 isal

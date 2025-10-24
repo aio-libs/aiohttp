@@ -1,8 +1,9 @@
 import json
 import subprocess
 import sys
+from collections.abc import Generator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Generator, List
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from pytest import TempPathFactory
@@ -37,7 +38,7 @@ def build_autobahn_testsuite() -> Generator[None, None, None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
+def get_failed_tests(report_path: str, name: str) -> list[dict[str, Any]]:
     path = Path(report_path)
     result_summary = json.loads((path / "index.json").read_text())[name]
     failed_messages = []
@@ -78,8 +79,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         print("Stopping client and server")
         client.terminate()
         client.wait()
-        # https://github.com/gabrieldemarmiesse/python-on-whales/pull/580
-        autobahn_container.stop()  # type: ignore[union-attr]
+        autobahn_container.stop()
 
     failed_messages = get_failed_tests(f"{report_dir}/clients", "aiohttp")
 

@@ -1,29 +1,18 @@
 import asyncio
 import logging
 import warnings
-from functools import lru_cache, partial, update_wrapper
-from typing import (
-    TYPE_CHECKING,
-    Any,
+from collections.abc import (
     AsyncIterator,
     Awaitable,
     Callable,
-    Dict,
     Iterable,
     Iterator,
-    List,
     Mapping,
     MutableMapping,
-    Optional,
     Sequence,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-    final,
-    overload,
 )
+from functools import lru_cache, partial, update_wrapper
+from typing import TYPE_CHECKING, Any, TypeVar, cast, final, overload
 
 from aiosignal import Signal
 from frozenlist import FrozenList
@@ -52,11 +41,11 @@ __all__ = ("Application", "CleanupError")
 
 
 if TYPE_CHECKING:
-    _AppSignal = Signal[Callable[["Application"], Awaitable[None]]]
-    _RespPrepareSignal = Signal[Callable[[Request, StreamResponse], Awaitable[None]]]
+    _AppSignal = Signal["Application"]
+    _RespPrepareSignal = Signal[Request, StreamResponse]
     _Middlewares = FrozenList[Middleware]
     _MiddlewaresHandlers = Sequence[Middleware]
-    _Subapps = List["Application"]
+    _Subapps = list["Application"]
 else:
     # No type checker mode, skip types
     _AppSignal = Signal
@@ -64,7 +53,7 @@ else:
     _Handler = Callable
     _Middlewares = FrozenList
     _MiddlewaresHandlers = Sequence
-    _Subapps = List
+    _Subapps = list
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
@@ -72,7 +61,7 @@ _Resource = TypeVar("_Resource", bound=AbstractResource)
 
 
 def _build_middlewares(
-    handler: Handler, apps: Tuple["Application", ...]
+    handler: Handler, apps: tuple["Application", ...]
 ) -> Callable[[Request], Awaitable[StreamResponse]]:
     """Apply middlewares to handler."""
     # The slice is to reverse the order of the apps
@@ -88,7 +77,7 @@ _cached_build_middleware = lru_cache(maxsize=1024)(_build_middlewares)
 
 
 @final
-class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
+class Application(MutableMapping[str | AppKey[Any], Any]):
     __slots__ = (
         "logger",
         "_router",
@@ -114,7 +103,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         *,
         logger: logging.Logger = web_logger,
         middlewares: Iterable[Middleware] = (),
-        handler_args: Optional[Mapping[str, Any]] = None,
+        handler_args: Mapping[str, Any] | None = None,
         client_max_size: int = 1024**2,
         debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
@@ -133,9 +122,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         # initialized on freezing
         self._middlewares_handlers: _MiddlewaresHandlers = tuple()
         # initialized on freezing
-        self._run_middlewares: Optional[bool] = None
+        self._run_middlewares: bool | None = None
 
-        self._state: Dict[Union[AppKey[Any], str], object] = {}
+        self._state: dict[AppKey[Any] | str, object] = {}
         self._frozen = False
         self._pre_frozen = False
         self._subapps: _Subapps = []
@@ -149,10 +138,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
 
-    def __init_subclass__(cls: Type["Application"]) -> None:
+    def __init_subclass__(cls: type["Application"]) -> None:
         raise TypeError(
-            "Inheritance class {} from web.Application "
-            "is forbidden".format(cls.__name__)
+            f"Inheritance class {cls.__name__} from web.Application " "is forbidden"
         )
 
     # MutableMapping API
@@ -164,9 +152,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
-    def __getitem__(self, key: str) -> Any: ...  # type: ignore[misc]
+    def __getitem__(self, key: str) -> Any: ...
 
-    def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
+    def __getitem__(self, key: str | AppKey[_T]) -> Any:
         return self._state[key]
 
     def _check_frozen(self) -> None:
@@ -179,9 +167,9 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
     def __setitem__(self, key: AppKey[_T], value: _T) -> None: ...
 
     @overload
-    def __setitem__(self, key: str, value: Any) -> None: ...  # type: ignore[misc]
+    def __setitem__(self, key: str, value: Any) -> None: ...
 
-    def __setitem__(self, key: Union[str, AppKey[_T]], value: Any) -> None:
+    def __setitem__(self, key: str | AppKey[_T], value: Any) -> None:
         self._check_frozen()
         if not isinstance(key, AppKey):
             warnings.warn(
@@ -193,33 +181,33 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
             )
         self._state[key] = value
 
-    def __delitem__(self, key: Union[str, AppKey[_T]]) -> None:
+    def __delitem__(self, key: str | AppKey[_T]) -> None:
         self._check_frozen()
         del self._state[key]
 
     def __len__(self) -> int:
         return len(self._state)
 
-    def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
+    def __iter__(self) -> Iterator[str | AppKey[Any]]:
         return iter(self._state)
 
     def __hash__(self) -> int:
         return id(self)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
+    def get(self, key: AppKey[_T], default: None = ...) -> _T | None: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: _U) -> Union[_T, _U]: ...
+    def get(self, key: AppKey[_T], default: _U) -> _T | _U: ...
 
     @overload
-    def get(self, key: str, default: Any = ...) -> Any: ...  # type: ignore[misc]
+    def get(self, key: str, default: Any = ...) -> Any: ...
 
-    def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+    def get(self, key: str | AppKey[_T], default: Any = None) -> Any:
         return self._state.get(key, default)
 
     ########
-    def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
+    def _set_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
         warnings.warn(
             "_set_loop() is no-op since 4.0 and scheduled for removal in 5.0",
             DeprecationWarning,
@@ -324,7 +312,7 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
         factory = partial(MatchedSubAppResource, rule, subapp)
         return self._add_subapp(factory, subapp)
 
-    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> List[AbstractRoute]:
+    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> list[AbstractRoute]:
         return self.router.add_routes(routes)
 
     @property
@@ -423,8 +411,8 @@ class Application(MutableMapping[Union[str, AppKey[Any]], Any]):
 
 class CleanupError(RuntimeError):
     @property
-    def exceptions(self) -> List[BaseException]:
-        return cast(List[BaseException], self.args[1])
+    def exceptions(self) -> list[BaseException]:
+        return cast(list[BaseException], self.args[1])
 
 
 if TYPE_CHECKING:
@@ -436,7 +424,7 @@ else:
 class CleanupContext(_CleanupContextBase):
     def __init__(self) -> None:
         super().__init__()
-        self._exits: List[AsyncIterator[None]] = []
+        self._exits: list[AsyncIterator[None]] = []
 
     async def _on_startup(self, app: Application) -> None:
         for cb in self:

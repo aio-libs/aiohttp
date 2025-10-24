@@ -2,17 +2,8 @@
 
 import asyncio
 import warnings
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    TypeVar,
-    overload,
-)
+from collections.abc import Awaitable, Callable
+from typing import Any, Generic, TypeVar, overload
 
 from .abc import AbstractStreamWriter
 from .http_parser import RawRequestMessage
@@ -40,21 +31,21 @@ class Server(Generic[_Request]):
     request_factory: _RequestFactory[_Request]
 
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self: "Server[BaseRequest]",
         handler: Callable[[_Request], Awaitable[StreamResponse]],
         *,
-        debug: Optional[bool] = None,
+        debug: bool | None = None,
         handler_cancellation: bool = False,
         **kwargs: Any,  # TODO(PY311): Use Unpack to define kwargs from RequestHandler
     ) -> None: ...
     @overload
-    def __init__(  # type: ignore[misc]
+    def __init__(
         self,
         handler: Callable[[_Request], Awaitable[StreamResponse]],
         *,
-        request_factory: Optional[_RequestFactory[_Request]],
-        debug: Optional[bool] = None,
+        request_factory: _RequestFactory[_Request] | None,
+        debug: bool | None = None,
         handler_cancellation: bool = False,
         **kwargs: Any,
     ) -> None: ...
@@ -62,8 +53,8 @@ class Server(Generic[_Request]):
         self,
         handler: Callable[[_Request], Awaitable[StreamResponse]],
         *,
-        request_factory: Optional[_RequestFactory[_Request]] = None,
-        debug: Optional[bool] = None,
+        request_factory: _RequestFactory[_Request] | None = None,
+        debug: bool | None = None,
         handler_cancellation: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -74,7 +65,7 @@ class Server(Generic[_Request]):
                 stacklevel=2,
             )
         self._loop = asyncio.get_running_loop()
-        self._connections: Dict[RequestHandler[_Request], asyncio.Transport] = {}
+        self._connections: dict[RequestHandler[_Request], asyncio.Transport] = {}
         self._kwargs = kwargs
         # requests_count is the number of requests being processed by the server
         # for the lifetime of the server.
@@ -84,7 +75,7 @@ class Server(Generic[_Request]):
         self.handler_cancellation = handler_cancellation
 
     @property
-    def connections(self) -> List[RequestHandler[_Request]]:
+    def connections(self) -> list[RequestHandler[_Request]]:
         return list(self._connections.keys())
 
     def connection_made(
@@ -93,7 +84,7 @@ class Server(Generic[_Request]):
         self._connections[handler] = transport
 
     def connection_lost(
-        self, handler: RequestHandler[_Request], exc: Optional[BaseException] = None
+        self, handler: RequestHandler[_Request], exc: BaseException | None = None
     ) -> None:
         if handler in self._connections:
             if handler._task_handler:
@@ -117,7 +108,7 @@ class Server(Generic[_Request]):
         for conn in self._connections:
             conn.close()
 
-    async def shutdown(self, timeout: Optional[float] = None) -> None:
+    async def shutdown(self, timeout: float | None = None) -> None:
         coros = (conn.shutdown(timeout) for conn in self._connections)
         await asyncio.gather(*coros)
         self._connections.clear()

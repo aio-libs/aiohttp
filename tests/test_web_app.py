@@ -1,12 +1,13 @@
 import asyncio
-from typing import AsyncIterator, Callable, Iterator, NoReturn, Type
+import sys
+from collections.abc import AsyncIterator, Callable, Iterator
+from typing import NoReturn
 from unittest import mock
 
 import pytest
 
 from aiohttp import log, web
 from aiohttp.pytest_plugin import AiohttpClient
-from aiohttp.test_utils import make_mocked_coro
 from aiohttp.typedefs import Handler
 
 
@@ -22,8 +23,8 @@ def test_app_call() -> None:
 
 async def test_app_register_on_finish() -> None:
     app = web.Application()
-    cb1 = make_mocked_coro(None)
-    cb2 = make_mocked_coro(None)
+    cb1 = mock.AsyncMock(return_value=None)
+    cb2 = mock.AsyncMock(return_value=None)
     app.on_cleanup.append(cb1)
     app.on_cleanup.append(cb2)
     app.freeze()
@@ -127,20 +128,34 @@ def test_appkey_repr_concrete() -> None:
 
 def test_appkey_repr_nonconcrete() -> None:
     key = web.AppKey("key", Iterator[int])
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
-        "<AppKey(__main__.key, type=typing.Iterator[int])>",
-    )
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
 
 
 def test_appkey_repr_annotated() -> None:
     key = web.AppKey[Iterator[int]]("key")
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
-        "<AppKey(__main__.key, type=typing.Iterator[int])>",
-    )
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
 
 
 def test_app_str_keys() -> None:
@@ -337,7 +352,7 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
 
 @pytest.mark.parametrize("exc_cls", (Exception, asyncio.CancelledError))
 async def test_cleanup_ctx_exception_on_cleanup_multiple(
-    exc_cls: Type[BaseException],
+    exc_cls: type[BaseException],
 ) -> None:
     app = web.Application()
     out = []

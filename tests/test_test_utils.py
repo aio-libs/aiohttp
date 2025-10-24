@@ -2,7 +2,8 @@ import asyncio
 import gzip
 import socket
 import sys
-from typing import Iterator, Mapping, NoReturn
+from collections.abc import Iterator, Mapping
+from typing import NoReturn
 from unittest import mock
 
 import pytest
@@ -300,6 +301,7 @@ async def test_server_make_url_yarl_compatibility(
             make_url(URL("http://foo.com"))
 
 
+@pytest.mark.xfail(reason="https://github.com/pytest-dev/pytest/issues/13546")
 def test_testcase_no_app(
     testdir: pytest.Testdir, loop: asyncio.AbstractEventLoop
 ) -> None:

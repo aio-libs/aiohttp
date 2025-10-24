@@ -4,9 +4,10 @@ import datetime
 import gc
 import sys
 import weakref
+from collections.abc import Iterator
 from math import ceil, modf
 from pathlib import Path
-from typing import Dict, Iterator, Optional, Union
+from types import MappingProxyType
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -78,6 +79,30 @@ def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
     result = helpers.parse_mimetype(mimetype)
 
     assert isinstance(result, helpers.MimeType)
+    assert result == expected
+
+
+# ------------------- parse_content_type ------------------------------
+
+
+@pytest.mark.parametrize(
+    "content_type, expected",
+    [
+        (
+            "text/plain",
+            ("text/plain", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "wrong",
+            ("application/octet-stream", MultiDictProxy(MultiDict())),
+        ),
+    ],
+)
+def test_parse_content_type(
+    content_type: str, expected: tuple[str, MappingProxyType[str, str]]
+) -> None:
+    result = helpers.parse_content_type(content_type)
+
     assert result == expected
 
 
@@ -294,10 +319,9 @@ def test_timeout_handle(loop: asyncio.AbstractEventLoop) -> None:
 
 def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
 
     handle = helpers.TimeoutHandle(loop, timeout)
-    assert handle is not None
+    timer = loop.time() + timeout
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
@@ -311,10 +335,9 @@ def test_when_timeout_smaller_second_with_low_threshold(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
 
     handle = helpers.TimeoutHandle(loop, timeout, 0.01)
-    assert handle is not None
+    timer = loop.time() + timeout
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
@@ -530,7 +553,7 @@ async def test_ceil_timeout_small_with_overriden_threshold(
     ],
 )
 def test_content_disposition(
-    params: Dict[str, str], quote_fields: bool, _charset: str, expected: str
+    params: dict[str, str], quote_fields: bool, _charset: str, expected: str
 ) -> None:
     result = helpers.content_disposition_header(
         "attachment", quote_fields=quote_fields, _charset=_charset, params=params
@@ -603,8 +626,8 @@ def test_proxies_from_env_skipped(
     url = URL(url_input)
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
-    log_message = "{proto!s} proxies {url!s} are not supported, ignoring".format(
-        proto=expected_scheme.upper(), url=url
+    log_message = (
+        f"{expected_scheme.upper()!s} proxies {url!s} are not supported, ignoring"
     )
     assert caplog.record_tuples == [("aiohttp.client", 30, log_message)]
 
@@ -718,7 +741,7 @@ def test_get_env_proxy_for_url_negative(url_input: str, expected_err_msg: str) -
         "url_scheme_match_http_proxy_list_multiple",
     ),
 )
-def test_get_env_proxy_for_url(proxy_env_vars: Dict[str, str], url_input: str) -> None:
+def test_get_env_proxy_for_url(proxy_env_vars: dict[str, str], url_input: str) -> None:
     url = URL(url_input)
     proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
     proxy_list = proxy_env_vars[url.scheme + "_proxy"]
@@ -762,7 +785,7 @@ async def test_set_exception_cancelled(loop: asyncio.AbstractEventLoop) -> None:
 
 # ----------- ChainMapProxy --------------------------
 
-AppKeyDict = Dict[Union[str, web.AppKey[object]], object]
+AppKeyDict = dict[str | web.AppKey[object], object]
 
 
 class TestChainMapProxy:
@@ -1042,7 +1065,7 @@ def test_populate_with_cookies() -> None:
         ),
     ],
 )
-def test_parse_http_date(value: str, expected: Optional[datetime.datetime]) -> None:
+def test_parse_http_date(value: str, expected: datetime.datetime | None) -> None:
     assert parse_http_date(value) == expected
 
 
