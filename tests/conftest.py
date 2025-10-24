@@ -317,6 +317,23 @@ def netrc_other_host(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def netrc_home_directory(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Create a netrc file in a mocked home directory without setting NETRC env var."""
+    # Create a fake home directory with .netrc
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    netrc_file = home_dir / ".netrc"
+    netrc_file.write_text("default login netrc_user password netrc_pass\n")
+
+    # Mock Path.home() to return our fake home directory
+    monkeypatch.setattr("pathlib.Path.home", lambda: home_dir)
+    # Ensure NETRC env var is not set
+    monkeypatch.delenv("NETRC", raising=False)
+
+    return netrc_file
+
+
+@pytest.fixture
 def start_connection() -> Iterator[mock.Mock]:
     with mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
