@@ -980,7 +980,9 @@ class ClientRequestArgs(TypedDict, total=False):
     response_class: type[ClientResponse]
     proxy: URL | None
     proxy_auth: BasicAuth | None
+    response_params: ResponseParams
     timer: BaseTimerContext
+    timeout: ClientTimeout
     session: "ClientSession"
     ssl: SSLContext | bool | Fingerprint
     proxy_headers: CIMultiDict[str] | None

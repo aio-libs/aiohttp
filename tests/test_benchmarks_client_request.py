@@ -14,6 +14,7 @@ from aiohttp.client_reqrep import (
     ClientRequest,
     ClientRequestArgs,
     ClientResponse,
+    ClientTimeout,
     ResponseParams,
 )
 from aiohttp.cookiejar import CookieJar
