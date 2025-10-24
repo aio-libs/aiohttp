@@ -328,6 +328,7 @@ def netrc_home_directory(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Pat
 
     home_env_var = "USERPROFILE" if platform.system() == "Windows" else "HOME"
     monkeypatch.setenv(home_env_var, str(home_dir))
+    # Ensure NETRC env var is not set
     monkeypatch.delenv("NETRC", raising=False)
 
     return netrc_file
