@@ -431,16 +431,21 @@ else:
 class CleanupContext(_CleanupContextBase):
     def __init__(self) -> None:
         super().__init__()
-        self._exits: list[AsyncIterator[None]] = []
+        # _exits stores either async iterators (legacy async generators)
+        # or async context manager instances. On cleanup we dispatch to
+        # the appropriate finalizer (``__anext__`` for iterators and
+        # ``__aexit__`` for context managers).
+        self._exits: list[object] = []
 
     async def _on_startup(self, app: Application) -> None:
         """Run registered cleanup context callbacks at startup.
 
         Each callback may return either an async iterator (an async
         generator that yields exactly once) or an async context manager
-        (from :func:`contextlib.asynccontextmanager`). If a context manager is
-        returned we wrap it in `_AsyncCMAsIterator` so it behaves like an
-        async iterator that yields once.
+        (from :func:`contextlib.asynccontextmanager`). If a context manager
+        is returned it will be entered on startup (``__aenter__``) and
+        exited during cleanup (``__aexit__``). Legacy single-yield async
+        generator cleanup contexts continue to be supported.
 
         """
         for cb in self:
@@ -453,26 +458,31 @@ class CleanupContext(_CleanupContextBase):
 
             # If the callback returned an async iterator (legacy async
             # generator), use it directly. If it returned an async
-            # context manager instance, adapt it to the iterator protocol
-            # with _AsyncCMAsIterator. As a final fallback, convert the
-            # callback into an async context manager (covers some edge
-            # cases) and adapt that.
+            # context manager instance, enter it and remember the manager
+            # for later exit. As a final fallback, convert the callback
+            # into an async context manager (covers some edge cases) and
+            # enter that.
             if isinstance(ctx, AsyncIterator):
+                # Legacy async generator cleanup context: advance it once
+                # (equivalent to entering) and remember the iterator for
+                # finalization.
                 it = cast(AsyncIterator[None], ctx)
+                await it.__anext__()
+                self._exits.append(it)
             elif isinstance(ctx, contextlib.AbstractAsyncContextManager):
-                # isinstance already narrows the type; no cast needed.
+                # If ctx is an async context manager: enter it and
+                # remember the manager for later exit.
                 cm = ctx
-                it = _AsyncCMAsIterator(cm)
+                await cm.__aenter__()
+                self._exits.append(cm)
             else:
-                # cb may have a broader annotated return type; tell mypy
-                # that here we are passing a generator function shape.
+                # cb may have a broader annotated return type; adapt the
+                # callable into an async context manager and enter it.
                 cm = contextlib.asynccontextmanager(
                     cast(Callable[[Application], AsyncIterator[None]], cb)
                 )(app)
-                it = _AsyncCMAsIterator(cm)
-
-            await it.__anext__()
-            self._exits.append(it)
+                await cm.__aenter__()
+                self._exits.append(cm)
 
     async def _on_cleanup(self, app: Application) -> None:
         """Run cleanup for all registered contexts in reverse order.
@@ -482,42 +492,29 @@ class CleanupContext(_CleanupContextBase):
         exceptions are wrapped into CleanupError.
         """
         errors: list[BaseException] = []
-        for it in reversed(self._exits):
+        for entry in reversed(self._exits):
             try:
-                await it.__anext__()
-            except StopAsyncIteration:
-                pass
+                if isinstance(entry, AsyncIterator):
+                    # Legacy async generator: expect it to finish on second
+                    # __anext__ call.
+                    try:
+                        await cast(AsyncIterator[None], entry).__anext__()
+                    except StopAsyncIteration:
+                        pass
+                    else:
+                        errors.append(
+                            RuntimeError(f"{entry!r} has more than one 'yield'")
+                        )
+                elif isinstance(entry, contextlib.AbstractAsyncContextManager):
+                    # If entry is an async context manager: call __aexit__.
+                    await entry.__aexit__(None, None, None)
+                else:
+                    # Unknown entry type: skip but record an error.
+                    errors.append(RuntimeError(f"Unknown cleanup entry {entry!r}"))
             except (Exception, asyncio.CancelledError) as exc:
                 errors.append(exc)
-            else:
-                errors.append(RuntimeError(f"{it!r} has more than one 'yield'"))
         if errors:
             if len(errors) == 1:
                 raise errors[0]
             else:
                 raise CleanupError("Multiple errors on cleanup stage", errors)
-
-
-class _AsyncCMAsIterator(AsyncIterator[None]):
-    """Wrap an async context manager instance to expose async iterator protocol used by CleanupContext.
-
-    The iterator will perform ``__aenter__`` on the first ``__anext__`` call
-    and ``__aexit__`` on the second one (which then raises StopAsyncIteration).
-    """
-
-    def __init__(self, cm: contextlib.AbstractAsyncContextManager[None]) -> None:
-        self._cm = cm
-        self._entered = False
-
-    def __aiter__(self) -> "_AsyncCMAsIterator":
-        return self
-
-    async def __anext__(self) -> None:
-        if not self._entered:
-            # enter once and return control (equivalent to yielding once)
-            await self._cm.__aenter__()
-            self._entered = True
-            return None
-        # second call -> exit and stop iteration
-        await self._cm.__aexit__(None, None, None)
-        raise StopAsyncIteration

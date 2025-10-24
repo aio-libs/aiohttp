@@ -10,7 +10,6 @@ import pytest
 from aiohttp import log, web
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
-from aiohttp.web_app import _AsyncCMAsIterator
 
 
 async def test_app_ctor() -> None:
@@ -463,17 +462,6 @@ async def test_cleanup_ctx_fallback_wraps_non_iterator() -> None:
     finally:
         # Ensure cleanup attempt doesn't raise further errors.
         await app.cleanup()
-
-
-async def test_asynccm_adapter_aiter_returns_self() -> None:
-
-    @asynccontextmanager
-    async def cm(app: web.Application) -> AsyncIterator[None]:
-        yield  # pragma: no cover
-
-    cm_instance = cm(web.Application())  # create the async context manager instance
-    adapter = _AsyncCMAsIterator(cm_instance)
-    assert adapter.__aiter__() is adapter
 
 
 async def test_subapp_chained_config_dict_visibility(
