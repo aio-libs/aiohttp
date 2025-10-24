@@ -438,13 +438,6 @@ async def test_cleanup_ctx_with_async_generator_and_asynccontextmanager() -> Non
 
 
 async def test_cleanup_ctx_fallback_wraps_non_iterator() -> None:
-    """Force the fallback that wraps the callback.
-
-    This uses :func:`contextlib.asynccontextmanager` when the callback's
-    return value is neither an async iterator nor an async context
-    manager. The wrapped result will raise when entered, which verifies
-    the fallback branch in ``CleanupContext._on_startup`` is executed.
-    """
     app = web.Application()
 
     def cb(app: web.Application) -> int:
@@ -462,6 +455,53 @@ async def test_cleanup_ctx_fallback_wraps_non_iterator() -> None:
     finally:
         # Ensure cleanup attempt doesn't raise further errors.
         await app.cleanup()
+
+
+async def test_cleanup_ctx_exception_in_cm_exit() -> None:
+    app = web.Application()
+
+    exc = RuntimeError("exit failed")
+
+    @asynccontextmanager
+    async def failing_exit_ctx(app: web.Application) -> AsyncIterator[None]:
+        yield
+        raise exc
+
+    app.cleanup_ctx.append(failing_exit_ctx)
+    app.freeze()
+    await app.startup()
+    with pytest.raises(RuntimeError) as ctx:
+        await app.cleanup()
+    assert ctx.value is exc
+
+
+async def test_cleanup_ctx_mixed_with_exception_in_cm_exit() -> None:
+    app = web.Application()
+    out = []
+
+    async def working_gen(app: web.Application) -> AsyncIterator[None]:
+        out.append("pre_gen")
+        yield
+        out.append("post_gen")
+
+    exc = RuntimeError("cm exit failed")
+
+    @asynccontextmanager
+    async def failing_exit_cm(app: web.Application) -> AsyncIterator[None]:
+        out.append("pre_cm")
+        yield
+        out.append("post_cm")
+        raise exc
+
+    app.cleanup_ctx.append(working_gen)
+    app.cleanup_ctx.append(failing_exit_cm)
+    app.freeze()
+    await app.startup()
+    assert out == ["pre_gen", "pre_cm"]
+    with pytest.raises(RuntimeError) as ctx:
+        await app.cleanup()
+    assert ctx.value is exc
+    assert out == ["pre_gen", "pre_cm", "post_cm", "post_gen"]
 
 
 async def test_subapp_chained_config_dict_visibility(
