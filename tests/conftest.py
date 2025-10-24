@@ -327,7 +327,7 @@ def netrc_home_directory(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Pat
     netrc_file = home_dir / netrc_filename
     netrc_file.write_text("default login netrc_user password netrc_pass\n")
 
-    monkeypatch.setenv('HOME', str(home_dir))
+    monkeypatch.setenv("HOME", str(home_dir))
     # Ensure NETRC env var is not set
     monkeypatch.delenv("NETRC", raising=False)
 
