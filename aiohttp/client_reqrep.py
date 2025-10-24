@@ -995,7 +995,7 @@ class ClientRequest(ClientRequestBase):
     _EMPTY_BODY = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
     _body = _EMPTY_BODY
     _continue = None  # waiter future for '100 Continue' response
-    _response_params: ResponseParams = None  # type: ignore[arg-type]
+    _response_params: ResponseParams = None  # type: ignore[assignment]
     _timeout = ClientTimeout()
 
     GET_METHODS = {
