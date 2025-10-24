@@ -21,7 +21,7 @@ import aiohttp
 from aiohttp import abc, client, hdrs, tracing, web
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.client_reqrep import ClientRequest, ConnectionKey
+from aiohttp.client_reqrep import ClientRequest, ClientTimeout, ConnectionKey
 from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
