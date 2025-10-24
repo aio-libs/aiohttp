@@ -14,7 +14,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import ClientSession, hdrs, http
-from aiohttp.client_reqrep import ClientResponse, RequestInfo
+from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.helpers import TimerNoop
 from aiohttp.multipart import BadContentDispositionHeader
