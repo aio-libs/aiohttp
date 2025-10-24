@@ -320,15 +320,14 @@ def netrc_other_host(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 @pytest.fixture
 def netrc_home_directory(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Create a netrc file in a mocked home directory without setting NETRC env var."""
-    # Create a fake home directory with .netrc or _netrc (Windows)
     home_dir = tmp_path / "home"
     home_dir.mkdir()
     netrc_filename = "_netrc" if platform.system() == "Windows" else ".netrc"
     netrc_file = home_dir / netrc_filename
     netrc_file.write_text("default login netrc_user password netrc_pass\n")
 
-    monkeypatch.setenv('HOME', str(home_dir))
-    # Ensure NETRC env var is not set
+    home_env_var = "USERPROFILE" if platform.system() == "Windows" else "HOME"
+    monkeypatch.setenv(home_env_var, str(home_dir))
     monkeypatch.delenv("NETRC", raising=False)
 
     return netrc_file
