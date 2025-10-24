@@ -1,0 +1,1 @@
+Fixed loading netrc credentials from the default ``~/.netrc`` location when the ``NETRC`` environment variable is not set -- by :user:`bdraco`.
