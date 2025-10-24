@@ -261,16 +261,18 @@ async def test_proxy_server_hostname_default(  # type: ignore[misc]
     )
     ClientRequestMock.return_value = proxy_req
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -343,16 +345,18 @@ async def test_proxy_server_hostname_override(  # type: ignore[misc]
     )
     ClientRequestMock.return_value = proxy_req
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -432,16 +436,18 @@ async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
         def close(self) -> None:
             pass
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     fingerprint_mock = mock.Mock(spec=Fingerprint, auto_spec=True)
     fingerprint_mock.check.side_effect = aiohttp.ServerFingerprintMismatch(
@@ -536,16 +542,18 @@ async def test_https_connect(  # type: ignore[misc]
     )
     ClientRequestMock.return_value = proxy_req
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -617,16 +625,18 @@ async def test_https_connect_certificate_error(  # type: ignore[misc]
     )
     ClientRequestMock.return_value = proxy_req
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -694,16 +704,18 @@ async def test_https_connect_ssl_error(  # type: ignore[misc]
     )
     ClientRequestMock.return_value = proxy_req
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -771,16 +783,18 @@ async def test_https_connect_http_proxy_error(  # type: ignore[misc]
     )
     ClientRequestMock.return_value = proxy_req
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -848,16 +862,18 @@ async def test_https_connect_resp_start_error(  # type: ignore[misc]
     )
     ClientRequestMock.return_value = proxy_req
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(
@@ -989,16 +1005,18 @@ async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
     )
     ClientRequestMock.return_value = proxy_req
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -1079,16 +1097,18 @@ async def test_https_auth(  # type: ignore[misc]
     )
     ClientRequestMock.return_value = proxy_req
 
+    url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
         "get",
-        URL("http://proxy.example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=event_loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
