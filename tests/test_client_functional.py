@@ -3800,7 +3800,6 @@ async def test_netrc_auth_from_home_directory(  # type: ignore[misc]
     async with client.get("/") as r:
         assert r.status == 200
         content = await r.json()
-    # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
     assert content["headers"]["Authorization"] == "Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
 
 

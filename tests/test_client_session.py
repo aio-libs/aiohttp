@@ -1386,7 +1386,6 @@ async def test_netrc_auth_from_home_directory(auth_server: TestServer) -> None:
         session.get(auth_server.make_url("/")) as resp,
     ):
         text = await resp.text()
-        # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
         assert text == "auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
 
 
