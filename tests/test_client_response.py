@@ -1151,7 +1151,7 @@ def test_default_encoding_is_utf8() -> None:
 def test_response_request_info() -> None:
     url = URL("http://def-cl-resp.org")
     h = {"Content-Type": "application/json;charset=cp1251"}
-    headers = CIMultiDictProxy(CIMultiDict(h))
+    headers = CIMultiDict(h)
     response = ClientResponse(
         "get",
         url,
@@ -1172,7 +1172,7 @@ def test_response_request_info() -> None:
 def test_request_info_in_exception() -> None:
     url = URL("http://def-cl-resp.org")
     h = {"Content-Type": "application/json;charset=cp1251"}
-    headers = CIMultiDictProxy(CIMultiDict(h))
+    headers = CIMultiDict(h)
     response = ClientResponse(
         "get",
         url,
@@ -1195,7 +1195,7 @@ def test_request_info_in_exception() -> None:
 def test_no_redirect_history_in_exception() -> None:
     url = URL("http://def-cl-resp.org")
     h = {"Content-Type": "application/json;charset=cp1251"}
-    headers = CIMultiDictProxy(CIMultiDict(h))
+    headers = CIMultiDict(h)
     response = ClientResponse(
         "get",
         url,
@@ -1221,7 +1221,7 @@ def test_redirect_history_in_exception() -> None:
     url = URL(u)
     hist_headers = {"Content-Type": "application/json;charset=cp1251", "Location": u}
     h = {"Content-Type": "application/json;charset=cp1251"}
-    headers = CIMultiDictProxy(CIMultiDict(h))
+    headers = CIMultiDict(h)
     response = ClientResponse(
         "get",
         url,
