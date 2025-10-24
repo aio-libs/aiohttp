@@ -230,7 +230,13 @@ class ClientResponse(HeadersMixin):
         session: "ClientSession | None",
         request_headers: CIMultiDict[str] | None = None,
         original_url: URL | None = None,
+        **kwargs: object,
     ) -> None:
+        # kwargs exists so authors of subclasses should expect to pass through unknown
+        # arguments. This allows us to safely add new arguments in future releases.
+        # But, we should never receive unknown arguments here in the parent class, this
+        # would indicate an argument has been named wrong or similar in the subclass.
+        assert not kwargs, "Unexpected arguments to ClientResponse"
         # URL forbids subclasses, so a simple type check is enough.
         assert type(url) is URL
 
