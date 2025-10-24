@@ -186,7 +186,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.78.0
+python-on-whales==0.79.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
