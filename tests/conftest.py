@@ -27,7 +27,7 @@ except ImportError:  # For downstreams only  # pragma: no cover
     HAS_BLOCKBUSTER = False
 
 from aiohttp import payload
-from aiohttp.client import ClientSession
+from aiohttp.client import ClientSession, ClientTimeout
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
@@ -418,6 +418,8 @@ async def make_client_request(
     ) -> ClientRequest:
         nonlocal request, session
         session = ClientSession()
+        timer = TimerNoop()
+        timeout = ClientTimeout()
         default_args: ClientRequestArgs = {
             "loop": loop,
             "params": {},
@@ -433,7 +435,19 @@ async def make_client_request(
             "response_class": ClientResponse,
             "proxy": None,
             "proxy_auth": None,
-            "timer": TimerNoop(),
+            "response_params": {
+                "timer": timer,
+                "skip_payload": True,
+                "read_until_eof": True,
+                "auto_decompress": True,
+                "read_timeout": timeout.sock_read,
+                "read_bufsize": 2**16,
+                "timeout_ceil_threshold": 5,
+                "max_line_size": 8190,
+                "max_field_size": 8190,
+            },
+            "timer": timer,
+            "timeout": timeout,
             "session": session,
             "ssl": True,
             "proxy_headers": None,

@@ -625,8 +625,6 @@ class ClientSession:
                     req = self._request_class(
                         method,
                         url,
-                        response_params=response_params,
-                        timeout=real_timeout,
                         params=params,
                         headers=headers,
                         skip_auto_headers=skip_headers,
@@ -641,7 +639,9 @@ class ClientSession:
                         response_class=self._response_class,
                         proxy=proxy_,
                         proxy_auth=proxy_auth,
+                        response_params=response_params,
                         timer=timer,
+                        timeout=real_timeout,
                         session=self,
                         ssl=ssl,
                         server_hostname=server_hostname,
