@@ -1352,3 +1352,28 @@ async def test_iobase_payload_size_unseekable() -> None:
     # For unseekable files that can't tell() or seek(),
     # they are marked as consumed after the first write
     assert p.consumed is True
+
+
+async def test_empty_bytes_payload_is_reusable() -> None:
+    """Test that empty BytesPayload can be safely reused across requests."""
+    empty_payload = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
+
+    assert isinstance(empty_payload, payload.BytesPayload)
+    assert empty_payload.size == 0
+    assert empty_payload.consumed is False
+    assert empty_payload.autoclose is True
+
+    initial_headers = dict(empty_payload.headers)
+
+    for i in range(3):
+        writer = BufferWriter()
+        await empty_payload.write_with_length(writer, None)
+
+        assert writer.buffer == b""
+        assert empty_payload.consumed is False, f"consumed flag changed on write {i+1}"
+        assert (
+            dict(empty_payload.headers) == initial_headers
+        ), f"headers mutated on write {i+1}"
+        assert empty_payload.size == 0, f"size changed on write {i+1}"
+
+    assert empty_payload.headers == CIMultiDict(initial_headers)

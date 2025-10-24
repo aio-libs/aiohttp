@@ -1,6 +1,7 @@
 import asyncio
 from unittest import mock
 
+from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -107,17 +108,19 @@ async def test_multiple_responses_one_byte_at_a_time(
             proto.data_received(messages[i : i + 1])
 
         expected = [b"ab", b"cd", b"ef"]
+        url = URL("http://def-cl-resp.org")
         for payload in expected:
             response = ClientResponse(
                 "get",
-                URL("http://def-cl-resp.org"),
+                url,
                 writer=mock.Mock(),
                 continue100=None,
                 timer=TimerNoop(),
-                request_info=mock.Mock(),
                 traces=[],
                 loop=loop,
                 session=mock.Mock(),
+                request_headers=CIMultiDict[str](),
+                original_url=url,
             )
             await response.start(conn)
             await response.read() == payload
@@ -138,16 +141,18 @@ async def test_unexpected_exception_during_data_received(
         conn = mock.Mock(protocol=proto)
         proto.set_response_params(read_until_eof=True)
         proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab")
+        url = URL("http://def-cl-resp.org")
         response = ClientResponse(
             "get",
-            URL("http://def-cl-resp.org"),
+            url,
             writer=mock.Mock(),
             continue100=None,
             timer=TimerNoop(),
-            request_info=mock.Mock(),
             traces=[],
             loop=loop,
             session=mock.Mock(),
+            request_headers=CIMultiDict[str](),
+            original_url=url,
         )
         await response.start(conn)
         await response.read() == b"ab"
@@ -166,16 +171,18 @@ async def test_client_protocol_readuntil_eof(loop: asyncio.AbstractEventLoop) ->
 
     proto.data_received(b"HTTP/1.1 200 Ok\r\n\r\n")
 
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
+        url,
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        request_info=mock.Mock(),
         traces=[],
         loop=loop,
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     proto.set_response_params(read_until_eof=True)
     await response.start(conn)

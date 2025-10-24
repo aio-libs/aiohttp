@@ -12,10 +12,11 @@ from http import HTTPStatus
 from itertools import chain, cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType
+from multidict import CIMultiDict
 
 from . import hdrs, helpers
 from .abc import AbstractResolver, ResolveResult
@@ -33,7 +34,12 @@ from .client_exceptions import (
     ssl_errors,
 )
 from .client_proto import ResponseHandler
-from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
+from .client_reqrep import (
+    SSL_ALLOWED_TYPES,
+    ClientRequest,
+    ClientRequestBase,
+    Fingerprint,
+)
 from .helpers import (
     _SENTINEL,
     ceil_timeout,
@@ -48,7 +54,7 @@ from .resolver import DefaultResolver
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
 else:
-    Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+    Buffer = "bytes | bytearray | memoryview[int] | memoryview[bytes]"
 
 if TYPE_CHECKING:
     import ssl
@@ -1145,7 +1151,7 @@ class TCPConnector(BaseConnector):
 
         return proto
 
-    def _get_ssl_context(self, req: ClientRequest) -> SSLContext | None:
+    def _get_ssl_context(self, req: ClientRequestBase) -> SSLContext | None:
         """Logic to get the correct SSL context
 
         0. if req.ssl is false, return None
@@ -1178,7 +1184,7 @@ class TCPConnector(BaseConnector):
             return _SSL_CONTEXT_UNVERIFIED
         return _SSL_CONTEXT_VERIFIED
 
-    def _get_fingerprint(self, req: ClientRequest) -> Optional["Fingerprint"]:
+    def _get_fingerprint(self, req: ClientRequestBase) -> "Fingerprint | None":
         ret = req.ssl
         if isinstance(ret, Fingerprint):
             return ret
@@ -1191,7 +1197,7 @@ class TCPConnector(BaseConnector):
         self,
         *args: Any,
         addr_infos: list[AddrInfoType],
-        req: ClientRequest,
+        req: ClientRequestBase,
         timeout: "ClientTimeout",
         client_error: type[Exception] = ClientConnectorError,
         **kwargs: Any,
@@ -1231,7 +1237,7 @@ class TCPConnector(BaseConnector):
         req: ClientRequest,
     ) -> None:
         """Issue a warning if the requested URL has HTTPS scheme."""
-        if req.request_info.url.scheme != "https":
+        if req.url.scheme != "https":
             return
 
         # Check if uvloop is being used, which supports TLS in TLS,
@@ -1294,7 +1300,7 @@ class TCPConnector(BaseConnector):
                             underlying_transport,
                             tls_proto,
                             sslcontext,
-                            server_hostname=req.server_hostname or req.host,
+                            server_hostname=req.server_hostname or req.url.raw_host,
                             ssl_handshake_timeout=timeout.total,
                             ssl_shutdown_timeout=self._ssl_shutdown_timeout,
                         )
@@ -1303,7 +1309,7 @@ class TCPConnector(BaseConnector):
                             underlying_transport,
                             tls_proto,
                             sslcontext,
-                            server_hostname=req.server_hostname or req.host,
+                            server_hostname=req.server_hostname or req.url.raw_host,
                             ssl_handshake_timeout=timeout.total,
                         )
                 except BaseException:
@@ -1340,7 +1346,7 @@ class TCPConnector(BaseConnector):
 
             raise ClientConnectionError(
                 "Cannot initialize a TLS-in-TLS connection to host "
-                f"{req.host!s}:{req.port:d} through an underlying connection "
+                f"{req.url.host!s}:{req.url.port:d} through an underlying connection "
                 f"to an HTTPS proxy {req.proxy!s} ssl:{req.ssl or 'default'} "
                 f"[{type_err!s}]"
             ) from type_err
@@ -1377,7 +1383,7 @@ class TCPConnector(BaseConnector):
 
     async def _create_direct_connection(
         self,
-        req: ClientRequest,
+        req: ClientRequestBase,
         traces: list["Trace"],
         timeout: "ClientTimeout",
         *,
@@ -1393,7 +1399,7 @@ class TCPConnector(BaseConnector):
         # See https://github.com/aio-libs/aiohttp/pull/7364.
         if host.endswith(".."):
             host = host.rstrip(".") + "."
-        port = req.port
+        port = req.url.port
         assert port is not None
         try:
             # Cancelling this lookup should not cancel the underlying lookup
@@ -1452,14 +1458,12 @@ class TCPConnector(BaseConnector):
     async def _create_proxy_connection(
         self, req: ClientRequest, traces: list["Trace"], timeout: "ClientTimeout"
     ) -> tuple[asyncio.BaseTransport, ResponseHandler]:
-        headers: dict[str, str] = {}
-        if req.proxy_headers is not None:
-            headers = req.proxy_headers  # type: ignore[assignment]
+        headers = CIMultiDict[str]() if req.proxy_headers is None else req.proxy_headers
         headers[hdrs.HOST] = req.headers[hdrs.HOST]
 
         url = req.proxy
         assert url is not None
-        proxy_req = ClientRequest(
+        proxy_req = ClientRequestBase(
             hdrs.METH_GET,
             url,
             headers=headers,
@@ -1498,7 +1502,7 @@ class TCPConnector(BaseConnector):
                 proxy=None, proxy_auth=None, proxy_headers_hash=None
             )
             conn = _ConnectTunnelConnection(self, key, proto, self._loop)
-            proxy_resp = await proxy_req.send(conn)
+            proxy_resp = await proxy_req._send(conn)
             try:
                 protocol = conn._protocol
                 assert protocol is not None

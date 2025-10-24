@@ -555,9 +555,9 @@ async def test_reraise_os_error(
     create_mocked_conn: Callable[[], ResponseHandler],
 ) -> None:
     err = OSError(1, "permission error")
-    req = mock.Mock()
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.AsyncMock(side_effect=err)
+    req._send = mock.AsyncMock(side_effect=err)
     req._body = mock.Mock()
     req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
@@ -587,9 +587,9 @@ async def test_close_conn_on_error(
         pass
 
     err = UnexpectedException("permission error")
-    req = mock.Mock()
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.AsyncMock(side_effect=err)
+    req._send = mock.AsyncMock(side_effect=err)
     req._body = mock.Mock()
     req._body.close = mock.AsyncMock()
     session = await create_session(request_class=req_factory)
@@ -651,7 +651,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.AsyncMock(return_value=resp)
+    req._send = mock.AsyncMock(return_value=resp)
     # BaseConnector allows all high level protocols by default
     connector = BaseConnector()
 
@@ -714,7 +714,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.AsyncMock(return_value=resp)
+    req._send = mock.AsyncMock(return_value=resp)
     # UnixConnector allows all high level protocols by default and unix sockets
     session = await create_session(
         connector=UnixConnector(path=""), request_class=req_factory
@@ -954,7 +954,7 @@ async def test_request_tracing(
             context: object,
             params: tracing.TraceRequestHeadersSentParams,
         ) -> None:
-            gathered_req_headers.extend(**params.headers)
+            gathered_req_headers.extend(params.headers)
 
         trace_config = aiohttp.TraceConfig(
             trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
