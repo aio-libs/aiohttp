@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import warnings
 from collections.abc import (
@@ -140,7 +141,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
 
     def __init_subclass__(cls: type["Application"]) -> None:
         raise TypeError(
-            f"Inheritance class {cls.__name__} from web.Application " "is forbidden"
+            f"Inheritance class {cls.__name__} from web.Application is forbidden"
         )
 
     # MutableMapping API
@@ -416,7 +417,13 @@ class CleanupError(RuntimeError):
 
 
 if TYPE_CHECKING:
-    _CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
+    # cleanup contexts may be either async generators (async iterator)
+    # or async context managers (contextlib.asynccontextmanager). For
+    # the purposes of type checking we keep the callback return type
+    # permissive (Any) so that downstream checks which attempt to
+    # detect return value shapes at runtime are not considered
+    # unreachable by the type checker.
+    _CleanupContextBase = FrozenList[Callable[[Application], Any]]
 else:
     _CleanupContextBase = FrozenList
 
@@ -424,25 +431,88 @@ else:
 class CleanupContext(_CleanupContextBase):
     def __init__(self) -> None:
         super().__init__()
-        self._exits: list[AsyncIterator[None]] = []
+        # _exits stores either async iterators (legacy async generators)
+        # or async context manager instances. On cleanup we dispatch to
+        # the appropriate finalizer (``__anext__`` for iterators and
+        # ``__aexit__`` for context managers).
+        self._exits: list[object] = []
 
     async def _on_startup(self, app: Application) -> None:
+        """Run registered cleanup context callbacks at startup.
+
+        Each callback may return either an async iterator (an async
+        generator that yields exactly once) or an async context manager
+        (from :func:`contextlib.asynccontextmanager`). If a context manager
+        is returned it will be entered on startup (``__aenter__``) and
+        exited during cleanup (``__aexit__``). Legacy single-yield async
+        generator cleanup contexts continue to be supported.
+
+        """
         for cb in self:
-            it = cb(app).__aiter__()
-            await it.__anext__()
-            self._exits.append(it)
+            # Call the registered callback and inspect its return value.
+            # If the callback returned a context manager instance, use it
+            # directly. Otherwise (legacy async generator callbacks) we
+            # convert the callback into an async context manager and
+            # call it to obtain a context manager instance.
+            ctx = cb(app)
+
+            # If the callback returned an async iterator (legacy async
+            # generator), use it directly. If it returned an async
+            # context manager instance, enter it and remember the manager
+            # for later exit. As a final fallback, convert the callback
+            # into an async context manager (covers some edge cases) and
+            # enter that.
+            if isinstance(ctx, AsyncIterator):
+                # Legacy async generator cleanup context: advance it once
+                # (equivalent to entering) and remember the iterator for
+                # finalization.
+                it = cast(AsyncIterator[None], ctx)
+                await it.__anext__()
+                self._exits.append(it)
+            elif isinstance(ctx, contextlib.AbstractAsyncContextManager):
+                # If ctx is an async context manager: enter it and
+                # remember the manager for later exit.
+                cm = ctx
+                await cm.__aenter__()
+                self._exits.append(cm)
+            else:
+                # cb may have a broader annotated return type; adapt the
+                # callable into an async context manager and enter it.
+                cm = contextlib.asynccontextmanager(
+                    cast(Callable[[Application], AsyncIterator[None]], cb)
+                )(app)
+                await cm.__aenter__()
+                self._exits.append(cm)
 
     async def _on_cleanup(self, app: Application) -> None:
-        errors = []
-        for it in reversed(self._exits):
+        """Run cleanup for all registered contexts in reverse order.
+
+        Collects and re-raises exceptions similarly to previous
+        implementation: a single exception is propagated as-is, multiple
+        exceptions are wrapped into CleanupError.
+        """
+        errors: list[BaseException] = []
+        for entry in reversed(self._exits):
             try:
-                await it.__anext__()
-            except StopAsyncIteration:
-                pass
+                if isinstance(entry, AsyncIterator):
+                    # Legacy async generator: expect it to finish on second
+                    # __anext__ call.
+                    try:
+                        await cast(AsyncIterator[None], entry).__anext__()
+                    except StopAsyncIteration:
+                        pass
+                    else:
+                        errors.append(
+                            RuntimeError(f"{entry!r} has more than one 'yield'")
+                        )
+                elif isinstance(entry, contextlib.AbstractAsyncContextManager):
+                    # If entry is an async context manager: call __aexit__.
+                    await entry.__aexit__(None, None, None)
+                else:
+                    # Unknown entry type: skip but record an error.
+                    errors.append(RuntimeError(f"Unknown cleanup entry {entry!r}"))
             except (Exception, asyncio.CancelledError) as exc:
                 errors.append(exc)
-            else:
-                errors.append(RuntimeError(f"{it!r} has more than one 'yield'"))
         if errors:
             if len(errors) == 1:
                 raise errors[0]
