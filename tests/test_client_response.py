@@ -42,7 +42,7 @@ async def test_http_processing_error(session: ClientSession) -> None:
         traces=[],
         loop=loop,
         session=session,
-        request_headers=headers,
+        request_headers=CIMultiDict[str](),
         original_url=url,
     )
     loop.get_debug = mock.Mock()
