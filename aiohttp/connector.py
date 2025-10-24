@@ -132,9 +132,9 @@ class Connection:
     def __repr__(self) -> str:
         return f"Connection<{self._key}>"
 
-    def __del__(self, _warnings: Any = warnings) -> None:
+    def __del__(self, warnings_warn: Any = warnings.warn) -> None:
         if self._protocol is not None:
-            _warnings.warn(
+            warnings_warn(
                 f"Unclosed connection {self!r}", ResourceWarning, source=self
             )
             if self._loop.is_closed():
