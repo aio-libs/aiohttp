@@ -996,7 +996,7 @@ class ClientRequest(ClientRequestBase):
     _body = _EMPTY_BODY
     _continue = None  # waiter future for '100 Continue' response
     _response_params = None
-    _timeout: ClientTimeout | None = ClientTimeout()
+    _timeout = ClientTimeout()
 
     GET_METHODS = {
         hdrs.METH_GET,

@@ -560,6 +560,7 @@ async def test_reraise_os_error(
     req._send = mock.AsyncMock(side_effect=err)
     req._body = mock.Mock()
     req._body.close = mock.AsyncMock()
+    req._timeout = ClientTimeout()
     session = await create_session(request_class=req_factory)
 
     async def create_connection(
@@ -592,6 +593,7 @@ async def test_close_conn_on_error(
     req._send = mock.AsyncMock(side_effect=err)
     req._body = mock.Mock()
     req._body.close = mock.AsyncMock()
+    req._timeout = ClientTimeout()
     session = await create_session(request_class=req_factory)
 
     connections = []
@@ -652,6 +654,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req._send = mock.AsyncMock(return_value=resp)
+    req._timeout = ClientTimeout()
     # BaseConnector allows all high level protocols by default
     connector = BaseConnector()
 
@@ -715,6 +718,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req._send = mock.AsyncMock(return_value=resp)
+    req._timeout = ClientTimeout()
     # UnixConnector allows all high level protocols by default and unix sockets
     session = await create_session(
         connector=UnixConnector(path=""), request_class=req_factory
