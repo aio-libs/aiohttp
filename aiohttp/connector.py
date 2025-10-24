@@ -134,7 +134,9 @@ class Connection:
 
     def __del__(self, warnings_warn: Any = warnings.warn) -> None:
         if self._protocol is not None:
-            warnings_warn(f"Unclosed connection {self!r}", ResourceWarning, source=self)
+            warnings_warn(
+                f"Unclosed connection {self!r}", ResourceWarning, source=self
+            )
             if self._loop.is_closed():
                 return
 
