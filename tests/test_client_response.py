@@ -32,7 +32,6 @@ def session() -> mock.Mock:
 
 async def test_http_processing_error(session: ClientSession) -> None:
     loop = mock.Mock()
-    request_info = mock.Mock()
     url = URL("http://del-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -43,7 +42,7 @@ async def test_http_processing_error(session: ClientSession) -> None:
         traces=[],
         loop=loop,
         session=session,
-        request_headers=CIMultiDict[str](),
+        request_headers=headers,
         original_url=url,
     )
     loop.get_debug = mock.Mock()
@@ -56,7 +55,7 @@ async def test_http_processing_error(session: ClientSession) -> None:
     with pytest.raises(aiohttp.ClientResponseError) as info:
         await response.start(connection)
 
-    assert info.value.request_info is request_info
+    assert info.value.request_info.url is url
     response.close()
 
 
