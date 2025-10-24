@@ -224,12 +224,11 @@ class ClientResponse(HeadersMixin):
         writer: asyncio.Task[None] | None,
         continue100: asyncio.Future[bool] | None,
         timer: BaseTimerContext | None,
-        request_info: RequestInfo | None,  # Backwards compat; not normally used anymore
         traces: Sequence["Trace"],
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession | None",
-        request_headers: CIMultiDict[str] | None = None,
-        original_url: URL | None = None,
+        request_headers: CIMultiDict[str],
+        original_url: URL,
         **kwargs: object,
     ) -> None:
         # kwargs exists so authors of subclasses should expect to pass through unknown
@@ -252,9 +251,6 @@ class ClientResponse(HeadersMixin):
         self._original_url = original_url
         self._timer = timer if timer is not None else TimerNoop()
         self._cache: dict[str, Any] = {}
-        # Pre-populate cache if request_info is provided
-        if request_info is not None:
-            self._cache["request_info"] = request_info
         self._traces = traces
         self._loop = loop
         # Save reference to _resolve_charset, so that get_encoding() will still
@@ -341,10 +337,6 @@ class ClientResponse(HeadersMixin):
     @reify
     def request_info(self) -> RequestInfo:
         # Build RequestInfo lazily from components
-        # If request_info was passed to __init__, it's already in _cache
-        if TYPE_CHECKING:
-            assert self._request_headers is not None
-            assert self._original_url is not None
         headers = CIMultiDictProxy(self._request_headers)
         return tuple.__new__(
             RequestInfo, (self._url, self.method, headers, self._original_url)
