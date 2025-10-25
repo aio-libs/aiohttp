@@ -23,7 +23,7 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import JSONEncoder, _CIMultiDict
+from .typedefs import JSONEncoder
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -145,7 +145,7 @@ class Payload(ABC):
         self,
         value: Any,
         headers: (
-            _CIMultiDict | dict[str, str] | Iterable[tuple[str, str]] | None
+            CIMultiDict[str] | dict[str, str] | Iterable[tuple[str, str]] | None
         ) = None,
         content_type: None | str | _SENTINEL = sentinel,
         filename: str | None = None,
@@ -154,7 +154,7 @@ class Payload(ABC):
     ) -> None:
         self._encoding = encoding
         self._filename = filename
-        self._headers: _CIMultiDict = CIMultiDict()
+        self._headers = CIMultiDict[str]()
         self._value = value
         if content_type is not sentinel and content_type is not None:
             assert isinstance(content_type, str)
@@ -189,7 +189,7 @@ class Payload(ABC):
         return self._filename
 
     @property
-    def headers(self) -> _CIMultiDict:
+    def headers(self) -> CIMultiDict[str]:
         """Custom item headers"""
         return self._headers
 
