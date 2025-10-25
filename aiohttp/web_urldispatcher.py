@@ -60,10 +60,6 @@ __all__ = (
 if TYPE_CHECKING:
     from .web_app import Application
 
-    BaseDict = dict[str, str]
-else:
-    BaseDict = dict
-
 CIRCULAR_SYMLINK_ERROR = (RuntimeError,) if sys.version_info < (3, 13) else ()
 
 HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
@@ -212,7 +208,7 @@ class AbstractRoute(abc.ABC):
         return await self._expect_handler(request)
 
 
-class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
+class UrlMappingMatchInfo(dict[str, str], AbstractMatchInfo):
 
     __slots__ = ("_route", "_apps", "_current_app", "_frozen")
 
