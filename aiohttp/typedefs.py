@@ -5,7 +5,7 @@ from http.cookies import BaseCookie, Morsel
 from typing import TYPE_CHECKING, Any, Protocol
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
-from yarl import URL, Query as Query
+from yarl import URL
 
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
