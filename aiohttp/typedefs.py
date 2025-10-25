@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable, Iterable, Mapping
 from http.cookies import BaseCookie, Morsel
 from typing import TYPE_CHECKING, Any, Protocol
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
+from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 DEFAULT_JSON_ENCODER = json.dumps
