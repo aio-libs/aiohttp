@@ -147,16 +147,10 @@ class AbstractResolver(ABC):
         """Release resolver"""
 
 
-if TYPE_CHECKING:
-    IterableBase = Iterable[Morsel[str]]
-else:
-    IterableBase = Iterable
-
-
 ClearCookiePredicate = Callable[["Morsel[str]"], bool]
 
 
-class AbstractCookieJar(Sized, IterableBase):
+class AbstractCookieJar(Sized, Iterable[Morsel[str]]):
     """Abstract Cookie Jar."""
 
     @property
