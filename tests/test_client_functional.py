@@ -22,7 +22,7 @@ import pytest
 import trustme
 from multidict import MultiDict
 from pytest_mock import MockerFixture
-from yarl import URL
+from yarl import URL, Query
 
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, payload, web
@@ -48,7 +48,7 @@ from aiohttp.payload import (
 )
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestClient, TestServer, unused_port
-from aiohttp.typedefs import Handler, Query
+from aiohttp.typedefs import Handler
 
 
 @pytest.fixture(autouse=True)

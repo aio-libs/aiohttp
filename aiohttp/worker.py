@@ -7,7 +7,7 @@ import re
 import signal
 import sys
 from types import FrameType
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
@@ -18,18 +18,13 @@ from .helpers import set_result
 from .web_app import Application
 from .web_log import AccessLogger
 
-if TYPE_CHECKING:
+try:
     import ssl
 
     SSLContext = ssl.SSLContext
-else:
-    try:
-        import ssl
-
-        SSLContext = ssl.SSLContext
-    except ImportError:  # pragma: no cover
-        ssl = None  # type: ignore[assignment]
-        SSLContext = object  # type: ignore[misc,assignment]
+except ImportError:  # pragma: no cover
+    ssl = None  # type: ignore[assignment]
+    SSLContext = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker")

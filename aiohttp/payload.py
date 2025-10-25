@@ -7,9 +7,9 @@ import os
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import AsyncIterable, AsyncIterator, Iterable
 from itertools import chain
-from typing import IO, TYPE_CHECKING, Any, Final, TextIO
+from typing import IO, Any, Final, TextIO
 
 from multidict import CIMultiDict
 
@@ -23,7 +23,7 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import JSONEncoder, _CIMultiDict
+from .typedefs import JSONEncoder
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -145,7 +145,7 @@ class Payload(ABC):
         self,
         value: Any,
         headers: (
-            _CIMultiDict | dict[str, str] | Iterable[tuple[str, str]] | None
+            CIMultiDict[str] | dict[str, str] | Iterable[tuple[str, str]] | None
         ) = None,
         content_type: None | str | _SENTINEL = sentinel,
         filename: str | None = None,
@@ -154,7 +154,7 @@ class Payload(ABC):
     ) -> None:
         self._encoding = encoding
         self._filename = filename
-        self._headers: _CIMultiDict = CIMultiDict()
+        self._headers = CIMultiDict[str]()
         self._value = value
         if content_type is not sentinel and content_type is not None:
             assert isinstance(content_type, str)
@@ -189,7 +189,7 @@ class Payload(ABC):
         return self._filename
 
     @property
-    def headers(self) -> _CIMultiDict:
+    def headers(self) -> CIMultiDict[str]:
         """Custom item headers"""
         return self._headers
 
@@ -939,26 +939,14 @@ class JsonPayload(BytesPayload):
         )
 
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterable, AsyncIterator
-
-    _AsyncIterator = AsyncIterator[bytes]
-    _AsyncIterable = AsyncIterable[bytes]
-else:
-    from collections.abc import AsyncIterable, AsyncIterator
-
-    _AsyncIterator = AsyncIterator
-    _AsyncIterable = AsyncIterable
-
-
 class AsyncIterablePayload(Payload):
-    _iter: _AsyncIterator | None = None
-    _value: _AsyncIterable
+    _iter: AsyncIterator[bytes] | None = None
+    _value: AsyncIterable[bytes]
     _cached_chunks: list[bytes] | None = None
     # _consumed stays False to allow reuse with cached content
     _autoclose = True  # Iterator doesn't need explicit closing
 
-    def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, value: AsyncIterable[bytes], *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "

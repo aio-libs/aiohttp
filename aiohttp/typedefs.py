@@ -1,52 +1,34 @@
 import json
 import os
 from collections.abc import Awaitable, Callable, Iterable, Mapping
-from typing import TYPE_CHECKING, Any, Protocol, Union
+from http.cookies import BaseCookie, Morsel
+from typing import TYPE_CHECKING, Any, Protocol
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
-from yarl import URL, Query as _Query
-
-Query = _Query
+from multidict import CIMultiDict, CIMultiDictProxy, istr
+from yarl import URL
 
 DEFAULT_JSON_ENCODER = json.dumps
 DEFAULT_JSON_DECODER = json.loads
 
 if TYPE_CHECKING:
-    _CIMultiDict = CIMultiDict[str]
-    _CIMultiDictProxy = CIMultiDictProxy[str]
-    _MultiDict = MultiDict[str]
-    _MultiDictProxy = MultiDictProxy[str]
-    from http.cookies import BaseCookie, Morsel
-
     from .web import Request, StreamResponse
-else:
-    _CIMultiDict = CIMultiDict
-    _CIMultiDictProxy = CIMultiDictProxy
-    _MultiDict = MultiDict
-    _MultiDictProxy = MultiDictProxy
 
-Byteish = Union[bytes, bytearray, memoryview]
+Byteish = bytes | bytearray | memoryview
 JSONEncoder = Callable[[Any], str]
 JSONDecoder = Callable[[str], Any]
-LooseHeaders = Union[
-    Mapping[str, str],
-    Mapping[istr, str],
-    _CIMultiDict,
-    _CIMultiDictProxy,
-    Iterable[tuple[str | istr, str]],
-]
+LooseHeaders = (
+    Mapping[str, str]
+    | Mapping[istr, str]
+    | CIMultiDict[str]
+    | CIMultiDictProxy[str]
+    | Iterable[tuple[str | istr, str]]
+)
 RawHeaders = tuple[tuple[bytes, bytes], ...]
-StrOrURL = Union[str, URL]
+StrOrURL = str | URL
 
-LooseCookiesMappings = Mapping[str, Union[str, "BaseCookie[str]", "Morsel[Any]"]]
-LooseCookiesIterables = Iterable[
-    tuple[str, Union[str, "BaseCookie[str]", "Morsel[Any]"]]
-]
-LooseCookies = Union[
-    LooseCookiesMappings,
-    LooseCookiesIterables,
-    "BaseCookie[str]",
-]
+LooseCookiesMappings = Mapping[str, str | BaseCookie[str] | Morsel[Any]]
+LooseCookiesIterables = Iterable[tuple[str, str | BaseCookie[str] | Morsel[Any]]]
+LooseCookies = LooseCookiesMappings | LooseCookiesIterables | BaseCookie[str]
 
 Handler = Callable[["Request"], Awaitable["StreamResponse"]]
 
@@ -57,4 +39,4 @@ class Middleware(Protocol):
     ) -> Awaitable["StreamResponse"]: ...
 
 
-PathLike = Union[str, "os.PathLike[str]"]
+PathLike = str | os.PathLike[str]
