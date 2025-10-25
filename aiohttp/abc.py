@@ -147,7 +147,7 @@ class AbstractResolver(ABC):
         """Release resolver"""
 
 
-ClearCookiePredicate = Callable[["Morsel[str]"], bool]
+ClearCookiePredicate = Callable[[Morsel[str]], bool]
 
 
 class AbstractCookieJar(Sized, Iterable[Morsel[str]]):
