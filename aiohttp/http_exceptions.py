@@ -45,7 +45,9 @@ class BadHttpMessage(HttpProcessingError):
     code = 400
     message = "Bad Request"
 
-    def __init__(self, message: str, *, headers: CIMultiDict[str] | None = None) -> None:
+    def __init__(
+        self, message: str, *, headers: CIMultiDict[str] | None = None
+    ) -> None:
         super().__init__(message=message, headers=headers)
         self.args = (message,)
 
