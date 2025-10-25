@@ -1,5 +1,4 @@
 import asyncio
-import collections.abc
 import datetime
 import enum
 import json
@@ -43,10 +42,6 @@ __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 if TYPE_CHECKING:
     from .web_request import BaseRequest
 
-    BaseClass = MutableMapping[str, Any]
-else:
-    BaseClass = collections.abc.MutableMapping
-
 
 # TODO(py311): Convert to StrEnum for wider use
 class ContentCoding(enum.Enum):
@@ -66,7 +61,7 @@ CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
 ############################################################
 
 
-class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
+class StreamResponse(MutableMapping[str, Any], HeadersMixin, CookieMixin):
 
     _body: None | bytes | bytearray | Payload
     _length_check = True
