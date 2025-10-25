@@ -7,9 +7,9 @@ import os
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import AsyncIterable, AsyncIterator, Iterable
 from itertools import chain
-from typing import IO, TYPE_CHECKING, Any, Final, TextIO
+from typing import IO, Any, Final, TextIO
 
 from multidict import CIMultiDict
 
@@ -939,26 +939,14 @@ class JsonPayload(BytesPayload):
         )
 
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterable, AsyncIterator
-
-    _AsyncIterator = AsyncIterator[bytes]
-    _AsyncIterable = AsyncIterable[bytes]
-else:
-    from collections.abc import AsyncIterable, AsyncIterator
-
-    _AsyncIterator = AsyncIterator
-    _AsyncIterable = AsyncIterable
-
-
 class AsyncIterablePayload(Payload):
-    _iter: _AsyncIterator | None = None
-    _value: _AsyncIterable
+    _iter: AsyncIterator[bytes] | None = None
+    _value: AsyncIterable[bytes]
     _cached_chunks: list[bytes] | None = None
     # _consumed stays False to allow reuse with cached content
     _autoclose = True  # Iterator doesn't need explicit closing
 
-    def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, value: AsyncIterable[bytes], *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "
