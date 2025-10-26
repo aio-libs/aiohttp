@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import suppress
-from typing import Any
+from typing import Any, Callable
 
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
@@ -22,10 +22,15 @@ from .http_exceptions import HttpProcessingError
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
+
 class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamReader]]):
     """Helper class to adapt between Protocol and StreamReader."""
 
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, 
+        loop: asyncio.AbstractEventLoop, 
+        parser_factory: type[HttpResponseParser] = HttpResponseParser
+        ) -> None:
         BaseProtocol.__init__(self, loop=loop)
         DataQueue.__init__(self, loop)
 
@@ -39,6 +44,9 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._tail = b""
         self._upgraded = False
+        # parser_factory is important because it will 
+        # allow for other protocols to be added in the future.
+        self._parser_factory = parser_factory
         self._parser: HttpResponseParser | None = None
 
         self._read_timeout: float | None = None
@@ -237,7 +245,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._timeout_ceil_threshold = timeout_ceil_threshold
 
-        self._parser = HttpResponseParser(
+        self._parser = self._parser_factory(
             self,
             self._loop,
             read_bufsize,
