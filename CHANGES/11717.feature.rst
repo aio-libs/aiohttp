@@ -1,0 +1,1 @@
+Add parser factory to :class:`ResponseHandler` and a writer factory to :class:`ClientRequestBase` to prepare for future protocol support -- by :user:`Vizonex`
