@@ -705,7 +705,7 @@ class ClientRequestBase:
     method = "GET"
 
     _writer_task: asyncio.Task[None] | None = None  # async task for streaming data
-    _writer_factory: type[StreamWriter] = StreamWriter # allowing http/2 and http/3 
+    _writer_factory: type[StreamWriter] = StreamWriter  # allowing http/2 and http/3
     _skip_auto_headers: "CIMultiDict[None] | None" = None
 
     # N.B.
@@ -723,8 +723,8 @@ class ClientRequestBase:
         loop: asyncio.AbstractEventLoop,
         ssl: SSLContext | bool | Fingerprint,
         trust_env: bool = False,
-        writer_factory:type[StreamWriter] | None = None,
-        version: HttpVersion | None = None
+        writer_factory: type[StreamWriter] | None = None,
+        version: HttpVersion | None = None,
     ):
         if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
@@ -745,7 +745,7 @@ class ClientRequestBase:
         self._update_host(url)
         self._update_headers(headers)
         self._update_auth(auth, trust_env)
-        
+
         # setup incase of newer protocols.
         if version:
             self.version = version
