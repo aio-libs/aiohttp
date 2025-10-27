@@ -8,7 +8,7 @@ import ssl
 import sys
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie
 from pathlib import Path
@@ -464,7 +464,9 @@ def slow_executor() -> Iterator[ThreadPoolExecutor]:
     class SlowExecutor(ThreadPoolExecutor):
         """Executor that adds delay to operations."""
 
-        def submit(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
+        def submit(  # type: ignore[override]
+            self, fn: Callable[..., Any], /, *args: Any, **kwargs: Any
+        ) -> Future[Any]:
             def slow_fn(*args: Any, **kwargs: Any) -> Any:
                 time.sleep(0.05)  # Add delay to simulate slow operation
                 return fn(*args, **kwargs)
