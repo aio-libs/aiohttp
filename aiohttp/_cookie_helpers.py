@@ -219,7 +219,7 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
             continue
 
         # Create new morsel
-        morsel: Morsel[str] = Morsel()
+        morsel = Morsel()
         # Preserve the original value as coded_value (with quotes if present)
         # We use __setstate__ instead of the public set() API because it allows us to
         # bypass validation and set already validated state. This is more stable than
