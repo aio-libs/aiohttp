@@ -166,7 +166,9 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
     attribute names (like 'path' or 'secure') should be treated as cookies.
 
     This parser uses the same regex-based approach as parse_set_cookie_headers
-    to properly handle quoted values that may contain semicolons.
+    to properly handle quoted values that may contain semicolons. When the
+    regex fails to match a malformed cookie, it falls back to simple parsing
+    to ensure subsequent cookies are not lost (issue #11632).
 
     Args:
         header: The Cookie header value to parse
@@ -185,7 +187,39 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
         # Use the same pattern as parse_set_cookie_headers to find cookies
         match = _COOKIE_PATTERN.match(header, i)
         if not match:
-            break
+            # Try to parse malformed cookie manually (issue #11632)
+            # Skip whitespace
+            while i < n and header[i] in " \t":
+                i += 1
+            if i >= n:
+                break
+
+            # Find key=value; pattern
+            eq_pos = header.find("=", i)
+            next_semi = header.find(";", i)
+
+            if eq_pos != -1 and (next_semi == -1 or eq_pos < next_semi):
+                key = header[i:eq_pos].strip()
+                if next_semi == -1:
+                    value = header[eq_pos + 1 :].strip()
+                    i = n
+                else:
+                    value = header[eq_pos + 1 : next_semi].strip()
+                    i = next_semi + 1
+
+                if key and _COOKIE_NAME_RE.match(key):
+                    morsel: Morsel[str] = Morsel()
+                    morsel.__setstate__(  # type: ignore[attr-defined]
+                        {"key": key, "value": _unquote(value), "coded_value": value}
+                    )
+                    cookies.append((key, morsel))
+                    continue
+
+            # Skip to next semicolon if we couldn't parse it
+            if next_semi == -1:
+                break
+            i = next_semi + 1
+            continue
 
         key = match.group("key")
         value = match.group("val") or ""
