@@ -179,6 +179,7 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
     if not header:
         return []
 
+    morsel: Morsel[str]
     cookies: list[tuple[str, Morsel[str]]] = []
     i = 0
     n = len(header)
@@ -199,7 +200,7 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
                 value = header[eq_pos + 1 : end_pos].strip()
 
                 if key and _COOKIE_NAME_RE.match(key):
-                    morsel: Morsel[str] = Morsel()
+                    morsel = Morsel()
                     morsel.__setstate__(  # type: ignore[attr-defined]
                         {"key": key, "value": _unquote(value), "coded_value": value}
                     )
