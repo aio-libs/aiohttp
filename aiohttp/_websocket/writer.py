@@ -64,7 +64,7 @@ class WebSocketWriter:
         self._limit = limit
         self._output_size = 0
         self._compressobj: Any = None  # actually compressobj
-        self._send_lock: asyncio.Lock | None = None  # Created on first compressed send
+        self._send_lock = asyncio.Lock()
 
     async def send_frame(
         self, message: bytes, opcode: int, compress: int | None = None
@@ -73,42 +73,36 @@ class WebSocketWriter:
         if self._closing and not (opcode & WSMsgType.CLOSE):
             raise ClientConnectionResetError("Cannot write to closing transport")
 
-        # Non-compressed frames don't need lock or shield
         if not (compress or self.compress) or opcode >= 8:
+            # Non-compressed frames don't need lock or shield
             self._write_websocket_frame(message, opcode, 0)
-            return
-
-        if self._send_lock is None:
-            self._send_lock = asyncio.Lock()
-
-        # Small compressed payloads - compress synchronously in event loop
-        if len(message) <= WEBSOCKET_MAX_SYNC_CHUNK_SIZE:
-            # For compressed frames, we need to serialize access to the compressor
-            # to prevent state corruption from concurrent sends
-            async with self._send_lock:
-                self._send_compressed_frame_sync(message, opcode, compress)
         else:
-            # Large compressed frames need shield to prevent corruption
-            # For large compressed frames, the entire compress+send operation must be atomic.
-            # If cancelled after compression but before send, the compressor state would
-            # be advanced but data not sent, corrupting subsequent frames.
-            await self._send_lock.acquire()
-            # Create a task to shield from cancellation
-            # Use eager_start on Python 3.12+ to avoid scheduling overhead
-            loop = asyncio.get_running_loop()
-            coro = self._send_compressed_frame_async(message, opcode, compress)
-            if sys.version_info >= (3, 12):
-                send_task = asyncio.Task(coro, loop=loop, eager_start=True)
-            else:
-                send_task = loop.create_task(coro)
-            try:
-                await asyncio.shield(send_task)
-            except asyncio.CancelledError:
-                # Shield will re-raise but task continues - wait for it
-                await send_task
-                raise
-            finally:
-                self._send_lock.release()
+            async with self._send_lock:
+                if len(message) <= WEBSOCKET_MAX_SYNC_CHUNK_SIZE:
+                    # Small compressed payloads - compress synchronously in event loop
+                    # We need the lock even though sync compression has no await points.
+                    # This prevents small frames from interleaving with large frames that
+                    # compress in the executor, avoiding compressor state corruption.
+                    self._send_compressed_frame_sync(message, opcode, compress)
+                else:
+                    # Large compressed frames need shield to prevent corruption
+                    # For large compressed frames, the entire compress+send operation must be atomic.
+                    # If cancelled after compression but before send, the compressor state would
+                    # be advanced but data not sent, corrupting subsequent frames.
+                    # Create a task to shield from cancellation
+                    # Use eager_start on Python 3.12+ to avoid scheduling overhead
+                    loop = asyncio.get_running_loop()
+                    coro = self._send_compressed_frame_async(message, opcode, compress)
+                    if sys.version_info >= (3, 12):
+                        send_task = asyncio.Task(coro, loop=loop, eager_start=True)
+                    else:
+                        send_task = loop.create_task(coro)
+                    try:
+                        await asyncio.shield(send_task)
+                    except asyncio.CancelledError:
+                        # Shield will re-raise but task continues - wait for it
+                        await send_task
+                        raise
 
         # It is safe to return control to the event loop when using compression
         # after this point as we have already sent or buffered all the data.
