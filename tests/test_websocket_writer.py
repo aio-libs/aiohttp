@@ -208,7 +208,8 @@ async def test_send_compress_multiple_cancelled(
 
     Regression test for https://github.com/aio-libs/aiohttp/issues/11725
     This verifies that once a send operation enters the shield, it completes
-    even if cancelled. The lock serializes sends, so they process one at a time.
+    even if cancelled. With the lock inside the shield, all tasks that enter
+    the shield will complete their sends, even while waiting for the lock.
     """
     monkeypatch.setattr("aiohttp._websocket.writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", 1024)
     writer = WebSocketWriter(protocol, transport, compress=15)
@@ -230,8 +231,9 @@ async def test_send_compress_multiple_cancelled(
     ]
 
     # Cancel all tasks during execution
-    # Tasks in the shield will complete, tasks waiting for lock will cancel
-    await asyncio.sleep(0.03)  # Let one or two enter the shield
+    # With lock inside shield, all tasks that enter the shield will complete
+    # even while waiting for the lock
+    await asyncio.sleep(0.1)  # Let tasks enter the shield
     for task in tasks:
         task.cancel()
 
@@ -242,6 +244,10 @@ async def test_send_compress_multiple_cancelled(
             await task
         except asyncio.CancelledError:
             cancelled_count += 1
+
+    # Wait a bit for all shielded tasks to complete
+    # (they continue running even after cancellation)
+    await asyncio.sleep(0.3)
 
     # At least one message should have been sent (the one in the shield)
     sent_count = len(writer.transport.write.call_args_list)  # type: ignore[attr-defined]
