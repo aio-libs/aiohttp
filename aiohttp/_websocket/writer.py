@@ -96,7 +96,7 @@ class WebSocketWriter:
             # Create a task to shield from cancellation
             # Use eager_start on Python 3.12+ to avoid scheduling overhead
             loop = asyncio.get_running_loop()
-            coro = self._send_compressed_frame_impl(message, opcode, compress)
+            coro = self._send_compressed_frame_async(message, opcode, compress)
             if sys.version_info >= (3, 12):
                 send_task = asyncio.Task(coro, loop=loop, eager_start=True)
             else:
@@ -218,7 +218,7 @@ class WebSocketWriter:
             0x40,
         )
 
-    async def _send_compressed_frame_impl(
+    async def _send_compressed_frame_async(
         self, message: bytes, opcode: int, compress: int | None
     ) -> None:
         """Internal implementation of send_frame without locking."""
