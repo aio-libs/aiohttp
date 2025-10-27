@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 from collections.abc import Awaitable, Callable, Iterable, Iterable as TypingIterable
 from contextlib import suppress
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from .abc import AbstractAccessLogger
 from .helpers import AppKey
@@ -256,13 +256,10 @@ __all__ = (
 )
 
 
-if TYPE_CHECKING:
+try:
     from ssl import SSLContext
-else:
-    try:
-        from ssl import SSLContext
-    except ImportError:  # pragma: no cover
-        SSLContext = object  # type: ignore[misc,assignment]
+except ImportError:  # pragma: no cover
+    SSLContext = object  # type: ignore[misc,assignment]
 
 # Only display warning when using -Wdefault, -We, -X dev or similar.
 warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
