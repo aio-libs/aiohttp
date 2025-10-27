@@ -2,6 +2,7 @@ import asyncio
 import random
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from unittest import mock
 
 import pytest
@@ -178,11 +179,9 @@ async def test_send_compress_cancelled(
     await asyncio.sleep(0.01)
     task.cancel()
 
-    # Catch the cancellation
-    try:
+    # Await task cancellation (expected and intentionally ignored)
+    with suppress(asyncio.CancelledError):
         await task
-    except asyncio.CancelledError:
-        pass
 
     # Send second message - this should NOT be corrupted
     await writer.send_frame(large_data_2, WSMsgType.BINARY)
