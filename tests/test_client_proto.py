@@ -1,6 +1,8 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
+import pytest
 from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
@@ -359,7 +361,8 @@ async def test_abort_without_transport(loop: asyncio.AbstractEventLoop) -> None:
 
 async def test_compression_cancelled_marks_connection_for_closure(
     loop: asyncio.AbstractEventLoop,
-    slow_executor,
+    slow_executor: ThreadPoolExecutor,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test that compression cancellation leads to connection closure.
 
@@ -399,20 +402,20 @@ async def test_compression_cancelled_marks_connection_for_closure(
     assert not proto.should_close
 
     # Write large data that triggers executor-based compression
-    with mock.patch("aiohttp.compression_utils.MAX_SYNC_CHUNK_SIZE", 1024):
-        large_data = b"X" * 10000
+    monkeypatch.setattr("aiohttp.compression_utils.MAX_SYNC_CHUNK_SIZE", 1024)
+    large_data = b"X" * 10000
 
-        # Start write and cancel during compression
-        task = asyncio.create_task(writer.write(large_data))
-        await asyncio.sleep(0.01)  # Let compression start
-        task.cancel()
+    # Start write and cancel during compression
+    task = asyncio.create_task(writer.write(large_data))
+    await asyncio.sleep(0.01)  # Let compression start
+    task.cancel()
 
-        try:
-            await task
-        except asyncio.CancelledError:
-            # In real HTTP client, cancellation of write would lead to
-            # the protocol marking connection for closure
-            proto.set_exception(http.HttpProcessingError(message="Write cancelled"))
+    try:
+        await task
+    except asyncio.CancelledError:
+        # In real HTTP client, cancellation of write would lead to
+        # the protocol marking connection for closure
+        proto.set_exception(http.HttpProcessingError(message="Write cancelled"))
 
     # After cancellation and exception, connection should be marked for closure
     assert proto.should_close

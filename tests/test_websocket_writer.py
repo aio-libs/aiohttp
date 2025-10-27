@@ -170,7 +170,7 @@ async def test_send_compress_cancelled(
     large_data_2 = b"B" * 10000
 
     # Start first send and cancel it during compression
-    async def send_and_cancel():
+    async def send_and_cancel() -> None:
         await writer.send_frame(large_data_1, WSMsgType.BINARY)
 
     task = asyncio.create_task(send_and_cancel())
