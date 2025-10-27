@@ -14,7 +14,7 @@ from types import MappingProxyType, TracebackType
 from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
-from yarl import URL
+from yarl import URL, Query
 
 from . import hdrs, multipart, payload
 from ._cookie_helpers import (
@@ -57,18 +57,14 @@ from .http import (
     StreamWriter,
 )
 from .streams import StreamReader
-from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, Query, RawHeaders
+from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
-if TYPE_CHECKING:
+try:
     import ssl
     from ssl import SSLContext
-else:
-    try:
-        import ssl
-        from ssl import SSLContext
-    except ImportError:  # pragma: no cover
-        ssl = None  # type: ignore[assignment]
-        SSLContext = object  # type: ignore[misc,assignment]
+except ImportError:  # pragma: no cover
+    ssl = None  # type: ignore[assignment]
+    SSLContext = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
