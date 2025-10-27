@@ -1518,7 +1518,6 @@ def test_parse_cookie_header_whitespace_in_fallback() -> None:
 
 def test_parse_cookie_header_empty_value_in_fallback() -> None:
     """Test that fallback handles empty values correctly."""
-    # Empty values are valid and should be preserved
     header = "normal=value; empty=; another=test"
 
     result = parse_cookie_header(header)
@@ -1542,13 +1541,10 @@ def test_parse_cookie_header_invalid_name_in_fallback(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that fallback parser rejects cookies with invalid names."""
-    # Create a malformed cookie value that triggers fallback (unescaped quotes in JSON),
-    # but with an invalid cookie name (comma not allowed per _COOKIE_NAME_RE)
     header = 'normal=value; invalid,name={"x":"y"}; another=test'
 
     result = parse_cookie_header(header)
 
-    # Should only get 'normal' and 'another', skipping 'invalid,name'
     assert len(result) == 2
 
     name1, morsel1 = result[0]
@@ -1559,7 +1555,6 @@ def test_parse_cookie_header_invalid_name_in_fallback(
     assert name2 == "another"
     assert morsel2.value == "test"
 
-    # Should log a warning about the illegal cookie name (same as regex path)
     assert "Can not load cookie: Illegal cookie name 'invalid,name'" in caplog.text
 
 
