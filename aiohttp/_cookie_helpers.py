@@ -187,25 +187,16 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
         # Use the same pattern as parse_set_cookie_headers to find cookies
         match = _COOKIE_PATTERN.match(header, i)
         if not match:
-            # Try to parse malformed cookie manually (issue #11632)
-            # Skip whitespace
-            while i < n and header[i] in " \t":
-                i += 1
-            if i >= n:
-                break
-
-            # Find key=value; pattern
-            eq_pos = header.find("=", i)
+            # Fallback for malformed cookies (issue #11632)
+            # Find next semicolon to skip or attempt simple key=value parsing
             next_semi = header.find(";", i)
+            eq_pos = header.find("=", i)
 
+            # Try to extract key=value if '=' comes before ';'
             if eq_pos != -1 and (next_semi == -1 or eq_pos < next_semi):
+                end_pos = next_semi if next_semi != -1 else n
                 key = header[i:eq_pos].strip()
-                if next_semi == -1:
-                    value = header[eq_pos + 1 :].strip()
-                    i = n
-                else:
-                    value = header[eq_pos + 1 : next_semi].strip()
-                    i = next_semi + 1
+                value = header[eq_pos + 1 : end_pos].strip()
 
                 if key and _COOKIE_NAME_RE.match(key):
                     morsel: Morsel[str] = Morsel()
@@ -213,12 +204,9 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
                         {"key": key, "value": _unquote(value), "coded_value": value}
                     )
                     cookies.append((key, morsel))
-                    continue
 
-            # Skip to next semicolon if we couldn't parse it
-            if next_semi == -1:
-                break
-            i = next_semi + 1
+            # Move to next cookie or end
+            i = next_semi + 1 if next_semi != -1 else n
             continue
 
         key = match.group("key")
