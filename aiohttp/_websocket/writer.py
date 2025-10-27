@@ -73,35 +73,34 @@ class WebSocketWriter:
         if self._closing and not (opcode & WSMsgType.CLOSE):
             raise ClientConnectionResetError("Cannot write to closing transport")
 
+        # Non-compressed path - no shielding needed
+        if not ((compress or self.compress) and opcode < 8):
+            await self._send_frame_impl(message, opcode, compress)
+            return
+
         # For compressed frames, the entire compress+send operation must be atomic.
         # If cancelled after compression but before send, the compressor state would
         # be advanced but data not sent, corrupting subsequent frames.
         # We shield the operation to prevent cancellation mid-compression.
-        use_compression_lock = (compress or self.compress) and opcode < 8
-        if use_compression_lock:
-            if self._send_lock is None:
-                self._send_lock = asyncio.Lock()
-            await self._send_lock.acquire()
-            # Create a task to shield from cancellation
-            # Use eager_start on Python 3.12+ to avoid scheduling overhead
-            loop = asyncio.get_running_loop()
-            coro = self._send_frame_impl(message, opcode, compress)
-            if sys.version_info >= (3, 12):
-                send_task = asyncio.Task(coro, loop=loop, eager_start=True)
-            else:
-                send_task = loop.create_task(coro)
-            try:
-                await asyncio.shield(send_task)
-            except asyncio.CancelledError:
-                # Shield will re-raise but task continues - wait for it
-                await send_task
-                raise
-            finally:
-                self._send_lock.release()
-            return
-
-        # Non-compressed path - no shielding needed
-        await self._send_frame_impl(message, opcode, compress)
+        if self._send_lock is None:
+            self._send_lock = asyncio.Lock()
+        await self._send_lock.acquire()
+        # Create a task to shield from cancellation
+        # Use eager_start on Python 3.12+ to avoid scheduling overhead
+        loop = asyncio.get_running_loop()
+        coro = self._send_frame_impl(message, opcode, compress)
+        if sys.version_info >= (3, 12):
+            send_task = asyncio.Task(coro, loop=loop, eager_start=True)
+        else:
+            send_task = loop.create_task(coro)
+        try:
+            await asyncio.shield(send_task)
+        except asyncio.CancelledError:
+            # Shield will re-raise but task continues - wait for it
+            await send_task
+            raise
+        finally:
+            self._send_lock.release()
 
     async def _send_frame_impl(
         self, message: bytes, opcode: int, compress: int | None
