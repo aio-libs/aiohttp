@@ -200,12 +200,11 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
                 value = header[eq_pos + 1 : end_pos].strip()
 
                 # Validate the name (same as regex path)
-                if not key or not _COOKIE_NAME_RE.match(key):
-                    if key:  # Only warn if there was a key to validate
-                        internal_logger.warning(
-                            "Can not load cookie: Illegal cookie name %r", key
-                        )
-                else:
+                if not _COOKIE_NAME_RE.match(key):
+                    internal_logger.warning(
+                        "Can not load cookie: Illegal cookie name %r", key
+                    )
+                elif key:
                     morsel = Morsel()
                     morsel.__setstate__(  # type: ignore[attr-defined]
                         {"key": key, "value": _unquote(value), "coded_value": value}
