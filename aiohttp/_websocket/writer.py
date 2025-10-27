@@ -76,34 +76,30 @@ class WebSocketWriter:
         if not (compress or self.compress) or opcode >= 8:
             # Non-compressed frames don't need lock or shield
             self._write_websocket_frame(message, opcode, 0)
-        else:
+        elif len(message) <= WEBSOCKET_MAX_SYNC_CHUNK_SIZE:
+            # Small compressed payloads - compress synchronously in event loop
+            # We need the lock even though sync compression has no await points.
+            # This prevents small frames from interleaving with large frames that
+            # compress in the executor, avoiding compressor state corruption.
             async with self._send_lock:
-                if len(message) <= WEBSOCKET_MAX_SYNC_CHUNK_SIZE:
-                    # Small compressed payloads - compress synchronously in event loop
-                    # We need the lock even though sync compression has no await points.
-                    # This prevents small frames from interleaving with large frames that
-                    # compress in the executor, avoiding compressor state corruption.
-                    self._send_compressed_frame_sync(message, opcode, compress)
-                else:
-                    # Large compressed frames need shield to prevent corruption
-                    # For large compressed frames, the entire compress+send
-                    # operation must be atomic. If cancelled after compression but
-                    # before send, the compressor state would be advanced but data
-                    # not sent, corrupting subsequent frames.
-                    # Create a task to shield from cancellation
-                    # Use eager_start on Python 3.12+ to avoid scheduling overhead
-                    loop = asyncio.get_running_loop()
-                    coro = self._send_compressed_frame_async(message, opcode, compress)
-                    if sys.version_info >= (3, 12):
-                        send_task = asyncio.Task(coro, loop=loop, eager_start=True)
-                    else:
-                        send_task = loop.create_task(coro)
-                    try:
-                        await asyncio.shield(send_task)
-                    except asyncio.CancelledError:
-                        # Shield will re-raise but task continues - wait for it
-                        await send_task
-                        raise
+                self._send_compressed_frame_sync(message, opcode, compress)
+        else:
+            # Large compressed frames need shield to prevent corruption
+            # For large compressed frames, the entire compress+send
+            # operation must be atomic. If cancelled after compression but
+            # before send, the compressor state would be advanced but data
+            # not sent, corrupting subsequent frames.
+            # Create a task to shield from cancellation
+            # The lock is acquired inside the shielded task so the entire
+            # operation (lock + compress + send) completes atomically.
+            # Use eager_start on Python 3.12+ to avoid scheduling overhead
+            loop = asyncio.get_running_loop()
+            coro = self._send_compressed_frame_async_locked(message, opcode, compress)
+            if sys.version_info >= (3, 12):
+                send_task = asyncio.Task(coro, loop=loop, eager_start=True)
+            else:
+                send_task = loop.create_task(coro)
+            await asyncio.shield(send_task)
 
         # It is safe to return control to the event loop when using compression
         # after this point as we have already sent or buffered all the data.
@@ -213,28 +209,35 @@ class WebSocketWriter:
             0x40,
         )
 
-    async def _send_compressed_frame_async(
+    async def _send_compressed_frame_async_locked(
         self, message: bytes, opcode: int, compress: int | None
     ) -> None:
-        """Internal implementation of send_frame without locking."""
-        # RSV are the reserved bits in the frame header. They are used to
-        # indicate that the frame is using an extension.
-        # https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
-        compressobj = self._get_compressor(compress)
-        # (0x40) RSV1 is set for compressed frames
-        # https://datatracker.ietf.org/doc/html/rfc7692#section-7.2.3.1
-        self._write_websocket_frame(
-            (
-                await compressobj.compress(message)
-                + compressobj.flush(
-                    ZLibBackend.Z_FULL_FLUSH
-                    if self.notakeover
-                    else ZLibBackend.Z_SYNC_FLUSH
-                )
-            ).removesuffix(WS_DEFLATE_TRAILING),
-            opcode,
-            0x40,
-        )
+        """
+        Async send for large compressed frames with lock.
+
+        Acquires the lock and compresses large payloads asynchronously in
+        the executor. The lock is held for the entire operation to ensure
+        the compressor state is not corrupted by concurrent sends.
+        """
+        async with self._send_lock:
+            # RSV are the reserved bits in the frame header. They are used to
+            # indicate that the frame is using an extension.
+            # https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
+            compressobj = self._get_compressor(compress)
+            # (0x40) RSV1 is set for compressed frames
+            # https://datatracker.ietf.org/doc/html/rfc7692#section-7.2.3.1
+            self._write_websocket_frame(
+                (
+                    await compressobj.compress(message)
+                    + compressobj.flush(
+                        ZLibBackend.Z_FULL_FLUSH
+                        if self.notakeover
+                        else ZLibBackend.Z_SYNC_FLUSH
+                    )
+                ).removesuffix(WS_DEFLATE_TRAILING),
+                opcode,
+                0x40,
+            )
 
     async def close(self, code: int = 1000, message: bytes | str = b"") -> None:
         """Close the websocket, sending the specified code and message."""
