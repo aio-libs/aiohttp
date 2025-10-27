@@ -87,33 +87,40 @@ class WebSocketWriter:
             # to prevent state corruption from concurrent sends
             async with self._send_lock:
                 self._send_compressed_frame_sync(message, opcode, compress)
-                if self._output_size > self._limit:
-                    self._output_size = 0
-                    if self.protocol._paused:
-                        await self.protocol._drain_helper()
-            return
-
-        # Large compressed frames need shield to prevent corruption
-        # For large compressed frames, the entire compress+send operation must be atomic.
-        # If cancelled after compression but before send, the compressor state would
-        # be advanced but data not sent, corrupting subsequent frames.
-        await self._send_lock.acquire()
-        # Create a task to shield from cancellation
-        # Use eager_start on Python 3.12+ to avoid scheduling overhead
-        loop = asyncio.get_running_loop()
-        coro = self._send_frame_impl(message, opcode, compress)
-        if sys.version_info >= (3, 12):
-            send_task = asyncio.Task(coro, loop=loop, eager_start=True)
         else:
-            send_task = loop.create_task(coro)
-        try:
-            await asyncio.shield(send_task)
-        except asyncio.CancelledError:
-            # Shield will re-raise but task continues - wait for it
-            await send_task
-            raise
-        finally:
-            self._send_lock.release()
+            # Large compressed frames need shield to prevent corruption
+            # For large compressed frames, the entire compress+send operation must be atomic.
+            # If cancelled after compression but before send, the compressor state would
+            # be advanced but data not sent, corrupting subsequent frames.
+            await self._send_lock.acquire()
+            # Create a task to shield from cancellation
+            # Use eager_start on Python 3.12+ to avoid scheduling overhead
+            loop = asyncio.get_running_loop()
+            coro = self._send_frame_impl(message, opcode, compress)
+            if sys.version_info >= (3, 12):
+                send_task = asyncio.Task(coro, loop=loop, eager_start=True)
+            else:
+                send_task = loop.create_task(coro)
+            try:
+                await asyncio.shield(send_task)
+            except asyncio.CancelledError:
+                # Shield will re-raise but task continues - wait for it
+                await send_task
+                raise
+            finally:
+                self._send_lock.release()
+
+        # It is safe to return control to the event loop when using compression
+        # after this point as we have already sent or buffered all the data.
+        # Once we have written output_size up to the limit, we call the
+        # drain helper which waits for the transport to be ready to accept
+        # more data. This is a flow control mechanism to prevent the buffer
+        # from growing too large. The drain helper will return right away
+        # if the writer is not paused.
+        if self._output_size > self._limit:
+            self._output_size = 0
+            if self.protocol._paused:
+                await self.protocol._drain_helper()
 
     def _write_websocket_frame(self, message: bytes, opcode: int, rsv: int) -> None:
         """
@@ -239,18 +246,6 @@ class WebSocketWriter:
             # if there are multiple coroutines compressing data.
 
         self._write_websocket_frame(message, opcode, rsv)
-
-        # It is safe to return control to the event loop when using compression
-        # after this point as we have already sent or buffered all the data.
-        # Once we have written output_size up to the limit, we call the
-        # drain helper which waits for the transport to be ready to accept
-        # more data. This is a flow control mechanism to prevent the buffer
-        # from growing too large. The drain helper will return right away
-        # if the writer is not paused.
-        if self._output_size > self._limit:
-            self._output_size = 0
-            if self.protocol._paused:
-                await self.protocol._drain_helper()
 
     async def close(self, code: int = 1000, message: bytes | str = b"") -> None:
         """Close the websocket, sending the specified code and message."""
