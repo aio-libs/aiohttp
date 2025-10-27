@@ -75,7 +75,7 @@ class WebSocketWriter:
 
         # Non-compressed frames don't need lock or shield
         if not (compress or self.compress) or opcode >= 8:
-            await self._send_frame_impl(message, opcode, compress)
+            self._write_websocket_frame(message, opcode, 0)
             return
 
         if self._send_lock is None:
@@ -96,7 +96,7 @@ class WebSocketWriter:
             # Create a task to shield from cancellation
             # Use eager_start on Python 3.12+ to avoid scheduling overhead
             loop = asyncio.get_running_loop()
-            coro = self._send_frame_impl(message, opcode, compress)
+            coro = self._send_compressed_frame_impl(message, opcode, compress)
             if sys.version_info >= (3, 12):
                 send_task = asyncio.Task(coro, loop=loop, eager_start=True)
             else:
@@ -199,6 +199,9 @@ class WebSocketWriter:
         This is used for small compressed payloads that compress synchronously in the event loop.
         Since there are no await points, this is inherently cancellation-safe.
         """
+        # RSV are the reserved bits in the frame header. They are used to
+        # indicate that the frame is using an extension.
+        # https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
         compressobj = self._get_compressor(compress)
         # (0x40) RSV1 is set for compressed frames
         # https://datatracker.ietf.org/doc/html/rfc7692#section-7.2.3.1
@@ -215,37 +218,28 @@ class WebSocketWriter:
             0x40,
         )
 
-    async def _send_frame_impl(
+    async def _send_compressed_frame_impl(
         self, message: bytes, opcode: int, compress: int | None
     ) -> None:
         """Internal implementation of send_frame without locking."""
         # RSV are the reserved bits in the frame header. They are used to
         # indicate that the frame is using an extension.
         # https://datatracker.ietf.org/doc/html/rfc6455#section-5.2
-        rsv = 0
-        # Only compress larger packets (disabled)
-        # Does small packet needs to be compressed?
-        # if self.compress and opcode < 8 and len(message) > 124:
-        if (compress or self.compress) and opcode < 8:
-            # RSV1 (rsv = 0x40) is set for compressed frames
-            # https://datatracker.ietf.org/doc/html/rfc7692#section-7.2.3.1
-            rsv = 0x40
-
-            compressobj = self._get_compressor(compress)
-            message = (
+        compressobj = self._get_compressor(compress)
+        # (0x40) RSV1 is set for compressed frames
+        # https://datatracker.ietf.org/doc/html/rfc7692#section-7.2.3.1
+        self._write_websocket_frame(
+            (
                 await compressobj.compress(message)
                 + compressobj.flush(
                     ZLibBackend.Z_FULL_FLUSH
                     if self.notakeover
                     else ZLibBackend.Z_SYNC_FLUSH
                 )
-            ).removesuffix(WS_DEFLATE_TRAILING)
-            # Its critical that we do not return control to the event
-            # loop until we have finished sending all the compressed
-            # data. Otherwise we could end up mixing compressed frames
-            # if there are multiple coroutines compressing data.
-
-        self._write_websocket_frame(message, opcode, rsv)
+            ).removesuffix(WS_DEFLATE_TRAILING),
+            opcode,
+            0x40,
+        )
 
     async def close(self, code: int = 1000, message: bytes | str = b"") -> None:
         """Close the websocket, sending the specified code and message."""
