@@ -3,7 +3,6 @@ import array
 import asyncio
 import zlib
 from collections.abc import Generator, Iterable
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from unittest import mock
 
@@ -1698,77 +1697,3 @@ async def test_send_headers_with_payload_chunked_eof_no_data(
     assert b"GET /test HTTP/1.1\r\n" in buf
     assert b"Transfer-Encoding: chunked\r\n" in buf
     assert buf.endswith(b"0\r\n\r\n")
-
-
-@pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_compression_cancelled_closes_connection(
-    buf: bytearray,
-    protocol: BaseProtocol,
-    transport: asyncio.Transport,
-    loop: asyncio.AbstractEventLoop,
-    slow_executor: ThreadPoolExecutor,
-) -> None:
-    """Test that HTTP doesn't need cancellation safety like WebSocket does.
-
-    This demonstrates that for HTTP, compression cancellation is handled by
-    closing the entire connection. The compressor state corruption doesn't
-    matter because:
-    1. The HTTP response/request is aborted
-    2. The connection is closed
-    3. A new connection with a fresh compressor is established for next request
-
-    This is different from WebSocket which:
-    1. Keeps the connection alive across many messages
-    2. Reuses the same stateful compressor
-    3. Needs shield protection to prevent state corruption
-
-    Related to https://github.com/aio-libs/aiohttp/issues/11725
-    """
-    msg = http.StreamWriter(protocol, loop)
-    msg.enable_compression("deflate")
-    msg.enable_chunking()
-
-    # Patch the compressor to use slow executor
-    msg._compress = msg._compress or msg._make_compressor()
-    msg._compress._executor = slow_executor
-
-    # Write large data that triggers executor-based compression
-    with mock.patch("aiohttp.compression_utils.MAX_SYNC_CHUNK_SIZE", 1024):
-        large_data = b"X" * 10000
-
-        # Start write and cancel it
-        task = asyncio.create_task(msg.write(large_data))
-        await asyncio.sleep(0.01)  # Let compression start
-        task.cancel()
-
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
-
-    # In real HTTP scenarios, after cancellation the response is aborted and
-    # the connection is closed. This makes compressor state corruption harmless.
-
-    # Assert that the compressor exists and has been used
-    assert msg._compress is not None, "Compressor should have been created"
-
-    # The compressor state may be corrupted after cancellation, but for HTTP
-    # this doesn't matter because:
-    # 1. The response is aborted
-    # 2. The connection will be closed
-    # 3. The next request gets a fresh connection with a new compressor
-
-    # Key differences from WebSocket:
-    #
-    # HTTP pattern:
-    # - One compressor instance per HTTP response
-    # - Compression cancellation → response aborted → connection closed
-    # - Next request gets a new connection with fresh compressor
-    # - Compressor state corruption is harmless
-    # - No need for shield protection
-    #
-    # WebSocket pattern (see test_websocket_writer.py):
-    # - One compressor instance for entire WebSocket connection lifetime
-    # - Connection stays open across hundreds/thousands of messages
-    # - Compression cancellation without shield → state corruption → data corruption
-    # - Requires shield + lock to ensure atomicity
