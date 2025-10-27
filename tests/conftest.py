@@ -464,8 +464,8 @@ def slow_executor() -> Iterator[ThreadPoolExecutor]:
     class SlowExecutor(ThreadPoolExecutor):
         """Executor that adds delay to operations."""
 
-        def submit(self, fn, *args, **kwargs):
-            def slow_fn(*args, **kwargs):
+        def submit(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
+            def slow_fn(*args: Any, **kwargs: Any) -> Any:
                 time.sleep(0.05)  # Add delay to simulate slow operation
                 return fn(*args, **kwargs)
 
