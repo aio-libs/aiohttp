@@ -245,9 +245,9 @@ async def test_send_compress_multiple_cancelled(
         except asyncio.CancelledError:
             cancelled_count += 1
 
-    # Wait a bit for all shielded tasks to complete
-    # (they continue running even after cancellation)
-    await asyncio.sleep(0.3)
+    # Wait for all background tasks to complete
+    # (they continue running even after cancellation due to shield)
+    await asyncio.gather(*writer._background_tasks, return_exceptions=True)
 
     # All tasks that entered the shield should complete, even if cancelled
     # With lock inside shield, all tasks enter shield immediately then wait for lock
