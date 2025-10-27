@@ -1470,13 +1470,19 @@ def test_parse_cookie_header_multiple_equals() -> None:
     result = parse_cookie_header(header)
 
     assert len(result) == 3
-    assert result[0][0] == "session"
-    assert result[0][1].value == "abc123"
-    assert result[1][0] == "data"
+
+    name1, morsel1 = result[0]
+    assert name1 == "session"
+    assert morsel1.value == "abc123"
+
+    name2, morsel2 = result[1]
+    assert name2 == "data"
     # Only the first = should be treated as name/value separator
-    assert result[1][1].value == "key1=val1&key2=val2"
-    assert result[2][0] == "token"
-    assert result[2][1].value == "xyz"
+    assert morsel2.value == "key1=val1&key2=val2"
+
+    name3, morsel3 = result[2]
+    assert name3 == "token"
+    assert morsel3.value == "xyz"
 
 
 def test_parse_cookie_header_fallback_preserves_subsequent_cookies() -> None:
@@ -1493,10 +1499,17 @@ def test_parse_cookie_header_fallback_preserves_subsequent_cookies() -> None:
     assert cookie_names == ["normal", "malformed", "after1", "after2"]
 
     # Verify values
-    assert result[0][1].value == "value"
-    assert result[1][1].value == '{"json":"value"}'
-    assert result[2][1].value == "cookie1"
-    assert result[3][1].value == "cookie2"
+    name1, morsel1 = result[0]
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert morsel2.value == '{"json":"value"}'
+
+    name3, morsel3 = result[2]
+    assert morsel3.value == "cookie1"
+
+    name4, morsel4 = result[3]
+    assert morsel4.value == "cookie2"
 
 
 def test_parse_cookie_header_whitespace_in_fallback() -> None:
@@ -1521,12 +1534,44 @@ def test_parse_cookie_header_empty_value_in_fallback() -> None:
     result = parse_cookie_header(header)
 
     assert len(result) == 3
-    assert result[0][0] == "normal"
-    assert result[0][1].value == "value"
-    assert result[1][0] == "empty"
-    assert result[1][1].value == ""
-    assert result[2][0] == "another"
-    assert result[2][1].value == "test"
+
+    name1, morsel1 = result[0]
+    assert name1 == "normal"
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert name2 == "empty"
+    assert morsel2.value == ""
+
+    name3, morsel3 = result[2]
+    assert name3 == "another"
+    assert morsel3.value == "test"
+
+
+def test_parse_cookie_header_invalid_name_in_fallback(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that fallback parser rejects cookies with invalid names."""
+    # Create a malformed cookie value that triggers fallback (unescaped quotes in JSON),
+    # but with an invalid cookie name (comma not allowed per _COOKIE_NAME_RE)
+    header = 'normal=value; invalid,name={"x":"y"}; another=test'
+
+    result = parse_cookie_header(header)
+
+    # Should only get 'normal' and 'another', skipping 'invalid,name'
+    assert len(result) == 2
+
+    name1, morsel1 = result[0]
+    assert name1 == "normal"
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert name2 == "another"
+    assert morsel2.value == "test"
+
+    # The fallback parser should not log a warning since the key is silently skipped
+    # (no _COOKIE_NAME_RE.match means it's not added to cookies list)
+    # However, if it were caught by the regex path, it would log a warning
 
 
 @pytest.mark.parametrize(
