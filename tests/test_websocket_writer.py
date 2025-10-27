@@ -249,10 +249,12 @@ async def test_send_compress_multiple_cancelled(
     # (they continue running even after cancellation)
     await asyncio.sleep(0.3)
 
-    # At least one message should have been sent (the one in the shield)
+    # All tasks that entered the shield should complete, even if cancelled
+    # With lock inside shield, all tasks enter shield immediately then wait for lock
     sent_count = len(writer.transport.write.call_args_list)  # type: ignore[attr-defined]
-    assert sent_count >= 1, "At least one send should complete due to shield"
-    assert sent_count <= 5, "Can't send more than 5 messages"
+    assert (
+        sent_count == 5
+    ), "All 5 sends should complete due to shield protecting lock acquisition"
 
     # Verify all sent messages are correct (no corruption)
     for i in range(sent_count):
