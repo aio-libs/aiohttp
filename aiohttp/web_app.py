@@ -12,7 +12,7 @@ from collections.abc import (
     Sequence,
 )
 from functools import lru_cache, partial, update_wrapper
-from typing import TYPE_CHECKING, Any, TypeVar, cast, final, overload
+from typing import Any, TypeVar, cast, final, overload
 
 from aiosignal import Signal
 from frozenlist import FrozenList
@@ -39,21 +39,11 @@ from .web_urldispatcher import (
 
 __all__ = ("Application", "CleanupError")
 
-
-if TYPE_CHECKING:
-    _AppSignal = Signal["Application"]
-    _RespPrepareSignal = Signal[Request, StreamResponse]
-    _Middlewares = FrozenList[Middleware]
-    _MiddlewaresHandlers = Sequence[Middleware]
-    _Subapps = list["Application"]
-else:
-    # No type checker mode, skip types
-    _AppSignal = Signal
-    _RespPrepareSignal = Signal
-    _Handler = Callable
-    _Middlewares = FrozenList
-    _MiddlewaresHandlers = Sequence
-    _Subapps = list
+_AppSignal = Signal["Application"]
+_RespPrepareSignal = Signal[Request, StreamResponse]
+_Middlewares = FrozenList[Middleware]
+_MiddlewaresHandlers = Sequence[Middleware]
+_Subapps = list["Application"]
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
@@ -415,10 +405,7 @@ class CleanupError(RuntimeError):
         return cast(list[BaseException], self.args[1])
 
 
-if TYPE_CHECKING:
-    _CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
-else:
-    _CleanupContextBase = FrozenList
+_CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
 
 
 class CleanupContext(_CleanupContextBase):
