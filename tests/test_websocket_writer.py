@@ -332,3 +332,6 @@ async def test_concurrent_messages(
         # we want to validate that all the bytes are
         # the same value
         assert bytes_data == bytes_data[0:1] * char_val
+
+    # Wait for any background tasks to complete
+    await asyncio.gather(*writer._background_tasks, return_exceptions=True)
