@@ -1443,6 +1443,92 @@ def test_parse_cookie_header_illegal_names(caplog: pytest.LogCaptureFixture) -> 
     assert "Can not load cookie: Illegal cookie name 'invalid,cookie'" in caplog.text
 
 
+def test_parse_cookie_header_large_value() -> None:
+    """Test that large cookie values don't cause DoS."""
+    # Large values can pass through HTTP parser but shouldn't cause issues
+    large_value = "A" * 8192  # 8KB cookie value
+    header = f"normal=value; large={large_value}; after=cookie"
+
+    result = parse_cookie_header(header)
+    cookie_names = [name for name, _ in result]
+
+    assert len(result) == 3
+    assert "normal" in cookie_names
+    assert "large" in cookie_names
+    assert "after" in cookie_names
+
+    # Verify the large value was preserved correctly
+    large_cookie = next(morsel for name, morsel in result if name == "large")
+    assert len(large_cookie.value) == 8192
+
+
+def test_parse_cookie_header_multiple_equals() -> None:
+    """Test handling of multiple equals signs in cookie values."""
+    # Can happen with base64 encoded values or query strings
+    header = "session=abc123; data=key1=val1&key2=val2; token=xyz"
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 3
+    assert result[0][0] == "session"
+    assert result[0][1].value == "abc123"
+    assert result[1][0] == "data"
+    # Only the first = should be treated as name/value separator
+    assert result[1][1].value == "key1=val1&key2=val2"
+    assert result[2][0] == "token"
+    assert result[2][1].value == "xyz"
+
+
+def test_parse_cookie_header_fallback_preserves_subsequent_cookies() -> None:
+    """Test that fallback parser doesn't lose subsequent cookies."""
+    # When a cookie fails regex but is valid HTTP, subsequent cookies should still parse
+    # This is the core security/correctness issue from #11632
+    header = 'normal=value; malformed={"json":"value"}; after1=cookie1; after2=cookie2'
+
+    result = parse_cookie_header(header)
+    cookie_names = [name for name, _ in result]
+
+    # All 4 cookies should be parsed
+    assert len(result) == 4
+    assert cookie_names == ["normal", "malformed", "after1", "after2"]
+
+    # Verify values
+    assert result[0][1].value == "value"
+    assert result[1][1].value == '{"json":"value"}'
+    assert result[2][1].value == "cookie1"
+    assert result[3][1].value == "cookie2"
+
+
+def test_parse_cookie_header_whitespace_in_fallback() -> None:
+    """Test that fallback parser handles whitespace correctly."""
+    # Whitespace variations that can reach the parser
+    header = "a=1; b = 2 ; c= 3; d =4"
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 4
+    # strip() should handle whitespace around keys and values
+    for name, morsel in result:
+        assert name in ("a", "b", "c", "d")
+        assert morsel.value in ("1", "2", "3", "4")
+
+
+def test_parse_cookie_header_empty_value_in_fallback() -> None:
+    """Test that fallback handles empty values correctly."""
+    # Empty values are valid and should be preserved
+    header = "normal=value; empty=; another=test"
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 3
+    assert result[0][0] == "normal"
+    assert result[0][1].value == "value"
+    assert result[1][0] == "empty"
+    assert result[1][1].value == ""
+    assert result[2][0] == "another"
+    assert result[2][1].value == "test"
+
+
 @pytest.mark.parametrize(
     ("input_str", "expected"),
     [
