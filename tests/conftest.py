@@ -464,7 +464,7 @@ def slow_executor() -> Iterator[ThreadPoolExecutor]:
     class SlowExecutor(ThreadPoolExecutor):
         """Executor that adds delay to operations."""
 
-        def submit(  # type: ignore[override]
+        def submit(
             self, fn: Callable[..., Any], /, *args: Any, **kwargs: Any
         ) -> Future[Any]:
             def slow_fn(*args: Any, **kwargs: Any) -> Any:
