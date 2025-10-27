@@ -163,7 +163,7 @@ async def test_send_compress_cancelled(
     reader = WebSocketReader(queue, 50000)
 
     # Replace executor with slow one to make race condition reproducible
-    writer._compressobj = writer._make_compress_obj(writer.compress)
+    writer._compressobj = writer._get_compressor(None)
     writer._compressobj._executor = slow_executor
 
     # Create large data that will trigger executor-based compression
@@ -217,7 +217,7 @@ async def test_send_compress_multiple_cancelled(
     reader = WebSocketReader(queue, 50000)
 
     # Replace executor with slow one
-    writer._compressobj = writer._make_compress_obj(writer.compress)
+    writer._compressobj = writer._get_compressor(None)
     writer._compressobj._executor = slow_executor
 
     # Create 5 large messages with different content
