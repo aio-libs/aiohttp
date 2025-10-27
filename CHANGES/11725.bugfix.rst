@@ -1,0 +1,1 @@
+Fixed WebSocket compressed sends to be cancellation safe by adding shield protection to prevent compressor state corruption when tasks are cancelled during compression -- by :user:`bdraco`.
