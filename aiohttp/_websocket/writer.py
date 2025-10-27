@@ -65,6 +65,7 @@ class WebSocketWriter:
         self._output_size = 0
         self._compressobj: ZLibCompressor | None = None
         self._send_lock = asyncio.Lock()
+        self._background_tasks: set[asyncio.Task[None]] = set()
 
     async def send_frame(
         self, message: bytes, opcode: int, compress: int | None = None
@@ -99,6 +100,9 @@ class WebSocketWriter:
                 send_task = asyncio.Task(coro, loop=loop, eager_start=True)
             else:
                 send_task = loop.create_task(coro)
+            # Keep a strong reference to prevent garbage collection
+            self._background_tasks.add(send_task)
+            send_task.add_done_callback(self._background_tasks.discard)
             await asyncio.shield(send_task)
 
         # It is safe to return control to the event loop when using compression
