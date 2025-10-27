@@ -86,9 +86,10 @@ class WebSocketWriter:
                     self._send_compressed_frame_sync(message, opcode, compress)
                 else:
                     # Large compressed frames need shield to prevent corruption
-                    # For large compressed frames, the entire compress+send operation must be atomic.
-                    # If cancelled after compression but before send, the compressor state would
-                    # be advanced but data not sent, corrupting subsequent frames.
+                    # For large compressed frames, the entire compress+send
+                    # operation must be atomic. If cancelled after compression but
+                    # before send, the compressor state would be advanced but data
+                    # not sent, corrupting subsequent frames.
                     # Create a task to shield from cancellation
                     # Use eager_start on Python 3.12+ to avoid scheduling overhead
                     loop = asyncio.get_running_loop()
