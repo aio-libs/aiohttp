@@ -1558,6 +1558,27 @@ def test_parse_cookie_header_invalid_name_in_fallback(
     assert "Can not load cookie: Illegal cookie name 'invalid,name'" in caplog.text
 
 
+def test_parse_cookie_header_empty_key_in_fallback(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that fallback parser handles empty cookie names without warning."""
+    header = 'normal=value; ={"malformed":"json"}; another=test'
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 2
+
+    name1, morsel1 = result[0]
+    assert name1 == "normal"
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert name2 == "another"
+    assert morsel2.value == "test"
+
+    assert "Illegal cookie name" not in caplog.text
+
+
 @pytest.mark.parametrize(
     ("input_str", "expected"),
     [
