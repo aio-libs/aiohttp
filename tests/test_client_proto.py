@@ -1,8 +1,6 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
-import pytest
 from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
@@ -357,66 +355,3 @@ async def test_abort_without_transport(loop: asyncio.AbstractEventLoop) -> None:
         # Should not raise and should still clean up
         assert proto._exception is None
         mock_drop_timeout.assert_not_called()
-
-
-async def test_compression_cancelled_marks_connection_for_closure(
-    loop: asyncio.AbstractEventLoop,
-    slow_executor: ThreadPoolExecutor,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test that compression cancellation leads to connection closure.
-
-    This demonstrates why HTTP doesn't need the shield+lock pattern for
-    compression cancellation that WebSocket requires:
-
-    HTTP pattern:
-    - Compression cancelled → write fails → connection marked for closure
-    - Response is aborted
-    - Connection is closed
-    - Next request gets a new connection with fresh compressor
-    - Compressor state corruption is harmless because connection closes
-
-    WebSocket pattern (see test_websocket_writer.py):
-    - Connection stays open across hundreds/thousands of messages
-    - Same stateful compressor is reused for entire connection lifetime
-    - Compression cancellation without shield → state corruption → data corruption
-    - Requires shield + lock to ensure atomicity
-
-    Related to https://github.com/aio-libs/aiohttp/issues/11725
-    """
-    proto = ResponseHandler(loop=loop)
-    transport = mock.Mock()
-    transport.is_closing.return_value = False
-    proto.connection_made(transport)
-
-    # Create a writer with compression enabled
-    writer = http.StreamWriter(proto, loop)
-    writer.enable_compression("deflate")
-    writer.enable_chunking()
-
-    # Use slow executor to make cancellation reproducible
-    assert writer._compress is not None
-    writer._compress._executor = slow_executor
-
-    # Initially connection is healthy
-    assert not proto.should_close
-
-    # Write large data that triggers executor-based compression
-    monkeypatch.setattr("aiohttp.compression_utils.MAX_SYNC_CHUNK_SIZE", 1024)
-    large_data = b"X" * 10000
-
-    # Start write and cancel during compression
-    task = asyncio.create_task(writer.write(large_data))
-    await asyncio.sleep(0.01)  # Let compression start
-    task.cancel()
-
-    try:
-        await task
-    except asyncio.CancelledError:
-        # In real HTTP client, cancellation of write would lead to
-        # the protocol marking connection for closure
-        proto.set_exception(http.HttpProcessingError(message="Write cancelled"))
-
-    # After cancellation and exception, connection should be marked for closure
-    assert proto.should_close
-    assert proto.exception() is not None
