@@ -193,7 +193,7 @@ class WebSocketWriter:
         Since there are no await points, this is inherently cancellation-safe.
         """
         compressobj = self._get_compressor(compress)
-        # RSV1 is set for compressed frames
+        # (0x40) RSV1 is set for compressed frames
         # https://datatracker.ietf.org/doc/html/rfc7692#section-7.2.3.1
         self._write_websocket_frame(
             (
