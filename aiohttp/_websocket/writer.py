@@ -218,6 +218,10 @@ class WebSocketWriter:
         Acquires the lock and compresses large payloads asynchronously in
         the executor. The lock is held for the entire operation to ensure
         the compressor state is not corrupted by concurrent sends.
+
+        MUST be run shielded from cancellation. If cancelled after
+        compression but before sending, the compressor state would be
+        advanced but data not sent, corrupting subsequent frames.
         """
         async with self._send_lock:
             # RSV are the reserved bits in the frame header. They are used to
