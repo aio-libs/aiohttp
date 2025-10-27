@@ -4,7 +4,7 @@ import asyncio
 import random
 import sys
 from functools import partial
-from typing import Any, Final
+from typing import Final
 
 from ..base_protocol import BaseProtocol
 from ..client_exceptions import ClientConnectionResetError
@@ -63,7 +63,7 @@ class WebSocketWriter:
         self._closing = False
         self._limit = limit
         self._output_size = 0
-        self._compressobj: Any = None  # actually compressobj
+        self._compressobj: ZLibCompressor | None = None
         self._send_lock = asyncio.Lock()
 
     async def send_frame(
