@@ -73,8 +73,8 @@ class WebSocketWriter:
         if self._closing and not (opcode & WSMsgType.CLOSE):
             raise ClientConnectionResetError("Cannot write to closing transport")
 
-        # Non-compressed path - no shielding needed
-        if not ((compress or self.compress) and opcode < 8):
+        # Non-compressed path or control frames - no shielding needed
+        if not (compress or self.compress) or opcode >= 8:
             await self._send_frame_impl(message, opcode, compress)
             return
 
