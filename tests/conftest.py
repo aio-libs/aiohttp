@@ -5,7 +5,9 @@ import platform
 import socket
 import ssl
 import sys
-from collections.abc import AsyncIterator, Generator, Iterator
+import time
+from collections.abc import AsyncIterator, Callable, Generator, Iterator
+from concurrent.futures import Future, ThreadPoolExecutor
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -402,3 +404,27 @@ async def cleanup_payload_pending_file_closes(
         loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
         if loop_futures:
             await asyncio.gather(*loop_futures, return_exceptions=True)
+
+
+@pytest.fixture
+def slow_executor() -> Iterator[ThreadPoolExecutor]:
+    """Executor that adds delay to simulate slow operations.
+
+    Useful for testing cancellation and race conditions in compression tests.
+    """
+
+    class SlowExecutor(ThreadPoolExecutor):
+        """Executor that adds delay to operations."""
+
+        def submit(
+            self, fn: Callable[..., Any], /, *args: Any, **kwargs: Any
+        ) -> Future[Any]:
+            def slow_fn(*args: Any, **kwargs: Any) -> Any:
+                time.sleep(0.05)  # Add delay to simulate slow operation
+                return fn(*args, **kwargs)
+
+            return super().submit(slow_fn, *args, **kwargs)
+
+    executor = SlowExecutor(max_workers=10)
+    yield executor
+    executor.shutdown(wait=True)
