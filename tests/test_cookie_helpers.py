@@ -1137,7 +1137,6 @@ def test_parse_cookie_header_empty() -> None:
     assert parse_cookie_header("   ") == []
 
 
-@pytest.mark.xfail(reason="https://github.com/aio-libs/aiohttp/issues/11632")
 def test_parse_cookie_gstate_header() -> None:
     header = (
         "_ga=ga; "
@@ -1442,6 +1441,142 @@ def test_parse_cookie_header_illegal_names(caplog: pytest.LogCaptureFixture) -> 
     assert result[1][0] == "another"
     assert result[1][1].value == "test"
     assert "Can not load cookie: Illegal cookie name 'invalid,cookie'" in caplog.text
+
+
+def test_parse_cookie_header_large_value() -> None:
+    """Test that large cookie values don't cause DoS."""
+    large_value = "A" * 8192
+    header = f"normal=value; large={large_value}; after=cookie"
+
+    result = parse_cookie_header(header)
+    cookie_names = [name for name, _ in result]
+
+    assert len(result) == 3
+    assert "normal" in cookie_names
+    assert "large" in cookie_names
+    assert "after" in cookie_names
+
+    large_cookie = next(morsel for name, morsel in result if name == "large")
+    assert len(large_cookie.value) == 8192
+
+
+def test_parse_cookie_header_multiple_equals() -> None:
+    """Test handling of multiple equals signs in cookie values."""
+    header = "session=abc123; data=key1=val1&key2=val2; token=xyz"
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 3
+
+    name1, morsel1 = result[0]
+    assert name1 == "session"
+    assert morsel1.value == "abc123"
+
+    name2, morsel2 = result[1]
+    assert name2 == "data"
+    assert morsel2.value == "key1=val1&key2=val2"
+
+    name3, morsel3 = result[2]
+    assert name3 == "token"
+    assert morsel3.value == "xyz"
+
+
+def test_parse_cookie_header_fallback_preserves_subsequent_cookies() -> None:
+    """Test that fallback parser doesn't lose subsequent cookies."""
+    header = 'normal=value; malformed={"json":"value"}; after1=cookie1; after2=cookie2'
+
+    result = parse_cookie_header(header)
+    cookie_names = [name for name, _ in result]
+
+    assert len(result) == 4
+    assert cookie_names == ["normal", "malformed", "after1", "after2"]
+
+    name1, morsel1 = result[0]
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert morsel2.value == '{"json":"value"}'
+
+    name3, morsel3 = result[2]
+    assert morsel3.value == "cookie1"
+
+    name4, morsel4 = result[3]
+    assert morsel4.value == "cookie2"
+
+
+def test_parse_cookie_header_whitespace_in_fallback() -> None:
+    """Test that fallback parser handles whitespace correctly."""
+    header = "a=1; b = 2 ; c= 3; d =4"
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 4
+    for name, morsel in result:
+        assert name in ("a", "b", "c", "d")
+        assert morsel.value in ("1", "2", "3", "4")
+
+
+def test_parse_cookie_header_empty_value_in_fallback() -> None:
+    """Test that fallback handles empty values correctly."""
+    header = "normal=value; empty=; another=test"
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 3
+
+    name1, morsel1 = result[0]
+    assert name1 == "normal"
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert name2 == "empty"
+    assert morsel2.value == ""
+
+    name3, morsel3 = result[2]
+    assert name3 == "another"
+    assert morsel3.value == "test"
+
+
+def test_parse_cookie_header_invalid_name_in_fallback(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that fallback parser rejects cookies with invalid names."""
+    header = 'normal=value; invalid,name={"x":"y"}; another=test'
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 2
+
+    name1, morsel1 = result[0]
+    assert name1 == "normal"
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert name2 == "another"
+    assert morsel2.value == "test"
+
+    assert "Can not load cookie: Illegal cookie name 'invalid,name'" in caplog.text
+
+
+def test_parse_cookie_header_empty_key_in_fallback(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that fallback parser logs warning for empty cookie names."""
+    header = 'normal=value; ={"malformed":"json"}; another=test'
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 2
+
+    name1, morsel1 = result[0]
+    assert name1 == "normal"
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert name2 == "another"
+    assert morsel2.value == "test"
+
+    assert "Can not load cookie: Illegal cookie name ''" in caplog.text
 
 
 @pytest.mark.parametrize(
