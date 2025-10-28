@@ -305,6 +305,7 @@ SocketSocketTransport
 ssl
 SSLContext
 startup
+stateful
 subapplication
 subclassed
 subclasses
