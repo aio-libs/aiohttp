@@ -168,7 +168,8 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
     This parser uses the same regex-based approach as parse_set_cookie_headers
     to properly handle quoted values that may contain semicolons. When the
     regex fails to match a malformed cookie, it falls back to simple parsing
-    to ensure subsequent cookies are not lost (issue #11632).
+    to ensure subsequent cookies are not lost
+    https://github.com/aio-libs/aiohttp/issues/11632
 
     Args:
         header: The Cookie header value to parse
@@ -188,7 +189,7 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
         # Use the same pattern as parse_set_cookie_headers to find cookies
         match = _COOKIE_PATTERN.match(header, i)
         if not match:
-            # Fallback for malformed cookies (issue #11632)
+            # Fallback for malformed cookies https://github.com/aio-libs/aiohttp/issues/11632
             # Find next semicolon to skip or attempt simple key=value parsing
             next_semi = header.find(";", i)
             eq_pos = header.find("=", i)
