@@ -343,6 +343,7 @@ un
 unawaited
 unclosed
 undercounting
+unescaped
 unhandled
 unicode
 unittest
