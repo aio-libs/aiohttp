@@ -205,7 +205,7 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
                     internal_logger.warning(
                         "Can not load cookie: Illegal cookie name %r", key
                     )
-                elif key:
+                else:
                     morsel = Morsel()
                     morsel.__setstate__(  # type: ignore[attr-defined]
                         {"key": key, "value": _unquote(value), "coded_value": value}
