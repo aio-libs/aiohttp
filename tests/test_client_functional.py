@@ -3777,18 +3777,32 @@ async def test_netrc_auth_from_env(  # type: ignore[misc]
 
 
 @pytest.mark.usefixtures("no_netrc")
-async def test_netrc_auth_skipped_without_env_var(  # type: ignore[misc]
+async def test_netrc_auth_skipped_without_netrc_file(  # type: ignore[misc]
     headers_echo_client: Callable[
         ..., Awaitable[TestClient[web.Request, web.Application]]
     ],
 ) -> None:
-    """Test that netrc authentication is skipped when NETRC env var is not set."""
+    """Test that netrc authentication is skipped when no netrc file exists."""
     client = await headers_echo_client(trust_env=True)
     async with client.get("/") as r:
         assert r.status == 200
         content = await r.json()
     # No Authorization header should be present
     assert "Authorization" not in content["headers"]
+
+
+@pytest.mark.usefixtures("netrc_home_directory")
+async def test_netrc_auth_from_home_directory(  # type: ignore[misc]
+    headers_echo_client: Callable[
+        ..., Awaitable[TestClient[web.Request, web.Application]]
+    ],
+) -> None:
+    """Test that netrc authentication works from default ~/.netrc without NETRC env var."""
+    client = await headers_echo_client(trust_env=True)
+    async with client.get("/") as r:
+        assert r.status == 200
+        content = await r.json()
+    assert content["headers"]["Authorization"] == "Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
 
 
 @pytest.mark.usefixtures("netrc_default_contents")
