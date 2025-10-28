@@ -406,16 +406,7 @@ class CleanupError(RuntimeError):
         return cast(list[BaseException], self.args[1])
 
 
-if TYPE_CHECKING:
-    # cleanup contexts may be either async generators (async iterator)
-    # or async context managers (contextlib.asynccontextmanager). For
-    # the purposes of type checking we keep the callback return type
-    # permissive (Any) so that downstream checks which attempt to
-    # detect return value shapes at runtime are not considered
-    # unreachable by the type checker.
-    _CleanupContextBase = FrozenList[Callable[[Application], Any]]
-else:
-    _CleanupContextBase = FrozenList
+_CleanupContextBase = FrozenList[Callable[[Application], Any]]
 
 
 class CleanupContext(_CleanupContextBase):
