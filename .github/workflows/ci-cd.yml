@@ -37,7 +37,7 @@ jobs:
         submodules: true
     - name: >-
         Verify that `requirements/runtime-deps.in`
-        is in sync with `setup.cfg`
+        is in sync with `pyproject.toml`
       run: |
         set -eEuo pipefail
         make sync-direct-runtime-deps
