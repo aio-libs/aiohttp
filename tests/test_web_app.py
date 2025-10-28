@@ -522,7 +522,7 @@ async def test_cleanup_ctx_legacy_async_iterator_finishes() -> None:
     await g.__anext__()
 
     # directly append the primed generator to exits to exercise cleanup path
-    app.cleanup_ctx._exits.append(g)  # type: ignore[attr-defined]
+    app.cleanup_ctx._exits.append(g)
 
     # cleanup should consume the generator (second __anext__ -> StopAsyncIteration)
     await app.cleanup()
@@ -538,7 +538,7 @@ async def test_cleanup_ctx_legacy_async_iterator_multiple_yields() -> None:
 
     g = gen(app)
     await g.__anext__()
-    app.cleanup_ctx._exits.append(g)  # type: ignore[attr-defined]
+    app.cleanup_ctx._exits.append(g)
 
     with pytest.raises(RuntimeError):
         await app.cleanup()
@@ -548,7 +548,7 @@ async def test_cleanup_ctx_unknown_entry_records_error() -> None:
     app = web.Application()
 
     # append an object of unknown type
-    app.cleanup_ctx._exits.append(object())  # type: ignore[attr-defined]
+    app.cleanup_ctx._exits.append(object())
 
     with pytest.raises(RuntimeError):
         await app.cleanup()
