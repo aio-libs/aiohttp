@@ -433,56 +433,21 @@ class CleanupContext(_CleanupContextBase):
         super().__init__()
         # _exits stores either async iterators (legacy async generators)
         # or async context manager instances. On cleanup we dispatch to
-        # the appropriate finalizer (``__anext__`` for iterators and
-        # ``__aexit__`` for context managers).
+        # the appropriate finalizer.
         self._exits: list[object] = []
 
     async def _on_startup(self, app: Application) -> None:
-        """Run registered cleanup context callbacks at startup.
-
-        Each callback may return either an async iterator (an async
-        generator that yields exactly once) or an async context manager
-        (from :func:`contextlib.asynccontextmanager`). If a context manager
-        is returned it will be entered on startup (``__aenter__``) and
-        exited during cleanup (``__aexit__``). Legacy single-yield async
-        generator cleanup contexts continue to be supported.
-
-        """
+        """Run registered cleanup context callbacks at startup."""
         for cb in self:
-            # Call the registered callback and inspect its return value.
-            # If the callback returned a context manager instance, use it
-            # directly. Otherwise (legacy async generator callbacks) we
-            # convert the callback into an async context manager and
-            # call it to obtain a context manager instance.
             ctx = cb(app)
 
-            # If the callback returned an async iterator (legacy async
-            # generator), use it directly. If it returned an async
-            # context manager instance, enter it and remember the manager
-            # for later exit. As a final fallback, convert the callback
-            # into an async context manager (covers some edge cases) and
-            # enter that.
-            if isinstance(ctx, AsyncIterator):
-                # Legacy async generator cleanup context: advance it once
-                # (equivalent to entering) and remember the iterator for
-                # finalization.
-                it = cast(AsyncIterator[None], ctx)
-                await it.__anext__()
-                self._exits.append(it)
-            elif isinstance(ctx, contextlib.AbstractAsyncContextManager):
-                # If ctx is an async context manager: enter it and
-                # remember the manager for later exit.
-                cm = ctx
-                await cm.__aenter__()
-                self._exits.append(cm)
-            else:
-                # cb may have a broader annotated return type; adapt the
-                # callable into an async context manager and enter it.
-                cm = contextlib.asynccontextmanager(
+            if not isinstance(ctx, contextlib.AbstractAsyncContextManager):
+                ctx = contextlib.asynccontextmanager(
                     cast(Callable[[Application], AsyncIterator[None]], cb)
                 )(app)
-                await cm.__aenter__()
-                self._exits.append(cm)
+
+            await ctx.__aenter__()
+            self._exits.append(ctx)
 
     async def _on_cleanup(self, app: Application) -> None:
         """Run cleanup for all registered contexts in reverse order.
