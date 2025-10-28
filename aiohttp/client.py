@@ -24,7 +24,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Final, Generic, TypedDict, TypeVar, final
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from yarl import URL
+from yarl import URL, Query
 
 from . import hdrs, http, payload
 from ._websocket.reader import WebSocketDataQueue
@@ -96,7 +96,7 @@ from .helpers import (
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
+from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
 __all__ = (
     # client_exceptions
@@ -684,7 +684,7 @@ class ClientSession:
                             max_field_size=max_field_size,
                         )
                         try:
-                            resp = await req.send(conn)
+                            resp = await req._send(conn)
                             try:
                                 await resp.start(conn)
                             except BaseException:

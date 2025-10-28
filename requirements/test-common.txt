@@ -71,7 +71,7 @@ pytest==8.4.2
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.1.1
+pytest-codspeed==4.2.0
     # via -r requirements/test-common.in
 pytest-cov==7.0.0
     # via -r requirements/test-common.in
@@ -81,7 +81,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.78.0
+python-on-whales==0.79.0
     # via -r requirements/test-common.in
 rich==14.2.0
     # via pytest-codspeed

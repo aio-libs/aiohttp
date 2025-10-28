@@ -59,7 +59,7 @@ coverage==7.11.0
     #   pytest-cov
 cryptography==46.0.3
     # via trustme
-cython==3.1.5
+cython==3.1.6
     # via -r requirements/cython.in
 distlib==0.4.0
     # via virtualenv
@@ -177,7 +177,7 @@ pytest==8.4.2
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.1.1
+pytest-codspeed==4.2.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -191,7 +191,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.78.0
+python-on-whales==0.79.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -286,7 +286,7 @@ zlib-ng==1.0.0
     #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==25.2
+pip==25.3
     # via pip-tools
 setuptools==80.9.0
     # via pip-tools

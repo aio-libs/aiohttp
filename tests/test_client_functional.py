@@ -22,7 +22,7 @@ import pytest
 import trustme
 from multidict import MultiDict
 from pytest_mock import MockerFixture
-from yarl import URL
+from yarl import URL, Query
 
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, payload, web
@@ -38,8 +38,6 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.connector import Connection
-from aiohttp.http_writer import StreamWriter
 from aiohttp.payload import (
     AsyncIterablePayload,
     BufferedReaderPayload,
@@ -50,7 +48,7 @@ from aiohttp.payload import (
 )
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestClient, TestServer, unused_port
-from aiohttp.typedefs import Handler, Query
+from aiohttp.typedefs import Handler
 
 
 @pytest.fixture(autouse=True)
@@ -1720,39 +1718,9 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
-    write_mock = None
-    writelines_mock = None
-    original_write_bytes = ClientRequest.write_bytes
-
-    async def write_bytes(
-        self: ClientRequest,
-        writer: StreamWriter,
-        conn: Connection,
-        content_length: int | None = None,
-    ) -> None:
-        nonlocal write_mock, writelines_mock
-        original_write = writer._write
-        original_writelines = writer._writelines
-
-        with (
-            mock.patch.object(
-                writer,
-                "_write",
-                autospec=True,
-                spec_set=True,
-                side_effect=original_write,
-            ) as write_mock,
-            mock.patch.object(
-                writer,
-                "_writelines",
-                autospec=True,
-                spec_set=True,
-                side_effect=original_writelines,
-            ) as writelines_mock,
-        ):
-            await original_write_bytes(self, writer, conn, content_length)
-
-    with mock.patch.object(ClientRequest, "write_bytes", write_bytes):
+    with mock.patch.object(
+        ClientRequest, "_write_bytes", autospec=True, spec_set=True
+    ) as m:
         app = web.Application()
         app.router.add_get("/", handler)
         client = await aiohttp_client(app)
@@ -1762,27 +1730,15 @@ async def test_GET_DEFLATE(aiohttp_client: AiohttpClient) -> None:
             content = await resp.json()
             assert content == {"ok": True}
 
-    # With packet coalescing, headers are buffered and may be written
-    # during write_bytes if there's an empty body to process.
-    # The test should verify no body chunks are written, but headers
-    # may be written as part of the coalescing optimization.
-    # If _write was called, it should only be for headers ending with \r\n\r\n
-    # and not any body content
-    for call in write_mock.call_args_list:  # type: ignore[union-attr]
-        data = call[0][0]
-        assert data.endswith(
-            b"\r\n\r\n"
-        ), "Only headers should be written, not body chunks"
-
-    # No body data should be written via writelines either
-    writelines_mock.assert_not_called()  # type: ignore[union-attr]
+    # With an empty body, _write_bytes() should not be called at all.
+    m.assert_not_called()
 
 
 async def test_GET_DEFLATE_no_body(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
-    with mock.patch.object(ClientRequest, "write_bytes") as mock_write_bytes:
+    with mock.patch.object(ClientRequest, "_write_bytes") as mock_write_bytes:
         app = web.Application()
         app.router.add_get("/", handler)
         client = await aiohttp_client(app)
@@ -2671,6 +2627,23 @@ async def test_cookies_on_empty_session_jar(aiohttp_client: AiohttpClient) -> No
 
     async with client.get("/", cookies={"custom-cookie": "abc"}) as resp:
         assert 200 == resp.status
+
+
+async def test_cookies_is_quoted_with_special_characters(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        assert 'cookie1="val/one"' == request.headers["Cookie"]
+        assert "cookie1" in request.cookies
+        assert request.cookies["cookie1"] == "val/one"
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/", cookies={"cookie1": "val/one"}) as resp:
+        assert resp.status == 200
 
 
 async def test_morsel_with_attributes(aiohttp_client: AiohttpClient) -> None:

@@ -7,17 +7,12 @@ from multidict import MultiMapping
 
 from .typedefs import StrOrURL
 
-if TYPE_CHECKING:
+try:
     import ssl
 
     SSLContext = ssl.SSLContext
-else:
-    try:
-        import ssl
-
-        SSLContext = ssl.SSLContext
-    except ImportError:  # pragma: no cover
-        ssl = SSLContext = None  # type: ignore[assignment]
+except ImportError:  # pragma: no cover
+    ssl = SSLContext = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo

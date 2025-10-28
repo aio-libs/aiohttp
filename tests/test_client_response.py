@@ -14,7 +14,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import ClientSession, hdrs, http
-from aiohttp.client_reqrep import ClientResponse, RequestInfo
+from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.helpers import TimerNoop
 from aiohttp.multipart import BadContentDispositionHeader
@@ -32,17 +32,18 @@ def session() -> mock.Mock:
 
 async def test_http_processing_error(session: ClientSession) -> None:
     loop = mock.Mock()
-    request_info = mock.Mock()
+    url = URL("http://del-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://del-cl-resp.org"),
-        request_info=request_info,
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     loop.get_debug = mock.Mock()
     loop.get_debug.return_value = True
@@ -54,22 +55,24 @@ async def test_http_processing_error(session: ClientSession) -> None:
     with pytest.raises(aiohttp.ClientResponseError) as info:
         await response.start(connection)
 
-    assert info.value.request_info is request_info
+    assert info.value.request_info.url is url
     response.close()
 
 
 def test_del(session: ClientSession) -> None:
     loop = mock.Mock()
+    url = URL("http://del-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://del-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     loop.get_debug = mock.Mock()
     loop.get_debug.return_value = True
@@ -87,16 +90,18 @@ def test_del(session: ClientSession) -> None:
 
 
 def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response._closed = False
     response._connection = mock.Mock()
@@ -109,16 +114,18 @@ def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
 def test_wait_for_100_1(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://python.org")
     response = ClientResponse(
         "get",
-        URL("http://python.org"),
+        url,
         continue100=loop.create_future(),
-        request_info=mock.Mock(),
         writer=WriterMock(),
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     assert response._continue is not None
     response.close()
@@ -127,32 +134,36 @@ def test_wait_for_100_1(
 def test_wait_for_100_2(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://python.org")
     response = ClientResponse(
         "get",
-        URL("http://python.org"),
-        request_info=mock.Mock(),
+        url,
         continue100=None,
         writer=WriterMock(),
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     assert response._continue is None
     response.close()
 
 
 def test_repr(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response.status = 200
     response.reason = "Ok"
@@ -160,31 +171,35 @@ def test_repr(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
 
 
 def test_repr_non_ascii_url() -> None:
+    url = URL("http://fake-host.org/\u03bb")
     response = ClientResponse(
         "get",
-        URL("http://fake-host.org/\u03bb"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     assert "<ClientResponse(http://fake-host.org/%CE%BB) [None None]>" in repr(response)
 
 
 def test_repr_non_ascii_reason() -> None:
+    url = URL("http://fake-host.org/path")
     response = ClientResponse(
         "get",
-        URL("http://fake-host.org/path"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response.reason = "\u03bb"
     assert "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>" in repr(
@@ -195,16 +210,18 @@ def test_repr_non_ascii_reason() -> None:
 async def test_read_and_release_connection(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -223,16 +240,18 @@ async def test_read_and_release_connection(
 async def test_read_and_release_connection_with_error(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     content = response.content = mock.Mock()
     content.read.return_value = loop.create_future()
@@ -244,16 +263,18 @@ async def test_read_and_release_connection_with_error(
 
 
 async def test_release(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     fut = loop.create_future()
     fut.set_result(b"")
@@ -275,16 +296,18 @@ async def test_release_on_del(
     connection.protocol.upgraded = False
 
     def run(conn: Connection) -> None:
+        url = URL("http://def-cl-resp.org")
         response = ClientResponse(
             "get",
-            URL("http://def-cl-resp.org"),
-            request_info=mock.Mock(),
+            url,
             writer=WriterMock(),
             continue100=None,
             timer=TimerNoop(),
             traces=[],
             loop=loop,
             session=session,
+            request_headers=CIMultiDict[str](),
+            original_url=url,
         )
         response._closed = False
         response._connection = conn
@@ -297,16 +320,18 @@ async def test_release_on_del(
 async def test_response_eof(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response._closed = False
     conn = response._connection = mock.Mock()
@@ -320,16 +345,18 @@ async def test_response_eof(
 async def test_response_eof_upgraded(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     conn = response._connection = mock.Mock()
@@ -343,16 +370,18 @@ async def test_response_eof_upgraded(
 async def test_response_eof_after_connection_detach(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=None,
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response._closed = False
     conn = response._connection = mock.Mock()
@@ -364,16 +393,18 @@ async def test_response_eof_after_connection_detach(
 
 
 async def test_text(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -394,16 +425,18 @@ async def test_text(loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
 async def test_text_bad_encoding(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -428,16 +461,18 @@ async def test_text_badly_encoded_encoding_header(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     session._resolve_charset = lambda *_: "utf-8"
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -459,16 +494,18 @@ async def test_text_badly_encoded_encoding_header(
 async def test_text_custom_encoding(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -492,16 +529,18 @@ async def test_text_charset_resolver(
     content_type: str, loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     session._resolve_charset = lambda r, b: "cp1251"
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -524,16 +563,18 @@ async def test_text_charset_resolver(
 async def test_get_encoding_body_none(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     h = {"Content-Type": "text/html"}
@@ -552,16 +593,18 @@ async def test_get_encoding_body_none(
 async def test_text_after_read(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -580,16 +623,18 @@ async def test_text_after_read(
 
 
 async def test_json(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -610,16 +655,18 @@ async def test_json(loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
 async def test_json_extended_content_type(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -640,16 +687,18 @@ async def test_json_extended_content_type(
 async def test_json_custom_content_type(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -670,16 +719,18 @@ async def test_json_custom_content_type(
 async def test_json_custom_loader(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -695,16 +746,18 @@ async def test_json_custom_loader(
 async def test_json_invalid_content_type(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = {"Content-Type": "data/octet-stream"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -721,16 +774,18 @@ async def test_json_invalid_content_type(
 async def test_json_no_content(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = {"Content-Type": "application/json"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -743,16 +798,18 @@ async def test_json_no_content(
 async def test_json_override_encoding(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -774,16 +831,18 @@ async def test_json_override_encoding(
 def test_get_encoding_unknown(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     h = {"Content-Type": "application/json"}
@@ -792,16 +851,18 @@ def test_get_encoding_unknown(
 
 
 def test_raise_for_status_2xx() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response.status = 200
     response.reason = "OK"
@@ -809,16 +870,18 @@ def test_raise_for_status_2xx() -> None:
 
 
 def test_raise_for_status_4xx() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -830,16 +893,18 @@ def test_raise_for_status_4xx() -> None:
 
 
 def test_raise_for_status_4xx_without_reason() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response.status = 404
     response.reason = ""
@@ -851,31 +916,35 @@ def test_raise_for_status_4xx_without_reason() -> None:
 
 
 def test_resp_host() -> None:
+    url = URL("http://del-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://del-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     assert "del-cl-resp.org" == response.host
 
 
 def test_content_type() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -884,16 +953,18 @@ def test_content_type() -> None:
 
 
 def test_content_type_no_header() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response._headers = CIMultiDictProxy(CIMultiDict({}))
 
@@ -901,16 +972,18 @@ def test_content_type_no_header() -> None:
 
 
 def test_charset() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -919,16 +992,18 @@ def test_charset() -> None:
 
 
 def test_charset_no_header() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response._headers = CIMultiDictProxy(CIMultiDict({}))
 
@@ -936,16 +1011,18 @@ def test_charset_no_header() -> None:
 
 
 def test_charset_no_charset() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = {"Content-Type": "application/json"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -954,16 +1031,18 @@ def test_charset_no_charset() -> None:
 
 
 def test_content_disposition_full() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = {"Content-Disposition": 'attachment; filename="archive.tar.gz"; foo=bar'}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -977,16 +1056,18 @@ def test_content_disposition_full() -> None:
 
 
 def test_content_disposition_no_parameters() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = {"Content-Disposition": "attachment"}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -1005,16 +1086,18 @@ def test_content_disposition_no_parameters() -> None:
     ),
 )
 def test_content_disposition_empty_parts(content_disposition: str) -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = {"Content-Disposition": content_disposition}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -1026,16 +1109,18 @@ def test_content_disposition_empty_parts(content_disposition: str) -> None:
 
 
 def test_content_disposition_no_header() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response._headers = CIMultiDictProxy(CIMultiDict({}))
 
@@ -1043,16 +1128,18 @@ def test_content_disposition_no_header() -> None:
 
 
 def test_default_encoding_is_utf8() -> None:
+    url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://def-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
-        session=None,  # type: ignore[arg-type]
+        session=None,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response._headers = CIMultiDictProxy(CIMultiDict({}))
     response._body = b""
@@ -1063,17 +1150,18 @@ def test_default_encoding_is_utf8() -> None:
 def test_response_request_info() -> None:
     url = URL("http://def-cl-resp.org")
     h = {"Content-Type": "application/json;charset=cp1251"}
-    headers = CIMultiDictProxy(CIMultiDict(h))
+    headers = CIMultiDict(h)
     response = ClientResponse(
         "get",
         url,
-        request_info=RequestInfo(url, "get", headers, url),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=headers,
+        original_url=url,
     )
     assert url == response.request_info.url
     assert "get" == response.request_info.method
@@ -1083,17 +1171,18 @@ def test_response_request_info() -> None:
 def test_request_info_in_exception() -> None:
     url = URL("http://def-cl-resp.org")
     h = {"Content-Type": "application/json;charset=cp1251"}
-    headers = CIMultiDictProxy(CIMultiDict(h))
+    headers = CIMultiDict(h)
     response = ClientResponse(
         "get",
         url,
-        request_info=RequestInfo(url, "get", headers, url),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=headers,
+        original_url=url,
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -1105,17 +1194,18 @@ def test_request_info_in_exception() -> None:
 def test_no_redirect_history_in_exception() -> None:
     url = URL("http://def-cl-resp.org")
     h = {"Content-Type": "application/json;charset=cp1251"}
-    headers = CIMultiDictProxy(CIMultiDict(h))
+    headers = CIMultiDict(h)
     response = ClientResponse(
         "get",
         url,
-        request_info=RequestInfo(url, "get", headers, url),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=headers,
+        original_url=url,
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -1130,17 +1220,18 @@ def test_redirect_history_in_exception() -> None:
     url = URL(u)
     hist_headers = {"Content-Type": "application/json;charset=cp1251", "Location": u}
     h = {"Content-Type": "application/json;charset=cp1251"}
-    headers = CIMultiDictProxy(CIMultiDict(h))
+    headers = CIMultiDict(h)
     response = ClientResponse(
         "get",
         url,
-        request_info=RequestInfo(url, "get", headers, url),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=headers,
+        original_url=url,
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -1148,13 +1239,14 @@ def test_redirect_history_in_exception() -> None:
     hist_response = ClientResponse(
         "get",
         hist_url,
-        request_info=RequestInfo(url, "get", headers, url),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=headers,
+        original_url=hist_url,
     )
 
     hist_response._headers = CIMultiDictProxy(CIMultiDict(hist_headers))
@@ -1179,13 +1271,14 @@ async def test_response_read_triggers_callback(
     response = ClientResponse(
         response_method,
         response_url,
-        request_info=mock.Mock(),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         loop=loop,
         session=session,
         traces=[trace],
+        request_headers=CIMultiDict[str](),
+        original_url=response_url,
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -1211,16 +1304,18 @@ async def test_response_read_triggers_callback(
 def test_response_cookies(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    url = URL("http://python.org")
     response = ClientResponse(
         "get",
-        URL("http://python.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     cookies = response.cookies
     # Ensure the same cookies object is returned each time
@@ -1234,13 +1329,14 @@ def test_response_real_url(
     response = ClientResponse(
         "get",
         url,
-        request_info=mock.Mock(),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     assert response.url == url.with_fragment(None)
     assert response.real_url == url
@@ -1253,13 +1349,14 @@ def test_response_links_comma_separated(
     response = ClientResponse(
         "get",
         url,
-        request_info=mock.Mock(),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = (
         (
@@ -1284,13 +1381,14 @@ def test_response_links_multiple_headers(
     response = ClientResponse(
         "get",
         url,
-        request_info=mock.Mock(),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = (
         ("Link", "<http://example.com/page/1.html>; rel=next"),
@@ -1310,13 +1408,14 @@ def test_response_links_no_rel(
     response = ClientResponse(
         "get",
         url,
-        request_info=mock.Mock(),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = (("Link", "<http://example.com/>"),)
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -1332,13 +1431,14 @@ def test_response_links_quoted(
     response = ClientResponse(
         "get",
         url,
-        request_info=mock.Mock(),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = (("Link", '<http://example.com/>; rel="home-page"'),)
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -1354,13 +1454,14 @@ def test_response_links_relative(
     response = ClientResponse(
         "get",
         url,
-        request_info=mock.Mock(),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     h = (("Link", "</relative/path>; rel=rel"),)
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -1376,29 +1477,32 @@ def test_response_links_empty(
     response = ClientResponse(
         "get",
         url,
-        request_info=mock.Mock(),
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response._headers = CIMultiDictProxy(CIMultiDict())
     assert response.links == {}
 
 
 def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
+    url = URL("http://del-cl-resp.org")
     response = ClientResponse(
         "get",
-        URL("http://del-cl-resp.org"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
     response.status = 400
     response.reason = "Bad Request"
@@ -1423,16 +1527,18 @@ def test_response_duplicate_cookie_names(
     - response.headers.getall('Set-Cookie') for raw headers
     - The session's cookie jar correctly stores all cookies
     """
+    url = URL("http://example.com")
     response = ClientResponse(
         "get",
-        URL("http://example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     # Set headers with duplicate cookie names but different domains
@@ -1462,16 +1568,18 @@ def test_response_raw_cookie_headers_preserved(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """Test that raw Set-Cookie headers are preserved in _raw_cookie_headers."""
+    url = URL("http://example.com")
     response = ClientResponse(
         "get",
-        URL("http://example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     # Set headers with multiple cookies
@@ -1502,16 +1610,18 @@ def test_response_cookies_setter_updates_raw_headers(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """Test that setting cookies property updates _raw_cookie_headers."""
+    url = URL("http://example.com")
     response = ClientResponse(
         "get",
-        URL("http://example.com"),
-        request_info=mock.Mock(),
+        url,
         writer=WriterMock(),
         continue100=None,
         timer=TimerNoop(),
         traces=[],
         loop=loop,
         session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
     )
 
     # Create a SimpleCookie with some cookies
