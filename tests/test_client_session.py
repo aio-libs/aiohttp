@@ -1366,14 +1366,25 @@ async def test_netrc_auth_skipped_without_trust_env(auth_server: TestServer) -> 
 
 
 @pytest.mark.usefixtures("no_netrc")
-async def test_netrc_auth_skipped_without_netrc_env(auth_server: TestServer) -> None:
-    """Test that netrc authentication is skipped when NETRC env var is not set."""
+async def test_netrc_auth_skipped_without_netrc_file(auth_server: TestServer) -> None:
+    """Test that netrc authentication is skipped when no netrc file exists."""
     async with (
         ClientSession(trust_env=True) as session,
         session.get(auth_server.make_url("/")) as resp,
     ):
         text = await resp.text()
         assert text == "no_auth"
+
+
+@pytest.mark.usefixtures("netrc_home_directory")
+async def test_netrc_auth_from_home_directory(auth_server: TestServer) -> None:
+    """Test that netrc authentication works from default ~/.netrc location without NETRC env var."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
 
 
 @pytest.mark.usefixtures("netrc_default_contents")
