@@ -23,6 +23,10 @@ from .models import WS_DEFLATE_TRAILING, WSMsgType
 
 DEFAULT_LIMIT: Final[int] = 2**16
 
+# WebSocket opcode boundary: opcodes 0-7 are data frames, 8-15 are control frames
+# Control frames (ping, pong, close) are never compressed
+WS_CONTROL_FRAME_OPCODE: Final[int] = 8
+
 # For websockets, keeping latency low is extremely important as implementations
 # generally expect to be able to send and receive messages quickly. We use a
 # larger chunk size to reduce the number of executor calls and avoid task
@@ -74,7 +78,7 @@ class WebSocketWriter:
         if self._closing and not (opcode & WSMsgType.CLOSE):
             raise ClientConnectionResetError("Cannot write to closing transport")
 
-        if not (compress or self.compress) or opcode >= 8:
+        if not (compress or self.compress) or opcode >= WS_CONTROL_FRAME_OPCODE:
             # Non-compressed frames don't need lock or shield
             self._write_websocket_frame(message, opcode, 0)
         elif len(message) <= WEBSOCKET_MAX_SYNC_CHUNK_SIZE:
@@ -176,7 +180,6 @@ class WebSocketWriter:
                 wbits=-compress,
                 max_sync_chunk_size=WEBSOCKET_MAX_SYNC_CHUNK_SIZE,
             )
-        # self.compress
         if not self._compressobj:
             self._compressobj = ZLibCompressor(
                 level=ZLibBackend.Z_BEST_SPEED,
