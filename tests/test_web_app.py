@@ -510,6 +510,50 @@ async def test_cleanup_ctx_mixed_with_exception_in_cm_exit() -> None:
     assert out == ["pre_gen", "pre_cm", "post_cm", "post_gen"]
 
 
+async def test_cleanup_ctx_legacy_async_iterator_finishes() -> None:
+    app = web.Application()
+
+    async def gen(app: web.Application) -> AsyncIterator[None]:
+        # legacy async generator that yields once and then finishes
+        yield
+
+    # create and prime the generator (simulate startup having advanced it)
+    g = gen(app)
+    await g.__anext__()
+
+    # directly append the primed generator to exits to exercise cleanup path
+    app.cleanup_ctx._exits.append(g)  # type: ignore[attr-defined]
+
+    # cleanup should consume the generator (second __anext__ -> StopAsyncIteration)
+    await app.cleanup()
+
+
+async def test_cleanup_ctx_legacy_async_iterator_multiple_yields() -> None:
+    app = web.Application()
+
+    async def gen(app: web.Application) -> AsyncIterator[None]:
+        # generator with two yields: will cause cleanup to detect extra yield
+        yield
+        yield
+
+    g = gen(app)
+    await g.__anext__()
+    app.cleanup_ctx._exits.append(g)  # type: ignore[attr-defined]
+
+    with pytest.raises(RuntimeError):
+        await app.cleanup()
+
+
+async def test_cleanup_ctx_unknown_entry_records_error() -> None:
+    app = web.Application()
+
+    # append an object of unknown type
+    app.cleanup_ctx._exits.append(object())  # type: ignore[attr-defined]
+
+    with pytest.raises(RuntimeError):
+        await app.cleanup()
+
+
 async def test_subapp_chained_config_dict_visibility(
     aiohttp_client: AiohttpClient,
 ) -> None:
