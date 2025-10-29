@@ -115,7 +115,7 @@ typing-extensions==4.15.0
     #   virtualenv
 typing-inspection==0.4.2
     # via pydantic
-uvloop==0.21.0 ; platform_system != "Windows"
+uvloop==0.22.1 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
