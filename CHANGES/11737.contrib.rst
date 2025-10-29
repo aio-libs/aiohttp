@@ -1,2 +1,2 @@
-Fixed ci workflow always failing on forks. Made benchmark skip when not
+Fixed workflow always failing on forks. Made benchmark job skip when not
 running on main repository. -- by :user:`Cycloctane`.
