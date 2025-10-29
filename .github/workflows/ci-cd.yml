@@ -260,7 +260,7 @@ jobs:
   benchmark:
     name: Benchmark
     needs: gen_llhttp
-    if: github.repository_owner == 'aio-libs'
+    if: github.repository_id == '13258039'
 
     runs-on: ubuntu-latest
     timeout-minutes: 12
