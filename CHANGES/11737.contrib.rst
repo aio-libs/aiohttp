@@ -1,0 +1,3 @@
+Fixed test and benchmark workflows always failing on forks. Made coverage upload
+step and benchmark workflow skip when not running on main repository.
+-- by :user:`Cycloctane`.
