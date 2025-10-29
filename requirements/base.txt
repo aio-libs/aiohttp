@@ -44,7 +44,7 @@ typing-extensions==4.15.0
     # via
     #   aiosignal
     #   multidict
-uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 yarl==1.22.0
     # via -r requirements/runtime-deps.in
