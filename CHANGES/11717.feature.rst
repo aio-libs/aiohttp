@@ -1,1 +1,1 @@
-Add parser factory to :class:`aiohttp.client_proto.ResponseHandler` and a writer factory to :class:`aiohttp.client_reqrep.ClientRequestBase` to prepare for future protocol support -- by :user:`Vizonex`
+Add parser factory to response handler and a writer factory to client request base to prepare for future protocol support -- by :user:`Vizonex`
