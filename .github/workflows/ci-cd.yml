@@ -23,7 +23,7 @@ env:
   FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
   MYPY_FORCE_COLOR: 1
   PY_COLORS: 1
-  UPSTREAM_REPOSITORY_ID: |
+  UPSTREAM_REPOSITORY_ID: >-
     13258039
 
 permissions: {}
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       upstream-repository-id: ${{ env.UPSTREAM_REPOSITORY_ID }}
-      release-requested: |
+      release-requested: >-
         ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags/') }}
     steps:
       - name: Dummy
@@ -275,7 +275,7 @@ jobs:
   benchmark:
     name: Benchmark
     needs: [pre-setup, gen_llhttp]
-    if: |
+    if: >-
       needs.pre-setup.outputs.upstream-repository-id == github.repository_id
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -482,7 +482,7 @@ jobs:
     name: Deploy
     needs: [pre-setup, build-tarball, build-wheels]
     runs-on: ubuntu-latest
-    if: |
+    if: >-
       needs.pre-setup.outputs.upstream-repository-id == github.repository_id
 
     permissions:
