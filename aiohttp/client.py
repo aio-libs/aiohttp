@@ -24,7 +24,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Final, Generic, TypedDict, TypeVar, final
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from yarl import URL
+from yarl import URL, Query
 
 from . import hdrs, http, payload
 from ._websocket.reader import WebSocketDataQueue
@@ -96,7 +96,7 @@ from .helpers import (
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
+from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
 __all__ = (
     # client_exceptions
@@ -590,14 +590,7 @@ class ClientSession:
                         auth = self._default_auth
 
                     # Try netrc if auth is still None and trust_env is enabled.
-                    # Only check if NETRC environment variable is set to avoid
-                    # creating an expensive executor job unnecessarily.
-                    if (
-                        auth is None
-                        and self._trust_env
-                        and url.host is not None
-                        and os.environ.get("NETRC")
-                    ):
+                    if auth is None and self._trust_env and url.host is not None:
                         auth = await self._loop.run_in_executor(
                             None, self._get_netrc_auth, url.host
                         )

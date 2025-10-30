@@ -305,6 +305,7 @@ SocketSocketTransport
 ssl
 SSLContext
 startup
+stateful
 subapplication
 subclassed
 subclasses
@@ -341,8 +342,9 @@ tuples
 UI
 un
 unawaited
-undercounting
 unclosed
+undercounting
+unescaped
 unhandled
 unicode
 unittest
