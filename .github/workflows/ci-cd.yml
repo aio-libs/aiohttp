@@ -23,9 +23,24 @@ env:
   FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
   MYPY_FORCE_COLOR: 1
   PY_COLORS: 1
+  UPSTREAM_REPOSITORY_ID: |
+    13258039
 
 permissions: {}
+
 jobs:
+
+  pre-setup:
+    name: Pre-Setup global build settings
+    runs-on: ubuntu-latest
+    outputs:
+      upstream-repository-id: ${{ env.UPSTREAM_REPOSITORY_ID }}
+      release-requested: |
+        ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags/') }}
+    steps:
+      - name: Dummy
+        run: |
+          echo "Pre-setup step"
 
   lint:
     permissions:
@@ -259,9 +274,9 @@ jobs:
 
   benchmark:
     name: Benchmark
-    needs: gen_llhttp
-    if: github.repository_id == '13258039'
-
+    needs: [pre-setup, gen_llhttp]
+    if: |
+      needs.pre-setup.outputs.upstream-repository-id == github.repository_id
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -318,9 +333,8 @@ jobs:
   pre-deploy:
     name: Pre-Deploy
     runs-on: ubuntu-latest
-    needs: check
-    # Run only on pushing a tag
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    needs: [pre-setup, check]
+    if: fromJSON(needs.pre-setup.outputs.release-requested)
     steps:
       - name: Dummy
         run: |
@@ -466,8 +480,10 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: [build-tarball, build-wheels]
+    needs: [pre-setup, build-tarball, build-wheels]
     runs-on: ubuntu-latest
+    if: |
+      needs.pre-setup.outputs.upstream-repository-id == github.repository_id
 
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
