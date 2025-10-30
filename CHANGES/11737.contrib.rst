@@ -1,2 +1,3 @@
-Fixed workflow always failing on forks. Made benchmark job skip when not
-running on main repository. -- by :user:`Cycloctane`.
+The benchmark CI job now runs only in the upstream repository -- by :user:`Cycloctane`.
+
+It used to always fail in forks, which this change fixed.
