@@ -742,7 +742,7 @@ class ClientRequestBase:
         self._update_headers(headers)
         self._update_auth(auth, trust_env)
 
-        # setup incase of newer protocols.
+        # setup in case of newer protocols.
         if version:
             self.version = version
 
