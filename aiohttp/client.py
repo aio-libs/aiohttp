@@ -318,7 +318,15 @@ class ClientSession:
             )
 
         if connector is None:
+            connector_owner = True
             connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
+        elif connector_owner:
+            warnings.warn(
+                "connector_owner is deprecated and will be removed in aiohttp 4.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector = connector
@@ -333,6 +341,8 @@ class ClientSession:
         if connector._loop is not loop:
             raise RuntimeError("Session and connector have to use same event loop")
 
+        self._connector_owner = connector_owner
+
         if cookie_jar is None:
             cookie_jar = CookieJar()
         self._cookie_jar = cookie_jar
@@ -340,7 +350,6 @@ class ClientSession:
         if cookies:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
@@ -1275,7 +1284,7 @@ class ClientSession:
 
         A readonly property.
         """
-        return self._connector is None or self._connector.closed
+        return self._connector is None
 
     @property
     def connector(self) -> BaseConnector | None:
