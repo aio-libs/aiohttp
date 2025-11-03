@@ -4,7 +4,6 @@ import asyncio
 import base64
 import dataclasses
 import hashlib
-import json
 import os
 import sys
 import traceback
@@ -96,7 +95,15 @@ from .helpers import (
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
+from .typedefs import (
+    DEFAULT_JSON_DECODER,
+    DEFAULT_JSON_ENCODER,
+    JSONDecoder,
+    JSONEncoder,
+    LooseCookies,
+    LooseHeaders,
+    StrOrURL,
+)
 
 __all__ = (
     # client_exceptions
@@ -234,6 +241,7 @@ class ClientSession:
         "_default_auth",
         "_version",
         "_json_serialize",
+        "_json_deserialize",
         "_requote_redirect_url",
         "_timeout",
         "_raise_for_status",
@@ -266,7 +274,8 @@ class ClientSession:
         proxy_auth: BasicAuth | None = None,
         skip_auto_headers: Iterable[str] | None = None,
         auth: BasicAuth | None = None,
-        json_serialize: JSONEncoder = json.dumps,
+        json_serialize: JSONEncoder = DEFAULT_JSON_ENCODER,
+        json_deserialize: JSONDecoder = DEFAULT_JSON_DECODER,
         request_class: type[ClientRequest] = ClientRequest,
         response_class: type[ClientResponse] = ClientResponse,
         ws_response_class: type[ClientWebSocketResponse] = ClientWebSocketResponse,
@@ -344,6 +353,7 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
+        self._json_deserialize = json_deserialize
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -402,7 +412,8 @@ class ClientSession:
             method: str,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager": ...
+        ) -> "_RequestContextManager":
+            ...
 
     else:
 
@@ -1159,43 +1170,50 @@ class ClientSession:
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager": ...
+        ) -> "_RequestContextManager":
+            ...
 
         def options(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager": ...
+        ) -> "_RequestContextManager":
+            ...
 
         def head(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager": ...
+        ) -> "_RequestContextManager":
+            ...
 
         def post(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager": ...
+        ) -> "_RequestContextManager":
+            ...
 
         def put(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager": ...
+        ) -> "_RequestContextManager":
+            ...
 
         def patch(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager": ...
+        ) -> "_RequestContextManager":
+            ...
 
         def delete(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager": ...
+        ) -> "_RequestContextManager":
+            ...
 
     else:
 
@@ -1321,6 +1339,11 @@ class ClientSession:
     def json_serialize(self) -> JSONEncoder:
         """Json serializer callable"""
         return self._json_serialize
+
+    @property
+    def json_deserialize(self) -> JSONDecoder:
+        """Json deserializer callable"""
+        return self._json_deserialize
 
     @property
     def connector_owner(self) -> bool:
@@ -1453,7 +1476,8 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
         version: HttpVersion = http.HttpVersion11,
         connector: BaseConnector | None = None,
         **kwargs: Unpack[_RequestOptions],
-    ) -> _SessionRequestContextManager: ...
+    ) -> _SessionRequestContextManager:
+        ...
 
 else:
 
