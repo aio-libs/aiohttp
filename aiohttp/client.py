@@ -412,8 +412,7 @@ class ClientSession:
             method: str,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager":
-            ...
+        ) -> "_RequestContextManager": ...
 
     else:
 
@@ -1170,50 +1169,43 @@ class ClientSession:
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager":
-            ...
+        ) -> "_RequestContextManager": ...
 
         def options(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager":
-            ...
+        ) -> "_RequestContextManager": ...
 
         def head(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager":
-            ...
+        ) -> "_RequestContextManager": ...
 
         def post(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager":
-            ...
+        ) -> "_RequestContextManager": ...
 
         def put(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager":
-            ...
+        ) -> "_RequestContextManager": ...
 
         def patch(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager":
-            ...
+        ) -> "_RequestContextManager": ...
 
         def delete(
             self,
             url: StrOrURL,
             **kwargs: Unpack[_RequestOptions],
-        ) -> "_RequestContextManager":
-            ...
+        ) -> "_RequestContextManager": ...
 
     else:
 
@@ -1476,8 +1468,7 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
         version: HttpVersion = http.HttpVersion11,
         connector: BaseConnector | None = None,
         **kwargs: Unpack[_RequestOptions],
-    ) -> _SessionRequestContextManager:
-        ...
+    ) -> _SessionRequestContextManager: ...
 
 else:
 

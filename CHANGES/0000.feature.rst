@@ -1,0 +1,20 @@
+Added ``json_deserialize`` parameter to :class:`~aiohttp.ClientSession` to configure JSON deserialization at the session level, matching the existing ``json_serialize`` parameter -- by :user:`jtung`.
+
+This allows users to configure a custom JSON deserializer (e.g., ``orjson.loads``) once at session creation, and all calls to :meth:`~aiohttp.ClientResponse.json` will use it by default.
+
+Example usage:
+
+.. code-block:: python
+
+    import aiohttp
+    import orjson
+
+    session = aiohttp.ClientSession(
+        json_serialize=lambda obj: orjson.dumps(obj).decode(),
+        json_deserialize=orjson.loads
+    )
+
+    async with session.get(url) as response:
+        data = await response.json()  # Uses orjson.loads
+
+Additionally, fixed an inconsistency where ``json_serialize`` parameter defaulted to ``json.dumps`` directly instead of using ``DEFAULT_JSON_ENCODER`` constant, bringing it in line with other parts of the codebase.
