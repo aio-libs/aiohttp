@@ -36,7 +36,14 @@ jobs:
     outputs:
       upstream-repository-id: ${{ env.UPSTREAM_REPOSITORY_ID }}
       release-requested: >-
-        ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags/') }}
+        ${{
+          (
+            github.event_name == 'push'
+            && github.ref_type == 'tag'
+          )
+          && true
+          || false
+        }}
     steps:
       - name: Dummy
         run: |
