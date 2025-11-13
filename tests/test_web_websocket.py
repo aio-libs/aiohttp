@@ -671,3 +671,12 @@ async def test_get_extra_info(
     ws._writer = ws_transport
 
     assert expected_result == ws.get_extra_info(valid_key, default_value)
+
+
+async def test_prepare_transport_not_available(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    # Simulate transport being None
+    req._protocol.transport = None
+    with pytest.raises(RuntimeError, match="Transport is not available"):
+        await ws.prepare(req)
