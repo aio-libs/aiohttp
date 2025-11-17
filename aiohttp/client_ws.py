@@ -384,6 +384,14 @@ class ClientWebSocketResponse:
             return msg
 
     async def receive_str(self, *, timeout: float | None = None) -> str:
+        """Receive TEXT message.
+
+        Returns str when decode_text=True (default), bytes when decode_text=False.
+
+        Note: The return type annotation is kept as str for backwards compatibility,
+        but this method will return bytes when the WebSocket connection was created
+        with decode_text=False.
+        """
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise WSMessageTypeError(

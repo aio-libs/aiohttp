@@ -59,6 +59,21 @@ class WSMessageText(NamedTuple):
         return loads(self.data)
 
 
+class WSMessageTextBytes(NamedTuple):
+    """WebSocket TEXT message with raw bytes (no UTF-8 decoding)."""
+
+    data: bytes
+    size: int
+    extra: str | None = None
+    type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
+
+    def json(
+        self, *, loads: Callable[[str | bytes | bytearray], Any] = json.loads
+    ) -> Any:
+        """Return parsed JSON data."""
+        return loads(self.data)
+
+
 class WSMessageBinary(NamedTuple):
     data: bytes
     size: int
@@ -117,6 +132,7 @@ class WSMessageError(NamedTuple):
 WSMessage = Union[
     WSMessageContinuation,
     WSMessageText,
+    WSMessageTextBytes,
     WSMessageBinary,
     WSMessagePing,
     WSMessagePong,

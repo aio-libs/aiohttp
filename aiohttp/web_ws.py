@@ -95,6 +95,7 @@ class WebSocketResponse(StreamResponse):
         compress: bool = True,
         max_msg_size: int = 4 * 1024 * 1024,
         writer_limit: int = DEFAULT_LIMIT,
+        decode_text: bool = True,
     ) -> None:
         super().__init__(status=101)
         self._protocols = protocols
@@ -108,6 +109,7 @@ class WebSocketResponse(StreamResponse):
         self._compress: bool | int = compress
         self._max_msg_size = max_msg_size
         self._writer_limit = writer_limit
+        self._decode_text = decode_text
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
@@ -341,7 +343,10 @@ class WebSocketResponse(StreamResponse):
         self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
         request.protocol.set_parser(
             WebSocketReader(
-                self._reader, self._max_msg_size, compress=bool(self._compress)
+                self._reader,
+                self._max_msg_size,
+                compress=bool(self._compress),
+                decode_text=self._decode_text,
             )
         )
         # disable HTTP keepalive for WebSocket
@@ -589,6 +594,14 @@ class WebSocketResponse(StreamResponse):
             return msg
 
     async def receive_str(self, *, timeout: float | None = None) -> str:
+        """Receive TEXT message.
+
+        Returns str when decode_text=True (default), bytes when decode_text=False.
+
+        Note: The return type annotation is kept as str for backwards compatibility,
+        but this method will return bytes when the WebSocket connection was created
+        with decode_text=False.
+        """
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise WSMessageTypeError(

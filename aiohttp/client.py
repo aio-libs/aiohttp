@@ -888,6 +888,7 @@ class ClientSession:
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
+        decode_text: bool = True,
     ) -> "_WSRequestContextManager":
         """Initiate websocket connection."""
         return _WSRequestContextManager(
@@ -911,6 +912,7 @@ class ClientSession:
                 proxy_headers=proxy_headers,
                 compress=compress,
                 max_msg_size=max_msg_size,
+                decode_text=decode_text,
             )
         )
 
@@ -936,6 +938,7 @@ class ClientSession:
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
+        decode_text: bool = True,
     ) -> ClientWebSocketResponse:
         if timeout is not sentinel:
             if isinstance(timeout, ClientWSTimeout):
@@ -1098,7 +1101,9 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
-            conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
+            conn_proto.set_parser(
+                WebSocketReader(reader, max_msg_size, decode_text=decode_text), reader
+            )
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
