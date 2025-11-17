@@ -225,7 +225,7 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
-_RetType = TypeVar("_RetType", ClientResponse, ClientWebSocketResponse)
+_RetType = TypeVar("_RetType", bound="ClientResponse | ClientWebSocketResponse[Any]")
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 

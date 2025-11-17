@@ -4,7 +4,7 @@ import binascii
 import hashlib
 import json
 import sys
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any, Final, Generic, Literal, TypeVar, Union, overload
 
 from multidict import CIMultiDict
@@ -629,8 +629,29 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
             )
         return msg.data
 
+    @overload
     async def receive_json(
-        self, *, loads: JSONDecoder = json.loads, timeout: float | None = None
+        self: "WebSocketResponse[Literal[True]]",
+        *,
+        loads: JSONDecoder = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
+    @overload
+    async def receive_json(
+        self: "WebSocketResponse[Literal[False]]",
+        *,
+        loads: Callable[[bytes | bytearray | memoryview | str], Any] = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
+    async def receive_json(
+        self,
+        *,
+        loads: (
+            JSONDecoder | Callable[[bytes | bytearray | memoryview | str], Any]
+        ) = json.loads,
+        timeout: float | None = None,
     ) -> Any:
         data = await self.receive_str(timeout=timeout)
         return loads(data)

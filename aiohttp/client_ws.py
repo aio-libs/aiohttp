@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+from collections.abc import Callable
 from types import TracebackType
 from typing import Any, Final, Generic, Literal, TypeVar, overload
 
@@ -419,10 +420,28 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
             )
         return msg.data
 
+    @overload
+    async def receive_json(
+        self: "ClientWebSocketResponse[Literal[True]]",
+        *,
+        loads: JSONDecoder = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
+    @overload
+    async def receive_json(
+        self: "ClientWebSocketResponse[Literal[False]]",
+        *,
+        loads: Callable[[bytes | bytearray | memoryview | str], Any] = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
     async def receive_json(
         self,
         *,
-        loads: JSONDecoder = DEFAULT_JSON_DECODER,
+        loads: (
+            JSONDecoder | Callable[[bytes | bytearray | memoryview | str], Any]
+        ) = DEFAULT_JSON_DECODER,
         timeout: float | None = None,
     ) -> Any:
         data = await self.receive_str(timeout=timeout)
