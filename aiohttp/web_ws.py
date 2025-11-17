@@ -653,7 +653,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         ) = json.loads,
         timeout: float | None = None,
     ) -> Any:
-        data = await self.receive_str(timeout=timeout)
+        data: str | bytes = await self.receive_str(timeout=timeout)
         return loads(data)
 
     async def write(

@@ -1476,3 +1476,31 @@ async def test_receive_str_returns_str_with_decode_text_true(
         data = await ws.receive_str()
         assert isinstance(data, str)
         assert data == "hello world"
+
+
+async def test_receive_json_with_orjson_style_loads(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test receive_json() with orjson-style loads that accepts bytes."""
+
+    def orjson_style_loads(data: bytes | bytearray | memoryview | str) -> dict:
+        """Mock orjson.loads that accepts bytes/str."""
+        if isinstance(data, (bytes, bytearray, memoryview)):
+            data = bytes(data).decode("utf-8")
+        return json.loads(data)
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.send_str('{"value": 42}')
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/", decode_text=False) as ws:
+        # receive_json() with orjson-style loads should work with bytes
+        data = await ws.receive_json(loads=orjson_style_loads)
+        assert data == {"value": 42}

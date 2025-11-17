@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import json
 import sys
 import weakref
 from typing import NoReturn
@@ -1605,3 +1606,38 @@ async def test_server_receive_str_returns_str_with_decode_text_true(
         await ws.send_str("hello server")
         msg = await ws.receive()
         assert msg.data == "got string"
+
+
+async def test_server_receive_json_with_orjson_style_loads(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test server receive_json() with orjson-style loads that accepts bytes."""
+
+    def orjson_style_loads(data: bytes | bytearray | memoryview | str) -> dict:
+        """Mock orjson.loads that accepts bytes/str."""
+        if isinstance(data, (bytes, bytearray, memoryview)):
+            data = bytes(data).decode("utf-8")
+        return json.loads(data)
+
+    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse(decode_text=False)
+        await ws.prepare(request)
+
+        # receive_json() with orjson-style loads should work with bytes
+        data = await ws.receive_json(loads=orjson_style_loads)
+        assert data == {"test": "value"}
+
+        await ws.send_str("success")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", websocket_handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/")
+    await ws.send_str('{"test": "value"}')
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.TEXT
+    assert msg.data == "success"
+    await ws.close()
