@@ -607,7 +607,7 @@ class WebSocketResponse(StreamResponse):
             raise WSMessageTypeError(
                 f"Received message {msg.type}:{msg.data!r} is not WSMsgType.TEXT"
             )
-        return msg.data
+        return msg.data  # type: ignore[return-value]
 
     async def receive_bytes(self, *, timeout: float | None = None) -> bytes:
         msg = await self.receive(timeout)
