@@ -5,7 +5,7 @@ import hashlib
 import json
 import sys
 from collections.abc import Iterable
-from typing import Any, Final, Union
+from typing import Any, Final, Generic, Literal, TypeVar, Union, overload
 
 from multidict import CIMultiDict
 
@@ -43,8 +43,11 @@ from .web_response import StreamResponse
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
+    from typing import Self
 else:
     import async_timeout
+
+    Self = TypeVar("Self", bound="WebSocketResponse[Any]")
 
 __all__ = (
     "WebSocketResponse",
@@ -53,6 +56,9 @@ __all__ = (
 )
 
 THRESHOLD_CONNLOST_ACCESS: Final[int] = 5
+
+# TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
+_DecodeText = TypeVar("_DecodeText", bound=bool, default=Literal[True])
 
 
 @frozen_dataclass_decorator
@@ -64,7 +70,7 @@ class WebSocketReady:
         return self.ok
 
 
-class WebSocketResponse(StreamResponse):
+class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
     _length_check: bool = False
     _ws_protocol: str | None = None
@@ -95,6 +101,7 @@ class WebSocketResponse(StreamResponse):
         compress: bool = True,
         max_msg_size: int = 4 * 1024 * 1024,
         writer_limit: int = DEFAULT_LIMIT,
+        decode_text: bool = True,
     ) -> None:
         super().__init__(status=101)
         self._protocols = protocols
@@ -108,6 +115,7 @@ class WebSocketResponse(StreamResponse):
         self._compress: bool | int = compress
         self._max_msg_size = max_msg_size
         self._writer_limit = writer_limit
+        self._decode_text = decode_text
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
@@ -341,7 +349,10 @@ class WebSocketResponse(StreamResponse):
         self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
         request.protocol.set_parser(
             WebSocketReader(
-                self._reader, self._max_msg_size, compress=bool(self._compress)
+                self._reader,
+                self._max_msg_size,
+                compress=bool(self._compress),
+                decode_text=self._decode_text,
             )
         )
         # disable HTTP keepalive for WebSocket
@@ -588,13 +599,27 @@ class WebSocketResponse(StreamResponse):
 
             return msg
 
-    async def receive_str(self, *, timeout: float | None = None) -> str:
+    @overload
+    async def receive_str(
+        self: "WebSocketResponse[Literal[True]]", *, timeout: float | None = None
+    ) -> str: ...
+
+    @overload
+    async def receive_str(
+        self: "WebSocketResponse[Literal[False]]", *, timeout: float | None = None
+    ) -> bytes: ...
+
+    async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
+        """Receive TEXT message.
+
+        Returns str when decode_text=True (default), bytes when decode_text=False.
+        """
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise WSMessageTypeError(
                 f"Received message {msg.type}:{msg.data!r} is not WSMsgType.TEXT"
             )
-        return msg.data
+        return msg.data  # type: ignore[return-value]
 
     async def receive_bytes(self, *, timeout: float | None = None) -> bytes:
         msg = await self.receive(timeout)
@@ -615,7 +640,7 @@ class WebSocketResponse(StreamResponse):
     ) -> None:
         raise RuntimeError("Cannot call .write() for websocket")
 
-    def __aiter__(self) -> "WebSocketResponse":
+    def __aiter__(self) -> Self:
         return self
 
     async def __anext__(self) -> WSMessage:

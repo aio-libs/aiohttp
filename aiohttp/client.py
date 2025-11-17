@@ -21,7 +21,17 @@ from collections.abc import (
 )
 from contextlib import suppress
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Final, Generic, TypedDict, TypeVar, final
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Final,
+    Generic,
+    Literal,
+    TypedDict,
+    TypeVar,
+    final,
+    overload,
+)
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL, Query
@@ -866,6 +876,59 @@ class ClientSession:
                 )
             raise
 
+    # Overloads for type-safe decode_text parameter
+    @overload
+    def ws_connect(
+        self,
+        url: StrOrURL,
+        *,
+        method: str = ...,
+        protocols: Collection[str] = ...,
+        timeout: ClientWSTimeout | _SENTINEL = ...,
+        receive_timeout: float | None = ...,
+        autoclose: bool = ...,
+        autoping: bool = ...,
+        heartbeat: float | None = ...,
+        auth: BasicAuth | None = ...,
+        origin: str | None = ...,
+        params: Query = ...,
+        headers: LooseHeaders | None = ...,
+        proxy: StrOrURL | None = ...,
+        proxy_auth: BasicAuth | None = ...,
+        ssl: SSLContext | bool | Fingerprint = ...,
+        server_hostname: str | None = ...,
+        proxy_headers: LooseHeaders | None = ...,
+        compress: int = ...,
+        max_msg_size: int = ...,
+        decode_text: Literal[True] = ...,
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[True]]]": ...
+
+    @overload
+    def ws_connect(
+        self,
+        url: StrOrURL,
+        *,
+        method: str = ...,
+        protocols: Collection[str] = ...,
+        timeout: ClientWSTimeout | _SENTINEL = ...,
+        receive_timeout: float | None = ...,
+        autoclose: bool = ...,
+        autoping: bool = ...,
+        heartbeat: float | None = ...,
+        auth: BasicAuth | None = ...,
+        origin: str | None = ...,
+        params: Query = ...,
+        headers: LooseHeaders | None = ...,
+        proxy: StrOrURL | None = ...,
+        proxy_auth: BasicAuth | None = ...,
+        ssl: SSLContext | bool | Fingerprint = ...,
+        server_hostname: str | None = ...,
+        proxy_headers: LooseHeaders | None = ...,
+        compress: int = ...,
+        max_msg_size: int = ...,
+        decode_text: Literal[False] = ...,
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[False]]]": ...
+
     def ws_connect(
         self,
         url: StrOrURL,
@@ -888,7 +951,8 @@ class ClientSession:
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
-    ) -> "_WSRequestContextManager":
+        decode_text: bool = True,
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Any]]":
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(
@@ -911,8 +975,61 @@ class ClientSession:
                 proxy_headers=proxy_headers,
                 compress=compress,
                 max_msg_size=max_msg_size,
+                decode_text=decode_text,
             )
         )
+
+    @overload
+    async def _ws_connect(
+        self,
+        url: StrOrURL,
+        *,
+        method: str = ...,
+        protocols: Collection[str] = ...,
+        timeout: ClientWSTimeout | _SENTINEL = ...,
+        receive_timeout: float | None = ...,
+        autoclose: bool = ...,
+        autoping: bool = ...,
+        heartbeat: float | None = ...,
+        auth: BasicAuth | None = ...,
+        origin: str | None = ...,
+        params: Query = ...,
+        headers: LooseHeaders | None = ...,
+        proxy: StrOrURL | None = ...,
+        proxy_auth: BasicAuth | None = ...,
+        ssl: SSLContext | bool | Fingerprint = ...,
+        server_hostname: str | None = ...,
+        proxy_headers: LooseHeaders | None = ...,
+        compress: int = ...,
+        max_msg_size: int = ...,
+        decode_text: Literal[True] = ...,
+    ) -> "ClientWebSocketResponse[Literal[True]]": ...
+
+    @overload
+    async def _ws_connect(
+        self,
+        url: StrOrURL,
+        *,
+        method: str = ...,
+        protocols: Collection[str] = ...,
+        timeout: ClientWSTimeout | _SENTINEL = ...,
+        receive_timeout: float | None = ...,
+        autoclose: bool = ...,
+        autoping: bool = ...,
+        heartbeat: float | None = ...,
+        auth: BasicAuth | None = ...,
+        origin: str | None = ...,
+        params: Query = ...,
+        headers: LooseHeaders | None = ...,
+        proxy: StrOrURL | None = ...,
+        proxy_auth: BasicAuth | None = ...,
+        ssl: SSLContext | bool | Fingerprint = ...,
+        server_hostname: str | None = ...,
+        proxy_headers: LooseHeaders | None = ...,
+        compress: int = ...,
+        max_msg_size: int = ...,
+        decode_text: Literal[False] = ...,
+    ) -> "ClientWebSocketResponse[Literal[False]]": ...
 
     async def _ws_connect(
         self,
@@ -936,7 +1053,8 @@ class ClientSession:
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
-    ) -> ClientWebSocketResponse:
+        decode_text: bool = True,
+    ) -> "ClientWebSocketResponse[Any]":
         if timeout is not sentinel:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
@@ -1098,7 +1216,9 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
-            conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
+            conn_proto.set_parser(
+                WebSocketReader(reader, max_msg_size, decode_text=decode_text), reader
+            )
             writer = WebSocketWriter(
                 conn_proto,
                 transport,

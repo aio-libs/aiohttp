@@ -3,7 +3,7 @@
 import asyncio
 import sys
 from types import TracebackType
-from typing import Any, Final
+from typing import Any, Final, Generic, Literal, TypeVar, overload
 
 from ._websocket.reader import WebSocketDataQueue
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
@@ -28,8 +28,14 @@ from .typedefs import (
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
+    from typing import Self
 else:
     import async_timeout
+
+    Self = TypeVar("Self", bound="ClientWebSocketResponse[Any]")
+
+# TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
+_DecodeText = TypeVar("_DecodeText", bound=bool, default=Literal[True])
 
 
 @frozen_dataclass_decorator
@@ -43,7 +49,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 )
 
 
-class ClientWebSocketResponse:
+class ClientWebSocketResponse(Generic[_DecodeText]):
     def __init__(
         self,
         reader: WebSocketDataQueue,
@@ -383,7 +389,21 @@ class ClientWebSocketResponse:
 
             return msg
 
-    async def receive_str(self, *, timeout: float | None = None) -> str:
+    @overload
+    async def receive_str(
+        self: "ClientWebSocketResponse[Literal[True]]", *, timeout: float | None = None
+    ) -> str: ...
+
+    @overload
+    async def receive_str(
+        self: "ClientWebSocketResponse[Literal[False]]", *, timeout: float | None = None
+    ) -> bytes: ...
+
+    async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
+        """Receive TEXT message.
+
+        Returns str when decode_text=True (default), bytes when decode_text=False.
+        """
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise WSMessageTypeError(
@@ -408,7 +428,7 @@ class ClientWebSocketResponse:
         data = await self.receive_str(timeout=timeout)
         return loads(data)
 
-    def __aiter__(self) -> "ClientWebSocketResponse":
+    def __aiter__(self) -> Self:
         return self
 
     async def __anext__(self) -> WSMessage:
@@ -417,7 +437,7 @@ class ClientWebSocketResponse:
             raise StopAsyncIteration
         return msg
 
-    async def __aenter__(self) -> "ClientWebSocketResponse":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(

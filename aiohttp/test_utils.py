@@ -10,7 +10,7 @@ import sys
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast, overload
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
@@ -19,6 +19,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp.client import (
+    _BaseRequestContextManager,
     _RequestContextManager,
     _RequestOptions,
     _WSRequestContextManager,
@@ -429,7 +430,19 @@ class TestClient(Generic[_Request, _ApplicationNone]):
                 self._request(hdrs.METH_DELETE, path, **kwargs)
             )
 
-    def ws_connect(self, path: StrOrURL, **kwargs: Any) -> _WSRequestContextManager:
+    @overload
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[True] = ..., **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[True]]]": ...
+
+    @overload
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[False], **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[False]]]": ...
+
+    def ws_connect(
+        self, path: StrOrURL, **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Any]]":
         """Initiate websocket connection.
 
         The api corresponds to aiohttp.ClientSession.ws_connect.
@@ -439,7 +452,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
 
     async def _ws_connect(
         self, path: StrOrURL, **kwargs: Any
-    ) -> ClientWebSocketResponse:
+    ) -> "ClientWebSocketResponse[Any]":
         ws = await self._session.ws_connect(self.make_url(path), **kwargs)
         self._websockets.append(ws)
         return ws
