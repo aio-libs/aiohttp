@@ -21,7 +21,7 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
         msg = await ws.receive()
 
         if msg.type is web.WSMsgType.TEXT:
-            await ws.send_str(msg.data)
+            await ws.send_str(msg.data)  # type: ignore[arg-type]
         elif msg.type is web.WSMsgType.BINARY:
             await ws.send_bytes(msg.data)
         elif msg.type is web.WSMsgType.CLOSE:

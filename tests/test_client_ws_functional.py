@@ -1,7 +1,7 @@
 import asyncio
 import json
 import sys
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 from unittest import mock
 
 import pytest
@@ -1080,7 +1080,10 @@ async def test_ws_async_with(aiohttp_server: AiohttpServer) -> None:
         await ws.prepare(request)
         msg = await ws.receive()
         assert msg.type is WSMsgType.TEXT
-        await ws.send_str(msg.data + "/answer")
+        data = msg.data
+        if TYPE_CHECKING:
+            assert isinstance(data, str)
+        await ws.send_str(data + "/answer")
         await ws.close()
         return ws
 
@@ -1106,7 +1109,10 @@ async def test_ws_async_with_send(aiohttp_server: AiohttpServer) -> None:
         await ws.prepare(request)
         msg = await ws.receive()
         assert msg.type is WSMsgType.TEXT
-        await ws.send_str(msg.data + "/answer")
+        data = msg.data
+        if TYPE_CHECKING:
+            assert isinstance(data, str)
+        await ws.send_str(data + "/answer")
         await ws.close()
         return ws
 
@@ -1130,7 +1136,10 @@ async def test_ws_async_with_shortcut(aiohttp_server: AiohttpServer) -> None:
         await ws.prepare(request)
         msg = await ws.receive()
         assert msg.type is WSMsgType.TEXT
-        await ws.send_str(msg.data + "/answer")
+        data = msg.data
+        if TYPE_CHECKING:
+            assert isinstance(data, str)
+        await ws.send_str(data + "/answer")
         await ws.close()
         return ws
 

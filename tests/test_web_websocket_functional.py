@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import sys
 import weakref
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 from unittest import mock
 
 import pytest
@@ -913,6 +913,8 @@ async def test_server_ws_async_for(
         async for msg in ws:
             assert msg.type == aiohttp.WSMsgType.TEXT
             s = msg.data
+            if TYPE_CHECKING:
+                assert isinstance(s, str)
             await ws.send_str(s + "/answer")
         await ws.close()
         closed.set_result(1)

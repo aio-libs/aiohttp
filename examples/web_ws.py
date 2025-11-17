@@ -34,7 +34,7 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse | web.Respons
             if msg.type is web.WSMsgType.TEXT:
                 for ws in request.app[sockets]:
                     if ws is not resp:
-                        await ws.send_str(msg.data)
+                        await ws.send_str(msg.data)  # type: ignore[arg-type]
             else:
                 return resp
         return resp

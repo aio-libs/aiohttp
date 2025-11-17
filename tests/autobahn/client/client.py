@@ -19,7 +19,7 @@ async def client(url: str, name: str) -> None:
             async with session.ws_connect(text_url) as ws:
                 async for msg in ws:
                     if msg.type is aiohttp.WSMsgType.TEXT:
-                        await ws.send_str(msg.data)
+                        await ws.send_str(msg.data)  # type: ignore[arg-type]
                     elif msg.type is aiohttp.WSMsgType.BINARY:
                         await ws.send_bytes(msg.data)
                     else:
