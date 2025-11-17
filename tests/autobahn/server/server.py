@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+from typing import TYPE_CHECKING
 
 from aiohttp import WSCloseCode, web
 
@@ -21,7 +22,10 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
         msg = await ws.receive()
 
         if msg.type is web.WSMsgType.TEXT:
-            await ws.send_str(msg.data)  # type: ignore[arg-type]
+            data = msg.data
+            if TYPE_CHECKING:
+                assert isinstance(data, str)
+            await ws.send_str(data)
         elif msg.type is web.WSMsgType.BINARY:
             await ws.send_bytes(msg.data)
         elif msg.type is web.WSMsgType.CLOSE:

@@ -6,6 +6,7 @@
 # mypy: disallow-any-expr, disallow-any-unimported, disallow-subclassing-any
 
 import os
+from typing import TYPE_CHECKING
 
 from aiohttp import web
 
@@ -32,9 +33,12 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse | web.Respons
 
         async for msg in resp:
             if msg.type is web.WSMsgType.TEXT:
+                data = msg.data
+                if TYPE_CHECKING:
+                    assert isinstance(data, str)
                 for ws in request.app[sockets]:
                     if ws is not resp:
-                        await ws.send_str(msg.data)  # type: ignore[arg-type]
+                        await ws.send_str(data)
             else:
                 return resp
         return resp

@@ -1,4 +1,6 @@
 # server_simple.py
+from typing import TYPE_CHECKING
+
 from aiohttp import web
 
 
@@ -14,7 +16,10 @@ async def wshandle(request: web.Request) -> web.StreamResponse:
 
     async for msg in ws:
         if msg.type is web.WSMsgType.TEXT:
-            await ws.send_str(f"Hello, {msg.data}")
+            data = msg.data
+            if TYPE_CHECKING:
+                assert isinstance(data, str)
+            await ws.send_str(f"Hello, {data}")
         elif msg.type is web.WSMsgType.BINARY:
             await ws.send_bytes(msg.data)
         elif msg.type is web.WSMsgType.CLOSE:

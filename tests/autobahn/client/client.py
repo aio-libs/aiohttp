@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import asyncio
+from typing import TYPE_CHECKING
 
 import aiohttp
 
@@ -19,7 +20,10 @@ async def client(url: str, name: str) -> None:
             async with session.ws_connect(text_url) as ws:
                 async for msg in ws:
                     if msg.type is aiohttp.WSMsgType.TEXT:
-                        await ws.send_str(msg.data)  # type: ignore[arg-type]
+                        data = msg.data
+                        if TYPE_CHECKING:
+                            assert isinstance(data, str)
+                        await ws.send_str(data)
                     elif msg.type is aiohttp.WSMsgType.BINARY:
                         await ws.send_bytes(msg.data)
                     else:
