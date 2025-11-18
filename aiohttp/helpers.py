@@ -834,8 +834,11 @@ def set_exception(
 
 
 @functools.total_ordering
-class AppKey(Generic[_T]):
-    """Keys for static typing support in Application."""
+class BaseKey(Generic[_T]):
+    """Base for concrete context storage key classes.
+
+    Each storage is provided with its own sub-class for the sake of some additional type safety.
+    """
 
     __slots__ = ("_name", "_t", "__orig_class__")
 
@@ -861,9 +864,9 @@ class AppKey(Generic[_T]):
         self._t = t
 
     def __lt__(self, other: object) -> bool:
-        if isinstance(other, AppKey):
+        if isinstance(other, BaseKey):
             return self._name < other._name
-        return True  # Order AppKey above other types.
+        return True  # Order BaseKey above other types.
 
     def __repr__(self) -> str:
         t = self._t
@@ -881,7 +884,25 @@ class AppKey(Generic[_T]):
                 t_repr = f"{t.__module__}.{t.__qualname__}"
         else:
             t_repr = repr(t)  # type: ignore[unreachable]
-        return f"<AppKey({self._name}, type={t_repr})>"
+        return f"<{self.__class__.__name__}({self._name}, type={t_repr})>"
+
+
+class AppKey(BaseKey[_T]):
+    """Keys for static typing support in Application."""
+
+    pass
+
+
+class RequestKey(BaseKey[_T]):
+    """Keys for static typing support in Request."""
+
+    pass
+
+
+class ResponseKey(BaseKey[_T]):
+    """Keys for static typing support in Response."""
+
+    pass
 
 
 @final
