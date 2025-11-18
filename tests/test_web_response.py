@@ -4,8 +4,9 @@ import gzip
 import io
 import json
 import re
+import sys
 import weakref
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
@@ -111,11 +112,77 @@ def test_stream_response_len() -> None:
     assert len(resp) == 1
 
 
-def test_request_iter() -> None:
+def test_response_iter() -> None:
     resp = web.StreamResponse()
     resp["key"] = "value"
     resp["key2"] = "value2"
-    assert set(resp) == {"key", "key2"}
+    key3 = web.ResponseKey("key3", str)
+    resp[key3] = "value3"
+    assert set(resp) == {"key", "key2", key3}
+
+
+def test_responsekey() -> None:
+    resp = web.StreamResponse()
+    key = web.ResponseKey("key", str)
+    resp[key] = "value"
+    assert resp[key] == "value"
+    assert len(resp) == 1
+    del resp[key]
+    assert len(resp) == 0
+
+
+def test_response_get_responsekey() -> None:
+    resp = web.StreamResponse()
+    key = web.ResponseKey("key", int)
+    assert resp.get(key, "foo") == "foo"
+    resp[key] = 5
+    assert resp.get(key, "foo") == 5
+
+
+def test_responsekey_repr_concrete() -> None:
+    key = web.ResponseKey("key", int)
+    assert repr(key) in (
+        "<ResponseKey(__channelexec__.key, type=int)>",  # pytest-xdist
+        "<ResponseKey(__main__.key, type=int)>",
+    )
+    key2 = web.ResponseKey("key", web.Request)
+    assert repr(key2) in (
+        # pytest-xdist:
+        "<ResponseKey(__channelexec__.key, type=aiohttp.web_request.Request)>",
+        "<ResponseKey(__main__.key, type=aiohttp.web_request.Request)>",
+    )
+
+
+def test_responsekey_repr_nonconcrete() -> None:
+    key = web.ResponseKey("key", Iterator[int])
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
+
+
+def test_responsekey_repr_annotated() -> None:
+    key = web.ResponseKey[Iterator[int]]("key")
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
 
 
 def test_content_length() -> None:
