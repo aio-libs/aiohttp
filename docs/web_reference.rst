@@ -1377,7 +1377,8 @@ content type and *data* encoded by ``dumps`` parameter
    This class should be used for the keys in :class:`Response`,
    :class:`FileResponse` and :class:`StreamResponse`. They provide
    a type-safe alternative to `str` keys when checking your code
-   with a type checker (e.g. mypy). They also avoid name clasheswith keys from different libraries etc.
+   with a type checker (e.g. mypy). They also avoid name clashes
+   with keys from different libraries etc.
 
    :param name: A name to help with debugging. This should be the same as
                 the variable name (much like how :class:`typing.TypeVar`
