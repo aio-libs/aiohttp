@@ -446,10 +446,13 @@ Request's storage
 ^^^^^^^^^^^^^^^^^
 
 Variables that are only needed for the lifetime of a :class:`Request`, can be
-stored in a :class:`Request`::
+stored in a :class:`Request`. Similarly to :class:`Application`, :class:`RequestKey`
+instances or strings can be used as keys::
+
+    my_private_key = web.RequestKey("my_private_key", str)
 
     async def handler(request):
-      request['my_private_key'] = "data"
+      request[my_private_key] = "data"
       ...
 
 This is mostly useful for :ref:`aiohttp-web-middlewares` and
@@ -464,9 +467,11 @@ also support :class:`collections.abc.MutableMapping` interface. This is useful
 when you want to share data with signals and middlewares once all the work in
 the handler is done::
 
+    my_metric_key = web.ResponseKey("my_metric_key", int)
+
     async def handler(request):
       [ do all the work ]
-      response['my_metric'] = 123
+      response[my_metric_key] = 123
       return response
 
 
@@ -722,18 +727,20 @@ In contrast, when accessing the stream directly (not recommended in middleware):
 
 When working with raw stream data that needs to be shared between middleware and handlers::
 
+    raw_body_key = web.RequestKey("raw_body_key", bytes)
+
     async def stream_parsing_middleware(
         request: web.Request,
         handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
     ) -> web.StreamResponse:
         # Read stream once and store the data
         raw_data = await request.content.read()
-        request['raw_body'] = raw_data
+        request[raw_body_key] = raw_data
         return await handler(request)
 
     async def handler(request: web.Request) -> web.Response:
         # Access the stored data instead of reading the stream again
-        raw_data = request.get('raw_body', b'')
+        raw_data = request.get(raw_body_key, b'')
         return web.Response(body=raw_data)
 
 Example
