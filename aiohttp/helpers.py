@@ -890,19 +890,13 @@ class BaseKey(Generic[_T]):
 class AppKey(BaseKey[_T]):
     """Keys for static typing support in Application."""
 
-    pass
-
 
 class RequestKey(BaseKey[_T]):
     """Keys for static typing support in Request."""
 
-    pass
-
 
 class ResponseKey(BaseKey[_T]):
     """Keys for static typing support in Response."""
-
-    pass
 
 
 @final
