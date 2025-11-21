@@ -130,7 +130,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
 
     def __init_subclass__(cls: type["Application"]) -> None:
         raise TypeError(
-            f"Inheritance class {cls.__name__} from web.Application " "is forbidden"
+            f"Inheritance class {cls.__name__} from web.Application is forbidden"
         )
 
     # MutableMapping API

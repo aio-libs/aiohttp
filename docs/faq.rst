@@ -87,8 +87,15 @@ support the :class:`dict` interface.
 
 Therefore, data may be stored inside a request object. ::
 
-   async def handler(request):
-       request['unique_key'] = data
+    request_id_key = web.RequestKey("request_id_key", str)
+
+    @web.middleware
+    async def request_id_middleware(request, handler):
+        request[request_id_key] = "some_request_id"
+        return await handler(request)
+
+    async def handler(request):
+        request_id = request[request_id_key]
 
 See https://github.com/aio-libs/aiohttp_session code for an example.
 The ``aiohttp_session.get_session(request)`` method uses ``SESSION_KEY``
