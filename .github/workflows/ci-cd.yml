@@ -132,7 +132,7 @@ jobs:
           - os: windows
             no-extensions: 'Y'
         include:
-          - pyver: pypy-3.10
+          - pyver: pypy-3.11
             no-extensions: 'Y'
             os: ubuntu
             experimental: false
