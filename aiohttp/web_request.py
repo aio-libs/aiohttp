@@ -7,6 +7,7 @@ import string
 import sys
 import tempfile
 import types
+import warnings
 from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
 from types import MappingProxyType
@@ -49,6 +50,7 @@ from .web_exceptions import (
     HTTPBadRequest,
     HTTPRequestEntityTooLarge,
     HTTPUnsupportedMediaType,
+    NotAppKeyWarning,
 )
 from .web_response import StreamResponse
 
@@ -273,6 +275,14 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     def __setitem__(self, key: str, value: Any) -> None: ...
 
     def __setitem__(self, key: str | RequestKey[_T], value: Any) -> None:
+        if not isinstance(key, RequestKey):
+            warnings.warn(
+                "It is recommended to use web.RequestKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                + "#request-s-storage",
+                category=NotAppKeyWarning,
+                stacklevel=2,
+            )
         self._state[key] = value
 
     def __delitem__(self, key: str | RequestKey[_T]) -> None:

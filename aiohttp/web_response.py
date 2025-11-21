@@ -33,6 +33,7 @@ from .helpers import (
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
+from .web_exceptions import NotAppKeyWarning
 
 REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
 LARGE_BODY_SIZE = 1024**2
@@ -505,6 +506,14 @@ class StreamResponse(
     def __setitem__(self, key: str, value: Any) -> None: ...
 
     def __setitem__(self, key: str | ResponseKey[_T], value: Any) -> None:
+        if not isinstance(key, ResponseKey):
+            warnings.warn(
+                "It is recommended to use web.ResponseKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                + "#response-s-storage",
+                category=NotAppKeyWarning,
+                stacklevel=2,
+            )
         self._state[key] = value
 
     def __delitem__(self, key: str | ResponseKey[_T]) -> None:
