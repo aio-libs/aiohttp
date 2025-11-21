@@ -536,17 +536,9 @@ and :ref:`aiohttp-web-signals` handlers.
 
 .. class:: RequestKey(name, t)
 
-   This class should be used for the keys in :class:`Request` and
-   :class:`BaseRequest`. They provide a type-safe alternative to
-   `str` keys when checking your code with a type checker (e.g. mypy).
-   They also avoid name clashes with keys from different libraries etc.
+   Keys for use in :class:`Request`.
 
-   :param name: A name to help with debugging. This should be the same as
-                the variable name (much like how :class:`typing.TypeVar`
-                is used).
-
-   :param t: The type that should be used for the value in the dict (e.g.
-             `str`, `Iterator[int]` etc.)
+   See :class:`AppKey` for more details.
 
 
 
@@ -1374,18 +1366,9 @@ content type and *data* encoded by ``dumps`` parameter
 
 .. class:: ResponseKey(name, t)
 
-   This class should be used for the keys in :class:`Response`,
-   :class:`FileResponse` and :class:`StreamResponse`. They provide
-   a type-safe alternative to `str` keys when checking your code
-   with a type checker (e.g. mypy). They also avoid name clashes
-   with keys from different libraries etc.
+   Keys for use in :class:`Response`.
 
-   :param name: A name to help with debugging. This should be the same as
-                the variable name (much like how :class:`typing.TypeVar`
-                is used).
-
-   :param t: The type that should be used for the value in the dict (e.g.
-             `str`, `Iterator[int]` etc.)
+   See :class:`AppKey` for more details.
 
 
 
