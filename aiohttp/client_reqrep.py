@@ -701,7 +701,7 @@ class ClientRequestBase:
     method = "GET"
 
     _writer_task: asyncio.Task[None] | None = None  # async task for streaming data
-
+    _writer_factory: type[StreamWriter] = StreamWriter  # allowing http/2 and http/3
     _skip_auto_headers: "CIMultiDict[None] | None" = None
 
     # N.B.
@@ -719,6 +719,8 @@ class ClientRequestBase:
         loop: asyncio.AbstractEventLoop,
         ssl: SSLContext | bool | Fingerprint,
         trust_env: bool = False,
+        writer_factory: type[StreamWriter] | None = None,
+        version: HttpVersion | None = None,
     ):
         if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
@@ -739,6 +741,13 @@ class ClientRequestBase:
         self._update_host(url)
         self._update_headers(headers)
         self._update_auth(auth, trust_env)
+
+        # setup in case of newer protocols.
+        if version:
+            self.version = version
+
+        if writer_factory:
+            self._writer_factory = writer_factory
 
     def _reset_writer(self, _: object = None) -> None:
         self._writer_task = None
@@ -844,11 +853,12 @@ class ClientRequestBase:
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
-        return StreamWriter(protocol, self.loop)
+        return self._writer_factory(protocol, self.loop)
 
     def _should_write(self, protocol: BaseProtocol) -> bool:
         return protocol.writing_paused
 
+    # TODO: Make _send swappable for http/2 or http/3 ?
     async def _send(self, conn: "Connection") -> ClientResponse:
         # Specify request target:
         # - CONNECT request must send authority form URI
