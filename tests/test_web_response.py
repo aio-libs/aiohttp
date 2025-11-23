@@ -189,6 +189,14 @@ def test_responsekey_repr_annotated() -> None:
         )
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
+def test_response_key_str_key_warning() -> None:
+    """Test string key warnings debouncing do not raise."""
+    for _ in range(20):
+        resp = web.StreamResponse()
+        resp["key"] = "value"
+
+
 def test_content_length() -> None:
     resp = web.StreamResponse()
     assert resp.content_length is None

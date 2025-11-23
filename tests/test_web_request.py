@@ -544,6 +544,14 @@ def test_requestkey_repr_annotated() -> None:
         )
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
+def test_request_key_str_key_warning() -> None:
+    """Test string key warnings debouncing do not raise."""
+    for _ in range(20):
+        req = make_mocked_request("GET", "/")
+        req["key"] = "value"
+
+
 def test___repr__() -> None:
     req = make_mocked_request("GET", "/path/to")
     assert "<Request GET /path/to >" == repr(req)

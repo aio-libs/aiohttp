@@ -25,6 +25,8 @@ from .helpers import (
     ETAG_ANY,
     LIST_QUOTED_ETAG_RE,
     ChainMapProxy,
+    DebounceContextManager,
+    DebounceException,
     ETag,
     HeadersMixin,
     RequestKey,
@@ -118,6 +120,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
     _post: MultiDictProxy[str | bytes | FileField] | None = None
     _read_bytes: bytes | None = None
+
+    _warning_debounce_context_manager = DebounceContextManager(10, 600)
 
     def __init__(
         self,
@@ -275,14 +279,18 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     def __setitem__(self, key: str, value: Any) -> None: ...
 
     def __setitem__(self, key: str | RequestKey[_T], value: Any) -> None:
-        if not isinstance(key, RequestKey):
-            warnings.warn(
-                "It is recommended to use web.RequestKey instances for keys.\n"
-                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
-                + "#request-s-storage",
-                category=NotAppKeyWarning,
-                stacklevel=2,
-            )
+        try:
+            if not isinstance(key, RequestKey):
+                with BaseRequest._warning_debounce_context_manager:
+                    warnings.warn(
+                        "It is recommended to use web.RequestKey instances for keys.\n"
+                        + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                        + "#request-s-storage",
+                        category=NotAppKeyWarning,
+                        stacklevel=2,
+                    )
+        except DebounceException:
+            pass
         self._state[key] = value
 
     def __delitem__(self, key: str | RequestKey[_T]) -> None:
