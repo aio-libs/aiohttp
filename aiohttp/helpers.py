@@ -17,7 +17,7 @@ import sys
 import time
 import warnings
 import weakref
-from collections import deque, namedtuple
+from collections import namedtuple
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import suppress
 from email.message import EmailMessage
@@ -1121,35 +1121,3 @@ def should_remove_content_length(method: str, code: int) -> bool:
     return code in EMPTY_BODY_STATUS_CODES or (
         200 <= code < 300 and method in hdrs.METH_CONNECT_ALL
     )
-
-
-class DebounceException(Exception):
-    """Raised, when `DebounceContextManager` enter limit is exceeded."""
-
-
-class DebounceContextManager:
-    """Limits the number of times its context can be entered over an interval.
-
-    :param max_entries: Number of times the class context can be entered.
-    :params interval: Time interval in seconds, for which entry limit
-                      is counted.
-    :raises DebounceException: if number of times the context is entered
-                               over the specified interval.
-    """
-
-    def __init__(self, max_entries: int, interval: int | float) -> None:
-        self._max_entries = max_entries
-        self._interval = interval
-        self._timestamps = deque()
-
-    def __enter__(self) -> None:
-        now = time.monotonic()
-        interval_start = now - self._interval
-        while self._timestamps and self._timestamps[0] <= interval_start:
-            self._timestamps.popleft()
-        if len(self._timestamps) >= self._max_entries:
-            raise DebounceException
-        self._timestamps.append(now)
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
-        pass

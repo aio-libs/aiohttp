@@ -7,7 +7,6 @@ import weakref
 from collections.abc import Iterator
 from math import ceil, modf
 from pathlib import Path
-from time import sleep
 from types import MappingProxyType
 from unittest import mock
 from urllib.request import getproxies_environment
@@ -19,8 +18,6 @@ from yarl import URL
 from aiohttp import helpers, web
 from aiohttp.helpers import (
     EMPTY_BODY_METHODS,
-    DebounceContextManager,
-    DebounceException,
     is_expected_content_type,
     must_be_empty_body,
     parse_http_date,
@@ -1194,25 +1191,3 @@ def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
 
     assert should_remove_content_length("CONNECT", 300) is False
     assert must_be_empty_body("CONNECT", 300) is False
-
-
-def test_debounce_context_manager() -> None:
-    dcm = DebounceContextManager(2, 0.05)
-    x = 0
-
-    for i in range(2):
-        with dcm:
-            x += 1
-    assert x == 2
-
-    for i in range(3):
-        with pytest.raises(DebounceException):
-            with dcm:
-                x += 1
-    assert x == 2
-
-    sleep(0.05)
-    for i in range(2):
-        with dcm:
-            x += 1
-    assert x == 4
