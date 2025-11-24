@@ -19,8 +19,6 @@ from .helpers import (
     ETAG_ANY,
     QUOTED_ETAG_RE,
     CookieMixin,
-    DebounceContextManager,
-    DebounceException,
     ETag,
     HeadersMixin,
     ResponseKey,
@@ -86,7 +84,6 @@ class StreamResponse(
     _must_be_empty_body: bool | None = None
     _body_length = 0
     _send_headers_immediately = True
-    _warning_debounce_context_manager = DebounceContextManager(10, 600)
 
     def __init__(
         self,
@@ -509,18 +506,14 @@ class StreamResponse(
     def __setitem__(self, key: str, value: Any) -> None: ...
 
     def __setitem__(self, key: str | ResponseKey[_T], value: Any) -> None:
-        try:
-            with StreamResponse._warning_debounce_context_manager:
-                if not isinstance(key, ResponseKey):
-                    warnings.warn(
-                        "It is recommended to use web.ResponseKey instances for keys.\n"
-                        + "https://docs.aiohttp.org/en/stable/web_advanced.html"
-                        + "#response-s-storage",
-                        category=NotAppKeyWarning,
-                        stacklevel=2,
-                    )
-        except DebounceException:
-            pass
+        if not isinstance(key, ResponseKey):
+            warnings.warn(
+                "It is recommended to use web.ResponseKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                + "#response-s-storage",
+                category=NotAppKeyWarning,
+                stacklevel=2,
+            )
         self._state[key] = value
 
     def __delitem__(self, key: str | ResponseKey[_T]) -> None:
