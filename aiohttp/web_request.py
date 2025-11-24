@@ -118,6 +118,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
     _post: MultiDictProxy[str | bytes | FileField] | None = None
     _read_bytes: bytes | None = None
+    _seen_str_keys: set[str] = set()
 
     def __init__(
         self,
@@ -275,7 +276,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     def __setitem__(self, key: str, value: Any) -> None: ...
 
     def __setitem__(self, key: str | RequestKey[_T], value: Any) -> None:
-        if not isinstance(key, RequestKey):
+        if not isinstance(key, RequestKey) and key not in BaseRequest._seen_str_keys:
+            BaseRequest._seen_str_keys.add(key)
             warnings.warn(
                 "It is recommended to use web.RequestKey instances for keys.\n"
                 + "https://docs.aiohttp.org/en/stable/web_advanced.html"

@@ -84,6 +84,7 @@ class StreamResponse(
     _must_be_empty_body: bool | None = None
     _body_length = 0
     _send_headers_immediately = True
+    _seen_str_keys: set[str] = set()
 
     def __init__(
         self,
@@ -506,7 +507,11 @@ class StreamResponse(
     def __setitem__(self, key: str, value: Any) -> None: ...
 
     def __setitem__(self, key: str | ResponseKey[_T], value: Any) -> None:
-        if not isinstance(key, ResponseKey):
+        if (
+            not isinstance(key, ResponseKey)
+            and key not in StreamResponse._seen_str_keys
+        ):
+            StreamResponse._seen_str_keys.add(key)
             warnings.warn(
                 "It is recommended to use web.ResponseKey instances for keys.\n"
                 + "https://docs.aiohttp.org/en/stable/web_advanced.html"

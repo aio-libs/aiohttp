@@ -544,6 +544,19 @@ def test_requestkey_repr_annotated() -> None:
         )
 
 
+def test_str_key_warnings() -> None:
+    # Check if warnings are raised once per str key
+    req = make_mocked_request("GET", "/")
+
+    with pytest.warns(UserWarning):
+        req["test_str_key_warnings_key_1"] = "value"
+
+    with pytest.warns(UserWarning):
+        req["test_str_key_warnings_key_2"] = "value 2"
+
+    req["test_str_key_warnings_key_1"] = "value"
+
+
 def test___repr__() -> None:
     req = make_mocked_request("GET", "/path/to")
     assert "<Request GET /path/to >" == repr(req)
