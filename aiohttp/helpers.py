@@ -1140,7 +1140,7 @@ class DebounceContextManager:
     def __init__(self, max_entries: int, interval: int | float) -> None:
         self._max_entries = max_entries
         self._interval = interval
-        self._timestamps: deque[float] = deque()
+        self._timestamps = deque()
 
     def __enter__(self) -> None:
         now = time.monotonic()
@@ -1151,5 +1151,5 @@ class DebounceContextManager:
             raise DebounceException
         self._timestamps.append(now)
 
-    def __exit__(self, *exc: list[Any]) -> None:
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         pass

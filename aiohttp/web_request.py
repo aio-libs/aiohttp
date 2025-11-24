@@ -290,7 +290,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         stacklevel=2,
                     )
         except DebounceException:
-            pass  # Do nothing, if warning count limit is exceeded
+            pass
         self._state[key] = value
 
     def __delitem__(self, key: str | RequestKey[_T]) -> None:
