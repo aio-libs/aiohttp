@@ -7,7 +7,6 @@ import string
 import sys
 import tempfile
 import types
-import warnings
 from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
 from types import MappingProxyType
@@ -50,7 +49,6 @@ from .web_exceptions import (
     HTTPBadRequest,
     HTTPRequestEntityTooLarge,
     HTTPUnsupportedMediaType,
-    NotAppKeyWarning,
 )
 from .web_response import StreamResponse
 
