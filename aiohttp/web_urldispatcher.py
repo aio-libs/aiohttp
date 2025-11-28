@@ -171,7 +171,7 @@ class AbstractRoute(abc.ABC):
             pass
         else:
             raise TypeError(
-                "Only async functions are allowed as web-handlers " f", got {handler!r}"
+                f"Only async functions are allowed as web-handlers, got {handler!r}"
             )
 
         self._method = method
