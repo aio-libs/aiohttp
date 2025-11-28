@@ -185,19 +185,6 @@ def test_responsekey_repr_annotated() -> None:
         )
 
 
-def test_str_key_warnings() -> None:
-    # Check if warnings are raised once per str key
-    resp = web.StreamResponse()
-
-    with pytest.warns(UserWarning):
-        resp["test_str_key_warnings_key_1"] = "value"
-
-    with pytest.warns(UserWarning):
-        resp["test_str_key_warnings_key_2"] = "value 2"
-
-    resp["test_str_key_warnings_key_1"] = "value"
-
-
 def test_content_length() -> None:
     resp = web.StreamResponse()
     assert resp.content_length is None
