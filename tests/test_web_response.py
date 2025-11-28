@@ -90,7 +90,6 @@ def test_stream_response_eq() -> None:
     assert not resp1 == resp2
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_stream_response_is_mutable_mapping() -> None:
     resp = web.StreamResponse()
     assert isinstance(resp, collections.abc.MutableMapping)
@@ -99,7 +98,6 @@ def test_stream_response_is_mutable_mapping() -> None:
     assert "value" == resp["key"]
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_stream_response_delitem() -> None:
     resp = web.StreamResponse()
     resp["key"] = "value"
@@ -107,7 +105,6 @@ def test_stream_response_delitem() -> None:
     assert "key" not in resp
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_stream_response_len() -> None:
     resp = web.StreamResponse()
     assert len(resp) == 0
@@ -115,7 +112,6 @@ def test_stream_response_len() -> None:
     assert len(resp) == 1
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_response_iter() -> None:
     resp = web.StreamResponse()
     resp["key"] = "value"
