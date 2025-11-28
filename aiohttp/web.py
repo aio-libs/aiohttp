@@ -11,7 +11,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
 
 from .abc import AbstractAccessLogger
-from .helpers import AppKey as AppKey
+from .helpers import AppKey, RequestKey, ResponseKey
 from .log import access_logger
 from .typedefs import PathLike
 from .web_app import Application as Application, CleanupError as CleanupError
@@ -223,11 +223,13 @@ __all__ = (
     "BaseRequest",
     "FileField",
     "Request",
+    "RequestKey",
     # web_response
     "ContentCoding",
     "Response",
     "StreamResponse",
     "json_response",
+    "ResponseKey",
     # web_routedef
     "AbstractRouteDef",
     "RouteDef",

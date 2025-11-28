@@ -6,6 +6,7 @@ aiohttp
 aiohttpdemo
 aiohttp’s
 aiopg
+al
 alives
 api
 api’s
@@ -119,6 +120,7 @@ env
 environ
 eof
 epoll
+et
 etag
 ETag
 expirations
@@ -166,6 +168,7 @@ iterable
 iterables
 javascript
 Jinja
+jitter
 json
 keepalive
 keepalived
@@ -293,6 +296,7 @@ runtime
 runtimes
 sa
 Satisfiable
+scalability
 schemas
 sendfile
 serializable
@@ -305,6 +309,7 @@ ssl
 SSLContext
 startup
 stateful
+storages
 subapplication
 subclassed
 subclasses
@@ -350,6 +355,7 @@ unicode
 unittest
 Unittest
 unix
+unobvious
 unsets
 unstripped
 untyped

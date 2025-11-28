@@ -238,6 +238,7 @@ def test_HTTPException_retains_cause() -> None:
     assert "direct cause" in tb
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 async def test_HTTPException_retains_cookie(aiohttp_client: AiohttpClient) -> None:
     @web.middleware
     async def middleware(request, handler):
