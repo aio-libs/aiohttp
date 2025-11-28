@@ -33,7 +33,6 @@ from .helpers import (
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
-from .web_exceptions import NotAppKeyWarning
 
 REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
 LARGE_BODY_SIZE = 1024**2
