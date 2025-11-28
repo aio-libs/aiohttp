@@ -534,6 +534,13 @@ and :ref:`aiohttp-web-signals` handlers.
       request copy with changed *path*, *method* etc.
 
 
+.. class:: RequestKey(name, t)
+
+   Keys for use in :class:`Request`.
+
+   See :class:`AppKey` for more details.
+
+
 
 
 .. _aiohttp-web-response:
@@ -1357,6 +1364,15 @@ content type and *data* encoded by ``dumps`` parameter
 (:func:`json.dumps` by default).
 
 
+.. class:: ResponseKey(name, t)
+
+   Keys for use in :class:`Response`.
+
+   See :class:`AppKey` for more details.
+
+
+
+
 .. _aiohttp-web-app-and-router:
 
 Application and Router
@@ -1630,6 +1646,7 @@ Application and Router
 
    :param t: The type that should be used for the value in the dict (e.g.
              `str`, `Iterator[int]` etc.)
+
 
 .. class:: Server
 

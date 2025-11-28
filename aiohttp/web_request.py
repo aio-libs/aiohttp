@@ -7,10 +7,11 @@ import string
 import sys
 import tempfile
 import types
+import warnings
 from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final, Optional, cast
+from typing import TYPE_CHECKING, Any, Final, Optional, TypeVar, cast, overload
 from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -26,6 +27,7 @@ from .helpers import (
     ChainMapProxy,
     ETag,
     HeadersMixin,
+    RequestKey,
     frozen_dataclass_decorator,
     is_expected_content_type,
     parse_http_date,
@@ -48,6 +50,7 @@ from .web_exceptions import (
     HTTPBadRequest,
     HTTPRequestEntityTooLarge,
     HTTPUnsupportedMediaType,
+    NotAppKeyWarning,
 )
 from .web_response import StreamResponse
 
@@ -63,6 +66,9 @@ if TYPE_CHECKING:
     from .web_app import Application
     from .web_protocol import RequestHandler
     from .web_urldispatcher import UrlMappingMatchInfo
+
+
+_T = TypeVar("_T")
 
 
 @frozen_dataclass_decorator
@@ -101,7 +107,7 @@ _FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 ############################################################
 
 
-class BaseRequest(MutableMapping[str, Any], HeadersMixin):
+class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     POST_METHODS = {
         hdrs.METH_PATCH,
         hdrs.METH_POST,
@@ -112,6 +118,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     _post: MultiDictProxy[str | bytes | FileField] | None = None
     _read_bytes: bytes | None = None
+    _seen_str_keys: set[str] = set()
 
     def __init__(
         self,
@@ -123,7 +130,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         loop: asyncio.AbstractEventLoop,
         *,
         client_max_size: int = 1024**2,
-        state: dict[str, Any] | None = None,
+        state: dict[RequestKey[Any] | str, Any] | None = None,
         scheme: str | None = None,
         host: str | None = None,
         remote: str | None = None,
@@ -253,19 +260,40 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     # MutableMapping API
 
-    def __getitem__(self, key: str) -> Any:
+    @overload  # type: ignore[override]
+    def __getitem__(self, key: RequestKey[_T]) -> _T: ...
+
+    @overload
+    def __getitem__(self, key: str) -> Any: ...
+
+    def __getitem__(self, key: str | RequestKey[_T]) -> Any:
         return self._state[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    @overload  # type: ignore[override]
+    def __setitem__(self, key: RequestKey[_T], value: _T) -> None: ...
+
+    @overload
+    def __setitem__(self, key: str, value: Any) -> None: ...
+
+    def __setitem__(self, key: str | RequestKey[_T], value: Any) -> None:
+        if not isinstance(key, RequestKey) and key not in BaseRequest._seen_str_keys:
+            BaseRequest._seen_str_keys.add(key)
+            warnings.warn(
+                "It is recommended to use web.RequestKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                + "#request-s-storage",
+                category=NotAppKeyWarning,
+                stacklevel=2,
+            )
         self._state[key] = value
 
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self, key: str | RequestKey[_T]) -> None:
         del self._state[key]
 
     def __len__(self) -> int:
         return len(self._state)
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[str | RequestKey[Any]]:
         return iter(self._state)
 
     ########

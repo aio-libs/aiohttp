@@ -8,7 +8,7 @@ import warnings
 from collections.abc import Iterator, MutableMapping
 from concurrent.futures import Executor
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, cast, overload
 
 from multidict import CIMultiDict, istr
 
@@ -21,6 +21,7 @@ from .helpers import (
     CookieMixin,
     ETag,
     HeadersMixin,
+    ResponseKey,
     must_be_empty_body,
     parse_http_date,
     populate_with_cookies,
@@ -32,6 +33,7 @@ from .helpers import (
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
+from .web_exceptions import NotAppKeyWarning
 
 REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
 LARGE_BODY_SIZE = 1024**2
@@ -41,6 +43,9 @@ __all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
 
 if TYPE_CHECKING:
     from .web_request import BaseRequest
+
+
+_T = TypeVar("_T")
 
 
 # TODO(py311): Convert to StrEnum for wider use
@@ -61,7 +66,9 @@ CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
 ############################################################
 
 
-class StreamResponse(MutableMapping[str, Any], HeadersMixin, CookieMixin):
+class StreamResponse(
+    MutableMapping[str | ResponseKey[Any], Any], HeadersMixin, CookieMixin
+):
 
     _body: None | bytes | bytearray | Payload
     _length_check = True
@@ -77,6 +84,7 @@ class StreamResponse(MutableMapping[str, Any], HeadersMixin, CookieMixin):
     _must_be_empty_body: bool | None = None
     _body_length = 0
     _send_headers_immediately = True
+    _seen_str_keys: set[str] = set()
 
     def __init__(
         self,
@@ -93,7 +101,7 @@ class StreamResponse(MutableMapping[str, Any], HeadersMixin, CookieMixin):
         the headers when creating a new response object. It is not intended
         to be used by external code.
         """
-        self._state: dict[str, Any] = {}
+        self._state: dict[str | ResponseKey[Any], Any] = {}
 
         if _real_headers is not None:
             self._headers = _real_headers
@@ -483,19 +491,43 @@ class StreamResponse(MutableMapping[str, Any], HeadersMixin, CookieMixin):
             info = "not prepared"
         return f"<{self.__class__.__name__} {self.reason} {info}>"
 
-    def __getitem__(self, key: str) -> Any:
+    @overload  # type: ignore[override]
+    def __getitem__(self, key: ResponseKey[_T]) -> _T: ...
+
+    @overload
+    def __getitem__(self, key: str) -> Any: ...
+
+    def __getitem__(self, key: str | ResponseKey[_T]) -> Any:
         return self._state[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    @overload  # type: ignore[override]
+    def __setitem__(self, key: ResponseKey[_T], value: _T) -> None: ...
+
+    @overload
+    def __setitem__(self, key: str, value: Any) -> None: ...
+
+    def __setitem__(self, key: str | ResponseKey[_T], value: Any) -> None:
+        if (
+            not isinstance(key, ResponseKey)
+            and key not in StreamResponse._seen_str_keys
+        ):
+            StreamResponse._seen_str_keys.add(key)
+            warnings.warn(
+                "It is recommended to use web.ResponseKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                + "#response-s-storage",
+                category=NotAppKeyWarning,
+                stacklevel=2,
+            )
         self._state[key] = value
 
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self, key: str | ResponseKey[_T]) -> None:
         del self._state[key]
 
     def __len__(self) -> int:
         return len(self._state)
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[str | ResponseKey[Any]]:
         return iter(self._state)
 
     def __hash__(self) -> int:

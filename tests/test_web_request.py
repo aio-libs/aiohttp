@@ -2,8 +2,9 @@ import asyncio
 import datetime
 import socket
 import ssl
+import sys
 import weakref
-from collections.abc import MutableMapping
+from collections.abc import Iterator, MutableMapping
 from typing import NoReturn
 from unittest import mock
 
@@ -443,6 +444,7 @@ def test_match_info() -> None:
     assert req._match_info is req.match_info
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_is_mutable_mapping() -> None:
     req = make_mocked_request("GET", "/")
     assert isinstance(req, MutableMapping)
@@ -451,6 +453,7 @@ def test_request_is_mutable_mapping() -> None:
     assert "value" == req["key"]
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_delitem() -> None:
     req = make_mocked_request("GET", "/")
     req["key"] = "value"
@@ -459,6 +462,7 @@ def test_request_delitem() -> None:
     assert "key" not in req
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_len() -> None:
     req = make_mocked_request("GET", "/")
     assert len(req) == 0
@@ -466,11 +470,91 @@ def test_request_len() -> None:
     assert len(req) == 1
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_iter() -> None:
     req = make_mocked_request("GET", "/")
     req["key"] = "value"
     req["key2"] = "value2"
-    assert set(req) == {"key", "key2"}
+    key3 = web.RequestKey("key3", str)
+    req[key3] = "value3"
+    assert set(req) == {"key", "key2", key3}
+
+
+def test_requestkey() -> None:
+    req = make_mocked_request("GET", "/")
+    key = web.RequestKey("key", str)
+    req[key] = "value"
+    assert req[key] == "value"
+    assert len(req) == 1
+    del req[key]
+    assert len(req) == 0
+
+
+def test_request_get_requestkey() -> None:
+    req = make_mocked_request("GET", "/")
+    key = web.RequestKey("key", int)
+    assert req.get(key, "foo") == "foo"
+    req[key] = 5
+    assert req.get(key, "foo") == 5
+
+
+def test_requestkey_repr_concrete() -> None:
+    key = web.RequestKey("key", int)
+    assert repr(key) in (
+        "<RequestKey(__channelexec__.key, type=int)>",  # pytest-xdist
+        "<RequestKey(__main__.key, type=int)>",
+    )
+    key2 = web.RequestKey("key", web.Request)
+    assert repr(key2) in (
+        # pytest-xdist:
+        "<RequestKey(__channelexec__.key, type=aiohttp.web_request.Request)>",
+        "<RequestKey(__main__.key, type=aiohttp.web_request.Request)>",
+    )
+
+
+def test_requestkey_repr_nonconcrete() -> None:
+    key = web.RequestKey("key", Iterator[int])
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<RequestKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
+
+
+def test_requestkey_repr_annotated() -> None:
+    key = web.RequestKey[Iterator[int]]("key")
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<RequestKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
+
+
+def test_str_key_warnings() -> None:
+    # Check if warnings are raised once per str key
+    req = make_mocked_request("GET", "/")
+
+    with pytest.warns(UserWarning):
+        req["test_str_key_warnings_key_1"] = "value"
+
+    with pytest.warns(UserWarning):
+        req["test_str_key_warnings_key_2"] = "value 2"
+
+    req["test_str_key_warnings_key_1"] = "value"
 
 
 def test___repr__() -> None:
@@ -858,6 +942,7 @@ def test_remote_peername_unix() -> None:
     assert req.remote == "/path/to/sock"
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_save_state_on_clone() -> None:
     req = make_mocked_request("GET", "/")
     req["key"] = "val"
