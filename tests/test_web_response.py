@@ -4,7 +4,7 @@ import gzip
 import io
 import json
 import sys
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
@@ -19,7 +19,14 @@ from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
 from aiohttp.payload import BytesPayload, StringPayload
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
+from aiohttp.web import (
+    ContentCoding,
+    Request,
+    Response,
+    ResponseKey,
+    StreamResponse,
+    json_response,
+)
 
 
 def make_request(
@@ -103,6 +110,7 @@ def test_stream_response_eq() -> None:
     assert not resp1 == resp2
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_stream_response_is_mutable_mapping() -> None:
     resp = StreamResponse()
     assert isinstance(resp, collections.abc.MutableMapping)
@@ -111,6 +119,7 @@ def test_stream_response_is_mutable_mapping() -> None:
     assert "value" == resp["key"]
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_stream_response_delitem() -> None:
     resp = StreamResponse()
     resp["key"] = "value"
@@ -118,6 +127,7 @@ def test_stream_response_delitem() -> None:
     assert "key" not in resp
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_stream_response_len() -> None:
     resp = StreamResponse()
     assert len(resp) == 0
@@ -125,11 +135,91 @@ def test_stream_response_len() -> None:
     assert len(resp) == 1
 
 
-def test_request_iter() -> None:
+@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
+def test_response_iter() -> None:
     resp = StreamResponse()
     resp["key"] = "value"
     resp["key2"] = "value2"
-    assert set(resp) == {"key", "key2"}
+    key3 = ResponseKey("key3", str)
+    resp[key3] = "value3"
+    assert set(resp) == {"key", "key2", key3}
+
+
+def test_responsekey() -> None:
+    resp = StreamResponse()
+    key = ResponseKey("key", str)
+    resp[key] = "value"
+    assert resp[key] == "value"
+    assert len(resp) == 1
+    del resp[key]
+    assert len(resp) == 0
+
+
+def test_response_get_responsekey() -> None:
+    resp = StreamResponse()
+    key = ResponseKey("key", int)
+    assert resp.get(key, "foo") == "foo"
+    resp[key] = 5
+    assert resp.get(key, "foo") == 5
+
+
+def test_responsekey_repr_concrete() -> None:
+    key = ResponseKey("key", int)
+    assert repr(key) in (
+        "<ResponseKey(__channelexec__.key, type=int)>",  # pytest-xdist
+        "<ResponseKey(__main__.key, type=int)>",
+    )
+    key2 = ResponseKey("key", Request)
+    assert repr(key2) in (
+        # pytest-xdist:
+        "<ResponseKey(__channelexec__.key, type=aiohttp.web_request.Request)>",
+        "<ResponseKey(__main__.key, type=aiohttp.web_request.Request)>",
+    )
+
+
+def test_responsekey_repr_nonconcrete() -> None:
+    key = ResponseKey("key", Iterator[int])
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
+
+
+def test_responsekey_repr_annotated() -> None:
+    key = ResponseKey[Iterator[int]]("key")
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
+
+
+def test_str_key_warnings() -> None:
+    # Check if warnings are raised once per str key
+    resp = StreamResponse()
+
+    with pytest.warns(UserWarning):
+        resp["test_str_key_warnings_key_1"] = "value"
+
+    with pytest.warns(UserWarning):
+        resp["test_str_key_warnings_key_2"] = "value 2"
+
+    resp["test_str_key_warnings_key_1"] = "value"
 
 
 def test_content_length() -> None:

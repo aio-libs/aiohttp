@@ -1,0 +1,4 @@
+Added ``RequestKey`` and ``ResponseKey`` classes,
+which enable static type checking for request & response
+context storages in the same way that ``AppKey`` does for ``Application``
+-- by :user:`gsoldatov`.

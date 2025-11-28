@@ -10,7 +10,7 @@ from collections.abc import Iterator, MutableMapping
 from concurrent.futures import Executor
 from http import HTTPStatus
 from http.cookies import SimpleCookie
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, cast, overload
 
 from multidict import CIMultiDict, istr
 
@@ -22,6 +22,7 @@ from .helpers import (
     QUOTED_ETAG_RE,
     ETag,
     HeadersMixin,
+    ResponseKey,
     must_be_empty_body,
     parse_http_date,
     rfc822_formatted_time,
@@ -47,6 +48,9 @@ else:
     BaseClass = collections.abc.MutableMapping
 
 
+_T = TypeVar("_T")
+
+
 # TODO(py311): Convert to StrEnum for wider use
 class ContentCoding(enum.Enum):
     # The content codings that we have support for.
@@ -65,7 +69,7 @@ CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
 ############################################################
 
 
-class StreamResponse(BaseClass, HeadersMixin):
+class StreamResponse(MutableMapping[str | ResponseKey[Any], Any], HeadersMixin):
 
     _body: None | bytes | bytearray | Payload
     _length_check = True
@@ -82,6 +86,7 @@ class StreamResponse(BaseClass, HeadersMixin):
     _body_length = 0
     _cookies: SimpleCookie | None = None
     _send_headers_immediately = True
+    _seen_str_keys: set[str] = set()
 
     def __init__(
         self,
@@ -98,7 +103,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         the headers when creating a new response object. It is not intended
         to be used by external code.
         """
-        self._state: dict[str, Any] = {}
+        self._state: dict[str | ResponseKey[Any], Any] = {}
 
         if _real_headers is not None:
             self._headers = _real_headers
@@ -587,19 +592,46 @@ class StreamResponse(BaseClass, HeadersMixin):
             info = "not prepared"
         return f"<{self.__class__.__name__} {self.reason} {info}>"
 
-    def __getitem__(self, key: str) -> Any:
+    @overload  # type: ignore[override]
+    def __getitem__(self, key: ResponseKey[_T]) -> _T: ...
+
+    @overload
+    def __getitem__(self, key: str) -> Any: ...
+
+    def __getitem__(self, key: str | ResponseKey[_T]) -> Any:
         return self._state[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    @overload  # type: ignore[override]
+    def __setitem__(self, key: ResponseKey[_T], value: _T) -> None: ...
+
+    @overload
+    def __setitem__(self, key: str, value: Any) -> None: ...
+
+    def __setitem__(self, key: str | ResponseKey[_T], value: Any) -> None:
+        if (
+            not isinstance(key, ResponseKey)
+            and key not in StreamResponse._seen_str_keys
+        ):
+            # Import here to break circular dependency
+            from .web_exceptions import NotAppKeyWarning
+
+            StreamResponse._seen_str_keys.add(key)
+            warnings.warn(
+                "It is recommended to use web.ResponseKey instances for keys.\n"
+                + "https://docs.aiohttp.org/en/stable/web_advanced.html"
+                + "#response-s-storage",
+                category=NotAppKeyWarning,
+                stacklevel=2,
+            )
         self._state[key] = value
 
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self, key: str | ResponseKey[_T]) -> None:
         del self._state[key]
 
     def __len__(self) -> int:
         return len(self._state)
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[str | ResponseKey[Any]]:
         return iter(self._state)
 
     def __hash__(self) -> int:
