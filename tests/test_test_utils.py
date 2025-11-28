@@ -3,7 +3,7 @@ import gzip
 import socket
 import sys
 from collections.abc import Iterator, Mapping
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 from unittest import mock
 
 import pytest
@@ -45,7 +45,10 @@ def _create_example_app() -> web.Application:
             if msg.data == "close":
                 await ws.close()
             else:
-                await ws.send_str(msg.data + "/answer")
+                data = msg.data
+                if TYPE_CHECKING:
+                    assert isinstance(data, str)
+                await ws.send_str(data + "/answer")
 
         return ws
 
