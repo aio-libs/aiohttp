@@ -444,7 +444,6 @@ def test_match_info() -> None:
     assert req._match_info is req.match_info
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_is_mutable_mapping() -> None:
     req = make_mocked_request("GET", "/")
     assert isinstance(req, MutableMapping)
@@ -453,7 +452,6 @@ def test_request_is_mutable_mapping() -> None:
     assert "value" == req["key"]
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_delitem() -> None:
     req = make_mocked_request("GET", "/")
     req["key"] = "value"
@@ -462,7 +460,6 @@ def test_request_delitem() -> None:
     assert "key" not in req
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_len() -> None:
     req = make_mocked_request("GET", "/")
     assert len(req) == 0
@@ -470,7 +467,6 @@ def test_request_len() -> None:
     assert len(req) == 1
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_iter() -> None:
     req = make_mocked_request("GET", "/")
     req["key"] = "value"
@@ -942,7 +938,6 @@ def test_remote_peername_unix() -> None:
     assert req.remote == "/path/to/sock"
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_save_state_on_clone() -> None:
     req = make_mocked_request("GET", "/")
     req["key"] = "val"
