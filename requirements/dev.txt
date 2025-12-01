@@ -163,7 +163,7 @@ pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
-pytest==8.4.2
+pytest==9.0.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
