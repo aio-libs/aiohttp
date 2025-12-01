@@ -120,7 +120,7 @@ python-on-whales==0.79.0
     # via -r requirements/test-common.in
 re-assert==1.1.0
     # via -r requirements/test-common.in
-regex==2025.10.23
+regex==2025.11.3
     # via re-assert
 rich==14.2.0
     # via pytest-codspeed
