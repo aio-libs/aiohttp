@@ -12,7 +12,7 @@ aiosignal==1.4.0
     # via -r requirements/runtime-deps.in
 async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
-backports-zstd==1.0.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+backports-zstd==1.1.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via -r requirements/runtime-deps.in
 brotli==1.2.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
