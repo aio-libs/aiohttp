@@ -1,5 +1,6 @@
 [run]
 branch = True
+core = ctrace
 source = aiohttp, tests
 omit = site-packages
 
