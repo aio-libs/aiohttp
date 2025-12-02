@@ -20,7 +20,7 @@ backports-zstd==1.0.0 ; platform_python_implementation == "CPython" and python_v
     # via -r requirements/runtime-deps.in
 blockbuster==1.5.25
     # via -r requirements/test-common.in
-brotli==1.1.0 ; platform_python_implementation == "CPython"
+brotli==1.2.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
 cffi==2.0.0
     # via
