@@ -340,3 +340,45 @@ async def test_logger_set_to_none(
     resp = await client.get("/")
     assert 200 == resp.status
     assert "This should not be logged" not in caplog.text
+
+
+async def test_logger_does_not_log_when_enabled_post_init(
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test logger does nothing when not enabled even if enabled post init."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    enabled = False
+
+    class Logger(AbstractAccessLogger):
+
+        def log(
+            self, request: web.BaseRequest, response: web.StreamResponse, time: float
+        ) -> None:
+            self.logger.critical("This should not be logged")  # pragma: no cover
+
+        @property
+        def enabled(self) -> bool:
+            """Check if logger is enabled."""
+            # Avoid formatting the log line if it will not be emitted.
+            return enabled
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, access_log_class=Logger)
+    client = await aiohttp_client(server)
+    resp = await client.get("/")
+    assert 200 == resp.status
+    assert "This should not be logged" not in caplog.text
+    assert not server.handler.connections[0]._force_close
+
+    # mock enabling logging post-init
+    enabled = True
+    resp = await client.get("/")
+    assert 200 == resp.status
+    assert "This should not be logged" not in caplog.text
+    assert not server.handler.connections[0]._force_close
