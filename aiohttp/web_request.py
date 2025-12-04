@@ -93,7 +93,7 @@ _QUOTED_PAIR: Final[str] = r"\\[\t !-~]"
 
 _QUOTED_STRING: Final[str] = rf'"(?:{_QUOTED_PAIR}|{_QDTEXT})*"'
 
-_FORWARDED_PAIR: Final[str] = rf"({_TOKEN})=({_TOKEN}|{_QUOTED_STRING})(:\d{{1,4}})?"
+_FORWARDED_PAIR: Final[str] = rf"^({_TOKEN})=({_TOKEN}|{_QUOTED_STRING})(:\d{{1,4}})?"
 
 _QUOTED_PAIR_REPLACE_RE: Final[Pattern[str]] = re.compile(r"\\([\t !-~])")
 # same pattern as _QUOTED_PAIR but contains a capture group

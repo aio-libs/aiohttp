@@ -1,6 +1,7 @@
 """Tests for internal cookie helper functions."""
 
 import sys
+import time
 from http.cookies import (
     CookieError,
     Morsel,
@@ -633,6 +634,18 @@ def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
     match = pattern.match(test_string)
     assert match is not None, f"Pattern should match '{test_string}'"
     assert match.group("key").lower() == "partitioned"
+
+
+def test_cookie_pattern_performance() -> None:
+    value = "a" + "="*21651 + "\x00"
+    start = time.perf_counter()
+    match = helpers._COOKIE_PATTERN.match(value)
+    end = time.perf_counter()
+
+    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
+    assert (end - start) < 0.01
+    # This example shouldn't produce a match either.
+    assert match is None
 
 
 def test_parse_set_cookie_headers_issue_7993_double_quotes() -> None:
