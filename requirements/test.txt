@@ -18,7 +18,7 @@ attrs==25.4.0
     # via -r requirements/runtime-deps.in
 backports-zstd==1.1.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via -r requirements/runtime-deps.in
-blockbuster==1.5.25
+blockbuster==1.5.26
     # via -r requirements/test-common.in
 brotli==1.2.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
