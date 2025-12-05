@@ -16,7 +16,7 @@ async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in
 attrs==25.3.0
     # via -r requirements/runtime-deps.in
-blockbuster==1.5.25
+blockbuster==1.5.26
     # via -r requirements/test-common.in
 brotli==1.2.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
