@@ -19,7 +19,7 @@ cffi==2.0.0
     #   cryptography
     #   pycares
     #   pytest-codspeed
-cfgv==3.4.0
+cfgv==3.5.0
     # via pre-commit
 click==8.3.0
     # via slotscheck
