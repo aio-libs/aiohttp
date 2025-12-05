@@ -17,6 +17,7 @@ from ._websocket.models import (
     WSMessagePing,
     WSMessagePong,
     WSMessageText,
+    WSMessageTextBytes,
     WSMsgType,
 )
 from ._websocket.reader import WebSocketReader
@@ -48,6 +49,7 @@ __all__ = (
     "WSMessagePong",
     "WSMessageBinary",
     "WSMessageText",
+    "WSMessageTextBytes",
     "WSMessagePing",
     "WSMessageContinuation",
 )
