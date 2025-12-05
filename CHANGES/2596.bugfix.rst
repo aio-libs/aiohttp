@@ -1,2 +1,2 @@
-Pass proxy authorization headers when reusing a connection. Prevents 407 (Proxy authentication required) when reusing a connection
+Fixed proxy authorization headers not being passed when reusing a connection, which caused 407 (Proxy authentication required) errors
 -- by :user:`GLeurquin`.
