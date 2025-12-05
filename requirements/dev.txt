@@ -28,7 +28,7 @@ backports-zstd==1.1.0 ; platform_python_implementation == "CPython" and python_v
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-blockbuster==1.5.25
+blockbuster==1.5.26
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
