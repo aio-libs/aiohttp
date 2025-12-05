@@ -1,0 +1,2 @@
+Pass proxy authorization headers when reusing a connection. Prevents 407 (Proxy authentication required) when reusing a connection
+-- by :user:`GLeurquin`.

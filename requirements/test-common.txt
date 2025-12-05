@@ -6,7 +6,7 @@
 #
 annotated-types==0.7.0
     # via pydantic
-blockbuster==1.5.26
+blockbuster==1.5.25
     # via -r requirements/test-common.in
 cffi==2.0.0
     # via
