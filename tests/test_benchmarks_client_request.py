@@ -10,7 +10,13 @@ from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
-from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
+from aiohttp.client_reqrep import (
+    ClientRequest,
+    ClientRequestArgs,
+    ClientResponse,
+    ClientTimeout,
+    ResponseParams,
+)
 from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
@@ -50,8 +56,20 @@ def test_create_client_request_with_cookies(
     cookies = cookie_jar.filter_cookies(url)
     assert cookies["cookie"].value == "value"
     timer = TimerNoop()
+    timeout = ClientTimeout()
     traces: list[Trace] = []
     headers = CIMultiDict[str]()
+    response_params: ResponseParams = {
+        "timer": timer,
+        "skip_payload": True,
+        "read_until_eof": True,
+        "auto_decompress": True,
+        "read_timeout": timeout.sock_read,
+        "read_bufsize": 2**16,
+        "timeout_ceil_threshold": 5,
+        "max_line_size": 8190,
+        "max_field_size": 8190,
+    }
 
     @benchmark
     def _run() -> None:
@@ -65,7 +83,9 @@ def test_create_client_request_with_cookies(
             proxy=None,
             proxy_auth=None,
             proxy_headers=None,
+            response_params=response_params,
             timer=timer,
+            timeout=timeout,
             session=None,  # type: ignore[arg-type]
             ssl=True,
             traces=traces,
@@ -88,9 +108,21 @@ def test_create_client_request_with_headers(
 ) -> None:
     url = URL("http://python.org")
     timer = TimerNoop()
+    timeout = ClientTimeout()
     traces: list[Trace] = []
     headers = CIMultiDict({"header": "value", "another": "header"})
     cookies = BaseCookie[str]()
+    response_params: ResponseParams = {
+        "timer": timer,
+        "skip_payload": True,
+        "read_until_eof": True,
+        "auto_decompress": True,
+        "read_timeout": timeout.sock_read,
+        "read_bufsize": 2**16,
+        "timeout_ceil_threshold": 5,
+        "max_line_size": 8190,
+        "max_field_size": 8190,
+    }
 
     @benchmark
     def _run() -> None:
@@ -104,7 +136,9 @@ def test_create_client_request_with_headers(
             proxy=None,
             proxy_auth=None,
             proxy_headers=None,
+            response_params=response_params,
             timer=timer,
+            timeout=timeout,
             session=None,  # type: ignore[arg-type]
             ssl=True,
             traces=traces,

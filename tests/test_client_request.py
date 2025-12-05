@@ -21,6 +21,7 @@ from aiohttp.client_reqrep import (
     ClientRequest,
     ClientRequestArgs,
     ClientResponse,
+    ClientTimeout,
     Fingerprint,
     _gen_default_accept_encoding,
 )
@@ -1615,6 +1616,8 @@ def test_terminate_with_closed_loop(
     async def go() -> None:
         nonlocal req, resp, writer
         # Can't use make_client_request here, due to closing the loop mid-test.
+        timer = TimerNoop()
+        timeout = ClientTimeout()
         req = ClientRequest(
             "get",
             URL("http://python.org"),
@@ -1632,7 +1635,19 @@ def test_terminate_with_closed_loop(
             response_class=ClientResponse,
             proxy=None,
             proxy_auth=None,
-            timer=TimerNoop(),
+            response_params={
+                "timer": timer,
+                "skip_payload": True,
+                "read_until_eof": True,
+                "auto_decompress": True,
+                "read_timeout": timeout.sock_read,
+                "read_bufsize": 2**16,
+                "timeout_ceil_threshold": 5,
+                "max_line_size": 8190,
+                "max_field_size": 8190,
+            },
+            timer=timer,
+            timeout=timeout,
             session=None,  # type: ignore[arg-type]
             ssl=True,
             proxy_headers=None,
