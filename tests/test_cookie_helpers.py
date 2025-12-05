@@ -1312,11 +1312,9 @@ def test_parse_cookie_header_malformed() -> None:
     # Missing name
     header = "=value; name=value2"
     result = parse_cookie_header(header)
-    assert len(result) == 2
-    assert result[0][0] == "=value"
-    assert result[0][1].value == ""
-    assert result[1][0] == "name"
-    assert result[1][1].value == "value2"
+    assert len(result) == 1
+    assert result[0][0] == "name"
+    assert result[0][1].value == "value2"
 
 
 def test_parse_cookie_header_complex_quoted() -> None:
