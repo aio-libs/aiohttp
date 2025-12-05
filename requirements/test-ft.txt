@@ -27,7 +27,7 @@ cffi==2.0.0
     #   cryptography
     #   pycares
     #   pytest-codspeed
-click==8.3.0
+click==8.3.1
     # via wait-for-it
 coverage==7.11.0
     # via
