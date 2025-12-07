@@ -283,7 +283,6 @@ async def test_logger_set_to_none(
     assert "This should not be logged" not in caplog.text
 
 
-@pytest.mark.xfail(reason="#11778")
 async def test_logger_does_not_log_when_enabled_post_init(
     aiohttp_server: AiohttpServer,
     aiohttp_client: AiohttpClient,
