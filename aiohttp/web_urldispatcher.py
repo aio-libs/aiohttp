@@ -597,7 +597,10 @@ class StaticResource(PrefixResource):
     async def resolve(self, request: Request) -> _Resolve:
         path = request.rel_url.path_safe
         method = request.method
-        if not path.startswith(self._prefix2) and path != self._prefix:
+        # We normalise here to avoid matches that traverse below the static root.
+        # e.g. /static/../../../../home/user/webapp/static/
+        norm_path = os.path.normpath(path)
+        if not norm_path.startswith(self._prefix2) and path != self._prefix:
             return None, set()
 
         allowed_methods = self._allowed_methods
