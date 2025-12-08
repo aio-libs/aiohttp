@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/dev.txt --strip-extras requirements/dev.in
 #
-aiodns==3.5.0
+aiodns==3.6.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
