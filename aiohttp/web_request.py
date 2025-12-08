@@ -573,7 +573,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         if rng is not None:
             try:
                 pattern = r"^bytes=(\d*)-(\d*)$"
-                start, end = re.findall(pattern, rng)[0]
+                start, end = re.findall(pattern, rng, re.ASCII)[0]
             except IndexError:  # pattern was not found in header
                 raise ValueError("range not in acceptable format")
 
