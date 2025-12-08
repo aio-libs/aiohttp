@@ -7,7 +7,7 @@
 annotated-types==0.7.0
     # via pydantic
 blockbuster==1.5.26
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 cffi==2.0.0
     # via
     #   cryptography
@@ -16,7 +16,7 @@ click==8.3.1
     # via wait-for-it
 coverage==7.11.0
     # via
-    #   -r requirements/test-common.in
+    #   -r test-common.in
     #   pytest-cov
 cryptography==46.0.3
     # via trustme
@@ -27,13 +27,13 @@ execnet==2.1.2
 forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
-    # via -r requirements/test-common.in
-idna==3.10
+    # via -r test-common.in
+idna==3.7
     # via trustme
 iniconfig==2.3.0
     # via pytest
 isal==1.8.0 ; python_version < "3.14"
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 librt==0.7.3
     # via mypy
 markdown-it-py==4.0.0
@@ -41,7 +41,7 @@ markdown-it-py==4.0.0
 mdurl==0.1.2
     # via markdown-it-py
 mypy==1.19.0 ; implementation_name == "cpython"
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 mypy-extensions==1.1.0
     # via mypy
 packaging==25.0
@@ -49,13 +49,13 @@ packaging==25.0
 pathspec==0.12.1
     # via mypy
 pkgconfig==1.5.5
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
 proxy-py==2.4.10
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 pycparser==2.23
     # via cffi
 pydantic==2.12.5
@@ -68,27 +68,27 @@ pygments==2.19.2
     #   rich
 pytest==9.0.2
     # via
-    #   -r requirements/test-common.in
+    #   -r test-common.in
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
 pytest-codspeed==4.2.0
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 pytest-cov==7.0.0
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 pytest-mock==3.15.1
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 pytest-xdist==3.8.0
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.79.0
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 rich==14.2.0
     # via pytest-codspeed
 setuptools-git==1.2
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 six==1.17.0
     # via python-dateutil
 tomli==2.3.0
@@ -97,7 +97,7 @@ tomli==2.3.0
     #   mypy
     #   pytest
 trustme==1.2.1 ; platform_machine != "i686"
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 typing-extensions==4.15.0
     # via
     #   cryptography
@@ -110,6 +110,6 @@ typing-extensions==4.15.0
 typing-inspection==0.4.2
     # via pydantic
 wait-for-it==2.3.0
-    # via -r requirements/test-common.in
+    # via -r test-common.in
 zlib-ng==1.0.0
-    # via -r requirements/test-common.in
+    # via -r test-common.in
