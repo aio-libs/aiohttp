@@ -1,5 +1,6 @@
 # Tests of http client with custom Connector
 import asyncio
+import contextlib
 import gc
 import hashlib
 import logging
@@ -17,11 +18,12 @@ from typing import Any, Literal
 from unittest import mock
 
 import pytest
+from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import client, connector as connector_module, web
+from aiohttp import client, connector as connector_module, hdrs, web
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ConnectionKey
@@ -3179,6 +3181,93 @@ async def test_connect_reuseconn_tracing(loop, key) -> None:
         session, trace_config_ctx, aiohttp.TraceConnectionReuseconnParams()
     )
     await conn.close()
+
+
+@pytest.mark.parametrize(
+    "test_case,wait_for_con,expect_proxy_auth_header",
+    [
+        ("use_proxy_with_embedded_auth", False, True),
+        ("use_proxy_with_auth_headers", True, True),
+        ("use_proxy_no_auth", False, False),
+        ("dont_use_proxy", False, False),
+    ],
+)
+async def test_connect_reuse_proxy_headers(  # type: ignore[misc]
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+    test_case: str,
+    wait_for_con: bool,
+    expect_proxy_auth_header: bool,
+) -> None:
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+
+    if test_case != "dont_use_proxy":
+        proxy = (
+            URL("http://user:password@example.com")
+            if test_case == "use_proxy_with_embedded_auth"
+            else URL("http://example.com")
+        )
+        proxy_headers = (
+            CIMultiDict({hdrs.AUTHORIZATION: "Basic dXNlcjpwYXNzd29yZA=="})
+            if test_case == "use_proxy_with_auth_headers"
+            else None
+        )
+    else:
+        proxy = None
+        proxy_headers = None
+    key = ConnectionKey(
+        "localhost",
+        80,
+        False,
+        True,
+        proxy,
+        None,
+        hash(tuple(proxy_headers.items())) if proxy_headers else None,
+    )
+    req = make_client_request(
+        "GET",
+        URL("http://localhost:80"),
+        loop=loop,
+        response_class=mock.Mock(),
+        proxy=proxy,
+        proxy_headers=proxy_headers,
+    )
+
+    conn = aiohttp.BaseConnector(limit=1)
+
+    async def _create_con(*args: Any, **kwargs: Any) -> None:
+        conn._conns[key] = deque([(proto, loop.time())])
+
+    with contextlib.ExitStack() as stack:
+        if wait_for_con:
+            # Simulate no available connections
+            stack.enter_context(
+                mock.patch.object(
+                    conn, "_available_connections", autospec=True, return_value=0
+                )
+            )
+            # Upon waiting for a connection, populate _conns with our proto,
+            # mocking a connection becoming immediately available
+            stack.enter_context(
+                mock.patch.object(
+                    conn,
+                    "_wait_for_available_connection",
+                    autospec=True,
+                    side_effect=_create_con,
+                )
+            )
+        else:
+            await _create_con()
+        # Call function to test
+        conn2 = await conn.connect(req, [], ClientTimeout())
+    conn2.release()
+    await conn.close()
+
+    if expect_proxy_auth_header:
+        assert req.headers[hdrs.PROXY_AUTHORIZATION] == "Basic dXNlcjpwYXNzd29yZA=="
+    else:
+        assert hdrs.PROXY_AUTHORIZATION not in req.headers
 
 
 async def test_connect_with_limit_and_limit_per_host(loop, key) -> None:
