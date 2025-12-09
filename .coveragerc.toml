@@ -1,5 +1,10 @@
 [run]
 branch = true
+# NOTE: `ctrace` tracing method is needed because the `sysmon` tracer
+# NOTE: which is default on Python 3.14, causes unprecedented slow-down
+# NOTE: of the test runs.
+# Ref: https://github.com/coveragepy/coveragepy/issues/2099
+core = 'ctrace'
 source = [
   'aiohttp',
   'tests',
