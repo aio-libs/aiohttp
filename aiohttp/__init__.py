@@ -230,11 +230,18 @@ __all__: tuple[str, ...] = (
     "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",
+    # sse
+    "EventSourceResponse",
+    "sse_response",
+    "sse",
     # workers (imported lazily with __getattr__)
     "GunicornUVLoopWebWorker",
     "GunicornWebWorker",
     "WSMessageTypeError",
 )
+
+# Optional SSE export (new module, does not break existing API)
+from .sse import EventSourceResponse, sse_response, sse  # noqa: E402,F401
 
 
 def __dir__() -> tuple[str, ...]:
