@@ -1,4 +1,5 @@
 import asyncio
+
 from aiohttp import web
 from aiohttp.sse import sse
 
@@ -41,4 +42,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

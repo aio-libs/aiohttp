@@ -5,7 +5,7 @@ import pytest
 
 from aiohttp import web
 from aiohttp.sse import sse_response
-from aiohttp.test_utils import TestServer, TestClient
+from aiohttp.test_utils import TestClient, TestServer
 
 
 @pytest.mark.asyncio
@@ -104,7 +104,9 @@ async def test_json_custom_encoder() -> None:
             return "|".join(f"{k}={v}" for k, v in obj.items())
 
     async def handler(request: web.Request) -> web.StreamResponse:
-        async with sse_response(request, heartbeat=None, encoder=SimpleEncoder()) as resp:
+        async with sse_response(
+            request, heartbeat=None, encoder=SimpleEncoder()
+        ) as resp:
             await resp.send({"a": 1, "b": 2}, json=True)
             return resp
 
@@ -152,4 +154,3 @@ async def test_client_disconnect_cleanup() -> None:
         await asyncio.sleep(0.2)
         # Handler cleanup executed
         assert flag["clean"] is True
-

@@ -1,11 +1,11 @@
 import asyncio
 import json
-from typing import Any, AsyncIterator, Awaitable, Callable, Optional
 from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Awaitable, Callable, Optional
 
+from . import hdrs
 from .typedefs import JSONEncoder
 from .web_response import StreamResponse
-from . import hdrs
 
 __all__ = ("EventSourceResponse", "sse_response", "sse")
 
@@ -104,7 +104,7 @@ class EventSourceResponse(StreamResponse):
     async def comment(self, text: str) -> None:
         """Send an SSE comment line."""
         # Comments start with ':' and end with a blank line separator
-        payload = f":{text}\n\n".encode("utf-8")
+        payload = f":{text}\n\n".encode()
         await self._deliver(payload)
 
     # -----------------------
@@ -262,6 +262,7 @@ class EventSourceResponse(StreamResponse):
         if self._heartbeat_task is not None:
             return
         loop = asyncio.get_running_loop()
+
         async def _beat() -> None:
             try:
                 while not self._closed:
@@ -270,6 +271,7 @@ class EventSourceResponse(StreamResponse):
                     await self.comment(comment_text)
             except asyncio.CancelledError:
                 pass
+
         self._heartbeat_task = loop.create_task(_beat())
 
     async def _handle_disconnect(self) -> None:
@@ -353,6 +355,7 @@ def sse(handler: Optional[Callable[..., Awaitable[Any]]] = None, **opts: Any):
                     await resp._handle_disconnect()
                 # Return the response for aiohttp
                 return resp
+
         return _wrapped
 
     return _decorate(handler) if handler is not None else _decorate
@@ -376,4 +379,3 @@ class suppress_exceptions:
 
     async def __aexit__(self, exc_type, exc, tb):  # type: ignore[override]
         return exc is not None and any(isinstance(exc, t) for t in self.exc_types)
-

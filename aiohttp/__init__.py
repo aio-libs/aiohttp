@@ -241,7 +241,7 @@ __all__: tuple[str, ...] = (
 )
 
 # Optional SSE export (new module, does not break existing API)
-from .sse import EventSourceResponse, sse_response, sse  # noqa: E402,F401
+from .sse import EventSourceResponse, sse, sse_response  # noqa: E402
 
 
 def __dir__() -> tuple[str, ...]:
