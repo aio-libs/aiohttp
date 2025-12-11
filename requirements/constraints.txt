@@ -152,7 +152,7 @@ proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-pycares==4.11.0
+pycares==5.0.0
     # via aiodns
 pycparser==2.23
     # via cffi
