@@ -536,6 +536,11 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self: "WebSocketResponse[Literal[False]]", timeout: float | None = None
     ) -> WSMessageNoDecodeText: ...
 
+    @overload
+    async def receive(
+        self: "WebSocketResponse[_DecodeText]", timeout: float | None = None
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText: ...
+
     async def receive(
         self, timeout: float | None = None
     ) -> WSMessageDecodeText | WSMessageNoDecodeText:
@@ -622,6 +627,11 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self: "WebSocketResponse[Literal[False]]", *, timeout: float | None = None
     ) -> bytes: ...
 
+    @overload
+    async def receive_str(
+        self: "WebSocketResponse[_DecodeText]", *, timeout: float | None = None
+    ) -> str | bytes: ...
+
     async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
         """Receive TEXT message.
 
@@ -655,6 +665,16 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self: "WebSocketResponse[Literal[False]]",
         *,
         loads: Callable[[bytes | bytearray | memoryview | str], Any] = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
+    @overload
+    async def receive_json(
+        self: "WebSocketResponse[_DecodeText]",
+        *,
+        loads: (
+            JSONDecoder | Callable[[bytes | bytearray | memoryview | str], Any]
+        ) = ...,
         timeout: float | None = None,
     ) -> Any: ...
 

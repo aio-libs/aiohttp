@@ -328,6 +328,11 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self: "ClientWebSocketResponse[Literal[False]]", timeout: float | None = None
     ) -> WSMessageNoDecodeText: ...
 
+    @overload
+    async def receive(
+        self: "ClientWebSocketResponse[_DecodeText]", timeout: float | None = None
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText: ...
+
     async def receive(
         self, timeout: float | None = None
     ) -> WSMessageDecodeText | WSMessageNoDecodeText:
@@ -414,6 +419,11 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self: "ClientWebSocketResponse[Literal[False]]", *, timeout: float | None = None
     ) -> bytes: ...
 
+    @overload
+    async def receive_str(
+        self: "ClientWebSocketResponse[_DecodeText]", *, timeout: float | None = None
+    ) -> str | bytes: ...
+
     async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
         """Receive TEXT message.
 
@@ -450,6 +460,16 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         timeout: float | None = None,
     ) -> Any: ...
 
+    @overload
+    async def receive_json(
+        self: "ClientWebSocketResponse[_DecodeText]",
+        *,
+        loads: (
+            JSONDecoder | Callable[[bytes | bytearray | memoryview | str], Any]
+        ) = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
     async def receive_json(
         self,
         *,
@@ -473,6 +493,11 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
     async def __anext__(
         self: "ClientWebSocketResponse[Literal[False]]",
     ) -> WSMessageNoDecodeText: ...
+
+    @overload
+    async def __anext__(
+        self: "ClientWebSocketResponse[_DecodeText]",
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText: ...
 
     async def __anext__(self) -> WSMessageDecodeText | WSMessageNoDecodeText:
         msg = await self.receive()
