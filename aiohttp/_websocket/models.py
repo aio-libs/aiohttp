@@ -3,7 +3,7 @@
 import json
 from collections.abc import Callable
 from enum import IntEnum
-from typing import Any, Final, Literal, NamedTuple, Union, cast
+from typing import Any, Final, Literal, NamedTuple, cast
 
 WS_DEFLATE_TRAILING: Final[bytes] = bytes([0x00, 0x00, 0xFF, 0xFF])
 
@@ -128,25 +128,25 @@ class WSMessageError(NamedTuple):
 
 
 # Base message types (excluding TEXT variants)
-_WSMessageBase = Union[
-    WSMessageContinuation,
-    WSMessageBinary,
-    WSMessagePing,
-    WSMessagePong,
-    WSMessageClose,
-    WSMessageClosing,
-    WSMessageClosed,
-    WSMessageError,
-]
+_WSMessageBase = (
+    WSMessageContinuation
+    | WSMessageBinary
+    | WSMessagePing
+    | WSMessagePong
+    | WSMessageClose
+    | WSMessageClosing
+    | WSMessageClosed
+    | WSMessageError
+)
 
 # All message types
-WSMessage = Union[_WSMessageBase, WSMessageText, WSMessageTextBytes]
+WSMessage = _WSMessageBase | WSMessageText | WSMessageTextBytes
 
 # Message type when decode_text=True (default) - TEXT messages have str data
-WSMessageDecodeText = Union[_WSMessageBase, WSMessageText]
+WSMessageDecodeText = _WSMessageBase | WSMessageText
 
 # Message type when decode_text=False - TEXT messages have bytes data
-WSMessageNoDecodeText = Union[_WSMessageBase, WSMessageTextBytes]
+WSMessageNoDecodeText = _WSMessageBase | WSMessageTextBytes
 
 WS_CLOSED_MESSAGE = WSMessageClosed()
 WS_CLOSING_MESSAGE = WSMessageClosing()
