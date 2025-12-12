@@ -1625,11 +1625,14 @@ async def test_server_receive_json_with_orjson_style_loads(
 ) -> None:
     """Test server receive_json() with orjson-style loads that accepts bytes."""
 
-    def orjson_style_loads(data: bytes | bytearray | memoryview | str) -> dict:
+    def orjson_style_loads(
+        data: bytes | bytearray | memoryview | str,
+    ) -> dict[str, str]:
         """Mock orjson.loads that accepts bytes/str."""
         if isinstance(data, (bytes, bytearray, memoryview)):
             data = bytes(data).decode("utf-8")
-        return json.loads(data)
+        result: dict[str, str] = json.loads(data)
+        return result
 
     async def websocket_handler(
         request: web.Request,
