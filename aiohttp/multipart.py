@@ -102,6 +102,7 @@ def parse_content_disposition(
     i = 0
     while i < len(parts):
         item = parts[i]
+        i += 1
 
         if not item:  # To handle trailing semicolons
             warnings.warn(BadContentDispositionHeader(header))
@@ -151,10 +152,10 @@ def parse_content_disposition(
                 value = unescape(value[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
-            elif len(parts) > i + 1:
+            elif len(parts) > i:
                 # maybe just ; in filename, in any case this is just
                 # one case fix, for proper fix we need to redesign parser
-                _value = f"{value};{parts[i+1]}"
+                _value = f"{value};{parts[i]}"
                 if is_quoted(_value):
                     i += 1
                     value = unescape(_value[1:-1].lstrip("\\/"))
@@ -165,7 +166,6 @@ def parse_content_disposition(
                 return None, {}
 
         params[key] = value
-        i += 1
 
     return disptype.lower(), params
 
