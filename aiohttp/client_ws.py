@@ -456,7 +456,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         timeout: float | None = None,
     ) -> Any:
         data = await self.receive_str(timeout=timeout)
-        return loads(data)
+        return loads(data)  # type: ignore[arg-type]
 
     def __aiter__(self) -> Self:
         return self
