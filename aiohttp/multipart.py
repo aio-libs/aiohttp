@@ -150,7 +150,7 @@ def parse_content_disposition(
                 value = unescape(value[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
-            elif len(parts) > i+1:
+            elif len(parts) > i + 1:
                 # maybe just ; in filename, in any case this is just
                 # one case fix, for proper fix we need to redesign parser
                 _value = f"{value};{parts[i+1]}"
