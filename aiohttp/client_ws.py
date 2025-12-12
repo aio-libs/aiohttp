@@ -38,8 +38,7 @@ if sys.version_info >= (3, 11):
     from typing import Self
 else:
     import async_timeout
-
-    Self = TypeVar("Self", bound="ClientWebSocketResponse[bool]")
+    from typing_extensions import Self
 
 # TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
 # Covariant because it only affects return types, not input types

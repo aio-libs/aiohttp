@@ -52,8 +52,7 @@ if sys.version_info >= (3, 11):
     from typing import Self
 else:
     import async_timeout
-
-    Self = TypeVar("Self", bound="WebSocketResponse[bool]")
+    from typing_extensions import Self
 
 __all__ = (
     "WebSocketResponse",
