@@ -439,6 +439,14 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         timeout: float | None = None,
     ) -> Any: ...
 
+    @overload
+    async def receive_json(
+        self,
+        *,
+        loads: Callable[[bytes | bytearray | memoryview | str], Any] = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
     async def receive_json(
         self,
         *,
