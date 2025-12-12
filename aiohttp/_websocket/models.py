@@ -67,9 +67,7 @@ class WSMessageTextBytes(NamedTuple):
     extra: str | None = None
     type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
 
-    def json(
-        self, *, loads: Callable[[bytes], Any] = json.loads
-    ) -> Any:
+    def json(self, *, loads: Callable[[bytes], Any] = json.loads) -> Any:
         """Return parsed JSON data."""
         return loads(self.data)
 
