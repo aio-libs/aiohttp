@@ -460,7 +460,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
     async def receive_json(
         self: "ClientWebSocketResponse[Literal[False]]",
         *,
-        loads: Callable[[bytes | bytearray | memoryview | str], Any] = ...,
+        loads: Callable[[bytes], Any] = ...,
         timeout: float | None = None,
     ) -> Any: ...
 
@@ -468,18 +468,14 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
     async def receive_json(
         self: "ClientWebSocketResponse[_DecodeText]",
         *,
-        loads: (
-            JSONDecoder | Callable[[bytes | bytearray | memoryview | str], Any]
-        ) = ...,
+        loads: JSONDecoder | Callable[[bytes], Any] = ...,
         timeout: float | None = None,
     ) -> Any: ...
 
     async def receive_json(
         self,
         *,
-        loads: (
-            JSONDecoder | Callable[[bytes | bytearray | memoryview | str], Any]
-        ) = DEFAULT_JSON_DECODER,
+        loads: JSONDecoder | Callable[[bytes], Any] = DEFAULT_JSON_DECODER,
         timeout: float | None = None,
     ) -> Any:
         data = await self.receive_str(timeout=timeout)
