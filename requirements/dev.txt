@@ -26,7 +26,7 @@ attrs==25.4.0
     # via -r requirements/runtime-deps.in
 babel==2.17.0
     # via sphinx
-backports-zstd==1.1.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+backports-zstd==1.2.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
