@@ -538,7 +538,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     ) -> WSMessageNoDecodeText: ...
 
     @overload
-    async def receive(self, timeout: float | None = None) -> WSMessage: ...
+    async def receive(self, timeout: float | None = None) -> WSMessageDecodeText: ...
 
     async def receive(self, timeout: float | None = None) -> WSMessage:
         if self._reader is None:
@@ -625,7 +625,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     ) -> bytes: ...
 
     @overload
-    async def receive_str(self, *, timeout: float | None = None) -> str | bytes: ...
+    async def receive_str(self, *, timeout: float | None = None) -> str: ...
 
     async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
         """Receive TEXT message.
@@ -667,7 +667,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     async def receive_json(
         self,
         *,
-        loads: Callable[[bytes | bytearray | memoryview | str], Any] = ...,
+        loads: JSONDecoder = ...,
         timeout: float | None = None,
     ) -> Any: ...
 
@@ -689,6 +689,19 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
     def __aiter__(self) -> Self:
         return self
+
+    @overload
+    async def __anext__(
+        self: "WebSocketResponse[Literal[True]]",
+    ) -> WSMessageDecodeText: ...
+
+    @overload
+    async def __anext__(
+        self: "WebSocketResponse[Literal[False]]",
+    ) -> WSMessageNoDecodeText: ...
+
+    @overload
+    async def __anext__(self) -> WSMessageDecodeText: ...
 
     async def __anext__(self) -> WSMessage:
         msg = await self.receive()
