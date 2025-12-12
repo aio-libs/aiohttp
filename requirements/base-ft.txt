@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/base-ft.txt --strip-extras requirements/base-ft.in
 #
-aiodns==3.5.0
+aiodns==3.6.1
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
     # via -r requirements/runtime-deps.in
