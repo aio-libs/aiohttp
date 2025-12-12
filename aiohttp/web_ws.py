@@ -609,6 +609,9 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self: "WebSocketResponse[Literal[False]]", *, timeout: float | None = None
     ) -> bytes: ...
 
+    @overload
+    async def receive_str(self, *, timeout: float | None = None) -> str | bytes: ...
+
     async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
         """Receive TEXT message.
 
@@ -645,6 +648,14 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         timeout: float | None = None,
     ) -> Any: ...
 
+    @overload
+    async def receive_json(
+        self,
+        *,
+        loads: Callable[[bytes | bytearray | memoryview | str], Any] = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
     async def receive_json(
         self,
         *,
@@ -653,8 +664,8 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         ) = json.loads,
         timeout: float | None = None,
     ) -> Any:
-        data: str | bytes = await self.receive_str(timeout=timeout)
-        return loads(data)
+        data = await self.receive_str(timeout=timeout)
+        return loads(data)  # type: ignore[arg-type]
 
     async def write(
         self, data: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
