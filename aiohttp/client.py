@@ -1511,7 +1511,7 @@ class _BaseRequestContextManager(
 
 
 _RequestContextManager = _BaseRequestContextManager[ClientResponse]
-_WSRequestContextManager = _BaseRequestContextManager[ClientWebSocketResponse]
+_WSRequestContextManager = _BaseRequestContextManager[ClientWebSocketResponse[bool]]
 
 
 class _SessionRequestContextManager:
