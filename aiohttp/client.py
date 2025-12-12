@@ -924,7 +924,7 @@ class ClientSession:
             *,
             decode_text: bool = ...,
             **kwargs: Unpack[_WSConnectOptions],
-        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Any]]": ...
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]": ...
 
     def ws_connect(
         self,
@@ -949,7 +949,7 @@ class ClientSession:
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
         decode_text: bool = True,
-    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Any]]":
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]":
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(
@@ -1003,7 +1003,7 @@ class ClientSession:
             *,
             decode_text: bool = ...,
             **kwargs: Unpack[_WSConnectOptions],
-        ) -> "ClientWebSocketResponse[Any]": ...
+        ) -> "ClientWebSocketResponse[bool]": ...
 
     async def _ws_connect(
         self,
@@ -1028,7 +1028,7 @@ class ClientSession:
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
         decode_text: bool = True,
-    ) -> "ClientWebSocketResponse[Any]":
+    ) -> "ClientWebSocketResponse[bool]":
         if timeout is not sentinel:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
