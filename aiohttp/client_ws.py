@@ -4,7 +4,7 @@ import asyncio
 import sys
 from collections.abc import Callable
 from types import TracebackType
-from typing import Any, Final, Generic, Literal, TypeVar, overload
+from typing import Any, Final, Generic, Literal, overload
 
 from ._websocket.reader import WebSocketDataQueue
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
@@ -28,6 +28,11 @@ from .typedefs import (
     JSONEncoder,
 )
 
+if sys.version_info >= (3, 13):
+    from typing import TypeVar
+else:
+    from typing_extensions import TypeVar
+
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
     from typing import Self
@@ -38,7 +43,7 @@ else:
 
 # TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
 # Covariant because it only affects return types, not input types
-_DecodeText = TypeVar("_DecodeText", bound=bool, covariant=True)
+_DecodeText = TypeVar("_DecodeText", bound=bool, covariant=True, default=Literal[True])
 
 
 @frozen_dataclass_decorator

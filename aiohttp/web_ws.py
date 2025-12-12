@@ -5,7 +5,7 @@ import hashlib
 import json
 import sys
 from collections.abc import Callable, Iterable
-from typing import Any, Final, Generic, Literal, TypeVar, Union, overload
+from typing import Any, Final, Generic, Literal, Union, overload
 
 from multidict import CIMultiDict
 
@@ -42,6 +42,11 @@ from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
+if sys.version_info >= (3, 13):
+    from typing import TypeVar
+else:
+    from typing_extensions import TypeVar
+
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
     from typing import Self
@@ -59,7 +64,7 @@ __all__ = (
 THRESHOLD_CONNLOST_ACCESS: Final[int] = 5
 
 # TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
-_DecodeText = TypeVar("_DecodeText", bound=bool, covariant=True)
+_DecodeText = TypeVar("_DecodeText", bound=bool, covariant=True, default=Literal[True])
 
 
 @frozen_dataclass_decorator
