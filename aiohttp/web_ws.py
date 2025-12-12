@@ -707,6 +707,11 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self: "WebSocketResponse[Literal[False]]",
     ) -> WSMessageNoDecodeText: ...
 
+    @overload
+    async def __anext__(
+        self: "WebSocketResponse[_DecodeText]",
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText: ...
+
     async def __anext__(self) -> WSMessageDecodeText | WSMessageNoDecodeText:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
