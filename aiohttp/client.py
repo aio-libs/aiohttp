@@ -1476,15 +1476,13 @@ class _BaseRequestContextManager(
 ):
     __slots__ = ("_coro", "_resp")
 
-    def __init__(
-        self, coro: Coroutine["asyncio.Future[Any]", None, _RetType_co]
-    ) -> None:
+    def __init__(self, coro: Coroutine[asyncio.Future[Any], None, _RetType_co]) -> None:
         self._coro: Coroutine[asyncio.Future[Any], None, _RetType_co] = coro
 
-    def send(self, arg: None) -> "asyncio.Future[Any]":
+    def send(self, arg: None) -> asyncio.Future[Any]:
         return self._coro.send(arg)
 
-    def throw(self, *args: Any, **kwargs: Any) -> "asyncio.Future[Any]":
+    def throw(self, *args: Any, **kwargs: Any) -> asyncio.Future[Any]:
         return self._coro.throw(*args, **kwargs)
 
     def close(self) -> None:
@@ -1499,7 +1497,7 @@ class _BaseRequestContextManager(
 
     async def __aenter__(self) -> _RetType_co:
         self._resp: _RetType_co = await self._coro
-        return await self._resp.__aenter__()
+        return await self._resp.__aenter__()  # type: ignore[return-value]
 
     async def __aexit__(
         self,
@@ -1519,7 +1517,7 @@ class _SessionRequestContextManager:
 
     def __init__(
         self,
-        coro: Coroutine["asyncio.Future[Any]", None, ClientResponse],
+        coro: Coroutine[asyncio.Future[Any], None, ClientResponse],
         session: ClientSession,
     ) -> None:
         self._coro = coro

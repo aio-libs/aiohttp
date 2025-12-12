@@ -47,7 +47,7 @@ if sys.version_info >= (3, 11):
 else:
     import async_timeout
 
-    Self = TypeVar("Self", bound="WebSocketResponse[Any]")
+    Self = TypeVar("Self", bound="WebSocketResponse[bool]")
 
 __all__ = (
     "WebSocketResponse",
