@@ -1451,8 +1451,12 @@ async def test_websocket_prepared_property(
 async def test_receive_text_as_bytes_server_side(aiohttp_client: AiohttpClient) -> None:
     """Test server receiving TEXT messages as raw bytes with decode_text=False."""
 
-    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse(decode_text=False)
+    async def websocket_handler(
+        request: web.Request,
+    ) -> web.WebSocketResponse[Literal[False]]:
+        ws: web.WebSocketResponse[Literal[False]] = web.WebSocketResponse(
+            decode_text=False
+        )
         await ws.prepare(request)
 
         # Receive TEXT message as bytes
@@ -1561,8 +1565,12 @@ async def test_server_receive_str_returns_bytes_with_decode_text_false(
 ) -> None:
     """Test that server receive_str() returns bytes when decode_text=False."""
 
-    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse(decode_text=False)
+    async def websocket_handler(
+        request: web.Request,
+    ) -> web.WebSocketResponse[Literal[False]]:
+        ws: web.WebSocketResponse[Literal[False]] = web.WebSocketResponse(
+            decode_text=False
+        )
         await ws.prepare(request)
 
         # receive_str() should return bytes when decode_text=False
@@ -1623,8 +1631,12 @@ async def test_server_receive_json_with_orjson_style_loads(
             data = bytes(data).decode("utf-8")
         return json.loads(data)
 
-    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse(decode_text=False)
+    async def websocket_handler(
+        request: web.Request,
+    ) -> web.WebSocketResponse[Literal[False]]:
+        ws: web.WebSocketResponse[Literal[False]] = web.WebSocketResponse(
+            decode_text=False
+        )
         await ws.prepare(request)
 
         # receive_json() with orjson-style loads should work with bytes
