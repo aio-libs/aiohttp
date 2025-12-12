@@ -5,7 +5,7 @@ import hashlib
 import json
 import sys
 from collections.abc import Callable, Iterable
-from typing import Any, Final, Generic, Literal, Union, overload
+from typing import Any, Final, Generic, Literal, TypedDict, Union, Unpack, overload
 
 from multidict import CIMultiDict
 
@@ -67,6 +67,20 @@ THRESHOLD_CONNLOST_ACCESS: Final[int] = 5
 _DecodeText = TypeVar("_DecodeText", bound=bool, covariant=True, default=Literal[True])
 
 
+class _WebSocketResponseParams(TypedDict, total=False):
+    """Parameters for WebSocketResponse constructor."""
+
+    timeout: float
+    receive_timeout: float | None
+    autoclose: bool
+    autoping: bool
+    heartbeat: float | None
+    protocols: Iterable[str]
+    compress: bool
+    max_msg_size: int
+    writer_limit: int
+
+
 @frozen_dataclass_decorator
 class WebSocketReady:
     ok: bool
@@ -94,6 +108,30 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     _heartbeat_cb: asyncio.TimerHandle | None = None
     _pong_response_cb: asyncio.TimerHandle | None = None
     _ping_task: asyncio.Task[None] | None = None
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        decode_text: Literal[True] = ...,
+        **kwargs: Unpack[_WebSocketResponseParams],
+    ) -> "WebSocketResponse[Literal[True]]": ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        decode_text: Literal[False],
+        **kwargs: Unpack[_WebSocketResponseParams],
+    ) -> "WebSocketResponse[Literal[False]]": ...
+
+    def __new__(
+        cls,
+        *,
+        decode_text: bool = True,
+        **kwargs: Unpack[_WebSocketResponseParams],
+    ) -> "WebSocketResponse[bool]":
+        return super().__new__(cls)
 
     def __init__(
         self,

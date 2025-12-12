@@ -1,7 +1,7 @@
 import asyncio
 import json
 import sys
-from typing import NoReturn
+from typing import Literal, NoReturn
 from unittest import mock
 
 import pytest
@@ -1277,7 +1277,7 @@ async def test_websocket_connection_cancellation(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    sync_future: asyncio.Future[list[aiohttp.ClientWebSocketResponse]] = (
+    sync_future: asyncio.Future[list[aiohttp.ClientWebSocketResponse[bool]]] = (
         loop.create_future()
     )
     client = await aiohttp_client(app)
@@ -1339,8 +1339,10 @@ async def test_receive_text_as_bytes_client_side(aiohttp_client: AiohttpClient) 
 async def test_receive_text_as_bytes_server_side(aiohttp_client: AiohttpClient) -> None:
     """Test server receiving TEXT messages as raw bytes with decode_text=False."""
 
-    async def handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse(decode_text=False)
+    async def handler(request: web.Request) -> web.WebSocketResponse[Literal[False]]:
+        ws: web.WebSocketResponse[Literal[False]] = web.WebSocketResponse(
+            decode_text=False
+        )
         await ws.prepare(request)
 
         # Receive TEXT message as bytes
@@ -1483,11 +1485,14 @@ async def test_receive_json_with_orjson_style_loads(
 ) -> None:
     """Test receive_json() with orjson-style loads that accepts bytes."""
 
-    def orjson_style_loads(data: bytes | bytearray | memoryview | str) -> dict:
+    def orjson_style_loads(
+        data: bytes | bytearray | memoryview | str,
+    ) -> dict[str, int]:
         """Mock orjson.loads that accepts bytes/str."""
         if isinstance(data, (bytes, bytearray, memoryview)):
             data = bytes(data).decode("utf-8")
-        return json.loads(data)
+        result: dict[str, int] = json.loads(data)
+        return result
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()

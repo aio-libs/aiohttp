@@ -5,7 +5,7 @@ import contextlib
 import json
 import sys
 import weakref
-from typing import NoReturn
+from typing import Literal, NoReturn
 from unittest import mock
 
 import pytest
@@ -1485,8 +1485,12 @@ async def test_receive_text_as_bytes_server_iteration(
 ) -> None:
     """Test server iterating over WebSocket with decode_text=False."""
 
-    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse(decode_text=False)
+    async def websocket_handler(
+        request: web.Request,
+    ) -> web.WebSocketResponse[Literal[False]]:
+        ws: web.WebSocketResponse[Literal[False]] = web.WebSocketResponse(
+            decode_text=False
+        )
         await ws.prepare(request)
 
         async for msg in ws:
