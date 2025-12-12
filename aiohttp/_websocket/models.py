@@ -129,10 +129,9 @@ class WSMessageError(NamedTuple):
     type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
 
 
-WSMessage = Union[
+# Base message types (excluding TEXT variants)
+_WSMessageBase = Union[
     WSMessageContinuation,
-    WSMessageText,
-    WSMessageTextBytes,
     WSMessageBinary,
     WSMessagePing,
     WSMessagePong,
@@ -141,32 +140,15 @@ WSMessage = Union[
     WSMessageClosed,
     WSMessageError,
 ]
+
+# All message types
+WSMessage = Union[_WSMessageBase, WSMessageText, WSMessageTextBytes]
 
 # Message type when decode_text=True (default) - TEXT messages have str data
-WSMessageDecodeText = Union[
-    WSMessageContinuation,
-    WSMessageText,
-    WSMessageBinary,
-    WSMessagePing,
-    WSMessagePong,
-    WSMessageClose,
-    WSMessageClosing,
-    WSMessageClosed,
-    WSMessageError,
-]
+WSMessageDecodeText = Union[_WSMessageBase, WSMessageText]
 
 # Message type when decode_text=False - TEXT messages have bytes data
-WSMessageNoDecodeText = Union[
-    WSMessageContinuation,
-    WSMessageTextBytes,
-    WSMessageBinary,
-    WSMessagePing,
-    WSMessagePong,
-    WSMessageClose,
-    WSMessageClosing,
-    WSMessageClosed,
-    WSMessageError,
-]
+WSMessageNoDecodeText = Union[_WSMessageBase, WSMessageTextBytes]
 
 WS_CLOSED_MESSAGE = WSMessageClosed()
 WS_CLOSING_MESSAGE = WSMessageClosing()
