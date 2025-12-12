@@ -1627,7 +1627,9 @@ async def test_server_receive_json_with_orjson_style_loads(
 ) -> None:
     """Test server receive_json() with orjson-style loads that accepts bytes."""
 
-    def orjson_style_loads(data: bytes) -> dict[str, str]:
+    def orjson_style_loads(
+        data: bytes | bytearray | memoryview | str,
+    ) -> dict[str, str]:
         """Mock orjson.loads that accepts bytes."""
         assert isinstance(data, bytes)
         result: dict[str, str] = json.loads(data)
