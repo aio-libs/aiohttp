@@ -643,6 +643,15 @@ class TestParseContentDisposition:
         assert "attachment" == disptype
         assert {} == params
 
+    def test_performance(self) -> None:
+        # Test for O(n²) complexity in parsing.
+        # Although field size limits stop this being a DoS issue.
+        header = 'form-data; name="f"; ' + "; ".join(f"p{i}=x" for i in range(200000))
+        start = time.perf_counter()
+        parse_content_disposition(header)
+        end = time.perf_counter()
+        assert (end - start) < 0.5
+
 
 class TestContentDispositionFilename:
     # http://greenbytes.de/tech/tc2231/
