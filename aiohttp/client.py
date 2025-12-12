@@ -917,6 +917,15 @@ class ClientSession:
             **kwargs: Unpack[_WSConnectOptions],
         ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[False]]]": ...
 
+        @overload
+        def ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: bool = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Any]]": ...
+
     def ws_connect(
         self,
         url: StrOrURL,
@@ -986,6 +995,15 @@ class ClientSession:
             decode_text: Literal[False],
             **kwargs: Unpack[_WSConnectOptions],
         ) -> "ClientWebSocketResponse[Literal[False]]": ...
+
+        @overload
+        async def _ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: bool = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "ClientWebSocketResponse[Any]": ...
 
     async def _ws_connect(
         self,

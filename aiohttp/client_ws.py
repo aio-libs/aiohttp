@@ -400,6 +400,9 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self: "ClientWebSocketResponse[Literal[False]]", *, timeout: float | None = None
     ) -> bytes: ...
 
+    @overload
+    async def receive_str(self, *, timeout: float | None = None) -> str | bytes: ...
+
     async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
         """Receive TEXT message.
 
