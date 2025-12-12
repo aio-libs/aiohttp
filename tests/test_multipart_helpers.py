@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 import aiohttp
