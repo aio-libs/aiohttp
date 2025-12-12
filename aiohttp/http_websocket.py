@@ -13,10 +13,13 @@ from ._websocket.models import (
     WSMessageClosed,
     WSMessageClosing,
     WSMessageContinuation,
+    WSMessageDecodeText,
     WSMessageError,
+    WSMessageNoDecodeText,
     WSMessagePing,
     WSMessagePong,
     WSMessageText,
+    WSMessageTextBytes,
     WSMsgType,
 )
 from ._websocket.reader import WebSocketReader
@@ -35,6 +38,8 @@ __all__ = (
     "WebSocketReader",
     "WebSocketWriter",
     "WSMessage",
+    "WSMessageDecodeText",
+    "WSMessageNoDecodeText",
     "WebSocketError",
     "WSMsgType",
     "WSCloseCode",
@@ -48,6 +53,7 @@ __all__ = (
     "WSMessagePong",
     "WSMessageBinary",
     "WSMessageText",
+    "WSMessageTextBytes",
     "WSMessagePing",
     "WSMessageContinuation",
 )

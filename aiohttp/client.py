@@ -21,7 +21,17 @@ from collections.abc import (
 )
 from contextlib import suppress
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Final, Generic, TypedDict, TypeVar, final
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Final,
+    Generic,
+    Literal,
+    TypedDict,
+    TypeVar,
+    final,
+    overload,
+)
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL, Query
@@ -187,6 +197,27 @@ class _RequestOptions(TypedDict, total=False):
     middlewares: Sequence[ClientMiddlewareType] | None
 
 
+class _WSConnectOptions(TypedDict, total=False):
+    method: str
+    protocols: Collection[str]
+    timeout: "ClientWSTimeout | _SENTINEL"
+    receive_timeout: float | None
+    autoclose: bool
+    autoping: bool
+    heartbeat: float | None
+    auth: BasicAuth | None
+    origin: str | None
+    params: Query
+    headers: LooseHeaders | None
+    proxy: StrOrURL | None
+    proxy_auth: BasicAuth | None
+    ssl: SSLContext | bool | Fingerprint
+    server_hostname: str | None
+    proxy_headers: LooseHeaders | None
+    compress: int
+    max_msg_size: int
+
+
 @frozen_dataclass_decorator
 class ClientTimeout:
     total: float | None = None
@@ -215,7 +246,11 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
-_RetType = TypeVar("_RetType", ClientResponse, ClientWebSocketResponse)
+_RetType_co = TypeVar(
+    "_RetType_co",
+    bound="ClientResponse | ClientWebSocketResponse[bool]",
+    covariant=True,
+)
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
@@ -866,6 +901,35 @@ class ClientSession:
                 )
             raise
 
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+
+        @overload
+        def ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[True] = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[True]]]": ...
+
+        @overload
+        def ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[False],
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[False]]]": ...
+
+        @overload
+        def ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: bool = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]": ...
+
     def ws_connect(
         self,
         url: StrOrURL,
@@ -888,7 +952,8 @@ class ClientSession:
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
-    ) -> "_WSRequestContextManager":
+        decode_text: bool = True,
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]":
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(
@@ -911,8 +976,38 @@ class ClientSession:
                 proxy_headers=proxy_headers,
                 compress=compress,
                 max_msg_size=max_msg_size,
+                decode_text=decode_text,
             )
         )
+
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+
+        @overload
+        async def _ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[True] = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "ClientWebSocketResponse[Literal[True]]": ...
+
+        @overload
+        async def _ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[False],
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "ClientWebSocketResponse[Literal[False]]": ...
+
+        @overload
+        async def _ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: bool = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "ClientWebSocketResponse[bool]": ...
 
     async def _ws_connect(
         self,
@@ -936,7 +1031,8 @@ class ClientSession:
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
-    ) -> ClientWebSocketResponse:
+        decode_text: bool = True,
+    ) -> "ClientWebSocketResponse[bool]":
         if timeout is not sentinel:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
@@ -1098,7 +1194,9 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
-            conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
+            conn_proto.set_parser(
+                WebSocketReader(reader, max_msg_size, decode_text=decode_text), reader
+            )
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
@@ -1373,31 +1471,33 @@ class ClientSession:
         await self.close()
 
 
-class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType]):
+class _BaseRequestContextManager(
+    Coroutine[Any, Any, _RetType_co], Generic[_RetType_co]
+):
     __slots__ = ("_coro", "_resp")
 
-    def __init__(self, coro: Coroutine["asyncio.Future[Any]", None, _RetType]) -> None:
-        self._coro: Coroutine[asyncio.Future[Any], None, _RetType] = coro
+    def __init__(self, coro: Coroutine[asyncio.Future[Any], None, _RetType_co]) -> None:
+        self._coro: Coroutine[asyncio.Future[Any], None, _RetType_co] = coro
 
-    def send(self, arg: None) -> "asyncio.Future[Any]":
+    def send(self, arg: None) -> asyncio.Future[Any]:
         return self._coro.send(arg)
 
-    def throw(self, *args: Any, **kwargs: Any) -> "asyncio.Future[Any]":
+    def throw(self, *args: Any, **kwargs: Any) -> asyncio.Future[Any]:
         return self._coro.throw(*args, **kwargs)
 
     def close(self) -> None:
         return self._coro.close()
 
-    def __await__(self) -> Generator[Any, None, _RetType]:
+    def __await__(self) -> Generator[Any, None, _RetType_co]:
         ret = self._coro.__await__()
         return ret
 
-    def __iter__(self) -> Generator[Any, None, _RetType]:
+    def __iter__(self) -> Generator[Any, None, _RetType_co]:
         return self.__await__()
 
-    async def __aenter__(self) -> _RetType:
-        self._resp: _RetType = await self._coro
-        return await self._resp.__aenter__()
+    async def __aenter__(self) -> _RetType_co:
+        self._resp: _RetType_co = await self._coro
+        return await self._resp.__aenter__()  # type: ignore[return-value]
 
     async def __aexit__(
         self,
@@ -1409,7 +1509,7 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
 
 
 _RequestContextManager = _BaseRequestContextManager[ClientResponse]
-_WSRequestContextManager = _BaseRequestContextManager[ClientWebSocketResponse]
+_WSRequestContextManager = _BaseRequestContextManager[ClientWebSocketResponse[bool]]
 
 
 class _SessionRequestContextManager:
@@ -1417,7 +1517,7 @@ class _SessionRequestContextManager:
 
     def __init__(
         self,
-        coro: Coroutine["asyncio.Future[Any]", None, ClientResponse],
+        coro: Coroutine[asyncio.Future[Any], None, ClientResponse],
         session: ClientSession,
     ) -> None:
         self._coro = coro
