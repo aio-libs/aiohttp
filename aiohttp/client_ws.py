@@ -329,9 +329,6 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self: "ClientWebSocketResponse[Literal[False]]", timeout: float | None = None
     ) -> WSMessageNoDecodeText: ...
 
-    @overload
-    async def receive(self, timeout: float | None = None) -> WSMessageDecodeText: ...
-
     async def receive(self, timeout: float | None = None) -> WSMessage:
         receive_timeout = timeout or self._timeout.ws_receive
 
@@ -416,9 +413,6 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self: "ClientWebSocketResponse[Literal[False]]", *, timeout: float | None = None
     ) -> bytes: ...
 
-    @overload
-    async def receive_str(self, *, timeout: float | None = None) -> str: ...
-
     async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
         """Receive TEXT message.
 
@@ -455,14 +449,6 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         timeout: float | None = None,
     ) -> Any: ...
 
-    @overload
-    async def receive_json(
-        self,
-        *,
-        loads: JSONDecoder = ...,
-        timeout: float | None = None,
-    ) -> Any: ...
-
     async def receive_json(
         self,
         *,
@@ -486,9 +472,6 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
     async def __anext__(
         self: "ClientWebSocketResponse[Literal[False]]",
     ) -> WSMessageNoDecodeText: ...
-
-    @overload
-    async def __anext__(self) -> WSMessageDecodeText: ...
 
     async def __anext__(self) -> WSMessage:
         msg = await self.receive()

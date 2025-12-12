@@ -537,9 +537,6 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self: "WebSocketResponse[Literal[False]]", timeout: float | None = None
     ) -> WSMessageNoDecodeText: ...
 
-    @overload
-    async def receive(self, timeout: float | None = None) -> WSMessageDecodeText: ...
-
     async def receive(self, timeout: float | None = None) -> WSMessage:
         if self._reader is None:
             raise RuntimeError("Call .prepare() first")
@@ -624,9 +621,6 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self: "WebSocketResponse[Literal[False]]", *, timeout: float | None = None
     ) -> bytes: ...
 
-    @overload
-    async def receive_str(self, *, timeout: float | None = None) -> str: ...
-
     async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
         """Receive TEXT message.
 
@@ -663,14 +657,6 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         timeout: float | None = None,
     ) -> Any: ...
 
-    @overload
-    async def receive_json(
-        self,
-        *,
-        loads: JSONDecoder = ...,
-        timeout: float | None = None,
-    ) -> Any: ...
-
     async def receive_json(
         self,
         *,
@@ -699,9 +685,6 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     async def __anext__(
         self: "WebSocketResponse[Literal[False]]",
     ) -> WSMessageNoDecodeText: ...
-
-    @overload
-    async def __anext__(self) -> WSMessageDecodeText: ...
 
     async def __anext__(self) -> WSMessage:
         msg = await self.receive()
