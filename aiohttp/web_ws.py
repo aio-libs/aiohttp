@@ -60,7 +60,7 @@ __all__ = (
 THRESHOLD_CONNLOST_ACCESS: Final[int] = 5
 
 # TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
-_DecodeText = TypeVar("_DecodeText", bound=bool, default=Literal[True])
+_DecodeText = TypeVar("_DecodeText", bound=bool, covariant=True)
 
 
 @frozen_dataclass_decorator
