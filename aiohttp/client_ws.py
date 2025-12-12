@@ -36,7 +36,8 @@ else:
     Self = TypeVar("Self", bound="ClientWebSocketResponse[Any]")
 
 # TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
-_DecodeText = TypeVar("_DecodeText", bound=bool, default=Literal[True])
+# Covariant because it only affects return types, not input types
+_DecodeText = TypeVar("_DecodeText", bound=bool, default=Literal[True], covariant=True)
 
 
 @frozen_dataclass_decorator
