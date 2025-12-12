@@ -15,7 +15,6 @@ from .http import (
     WS_CLOSING_MESSAGE,
     WebSocketError,
     WSCloseCode,
-    WSMessage,
     WSMessageDecodeText,
     WSMessageNoDecodeText,
     WSMsgType,
@@ -329,7 +328,9 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self: "ClientWebSocketResponse[Literal[False]]", timeout: float | None = None
     ) -> WSMessageNoDecodeText: ...
 
-    async def receive(self, timeout: float | None = None) -> WSMessage:
+    async def receive(
+        self, timeout: float | None = None
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText:
         receive_timeout = timeout or self._timeout.ws_receive
 
         while True:
@@ -473,7 +474,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self: "ClientWebSocketResponse[Literal[False]]",
     ) -> WSMessageNoDecodeText: ...
 
-    async def __anext__(self) -> WSMessage:
+    async def __anext__(self) -> WSMessageDecodeText | WSMessageNoDecodeText:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration
