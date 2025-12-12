@@ -99,7 +99,8 @@ def parse_content_disposition(
         return None, {}
 
     params: dict[str, str] = {}
-    for i in range(len(parts)):
+    i = 0
+    while i < len(parts):
         item = parts[i]
 
         if not item:  # To handle trailing semicolons
@@ -164,6 +165,7 @@ def parse_content_disposition(
                 return None, {}
 
         params[key] = value
+        i += 1
 
     return disptype.lower(), params
 
