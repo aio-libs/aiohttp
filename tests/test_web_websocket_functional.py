@@ -1503,7 +1503,9 @@ async def test_receive_text_as_bytes_server_iteration(
                 assert isinstance(msg.data, bytes)
                 # Echo back
                 await ws.send_bytes(msg.data)
-            elif msg.type is aiohttp.WSMsgType.BINARY:
+            else:
+                assert msg.type is aiohttp.WSMsgType.BINARY
+                assert isinstance(msg.data, bytes)
                 await ws.send_bytes(msg.data)
 
         return ws
@@ -1625,12 +1627,9 @@ async def test_server_receive_json_with_orjson_style_loads(
 ) -> None:
     """Test server receive_json() with orjson-style loads that accepts bytes."""
 
-    def orjson_style_loads(
-        data: bytes | bytearray | memoryview | str,
-    ) -> dict[str, str]:
-        """Mock orjson.loads that accepts bytes/str."""
-        if isinstance(data, (bytes, bytearray, memoryview)):
-            data = bytes(data).decode("utf-8")
+    def orjson_style_loads(data: bytes) -> dict[str, str]:
+        """Mock orjson.loads that accepts bytes."""
+        assert isinstance(data, bytes)
         result: dict[str, str] = json.loads(data)
         return result
 

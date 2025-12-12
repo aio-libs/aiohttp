@@ -1398,8 +1398,8 @@ async def test_receive_text_as_bytes_json_parsing(
     assert msg.type is WSMsgType.TEXT
     assert isinstance(msg.data, bytes)
 
-    # Parse JSON directly from bytes (like orjson would)
-    data = json.loads(msg.data)
+    # Parse JSON using msg.json() method (covers WSMessageTextBytes.json())
+    data = msg.json()
     assert data == {"response": 84}
 
     await resp.close()
@@ -1485,12 +1485,9 @@ async def test_receive_json_with_orjson_style_loads(
 ) -> None:
     """Test receive_json() with orjson-style loads that accepts bytes."""
 
-    def orjson_style_loads(
-        data: bytes | bytearray | memoryview | str,
-    ) -> dict[str, int]:
-        """Mock orjson.loads that accepts bytes/str."""
-        if isinstance(data, (bytes, bytearray, memoryview)):
-            data = bytes(data).decode("utf-8")
+    def orjson_style_loads(data: bytes) -> dict[str, int]:
+        """Mock orjson.loads that accepts bytes."""
+        assert isinstance(data, bytes)
         result: dict[str, int] = json.loads(data)
         return result
 
