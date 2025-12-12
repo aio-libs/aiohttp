@@ -246,7 +246,11 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
-_RetType = TypeVar("_RetType", bound="ClientResponse | ClientWebSocketResponse[Any]")
+_RetType_co = TypeVar(
+    "_RetType_co",
+    bound="ClientResponse | ClientWebSocketResponse[bool]",
+    covariant=True,
+)
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
@@ -1467,11 +1471,15 @@ class ClientSession:
         await self.close()
 
 
-class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType]):
+class _BaseRequestContextManager(
+    Coroutine[Any, Any, _RetType_co], Generic[_RetType_co]
+):
     __slots__ = ("_coro", "_resp")
 
-    def __init__(self, coro: Coroutine["asyncio.Future[Any]", None, _RetType]) -> None:
-        self._coro: Coroutine[asyncio.Future[Any], None, _RetType] = coro
+    def __init__(
+        self, coro: Coroutine["asyncio.Future[Any]", None, _RetType_co]
+    ) -> None:
+        self._coro: Coroutine[asyncio.Future[Any], None, _RetType_co] = coro
 
     def send(self, arg: None) -> "asyncio.Future[Any]":
         return self._coro.send(arg)
@@ -1482,15 +1490,15 @@ class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType
     def close(self) -> None:
         return self._coro.close()
 
-    def __await__(self) -> Generator[Any, None, _RetType]:
+    def __await__(self) -> Generator[Any, None, _RetType_co]:
         ret = self._coro.__await__()
         return ret
 
-    def __iter__(self) -> Generator[Any, None, _RetType]:
+    def __iter__(self) -> Generator[Any, None, _RetType_co]:
         return self.__await__()
 
-    async def __aenter__(self) -> _RetType:
-        self._resp: _RetType = await self._coro
+    async def __aenter__(self) -> _RetType_co:
+        self._resp: _RetType_co = await self._coro
         return await self._resp.__aenter__()
 
     async def __aexit__(
