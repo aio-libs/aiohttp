@@ -317,7 +317,8 @@ class WebSocketResponse(StreamResponse):
         self.force_close()
         self._compress = compress
         transport = request._protocol.transport
-        assert transport is not None
+        if transport is None:
+            raise RuntimeError("Transport is not available")
         writer = WebSocketWriter(
             request._protocol,
             transport,
