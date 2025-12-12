@@ -197,6 +197,27 @@ class _RequestOptions(TypedDict, total=False):
     middlewares: Sequence[ClientMiddlewareType] | None
 
 
+class _WSConnectOptions(TypedDict, total=False):
+    method: str
+    protocols: Collection[str]
+    timeout: "ClientWSTimeout | _SENTINEL"
+    receive_timeout: float | None
+    autoclose: bool
+    autoping: bool
+    heartbeat: float | None
+    auth: BasicAuth | None
+    origin: str | None
+    params: Query
+    headers: LooseHeaders | None
+    proxy: StrOrURL | None
+    proxy_auth: BasicAuth | None
+    ssl: SSLContext | bool | Fingerprint
+    server_hostname: str | None
+    proxy_headers: LooseHeaders | None
+    compress: int
+    max_msg_size: int
+
+
 @frozen_dataclass_decorator
 class ClientTimeout:
     total: float | None = None
@@ -876,58 +897,25 @@ class ClientSession:
                 )
             raise
 
-    # Overloads for type-safe decode_text parameter
-    @overload
-    def ws_connect(
-        self,
-        url: StrOrURL,
-        *,
-        method: str = ...,
-        protocols: Collection[str] = ...,
-        timeout: ClientWSTimeout | _SENTINEL = ...,
-        receive_timeout: float | None = ...,
-        autoclose: bool = ...,
-        autoping: bool = ...,
-        heartbeat: float | None = ...,
-        auth: BasicAuth | None = ...,
-        origin: str | None = ...,
-        params: Query = ...,
-        headers: LooseHeaders | None = ...,
-        proxy: StrOrURL | None = ...,
-        proxy_auth: BasicAuth | None = ...,
-        ssl: SSLContext | bool | Fingerprint = ...,
-        server_hostname: str | None = ...,
-        proxy_headers: LooseHeaders | None = ...,
-        compress: int = ...,
-        max_msg_size: int = ...,
-        decode_text: Literal[True] = ...,
-    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[True]]]": ...
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
-    @overload
-    def ws_connect(
-        self,
-        url: StrOrURL,
-        *,
-        method: str = ...,
-        protocols: Collection[str] = ...,
-        timeout: ClientWSTimeout | _SENTINEL = ...,
-        receive_timeout: float | None = ...,
-        autoclose: bool = ...,
-        autoping: bool = ...,
-        heartbeat: float | None = ...,
-        auth: BasicAuth | None = ...,
-        origin: str | None = ...,
-        params: Query = ...,
-        headers: LooseHeaders | None = ...,
-        proxy: StrOrURL | None = ...,
-        proxy_auth: BasicAuth | None = ...,
-        ssl: SSLContext | bool | Fingerprint = ...,
-        server_hostname: str | None = ...,
-        proxy_headers: LooseHeaders | None = ...,
-        compress: int = ...,
-        max_msg_size: int = ...,
-        decode_text: Literal[False] = ...,
-    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[False]]]": ...
+        @overload
+        def ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[True] = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[True]]]": ...
+
+        @overload
+        def ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[False],
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[False]]]": ...
 
     def ws_connect(
         self,
@@ -979,57 +967,25 @@ class ClientSession:
             )
         )
 
-    @overload
-    async def _ws_connect(
-        self,
-        url: StrOrURL,
-        *,
-        method: str = ...,
-        protocols: Collection[str] = ...,
-        timeout: ClientWSTimeout | _SENTINEL = ...,
-        receive_timeout: float | None = ...,
-        autoclose: bool = ...,
-        autoping: bool = ...,
-        heartbeat: float | None = ...,
-        auth: BasicAuth | None = ...,
-        origin: str | None = ...,
-        params: Query = ...,
-        headers: LooseHeaders | None = ...,
-        proxy: StrOrURL | None = ...,
-        proxy_auth: BasicAuth | None = ...,
-        ssl: SSLContext | bool | Fingerprint = ...,
-        server_hostname: str | None = ...,
-        proxy_headers: LooseHeaders | None = ...,
-        compress: int = ...,
-        max_msg_size: int = ...,
-        decode_text: Literal[True] = ...,
-    ) -> "ClientWebSocketResponse[Literal[True]]": ...
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
-    @overload
-    async def _ws_connect(
-        self,
-        url: StrOrURL,
-        *,
-        method: str = ...,
-        protocols: Collection[str] = ...,
-        timeout: ClientWSTimeout | _SENTINEL = ...,
-        receive_timeout: float | None = ...,
-        autoclose: bool = ...,
-        autoping: bool = ...,
-        heartbeat: float | None = ...,
-        auth: BasicAuth | None = ...,
-        origin: str | None = ...,
-        params: Query = ...,
-        headers: LooseHeaders | None = ...,
-        proxy: StrOrURL | None = ...,
-        proxy_auth: BasicAuth | None = ...,
-        ssl: SSLContext | bool | Fingerprint = ...,
-        server_hostname: str | None = ...,
-        proxy_headers: LooseHeaders | None = ...,
-        compress: int = ...,
-        max_msg_size: int = ...,
-        decode_text: Literal[False] = ...,
-    ) -> "ClientWebSocketResponse[Literal[False]]": ...
+        @overload
+        async def _ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[True] = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "ClientWebSocketResponse[Literal[True]]": ...
+
+        @overload
+        async def _ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[False],
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "ClientWebSocketResponse[Literal[False]]": ...
 
     async def _ws_connect(
         self,
