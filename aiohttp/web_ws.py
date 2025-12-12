@@ -29,6 +29,8 @@ from .http import (
     WebSocketWriter,
     WSCloseCode,
     WSMessage,
+    WSMessageDecodeText,
+    WSMessageNoDecodeText,
     WSMsgType,
     ws_ext_gen,
     ws_ext_parse,
@@ -524,6 +526,19 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         """Close the transport."""
         if self._req is not None and self._req.transport is not None:
             self._req.transport.close()
+
+    @overload
+    async def receive(
+        self: "WebSocketResponse[Literal[True]]", timeout: float | None = None
+    ) -> WSMessageDecodeText: ...
+
+    @overload
+    async def receive(
+        self: "WebSocketResponse[Literal[False]]", timeout: float | None = None
+    ) -> WSMessageNoDecodeText: ...
+
+    @overload
+    async def receive(self, timeout: float | None = None) -> WSMessage: ...
 
     async def receive(self, timeout: float | None = None) -> WSMessage:
         if self._reader is None:

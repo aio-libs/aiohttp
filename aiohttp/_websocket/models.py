@@ -142,6 +142,32 @@ WSMessage = Union[
     WSMessageError,
 ]
 
+# Message type when decode_text=True (default) - TEXT messages have str data
+WSMessageDecodeText = Union[
+    WSMessageContinuation,
+    WSMessageText,
+    WSMessageBinary,
+    WSMessagePing,
+    WSMessagePong,
+    WSMessageClose,
+    WSMessageClosing,
+    WSMessageClosed,
+    WSMessageError,
+]
+
+# Message type when decode_text=False - TEXT messages have bytes data
+WSMessageNoDecodeText = Union[
+    WSMessageContinuation,
+    WSMessageTextBytes,
+    WSMessageBinary,
+    WSMessagePing,
+    WSMessagePong,
+    WSMessageClose,
+    WSMessageClosing,
+    WSMessageClosed,
+    WSMessageError,
+]
+
 WS_CLOSED_MESSAGE = WSMessageClosed()
 WS_CLOSING_MESSAGE = WSMessageClosing()
 

@@ -16,6 +16,8 @@ from .http import (
     WebSocketError,
     WSCloseCode,
     WSMessage,
+    WSMessageDecodeText,
+    WSMessageNoDecodeText,
     WSMsgType,
 )
 from .http_websocket import _INTERNAL_RECEIVE_TYPES, WebSocketWriter, WSMessageError
@@ -316,6 +318,19 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                 self._close_code = msg.data
                 self._response.close()
                 return True
+
+    @overload
+    async def receive(
+        self: "ClientWebSocketResponse[Literal[True]]", timeout: float | None = None
+    ) -> WSMessageDecodeText: ...
+
+    @overload
+    async def receive(
+        self: "ClientWebSocketResponse[Literal[False]]", timeout: float | None = None
+    ) -> WSMessageNoDecodeText: ...
+
+    @overload
+    async def receive(self, timeout: float | None = None) -> WSMessage: ...
 
     async def receive(self, timeout: float | None = None) -> WSMessage:
         receive_timeout = timeout or self._timeout.ws_receive
