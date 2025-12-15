@@ -111,7 +111,7 @@ jobs:
       run: |
         make generate-llhttp
     - name: Upload llhttp generated files
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: llhttp
         path: vendor/llhttp/build
@@ -339,7 +339,7 @@ jobs:
       run: |
         python -m build --sdist
     - name: Upload artifacts
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: dist-sdist
         path: dist
@@ -431,7 +431,7 @@ jobs:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - name: Upload wheels
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: >-
           dist-${{ matrix.os }}-${{ matrix.musl }}-${{
