@@ -135,6 +135,8 @@ class StreamReader(AsyncStreamReaderMixin):
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
+        self._high_water_chunks = limit // 4
+        self._low_water_chunks = self._high_water_chunks // 2
         self._loop = loop
         self._size = 0
         self._cursor = 0
@@ -316,6 +318,15 @@ class StreamReader(AsyncStreamReaderMixin):
             return
 
         self._http_chunk_splits.append(self.total_bytes)
+
+        # If we get too many small chunks before self._high_water is reached, then any
+        # .read() call becomes computationally expensive, and could block the event loop
+        # for too long, hence an additional self._high_water_chunks here.
+        if (
+            len(self._http_chunk_splits) > self._high_water_chunks
+            and not self._protocol._reading_paused
+        ):
+            self._protocol.pause_reading()
 
         # wake up readchunk when end of http chunk received
         waiter = self._waiter
@@ -511,7 +522,11 @@ class StreamReader(AsyncStreamReaderMixin):
         while chunk_splits and chunk_splits[0] < self._cursor:
             chunk_splits.pop(0)
 
-        if self._size < self._low_water and self._protocol._reading_paused:
+        if (
+            self._protocol._reading_paused
+            and self._size < self._low_water
+            and len(self._http_chunk_splits) < self._low_water_chunks
+        ):
             self._protocol.resume_reading()
         return data
 
