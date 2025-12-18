@@ -275,7 +275,6 @@ class BodyPartReader:
         self._read_bytes = 0
         self._unread: deque[bytes] = deque()
         self._prev_chunk: bytes | None = None
-        self._content_eof = 0
         self._cache: dict[str, Any] = {}
 
     def __aiter__(self) -> Self:
@@ -322,6 +321,9 @@ class BodyPartReader:
         else:
             chunk = await self._read_chunk_from_stream(size)
 
+        if self._content.at_eof():
+            self._at_eof = True
+
         # For the case of base64 data, we must read a fragment of size with a
         # remainder of 0 by dividing by 4 for string without symbols \n or \r
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING)
@@ -350,11 +352,8 @@ class BodyPartReader:
         self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
             self._at_eof = True
-        if self._at_eof:
-            clrf = await self._content.readline()
-            assert (
-                b"\r\n" == clrf
-            ), "reader did not read all the data or it is malformed"
+        if self._at_eof and await self._content.readline() != b"\r\n":
+            raise ValueError("Reader did not read all the data or it is malformed")
         return chunk
 
     async def _read_chunk_from_length(self, size: int) -> bytes:
@@ -363,8 +362,6 @@ class BodyPartReader:
         assert self._length is not None, "Content-Length required for chunked read"
         chunk_size = min(size, self._length - self._read_bytes)
         chunk = await self._content.read(chunk_size)
-        if self._content.at_eof():
-            self._at_eof = True
         return chunk
 
     async def _read_chunk_from_stream(self, size: int) -> bytes:
@@ -382,9 +379,7 @@ class BodyPartReader:
         # we have enough data to detect the boundary.
         while len(chunk) < self._boundary_len:
             chunk += await self._content.read(size)
-            self._content_eof += int(self._content.at_eof())
-            assert self._content_eof < 3, "Reading after EOF"
-            if self._content_eof:
+            if self._content.at_eof():
                 break
         if len(chunk) > size:
             self._content.unread_data(chunk[size:])
