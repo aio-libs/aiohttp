@@ -1,12 +1,13 @@
 """Async gunicorn worker for aiohttp.web"""
 
 import asyncio
+import inspect
 import os
 import re
 import signal
 import sys
 from types import FrameType
-from typing import Any, Awaitable, Callable, Optional, Union  # noqa
+from typing import Any, Optional
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
@@ -33,12 +34,12 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
-    def __init__(self, *args: Any, **kw: Any) -> None:  # pragma: no cover
+    def __init__(self, *args: Any, **kw: Any) -> None:
         super().__init__(*args, **kw)
 
-        self._task: Optional[asyncio.Task[None]] = None
+        self._task: asyncio.Task[None] | None = None
         self.exit_code = 0
-        self._notify_waiter: Optional[asyncio.Future[bool]] = None
+        self._notify_waiter: asyncio.Future[bool] | None = None
 
     def init_process(self) -> None:
         # create new event_loop after fork
@@ -63,7 +64,9 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         runner = None
         if isinstance(self.wsgi, Application):
             app = self.wsgi
-        elif asyncio.iscoroutinefunction(self.wsgi):
+        elif inspect.iscoroutinefunction(self.wsgi) or (
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(self.wsgi)
+        ):
             wsgi = await self.wsgi()
             if isinstance(wsgi, web.AppRunner):
                 runner = wsgi
@@ -73,7 +76,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         else:
             raise RuntimeError(
                 "wsgi app should be either Application or "
-                "async function returning Application, got {}".format(self.wsgi)
+                f"async function returning Application, got {self.wsgi}"
             )
 
         if runner is None:
@@ -179,7 +182,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         # Reset signals so Gunicorn doesn't swallow subprocess return codes
         # See: https://github.com/aio-libs/aiohttp/issues/6130
 
-    def handle_quit(self, sig: int, frame: Optional[FrameType]) -> None:
+    def handle_quit(self, sig: int, frame: FrameType | None) -> None:
         self.alive = False
 
         # worker_int callback
@@ -188,7 +191,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         # wakeup closing process
         self._notify_waiter_done()
 
-    def handle_abort(self, sig: int, frame: Optional[FrameType]) -> None:
+    def handle_abort(self, sig: int, frame: FrameType | None) -> None:
         self.alive = False
         self.exit_code = 1
         self.cfg.worker_abort(self)

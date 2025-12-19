@@ -1,6 +1,6 @@
 import re
 import warnings
-from typing import TYPE_CHECKING, Tuple, Type, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from .typedefs import Handler, Middleware
 from .web_exceptions import HTTPMove, HTTPPermanentRedirect
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 _Func = TypeVar("_Func")
 
 
-async def _check_request_resolves(request: Request, path: str) -> Tuple[bool, Request]:
+async def _check_request_resolves(request: Request, path: str) -> tuple[bool, Request]:
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)
@@ -47,7 +47,7 @@ def normalize_path_middleware(
     append_slash: bool = True,
     remove_slash: bool = False,
     merge_slashes: bool = True,
-    redirect_class: Type[HTTPMove] = HTTPPermanentRedirect,
+    redirect_class: type[HTTPMove] = HTTPPermanentRedirect,
 ) -> Middleware:
     """Factory for producing a middleware that normalizes the path of a request.
 
@@ -115,7 +115,12 @@ def normalize_path_middleware(
 
 def _fix_request_current_app(app: "Application") -> Middleware:
     async def impl(request: Request, handler: Handler) -> StreamResponse:
-        with request.match_info.set_current_app(app):
+        match_info = request.match_info
+        prev = match_info.current_app
+        match_info.current_app = app
+        try:
             return await handler(request)
+        finally:
+            match_info.current_app = prev
 
     return impl

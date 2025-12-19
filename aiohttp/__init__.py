@@ -1,12 +1,14 @@
 __version__ = "4.0.0a2.dev0"
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 from . import hdrs
 from .client import (
     BaseConnector,
     ClientConnectionError,
+    ClientConnectionResetError,
     ClientConnectorCertificateError,
+    ClientConnectorDNSError,
     ClientConnectorError,
     ClientConnectorSSLError,
     ClientError,
@@ -21,6 +23,7 @@ from .client import (
     ClientSSLError,
     ClientTimeout,
     ClientWebSocketResponse,
+    ClientWSTimeout,
     ConnectionTimeoutError,
     ContentTypeError,
     Fingerprint,
@@ -40,9 +43,14 @@ from .client import (
     TCPConnector,
     TooManyRedirects,
     UnixConnector,
+    WSMessageTypeError,
     WSServerHandshakeError,
     request,
 )
+from .client_middleware_digest_auth import DigestAuthMiddleware
+from .client_middlewares import ClientHandlerType, ClientMiddlewareType
+from .compression_utils import set_zlib_backend
+from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
 from .formdata import FormData
 from .helpers import BasicAuth, ChainMapProxy, ETag
@@ -80,13 +88,7 @@ from .payload import (
     payload_type,
 )
 from .resolver import AsyncResolver, DefaultResolver, ThreadedResolver
-from .streams import (
-    EMPTY_PAYLOAD,
-    DataQueue,
-    EofStream,
-    FlowControlDataQueue,
-    StreamReader,
-)
+from .streams import EMPTY_PAYLOAD, DataQueue, EofStream, StreamReader
 from .tracing import (
     TraceConfig,
     TraceConnectionCreateEndParams,
@@ -101,6 +103,7 @@ from .tracing import (
     TraceRequestChunkSentParams,
     TraceRequestEndParams,
     TraceRequestExceptionParams,
+    TraceRequestHeadersSentParams,
     TraceRequestRedirectParams,
     TraceRequestStartParams,
     TraceResponseChunkReceivedParams,
@@ -110,12 +113,15 @@ if TYPE_CHECKING:
     # At runtime these are lazy-loaded at the bottom of the file.
     from .worker import GunicornUVLoopWebWorker, GunicornWebWorker
 
-__all__: Tuple[str, ...] = (
+__all__: tuple[str, ...] = (
     "hdrs",
     # client
+    "AddrInfoType",
     "BaseConnector",
     "ClientConnectionError",
+    "ClientConnectionResetError",
     "ClientConnectorCertificateError",
+    "ClientConnectorDNSError",
     "ClientConnectorError",
     "ClientConnectorSSLError",
     "ClientError",
@@ -130,6 +136,7 @@ __all__: Tuple[str, ...] = (
     "ClientSession",
     "ClientTimeout",
     "ClientWebSocketResponse",
+    "ClientWSTimeout",
     "ConnectionTimeoutError",
     "ContentTypeError",
     "Fingerprint",
@@ -144,6 +151,7 @@ __all__: Tuple[str, ...] = (
     "ServerDisconnectedError",
     "ServerFingerprintMismatch",
     "ServerTimeoutError",
+    "SocketFactoryType",
     "SocketTimeoutError",
     "TCPConnector",
     "TooManyRedirects",
@@ -151,6 +159,9 @@ __all__: Tuple[str, ...] = (
     "NamedPipeConnector",
     "WSServerHandshakeError",
     "request",
+    # client_middleware
+    "ClientMiddlewareType",
+    "ClientHandlerType",
     # cookiejar
     "CookieJar",
     "DummyCookieJar",
@@ -159,7 +170,9 @@ __all__: Tuple[str, ...] = (
     # helpers
     "BasicAuth",
     "ChainMapProxy",
+    "DigestAuthMiddleware",
     "ETag",
+    "set_zlib_backend",
     # http
     "HttpVersion",
     "HttpVersion10",
@@ -198,7 +211,6 @@ __all__: Tuple[str, ...] = (
     "DataQueue",
     "EMPTY_PAYLOAD",
     "EofStream",
-    "FlowControlDataQueue",
     "StreamReader",
     # tracing
     "TraceConfig",
@@ -214,17 +226,19 @@ __all__: Tuple[str, ...] = (
     "TraceRequestChunkSentParams",
     "TraceRequestEndParams",
     "TraceRequestExceptionParams",
+    "TraceRequestHeadersSentParams",
     "TraceRequestRedirectParams",
     "TraceRequestStartParams",
     "TraceResponseChunkReceivedParams",
     # workers (imported lazily with __getattr__)
     "GunicornUVLoopWebWorker",
     "GunicornWebWorker",
+    "WSMessageTypeError",
 )
 
 
-def __dir__() -> Tuple[str, ...]:
-    return __all__ + ("__author__", "__doc__")
+def __dir__() -> tuple[str, ...]:
+    return __all__ + ("__doc__",)
 
 
 def __getattr__(name: str) -> object:

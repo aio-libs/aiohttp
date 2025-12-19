@@ -1,11 +1,13 @@
 import asyncio
-from typing import Any, AsyncIterator, Callable, Iterator, NoReturn
+import sys
+from collections.abc import AsyncIterator, Callable, Iterator
+from typing import NoReturn
 from unittest import mock
 
 import pytest
 
 from aiohttp import log, web
-from aiohttp.test_utils import make_mocked_coro
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
 
 
@@ -21,8 +23,8 @@ def test_app_call() -> None:
 
 async def test_app_register_on_finish() -> None:
     app = web.Application()
-    cb1 = make_mocked_coro(None)
-    cb2 = make_mocked_coro(None)
+    cb1 = mock.AsyncMock(return_value=None)
+    cb2 = mock.AsyncMock(return_value=None)
     app.on_cleanup.append(cb1)
     app.on_cleanup.append(cb2)
     app.freeze()
@@ -126,20 +128,34 @@ def test_appkey_repr_concrete() -> None:
 
 def test_appkey_repr_nonconcrete() -> None:
     key = web.AppKey("key", Iterator[int])
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
-        "<AppKey(__main__.key, type=typing.Iterator[int])>",
-    )
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
 
 
 def test_appkey_repr_annotated() -> None:
     key = web.AppKey[Iterator[int]]("key")
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
-        "<AppKey(__main__.key, type=typing.Iterator[int])>",
-    )
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
 
 
 def test_app_str_keys() -> None:
@@ -190,7 +206,7 @@ def test_app_run_middlewares() -> None:
     assert root._run_middlewares is False
 
     async def middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
-        return await handler(request)  # pragma: no cover
+        assert False
 
     root = web.Application(middlewares=[middleware])
     sub = web.Application()
@@ -320,7 +336,7 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
 
     async def fail_ctx(app: web.Application) -> AsyncIterator[NoReturn]:
         raise Exception()
-        yield
+        yield  # type: ignore[unreachable]  # pragma: no cover
 
     app.cleanup_ctx.append(success_ctx)
     app.cleanup_ctx.append(fail_ctx)
@@ -334,7 +350,10 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
     assert ctx_state == "CLEAN"
 
 
-async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
+@pytest.mark.parametrize("exc_cls", (Exception, asyncio.CancelledError))
+async def test_cleanup_ctx_exception_on_cleanup_multiple(
+    exc_cls: type[BaseException],
+) -> None:
     app = web.Application()
     out = []
 
@@ -346,7 +365,7 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple() -> None:
             yield None
             out.append("post_" + str(num))
             if fail:
-                raise Exception("fail_" + str(num))
+                raise exc_cls("fail_" + str(num))
 
         return inner
 
@@ -388,7 +407,9 @@ async def test_cleanup_ctx_multiple_yields() -> None:
     assert out == ["pre_1", "post_1"]
 
 
-async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> None:
+async def test_subapp_chained_config_dict_visibility(
+    aiohttp_client: AiohttpClient,
+) -> None:
     key1 = web.AppKey("key1", str)
     key2 = web.AppKey("key2", str)
 
@@ -419,7 +440,9 @@ async def test_subapp_chained_config_dict_visibility(aiohttp_client: Any) -> Non
     assert resp.status == 201
 
 
-async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> None:
+async def test_subapp_chained_config_dict_overriding(
+    aiohttp_client: AiohttpClient,
+) -> None:
     key = web.AppKey("key", str)
 
     async def main_handler(request: web.Request) -> web.Response:
@@ -447,7 +470,7 @@ async def test_subapp_chained_config_dict_overriding(aiohttp_client: Any) -> Non
     assert resp.status == 201
 
 
-async def test_subapp_on_startup(aiohttp_client: Any) -> None:
+async def test_subapp_on_startup(aiohttp_client: AiohttpClient) -> None:
     subapp = web.Application()
     startup = web.AppKey("startup", bool)
     cleanup = web.AppKey("cleanup", bool)
@@ -508,7 +531,7 @@ async def test_subapp_on_startup(aiohttp_client: Any) -> None:
     client = await aiohttp_client(app)
 
     assert startup_called
-    assert ctx_pre_called
+    assert ctx_pre_called  # type: ignore[unreachable]
     assert not ctx_post_called
     assert not shutdown_called
     assert not cleanup_called

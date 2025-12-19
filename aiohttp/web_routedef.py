@@ -1,19 +1,7 @@
 import abc
 import dataclasses
-import os  # noqa
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Type,
-    Union,
-    overload,
-)
+from collections.abc import Callable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Union, overload
 
 from . import hdrs
 from .abc import AbstractView
@@ -47,11 +35,11 @@ __all__ = (
 
 class AbstractRouteDef(abc.ABC):
     @abc.abstractmethod
-    def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
-        pass  # pragma: no cover
+    def register(self, router: UrlDispatcher) -> list[AbstractRoute]:
+        """Register itself into the given router."""
 
 
-_HandlerType = Union[Type[AbstractView], Handler]
+_HandlerType = Union[type[AbstractView], Handler]
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -59,17 +47,17 @@ class RouteDef(AbstractRouteDef):
     method: str
     path: str
     handler: _HandlerType
-    kwargs: Dict[str, Any]
+    kwargs: dict[str, Any]
 
     def __repr__(self) -> str:
         info = []
         for name, value in sorted(self.kwargs.items()):
             info.append(f", {name}={value!r}")
-        return "<RouteDef {method} {path} -> {handler.__name__!r}" "{info}>".format(
+        return "<RouteDef {method} {path} -> {handler.__name__!r}{info}>".format(
             method=self.method, path=self.path, handler=self.handler, info="".join(info)
         )
 
-    def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
+    def register(self, router: UrlDispatcher) -> list[AbstractRoute]:
         if self.method in hdrs.METH_ALL:
             reg = getattr(router, "add_" + self.method.lower())
             return [reg(self.path, self.handler, **self.kwargs)]
@@ -83,17 +71,17 @@ class RouteDef(AbstractRouteDef):
 class StaticDef(AbstractRouteDef):
     prefix: str
     path: PathLike
-    kwargs: Dict[str, Any]
+    kwargs: dict[str, Any]
 
     def __repr__(self) -> str:
         info = []
         for name, value in sorted(self.kwargs.items()):
             info.append(f", {name}={value!r}")
-        return "<StaticDef {prefix} -> {path}" "{info}>".format(
+        return "<StaticDef {prefix} -> {path}{info}>".format(
             prefix=self.prefix, path=self.path, info="".join(info)
         )
 
-    def register(self, router: UrlDispatcher) -> List[AbstractRoute]:
+    def register(self, router: UrlDispatcher) -> list[AbstractRoute]:
         resource = router.add_static(self.prefix, self.path, **self.kwargs)
         routes = resource.get_info().get("routes", {})
         return list(routes.values())
@@ -115,7 +103,7 @@ def get(
     path: str,
     handler: _HandlerType,
     *,
-    name: Optional[str] = None,
+    name: str | None = None,
     allow_head: bool = True,
     **kwargs: Any,
 ) -> RouteDef:
@@ -140,7 +128,7 @@ def delete(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
 
 
-def view(path: str, handler: Type[AbstractView], **kwargs: Any) -> RouteDef:
+def view(path: str, handler: type[AbstractView], **kwargs: Any) -> RouteDef:
     return route(hdrs.METH_ANY, path, handler, **kwargs)
 
 
@@ -155,7 +143,7 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     """Route definition table"""
 
     def __init__(self) -> None:
-        self._items: List[AbstractRouteDef] = []
+        self._items: list[AbstractRouteDef] = []
 
     def __repr__(self) -> str:
         return f"<RouteTableDef count={len(self._items)}>"
@@ -164,9 +152,11 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     def __getitem__(self, index: int) -> AbstractRouteDef: ...
 
     @overload
-    def __getitem__(self, index: slice) -> List[AbstractRouteDef]: ...
+    def __getitem__(self, index: "slice[int, int, int]") -> list[AbstractRouteDef]: ...
 
-    def __getitem__(self, index):  # type: ignore[no-untyped-def]
+    def __getitem__(
+        self, index: Union[int, "slice[int, int, int]"]
+    ) -> AbstractRouteDef | list[AbstractRouteDef]:
         return self._items[index]
 
     def __iter__(self) -> Iterator[AbstractRouteDef]:

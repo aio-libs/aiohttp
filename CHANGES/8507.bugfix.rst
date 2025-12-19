@@ -1,8 +1,0 @@
-Removed blocking I/O in the event loop for static resources and refactored
-exception handling -- by :user:`steverep`.
-
-File system calls when handling requests for static routes were moved to a
-separate thread to potentially improve performance. Exception handling
-was tightened in order to only return 403 Forbidden or 404 Not Found responses
-for expected scenarios; 500 Internal Server Error would be returned for any
-unknown errors.

@@ -8,7 +8,6 @@ from libc.string cimport memcpy
 from multidict import istr
 
 DEF BUF_SIZE = 16 * 1024  # 16KiB
-cdef char BUFFER[BUF_SIZE]
 
 cdef object _istr = istr
 
@@ -19,16 +18,17 @@ cdef struct Writer:
     char *buf
     Py_ssize_t size
     Py_ssize_t pos
+    bint heap_allocated
 
-
-cdef inline void _init_writer(Writer* writer):
-    writer.buf = &BUFFER[0]
+cdef inline void _init_writer(Writer* writer, char *buf):
+    writer.buf = buf
     writer.size = BUF_SIZE
     writer.pos = 0
+    writer.heap_allocated = 0
 
 
 cdef inline void _release_writer(Writer* writer):
-    if writer.buf != BUFFER:
+    if writer.heap_allocated:
         PyMem_Free(writer.buf)
 
 
@@ -39,7 +39,7 @@ cdef inline int _write_byte(Writer* writer, uint8_t ch):
     if writer.pos == writer.size:
         # reallocate
         size = writer.size + BUF_SIZE
-        if writer.buf == BUFFER:
+        if not writer.heap_allocated:
             buf = <char*>PyMem_Malloc(size)
             if buf == NULL:
                 PyErr_NoMemory()
@@ -52,6 +52,7 @@ cdef inline int _write_byte(Writer* writer, uint8_t ch):
                 return -1
         writer.buf = buf
         writer.size = size
+        writer.heap_allocated = 1
     writer.buf[writer.pos] = <char>ch
     writer.pos += 1
     return 0
@@ -97,39 +98,37 @@ cdef inline int _write_str(Writer* writer, str s):
             return -1
 
 
-# --------------- _serialize_headers ----------------------
-
-cdef str to_str(object s):
-    typ = type(s)
-    if typ is str:
-        return <str>s
-    elif typ is _istr:
-        return PyObject_Str(s)
+cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
+    cdef Py_UCS4 ch
+    cdef str out_str
+    if type(s) is str:
+        out_str = <str>s
+    elif type(s) is _istr:
+        out_str = PyObject_Str(s)
     elif not isinstance(s, str):
         raise TypeError("Cannot serialize non-str key {!r}".format(s))
     else:
-        return str(s)
+        out_str = str(s)
+
+    for ch in out_str:
+        if ch == 0x0D or ch == 0x0A:
+            raise ValueError(
+                "Newline or carriage return detected in headers. "
+                "Potential header injection attack."
+            )
+        if _write_utf8(writer, ch) < 0:
+            return -1
 
 
-cdef void _safe_header(str string) except *:
-    if "\r" in string or "\n" in string:
-        raise ValueError(
-            "Newline or carriage return character detected in HTTP status message or "
-            "header. This is a potential security issue."
-        )
-
+# --------------- _serialize_headers ----------------------
 
 def _serialize_headers(str status_line, headers):
     cdef Writer writer
     cdef object key
     cdef object val
-    cdef bytes ret
+    cdef char buf[BUF_SIZE]
 
-    _init_writer(&writer)
-
-    for key, val in headers.items():
-        _safe_header(to_str(key))
-        _safe_header(to_str(val))
+    _init_writer(&writer, buf)
 
     try:
         if _write_str(&writer, status_line) < 0:
@@ -140,13 +139,13 @@ def _serialize_headers(str status_line, headers):
             raise
 
         for key, val in headers.items():
-            if _write_str(&writer, to_str(key)) < 0:
+            if _write_str_raise_on_nlcr(&writer, key) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:
                 raise
             if _write_byte(&writer, b' ') < 0:
                 raise
-            if _write_str(&writer, to_str(val)) < 0:
+            if _write_str_raise_on_nlcr(&writer, val) < 0:
                 raise
             if _write_byte(&writer, b'\r') < 0:
                 raise

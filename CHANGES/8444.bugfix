@@ -1,2 +1,0 @@
-Fix ``ws_connect`` not respecting ``ws_receive`` timeout for WS(S) connection.
--- by :user:`arcivanov`.

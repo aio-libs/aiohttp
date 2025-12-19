@@ -1,9 +1,8 @@
 """Low-level http related exceptions."""
 
 from textwrap import indent
-from typing import Optional, Union
 
-from .typedefs import _CIMultiDict
+from multidict import CIMultiDict
 
 __all__ = ("HttpProcessingError",)
 
@@ -25,9 +24,9 @@ class HttpProcessingError(Exception):
     def __init__(
         self,
         *,
-        code: Optional[int] = None,
+        code: int | None = None,
         message: str = "",
-        headers: Optional[_CIMultiDict] = None,
+        headers: CIMultiDict[str] | None = None,
     ) -> None:
         if code is not None:
             self.code = code
@@ -46,7 +45,9 @@ class BadHttpMessage(HttpProcessingError):
     code = 400
     message = "Bad Request"
 
-    def __init__(self, message: str, *, headers: Optional[_CIMultiDict] = None) -> None:
+    def __init__(
+        self, message: str, *, headers: CIMultiDict[str] | None = None
+    ) -> None:
         super().__init__(message=message, headers=headers)
         self.args = (message,)
 
@@ -69,7 +70,7 @@ class TransferEncodingError(PayloadEncodingError):
 
 
 class ContentLengthError(PayloadEncodingError):
-    """Not enough data for satisfy content length header."""
+    """Not enough data to satisfy content length header."""
 
 
 class LineTooLong(BadHttpMessage):
@@ -83,7 +84,7 @@ class LineTooLong(BadHttpMessage):
 
 
 class InvalidHeader(BadHttpMessage):
-    def __init__(self, hdr: Union[bytes, str]) -> None:
+    def __init__(self, hdr: bytes | str) -> None:
         hdr_s = hdr.decode(errors="backslashreplace") if isinstance(hdr, bytes) else hdr
         super().__init__(f"Invalid HTTP header: {hdr!r}")
         self.hdr = hdr_s
@@ -91,12 +92,17 @@ class InvalidHeader(BadHttpMessage):
 
 
 class BadStatusLine(BadHttpMessage):
-    def __init__(self, line: str = "", error: Optional[str] = None) -> None:
-        if not isinstance(line, str):
-            line = repr(line)
+    def __init__(self, line: str = "", error: str | None = None) -> None:
         super().__init__(error or f"Bad status line {line!r}")
         self.args = (line,)
         self.line = line
+
+
+class BadHttpMethod(BadStatusLine):
+    """Invalid HTTP method in status line."""
+
+    def __init__(self, line: str = "", error: str | None = None) -> None:
+        super().__init__(line, error or f"Bad HTTP method in status line {line!r}")
 
 
 class InvalidURLError(BadHttpMessage):

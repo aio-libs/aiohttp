@@ -1,7 +1,0 @@
-Fixed server response headers for ``Content-Type`` and ``Content-Encoding`` for
-static compressed files -- by :user:`steverep`.
-
-Server will now respond with a ``Content-Type`` appropriate for the compressed
-file (e.g. ``"application/gzip"``), and omit the ``Content-Encoding`` header.
-Users should expect that most clients will no longer decompress such responses
-by default.

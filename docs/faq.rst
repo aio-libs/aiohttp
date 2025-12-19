@@ -87,8 +87,15 @@ support the :class:`dict` interface.
 
 Therefore, data may be stored inside a request object. ::
 
-   async def handler(request):
-       request['unique_key'] = data
+    request_id_key = web.RequestKey("request_id_key", str)
+
+    @web.middleware
+    async def request_id_middleware(request, handler):
+        request[request_id_key] = "some_request_id"
+        return await handler(request)
+
+    async def handler(request):
+        request_id = request[request_id_key]
 
 See https://github.com/aio-libs/aiohttp_session code for an example.
 The ``aiohttp_session.get_session(request)`` method uses ``SESSION_KEY``
@@ -279,7 +286,18 @@ A subapplication is an isolated unit by design. If you need to share a
 database object, do it explicitly::
 
    subapp[db_key] = mainapp[db_key]
-   mainapp.add_subapp('/prefix', subapp)
+   mainapp.add_subapp("/prefix", subapp)
+
+This can also be done from a :ref:`cleanup context<aiohttp-web-cleanup-ctx>`::
+
+   async def db_context(app: web.Application) -> AsyncIterator[None]:
+      async with create_db() as db:
+         mainapp[db_key] = mainapp[subapp_key][db_key] = db
+         yield
+
+   mainapp[subapp_key] = subapp
+   mainapp.add_subapp("/prefix", subapp)
+   mainapp.cleanup_ctx.append(db_context)
 
 
 How do I perform operations in a request handler after sending the response?

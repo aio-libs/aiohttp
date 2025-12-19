@@ -1,7 +1,8 @@
-# type: ignore
 # Tests for http_exceptions.py
 
 import pickle
+
+from multidict import CIMultiDict
 
 from aiohttp import http_exceptions
 
@@ -9,48 +10,50 @@ from aiohttp import http_exceptions
 class TestHttpProcessingError:
     def test_ctor(self) -> None:
         err = http_exceptions.HttpProcessingError(
-            code=500, message="Internal error", headers={}
+            code=500, message="Internal error", headers=CIMultiDict()
         )
         assert err.code == 500
         assert err.message == "Internal error"
-        assert err.headers == {}
+        assert err.headers == CIMultiDict()
 
     def test_pickle(self) -> None:
         err = http_exceptions.HttpProcessingError(
-            code=500, message="Internal error", headers={}
+            code=500, message="Internal error", headers=CIMultiDict()
         )
-        err.foo = "bar"
+        err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(err, proto)
             err2 = pickle.loads(pickled)
             assert err2.code == 500
             assert err2.message == "Internal error"
-            assert err2.headers == {}
+            assert err2.headers == CIMultiDict()
             assert err2.foo == "bar"
 
     def test_str(self) -> None:
         err = http_exceptions.HttpProcessingError(
-            code=500, message="Internal error", headers={}
+            code=500, message="Internal error", headers=CIMultiDict()
         )
         assert str(err) == "500, message:\n  Internal error"
 
     def test_repr(self) -> None:
         err = http_exceptions.HttpProcessingError(
-            code=500, message="Internal error", headers={}
+            code=500, message="Internal error", headers=CIMultiDict()
         )
         assert repr(err) == ("<HttpProcessingError: 500, message='Internal error'>")
 
 
 class TestBadHttpMessage:
     def test_ctor(self) -> None:
-        err = http_exceptions.BadHttpMessage("Bad HTTP message", headers={})
+        err = http_exceptions.BadHttpMessage("Bad HTTP message", headers=CIMultiDict())
         assert err.code == 400
         assert err.message == "Bad HTTP message"
-        assert err.headers == {}
+        assert err.headers == CIMultiDict()
 
     def test_pickle(self) -> None:
-        err = http_exceptions.BadHttpMessage(message="Bad HTTP message", headers={})
-        err.foo = "bar"
+        err = http_exceptions.BadHttpMessage(
+            message="Bad HTTP message", headers=CIMultiDict()
+        )
+        err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(err, proto)
             err2 = pickle.loads(pickled)
@@ -60,11 +63,15 @@ class TestBadHttpMessage:
             assert err2.foo == "bar"
 
     def test_str(self) -> None:
-        err = http_exceptions.BadHttpMessage(message="Bad HTTP message", headers={})
+        err = http_exceptions.BadHttpMessage(
+            message="Bad HTTP message", headers=CIMultiDict()
+        )
         assert str(err) == "400, message:\n  Bad HTTP message"
 
     def test_repr(self) -> None:
-        err = http_exceptions.BadHttpMessage(message="Bad HTTP message", headers={})
+        err = http_exceptions.BadHttpMessage(
+            message="Bad HTTP message", headers=CIMultiDict()
+        )
         assert repr(err) == "<BadHttpMessage: 400, message='Bad HTTP message'>"
 
 
@@ -77,12 +84,12 @@ class TestLineTooLong:
 
     def test_pickle(self) -> None:
         err = http_exceptions.LineTooLong(line="spam", limit="10", actual_size="12")
-        err.foo = "bar"
+        err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(err, proto)
             err2 = pickle.loads(pickled)
             assert err2.code == 400
-            assert err2.message == ("Got more than 10 bytes (12) " "when reading spam.")
+            assert err2.message == ("Got more than 10 bytes (12) when reading spam.")
             assert err2.headers is None
             assert err2.foo == "bar"
 
@@ -108,7 +115,7 @@ class TestInvalidHeader:
 
     def test_pickle(self) -> None:
         err = http_exceptions.InvalidHeader(hdr="X-Spam")
-        err.foo = "bar"
+        err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(err, proto)
             err2 = pickle.loads(pickled)
@@ -134,13 +141,13 @@ class TestBadStatusLine:
         assert str(err) == "400, message:\n  Bad status line 'Test'"
 
     def test_ctor2(self) -> None:
-        err = http_exceptions.BadStatusLine(b"")
-        assert err.line == "b''"
-        assert str(err) == "400, message:\n  Bad status line \"b''\""
+        err = http_exceptions.BadStatusLine("")
+        assert err.line == ""
+        assert str(err) == "400, message:\n  Bad status line ''"
 
     def test_pickle(self) -> None:
         err = http_exceptions.BadStatusLine("Test")
-        err.foo = "bar"
+        err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(err, proto)
             err2 = pickle.loads(pickled)

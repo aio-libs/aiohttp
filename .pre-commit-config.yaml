@@ -48,24 +48,28 @@ repos:
     entry: ./tools/check_changes.py
     pass_filenames: false
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.6.0'
+  rev: 'v6.0.0'
   hooks:
   - id: check-merge-conflict
 - repo: https://github.com/asottile/yesqa
   rev: v1.5.0
   hooks:
   - id: yesqa
+    additional_dependencies:
+      - flake8-docstrings==1.6.0
+      - flake8-no-implicit-concat==0.3.4
+      - flake8-requirements==1.7.8
 - repo: https://github.com/PyCQA/isort
-  rev: '5.13.2'
+  rev: '7.0.0'
   hooks:
   - id: isort
-- repo: https://github.com/psf/black
-  rev: '24.4.2'
+- repo: https://github.com/psf/black-pre-commit-mirror
+  rev: '25.9.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 'v4.6.0'
+  rev: 'v6.0.0'
   hooks:
   - id: end-of-file-fixer
     exclude: >-
@@ -90,23 +94,22 @@ repos:
   - id: check-added-large-files
   - id: check-symlinks
   - id: fix-byte-order-marker
-  - id: fix-encoding-pragma
-    args: ['--remove']
   - id: detect-aws-credentials
     args: ['--allow-missing-credentials']
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v3.16.0'
+  rev: 'v3.21.0'
   hooks:
   - id: pyupgrade
     args: ['--py37-plus']
 - repo: https://github.com/PyCQA/flake8
-  rev: '7.1.0'
+  rev: '7.3.0'
   hooks:
   - id: flake8
     additional_dependencies:
       - flake8-docstrings==1.6.0
+      - flake8-no-implicit-concat==0.3.4
       - flake8-requirements==1.7.8
     exclude: "^docs/"
 - repo: https://github.com/Lucas-C/pre-commit-hooks-markup
@@ -118,7 +121,7 @@ repos:
     exclude: >-
       ^CHANGES\.rst$
 - repo: https://github.com/codespell-project/codespell
-  rev: v2.3.0
+  rev: v2.4.1
   hooks:
   - id: codespell
     additional_dependencies:

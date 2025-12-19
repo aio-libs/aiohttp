@@ -6,6 +6,7 @@ aiohttp
 aiohttpdemo
 aiohttp’s
 aiopg
+al
 alives
 api
 api’s
@@ -13,6 +14,8 @@ app
 app’s
 apps
 arg
+args
+armv
 Arsenic
 async
 asyncio
@@ -27,6 +30,7 @@ autoformatters
 autogenerates
 autogeneration
 awaitable
+backoff
 backend
 backends
 backport
@@ -117,6 +121,7 @@ env
 environ
 eof
 epoll
+et
 etag
 ETag
 expirations
@@ -143,6 +148,7 @@ HTTPException
 HttpProcessingError
 httpretty
 https
+hostname
 impl
 incapsulates
 Indices
@@ -151,6 +157,7 @@ initializer
 inline
 intaking
 io
+IoT
 ip
 IP
 ipdb
@@ -162,6 +169,7 @@ iterable
 iterables
 javascript
 Jinja
+jitter
 json
 keepalive
 keepalived
@@ -170,9 +178,11 @@ keepaliving
 kib
 KiB
 kwarg
+kwargs
 latin
 lifecycle
 linux
+llhttp
 localhost
 Locator
 login
@@ -199,6 +209,7 @@ multidicts
 Multidicts
 multipart
 Multipart
+musllinux
 mypy
 Nagle
 Nagle’s
@@ -245,8 +256,10 @@ py
 pydantic
 pyenv
 pyflakes
+pyright
 pytest
 Pytest
+qop
 Quickstart
 quote’s
 rc
@@ -278,11 +291,13 @@ resolvehost
 resolvers
 reusage
 reuseconn
+riscv64
 Runit
 runtime
 runtimes
 sa
 Satisfiable
+scalability
 schemas
 sendfile
 serializable
@@ -294,7 +309,10 @@ SocketSocketTransport
 ssl
 SSLContext
 startup
+stateful
+storages
 subapplication
+subclassed
 subclasses
 subdirectory
 submodules
@@ -330,11 +348,14 @@ UI
 un
 unawaited
 unclosed
+undercounting
+unescaped
 unhandled
 unicode
 unittest
 Unittest
 unix
+unobvious
 unsets
 unstripped
 untyped
@@ -351,6 +372,7 @@ uvloop
 uWSGI
 vcvarsall
 vendored
+vendoring
 waituntil
 wakeup
 wakeups
@@ -360,12 +382,14 @@ websocket’s
 websockets
 Websockets
 wildcard
+Winloop
 Workflow
 ws
 wsgi
-WSMessage
-WSMsgType
 wss
 www
 xxx
 yarl
+zlib
+zstandard
+zstd

@@ -58,7 +58,7 @@ class AccessLogger(AbstractAccessLogger):
     LOG_FORMAT = '%a %t "%r" %s %b "%{Referer}i" "%{User-Agent}i"'
     FORMAT_RE = re.compile(r"%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)")
     CLEANUP_RE = re.compile(r"(%[^s])")
-    _FORMAT_CACHE: Dict[str, Tuple[str, List[KeyMethod]]] = {}
+    _FORMAT_CACHE: dict[str, tuple[str, list[KeyMethod]]] = {}
 
     def __init__(self, logger: logging.Logger, log_format: str = LOG_FORMAT) -> None:
         """Initialise the logger.
@@ -76,7 +76,7 @@ class AccessLogger(AbstractAccessLogger):
 
         self._log_format, self._methods = _compiled_format
 
-    def compile_format(self, log_format: str) -> Tuple[str, List[KeyMethod]]:
+    def compile_format(self, log_format: str) -> tuple[str, list[KeyMethod]]:
         """Translate log_format into form usable by modulo formatting
 
         All known atoms will be replaced with %s
@@ -121,9 +121,6 @@ class AccessLogger(AbstractAccessLogger):
     def _format_i(
         key: str, request: BaseRequest, response: StreamResponse, time: float
     ) -> str:
-        if request is None:
-            return "(no headers)"
-
         # suboptimal, make istr(key) once
         return request.headers.get(key, "-")
 
@@ -136,8 +133,6 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_a(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        if request is None:
-            return "-"
         ip = request.remote
         return ip if ip is not None else "-"
 
@@ -154,14 +149,7 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_r(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        if request is None:
-            return "-"
-        return "{} {} HTTP/{}.{}".format(
-            request.method,
-            request.path_qs,
-            request.version.major,
-            request.version.minor,
-        )
+        return f"{request.method} {request.path_qs} HTTP/{request.version.major}.{request.version.minor}"
 
     @staticmethod
     def _format_s(request: BaseRequest, response: StreamResponse, time: float) -> int:
@@ -185,13 +173,16 @@ class AccessLogger(AbstractAccessLogger):
 
     def _format_line(
         self, request: BaseRequest, response: StreamResponse, time: float
-    ) -> Iterable[Tuple[str, Callable[[BaseRequest, StreamResponse, float], str]]]:
+    ) -> Iterable[tuple[str, Callable[[BaseRequest, StreamResponse, float], str]]]:
         return [(key, method(request, response, time)) for key, method in self._methods]
 
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        # Avoid formatting the log line if it will not be emitted.
+        return self.logger.isEnabledFor(logging.INFO)
+
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
-        if not self.logger.isEnabledFor(logging.INFO):
-            # Avoid formatting the log line if it will not be emitted.
-            return
         try:
             fmt_info = self._format_line(request, response, time)
 

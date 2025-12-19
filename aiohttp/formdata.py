@@ -1,5 +1,6 @@
 import io
-from typing import Any, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import Any
 from urllib.parse import urlencode
 
 from multidict import MultiDict, MultiDictProxy
@@ -21,14 +22,15 @@ class FormData:
         self,
         fields: Iterable[Any] = (),
         quote_fields: bool = True,
-        charset: Optional[str] = None,
-        boundary: Optional[str] = None,
+        charset: str | None = None,
+        boundary: str | None = None,
+        *,
+        default_to_multipart: bool = False,
     ) -> None:
         self._boundary = boundary
         self._writer = multipart.MultipartWriter("form-data", boundary=self._boundary)
-        self._fields: List[Any] = []
-        self._is_multipart = False
-        self._is_processed = False
+        self._fields: list[Any] = []
+        self._is_multipart = default_to_multipart
         self._quote_fields = quote_fields
         self._charset = charset
 
@@ -47,17 +49,15 @@ class FormData:
         name: str,
         value: Any,
         *,
-        content_type: Optional[str] = None,
-        filename: Optional[str] = None,
+        content_type: str | None = None,
+        filename: str | None = None,
     ) -> None:
         if isinstance(value, (io.IOBase, bytes, bytearray, memoryview)):
             self._is_multipart = True
 
         type_options: MultiDict[str] = MultiDict({"name": name})
         if filename is not None and not isinstance(filename, str):
-            raise TypeError(
-                "filename must be an instance of str. " "Got: %s" % filename
-            )
+            raise TypeError("filename must be an instance of str. Got: %s" % filename)
         if filename is None and isinstance(value, io.IOBase):
             filename = guess_filename(value, name)
         if filename is not None:
@@ -68,7 +68,7 @@ class FormData:
         if content_type is not None:
             if not isinstance(content_type, str):
                 raise TypeError(
-                    "content_type must be an instance of str. " "Got: %s" % content_type
+                    "content_type must be an instance of str. Got: %s" % content_type
                 )
             headers[hdrs.CONTENT_TYPE] = content_type
             self._is_multipart = True
@@ -90,19 +90,21 @@ class FormData:
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:
                 k, fp = rec
-                self.add_field(k, fp)  # type: ignore[arg-type]
+                self.add_field(k, fp)
 
             else:
                 raise TypeError(
                     "Only io.IOBase, multidict and (name, file) "
                     "pairs allowed, use .add_field() for passing "
-                    "more complex parameters, got {!r}".format(rec)
+                    f"more complex parameters, got {rec!r}"
                 )
 
     def _gen_form_urlencoded(self) -> payload.BytesPayload:
         # form data (x-www-form-urlencoded)
         data = []
         for type_options, _, value in self._fields:
+            if not isinstance(value, str):
+                raise TypeError(f"expected str, got {value!r}")
             data.append((type_options["name"], value))
 
         charset = self._charset if self._charset is not None else "utf-8"
@@ -110,7 +112,7 @@ class FormData:
         if charset == "utf-8":
             content_type = "application/x-www-form-urlencoded"
         else:
-            content_type = "application/x-www-form-urlencoded; " "charset=%s" % charset
+            content_type = "application/x-www-form-urlencoded; charset=%s" % charset
 
         return payload.BytesPayload(
             urlencode(data, doseq=True, encoding=charset).encode(),
@@ -119,8 +121,6 @@ class FormData:
 
     def _gen_form_data(self) -> multipart.MultipartWriter:
         """Encode a list of fields using the multipart/form-data MIME format"""
-        if self._is_processed:
-            raise RuntimeError("Form data has been processed already")
         for dispparams, headers, value in self._fields:
             try:
                 if hdrs.CONTENT_TYPE in headers:
@@ -151,7 +151,7 @@ class FormData:
 
             self._writer.append_payload(part)
 
-        self._is_processed = True
+        self._fields.clear()
         return self._writer
 
     def __call__(self) -> Payload:

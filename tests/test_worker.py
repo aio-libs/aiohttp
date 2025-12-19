@@ -3,7 +3,7 @@ import asyncio
 import os
 import socket
 import ssl
-from typing import TYPE_CHECKING, Callable, Dict, Optional
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
@@ -29,9 +29,9 @@ ACCEPTABLE_LOG_FORMAT = '%a "%{Referrer}i" %s'
 
 class BaseTestWorker:
     def __init__(self) -> None:
-        self.servers: Dict[object, object] = {}
+        self.servers: dict[object, object] = {}
         self.exit_code = 0
-        self._notify_waiter: Optional[asyncio.Future[bool]] = None
+        self._notify_waiter: asyncio.Future[bool] | None = None
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
         self.pid = "pid"
@@ -156,7 +156,7 @@ def test__notify_waiter_done(worker: base_worker.GunicornWebWorker) -> None:
     worker._notify_waiter_done()
 
     assert worker._notify_waiter is None
-    waiter.set_result.assert_called_with(True)
+    waiter.set_result.assert_called_with(True)  # type: ignore[unreachable]
 
 
 def test__notify_waiter_done_explicit_waiter(
@@ -206,13 +206,11 @@ def test__get_valid_log_format_exc(worker: base_worker.GunicornWebWorker) -> Non
 async def test__run_ok_parent_changed(
     worker: base_worker.GunicornWebWorker,
     loop: asyncio.AbstractEventLoop,
-    aiohttp_unused_port: Callable[[], int],
+    unused_port_socket: socket.socket,
 ) -> None:
     worker.ppid = 0
     worker.alive = True
-    sock = socket.socket()
-    addr = ("localhost", aiohttp_unused_port())
-    sock.bind(addr)
+    sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
     worker.loop = loop
@@ -229,13 +227,11 @@ async def test__run_ok_parent_changed(
 async def test__run_exc(
     worker: base_worker.GunicornWebWorker,
     loop: asyncio.AbstractEventLoop,
-    aiohttp_unused_port: Callable[[], int],
+    unused_port_socket: socket.socket,
 ) -> None:
     worker.ppid = os.getppid()
     worker.alive = True
-    sock = socket.socket()
-    addr = ("localhost", aiohttp_unused_port())
-    sock.bind(addr)
+    sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
     worker.loop = loop

@@ -1,12 +1,19 @@
 import json
 import subprocess
 import sys
+from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Dict, Generator, List
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from pytest import TempPathFactory
-from python_on_whales import DockerException, docker
+
+if TYPE_CHECKING:
+    from python_on_whales import DockerException, docker
+else:
+    python_on_whales = pytest.importorskip("python_on_whales")
+    DockerException = python_on_whales.DockerException
+    docker = python_on_whales.docker
 
 
 @pytest.fixture(scope="session")
@@ -31,7 +38,7 @@ def build_autobahn_testsuite() -> Generator[None, None, None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
+def get_failed_tests(report_path: str, name: str) -> list[dict[str, Any]]:
     path = Path(report_path)
     result_summary = json.loads((path / "index.json").read_text())[name]
     failed_messages = []
@@ -47,7 +54,7 @@ def get_failed_tests(report_path: str, name: str) -> List[Dict[str, Any]]:
 
 @pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
 @pytest.mark.xfail
-def test_client(report_dir: Path, request: Any) -> None:
+def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     try:
         print("Starting autobahn-testsuite server")
         autobahn_container = docker.run(
@@ -57,7 +64,7 @@ def test_client(report_dir: Path, request: Any) -> None:
             publish=[(9001, 9001)],
             remove=True,
             volumes=[
-                (f"{request.fspath.dirname}/client", "/config"),
+                (f"{request.path.parent}/client", "/config"),
                 (f"{report_dir}", "/reports"),
             ],
         )
@@ -72,8 +79,7 @@ def test_client(report_dir: Path, request: Any) -> None:
         print("Stopping client and server")
         client.terminate()
         client.wait()
-        # https://github.com/gabrieldemarmiesse/python-on-whales/pull/580
-        autobahn_container.stop()  # type: ignore[union-attr]
+        autobahn_container.stop()
 
     failed_messages = get_failed_tests(f"{report_dir}/clients", "aiohttp")
 
@@ -88,7 +94,7 @@ def test_client(report_dir: Path, request: Any) -> None:
 
 @pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
 @pytest.mark.xfail
-def test_server(report_dir: Path, request: Any) -> None:
+def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     try:
         print("Starting aiohttp test server")
         server = subprocess.Popen(
@@ -100,7 +106,7 @@ def test_server(report_dir: Path, request: Any) -> None:
             name="autobahn",
             remove=True,
             volumes=[
-                (f"{request.fspath.dirname}/server", "/config"),
+                (f"{request.path.parent}/server", "/config"),
                 (f"{report_dir}", "/reports"),
             ],
             networks=["host"],

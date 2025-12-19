@@ -23,6 +23,8 @@ Key Features
   without the Callback Hell.
 - Web-server has :ref:`aiohttp-web-middlewares`,
   :ref:`aiohttp-web-signals` and pluggable routing.
+- Client supports :ref:`middleware <aiohttp-client-middleware>` for
+  customizing request/response processing.
 
 .. _aiohttp-installation:
 
@@ -147,7 +149,6 @@ or have some suggestion in order to improve the library.
 Dependencies
 ============
 
-- *async_timeout*
 - *multidict*
 - *yarl*
 

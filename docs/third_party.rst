@@ -30,6 +30,10 @@ and located on https://github.com/aio-libs
 aiohttp extensions
 ^^^^^^^^^^^^^^^^^^
 
+- `aiohttp-apischema <https://github.com/aio-libs/aiohttp-apischema>`_
+  provides automatic API schema generation and validation of user input
+  for :mod:`aiohttp.web`.
+
 - `aiohttp-session <https://github.com/aio-libs/aiohttp-session>`_
   provides sessions for :mod:`aiohttp.web`.
 
@@ -302,3 +306,9 @@ ask to raise the status.
 
 - `aiohttp-asgi-connector <https://github.com/thearchitector/aiohttp-asgi-connector>`_
   An aiohttp connector for using a ``ClientSession`` to interface directly with separate ASGI applications.
+
+- `aiohttp-openmetrics <https://github.com/jelmer/aiohttp-openmetrics>`_
+  An aiohttp middleware for exposing Prometheus metrics.
+
+- `wireup <https://github.com/maldoinc/wireup>`_
+  Performant, concise, and easy-to-use dependency injection container.
