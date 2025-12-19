@@ -3,17 +3,17 @@
 import pytest
 
 from aiohttp import web
-from aiohttp.multipart import MultipartReader
+from aiohttp.multipart import BodyPartReader, MultipartReader
 from aiohttp.test_utils import AioHTTPTestCase
 
 
 class TestMultipartEmptyFinal(AioHTTPTestCase):
-    async def get_application(self):
+    async def get_application(self) -> web.Application:
         app = web.Application()
         app.router.add_post("/graphql", self.multipart_handler)
         return app
 
-    async def multipart_handler(self, request):
+    async def multipart_handler(self, request: web.Request) -> web.StreamResponse:
         response = web.StreamResponse()
         response.headers["Content-Type"] = "multipart/mixed; boundary=graphql"
         await response.prepare(request)
@@ -43,7 +43,7 @@ class TestMultipartEmptyFinal(AioHTTPTestCase):
         return response
 
     @pytest.mark.xfail(reason="Empty multipart parts not yet supported")
-    async def test_multipart_with_empty_final_part(self):
+    async def test_multipart_with_empty_final_part(self) -> None:
         """Test that multipart reader can handle empty parts before final boundary."""
         async with self.client.post("/graphql") as resp:
             reader = MultipartReader.from_response(resp)
@@ -51,8 +51,7 @@ class TestMultipartEmptyFinal(AioHTTPTestCase):
             parts = []
             while True:
                 part = await reader.next()
-                if part is None:
-                    break
+                assert isinstance(part, BodyPartReader)
                 content = await part.read()
                 parts.append(content.decode("utf-8"))
 
