@@ -722,7 +722,8 @@ The client session supports the context manager protocol for self closing.
                             proxy=None, proxy_auth=None, ssl=True, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
-                            compress=0, max_msg_size=4194304)
+                            compress=0, max_msg_size=4194304, \
+                            decode_text=True)
       :async:
 
       Create a websocket connection. Returns a
@@ -850,6 +851,14 @@ The client session supports the context manager protocol for self closing.
                          ``'GET'`` by default.
 
          .. versionadded:: 3.5
+
+      :param bool decode_text: If ``True`` (default), TEXT messages are
+                               decoded to strings. If ``False``, TEXT messages
+                               are returned as raw bytes, which can improve
+                               performance when using JSON parsers like
+                               ``orjson`` that accept bytes directly.
+
+         .. versionadded:: 3.14
 
 
    .. method:: close()

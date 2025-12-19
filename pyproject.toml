@@ -39,6 +39,7 @@ dependencies = [
   "frozenlist >= 1.1.1",
   "multidict >=4.5, < 7.0",
   "propcache >= 0.2.0",
+  "typing_extensions >= 4.4 ; python_version < '3.13'",
   "yarl >= 1.17.0, < 2.0",
 ]
 dynamic = [
