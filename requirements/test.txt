@@ -131,8 +131,9 @@ tomli==2.3.0
     #   pytest
 trustme==1.2.1 ; platform_machine != "i686"
     # via -r requirements/test-common.in
-typing-extensions==4.15.0
+typing-extensions==4.15.0 ; python_version < "3.13"
     # via
+    #   -r requirements/runtime-deps.in
     #   aiosignal
     #   cryptography
     #   exceptiongroup
