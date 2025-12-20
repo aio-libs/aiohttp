@@ -408,7 +408,7 @@ class BodyPartReader:
             chunk = window[len(self._prev_chunk) : idx]
             if not chunk:
                 self._at_eof = True
-        result = self._prev_chunk[2 if first_chunk else 0:]  # Strip initial CRLF
+        result = self._prev_chunk[2 if first_chunk else 0 :]  # Strip initial CRLF
         self._prev_chunk = chunk
         return result
 
