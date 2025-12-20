@@ -8,6 +8,9 @@ from ._websocket.models import (
     WSCloseCode,
     WSHandshakeError,
     WSMessage,
+    WSMessageDecodeText,
+    WSMessageNoDecodeText,
+    WSMessageTextBytes,
     WSMsgType,
 )
 from ._websocket.reader import WebSocketReader
@@ -26,11 +29,13 @@ __all__ = (
     "WebSocketReader",
     "WebSocketWriter",
     "WSMessage",
+    "WSMessageDecodeText",
+    "WSMessageNoDecodeText",
+    "WSMessageTextBytes",
     "WebSocketError",
     "WSMsgType",
     "WSCloseCode",
     "ws_ext_gen",
     "ws_ext_parse",
     "WSHandshakeError",
-    "WSMessage",
 )

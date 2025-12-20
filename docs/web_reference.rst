@@ -970,7 +970,7 @@ and :ref:`aiohttp-web-signals` handlers::
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
                              autoclose=True, autoping=True, heartbeat=None, \
                              protocols=(), compress=True, max_msg_size=4194304, \
-                             writer_limit=65536)
+                             writer_limit=65536, decode_text=True)
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -1032,6 +1032,14 @@ and :ref:`aiohttp-web-signals` handlers::
                             to drain the buffer.
 
       .. versionadded:: 3.11
+
+   :param bool decode_text: If ``True`` (default), TEXT messages are
+                            decoded to strings. If ``False``, TEXT messages
+                            are returned as raw bytes, which can improve
+                            performance when using JSON parsers like
+                            ``orjson`` that accept bytes directly.
+
+      .. versionadded:: 3.14
 
    The class supports ``async for`` statement for iterating over
    incoming messages::

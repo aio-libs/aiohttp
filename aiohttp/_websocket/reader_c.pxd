@@ -26,6 +26,7 @@ cdef object TUPLE_NEW
 
 cdef object WSMsgType
 cdef object WSMessage
+cdef object WSMessageTextBytes
 
 cdef object WS_MSG_TYPE_TEXT
 cdef object WS_MSG_TYPE_BINARY
@@ -60,6 +61,7 @@ cdef class WebSocketReader:
 
     cdef WebSocketDataQueue queue
     cdef unsigned int _max_msg_size
+    cdef bint _decode_text
 
     cdef Exception _exc
     cdef bytearray _partial
