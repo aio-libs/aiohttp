@@ -932,7 +932,6 @@ class TestMultipartReader:
             assert first.at_eof()
             assert not second.at_eof()
 
-    @pytest.mark.xfail(reason="Empty body-parts not yet supported")
     async def test_read_empty_body_part(self) -> None:
         with Stream(b"--:\r\n\r\n--:--") as stream:
             reader = aiohttp.MultipartReader(
