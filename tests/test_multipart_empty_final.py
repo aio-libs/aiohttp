@@ -42,7 +42,7 @@ class TestMultipartEmptyFinal(AioHTTPTestCase):
         await response.write_eof()
         return response
 
-    @pytest.mark.xfail(reason="Empty multipart parts not yet supported")
+    #@pytest.mark.xfail(reason="Empty multipart parts not yet supported")
     async def test_multipart_with_empty_final_part(self) -> None:
         """Test that multipart reader can handle empty parts before final boundary."""
         async with self.client.post("/graphql") as resp:
