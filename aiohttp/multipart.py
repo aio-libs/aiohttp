@@ -375,7 +375,8 @@ class BodyPartReader:
         ), "Chunk size must be greater or equal than boundary length + 2"
         first_chunk = self._prev_chunk is None
         if first_chunk:
-            self._prev_chunk = await self._content.read(size)
+            # We need to readd the CRLF that got removed from headers parsing.
+            self._prev_chunk = b"\r\n" + await self._content.read(size)
 
         chunk = b""
         # content.read() may return less than size, so we need to loop to ensure
@@ -407,7 +408,7 @@ class BodyPartReader:
             chunk = window[len(self._prev_chunk) : idx]
             if not chunk:
                 self._at_eof = True
-        result = self._prev_chunk
+        result = self._prev_chunk[2 if first_chunk else 0:]  # Strip initial CRLF
         self._prev_chunk = chunk
         return result
 
@@ -771,13 +772,10 @@ class MultipartReader:
     async def _read_headers(self) -> "CIMultiDictProxy[str]":
         lines = []
         while True:
-            raw_chunk = await self._content.readline()
-            chunk = raw_chunk.strip()
+            chunk = await self._content.readline()
+            chunk = chunk.rstrip("\r\n")
             lines.append(chunk)
             if not chunk:
-                # If there's no header section, we need to return the CRLF for the boundary search.
-                if lines == [b""]:
-                    self._content.unread_data(raw_chunk)
                 break
         parser = HeadersParser()
         headers, raw_headers = parser.parse_headers(lines)
