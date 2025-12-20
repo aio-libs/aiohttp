@@ -30,10 +30,10 @@ from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
 
-try:
-    import brotlicffi as brotli
-except ImportError:
-    import brotli
+#try:
+#    import brotlicffi as brotli
+#except ImportError:
+import brotli
 
 try:
     import ssl

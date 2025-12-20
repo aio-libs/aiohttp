@@ -16,10 +16,10 @@ from aiohttp.compression_utils import ZLibBackend
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
 
-try:
-    import brotlicffi as brotli
-except ImportError:
-    import brotli
+#try:
+#    import brotlicffi as brotli
+#except ImportError:
+import brotli
 
 try:
     import ssl

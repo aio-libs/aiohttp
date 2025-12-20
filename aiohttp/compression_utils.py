@@ -13,10 +13,11 @@ else:
     Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
 
 try:
-    try:
-        import brotlicffi as brotli
-    except ImportError:
-        import brotli
+    # brotlicffi won't work until they create a 1.2 release.
+    #try:
+    #    import brotlicffi as brotli
+    #except ImportError:
+    import brotli
 
     HAS_BROTLI = True
 except ImportError:
@@ -295,11 +296,11 @@ class BrotliDecompressor(CompressionBaseHandler):
         self._obj = brotli.Decompressor()
         super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
-    def decompress_sync(self, data: Buffer) -> bytes:
+    def decompress_sync(self, data: Buffer, max_length: int = 0) -> bytes:
         """Decompress the given data."""
         if hasattr(self._obj, "decompress"):
-            return cast(bytes, self._obj.decompress(data))
-        return cast(bytes, self._obj.process(data))
+            return cast(bytes, self._obj.decompress(data, max_length))
+        return cast(bytes, self._obj.process(data, max_length))
 
     def flush(self) -> bytes:
         """Flush the decompressor."""
@@ -317,8 +318,8 @@ class ZSTDDecompressor:
             )
         self._obj = ZstdDecompressor()
 
-    def decompress_sync(self, data: bytes) -> bytes:
-        return self._obj.decompress(data)
+    def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
+        return self._obj.decompress(data, max_length)
 
     def flush(self) -> bytes:
         return b""

@@ -502,7 +502,7 @@ class BodyPartReader:
             data = self._decode_content_transfer(data)
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
         if not self._is_form_data and CONTENT_ENCODING in self.headers:
-            return self._decode_content(data)
+            return await self._decode_content(data)
         return data
 
     async def _decode_content(self, data: bytes) -> bytes:

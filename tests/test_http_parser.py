@@ -30,10 +30,10 @@ from aiohttp.http_parser import (
 from aiohttp.http_writer import HttpVersion
 
 try:
-    try:
-        import brotlicffi as brotli
-    except ImportError:
-        import brotli
+    #try:
+    #    import brotlicffi as brotli
+    #except ImportError:
+    import brotli
 except ImportError:
     brotli = None
 
