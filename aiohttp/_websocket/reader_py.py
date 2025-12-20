@@ -15,6 +15,7 @@ from .models import (
     WebSocketError,
     WSCloseCode,
     WSMessage,
+    WSMessageTextBytes,
     WSMsgType,
 )
 
@@ -67,7 +68,7 @@ class WebSocketDataQueue:
         self._eof = False
         self._waiter: asyncio.Future[None] | None = None
         self._exception: BaseException | None = None
-        self._buffer: deque[tuple[WSMessage, int]] = deque()
+        self._buffer: deque[tuple[WSMessage | WSMessageTextBytes, int]] = deque()
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
 
@@ -100,14 +101,16 @@ class WebSocketDataQueue:
         self._release_waiter()
         self._exception = None  # Break cyclic references
 
-    def feed_data(self, data: "WSMessage", size: "cython_int") -> None:
+    def feed_data(
+        self, data: "WSMessage | WSMessageTextBytes", size: "cython_int"
+    ) -> None:
         self._size += size
         self._put_buffer((data, size))
         self._release_waiter()
         if self._size > self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 
-    async def read(self) -> WSMessage:
+    async def read(self) -> WSMessage | WSMessageTextBytes:
         if not self._buffer and not self._eof:
             assert not self._waiter
             self._waiter = self._loop.create_future()
@@ -118,7 +121,7 @@ class WebSocketDataQueue:
                 raise
         return self._read_from_buffer()
 
-    def _read_from_buffer(self) -> WSMessage:
+    def _read_from_buffer(self) -> WSMessage | WSMessageTextBytes:
         if self._buffer:
             data, size = self._get_buffer()
             self._size -= size
@@ -132,10 +135,15 @@ class WebSocketDataQueue:
 
 class WebSocketReader:
     def __init__(
-        self, queue: WebSocketDataQueue, max_msg_size: int, compress: bool = True
+        self,
+        queue: WebSocketDataQueue,
+        max_msg_size: int,
+        compress: bool = True,
+        decode_text: bool = True,
     ) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size
+        self._decode_text = decode_text
 
         self._exc: Exception | None = None
         self._partial = bytearray()
@@ -262,21 +270,30 @@ class WebSocketReader:
                 payload_merged = bytes(assembled_payload)
 
             if opcode == OP_CODE_TEXT:
-                try:
-                    text = payload_merged.decode("utf-8")
-                except UnicodeDecodeError as exc:
-                    raise WebSocketError(
-                        WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
-                    ) from exc
+                if self._decode_text:
+                    try:
+                        text = payload_merged.decode("utf-8")
+                    except UnicodeDecodeError as exc:
+                        raise WebSocketError(
+                            WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
+                        ) from exc
 
-                # XXX: The Text and Binary messages here can be a performance
-                # bottleneck, so we use tuple.__new__ to improve performance.
-                # This is not type safe, but many tests should fail in
-                # test_client_ws_functional.py if this is wrong.
-                self.queue.feed_data(
-                    TUPLE_NEW(WSMessage, (WS_MSG_TYPE_TEXT, text, "")),
-                    len(payload_merged),
-                )
+                    # XXX: The Text and Binary messages here can be a performance
+                    # bottleneck, so we use tuple.__new__ to improve performance.
+                    # This is not type safe, but many tests should fail in
+                    # test_client_ws_functional.py if this is wrong.
+                    self.queue.feed_data(
+                        TUPLE_NEW(WSMessage, (WS_MSG_TYPE_TEXT, text, "")),
+                        len(payload_merged),
+                    )
+                else:
+                    # Return raw bytes for TEXT messages when decode_text=False
+                    self.queue.feed_data(
+                        TUPLE_NEW(
+                            WSMessageTextBytes, (WS_MSG_TYPE_TEXT, payload_merged, "")
+                        ),
+                        len(payload_merged),
+                    )
             else:
                 self.queue.feed_data(
                     TUPLE_NEW(WSMessage, (WS_MSG_TYPE_BINARY, payload_merged, "")),
