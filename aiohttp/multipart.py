@@ -771,10 +771,13 @@ class MultipartReader:
     async def _read_headers(self) -> "CIMultiDictProxy[str]":
         lines = []
         while True:
-            chunk = await self._content.readline()
-            chunk = chunk.strip()
+            raw_chunk = await self._content.readline()
+            chunk = raw_chunk.strip()
             lines.append(chunk)
             if not chunk:
+                # If there's no header section, we need to return the CRLF for the boundary search.
+                if lines == [b"", b""]:
+                    self._content.unread_data(raw_chunk)
                 break
         parser = HeadersParser()
         headers, raw_headers = parser.parse_headers(lines)
