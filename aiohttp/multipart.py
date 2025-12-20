@@ -375,7 +375,7 @@ class BodyPartReader:
         ), "Chunk size must be greater or equal than boundary length + 2"
         first_chunk = self._prev_chunk is None
         if first_chunk:
-            # We need to readd the CRLF that got removed from headers parsing.
+            # We need to re-add the CRLF that got removed from headers parsing.
             self._prev_chunk = b"\r\n" + await self._content.read(size)
 
         chunk = b""
@@ -773,7 +773,7 @@ class MultipartReader:
         lines = []
         while True:
             chunk = await self._content.readline()
-            chunk = chunk.rstrip("\r\n")
+            chunk = chunk.rstrip(b"\r\n")
             lines.append(chunk)
             if not chunk:
                 break
