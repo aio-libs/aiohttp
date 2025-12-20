@@ -776,7 +776,7 @@ class MultipartReader:
             lines.append(chunk)
             if not chunk:
                 # If there's no header section, we need to return the CRLF for the boundary search.
-                if lines == [b"", b""]:
+                if lines == [b""]:
                     self._content.unread_data(raw_chunk)
                 break
         parser = HeadersParser()
