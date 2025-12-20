@@ -38,7 +38,7 @@ class TestMultipartEmptyFinal(AioHTTPTestCase):
         # empty part which triggers the bug - technically valid
         await response.write(b"--graphql\r\n")
 
-        await response.write(b"--graphql--")
+        await response.write(b"\r\n--graphql--")
         await response.write_eof()
         return response
 
