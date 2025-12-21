@@ -1,0 +1,2 @@
+Fixed proxy authorization headers not being passed when reusing a connection, which caused 407 (Proxy authentication required) errors
+-- by :user:`GLeurquin`.
