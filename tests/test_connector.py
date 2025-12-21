@@ -3203,7 +3203,6 @@ async def test_connect_reuseconn_tracing(loop, key) -> None:
 )
 async def test_connect_reuse_proxy_headers(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
-    make_client_request: _RequestMaker,
     test_case: str,
     wait_for_con: bool,
     expect_proxy_auth_header: bool,
@@ -3234,7 +3233,7 @@ async def test_connect_reuse_proxy_headers(  # type: ignore[misc]
         None,
         hash(tuple(proxy_headers.items())) if proxy_headers else None,
     )
-    req = make_client_request(
+    req = ClientRequest(
         "GET",
         URL("http://localhost:80"),
         loop=loop,
