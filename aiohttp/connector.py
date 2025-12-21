@@ -598,7 +598,7 @@ class BaseConnector:
         """Set Proxy-Authorization header for non-SSL proxy requests and builds the proxy request for SSL proxy requests."""
         url = req.proxy
         assert url is not None
-        headers: Dict[str, str] = {}
+        headers: dict[str, str] = {}
         if req.proxy_headers is not None:
             headers = req.proxy_headers  # type: ignore[assignment]
         headers[hdrs.HOST] = req.headers[hdrs.HOST]
