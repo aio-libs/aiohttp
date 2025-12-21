@@ -1592,28 +1592,9 @@ class TCPConnector(BaseConnector):
     async def _create_proxy_connection(
         self, req: ClientRequest, traces: list["Trace"], timeout: "ClientTimeout"
     ) -> tuple[asyncio.BaseTransport, ResponseHandler]:
-<<<<<<< HEAD
         self._fail_on_no_start_tls(req)
         runtime_has_start_tls = self._loop_supports_start_tls()
-
-        headers: dict[str, str] = {}
-        if req.proxy_headers is not None:
-            headers = req.proxy_headers  # type: ignore[assignment]
-        headers[hdrs.HOST] = req.headers[hdrs.HOST]
-
-        url = req.proxy
-        assert url is not None
-        proxy_req = ClientRequest(
-            hdrs.METH_GET,
-            url,
-            headers=headers,
-            auth=req.proxy_auth,
-            loop=self._loop,
-            ssl=req.ssl,
-        )
-=======
         proxy_req = self._update_proxy_auth_header_and_build_proxy_req(req)
->>>>>>> 7bbf17d09 (fix(connector): propagate proxy headers on connection reuse (#11777))
 
         # create connection to proxy server
         transport, proto = await self._create_direct_connection(
