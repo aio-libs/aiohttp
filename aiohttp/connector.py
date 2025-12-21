@@ -611,13 +611,15 @@ class BaseConnector:
 
     def _update_proxy_auth_header_and_build_proxy_req(
         self, req: ClientRequest
-    ) -> ClientRequestBase:
+    ) -> ClientRequest:
         """Set Proxy-Authorization header for non-SSL proxy requests and builds the proxy request for SSL proxy requests."""
         url = req.proxy
         assert url is not None
-        headers = req.proxy_headers or CIMultiDict[str]()
+        headers: Dict[str, str] = {}
+        if req.proxy_headers is not None:
+            headers = req.proxy_headers  # type: ignore[assignment]
         headers[hdrs.HOST] = req.headers[hdrs.HOST]
-        proxy_req = ClientRequestBase(
+        proxy_req = ClientRequest(
             hdrs.METH_GET,
             url,
             headers=headers,
