@@ -5,15 +5,15 @@
 #    pip-compile --allow-unsafe --output-file=requirements/lint.txt --strip-extras requirements/lint.in
 #
 aiodns==3.6.1
-    # via -r lint.in
+    # via -r requirements/lint.in
 annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
 backports-zstd==1.2.0 ; implementation_name == "cpython"
-    # via -r lint.in
+    # via -r requirements/lint.in
 blockbuster==1.5.26
-    # via -r lint.in
+    # via -r requirements/lint.in
 cffi==2.0.0
     # via
     #   cryptography
@@ -34,7 +34,7 @@ filelock==3.20.1
 forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
-    # via -r lint.in
+    # via -r requirements/lint.in
 identify==2.6.15
     # via pre-commit
 idna==3.7
@@ -42,7 +42,7 @@ idna==3.7
 iniconfig==2.3.0
     # via pytest
 isal==1.7.2
-    # via -r lint.in
+    # via -r requirements/lint.in
 librt==0.7.4
     # via mypy
 markdown-it-py==4.0.0
@@ -50,10 +50,10 @@ markdown-it-py==4.0.0
 mdurl==0.1.2
     # via markdown-it-py
 mypy==1.19.1 ; implementation_name == "cpython"
-    # via -r lint.in
+    # via -r requirements/lint.in
 mypy-extensions==1.1.0
     # via mypy
-nodeenv==1.9.1
+nodeenv==1.10.0
     # via pre-commit
 packaging==25.0
     # via pytest
@@ -64,9 +64,9 @@ platformdirs==4.5.1
 pluggy==1.6.0
     # via pytest
 pre-commit==4.5.1
-    # via -r lint.in
+    # via -r requirements/lint.in
 proxy-py==2.4.10
-    # via -r lint.in
+    # via -r requirements/lint.in
 pycares==4.11.0
     # via aiodns
 pycparser==2.23
@@ -81,17 +81,17 @@ pygments==2.19.2
     #   rich
 pytest==9.0.2
     # via
-    #   -r lint.in
+    #   -r requirements/lint.in
     #   pytest-codspeed
     #   pytest-mock
 pytest-codspeed==4.2.0
-    # via -r lint.in
+    # via -r requirements/lint.in
 pytest-mock==3.15.1
-    # via -r lint.in
+    # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.79.0
-    # via -r lint.in
+    # via -r requirements/lint.in
 pyyaml==6.0.3
     # via pre-commit
 rich==14.2.0
@@ -99,14 +99,14 @@ rich==14.2.0
 six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
-    # via -r lint.in
+    # via -r requirements/lint.in
 tomli==2.3.0
     # via
     #   mypy
     #   pytest
     #   slotscheck
 trustme==1.2.1
-    # via -r lint.in
+    # via -r requirements/lint.in
 typing-extensions==4.15.0
     # via
     #   cryptography
@@ -120,10 +120,10 @@ typing-extensions==4.15.0
 typing-inspection==0.4.2
     # via pydantic
 uvloop==0.21.0 ; platform_system != "Windows"
-    # via -r lint.in
+    # via -r requirements/lint.in
 valkey==6.1.1
-    # via -r lint.in
+    # via -r requirements/lint.in
 virtualenv==20.35.4
     # via pre-commit
 zlib-ng==1.0.0
-    # via -r lint.in
+    # via -r requirements/lint.in
