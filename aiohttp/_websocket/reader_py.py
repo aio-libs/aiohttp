@@ -202,10 +202,10 @@ class WebSocketReader:
         if opcode in {OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION}:
             # Validate continuation frames before processing
             if opcode == OP_CODE_CONTINUATION and self._opcode == OP_CODE_NOT_SET:
-                    raise WebSocketError(
-                        WSCloseCode.PROTOCOL_ERROR,
-                        "Continuation frame for non started message",
-                    )
+                raise WebSocketError(
+                    WSCloseCode.PROTOCOL_ERROR,
+                    "Continuation frame for non started message",
+                )
 
             # load text/binary
             if not fin:
