@@ -123,7 +123,7 @@ mypy==1.19.1 ; implementation_name == "cpython"
     #   -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
-nodeenv==1.9.1
+nodeenv==1.10.0
     # via pre-commit
 packaging==25.0
     # via
@@ -255,8 +255,9 @@ trustme==1.2.1 ; platform_machine != "i686"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-typing-extensions==4.15.0
+typing-extensions==4.15.0 ; python_version < "3.13"
     # via
+    #   -r requirements/runtime-deps.in
     #   aiosignal
     #   cryptography
     #   exceptiongroup
