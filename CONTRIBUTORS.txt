@@ -158,6 +158,7 @@ Günther Jena
 Hans Adema
 Harmon Y.
 Harry Liu
+Hilmi Tuna Sayın
 Hiroshi Ogawa
 Hrishikesh Paranjape
 Hu Bo
@@ -165,7 +166,6 @@ Hugh Young
 Hugo Herter
 Hugo Hromic
 Hugo van Kemenade
-Hilmi Tuna Sayın
 Hynek Schlawack
 Igor Alexandrov
 Igor Bolshakov
