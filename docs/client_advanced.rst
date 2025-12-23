@@ -839,6 +839,56 @@ In the end all you have to do is to close all sessions after the `yield` stateme
            session_3.close(),
        )
 
+Exception Handling in Background Tasks
+---------------------------------------
+
+When using ``asyncio.create_task()`` with aiohttp requests, exceptions
+raised during the request will not propagate to the spawning context:
+
+.. code-block:: python
+
+    async def fetch_in_background():
+        async with aiohttp.ClientSession() as session:
+            # This exception will be logged but not propagated
+            resp = await session.get('http://invalid-url')
+    
+    # Caller is unaware of the failure
+    asyncio.create_task(fetch_in_background())
+
+This behavior can lead to silent failures in production systems. To
+handle exceptions properly, retain the task reference and await it:
+
+.. code-block:: python
+
+    async with aiohttp.ClientSession() as session:
+        task = asyncio.create_task(session.get('http://example.com'))
+        try:
+            resp = await task
+        except aiohttp.ClientError as e:
+            # Handle failure explicitly
+            logger.error(f"Background request failed: {e}")
+
+For fire-and-forget patterns, use ``add_done_callback()`` to handle
+exceptions without blocking:
+
+.. code-block:: python
+
+    def handle_response(task: asyncio.Task):
+        try:
+            task.result()
+        except aiohttp.ClientError as e:
+            logger.error(f"Request failed: {e}")
+    
+    task = asyncio.create_task(session.get('http://example.com'))
+    task.add_done_callback(handle_response)
+
+.. warning::
+   When using ``asyncio.create_task()`` with aiohttp requests, ensure
+   that exceptions are explicitly handled. Background task failures
+   do not propagate to the spawning context by default and may lead
+   to silent failures in production systems.
+
+
 Graceful Shutdown
 -----------------
 

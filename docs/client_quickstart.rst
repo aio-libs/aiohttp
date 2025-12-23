@@ -89,6 +89,10 @@ should be called in this case, e.g.::
         # ...
     await session.close()
 
+.. warning::
+   When spawning requests as background tasks using ``asyncio.create_task()``,
+   exceptions must be explicitly handled. See :ref:`aiohttp-client-advanced`
+   for details on background task exception handling.
 
 Passing Parameters In URLs
 ==========================
