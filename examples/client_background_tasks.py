@@ -48,9 +48,9 @@ async def safe_pattern_gather():
             session.get("http://httpbin.org/status/500"),
             session.get("http://invalid-domain-12345.com"),
         ]
-        
+
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 logger.error(f"Task {i} failed: {result}")
@@ -63,10 +63,10 @@ async def main():
     logger.info("=== UNSAFE PATTERN ===")
     await unsafe_pattern()
     await asyncio.sleep(3)  # Wait to see exception logged
-    
+
     logger.info("\n=== SAFE PATTERN (CALLBACK) ===")
     await safe_pattern_callback()
-    
+
     logger.info("\n=== SAFE PATTERN (GATHER) ===")
     await safe_pattern_gather()
 

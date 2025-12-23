@@ -851,7 +851,7 @@ raised during the request will not propagate to the spawning context:
         async with aiohttp.ClientSession() as session:
             # This exception will be logged but not propagated
             resp = await session.get('http://invalid-url')
-    
+
     # Caller is unaware of the failure
     asyncio.create_task(fetch_in_background())
 
@@ -878,7 +878,7 @@ exceptions without blocking:
             task.result()
         except aiohttp.ClientError as e:
             logger.error(f"Request failed: {e}")
-    
+
     task = asyncio.create_task(session.get('http://example.com'))
     task.add_done_callback(handle_response)
 
