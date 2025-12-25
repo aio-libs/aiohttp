@@ -1,0 +1,1 @@
+A test for websocket parser was marked to fail, which was actually failing because the parser wasn't raising an exception for a continuation frame when there was no initial frame in context.
