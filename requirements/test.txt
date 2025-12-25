@@ -57,7 +57,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.7.2 ; python_version < "3.14"
     # via -r requirements/test-common.in
-librt==0.7.4
+librt==0.7.5
     # via mypy
 markdown-it-py==4.0.0
     # via rich
