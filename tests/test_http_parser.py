@@ -1654,6 +1654,52 @@ class TestParsePayload:
         with pytest.raises(http_exceptions.ContentLengthError):
             p.feed_eof()
 
+    async def test_parse_length_payload_eof_error_message(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Test that ContentLengthError includes expected vs received bytes."""
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+
+        # Expect 10 bytes, but only send 3
+        p = HttpPayloadParser(out, length=10, headers_parser=HeadersParser())
+        p.feed_data(b"abc")
+
+        with pytest.raises(
+            http_exceptions.ContentLengthError, match=r"Expected 10 bytes, got 3 bytes"
+        ):
+            p.feed_eof()
+
+    async def test_parse_length_payload_eof_no_data(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Test ContentLengthError when no data is received."""
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+
+        # Expect 20 bytes, but send nothing
+        p = HttpPayloadParser(out, length=20, headers_parser=HeadersParser())
+
+        with pytest.raises(
+            http_exceptions.ContentLengthError, match=r"Expected 20 bytes, got 0 bytes"
+        ):
+            p.feed_eof()
+
+    async def test_parse_length_payload_partial_data(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Test ContentLengthError with various amounts of partial data."""
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+
+        # Expect 100 bytes, but only send 45
+        p = HttpPayloadParser(out, length=100, headers_parser=HeadersParser())
+        p.feed_data(b"a" * 25)
+        p.feed_data(b"b" * 20)
+
+        with pytest.raises(
+            http_exceptions.ContentLengthError,
+            match=r"Expected 100 bytes, got 45 bytes",
+        ):
+            p.feed_eof()
+
     async def test_parse_chunked_payload_size_error(
         self, protocol: BaseProtocol
     ) -> None:
@@ -1937,3 +1983,71 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
 
         assert buf.at_eof()
+
+
+def test_response_parser_incomplete_body_error_message(
+    response: HttpResponseParser,
+) -> None:
+    """Test response parser error message for incomplete body."""
+    # Response expects 50 bytes
+    response.feed_data(b"HTTP/1.1 200 OK\r\nContent-Length: 50\r\n\r\n")
+    # Send only 15 bytes
+    response.feed_data(b"partial content")
+
+    with pytest.raises(
+        http_exceptions.ContentLengthError, match=r"Expected 50 bytes, got 15 bytes"
+    ):
+        response.feed_eof()
+
+
+def test_response_parser_no_body_error_message(response: HttpResponseParser) -> None:
+    """Test response parser error when no body is received."""
+    # Response expects 25 bytes
+    response.feed_data(b"HTTP/1.1 200 OK\r\nContent-Length: 25\r\n\r\n")
+    # Send no body data
+
+    with pytest.raises(
+        http_exceptions.ContentLengthError, match=r"Expected 25 bytes, got 0 bytes"
+    ):
+        response.feed_eof()
+
+
+def test_response_parser_partial_chunks_error_message(
+    response: HttpResponseParser,
+) -> None:
+    """Test error message when body is sent in multiple chunks."""
+    # Response expects 100 bytes
+    response.feed_data(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n")
+    # Send data in chunks totaling 60 bytes
+    response.feed_data(b"a" * 20)
+    response.feed_data(b"b" * 20)
+    response.feed_data(b"c" * 20)
+
+    with pytest.raises(
+        http_exceptions.ContentLengthError, match=r"Expected 100 bytes, got 60 bytes"
+    ):
+        response.feed_eof()
+
+
+def test_request_parser_incomplete_body_error_message(
+    parser: HttpRequestParser,
+) -> None:
+    """Test request parser error message for incomplete body."""
+    # Request with Content-Length but incomplete body
+    parser.feed_data(b"POST /test HTTP/1.1\r\nContent-Length: 30\r\n\r\n")
+    # Send only 10 bytes
+    parser.feed_data(b"incomplete")
+
+    with pytest.raises(
+        http_exceptions.ContentLengthError, match=r"Expected 30 bytes, got 10 bytes"
+    ):
+        parser.feed_eof()
+
+
+def test_response_content_length_zero_no_error(response: HttpResponseParser) -> None:
+    """Test that Content-Length: 0 does not raise error on feed_eof."""
+    # Response with Content-Length: 0
+    response.feed_data(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+
+    # This should NOT raise an error
+    response.feed_eof()  # Should complete without exception
