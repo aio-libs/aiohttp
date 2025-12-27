@@ -11,7 +11,7 @@ import pytest
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
 from aiohttp.helpers import DEBUG
-from aiohttp.test_utils import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
 
 
