@@ -11,6 +11,7 @@ from collections.abc import (
     MutableMapping,
     Sequence,
 )
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from functools import lru_cache, partial, update_wrapper
 from typing import TYPE_CHECKING, Any, Optional, TypeVar, cast, overload
 
@@ -574,34 +575,34 @@ class CleanupError(RuntimeError):
         return cast(list[BaseException], self.args[1])
 
 
-if TYPE_CHECKING:
-    _CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
-else:
-    _CleanupContextBase = FrozenList
+_CleanupContextCallable = (
+    Callable[[Application], AbstractAsyncContextManager[None]]
+    | Callable[[Application], AsyncIterator[None]]
+)
 
 
-class CleanupContext(_CleanupContextBase):
+class CleanupContext(FrozenList[_CleanupContextCallable]):
     def __init__(self) -> None:
         super().__init__()
-        self._exits: list[AsyncIterator[None]] = []
+        self._exits: list[AbstractAsyncContextManager[None]] = []
 
     async def _on_startup(self, app: Application) -> None:
         for cb in self:
-            it = cb(app).__aiter__()
-            await it.__anext__()
-            self._exits.append(it)
+            ctx = cb(app)
+
+            if not isinstance(ctx, AbstractAsyncContextManager):
+                ctx = asynccontextmanager(cb)(app)  # type: ignore[arg-type]
+
+            await ctx.__aenter__()
+            self._exits.append(ctx)
 
     async def _on_cleanup(self, app: Application) -> None:
         errors = []
         for it in reversed(self._exits):
             try:
-                await it.__anext__()
-            except StopAsyncIteration:
-                pass
+                await it.__aexit__(None, None, None)
             except (Exception, asyncio.CancelledError) as exc:
                 errors.append(exc)
-            else:
-                errors.append(RuntimeError(f"{it!r} has more than one 'yield'"))
         if errors:
             if len(errors) == 1:
                 raise errors[0]
