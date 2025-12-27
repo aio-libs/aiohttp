@@ -406,7 +406,7 @@ class CleanupError(RuntimeError):
         return cast(list[BaseException], self.args[1])
 
 
-_CleanupContextCallable = Callable[[Application], AbstractAsyncContextManager[None]]
+_CleanupContextCallable = Callable[[Application], AbstractAsyncContextManager[None] | AsyncIterator[None]]
 
 
 class CleanupContext(FrozenList[_CleanupContextCallable]):
@@ -419,9 +419,7 @@ class CleanupContext(FrozenList[_CleanupContextCallable]):
             ctx = cb(app)
 
             if not isinstance(ctx, AbstractAsyncContextManager):
-                ctx = asynccontextmanager(  # type: ignore[unreachable]
-                    cast(Callable[[Application], AsyncIterator[None]], cb)
-                )(app)
+                ctx = asynccontextmanager(cb)(app)
 
             await ctx.__aenter__()
             self._exits.append(ctx)
