@@ -419,7 +419,7 @@ class CleanupContext(FrozenList[_CleanupContextCallable]):
             ctx = cb(app)
 
             if not isinstance(ctx, AbstractAsyncContextManager):
-                ctx = asynccontextmanager(
+                ctx = asynccontextmanager(  # type: ignore[unreachable]
                     cast(Callable[[Application], AsyncIterator[None]], cb)
                 )(app)
 
