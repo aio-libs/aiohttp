@@ -406,9 +406,7 @@ class CleanupError(RuntimeError):
         return cast(list[BaseException], self.args[1])
 
 
-_CleanupContextCallable = Callable[
-    [Application], AbstractAsyncContextManager[None] | AsyncIterator[None]
-]
+_CleanupContextCallable = Callable[[Application], AbstractAsyncContextManager[None]] | Callable[[Application], AsyncIterator[None]]
 
 
 class CleanupContext(FrozenList[_CleanupContextCallable]):
