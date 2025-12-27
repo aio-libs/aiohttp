@@ -805,18 +805,20 @@ performance improvements. If you plan on reusing the session, a.k.a. creating
 :ref:`aiohttp-web-cleanup-ctx`. If possible we advise using :ref:`aiohttp-web-cleanup-ctx`,
 as it results in more compact code::
 
-    app.cleanup_ctx.append(persistent_session)
-    persistent_session = aiohttp.web.AppKey("persistent_session", aiohttp.ClientSession)
+    session = aiohttp.web.AppKey("session", aiohttp.ClientSession)
 
+    @contextlib.asynccontextmanager
     async def persistent_session(app):
        app[persistent_session] = session = aiohttp.ClientSession()
        yield
        await session.close()
 
     async def my_request_handler(request):
-       session = request.app[persistent_session]
-       async with session.get("http://python.org") as resp:
+       sess = request.app[session]
+       async with sess.get("http://python.org") as resp:
            print(resp.status)
+
+    app.cleanup_ctx.append(persistent_session)
 
 
 This approach can be successfully used to define numerous sessions given certain
