@@ -1508,7 +1508,8 @@ Application and Router
 
       Signal handlers should have the following signature::
 
-          async def context(app):
+          @contextlib.asynccontextmanager
+          async def context(app: web.Application) -> AsyncIterator[None]:
               # do startup stuff
               yield
               # do cleanup
