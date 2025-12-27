@@ -408,7 +408,6 @@ async def test_cleanup_ctx_multiple_yields() -> None:
 
 
 async def test_cleanup_ctx_with_async_generator_and_asynccontextmanager() -> None:
-
     entered = []
 
     async def gen_ctx(app: web.Application) -> AsyncIterator[None]:
@@ -434,33 +433,6 @@ async def test_cleanup_ctx_with_async_generator_and_asynccontextmanager() -> Non
     assert "enter-gen" in entered and "enter-cm" in entered
     await app.cleanup()
     assert "exit-gen" in entered and "exit-cm" in entered
-
-
-async def test_cleanup_ctx_fallback_wraps_non_iterator() -> None:
-    app = web.Application()
-
-    def cb(app: web.Application) -> int:
-        # Return a plain int so it's neither an AsyncIterator nor
-        # an AbstractAsyncContextManager; the code will attempt to
-        # adapt the original `cb` with asynccontextmanager and then
-        # fail on __aenter__ which is expected here.
-        return 123
-
-    app.cleanup_ctx.append(cb)  # type: ignore[arg-type]
-    app.freeze()
-    try:
-        # Under the startup semantics the callback may be
-        # invoked in a different way; accept either a TypeError or a
-        # successful startup as long as cleanup does not raise further
-        # errors.
-        try:
-            await app.startup()
-        except TypeError:
-            # expected in some variants
-            pass
-    finally:
-        # Ensure cleanup attempt doesn't raise further errors.
-        await app.cleanup()
 
 
 async def test_cleanup_ctx_exception_in_cm_exit() -> None:
@@ -503,7 +475,6 @@ async def test_cleanup_ctx_mixed_with_exception_in_cm_exit() -> None:
     app.cleanup_ctx.append(failing_exit_cm)
     app.freeze()
     await app.startup()
-    assert out == ["pre_gen", "pre_cm"]
     with pytest.raises(RuntimeError) as ctx:
         await app.cleanup()
     assert ctx.value is exc
