@@ -422,7 +422,7 @@ class CleanupContext(FrozenList[_CleanupContextCallable]):
             ctx = cb(app)
 
             if not isinstance(ctx, AbstractAsyncContextManager):
-                ctx = asynccontextmanager(cb)(app)
+                ctx = asynccontextmanager(cb)(app)  # type: ignore[arg-type]
 
             await ctx.__aenter__()
             self._exits.append(ctx)
