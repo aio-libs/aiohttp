@@ -10,7 +10,7 @@ import sys
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast, overload
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
@@ -19,6 +19,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp.client import (
+    _BaseRequestContextManager,
     _RequestContextManager,
     _RequestOptions,
     _WSRequestContextManager,
@@ -286,7 +287,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self._session._retry_connection = False
         self._closed = False
         self._responses: list[ClientResponse] = []
-        self._websockets: list[ClientWebSocketResponse] = []
+        self._websockets: list[ClientWebSocketResponse[bool]] = []
 
     async def start_server(self) -> None:
         await self._server.start_server()
@@ -429,18 +430,54 @@ class TestClient(Generic[_Request, _ApplicationNone]):
                 self._request(hdrs.METH_DELETE, path, **kwargs)
             )
 
-    def ws_connect(self, path: StrOrURL, **kwargs: Any) -> _WSRequestContextManager:
+    @overload
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[True] = ..., **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[True]]]": ...
+
+    @overload
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[False], **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[False]]]": ...
+
+    @overload
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: bool = ..., **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]": ...
+
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: bool = True, **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]":
         """Initiate websocket connection.
 
         The api corresponds to aiohttp.ClientSession.ws_connect.
 
         """
-        return _WSRequestContextManager(self._ws_connect(path, **kwargs))
+        return _WSRequestContextManager(
+            self._ws_connect(path, decode_text=decode_text, **kwargs)
+        )
+
+    @overload
+    async def _ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[True] = ..., **kwargs: Any
+    ) -> "ClientWebSocketResponse[Literal[True]]": ...
+
+    @overload
+    async def _ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[False], **kwargs: Any
+    ) -> "ClientWebSocketResponse[Literal[False]]": ...
+
+    @overload
+    async def _ws_connect(
+        self, path: StrOrURL, *, decode_text: bool = ..., **kwargs: Any
+    ) -> "ClientWebSocketResponse[bool]": ...
 
     async def _ws_connect(
-        self, path: StrOrURL, **kwargs: Any
-    ) -> ClientWebSocketResponse:
-        ws = await self._session.ws_connect(self.make_url(path), **kwargs)
+        self, path: StrOrURL, *, decode_text: bool = True, **kwargs: Any
+    ) -> "ClientWebSocketResponse[bool]":
+        ws = await self._session.ws_connect(
+            self.make_url(path), decode_text=decode_text, **kwargs
+        )
         self._websockets.append(ws)
         return ws
 

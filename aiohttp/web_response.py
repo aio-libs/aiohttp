@@ -8,7 +8,7 @@ import warnings
 from collections.abc import Iterator, MutableMapping
 from concurrent.futures import Executor
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, cast, overload
 
 from multidict import CIMultiDict, istr
 
@@ -21,6 +21,7 @@ from .helpers import (
     CookieMixin,
     ETag,
     HeadersMixin,
+    ResponseKey,
     must_be_empty_body,
     parse_http_date,
     populate_with_cookies,
@@ -43,6 +44,9 @@ if TYPE_CHECKING:
     from .web_request import BaseRequest
 
 
+_T = TypeVar("_T")
+
+
 # TODO(py311): Convert to StrEnum for wider use
 class ContentCoding(enum.Enum):
     # The content codings that we have support for.
@@ -61,7 +65,9 @@ CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
 ############################################################
 
 
-class StreamResponse(MutableMapping[str, Any], HeadersMixin, CookieMixin):
+class StreamResponse(
+    MutableMapping[str | ResponseKey[Any], Any], HeadersMixin, CookieMixin
+):
 
     _body: None | bytes | bytearray | Payload
     _length_check = True
@@ -93,7 +99,7 @@ class StreamResponse(MutableMapping[str, Any], HeadersMixin, CookieMixin):
         the headers when creating a new response object. It is not intended
         to be used by external code.
         """
-        self._state: dict[str, Any] = {}
+        self._state: dict[str | ResponseKey[Any], Any] = {}
 
         if _real_headers is not None:
             self._headers = _real_headers
@@ -483,19 +489,31 @@ class StreamResponse(MutableMapping[str, Any], HeadersMixin, CookieMixin):
             info = "not prepared"
         return f"<{self.__class__.__name__} {self.reason} {info}>"
 
-    def __getitem__(self, key: str) -> Any:
+    @overload  # type: ignore[override]
+    def __getitem__(self, key: ResponseKey[_T]) -> _T: ...
+
+    @overload
+    def __getitem__(self, key: str) -> Any: ...
+
+    def __getitem__(self, key: str | ResponseKey[_T]) -> Any:
         return self._state[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    @overload  # type: ignore[override]
+    def __setitem__(self, key: ResponseKey[_T], value: _T) -> None: ...
+
+    @overload
+    def __setitem__(self, key: str, value: Any) -> None: ...
+
+    def __setitem__(self, key: str | ResponseKey[_T], value: Any) -> None:
         self._state[key] = value
 
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self, key: str | ResponseKey[_T]) -> None:
         del self._state[key]
 
     def __len__(self) -> int:
         return len(self._state)
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[str | ResponseKey[Any]]:
         return iter(self._state)
 
     def __hash__(self) -> int:
