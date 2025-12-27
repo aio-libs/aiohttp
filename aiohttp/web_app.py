@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 import logging
 import warnings
 from collections.abc import (
@@ -12,6 +11,7 @@ from collections.abc import (
     MutableMapping,
     Sequence,
 )
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from functools import lru_cache, partial, update_wrapper
 from typing import Any, TypeVar, cast, final, overload
 
@@ -412,14 +412,14 @@ _CleanupContextCallable = Callable[[Application], AbstractAsyncContextManager[No
 class CleanupContext(FrozenList[_CleanupContextCallable]):
     def __init__(self) -> None:
         super().__init__()
-        self._exits: list[contextlib.AbstractAsyncContextManager[None]] = []
+        self._exits: list[AbstractAsyncContextManager[None]] = []
 
     async def _on_startup(self, app: Application) -> None:
         for cb in self:
             ctx = cb(app)
 
-            if not isinstance(ctx, contextlib.AbstractAsyncContextManager):
-                ctx = contextlib.asynccontextmanager(
+            if not isinstance(ctx, AbstractAsyncContextManager):
+                ctx = asynccontextmanager(
                     cast(Callable[[Application], AsyncIterator[None]], cb)
                 )(app)
 
