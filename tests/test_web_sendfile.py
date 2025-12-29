@@ -139,10 +139,7 @@ def test_status_controlled_by_user(loop: asyncio.AbstractEventLoop) -> None:
 
 async def test_file_response_sends_headers_immediately() -> None:
     """Test that FileResponse sends headers immediately (inherits from StreamResponse)."""
-    writer = mock.create_autospec(StreamWriter, spec_set=True)
-    writer.write_headers = mock.AsyncMock()
-    writer.send_headers = mock.Mock()
-    writer.write_eof = mock.AsyncMock()
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
 
     request = make_mocked_request("GET", "http://python.org/logo.png", writer=writer)
 

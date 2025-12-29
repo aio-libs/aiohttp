@@ -16,8 +16,7 @@ from aiohttp.http import WebSocketReader, WebSocketWriter
 
 @pytest.fixture
 def protocol() -> mock.Mock:
-    ret = mock.Mock()
-    ret._drain_helper = mock.AsyncMock()
+    ret = mock.create_autospec(BaseProtocol, spec_set=True, instance=True)
     return ret
 
 
