@@ -5,36 +5,36 @@
 #    pip-compile --allow-unsafe --output-file=requirements/base.txt --strip-extras requirements/base.in
 #
 aiodns==3.6.1
-    # via -r runtime-deps.in
+    # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
-    # via -r runtime-deps.in
+    # via -r requirements/runtime-deps.in
 aiosignal==1.4.0
-    # via -r runtime-deps.in
+    # via -r requirements/runtime-deps.in
 async-timeout==5.0.1 ; python_version < "3.11"
-    # via -r runtime-deps.in
-backports-zstd==1.2.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
-    # via -r runtime-deps.in
+    # via -r requirements/runtime-deps.in
+backports-zstd==1.3.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
+    # via -r requirements/runtime-deps.in
 brotli==1.2.0 ; platform_python_implementation == "CPython"
-    # via -r runtime-deps.in
+    # via -r requirements/runtime-deps.in
 cffi==2.0.0
     # via pycares
 frozenlist==1.8.0
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiosignal
 gunicorn==23.0.0
-    # via -r base.in
+    # via -r requirements/base.in
 idna==3.7
     # via yarl
 multidict==6.7.0
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   yarl
 packaging==25.0
     # via gunicorn
 propcache==0.4.1
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   yarl
 pycares==4.11.0
     # via aiodns
@@ -42,10 +42,10 @@ pycparser==2.23
     # via cffi
 typing-extensions==4.15.0 ; python_version < "3.13"
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiosignal
     #   multidict
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
-    # via -r base.in
+    # via -r requirements/base.in
 yarl==1.22.0
-    # via -r runtime-deps.in
+    # via -r requirements/runtime-deps.in
