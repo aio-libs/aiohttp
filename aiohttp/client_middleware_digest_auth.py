@@ -10,6 +10,7 @@ variants, as well as both 'auth' and 'auth-int' quality of protection (qop) opti
 import hashlib
 import os
 import re
+import sys
 import time
 from typing import (
     Callable,
@@ -60,24 +61,27 @@ DigestFunctions: Dict[str, Callable[[bytes], "hashlib._Hash"]] = {
 
 # Compile the regex pattern once at module level for performance
 _HEADER_PAIRS_PATTERN = re.compile(
-    r'(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
-    # |    |  | | |  |    |      |    |  ||     |
-    # +----|--|-|-|--|----|------|----|--||-----|--> alphanumeric key
-    #      +--|-|-|--|----|------|----|--||-----|--> maybe whitespace
-    #         | | |  |    |      |    |  ||     |
-    #         +-|-|--|----|------|----|--||-----|--> = (delimiter)
-    #           +-|--|----|------|----|--||-----|--> maybe whitespace
-    #             |  |    |      |    |  ||     |
-    #             +--|----|------|----|--||-----|--> group quoted or unquoted
-    #                |    |      |    |  ||     |
-    #                +----|------|----|--||-----|--> if quoted...
-    #                     +------|----|--||-----|--> anything but " or \
-    #                            +----|--||-----|--> escaped characters allowed
-    #                                 +--||-----|--> or can be empty string
-    #                                    ||     |
-    #                                    +|-----|--> if unquoted...
-    #                                     +-----|--> anything but , or <space>
-    #                                           +--> at least one char req'd
+    r'(?:^|\s|,\s*)(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
+    if sys.version_info < (3, 11)
+    else r'(?:^|\s|,\s*)((?>\w+))\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
+    # +------------|--------|--|-|-|--|----|------|----|--||-----|-> Match valid start/sep
+    #              +--------|--|-|-|--|----|------|----|--||-----|-> alphanumeric key (atomic
+    #                       |  | | |  |    |      |    |  ||     |   group reduces backtracking)
+    #                       +--|-|-|--|----|------|----|--||-----|-> maybe whitespace
+    #                          | | |  |    |      |    |  ||     |
+    #                          +-|-|--|----|------|----|--||-----|-> = (delimiter)
+    #                            +-|--|----|------|----|--||-----|-> maybe whitespace
+    #                              |  |    |      |    |  ||     |
+    #                              +--|----|------|----|--||-----|-> group quoted or unquoted
+    #                                 |    |      |    |  ||     |
+    #                                 +----|------|----|--||-----|-> if quoted...
+    #                                      +------|----|--||-----|-> anything but " or \
+    #                                             +----|--||-----|-> escaped characters allowed
+    #                                                  +--||-----|-> or can be empty string
+    #                                                     ||     |
+    #                                                     +|-----|-> if unquoted...
+    #                                                      +-----|-> anything but , or <space>
+    #                                                            +-> at least one char req'd
 )
 
 
