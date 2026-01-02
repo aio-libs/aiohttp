@@ -1284,6 +1284,7 @@ class TestShutdown:
             nonlocal t
             t = asyncio.create_task(test())
             yield
+            await asyncio.sleep(0)  # In case test() hasn't resumed yet.
             t.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await t

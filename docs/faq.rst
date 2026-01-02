@@ -290,6 +290,7 @@ database object, do it explicitly::
 
 This can also be done from a :ref:`cleanup context<aiohttp-web-cleanup-ctx>`::
 
+   @contextlib.asynccontextmanager
    async def db_context(app: web.Application) -> AsyncIterator[None]:
       async with create_db() as db:
          mainapp[db_key] = mainapp[subapp_key][db_key] = db
