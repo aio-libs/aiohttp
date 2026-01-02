@@ -54,25 +54,25 @@ DigestFunctions: dict[str, Callable[[bytes], "hashlib._Hash"]] = {
 _HEADER_PAIRS_PATTERN = re.compile(
     r'(?:^|\s|,\s*)(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
     if sys.version_info < (3, 11)
-    else r'(?:^|\s|,\s*)(?>\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
-    # +------------|------|--|-|-|--|----|------|----|--||-----|-> Match valid start/sep
-    #              +------|--|-|-|--|----|------|----|--||-----|-> alphanumeric key (atomic
-    #                     |  | | |  |    |      |    |  ||     |   group reduces backtracking)
-    #                     +--|-|-|--|----|------|----|--||-----|-> maybe whitespace
-    #                        | | |  |    |      |    |  ||     |
-    #                        +-|-|--|----|------|----|--||-----|-> = (delimiter)
-    #                          +-|--|----|------|----|--||-----|-> maybe whitespace
-    #                            |  |    |      |    |  ||     |
-    #                            +--|----|------|----|--||-----|-> group quoted or unquoted
-    #                               |    |      |    |  ||     |
-    #                               +----|------|----|--||-----|-> if quoted...
-    #                                    +------|----|--||-----|-> anything but " or \
-    #                                           +----|--||-----|-> escaped characters allowed
-    #                                                +--||-----|-> or can be empty string
-    #                                                   ||     |
-    #                                                   +|-----|-> if unquoted...
-    #                                                    +-----|-> anything but , or <space>
-    #                                                          +-> at least one char req'd
+    else r'(?:^|\s|,\s*)((?>\w+))\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
+    # +------------|--------|--|-|-|--|----|------|----|--||-----|-> Match valid start/sep
+    #              +--------|--|-|-|--|----|------|----|--||-----|-> alphanumeric key (atomic
+    #                       |  | | |  |    |      |    |  ||     |   group reduces backtracking)
+    #                       +--|-|-|--|----|------|----|--||-----|-> maybe whitespace
+    #                          | | |  |    |      |    |  ||     |
+    #                          +-|-|--|----|------|----|--||-----|-> = (delimiter)
+    #                            +-|--|----|------|----|--||-----|-> maybe whitespace
+    #                              |  |    |      |    |  ||     |
+    #                              +--|----|------|----|--||-----|-> group quoted or unquoted
+    #                                 |    |      |    |  ||     |
+    #                                 +----|------|----|--||-----|-> if quoted...
+    #                                      +------|----|--||-----|-> anything but " or \
+    #                                             +----|--||-----|-> escaped characters allowed
+    #                                                  +--||-----|-> or can be empty string
+    #                                                     ||     |
+    #                                                     +|-----|-> if unquoted...
+    #                                                      +-----|-> anything but , or <space>
+    #                                                            +-> at least one char req'd
 )
 
 
