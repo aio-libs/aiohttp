@@ -8,10 +8,10 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Generator
 from typing import NoReturn
 from unittest import mock
 
-# try:
-#    import brotlicffi as brotli
-# except ImportError:
-import brotli
+try:
+    import brotlicffi as brotli
+except ImportError:
+    import brotli
 import pytest
 from multidict import CIMultiDictProxy, MultiDict
 from pytest_mock import MockerFixture

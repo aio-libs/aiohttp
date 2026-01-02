@@ -13,11 +13,10 @@ else:
     Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
 
 try:
-    # brotlicffi won't work until they create a 1.2 release.
-    # try:
-    #    import brotlicffi as brotli
-    # except ImportError:
-    import brotli
+    try:
+        import brotlicffi as brotli
+    except ImportError:
+        import brotli
 
     HAS_BROTLI = True
 except ImportError:

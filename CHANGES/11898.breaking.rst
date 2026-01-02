@@ -1,1 +1,1 @@
-Support for ``brotlicffi`` has been removed until the required features are supported by that library -- by :user:`Dreamsorcerer`.
+``Brotli`` and ``brotlicffi`` minimum version is now 1.2 -- by :user:`Dreamsorcerer`.

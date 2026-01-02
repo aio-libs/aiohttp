@@ -50,7 +50,7 @@ dynamic = [
 speedups = [
   "aiodns >= 3.3.0",
   "Brotli >= 1.2; platform_python_implementation == 'CPython'",
-  #"brotlicffi; platform_python_implementation != 'CPython'",
+  "brotlicffi >= 1.2; platform_python_implementation != 'CPython'",
   "backports.zstd; platform_python_implementation == 'CPython' and python_version < '3.14'",
 ]
 
