@@ -494,8 +494,7 @@ def test_request_chunked(parser: HttpRequestParser) -> None:
 @pytest.mark.parametrize(
     "header",
     # K = Kelvin sign, not valid ascii.
-    "Transfer-Encoding: chunKed".encode(),
-    "Upgrade: websocKet".encode(),
+    ("Transfer-Encoding: chunKed".encode(), "Upgrade: websocKet".encode()),
 )
 def test_request_headers_non_ascii(parser: HttpRequestParser, header: bytes) -> None:
     text = b"GET /test HTTP/1.1\r\n" + header + b"\r\n\r\n"
@@ -603,8 +602,10 @@ def test_compression_zstd(parser: HttpRequestParser) -> None:
 
 @pytest.mark.parametrize(
     "enc",
-    "zﬆd".encode(),  # "ﬆ".upper() == "ST"
-    "deﬂate".encode(),  # "ﬂ".upper() == "FL"
+    (
+        "zﬆd".encode(),  # "ﬆ".upper() == "ST"
+        "deﬂate".encode(),  # "ﬂ".upper() == "FL"
+    ),
 )
 def test_compression_non_ascii(parser: HttpRequestParser, enc: bytes) -> None:
     text = b"GET /test HTTP/1.1\r\ncontent-encoding: " + enc + b"\r\n\r\n"
