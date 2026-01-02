@@ -528,7 +528,10 @@ class StreamReader(AsyncStreamReaderMixin):
         if (
             self._protocol._reading_paused
             and self._size < self._low_water
-            and len(self._http_chunk_splits) < self._low_water_chunks
+            and (
+                self._http_chunk_splits is None
+                or len(self._http_chunk_splits) < self._low_water_chunks
+            )
         ):
             self._protocol.resume_reading()
         return data
