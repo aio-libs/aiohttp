@@ -2,8 +2,9 @@
 
 import asyncio
 import sys
+from collections.abc import Callable
 from types import TracebackType
-from typing import Any, Final
+from typing import Any, Final, Generic, Literal, overload
 
 from ._websocket.reader import WebSocketDataQueue
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
@@ -14,7 +15,8 @@ from .http import (
     WS_CLOSING_MESSAGE,
     WebSocketError,
     WSCloseCode,
-    WSMessage,
+    WSMessageDecodeText,
+    WSMessageNoDecodeText,
     WSMsgType,
 )
 from .http_websocket import _INTERNAL_RECEIVE_TYPES, WebSocketWriter, WSMessageError
@@ -26,10 +28,21 @@ from .typedefs import (
     JSONEncoder,
 )
 
+if sys.version_info >= (3, 13):
+    from typing import TypeVar
+else:
+    from typing_extensions import TypeVar
+
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
+    from typing import Self
 else:
     import async_timeout
+    from typing_extensions import Self
+
+# TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
+# Covariant because it only affects return types, not input types
+_DecodeText = TypeVar("_DecodeText", bound=bool, covariant=True, default=Literal[True])
 
 
 @frozen_dataclass_decorator
@@ -43,7 +56,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 )
 
 
-class ClientWebSocketResponse:
+class ClientWebSocketResponse(Generic[_DecodeText]):
     def __init__(
         self,
         reader: WebSocketDataQueue,
@@ -309,7 +322,24 @@ class ClientWebSocketResponse:
                 self._response.close()
                 return True
 
-    async def receive(self, timeout: float | None = None) -> WSMessage:
+    @overload
+    async def receive(
+        self: "ClientWebSocketResponse[Literal[True]]", timeout: float | None = None
+    ) -> WSMessageDecodeText: ...
+
+    @overload
+    async def receive(
+        self: "ClientWebSocketResponse[Literal[False]]", timeout: float | None = None
+    ) -> WSMessageNoDecodeText: ...
+
+    @overload
+    async def receive(
+        self: "ClientWebSocketResponse[_DecodeText]", timeout: float | None = None
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText: ...
+
+    async def receive(
+        self, timeout: float | None = None
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText:
         receive_timeout = timeout or self._timeout.ws_receive
 
         while True:
@@ -383,7 +413,26 @@ class ClientWebSocketResponse:
 
             return msg
 
-    async def receive_str(self, *, timeout: float | None = None) -> str:
+    @overload
+    async def receive_str(
+        self: "ClientWebSocketResponse[Literal[True]]", *, timeout: float | None = None
+    ) -> str: ...
+
+    @overload
+    async def receive_str(
+        self: "ClientWebSocketResponse[Literal[False]]", *, timeout: float | None = None
+    ) -> bytes: ...
+
+    @overload
+    async def receive_str(
+        self: "ClientWebSocketResponse[_DecodeText]", *, timeout: float | None = None
+    ) -> str | bytes: ...
+
+    async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
+        """Receive TEXT message.
+
+        Returns str when decode_text=True (default), bytes when decode_text=False.
+        """
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise WSMessageTypeError(
@@ -399,25 +448,64 @@ class ClientWebSocketResponse:
             )
         return msg.data
 
+    @overload
+    async def receive_json(
+        self: "ClientWebSocketResponse[Literal[True]]",
+        *,
+        loads: JSONDecoder = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
+    @overload
+    async def receive_json(
+        self: "ClientWebSocketResponse[Literal[False]]",
+        *,
+        loads: Callable[[bytes], Any] = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
+    @overload
+    async def receive_json(
+        self: "ClientWebSocketResponse[_DecodeText]",
+        *,
+        loads: JSONDecoder | Callable[[bytes], Any] = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
     async def receive_json(
         self,
         *,
-        loads: JSONDecoder = DEFAULT_JSON_DECODER,
+        loads: JSONDecoder | Callable[[bytes], Any] = DEFAULT_JSON_DECODER,
         timeout: float | None = None,
     ) -> Any:
         data = await self.receive_str(timeout=timeout)
-        return loads(data)
+        return loads(data)  # type: ignore[arg-type]
 
-    def __aiter__(self) -> "ClientWebSocketResponse":
+    def __aiter__(self) -> Self:
         return self
 
-    async def __anext__(self) -> WSMessage:
+    @overload
+    async def __anext__(
+        self: "ClientWebSocketResponse[Literal[True]]",
+    ) -> WSMessageDecodeText: ...
+
+    @overload
+    async def __anext__(
+        self: "ClientWebSocketResponse[Literal[False]]",
+    ) -> WSMessageNoDecodeText: ...
+
+    @overload
+    async def __anext__(
+        self: "ClientWebSocketResponse[_DecodeText]",
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText: ...
+
+    async def __anext__(self) -> WSMessageDecodeText | WSMessageNoDecodeText:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration
         return msg
 
-    async def __aenter__(self) -> "ClientWebSocketResponse":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(

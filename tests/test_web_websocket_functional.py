@@ -2,9 +2,10 @@
 
 import asyncio
 import contextlib
+import json
 import sys
 import weakref
-from typing import NoReturn
+from typing import Literal, NoReturn
 from unittest import mock
 
 import pytest
@@ -1444,4 +1445,217 @@ async def test_websocket_prepared_property(
     msg = await ws.receive()
     assert msg.type is WSMsgType.TEXT
     assert msg.data == "test"
+    await ws.close()
+
+
+async def test_receive_text_as_bytes_server_side(aiohttp_client: AiohttpClient) -> None:
+    """Test server receiving TEXT messages as raw bytes with decode_text=False."""
+
+    async def websocket_handler(
+        request: web.Request,
+    ) -> web.WebSocketResponse[Literal[False]]:
+        ws: web.WebSocketResponse[Literal[False]] = web.WebSocketResponse(
+            decode_text=False
+        )
+        await ws.prepare(request)
+
+        # Receive TEXT message as bytes
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.TEXT
+        assert isinstance(msg.data, bytes)
+        assert msg.data == b"test message"
+
+        # Send response
+        await ws.send_bytes(msg.data + b"/reply")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", websocket_handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/") as ws:
+        await ws.send_str("test message")
+
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.BINARY
+        assert msg.data == b"test message/reply"
+
+        await ws.close()
+
+
+async def test_receive_text_as_bytes_server_iteration(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test server iterating over WebSocket with decode_text=False."""
+
+    async def websocket_handler(
+        request: web.Request,
+    ) -> web.WebSocketResponse[Literal[False]]:
+        ws: web.WebSocketResponse[Literal[False]] = web.WebSocketResponse(
+            decode_text=False
+        )
+        await ws.prepare(request)
+
+        async for msg in ws:
+            if msg.type is aiohttp.WSMsgType.TEXT:
+                # msg.data should be bytes
+                assert isinstance(msg.data, bytes)
+                # Echo back
+                await ws.send_bytes(msg.data)
+            else:
+                assert msg.type is aiohttp.WSMsgType.BINARY
+                assert isinstance(msg.data, bytes)
+                await ws.send_bytes(msg.data)
+
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", websocket_handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/") as ws:
+        # Send TEXT message
+        await ws.send_str("hello")
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.BINARY
+        assert msg.data == b"hello"
+
+        # Send BINARY message
+        await ws.send_bytes(b"world")
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.BINARY
+        assert msg.data == b"world"
+
+        await ws.close()
+
+
+async def test_server_decode_text_default_true(aiohttp_client: AiohttpClient) -> None:
+    """Test that server decode_text defaults to True for backward compatibility."""
+
+    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
+        # No decode_text parameter - should default to True
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.TEXT
+        assert isinstance(msg.data, str)
+        assert msg.data == "test"
+
+        await ws.send_str(msg.data + "/reply")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", websocket_handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/") as ws:
+        await ws.send_str("test")
+
+        msg = await ws.receive()
+        assert msg.type is aiohttp.WSMsgType.TEXT
+        assert isinstance(msg.data, str)
+        assert msg.data == "test/reply"
+
+        await ws.close()
+
+
+async def test_server_receive_str_returns_bytes_with_decode_text_false(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that server receive_str() returns bytes when decode_text=False."""
+
+    async def websocket_handler(
+        request: web.Request,
+    ) -> web.WebSocketResponse[Literal[False]]:
+        ws: web.WebSocketResponse[Literal[False]] = web.WebSocketResponse(
+            decode_text=False
+        )
+        await ws.prepare(request)
+
+        # receive_str() should return bytes when decode_text=False
+        data = await ws.receive_str()
+        assert isinstance(data, bytes)
+        assert data == b"hello server"
+
+        await ws.send_str("got bytes")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", websocket_handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/") as ws:
+        await ws.send_str("hello server")
+        msg = await ws.receive()
+        assert msg.data == "got bytes"
+
+
+async def test_server_receive_str_returns_str_with_decode_text_true(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that server receive_str() returns str when decode_text=True (default)."""
+
+    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()  # decode_text=True by default
+        await ws.prepare(request)
+
+        # receive_str() should return str when decode_text=True
+        data = await ws.receive_str()
+        assert isinstance(data, str)
+        assert data == "hello server"
+
+        await ws.send_str("got string")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", websocket_handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/") as ws:
+        await ws.send_str("hello server")
+        msg = await ws.receive()
+        assert msg.data == "got string"
+
+
+async def test_server_receive_json_with_orjson_style_loads(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test server receive_json() with orjson-style loads that accepts bytes."""
+
+    def orjson_style_loads(data: bytes) -> dict[str, str]:
+        """Mock orjson.loads that accepts bytes."""
+        assert isinstance(data, bytes)
+        result: dict[str, str] = json.loads(data)
+        return result
+
+    async def websocket_handler(
+        request: web.Request,
+    ) -> web.WebSocketResponse[Literal[False]]:
+        ws: web.WebSocketResponse[Literal[False]] = web.WebSocketResponse(
+            decode_text=False
+        )
+        await ws.prepare(request)
+
+        # receive_json() with orjson-style loads should work with bytes
+        data = await ws.receive_json(loads=orjson_style_loads)
+        assert data == {"test": "value"}
+
+        await ws.send_str("success")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", websocket_handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/")
+    await ws.send_str('{"test": "value"}')
+    msg = await ws.receive()
+    assert msg.type is aiohttp.WSMsgType.TEXT
+    assert msg.data == "success"
     await ws.close()

@@ -4,13 +4,13 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/lint.txt --strip-extras requirements/lint.in
 #
-aiodns==3.5.0
+aiodns==3.6.1
     # via -r requirements/lint.in
 annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
-backports-zstd==1.1.0 ; implementation_name == "cpython"
+backports-zstd==1.3.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 blockbuster==1.5.26
     # via -r requirements/lint.in
@@ -29,7 +29,7 @@ distlib==0.4.0
     # via virtualenv
 exceptiongroup==1.3.1
     # via pytest
-filelock==3.20.0
+filelock==3.20.1
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
@@ -43,27 +43,27 @@ iniconfig==2.3.0
     # via pytest
 isal==1.7.2
     # via -r requirements/lint.in
-librt==0.6.3
+librt==0.7.5
     # via mypy
 markdown-it-py==4.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-mypy==1.19.0 ; implementation_name == "cpython"
+mypy==1.19.1 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 mypy-extensions==1.1.0
     # via mypy
-nodeenv==1.9.1
+nodeenv==1.10.0
     # via pre-commit
 packaging==25.0
     # via pytest
 pathspec==0.12.1
     # via mypy
-platformdirs==4.5.0
+platformdirs==4.5.1
     # via virtualenv
 pluggy==1.6.0
     # via pytest
-pre-commit==4.5.0
+pre-commit==4.5.1
     # via -r requirements/lint.in
 proxy-py==2.4.10
     # via -r requirements/lint.in
@@ -79,7 +79,7 @@ pygments==2.19.2
     # via
     #   pytest
     #   rich
-pytest==9.0.1
+pytest==9.0.2
     # via
     #   -r requirements/lint.in
     #   pytest-codspeed
