@@ -13,6 +13,7 @@ from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
+from .abc import AbstractStreamWriter
 from .compression_utils import (
     DEFAULT_MAX_DECOMPRESS_SIZE,
     ZLibCompressor,
@@ -584,7 +585,7 @@ class BodyPartReaderPayload(Payload):
         """
         raise TypeError("Unable to read body part as bytes. Use write() to consume.")
 
-    async def write(self, writer: Any) -> None:
+    async def write(self, writer: AbstractStreamWriter) -> None:
         field = self._value
         chunk = await field.read_chunk(size=2**16)
         while chunk:
@@ -1031,7 +1032,7 @@ class MultipartWriter(Payload):
 
         return b"".join(parts)
 
-    async def write(self, writer: Any, close_boundary: bool = True) -> None:
+    async def write(self, writer: AbstractStreamWriter, close_boundary: bool = True) -> None:
         """Write body."""
         for part, encoding, te_encoding in self._parts:
             if self._is_form_data:
@@ -1085,7 +1086,7 @@ class MultipartWriter(Payload):
 
 
 class MultipartPayloadWriter:
-    def __init__(self, writer: Any) -> None:
+    def __init__(self, writer: AbstractStreamWriter) -> None:
         self._writer = writer
         self._encoding: str | None = None
         self._compress: ZLibCompressor | None = None
