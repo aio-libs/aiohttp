@@ -10,6 +10,7 @@ variants, as well as both 'auth' and 'auth-int' quality of protection (qop) opti
 import hashlib
 import os
 import re
+import sys
 import time
 from collections.abc import Callable
 from typing import Final, Literal, TypedDict
