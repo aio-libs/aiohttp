@@ -189,6 +189,13 @@ class WebSocketReader:
     ) -> None:
         msg: WSMessage
         if opcode in {OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION}:
+            # Validate continuation frames before processing
+            if opcode == OP_CODE_CONTINUATION and self._opcode == OP_CODE_NOT_SET:
+                raise WebSocketError(
+                    WSCloseCode.PROTOCOL_ERROR,
+                    "Continuation frame for non started message",
+                )
+
             # load text/binary
             if not fin:
                 # got partial frame payload
@@ -205,11 +212,6 @@ class WebSocketReader:
 
             has_partial = bool(self._partial)
             if opcode == OP_CODE_CONTINUATION:
-                if self._opcode == OP_CODE_NOT_SET:
-                    raise WebSocketError(
-                        WSCloseCode.PROTOCOL_ERROR,
-                        "Continuation frame for non started message",
-                    )
                 opcode = self._opcode
                 self._opcode = OP_CODE_NOT_SET
             # previous frame was non finished
