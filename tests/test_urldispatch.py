@@ -1083,6 +1083,7 @@ async def test_405_for_resource_adapter(router: web.UrlDispatcher) -> None:
     assert (None, {"HEAD", "GET"}) == ret
 
 
+@pytest.mark.skipif(platform.system() == "Windows", reason="Different path formats")
 async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> None:
     """Test relative path traversing outside root does not resolve."""
     static_file = pathlib.Path(aiohttp.__file__)
