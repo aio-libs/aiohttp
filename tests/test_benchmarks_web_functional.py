@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Iterator
 from unittest import mock
 
 from pytest_codspeed import BenchmarkFixture
@@ -12,7 +13,7 @@ async def test_read_many_chunks(
 ) -> None:
     """Benchmark blocking time when receiving many small chunks."""
 
-    async def sender():
+    async def sender() -> Iterator[bytes]:
         for _ in range(200000):
             yield b"x"
 
