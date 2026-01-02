@@ -491,15 +491,18 @@ def test_request_chunked(parser: HttpRequestParser) -> None:
     assert isinstance(payload, streams.StreamReader)
 
 
-@pytest.mark.parametrize(
-    "header",
+def test_te_header_non_ascii(parser: HttpRequestParser) -> None:
     # K = Kelvin sign, not valid ascii.
-    ("Transfer-Encoding: chunKed".encode(), "Upgrade: websocKet".encode()),
-)
-def test_request_headers_non_ascii(parser: HttpRequestParser, header: bytes) -> None:
-    text = b"GET /test HTTP/1.1\r\n" + header + b"\r\n\r\n"
+    text = "GET /test HTTP/1.1\r\nTransfer-Encoding: chunKed\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
-        parser.feed_data(text)
+        parser.feed_data(text.encode())
+
+
+def test_upgrade_header_non_ascii(parser: HttpRequestParser) -> None:
+    # K = Kelvin sign, not valid ascii.
+    text = "GET /test HTTP/1.1\r\nUpgrade: websocKet\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text.encode())
+    assert not upgrade
 
 
 def test_request_te_chunked_with_content_length(parser: HttpRequestParser) -> None:
