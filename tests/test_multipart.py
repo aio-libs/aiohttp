@@ -1112,7 +1112,9 @@ async def test_writer_write(
     ) == bytes(buf)
 
 
-async def test_writer_write_no_close_boundary(buf: bytearray, stream: AbstractStreamWriter) -> None:
+async def test_writer_write_no_close_boundary(
+    buf: bytearray, stream: AbstractStreamWriter
+) -> None:
     writer = aiohttp.MultipartWriter(boundary=":")
     writer.append("foo-bar-baz")
     writer.append_json({"test": "passed"})
