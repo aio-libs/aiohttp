@@ -1265,6 +1265,7 @@ def test_http_request_chunked_payload(parser: HttpRequestParser) -> None:
     parser.feed_data(b"4\r\ndata\r\n4\r\nline\r\n0\r\n\r\n")
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
+    assert payload._http_chunk_splits is not None
     assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
@@ -1282,6 +1283,7 @@ def test_http_request_chunked_payload_and_next_message(
     )
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
+    assert payload._http_chunk_splits is not None
     assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
@@ -1306,6 +1308,7 @@ def test_http_request_chunked_payload_chunks(parser: HttpRequestParser) -> None:
     parser.feed_data(b"test: test\r\n")
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
+    assert payload._http_chunk_splits is not None
     assert [4, 8] == list(payload._http_chunk_splits)
     assert not payload.is_eof()
 
@@ -1322,6 +1325,7 @@ def test_parse_chunked_payload_chunk_extension(parser: HttpRequestParser) -> Non
     parser.feed_data(b"4;test\r\ndata\r\n4\r\nline\r\n0\r\ntest: test\r\n\r\n")
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
+    assert payload._http_chunk_splits is not None
     assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
