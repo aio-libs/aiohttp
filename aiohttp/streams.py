@@ -524,6 +524,7 @@ class StreamReader(AsyncStreamReaderMixin):
         while chunk_splits and chunk_splits[0] < self._cursor:
             chunk_splits.pop(0)
 
+        assert self._http_chunk_splits is not None
         if (
             self._protocol._reading_paused
             and self._size < self._low_water
