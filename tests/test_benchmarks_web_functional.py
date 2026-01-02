@@ -1,3 +1,4 @@
+import asyncio
 from unittest import mock
 
 from pytest_codspeed import BenchmarkFixture
