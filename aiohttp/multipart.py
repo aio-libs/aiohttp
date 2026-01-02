@@ -589,7 +589,7 @@ class BodyPartReaderPayload(Payload):
         field = self._value
         chunk = await field.read_chunk(size=2**16)
         while chunk:
-            await writer.write(field.decode(chunk))
+            await writer.write(await field.decode(chunk))
             chunk = await field.read_chunk(size=2**16)
 
 
