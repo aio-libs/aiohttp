@@ -7,6 +7,7 @@ import html
 import inspect
 import keyword
 import os
+import platform
 import re
 import sys
 from collections.abc import (
@@ -600,6 +601,8 @@ class StaticResource(PrefixResource):
         # We normalise here to avoid matches that traverse below the static root.
         # e.g. /static/../../../../home/user/webapp/static/
         norm_path = os.path.normpath(path)
+        if platform.system() == "Windows":
+            norm_path = norm_path.replace("\\", "/")
         if not norm_path.startswith(self._prefix2) and path != self._prefix:
             return None, set()
 
