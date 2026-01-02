@@ -240,7 +240,7 @@ class TestPartReader:
             d = CIMultiDictProxy[str](CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = b""
-            with pytest.raises(AssertionError):
+            with pytest.raises(ValueError):
                 for _ in range(4):
                     result += await obj.read_chunk(7)
         assert b"Hello, World!\r\n-" == result

@@ -275,6 +275,7 @@ class BodyPartReader:
         self._read_bytes = 0
         self._unread: deque[bytes] = deque()
         self._prev_chunk: bytes | None = None
+        self._content_eof = 0
         self._cache: dict[str, Any] = {}
 
     def __aiter__(self) -> Self:
@@ -318,11 +319,10 @@ class BodyPartReader:
             return b""
         if self._length:
             chunk = await self._read_chunk_from_length(size)
+            if self._content.at_eof():
+                self._at_eof = True
         else:
             chunk = await self._read_chunk_from_stream(size)
-
-        if self._content.at_eof():
-            self._at_eof = True
 
         # For the case of base64 data, we must read a fragment of size with a
         # remainder of 0 by dividing by 4 for string without symbols \n or \r
@@ -380,7 +380,10 @@ class BodyPartReader:
         # we have enough data to detect the boundary.
         while len(chunk) < self._boundary_len:
             chunk += await self._content.read(size)
-            if self._content.at_eof():
+            self._content_eof += int(self._content.at_eof())
+            if self._content_eof > 2:
+                raise ValueError("Reading after EOF")
+            if self._content_eof:
                 break
         if len(chunk) > size:
             self._content.unread_data(chunk[size:])
