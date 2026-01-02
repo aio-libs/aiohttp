@@ -283,6 +283,7 @@ class BodyPartReader:
         self._prev_chunk: bytes | None = None
         self._content_eof = 0
         self._cache: dict[str, Any] = {}
+        self._max_decompress_size = max_decompress_size
 
     def __aiter__(self) -> Self:
         return self
@@ -514,7 +515,7 @@ class BodyPartReader:
             return await ZLibDecompressor(
                 encoding=encoding,
                 suppress_deflate_header=True,
-            ).decompress(data, max_length=DEFAULT_MAX_DECOMPRESS_SIZE)
+            ).decompress(data, max_length=self._max_decompress_size)
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
