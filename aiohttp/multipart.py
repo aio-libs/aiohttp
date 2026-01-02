@@ -380,7 +380,8 @@ class BodyPartReader:
         ), "Chunk size must be greater or equal than boundary length + 2"
         first_chunk = self._prev_chunk is None
         if first_chunk:
-            self._prev_chunk = await self._content.read(size)
+            # We need to re-add the CRLF that got removed from headers parsing.
+            self._prev_chunk = b"\r\n" + await self._content.read(size)
 
         chunk = b""
         # content.read() may return less than size, so we need to loop to ensure
@@ -407,12 +408,11 @@ class BodyPartReader:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=DeprecationWarning)
                 self._content.unread_data(window[idx:])
-            if size > idx:
-                self._prev_chunk = self._prev_chunk[:idx]
+            self._prev_chunk = self._prev_chunk[:idx]
             chunk = window[len(self._prev_chunk) : idx]
             if not chunk:
                 self._at_eof = True
-        result = self._prev_chunk
+        result = self._prev_chunk[2 if first_chunk else 0 :]  # Strip initial CRLF
         self._prev_chunk = chunk
         return result
 
@@ -778,7 +778,7 @@ class MultipartReader:
         lines = []
         while True:
             chunk = await self._content.readline()
-            chunk = chunk.strip()
+            chunk = chunk.rstrip(b"\r\n")
             lines.append(chunk)
             if not chunk:
                 break

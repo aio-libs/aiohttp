@@ -149,6 +149,9 @@ ask to raise the status.
 - `pytest-aiohttp-client <https://github.com/sivakov512/pytest-aiohttp-client>`_
   Pytest fixture with simpler api, payload decoding and status code assertions.
 
+- `python-proxy-headers <https://github.com/proxymesh/python-proxy-headers>`_
+  provides ``aiohttp_proxy`` extension for receiving custom response headers from a proxy server
+
 - `octomachinery <https://octomachinery.dev>`_ A framework for developing
   GitHub Apps and GitHub Actions.
 
