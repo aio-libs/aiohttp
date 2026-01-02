@@ -44,14 +44,14 @@ def buf() -> bytearray:
 
 
 @pytest.fixture
-def stream(buf: bytearray) -> mock.Mock:
+def stream(buf: bytearray) -> AbstractStreamWriter:
     writer = mock.create_autospec(AbstractStreamWriter, instance=True, spec_set=True)
 
     async def write(chunk: bytes) -> None:
         buf.extend(chunk)
 
     writer.write.side_effect = write
-    return writer
+    return writer  # type: ignore[no-any-return]
 
 
 @pytest.fixture
