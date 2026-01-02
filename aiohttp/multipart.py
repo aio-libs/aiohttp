@@ -319,8 +319,6 @@ class BodyPartReader:
             return b""
         if self._length:
             chunk = await self._read_chunk_from_length(size)
-            if self._content.at_eof():
-                self._at_eof = True
         else:
             chunk = await self._read_chunk_from_stream(size)
 
@@ -362,6 +360,8 @@ class BodyPartReader:
         assert self._length is not None, "Content-Length required for chunked read"
         chunk_size = min(size, self._length - self._read_bytes)
         chunk = await self._content.read(chunk_size)
+        if self._content.at_eof():
+            self._at_eof = True
         return chunk
 
     async def _read_chunk_from_stream(self, size: int) -> bytes:
