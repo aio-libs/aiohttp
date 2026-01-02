@@ -147,14 +147,13 @@ def encoding_to_mode(
     return -ZLibBackend.MAX_WBITS if suppress_deflate_header else ZLibBackend.MAX_WBITS
 
 
-class CompressionBaseHandler(ABC):
-
+class DecompressionBaseHandler(ABC):
     def __init__(
         self,
         executor: Executor | None = None,
         max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
     ):
-        """Base class for compression handlers."""
+        """Base class for decompression handlers."""
         self._executor = executor
         self._max_sync_chunk_size = max_sync_chunk_size
 
@@ -174,7 +173,7 @@ class CompressionBaseHandler(ABC):
         return self.decompress_sync(data, max_length)
 
 
-class ZLibCompressor(CompressionBaseHandler):
+class ZLibCompressor:
     def __init__(
         self,
         encoding: str | None = None,
@@ -185,10 +184,8 @@ class ZLibCompressor(CompressionBaseHandler):
         executor: Executor | None = None,
         max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
     ):
-        super().__init__(
-            executor=executor,
-            max_sync_chunk_size=max_sync_chunk_size,
-        )
+        self._executor = executor
+        self._max_sync_chunk_size = max_sync_chunk_size
         self._mode = (
             encoding_to_mode(encoding, suppress_deflate_header)
             if wbits is None
@@ -251,7 +248,7 @@ class ZLibCompressor(CompressionBaseHandler):
         )
 
 
-class ZLibDecompressor(CompressionBaseHandler):
+class ZLibDecompressor(DecompressionBaseHandler):
     def __init__(
         self,
         encoding: str | None = None,
@@ -279,14 +276,14 @@ class ZLibDecompressor(CompressionBaseHandler):
         return self._decompressor.eof
 
 
-class BrotliDecompressor(CompressionBaseHandler):
+class BrotliDecompressor(DecompressionBaseHandler):
     # Supports both 'brotlipy' and 'Brotli' packages
     # since they share an import name. The top branches
     # are for 'brotlipy' and bottom branches for 'Brotli'
     def __init__(
         self,
-        executor: Optional[Executor] = None,
-        max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
+        executor: Executor | None = None,
+        max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
     ) -> None:
         """Decompress data using the Brotli library."""
         if not HAS_BROTLI:
@@ -310,14 +307,19 @@ class BrotliDecompressor(CompressionBaseHandler):
         return b""
 
 
-class ZSTDDecompressor:
-    def __init__(self) -> None:
+class ZSTDDecompressor(DecompressionBaseHandler):
+    def __init__(
+        self,
+        executor: Executor | None = None,
+        max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
+    ) -> None:
         if not HAS_ZSTD:
             raise RuntimeError(
                 "The zstd decompression is not available. "
                 "Please install `backports.zstd` module"
             )
         self._obj = ZstdDecompressor()
+        super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
     def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
         return self._obj.decompress(data, max_length)
