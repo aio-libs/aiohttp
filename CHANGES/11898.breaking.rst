@@ -1,1 +1,4 @@
-``Brotli`` and ``brotlicffi`` minimum version is now 1.2 -- by :user:`Dreamsorcerer`.
+``Brotli`` and ``brotlicffi`` minimum version is now 1.2.
+Decompression now has a default maximum output size of 2MiB per decompress call.
+If this limit is too small, it can be adjusted by setting
+``aiohttp.compression_utils.DEFAULT_MAX_DECOMPRESS_SIZE`` -- by :user:`Dreamsorcerer`.
