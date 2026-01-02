@@ -8,6 +8,10 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Generator
 from typing import NoReturn
 from unittest import mock
 
+# try:
+#    import brotlicffi as brotli
+# except ImportError:
+import brotli
 import pytest
 from multidict import CIMultiDictProxy, MultiDict
 from pytest_mock import MockerFixture
@@ -29,11 +33,6 @@ from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
-
-#try:
-#    import brotlicffi as brotli
-#except ImportError:
-import brotli
 
 try:
     import ssl

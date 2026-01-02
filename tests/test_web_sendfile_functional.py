@@ -7,6 +7,10 @@ from collections.abc import Iterable, Iterator
 from typing import NoReturn, Protocol
 from unittest import mock
 
+# try:
+#    import brotlicffi as brotli
+# except ImportError:
+import brotli
 import pytest
 from _pytest.fixtures import SubRequest
 
@@ -15,11 +19,6 @@ from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
-
-#try:
-#    import brotlicffi as brotli
-#except ImportError:
-import brotli
 
 try:
     import ssl

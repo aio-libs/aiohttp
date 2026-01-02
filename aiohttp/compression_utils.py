@@ -14,9 +14,9 @@ else:
 
 try:
     # brotlicffi won't work until they create a 1.2 release.
-    #try:
+    # try:
     #    import brotlicffi as brotli
-    #except ImportError:
+    # except ImportError:
     import brotli
 
     HAS_BROTLI = True
@@ -186,7 +186,8 @@ class ZLibCompressor(CompressionBaseHandler):
         max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
     ):
         super().__init__(
-            executor=executor, max_sync_chunk_size=max_sync_chunk_size,
+            executor=executor,
+            max_sync_chunk_size=max_sync_chunk_size,
         )
         self._mode = (
             encoding_to_mode(encoding, suppress_deflate_header)
