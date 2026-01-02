@@ -1695,12 +1695,10 @@ async def test_app_max_client_size_form(aiohttp_client: AiohttpClient) -> None:
     for i in range(3):
         form.add_field(f"f{i}", b"A" * 512000)
 
-    with pytest.warns(ResourceWarning):
-        resp = await client.post("/", data=form)
-    assert resp.status == 413
-    resp_text = await resp.text()
+    async with client.post("/", data=form) as resp:
+        assert resp.status == 413
+        resp_text = await resp.text()
     assert "Maximum request body size 1048576 exceeded, actual body size" in resp_text
-    resp.release()
 
 
 async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> None:
