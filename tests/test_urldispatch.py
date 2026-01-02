@@ -1086,7 +1086,7 @@ async def test_405_for_resource_adapter(router: web.UrlDispatcher) -> None:
 async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> None:
     """Test relative path traversing outside root does not resolve."""
     static_file = pathlib.Path(aiohttp.__file__)
-    request_path = "/st" + "/.." * (len(static_file.parts)-2) + str(static_file)
+    request_path = "/st" + "/.." * (len(static_file.parts) - 2) + str(static_file)
     assert pathlib.Path(request_path).resolve() == static_file
 
     resource = router.add_static("/st", static_file.parent)
