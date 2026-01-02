@@ -1685,7 +1685,6 @@ async def test_app_max_client_size_form(aiohttp_client: AiohttpClient) -> None:
         await request.post()
         assert False
 
-    max_size = 1024**2
     app = web.Application()
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
