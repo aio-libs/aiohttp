@@ -37,6 +37,10 @@ except ImportError:
 MAX_SYNC_CHUNK_SIZE = 4096
 DEFAULT_MAX_DECOMPRESS_SIZE = 2**20  # 1MiB
 
+# Unlimited decompression constants - different libraries use different conventions
+ZLIB_MAX_LENGTH_UNLIMITED = 0  # zlib uses 0 to mean unlimited
+ZSTD_MAX_LENGTH_UNLIMITED = -1  # zstd uses -1 to mean unlimited
+
 
 class ZLibCompressObjProtocol(Protocol):
     def compress(self, data: Buffer) -> bytes: ...
@@ -158,10 +162,14 @@ class DecompressionBaseHandler(ABC):
         self._max_sync_chunk_size = max_sync_chunk_size
 
     @abstractmethod
-    def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
+    def decompress_sync(
+        self, data: bytes, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
         """Decompress the given data."""
 
-    async def decompress(self, data: bytes, max_length: int = 0) -> bytes:
+    async def decompress(
+        self, data: bytes, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
         """Decompress the given data."""
         if (
             self._max_sync_chunk_size is not None
@@ -261,7 +269,9 @@ class ZLibDecompressor(DecompressionBaseHandler):
         self._zlib_backend: Final = ZLibBackendWrapper(ZLibBackend._zlib_backend)
         self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
 
-    def decompress_sync(self, data: Buffer, max_length: int = 0) -> bytes:
+    def decompress_sync(
+        self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
         return self._decompressor.decompress(data, max_length)
 
     def flush(self, length: int = 0) -> bytes:
@@ -294,7 +304,9 @@ class BrotliDecompressor(DecompressionBaseHandler):
         self._obj = brotli.Decompressor()
         super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
-    def decompress_sync(self, data: Buffer, max_length: int = 0) -> bytes:
+    def decompress_sync(
+        self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
         """Decompress the given data."""
         if hasattr(self._obj, "decompress"):
             return cast(bytes, self._obj.decompress(data, max_length))
@@ -321,8 +333,17 @@ class ZSTDDecompressor(DecompressionBaseHandler):
         self._obj = ZstdDecompressor()
         super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
-    def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
-        return self._obj.decompress(data, max_length)
+    def decompress_sync(
+        self, data: bytes, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
+        # zstd uses -1 for unlimited, while zlib uses 0 for unlimited
+        # Convert the zlib convention (0=unlimited) to zstd convention (-1=unlimited)
+        zstd_max_length = (
+            ZSTD_MAX_LENGTH_UNLIMITED
+            if max_length == ZLIB_MAX_LENGTH_UNLIMITED
+            else max_length
+        )
+        return self._obj.decompress(data, zstd_max_length)
 
     def flush(self) -> bytes:
         return b""
