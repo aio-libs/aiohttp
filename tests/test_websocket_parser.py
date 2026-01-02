@@ -236,12 +236,11 @@ def test_parse_frame_header_control_frame(
         parser.parse_frame(struct.pack("!BB", 0b00001000, 0b00000000))
 
 
-@pytest.mark.xfail()
-def test_parse_frame_header_new_data_err(
-    out: WebSocketDataQueue, parser: PatchableWebSocketReader
-) -> None:
-    with pytest.raises(WebSocketError):
-        parser.parse_frame(struct.pack("!BB", 0b000000000, 0b00000000))
+def test_parse_frame_header_new_data_err(parser: PatchableWebSocketReader) -> None:
+    with pytest.raises(WebSocketError) as msg:
+        parser._feed_data(struct.pack("!BB", 0b00000000, 0b00000000))
+    assert msg.value.code == WSCloseCode.PROTOCOL_ERROR
+    assert str(msg.value) == "Continuation frame for non started message"
 
 
 def test_parse_frame_header_payload_size(
