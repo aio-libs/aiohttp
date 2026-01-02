@@ -1,5 +1,6 @@
 """Tests for internal cookie helper functions."""
 
+import logging
 import sys
 from http.cookies import (
     CookieError,
