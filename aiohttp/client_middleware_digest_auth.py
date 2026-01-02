@@ -52,8 +52,8 @@ DigestFunctions: dict[str, Callable[[bytes], "hashlib._Hash"]] = {
 # Compile the regex pattern once at module level for performance
 _HEADER_PAIRS_PATTERN = re.compile(
     r'(?:^|\s|,\s*)(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
-    if sys.version_info < (3, 11) else
-    r'(?:^|\s|,\s*)(?>\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
+    if sys.version_info < (3, 11)
+    else r'(?:^|\s|,\s*)(?>\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
     # +------------|------|--|-|-|--|----|------|----|--||-----|-> Match valid start/sep
     #              +------|--|-|-|--|----|------|----|--||-----|-> alphanumeric key (atomic
     #                     |  | | |  |    |      |    |  ||     |   group reduces backtracking)

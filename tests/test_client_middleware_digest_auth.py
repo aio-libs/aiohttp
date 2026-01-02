@@ -1332,7 +1332,7 @@ async def test_case_sensitive_algorithm_server(
 
 
 def test_regex_performance() -> None:
-    value = "0"*54773 + "\\0=a"
+    value = "0" * 54773 + "\\0=a"
     start = time.perf_counter()
     matches = _HEADER_PAIRS_PATTERN.findall(value)
     end = time.perf_counter()

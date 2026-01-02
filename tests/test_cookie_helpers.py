@@ -637,7 +637,7 @@ def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
 
 
 def test_cookie_pattern_performance() -> None:
-    value = "a" + "="*21651 + "\x00"
+    value = "a" + "=" * 21651 + "\x00"
     start = time.perf_counter()
     match = helpers._COOKIE_PATTERN.match(value)
     end = time.perf_counter()
