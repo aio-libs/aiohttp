@@ -71,6 +71,7 @@ ROUTE_RE: Final[Pattern[str]] = re.compile(
 )
 PATH_SEP: Final[str] = re.escape("/")
 
+IS_WINDOWS: Final[bool] = platform.system() == "Windows"
 
 _ExpectHandler = Callable[[Request], Awaitable[StreamResponse | None]]
 _Resolve = tuple[Optional["UrlMappingMatchInfo"], set[str]]
@@ -601,7 +602,7 @@ class StaticResource(PrefixResource):
         # We normalise here to avoid matches that traverse below the static root.
         # e.g. /static/../../../../home/user/webapp/static/
         norm_path = os.path.normpath(path)
-        if platform.system() == "Windows":
+        if IS_WINDOWS:
             norm_path = norm_path.replace("\\", "/")
         if not norm_path.startswith(self._prefix2) and path != self._prefix:
             return None, set()
