@@ -1032,7 +1032,9 @@ class MultipartWriter(Payload):
 
         return b"".join(parts)
 
-    async def write(self, writer: AbstractStreamWriter, close_boundary: bool = True) -> None:
+    async def write(
+        self, writer: AbstractStreamWriter, close_boundary: bool = True
+    ) -> None:
         """Write body."""
         for part, encoding, te_encoding in self._parts:
             if self._is_form_data:
