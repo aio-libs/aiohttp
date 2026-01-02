@@ -620,14 +620,7 @@ class StaticResource(PrefixResource):
         return iter(self._routes.values())
 
     async def _handle(self, request: Request) -> StreamResponse:
-        rel_url = request.match_info["filename"]
-        filename = Path(rel_url)
-        if filename.anchor:
-            # rel_url is an absolute name like
-            # /static/\\machine_name\c$ or /static/D:\path
-            # where the static dir is totally different
-            raise HTTPForbidden()
-
+        filename = request.match_info["filename"]
         unresolved_path = self._directory.joinpath(filename)
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
