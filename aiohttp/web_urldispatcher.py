@@ -604,7 +604,7 @@ class StaticResource(PrefixResource):
         norm_path = os.path.normpath(path)
         if IS_WINDOWS:
             norm_path = norm_path.replace("\\", "/")
-        if not norm_path.startswith(self._prefix2) and path != self._prefix:
+        if not norm_path.startswith(self._prefix2) and norm_path != self._prefix:
             return None, set()
 
         allowed_methods = self._allowed_methods
