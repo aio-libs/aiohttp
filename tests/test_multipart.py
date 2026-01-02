@@ -1032,6 +1032,33 @@ class TestMultipartReader:
             assert first.at_eof()
             assert not second.at_eof()
 
+    async def test_read_empty_body_part(self) -> None:
+        with Stream(b"--:\r\n\r\n--:--") as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+                stream,
+            )
+            body_parts = []
+            async for part in reader:
+                assert isinstance(part, BodyPartReader)
+                body_parts.append(await part.read())
+
+        assert body_parts == [b""]
+
+    async def test_read_body_part_headers_only(self) -> None:
+        with Stream(b"--:\r\nContent-Type: text/plain\r\n\r\n--:--") as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+                stream,
+            )
+            body_parts = []
+            async for part in reader:
+                assert isinstance(part, BodyPartReader)
+                assert "Content-Type" in part.headers
+                body_parts.append(await part.read())
+
+        assert body_parts == [b""]
+
     async def test_read_form_default_encoding(self) -> None:
         with Stream(
             b"--:\r\n"
