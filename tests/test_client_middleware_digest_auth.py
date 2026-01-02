@@ -2,6 +2,7 @@
 
 import io
 import re
+import time
 from collections.abc import Generator
 from hashlib import md5, sha1
 from typing import Literal
@@ -13,6 +14,7 @@ from yarl import URL
 from aiohttp import ClientSession, hdrs
 from aiohttp.client_exceptions import ClientError
 from aiohttp.client_middleware_digest_auth import (
+    _HEADER_PAIRS_PATTERN,
     DigestAuthChallenge,
     DigestAuthMiddleware,
     DigestFunctions,
@@ -1327,3 +1329,15 @@ async def test_case_sensitive_algorithm_server(
     assert request_count == 2  # Initial 401 + successful retry
     assert len(auth_algorithms) == 1
     assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
+
+
+def test_regex_performance() -> None:
+    value = "0" * 54773 + "\\0=a"
+    start = time.perf_counter()
+    matches = _HEADER_PAIRS_PATTERN.findall(value)
+    end = time.perf_counter()
+
+    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
+    assert (end - start) < 0.01
+    # This example probably shouldn't produce a match either.
+    assert not matches
