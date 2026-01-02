@@ -24,7 +24,7 @@ async def test_read_many_chunks(
         # Mocking out the ._wait() call forces the method to return at the first wait,
         # without waiting for more data or processing the rest of the body.
         with mock.patch.object(request.content, "_wait", autospec=True):
-            chunk = await benchmark(request.read())
+            chunk = await benchmark(request.read)
 
         return web.Response(text=str(len(chunk)))
 
