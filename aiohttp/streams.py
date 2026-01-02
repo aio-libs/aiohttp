@@ -107,6 +107,8 @@ class StreamReader(AsyncStreamReaderMixin):
         "_protocol",
         "_low_water",
         "_high_water",
+        "_low_water_chunks",
+        "_high_water_chunks",
         "_loop",
         "_size",
         "_cursor",
