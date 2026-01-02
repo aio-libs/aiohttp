@@ -1442,7 +1442,8 @@ def test_parse_cookie_header_illegal_names(caplog: pytest.LogCaptureFixture) -> 
     assert result[0][1].value == "value"
     assert result[1][0] == "another"
     assert result[1][1].value == "test"
-    assert "Can not load cookie: Illegal cookie name 'invalid,cookie'" in caplog.text
+    assert "Can not load cookie. Illegal cookie name" in caplog.text
+    assert "'invalid,cookie'" in caplog.text
 
 
 def test_parse_cookie_header_large_value() -> None:
@@ -1558,7 +1559,8 @@ def test_parse_cookie_header_invalid_name_in_fallback(
     assert name2 == "another"
     assert morsel2.value == "test"
 
-    assert "Can not load cookie: Illegal cookie name 'invalid,name'" in caplog.text
+    assert "Can not load cookie. Illegal cookie name" in caplog.text
+    assert "'invalid,name'" in caplog.text
 
 
 def test_parse_cookie_header_empty_key_in_fallback(
@@ -1579,7 +1581,8 @@ def test_parse_cookie_header_empty_key_in_fallback(
     assert name2 == "another"
     assert morsel2.value == "test"
 
-    assert "Can not load cookie: Illegal cookie name ''" in caplog.text
+    assert "Can not load cookie. Illegal cookie name" in caplog.text
+    assert "''" in caplog.text
 
 
 @pytest.mark.parametrize(
