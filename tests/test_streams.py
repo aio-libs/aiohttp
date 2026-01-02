@@ -1658,3 +1658,54 @@ async def test_stream_reader_resume_non_chunked_when_paused(
 
     # resume_reading should be called (size is now 5 < low_water 10)
     protocol.resume_reading.assert_called()
+
+
+@pytest.mark.parametrize("limit", [1, 2, 4])
+async def test_stream_reader_small_limit_resumes_reading(
+    protocol: mock.Mock,
+    limit: int,
+) -> None:
+    """Test that small limits still allow resume_reading to be called.
+
+    Even with very small limits, high_water_chunks should be at least 1
+    and low_water_chunks should be at least 2 to ensure the resume condition
+    can be satisfied (since there's always at least 1 chunk split remaining).
+    """
+    loop = asyncio.get_event_loop()
+    stream = streams.StreamReader(protocol, limit=limit, loop=loop)
+
+    # Verify minimum thresholds are enforced
+    assert stream._high_water_chunks >= 1
+    assert stream._low_water_chunks >= 2
+
+    # Set up pause/resume side effects
+    def pause_reading() -> None:
+        protocol._reading_paused = True
+
+    protocol.pause_reading.side_effect = pause_reading
+
+    def resume_reading() -> None:
+        protocol._reading_paused = False
+
+    protocol.resume_reading.side_effect = resume_reading
+
+    # Feed 2 chunks (triggers pause at > high_water_chunks)
+    stream.begin_http_chunk_receiving()
+    stream.feed_data(b"a")
+    stream.end_http_chunk_receiving()
+
+    stream.begin_http_chunk_receiving()
+    stream.feed_data(b"b")
+    stream.end_http_chunk_receiving()
+
+    # Reading should now be paused
+    assert protocol._reading_paused is True
+    assert protocol.pause_reading.called
+
+    # Read all data - should resume (chunk count drops below low_water_chunks)
+    data = stream.read_nowait()
+    assert data == b"ab"
+    assert stream._size == 0
+
+    protocol.resume_reading.assert_called()
+    assert protocol._reading_paused is False
