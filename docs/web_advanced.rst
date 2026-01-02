@@ -857,6 +857,7 @@ knowledge about startup/cleanup pairs and their execution state.
 
 The solution is :attr:`Application.cleanup_ctx` usage::
 
+    @contextlib.asynccontextmanager
     async def pg_engine(app: web.Application):
         app[pg_engine] = await create_async_engine(
             "postgresql+asyncpg://postgre:@localhost:5432/postgre"
@@ -1168,6 +1169,7 @@ below::
                       await ws.send_str("{}: {}".format(channel, msg))
 
 
+  @contextlib.asynccontextmanager
   async def background_tasks(app):
       app[redis_listener] = asyncio.create_task(listen_to_redis(app))
 
@@ -1207,6 +1209,7 @@ For example, running a long-lived task alongside the :class:`Application`
 can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
 
 
+  @contextlib.asynccontextmanager
   async def run_other_task(_app):
       task = asyncio.create_task(other_long_task())
 
@@ -1222,6 +1225,7 @@ can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
 Or a separate process can be run with something like::
 
 
+  @contextlib.asynccontextmanager
   async def run_process(_app):
       proc = await asyncio.create_subprocess_exec(path)
 
