@@ -20,6 +20,7 @@ from .models import (
     WSMessagePing,
     WSMessagePong,
     WSMessageText,
+    WSMessageTextBytes,
     WSMsgType,
 )
 
@@ -139,10 +140,15 @@ class WebSocketDataQueue:
 
 class WebSocketReader:
     def __init__(
-        self, queue: WebSocketDataQueue, max_msg_size: int, compress: bool = True
+        self,
+        queue: WebSocketDataQueue,
+        max_msg_size: int,
+        compress: bool = True,
+        decode_text: bool = True,
     ) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size
+        self._decode_text = decode_text
 
         self._exc: Exception | None = None
         self._partial = bytearray()
@@ -194,6 +200,13 @@ class WebSocketReader:
     ) -> None:
         msg: WSMessage
         if opcode in {OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION}:
+            # Validate continuation frames before processing
+            if opcode == OP_CODE_CONTINUATION and self._opcode == OP_CODE_NOT_SET:
+                raise WebSocketError(
+                    WSCloseCode.PROTOCOL_ERROR,
+                    "Continuation frame for non started message",
+                )
+
             # load text/binary
             if not fin:
                 # got partial frame payload
@@ -210,11 +223,6 @@ class WebSocketReader:
 
             has_partial = bool(self._partial)
             if opcode == OP_CODE_CONTINUATION:
-                if self._opcode == OP_CODE_NOT_SET:
-                    raise WebSocketError(
-                        WSCloseCode.PROTOCOL_ERROR,
-                        "Continuation frame for non started message",
-                    )
                 opcode = self._opcode
                 self._opcode = OP_CODE_NOT_SET
             # previous frame was non finished
@@ -270,18 +278,24 @@ class WebSocketReader:
 
             size = len(payload_merged)
             if opcode == OP_CODE_TEXT:
-                try:
-                    text = payload_merged.decode("utf-8")
-                except UnicodeDecodeError as exc:
-                    raise WebSocketError(
-                        WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
-                    ) from exc
+                if self._decode_text:
+                    try:
+                        text = payload_merged.decode("utf-8")
+                    except UnicodeDecodeError as exc:
+                        raise WebSocketError(
+                            WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
+                        ) from exc
 
-                # XXX: The Text and Binary messages here can be a performance
-                # bottleneck, so we use tuple.__new__ to improve performance.
-                # This is not type safe, but many tests should fail in
-                # test_client_ws_functional.py if this is wrong.
-                msg = TUPLE_NEW(WSMessageText, (text, size, "", WS_MSG_TYPE_TEXT))
+                    # XXX: The Text and Binary messages here can be a performance
+                    # bottleneck, so we use tuple.__new__ to improve performance.
+                    # This is not type safe, but many tests should fail in
+                    # test_client_ws_functional.py if this is wrong.
+                    msg = TUPLE_NEW(WSMessageText, (text, size, "", WS_MSG_TYPE_TEXT))
+                else:
+                    # Return raw bytes for TEXT messages when decode_text=False
+                    msg = TUPLE_NEW(
+                        WSMessageTextBytes, (payload_merged, size, "", WS_MSG_TYPE_TEXT)
+                    )
             else:
                 msg = TUPLE_NEW(
                     WSMessageBinary, (payload_merged, size, "", WS_MSG_TYPE_BINARY)

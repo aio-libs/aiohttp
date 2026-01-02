@@ -151,6 +151,7 @@ Georges Dubus
 Greg Holt
 Gregory Haynes
 Grigoriy Soldatov
+Guillaume Leurquin
 Gus Goulart
 Gustavo Carneiro
 Günther Jena
@@ -250,6 +251,7 @@ Marco Paolini
 Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
+Mark Larah
 Marko Kohtala
 Martijn Pieters
 Martin Melka
@@ -290,6 +292,7 @@ Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
 Parag Jain
+Parman Mohammadalizadeh
 Patrick Lee
 Pau Freixes
 Paul Colomiets
