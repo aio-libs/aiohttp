@@ -949,6 +949,8 @@ class HttpPayloadParser:
 class DeflateBuffer:
     """DeflateStream decompress stream and feed data into specified stream."""
 
+    decompressor: Any
+
     def __init__(
         self,
         out: StreamReader,
