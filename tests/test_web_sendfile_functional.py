@@ -639,7 +639,7 @@ async def test_static_file_directory_traversal_attack(aiohttp_client) -> None:
 
     url_abspath = "/static/" + str(full_path.resolve())
     resp = await client.get(url_abspath)
-    assert 403 == resp.status
+    assert resp.status == 404
     await resp.release()
 
     await client.close()
