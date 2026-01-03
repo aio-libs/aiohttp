@@ -2375,9 +2375,9 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     is_finished=False and we raise DecompressSizeError.
     """
     # Create a highly compressible payload that exceeds the decompression limit.
-    # 32MiB of repeated bytes compresses to ~16KB but expands beyond the
-    # 16MiB per-call limit.
-    original = b"A" * (32 * 2**20)
+    # 64MiB of repeated bytes compresses to ~32KB but expands beyond the
+    # 32MiB per-call limit.
+    original = b"A" * (64 * 2**20)
     compressed = zlib.compress(original)
     assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
 
@@ -2414,7 +2414,7 @@ async def test_payload_decompress_size_limit_brotli(
         pytest.skip("brotli not installed")
 
     # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (32 * 2**20)
+    original = b"A" * (64 * 2**20)
     compressed = brotli.compress(original)
     assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
 
