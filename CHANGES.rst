@@ -25,25 +25,25 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`2596`.
-  
-  
-  
+
+
+
 - Fixed multipart reading failing when encountering an empty body part -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11857`.
-  
-  
-  
+
+
+
 - Fixed a case where the parser wasn't raising an exception for a websocket continuation frame when there was no initial frame in context.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11862`.
-  
-  
-  
+
+
+
 
 Removals and backward incompatible breaking changes
 ---------------------------------------------------
@@ -54,9 +54,9 @@ Removals and backward incompatible breaking changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`11898`.
-  
-  
-  
+
+
+
 
 Packaging updates and notes for downstreams
 -------------------------------------------
@@ -67,9 +67,9 @@ Packaging updates and notes for downstreams
 
   *Related issues and pull requests on GitHub:*
   :issue:`11643`.
-  
-  
-  
+
+
+
 
 Contributor-facing changes
 --------------------------
@@ -79,9 +79,9 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`11689`.
-  
-  
-  
+
+
+
 
 Miscellaneous internal changes
 ------------------------------
@@ -91,17 +91,17 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`10713`.
-  
-  
-  
+
+
+
 - Added regression test for cached logging status -- by :user:`meehand`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11778`.
-  
-  
-  
+
+
+
 
 ----
 
