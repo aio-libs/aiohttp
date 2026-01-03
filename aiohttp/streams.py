@@ -137,7 +137,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
-        # Ensure high_water_chunks >= 1 so we don't pause on the first chunk.
+        # Ensure high_water_chunks >= 3 so it's always > low_water_chunks.
         self._high_water_chunks = max(3, limit // 4)
         # Use max(2, ...) because there's always at least 1 chunk split remaining
         # (the current position), so we need low_water >= 2 to allow resume.

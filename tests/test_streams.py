@@ -1667,16 +1667,17 @@ async def test_stream_reader_small_limit_resumes_reading(
 ) -> None:
     """Test that small limits still allow resume_reading to be called.
 
-    Even with very small limits, high_water_chunks should be at least 1
-    and low_water_chunks should be at least 2 to ensure the resume condition
-    can be satisfied (since there's always at least 1 chunk split remaining).
+    Even with very small limits, high_water_chunks should be at least 3
+    and low_water_chunks should be at least 2, with high > low to ensure
+    proper flow control.
     """
     loop = asyncio.get_event_loop()
     stream = streams.StreamReader(protocol, limit=limit, loop=loop)
 
-    # Verify minimum thresholds are enforced
-    assert stream._high_water_chunks >= 1
+    # Verify minimum thresholds are enforced and high > low
+    assert stream._high_water_chunks >= 3
     assert stream._low_water_chunks >= 2
+    assert stream._high_water_chunks > stream._low_water_chunks
 
     # Set up pause/resume side effects
     def pause_reading() -> None:
@@ -1689,14 +1690,11 @@ async def test_stream_reader_small_limit_resumes_reading(
 
     protocol.resume_reading.side_effect = resume_reading
 
-    # Feed 2 chunks (triggers pause at > high_water_chunks)
-    stream.begin_http_chunk_receiving()
-    stream.feed_data(b"a")
-    stream.end_http_chunk_receiving()
-
-    stream.begin_http_chunk_receiving()
-    stream.feed_data(b"b")
-    stream.end_http_chunk_receiving()
+    # Feed 4 chunks (triggers pause at > high_water_chunks which is >= 3)
+    for char in b"abcd":
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(bytes([char]))
+        stream.end_http_chunk_receiving()
 
     # Reading should now be paused
     assert protocol._reading_paused is True
@@ -1704,7 +1702,7 @@ async def test_stream_reader_small_limit_resumes_reading(
 
     # Read all data - should resume (chunk count drops below low_water_chunks)
     data = stream.read_nowait()
-    assert data == b"ab"
+    assert data == b"abcd"
     assert stream._size == 0
 
     protocol.resume_reading.assert_called()
