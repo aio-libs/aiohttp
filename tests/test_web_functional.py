@@ -1717,8 +1717,10 @@ async def test_app_max_client_size_form(aiohttp_client: AiohttpClient) -> None:
 
     # Verify that entire multipart form can't exceed client size (not just each field).
     form = aiohttp.FormData()
-    for i in range(3):
-        form.add_field(f"f{i}", b"A" * 512000)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        for i in range(3):
+            form.add_field(f"f{i}", b"A" * 512000)
 
     async with client.post("/", data=form) as resp:
         assert resp.status == 413
