@@ -963,18 +963,14 @@ class HttpPayloadParser:
 class DeflateBuffer:
     """DeflateStream decompress stream and feed data into specified stream."""
 
-<<<<<<< HEAD
     decompressor: Any
 
-    def __init__(self, out: StreamReader, encoding: Optional[str]) -> None:
-=======
     def __init__(
         self,
         out: StreamReader,
         encoding: str | None,
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
     ) -> None:
->>>>>>> 92477c5a7 (Use decompressor max_length parameter (#11898))
         self.out = out
         self.size = 0
         out.total_compressed_bytes = self.size
