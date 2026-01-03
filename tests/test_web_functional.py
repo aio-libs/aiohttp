@@ -1705,8 +1705,8 @@ async def test_app_max_client_size(aiohttp_client) -> None:
     await resp.release()
 
 
-async def test_app_max_client_size_adjusted(aiohttp_client) -> None:
-    async def handler(request):
+async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
         await request.post()
         return web.Response(body=b"ok")
 
