@@ -968,7 +968,7 @@ class DeflateBuffer:
     def __init__(
         self,
         out: StreamReader,
-        encoding: str | None,
+        encoding: Optional[str],
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
     ) -> None:
         self.out = out
