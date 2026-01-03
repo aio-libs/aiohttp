@@ -53,9 +53,6 @@ class ZLibDecompressObjProtocol(Protocol):
     @property
     def eof(self) -> bool: ...
 
-    @property
-    def unconsumed_tail(self) -> bytes: ...
-
 
 class ZLibBackendProtocol(Protocol):
     MAX_WBITS: int
@@ -286,10 +283,6 @@ class ZLibDecompressor(DecompressionBaseHandler):
     @property
     def eof(self) -> bool:
         return self._decompressor.eof
-
-    @property
-    def unconsumed_tail(self) -> bytes:
-        return self._decompressor.unconsumed_tail
 
 
 class BrotliDecompressor(DecompressionBaseHandler):
