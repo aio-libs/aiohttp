@@ -149,8 +149,8 @@ class StreamReader(AsyncStreamReaderMixin):
         self._loop = loop
         self._size = 0
         self._cursor = 0
-        self._http_chunk_splits: Optional[List[int]] = None
-        self._buffer: collections.deque[bytes] = collections.deque()
+        self._http_chunk_splits: Optional[Deque[int]] = None
+        self._buffer: Deque[bytes] = collections.deque()
         self._buffer_offset = 0
         self._eof = False
         self._waiter: Optional[asyncio.Future[None]] = None
