@@ -138,7 +138,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._loop = loop
         self._size = 0
         self._cursor = 0
-        self._http_chunk_splits: list[int] | None = None
+        self._http_chunk_splits: collections.deque[int] | None = None
         self._buffer: collections.deque[bytes] = collections.deque()
         self._buffer_offset = 0
         self._eof = False
@@ -291,7 +291,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 raise RuntimeError(
                     "Called begin_http_chunk_receiving when some data was already fed"
                 )
-            self._http_chunk_splits = []
+            self._http_chunk_splits = collections.deque()
 
     def end_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
@@ -436,7 +436,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 raise self._exception
 
             while self._http_chunk_splits:
-                pos = self._http_chunk_splits.pop(0)
+                pos = self._http_chunk_splits.popleft()
                 if pos == self._cursor:
                     return (b"", True)
                 if pos > self._cursor:
@@ -509,7 +509,7 @@ class StreamReader(AsyncStreamReaderMixin):
         chunk_splits = self._http_chunk_splits
         # Prevent memory leak: drop useless chunk splits
         while chunk_splits and chunk_splits[0] < self._cursor:
-            chunk_splits.pop(0)
+            chunk_splits.popleft()
 
         if self._size < self._low_water and self._protocol._reading_paused:
             self._protocol.resume_reading()
