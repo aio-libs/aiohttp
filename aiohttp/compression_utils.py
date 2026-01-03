@@ -34,7 +34,7 @@ except ImportError:
 
 
 MAX_SYNC_CHUNK_SIZE = 4096
-DEFAULT_MAX_DECOMPRESS_SIZE = 2**23  # 8MiB
+DEFAULT_MAX_DECOMPRESS_SIZE = 2**24  # 16MiB
 
 # Unlimited decompression constants - different libraries use different conventions
 ZLIB_MAX_LENGTH_UNLIMITED = 0  # zlib uses 0 to mean unlimited
