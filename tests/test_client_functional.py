@@ -19,6 +19,14 @@ from contextlib import suppress
 from typing import Any, NoReturn
 from unittest import mock
 
+try:
+    try:
+        import brotlicffi as brotli
+    except ImportError:
+        import brotli
+except ImportError:
+    brotli = None  # type: ignore[assignment]
+
 import pytest
 import trustme
 from multidict import MultiDict
@@ -2400,18 +2408,12 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
         assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
 
 
+@pytest.mark.skipif(brotli is None, reason="brotli is not installed")
 async def test_payload_decompress_size_limit_brotli(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Test that brotli decompression size limit triggers DecompressSizeError."""
-    try:
-        try:
-            import brotlicffi as brotli
-        except ImportError:
-            import brotli
-    except ImportError:
-        pytest.skip("brotli not installed")
-
+    assert brotli is not None
     # Create a highly compressible payload that exceeds the decompression limit.
     original = b"A" * (64 * 2**20)
     compressed = brotli.compress(original)
