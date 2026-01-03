@@ -184,6 +184,7 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
     i = 0
     n = len(header)
 
+    invalid_names = []
     while i < n:
         # Use the same pattern as parse_set_cookie_headers to find cookies
         match = _COOKIE_PATTERN.match(header, i)
@@ -201,9 +202,7 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
 
                 # Validate the name (same as regex path)
                 if not _COOKIE_NAME_RE.match(key):
-                    internal_logger.warning(
-                        "Can not load cookie: Illegal cookie name %r", key
-                    )
+                    invalid_names.append(key)
                 else:
                     morsel = Morsel()
                     morsel.__setstate__(  # type: ignore[attr-defined]
@@ -221,7 +220,7 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
 
         # Validate the name
         if not key or not _COOKIE_NAME_RE.match(key):
-            internal_logger.warning("Can not load cookie: Illegal cookie name %r", key)
+            invalid_names.append(key)
             continue
 
         # Create new morsel
@@ -236,6 +235,11 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
         )
 
         cookies.append((key, morsel))
+
+    if invalid_names:
+        internal_logger.debug(
+            "Cannot load cookie. Illegal cookie names: %r", invalid_names
+        )
 
     return cookies
 

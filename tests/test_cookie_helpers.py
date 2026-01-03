@@ -1,5 +1,6 @@
 """Tests for internal cookie helper functions."""
 
+import logging
 import sys
 import time
 from http.cookies import (
@@ -1444,14 +1445,16 @@ def test_parse_cookie_header_illegal_names(caplog: pytest.LogCaptureFixture) -> 
     """Test parse_cookie_header warns about illegal cookie names."""
     # Cookie name with comma (not allowed in _COOKIE_NAME_RE)
     header = "good=value; invalid,cookie=bad; another=test"
-    result = parse_cookie_header(header)
+    with caplog.at_level(logging.DEBUG):
+        result = parse_cookie_header(header)
     # Should skip the invalid cookie but continue parsing
     assert len(result) == 2
     assert result[0][0] == "good"
     assert result[0][1].value == "value"
     assert result[1][0] == "another"
     assert result[1][1].value == "test"
-    assert "Can not load cookie: Illegal cookie name 'invalid,cookie'" in caplog.text
+    assert "Cannot load cookie. Illegal cookie name" in caplog.text
+    assert "'invalid,cookie'" in caplog.text
 
 
 def test_parse_cookie_header_large_value() -> None:
@@ -1554,7 +1557,8 @@ def test_parse_cookie_header_invalid_name_in_fallback(
     """Test that fallback parser rejects cookies with invalid names."""
     header = 'normal=value; invalid,name={"x":"y"}; another=test'
 
-    result = parse_cookie_header(header)
+    with caplog.at_level(logging.DEBUG):
+        result = parse_cookie_header(header)
 
     assert len(result) == 2
 
@@ -1566,7 +1570,8 @@ def test_parse_cookie_header_invalid_name_in_fallback(
     assert name2 == "another"
     assert morsel2.value == "test"
 
-    assert "Can not load cookie: Illegal cookie name 'invalid,name'" in caplog.text
+    assert "Cannot load cookie. Illegal cookie name" in caplog.text
+    assert "'invalid,name'" in caplog.text
 
 
 def test_parse_cookie_header_empty_key_in_fallback(
@@ -1574,8 +1579,8 @@ def test_parse_cookie_header_empty_key_in_fallback(
 ) -> None:
     """Test that fallback parser logs warning for empty cookie names."""
     header = 'normal=value; ={"malformed":"json"}; another=test'
-
-    result = parse_cookie_header(header)
+    with caplog.at_level(logging.DEBUG):
+        result = parse_cookie_header(header)
 
     assert len(result) == 2
 
@@ -1587,7 +1592,8 @@ def test_parse_cookie_header_empty_key_in_fallback(
     assert name2 == "another"
     assert morsel2.value == "test"
 
-    assert "Can not load cookie: Illegal cookie name ''" in caplog.text
+    assert "Cannot load cookie. Illegal cookie name" in caplog.text
+    assert "''" in caplog.text
 
 
 @pytest.mark.parametrize(
