@@ -1,1 +1,0 @@
-Added regression test for cached logging status -- by :user:`meehand`.
