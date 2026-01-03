@@ -116,6 +116,8 @@ class StreamReader(AsyncStreamReaderMixin):
         "_protocol",
         "_low_water",
         "_high_water",
+        "_low_water_chunks",
+        "_high_water_chunks",
         "_loop",
         "_size",
         "_cursor",
@@ -146,6 +148,11 @@ class StreamReader(AsyncStreamReaderMixin):
         self._high_water = limit * 2
         if loop is None:
             loop = asyncio.get_event_loop()
+        # Ensure high_water_chunks >= 3 so it's always > low_water_chunks.
+        self._high_water_chunks = max(3, limit // 4)
+        # Use max(2, ...) because there's always at least 1 chunk split remaining
+        # (the current position), so we need low_water >= 2 to allow resume.
+        self._low_water_chunks = max(2, self._high_water_chunks // 2)
         self._loop = loop
         self._size = 0
         self._cursor = 0
@@ -328,6 +335,15 @@ class StreamReader(AsyncStreamReaderMixin):
             return
 
         self._http_chunk_splits.append(self.total_bytes)
+
+        # If we get too many small chunks before self._high_water is reached, then any
+        # .read() call becomes computationally expensive, and could block the event loop
+        # for too long, hence an additional self._high_water_chunks here.
+        if (
+            len(self._http_chunk_splits) > self._high_water_chunks
+            and not self._protocol._reading_paused
+        ):
+            self._protocol.pause_reading()
 
         # wake up readchunk when end of http chunk received
         waiter = self._waiter
@@ -537,7 +553,14 @@ class StreamReader(AsyncStreamReaderMixin):
         while chunk_splits and chunk_splits[0] < self._cursor:
             chunk_splits.popleft()
 
-        if self._size < self._low_water and self._protocol._reading_paused:
+        if (
+            self._protocol._reading_paused
+            and self._size < self._low_water
+            and (
+                self._http_chunk_splits is None
+                or len(self._http_chunk_splits) < self._low_water_chunks
+            )
+        ):
             self._protocol.resume_reading()
         return data
 
