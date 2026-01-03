@@ -2413,9 +2413,6 @@ async def test_payload_decompress_size_limit_brotli(
     except ImportError:
         pytest.skip("brotli not installed")
 
-    from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
-    from aiohttp.http_exceptions import DecompressSizeError
-
     # Create a highly compressible payload that exceeds the decompression limit.
     original = b"A" * (32 * 2**20)
     compressed = brotli.compress(original)
