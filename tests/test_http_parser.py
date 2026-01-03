@@ -1945,7 +1945,7 @@ class TestDeflateBuffer:
         # Feed compressed data in chunks (simulating network streaming)
         for i in range(0, len(compressed), chunk_size):
             chunk = compressed[i : i + chunk_size]
-            dbuf.feed_data(chunk)
+            dbuf.feed_data(chunk, len(chunk))
 
         dbuf.feed_eof()
 
