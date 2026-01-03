@@ -13,6 +13,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion
+from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
@@ -929,7 +930,28 @@ async def test_multipart_formdata(protocol) -> None:
     assert dict(result) == {"a": "b", "c": "d"}
 
 
-async def test_multipart_formdata_file(protocol) -> None:
+async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> None:
+    # Ensure ValueError is raised when Content-Disposition has no name
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    payload.feed_data(
+        b"-----------------------------326931944431359\r\n"
+        b"Content-Disposition: form-data\r\n"  # Missing name!
+        b"\r\n"
+        b"value\r\n"
+        b"-----------------------------326931944431359--\r\n"
+    )
+    content_type = (
+        "multipart/form-data; boundary=---------------------------326931944431359"
+    )
+    payload.feed_eof()
+    req = make_mocked_request(
+        "POST", "/", headers={"CONTENT-TYPE": content_type}, payload=payload
+    )
+    with pytest.raises(ValueError, match="Multipart field missing name"):
+        await req.post()
+
+
+async def test_multipart_formdata_file(protocol: BaseProtocol) -> None:
     # Make sure file uploads work, even without a content type
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     payload.feed_data(
