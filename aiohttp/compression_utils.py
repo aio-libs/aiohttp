@@ -284,6 +284,10 @@ class ZLibDecompressor(DecompressionBaseHandler):
     def eof(self) -> bool:
         return self._decompressor.eof
 
+    @property
+    def unconsumed_tail(self) -> bytes:
+        return self._decompressor.unconsumed_tail
+
 
 class BrotliDecompressor(DecompressionBaseHandler):
     # Supports both 'brotlipy' and 'Brotli' packages
