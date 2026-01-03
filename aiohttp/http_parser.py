@@ -13,6 +13,7 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import (
+    DEFAULT_MAX_DECOMPRESS_SIZE,
     HAS_BROTLI,
     HAS_ZSTD,
     BrotliDecompressor,
@@ -34,6 +35,7 @@ from .http_exceptions import (
     BadStatusLine,
     ContentEncodingError,
     ContentLengthError,
+    DecompressSizeError,
     InvalidHeader,
     InvalidURLError,
     LineTooLong,
@@ -947,9 +949,12 @@ class HttpPayloadParser:
 class DeflateBuffer:
     """DeflateStream decompress stream and feed data into specified stream."""
 
-    decompressor: Any
-
-    def __init__(self, out: StreamReader, encoding: str | None) -> None:
+    def __init__(
+        self,
+        out: StreamReader,
+        encoding: str | None,
+        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+    ) -> None:
         self.out = out
         self.size = 0
         out.total_compressed_bytes = self.size
@@ -973,6 +978,8 @@ class DeflateBuffer:
             self.decompressor = ZSTDDecompressor()
         else:
             self.decompressor = ZLibDecompressor(encoding=encoding)
+
+        self._max_decompress_size = max_decompress_size
 
     def set_exception(
         self,
@@ -1003,13 +1010,23 @@ class DeflateBuffer:
             )
 
         try:
-            chunk = self.decompressor.decompress_sync(chunk)
+            # Decompress with limit + 1 so we can detect if output exceeds limit
+            chunk = self.decompressor.decompress_sync(
+                chunk, max_length=self._max_decompress_size + 1
+            )
         except Exception:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding
             )
 
         self._started_decoding = True
+
+        # Check if decompression limit was exceeded
+        if len(chunk) > self._max_decompress_size:
+            raise DecompressSizeError(
+                "Decompressed data exceeds the configured limit of %d bytes"
+                % self._max_decompress_size
+            )
 
         if chunk:
             self.out.feed_data(chunk, len(chunk))
