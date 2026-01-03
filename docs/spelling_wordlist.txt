@@ -192,6 +192,7 @@ lowercased
 Mako
 manylinux
 metadata
+MiB
 microservice
 middleware
 middlewares

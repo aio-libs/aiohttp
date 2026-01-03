@@ -13,7 +13,12 @@ from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
-from .compression_utils import ZLibCompressor, ZLibDecompressor
+from .abc import AbstractStreamWriter
+from .compression_utils import (
+    DEFAULT_MAX_DECOMPRESS_SIZE,
+    ZLibCompressor,
+    ZLibDecompressor,
+)
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
@@ -261,6 +266,7 @@ class BodyPartReader:
         *,
         subtype: str = "mixed",
         default_charset: str | None = None,
+        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -277,6 +283,7 @@ class BodyPartReader:
         self._prev_chunk: bytes | None = None
         self._content_eof = 0
         self._cache: dict[str, Any] = {}
+        self._max_decompress_size = max_decompress_size
 
     def __aiter__(self: Self) -> Self:
         return self
@@ -306,7 +313,7 @@ class BodyPartReader:
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
         if decode:
-            return self.decode(data)
+            return await self.decode(data)
         return data
 
     async def read_chunk(self, size: int = chunk_size) -> bytes:
@@ -484,7 +491,7 @@ class BodyPartReader:
         """Returns True if the boundary was reached or False otherwise."""
         return self._at_eof
 
-    def decode(self, data: bytes) -> bytes:
+    async def decode(self, data: bytes) -> bytes:
         """Decodes data.
 
         Decoding is done according the specified Content-Encoding
@@ -494,18 +501,18 @@ class BodyPartReader:
             data = self._decode_content_transfer(data)
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
         if not self._is_form_data and CONTENT_ENCODING in self.headers:
-            return self._decode_content(data)
+            return await self._decode_content(data)
         return data
 
-    def _decode_content(self, data: bytes) -> bytes:
+    async def _decode_content(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
             return data
         if encoding in {"deflate", "gzip"}:
-            return ZLibDecompressor(
+            return await ZLibDecompressor(
                 encoding=encoding,
                 suppress_deflate_header=True,
-            ).decompress_sync(data)
+            ).decompress(data, max_length=self._max_decompress_size)
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
@@ -576,11 +583,11 @@ class BodyPartReaderPayload(Payload):
         """
         raise TypeError("Unable to read body part as bytes. Use write() to consume.")
 
-    async def write(self, writer: Any) -> None:
+    async def write(self, writer: AbstractStreamWriter) -> None:
         field = self._value
         chunk = await field.read_chunk(size=2**16)
         while chunk:
-            await writer.write(field.decode(chunk))
+            await writer.write(await field.decode(chunk))
             chunk = await field.read_chunk(size=2**16)
 
 
@@ -1020,7 +1027,9 @@ class MultipartWriter(Payload):
 
         return b"".join(parts)
 
-    async def write(self, writer: Any, close_boundary: bool = True) -> None:
+    async def write(
+        self, writer: AbstractStreamWriter, close_boundary: bool = True
+    ) -> None:
         """Write body."""
         for part, encoding, te_encoding in self._parts:
             if self._is_form_data:
@@ -1074,7 +1083,7 @@ class MultipartWriter(Payload):
 
 
 class MultipartPayloadWriter:
-    def __init__(self, writer: Any) -> None:
+    def __init__(self, writer: AbstractStreamWriter) -> None:
         self._writer = writer
         self._encoding: str | None = None
         self._compress: ZLibCompressor | None = None

@@ -1,0 +1,2 @@
+``Brotli`` and ``brotlicffi`` minimum version is now 1.2.
+Decompression now has a default maximum output size of 32MiB per decompress call -- by :user:`Dreamsorcerer`.
