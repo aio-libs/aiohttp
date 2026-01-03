@@ -858,8 +858,8 @@ async def test_static_absolute_url(
     here = pathlib.Path(__file__).parent
     app.router.add_static("/static", here)
     client = await aiohttp_client(app)
-    resp = await client.get("/static/" + str(file_path.resolve()))
-    assert resp.status == 403
+    async with client.get("/static/" + str(file_path.resolve())) as resp:
+        assert resp.status == 404
 
 
 async def test_for_issue_5250(
