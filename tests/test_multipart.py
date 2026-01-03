@@ -221,10 +221,20 @@ class TestPartReader:
         with Stream(data) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
             result = b""
-            with pytest.raises(AssertionError):
+            with pytest.raises(ValueError):
                 for _ in range(4):
                     result += await obj.read_chunk(7)
         assert data == result
+
+    async def test_read_with_content_length_malformed_crlf(self) -> None:
+        # Content-Length is correct but data after content is not \r\n
+        content = b"Hello"
+        h = CIMultiDictProxy(CIMultiDict({"CONTENT-LENGTH": str(len(content))}))
+        # Malformed: "XX" instead of "\r\n" after content
+        with Stream(content + b"XX--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            with pytest.raises(ValueError, match="malformed"):
+                await obj.read()
 
     async def test_read_boundary_with_incomplete_chunk(self) -> None:
         with Stream(b"") as stream:
