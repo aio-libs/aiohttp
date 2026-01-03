@@ -2364,6 +2364,84 @@ async def test_bad_payload_compression(aiohttp_client: AiohttpClient) -> None:
             await resp.read()
 
 
+async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> None:
+    """Test that decompression size limit triggers DecompressSizeError.
+
+    The max_length parameter limits decompressed output per call. When a
+    compressed payload expands beyond the limit, the decompressor reports
+    is_finished=False and we raise DecompressSizeError.
+    """
+    import zlib
+
+    from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
+    from aiohttp.http_exceptions import DecompressSizeError
+
+    # Create a highly compressible payload that exceeds the decompression limit.
+    # 32MiB of repeated bytes compresses to ~16KB but expands beyond the
+    # 16MiB per-call limit.
+    original = b"A" * (32 * 2**20)
+    compressed = zlib.compress(original)
+    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+
+    async def handler(request: web.Request) -> web.Response:
+        # Send compressed data with Content-Encoding header
+        resp = web.Response(body=compressed)
+        resp.headers["Content-Encoding"] = "deflate"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+
+        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
+            await resp.read()
+
+        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
+        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+
+
+async def test_payload_decompress_size_limit_brotli(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that brotli decompression size limit triggers DecompressSizeError."""
+    try:
+        try:
+            import brotlicffi as brotli
+        except ImportError:
+            import brotli
+    except ImportError:
+        pytest.skip("brotli not installed")
+
+    from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
+    from aiohttp.http_exceptions import DecompressSizeError
+
+    # Create a highly compressible payload that exceeds the decompression limit.
+    original = b"A" * (32 * 2**20)
+    compressed = brotli.compress(original)
+    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=compressed)
+        resp.headers["Content-Encoding"] = "br"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+
+        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
+            await resp.read()
+
+        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
+        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+
+
 async def test_bad_payload_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()

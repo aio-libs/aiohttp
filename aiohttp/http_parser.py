@@ -35,6 +35,7 @@ from .http_exceptions import (
     BadStatusLine,
     ContentEncodingError,
     ContentLengthError,
+    DecompressSizeError,
     InvalidHeader,
     InvalidURLError,
     LineTooLong,
@@ -990,6 +991,17 @@ class DeflateBuffer:
             )
 
         self._started_decoding = True
+
+        # Check if decompression limit was exceeded (is_finished is False when
+        # a single chunk of compressed data expands beyond the configured limit)
+        if (
+            hasattr(self.decompressor, "is_finished")
+            and not self.decompressor.is_finished
+        ):
+            raise DecompressSizeError(
+                "Decompressed data exceeds the configured limit of %d bytes"
+                % self._max_decompress_size
+            )
 
         if chunk:
             self.out.feed_data(chunk)

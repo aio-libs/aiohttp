@@ -53,6 +53,9 @@ class ZLibDecompressObjProtocol(Protocol):
     @property
     def eof(self) -> bool: ...
 
+    @property
+    def unconsumed_tail(self) -> bytes: ...
+
 
 class ZLibBackendProtocol(Protocol):
     MAX_WBITS: int
@@ -284,6 +287,11 @@ class ZLibDecompressor(DecompressionBaseHandler):
     def eof(self) -> bool:
         return self._decompressor.eof
 
+    @property
+    def is_finished(self) -> bool:
+        """Check if decompression call completed without hitting limit."""
+        return not self._decompressor.unconsumed_tail
+
 
 class BrotliDecompressor(DecompressionBaseHandler):
     # Supports both 'brotlipy' and 'Brotli' packages
@@ -316,6 +324,13 @@ class BrotliDecompressor(DecompressionBaseHandler):
         if hasattr(self._obj, "flush"):
             return cast(bytes, self._obj.flush())
         return b""
+
+    @property
+    def is_finished(self) -> bool:
+        """Check if decompression is complete."""
+        if hasattr(self._obj, "is_finished"):
+            return cast(bool, self._obj.is_finished())
+        return True  # Assume finished if method not available
 
 
 class ZSTDDecompressor(DecompressionBaseHandler):
