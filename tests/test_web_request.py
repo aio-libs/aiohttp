@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 import socket
 import ssl
 import sys
@@ -356,6 +357,22 @@ def test_request_cookies_edge_cases() -> None:
     headers = CIMultiDict(COOKIE='test="quoted value"; normal=unquoted')
     req = make_mocked_request("GET", "/", headers=headers)
     assert req.cookies == {"test": "quoted value", "normal": "unquoted"}
+
+
+def test_request_cookies_many_invalid(caplog: pytest.LogCaptureFixture) -> None:
+    """Test many invalid cookies doesn't cause too many logs."""
+    bad = "bad" + chr(1) + "name"
+    cookie = "; ".join(f"{bad}{i}=1" for i in range(3000))
+    req = make_mocked_request("GET", "/", headers=CIMultiDict(COOKIE=cookie))
+
+    with caplog.at_level(logging.DEBUG):
+        cookies = req.cookies
+
+    assert len(caplog.record_tuples) == 1
+    _, level, msg = caplog.record_tuples[0]
+    assert level is logging.DEBUG
+    assert "Cannot load cookie" in msg
+    assert cookies == {}
 
 
 def test_request_cookies_no_500_error() -> None:
