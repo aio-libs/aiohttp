@@ -349,11 +349,8 @@ class BodyPartReader:
         self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
             self._at_eof = True
-        if self._at_eof:
-            clrf = await self._content.readline()
-            assert (
-                b"\r\n" == clrf
-            ), "reader did not read all the data or it is malformed"
+        if self._at_eof and await self._content.readline() != b"\r\n":
+            raise ValueError("Reader did not read all the data or it is malformed")
         return chunk
 
     async def _read_chunk_from_length(self, size: int) -> bytes:
@@ -383,7 +380,8 @@ class BodyPartReader:
         while len(chunk) < self._boundary_len:
             chunk += await self._content.read(size)
             self._content_eof += int(self._content.at_eof())
-            assert self._content_eof < 3, "Reading after EOF"
+            if self._content_eof > 2:
+                raise ValueError("Reading after EOF")
             if self._content_eof:
                 break
         if len(chunk) > size:
