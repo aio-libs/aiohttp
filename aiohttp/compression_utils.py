@@ -361,3 +361,8 @@ class ZSTDDecompressor(DecompressionBaseHandler):
 
     def flush(self) -> bytes:
         return b""
+
+    @property
+    def is_finished(self) -> bool:
+        """Check if decompression call completed without hitting limit."""
+        return self._obj.eof

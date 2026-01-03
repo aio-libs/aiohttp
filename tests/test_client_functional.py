@@ -2437,6 +2437,39 @@ async def test_payload_decompress_size_limit_brotli(
         assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
 
 
+async def test_payload_decompress_size_limit_zstd(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that zstd decompression size limit triggers DecompressSizeError."""
+    try:
+        from backports.zstd import ZstdCompressor
+    except ImportError:
+        pytest.skip("backports.zstd not installed")
+
+    # Create a highly compressible payload that exceeds the decompression limit.
+    original = b"A" * (64 * 2**20)
+    compressed = ZstdCompressor().compress(original)
+    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=compressed)
+        resp.headers["Content-Encoding"] = "zstd"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+
+        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
+            await resp.read()
+
+        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
+        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+
+
 async def test_bad_payload_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()
