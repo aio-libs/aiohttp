@@ -1858,7 +1858,6 @@ class TestDeflateBuffer:
 
         dbuf.decompressor = mock.Mock()
         dbuf.decompressor.decompress_sync.return_value = b"line"
-        dbuf.decompressor.is_finished = True
 
         # First byte should be b'x' in order code not to change the decoder.
         dbuf.feed_data(b"xxxx")

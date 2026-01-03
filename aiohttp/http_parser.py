@@ -982,8 +982,9 @@ class DeflateBuffer:
             )
 
         try:
+            # Decompress with limit + 1 so we can detect if output exceeds limit
             chunk = self.decompressor.decompress_sync(
-                chunk, max_length=self._max_decompress_size
+                chunk, max_length=self._max_decompress_size + 1
             )
         except Exception:
             raise ContentEncodingError(
@@ -992,12 +993,8 @@ class DeflateBuffer:
 
         self._started_decoding = True
 
-        # Check if decompression limit was exceeded (is_finished is False when
-        # a single chunk of compressed data expands beyond the configured limit)
-        if (
-            hasattr(self.decompressor, "is_finished")
-            and not self.decompressor.is_finished
-        ):
+        # Check if decompression limit was exceeded
+        if len(chunk) > self._max_decompress_size:
             raise DecompressSizeError(
                 "Decompressed data exceeds the configured limit of %d bytes"
                 % self._max_decompress_size

@@ -2370,9 +2370,8 @@ async def test_bad_payload_compression(aiohttp_client: AiohttpClient) -> None:
 async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> None:
     """Test that decompression size limit triggers DecompressSizeError.
 
-    The max_length parameter limits decompressed output per call. When a
-    compressed payload expands beyond the limit, the decompressor reports
-    is_finished=False and we raise DecompressSizeError.
+    When a compressed payload expands beyond the configured limit,
+    we raise DecompressSizeError.
     """
     # Create a highly compressible payload that exceeds the decompression limit.
     # 64MiB of repeated bytes compresses to ~32KB but expands beyond the
