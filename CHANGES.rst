@@ -10,6 +10,102 @@
 
 .. towncrier release notes start
 
+3.13.3 (2026-01-03)
+===================
+
+This release contains fixes for several vulnerabilities. It is advised to
+upgrade as soon as possible.
+
+Bug fixes
+---------
+
+- Fixed proxy authorization headers not being passed when reusing a connection, which caused 407 (Proxy authentication required) errors
+  -- by :user:`GLeurquin`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2596`.
+
+
+
+- Fixed multipart reading failing when encountering an empty body part -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11857`.
+
+
+
+- Fixed a case where the parser wasn't raising an exception for a websocket continuation frame when there was no initial frame in context.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11862`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- ``Brotli`` and ``brotlicffi`` minimum version is now 1.2.
+  Decompression now has a default maximum output size of 32MiB per decompress call -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11898`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Moved dependency metadata from :file:`setup.cfg` to :file:`pyproject.toml` per :pep:`621`
+  -- by :user:`cdce8p`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11643`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Removed unused ``update-pre-commit`` github action workflow -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11689`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Optimized web server performance when access logging is disabled by reducing time syscalls -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10713`.
+
+
+
+- Added regression test for cached logging status -- by :user:`meehand`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11778`.
+
+
+
+
+----
+
+
 3.13.2 (2025-10-28)
 ===================
 
