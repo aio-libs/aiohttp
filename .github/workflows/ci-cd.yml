@@ -23,9 +23,32 @@ env:
   FORCE_COLOR: 1  # Request colored output from CLI tools supporting it
   MYPY_FORCE_COLOR: 1
   PY_COLORS: 1
+  UPSTREAM_REPOSITORY_ID: >-
+    13258039
 
 permissions: {}
+
 jobs:
+
+  pre-setup:
+    name: Pre-Setup global build settings
+    runs-on: ubuntu-latest
+    outputs:
+      upstream-repository-id: ${{ env.UPSTREAM_REPOSITORY_ID }}
+      release-requested: >-
+        ${{
+          (
+            github.event_name == 'push'
+            && github.ref_type == 'tag'
+          )
+          && true
+          || false
+        }}
+    steps:
+      - name: Dummy
+        if: false
+        run: |
+          echo "Pre-setup step"
 
   lint:
     permissions:
@@ -259,8 +282,11 @@ jobs:
 
   benchmark:
     name: Benchmark
-    needs: gen_llhttp
-
+    needs:
+    - gen_llhttp
+    - pre-setup  # transitive, for accessing settings
+    if: >-
+      needs.pre-setup.outputs.upstream-repository-id == github.repository_id
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -295,7 +321,6 @@ jobs:
       uses: CodSpeedHQ/action@v4
       with:
         mode: instrumentation
-        token: ${{ secrets.CODSPEED_TOKEN }}
         run: python -Im pytest --no-cov --numprocesses=0 -vvvvv --codspeed
 
 
@@ -317,9 +342,10 @@ jobs:
   pre-deploy:
     name: Pre-Deploy
     runs-on: ubuntu-latest
-    needs: check
-    # Run only on pushing a tag
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    needs:
+    - check
+    - pre-setup  # transitive, for accessing settings
+    if: fromJSON(needs.pre-setup.outputs.release-requested)
     steps:
       - name: Dummy
         run: |
@@ -465,8 +491,13 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: [build-tarball, build-wheels]
+    needs:
+    - build-tarball
+    - build-wheels
+    - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest
+    if: >-
+      needs.pre-setup.outputs.upstream-repository-id == github.repository_id
 
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
