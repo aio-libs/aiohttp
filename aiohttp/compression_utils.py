@@ -291,8 +291,8 @@ class BrotliDecompressor(DecompressionBaseHandler):
     # are for 'brotlipy' and bottom branches for 'Brotli'
     def __init__(
         self,
-        executor: Executor | None = None,
-        max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
+        executor: Optional[Executor] = None,
+        max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ) -> None:
         """Decompress data using the Brotli library."""
         if not HAS_BROTLI:
@@ -321,8 +321,8 @@ class BrotliDecompressor(DecompressionBaseHandler):
 class ZSTDDecompressor(DecompressionBaseHandler):
     def __init__(
         self,
-        executor: Executor | None = None,
-        max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
+        executor: Optional[Executor] = None,
+        max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ) -> None:
         if not HAS_ZSTD:
             raise RuntimeError(
