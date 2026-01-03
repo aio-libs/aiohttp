@@ -4,6 +4,7 @@ import json
 import pathlib
 import socket
 import sys
+import warnings
 from collections.abc import Generator
 from typing import Any, NoReturn
 from unittest import mock
