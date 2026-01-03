@@ -13,6 +13,7 @@ import sys
 import tarfile
 import time
 import zipfile
+import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from typing import Any, NoReturn
@@ -38,6 +39,8 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
+from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
+from aiohttp.http_exceptions import DecompressSizeError
 from aiohttp.payload import (
     AsyncIterablePayload,
     BufferedReaderPayload,
@@ -2371,11 +2374,6 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     compressed payload expands beyond the limit, the decompressor reports
     is_finished=False and we raise DecompressSizeError.
     """
-    import zlib
-
-    from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
-    from aiohttp.http_exceptions import DecompressSizeError
-
     # Create a highly compressible payload that exceeds the decompression limit.
     # 32MiB of repeated bytes compresses to ~16KB but expands beyond the
     # 16MiB per-call limit.
