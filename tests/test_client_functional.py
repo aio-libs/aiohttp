@@ -51,10 +51,10 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.connector import Connection
-from aiohttp.http_writer import StreamWriter
 from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
+from aiohttp.connector import Connection
 from aiohttp.http_exceptions import DecompressSizeError
+from aiohttp.http_writer import StreamWriter
 from aiohttp.payload import (
     AsyncIterablePayload,
     BufferedReaderPayload,
