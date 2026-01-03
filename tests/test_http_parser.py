@@ -491,6 +491,20 @@ def test_request_chunked(parser: HttpRequestParser) -> None:
     assert isinstance(payload, streams.StreamReader)
 
 
+def test_te_header_non_ascii(parser: HttpRequestParser) -> None:
+    # K = Kelvin sign, not valid ascii.
+    text = "GET /test HTTP/1.1\r\nTransfer-Encoding: chunKed\r\n\r\n"
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text.encode())
+
+
+def test_upgrade_header_non_ascii(parser: HttpRequestParser) -> None:
+    # K = Kelvin sign, not valid ascii.
+    text = "GET /test HTTP/1.1\r\nUpgrade: websocKet\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text.encode())
+    assert not upgrade
+
+
 def test_request_te_chunked_with_content_length(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
@@ -587,6 +601,21 @@ def test_compression_zstd(parser: HttpRequestParser) -> None:
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
     assert msg.compression == "zstd"
+
+
+@pytest.mark.parametrize(
+    "enc",
+    (
+        "zﬆd".encode(),  # "ﬆ".upper() == "ST"
+        "deﬂate".encode(),  # "ﬂ".upper() == "FL"
+    ),
+)
+def test_compression_non_ascii(parser: HttpRequestParser, enc: bytes) -> None:
+    text = b"GET /test HTTP/1.1\r\ncontent-encoding: " + enc + b"\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    # Non-ascii input should not evaluate to a valid encoding scheme.
+    assert msg.compression is None
 
 
 def test_compression_unknown(parser: HttpRequestParser) -> None:
@@ -1265,7 +1294,8 @@ def test_http_request_chunked_payload(parser: HttpRequestParser) -> None:
     parser.feed_data(b"4\r\ndata\r\n4\r\nline\r\n0\r\n\r\n")
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert payload._http_chunk_splits is not None
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
 
@@ -1282,7 +1312,8 @@ def test_http_request_chunked_payload_and_next_message(
     )
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert payload._http_chunk_splits is not None
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
     assert len(messages) == 1
@@ -1306,12 +1337,13 @@ def test_http_request_chunked_payload_chunks(parser: HttpRequestParser) -> None:
     parser.feed_data(b"test: test\r\n")
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert payload._http_chunk_splits is not None
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert not payload.is_eof()
 
     parser.feed_data(b"\r\n")
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
 
@@ -1322,7 +1354,8 @@ def test_parse_chunked_payload_chunk_extension(parser: HttpRequestParser) -> Non
     parser.feed_data(b"4;test\r\ndata\r\n4\r\nline\r\n0\r\ntest: test\r\n\r\n")
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert payload._http_chunk_splits is not None
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
 

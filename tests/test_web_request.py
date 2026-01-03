@@ -1,8 +1,10 @@
 import asyncio
 import datetime
+import logging
 import socket
 import ssl
 import sys
+import time
 import weakref
 from collections.abc import Iterator, MutableMapping
 from typing import NoReturn
@@ -18,6 +20,7 @@ from aiohttp.http_parser import RawRequestMessage
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
+from aiohttp.web_request import _FORWARDED_PAIR_RE
 
 
 @pytest.fixture
@@ -220,6 +223,13 @@ def test_range_to_slice_tail_stop() -> None:
     assert req.http_range.start == -500 and req.http_range.stop is None
 
 
+def test_range_non_ascii() -> None:
+    # ५ = DEVANAGARI DIGIT FIVE
+    req = make_mocked_request("GET", "/", headers=CIMultiDict([("RANGE", "bytes=4-५")]))
+    with pytest.raises(ValueError, match="range not in acceptable format"):
+        req.http_range
+
+
 def test_non_keepalive_on_http10() -> None:
     req = make_mocked_request("GET", "/", version=HttpVersion(1, 0))
     assert not req.keep_alive
@@ -347,6 +357,22 @@ def test_request_cookies_edge_cases() -> None:
     headers = CIMultiDict(COOKIE='test="quoted value"; normal=unquoted')
     req = make_mocked_request("GET", "/", headers=headers)
     assert req.cookies == {"test": "quoted value", "normal": "unquoted"}
+
+
+def test_request_cookies_many_invalid(caplog: pytest.LogCaptureFixture) -> None:
+    """Test many invalid cookies doesn't cause too many logs."""
+    bad = "bad" + chr(1) + "name"
+    cookie = "; ".join(f"{bad}{i}=1" for i in range(3000))
+    req = make_mocked_request("GET", "/", headers=CIMultiDict(COOKIE=cookie))
+
+    with caplog.at_level(logging.DEBUG):
+        cookies = req.cookies
+
+    assert len(caplog.record_tuples) == 1
+    _, level, msg = caplog.record_tuples[0]
+    assert level is logging.DEBUG
+    assert "Cannot load cookie" in msg
+    assert cookies == {}
 
 
 def test_request_cookies_no_500_error() -> None:
@@ -572,6 +598,18 @@ def test_single_forwarded_header() -> None:
     assert req.forwarded[0]["for"] == "identifier"
     assert req.forwarded[0]["host"] == "identifier"
     assert req.forwarded[0]["proto"] == "identifier"
+
+
+def test_forwarded_re_performance() -> None:
+    value = "{" + "f" * 54773 + "z\x00a=v"
+    start = time.perf_counter()
+    match = _FORWARDED_PAIR_RE.match(value)
+    end = time.perf_counter()
+
+    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
+    assert (end - start) < 0.01
+    # This example shouldn't produce a match either.
+    assert match is None
 
 
 @pytest.mark.parametrize(

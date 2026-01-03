@@ -52,7 +52,7 @@ _COOKIE_PATTERN = re.compile(
     \s*                            # Optional whitespace at start of cookie
     (?P<key>                       # Start of group 'key'
     # aiohttp has extended to include [] for compatibility with real-world cookies
-    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\=\[\]]+?   # Any word of at least one letter
+    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\[\]]+   # Any word of at least one letter
     )                              # End of group 'key'
     (                              # Optional group: there may not be a value.
     \s*=\s*                          # Equal Sign
@@ -185,6 +185,7 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
     i = 0
     n = len(header)
 
+    invalid_names = []
     while i < n:
         # Use the same pattern as parse_set_cookie_headers to find cookies
         match = _COOKIE_PATTERN.match(header, i)
@@ -202,9 +203,7 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
 
                 # Validate the name (same as regex path)
                 if not _COOKIE_NAME_RE.match(key):
-                    internal_logger.warning(
-                        "Can not load cookie: Illegal cookie name %r", key
-                    )
+                    invalid_names.append(key)
                 else:
                     morsel = Morsel()
                     morsel.__setstate__(  # type: ignore[attr-defined]
@@ -222,7 +221,7 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
 
         # Validate the name
         if not key or not _COOKIE_NAME_RE.match(key):
-            internal_logger.warning("Can not load cookie: Illegal cookie name %r", key)
+            invalid_names.append(key)
             continue
 
         # Create new morsel
@@ -237,6 +236,11 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
         )
 
         cookies.append((key, morsel))
+
+    if invalid_names:
+        internal_logger.debug(
+            "Cannot load cookie. Illegal cookie names: %r", invalid_names
+        )
 
     return cookies
 
