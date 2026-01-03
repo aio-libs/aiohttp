@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import zlib
+from abc import ABC, abstractmethod
 from concurrent.futures import Executor
 from typing import Any, Final, Optional, Protocol, TypedDict, cast
 
@@ -32,7 +33,12 @@ except ImportError:
     HAS_ZSTD = False
 
 
-MAX_SYNC_CHUNK_SIZE = 1024
+MAX_SYNC_CHUNK_SIZE = 4096
+DEFAULT_MAX_DECOMPRESS_SIZE = 2**25  # 32MiB
+
+# Unlimited decompression constants - different libraries use different conventions
+ZLIB_MAX_LENGTH_UNLIMITED = 0  # zlib uses 0 to mean unlimited
+ZSTD_MAX_LENGTH_UNLIMITED = -1  # zstd uses -1 to mean unlimited
 
 
 class ZLibCompressObjProtocol(Protocol):
@@ -144,19 +150,37 @@ def encoding_to_mode(
     return -ZLibBackend.MAX_WBITS if suppress_deflate_header else ZLibBackend.MAX_WBITS
 
 
-class ZlibBaseHandler:
+class DecompressionBaseHandler(ABC):
     def __init__(
         self,
-        mode: int,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ):
-        self._mode = mode
+        """Base class for decompression handlers."""
         self._executor = executor
         self._max_sync_chunk_size = max_sync_chunk_size
 
+    @abstractmethod
+    def decompress_sync(
+        self, data: bytes, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
+        """Decompress the given data."""
 
-class ZLibCompressor(ZlibBaseHandler):
+    async def decompress(
+        self, data: bytes, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
+        """Decompress the given data."""
+        if (
+            self._max_sync_chunk_size is not None
+            and len(data) > self._max_sync_chunk_size
+        ):
+            return await asyncio.get_event_loop().run_in_executor(
+                self._executor, self.decompress_sync, data, max_length
+            )
+        return self.decompress_sync(data, max_length)
+
+
+class ZLibCompressor:
     def __init__(
         self,
         encoding: Optional[str] = None,
@@ -167,14 +191,12 @@ class ZLibCompressor(ZlibBaseHandler):
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ):
-        super().__init__(
-            mode=(
-                encoding_to_mode(encoding, suppress_deflate_header)
-                if wbits is None
-                else wbits
-            ),
-            executor=executor,
-            max_sync_chunk_size=max_sync_chunk_size,
+        self._executor = executor
+        self._max_sync_chunk_size = max_sync_chunk_size
+        self._mode = (
+            encoding_to_mode(encoding, suppress_deflate_header)
+            if wbits is None
+            else wbits
         )
         self._zlib_backend: Final = ZLibBackendWrapper(ZLibBackend._zlib_backend)
 
@@ -233,7 +255,7 @@ class ZLibCompressor(ZlibBaseHandler):
         )
 
 
-class ZLibDecompressor(ZlibBaseHandler):
+class ZLibDecompressor(DecompressionBaseHandler):
     def __init__(
         self,
         encoding: Optional[str] = None,
@@ -241,32 +263,15 @@ class ZLibDecompressor(ZlibBaseHandler):
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
     ):
-        super().__init__(
-            mode=encoding_to_mode(encoding, suppress_deflate_header),
-            executor=executor,
-            max_sync_chunk_size=max_sync_chunk_size,
-        )
+        super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
+        self._mode = encoding_to_mode(encoding, suppress_deflate_header)
         self._zlib_backend: Final = ZLibBackendWrapper(ZLibBackend._zlib_backend)
         self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
 
-    def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
+    def decompress_sync(
+        self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
         return self._decompressor.decompress(data, max_length)
-
-    async def decompress(self, data: bytes, max_length: int = 0) -> bytes:
-        """Decompress the data and return the decompressed bytes.
-
-        If the data size is large than the max_sync_chunk_size, the decompression
-        will be done in the executor. Otherwise, the decompression will be done
-        in the event loop.
-        """
-        if (
-            self._max_sync_chunk_size is not None
-            and len(data) > self._max_sync_chunk_size
-        ):
-            return await asyncio.get_running_loop().run_in_executor(
-                self._executor, self._decompressor.decompress, data, max_length
-            )
-        return self.decompress_sync(data, max_length)
 
     def flush(self, length: int = 0) -> bytes:
         return (
@@ -280,40 +285,64 @@ class ZLibDecompressor(ZlibBaseHandler):
         return self._decompressor.eof
 
 
-class BrotliDecompressor:
+class BrotliDecompressor(DecompressionBaseHandler):
     # Supports both 'brotlipy' and 'Brotli' packages
     # since they share an import name. The top branches
     # are for 'brotlipy' and bottom branches for 'Brotli'
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        executor: Optional[Executor] = None,
+        max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
+    ) -> None:
+        """Decompress data using the Brotli library."""
         if not HAS_BROTLI:
             raise RuntimeError(
                 "The brotli decompression is not available. "
                 "Please install `Brotli` module"
             )
         self._obj = brotli.Decompressor()
+        super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
-    def decompress_sync(self, data: bytes) -> bytes:
+    def decompress_sync(
+        self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
+        """Decompress the given data."""
         if hasattr(self._obj, "decompress"):
-            return cast(bytes, self._obj.decompress(data))
-        return cast(bytes, self._obj.process(data))
+            return cast(bytes, self._obj.decompress(data, max_length))
+        return cast(bytes, self._obj.process(data, max_length))
 
     def flush(self) -> bytes:
+        """Flush the decompressor."""
         if hasattr(self._obj, "flush"):
             return cast(bytes, self._obj.flush())
         return b""
 
 
-class ZSTDDecompressor:
-    def __init__(self) -> None:
+class ZSTDDecompressor(DecompressionBaseHandler):
+    def __init__(
+        self,
+        executor: Optional[Executor] = None,
+        max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
+    ) -> None:
         if not HAS_ZSTD:
             raise RuntimeError(
                 "The zstd decompression is not available. "
                 "Please install `backports.zstd` module"
             )
         self._obj = ZstdDecompressor()
+        super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
-    def decompress_sync(self, data: bytes) -> bytes:
-        return self._obj.decompress(data)
+    def decompress_sync(
+        self, data: bytes, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+    ) -> bytes:
+        # zstd uses -1 for unlimited, while zlib uses 0 for unlimited
+        # Convert the zlib convention (0=unlimited) to zstd convention (-1=unlimited)
+        zstd_max_length = (
+            ZSTD_MAX_LENGTH_UNLIMITED
+            if max_length == ZLIB_MAX_LENGTH_UNLIMITED
+            else max_length
+        )
+        return self._obj.decompress(data, zstd_max_length)
 
     def flush(self) -> bytes:
         return b""
