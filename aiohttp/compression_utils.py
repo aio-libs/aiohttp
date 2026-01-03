@@ -153,14 +153,8 @@ def encoding_to_mode(
 class DecompressionBaseHandler(ABC):
     def __init__(
         self,
-<<<<<<< HEAD
-        mode: int,
         executor: Optional[Executor] = None,
         max_sync_chunk_size: Optional[int] = MAX_SYNC_CHUNK_SIZE,
-=======
-        executor: Executor | None = None,
-        max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
->>>>>>> 92477c5a7 (Use decompressor max_length parameter (#11898))
     ):
         """Base class for decompression handlers."""
         self._executor = executor
@@ -274,33 +268,11 @@ class ZLibDecompressor(DecompressionBaseHandler):
         self._zlib_backend: Final = ZLibBackendWrapper(ZLibBackend._zlib_backend)
         self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
 
-<<<<<<< HEAD
-    def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
-        return self._decompressor.decompress(data, max_length)
-
-    async def decompress(self, data: bytes, max_length: int = 0) -> bytes:
-        """Decompress the data and return the decompressed bytes.
-
-        If the data size is large than the max_sync_chunk_size, the decompression
-        will be done in the executor. Otherwise, the decompression will be done
-        in the event loop.
-        """
-        if (
-            self._max_sync_chunk_size is not None
-            and len(data) > self._max_sync_chunk_size
-        ):
-            return await asyncio.get_running_loop().run_in_executor(
-                self._executor, self._decompressor.decompress, data, max_length
-            )
-        return self.decompress_sync(data, max_length)
-
-=======
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
         return self._decompressor.decompress(data, max_length)
 
->>>>>>> 92477c5a7 (Use decompressor max_length parameter (#11898))
     def flush(self, length: int = 0) -> bytes:
         return (
             self._decompressor.flush(length)
@@ -331,14 +303,10 @@ class BrotliDecompressor(DecompressionBaseHandler):
         self._obj = brotli.Decompressor()
         super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
-<<<<<<< HEAD
-    def decompress_sync(self, data: bytes) -> bytes:
-=======
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
         """Decompress the given data."""
->>>>>>> 92477c5a7 (Use decompressor max_length parameter (#11898))
         if hasattr(self._obj, "decompress"):
             return cast(bytes, self._obj.decompress(data, max_length))
         return cast(bytes, self._obj.process(data, max_length))
