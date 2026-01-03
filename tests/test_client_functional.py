@@ -25,7 +25,12 @@ try:
     except ImportError:
         import brotli
 except ImportError:
-    brotli = None  # type: ignore[assignment]
+    brotli = None  # type: ignore[assignment]  # pragma: no cover
+
+try:
+    from backports.zstd import ZstdCompressor
+except ImportError:
+    ZstdCompressor = None  # type: ignore[assignment,misc]  # pragma: no cover
 
 import pytest
 import trustme
@@ -2438,18 +2443,17 @@ async def test_payload_decompress_size_limit_brotli(
         assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
 
 
+@pytest.mark.skipif(ZstdCompressor is None, reason="backports.zstd is not installed")
 async def test_payload_decompress_size_limit_zstd(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Test that zstd decompression size limit triggers DecompressSizeError."""
-    try:
-        from backports.zstd import ZstdCompressor
-    except ImportError:
-        pytest.skip("backports.zstd not installed")
-
+    assert ZstdCompressor is not None
     # Create a highly compressible payload that exceeds the decompression limit.
     original = b"A" * (64 * 2**20)
-    compressed = ZstdCompressor().compress(original)
+    compressor = ZstdCompressor()
+    compressor.compress(original)
+    compressed = compressor.flush()
     assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
 
     async def handler(request: web.Request) -> web.Response:
