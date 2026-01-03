@@ -25,7 +25,7 @@ try:
     except ImportError:
         import brotli
 except ImportError:
-    brotli = None  # type: ignore[assignment]  # pragma: no cover
+    brotli = None  # pragma: no cover
 
 try:
     from backports.zstd import ZstdCompressor
@@ -2452,8 +2452,7 @@ async def test_payload_decompress_size_limit_zstd(
     # Create a highly compressible payload that exceeds the decompression limit.
     original = b"A" * (64 * 2**20)
     compressor = ZstdCompressor()
-    compressor.compress(original)
-    compressed = compressor.flush()
+    compressed = compressor.compress(original) + compressor.flush()
     assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
 
     async def handler(request: web.Request) -> web.Response:
