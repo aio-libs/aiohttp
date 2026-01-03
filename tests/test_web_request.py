@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import socket
+import time
 from collections.abc import MutableMapping
 from typing import Any
 from unittest import mock
@@ -14,7 +15,7 @@ from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import BaseRequest, HTTPRequestEntityTooLarge
-from aiohttp.web_request import ETag
+from aiohttp.web_request import _FORWARDED_PAIR_RE, ETag
 
 
 @pytest.fixture
@@ -528,6 +529,18 @@ def test_single_forwarded_header() -> None:
     assert req.forwarded[0]["for"] == "identifier"
     assert req.forwarded[0]["host"] == "identifier"
     assert req.forwarded[0]["proto"] == "identifier"
+
+
+def test_forwarded_re_performance() -> None:
+    value = "{" + "f" * 54773 + "z\x00a=v"
+    start = time.perf_counter()
+    match = _FORWARDED_PAIR_RE.match(value)
+    end = time.perf_counter()
+
+    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
+    assert (end - start) < 0.01
+    # This example shouldn't produce a match either.
+    assert match is None
 
 
 @pytest.mark.parametrize(

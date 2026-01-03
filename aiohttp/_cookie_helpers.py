@@ -51,7 +51,7 @@ _COOKIE_PATTERN = re.compile(
     \s*                            # Optional whitespace at start of cookie
     (?P<key>                       # Start of group 'key'
     # aiohttp has extended to include [] for compatibility with real-world cookies
-    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\=\[\]]+?   # Any word of at least one letter
+    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\[\]]+   # Any word of at least one letter
     )                              # End of group 'key'
     (                              # Optional group: there may not be a value.
     \s*=\s*                          # Equal Sign
