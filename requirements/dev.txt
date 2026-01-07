@@ -127,7 +127,7 @@ packaging==25.0
     #   pytest
     #   sphinx
     #   wheel
-pathspec==0.12.1
+pathspec==1.0.1
     # via mypy
 pip-tools==7.5.2
     # via -r requirements/dev.in
