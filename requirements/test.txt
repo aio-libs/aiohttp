@@ -75,7 +75,7 @@ packaging==25.0
     # via
     #   gunicorn
     #   pytest
-pathspec==0.12.1
+pathspec==1.0.2
     # via mypy
 pkgconfig==1.5.5
     # via -r requirements/test-common.in
