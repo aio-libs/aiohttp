@@ -270,7 +270,7 @@ typing-extensions==4.15.0 ; python_version < "3.13"
     #   virtualenv
 typing-inspection==0.4.2
     # via pydantic
-urllib3==2.6.2
+urllib3==2.6.3
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows"
     # via
