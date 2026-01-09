@@ -102,7 +102,7 @@ Multipart reference
 
    .. method:: decode(data)
 
-      Decodes data according the specified ``Content-Encoding``
+      Decodes data synchronously according the specified ``Content-Encoding``
       or ``Content-Transfer-Encoding`` headers value.
 
       Supports ``gzip``, ``deflate`` and ``identity`` encodings for
@@ -116,6 +116,34 @@ Multipart reference
       :raises: :exc:`RuntimeError` - if encoding is unknown.
 
       :rtype: bytes
+
+      .. note::
+
+         For large payloads, consider using :meth:`decode_async` instead
+         to avoid blocking the event loop during decompression.
+
+   .. method:: decode_async(data)
+      :async:
+
+      Decodes data asynchronously according the specified ``Content-Encoding``
+      or ``Content-Transfer-Encoding`` headers value.
+
+      This method offloads decompression to an executor for large payloads
+      to avoid blocking the event loop.
+
+      Supports ``gzip``, ``deflate`` and ``identity`` encodings for
+      ``Content-Encoding`` header.
+
+      Supports ``base64``, ``quoted-printable``, ``binary`` encodings for
+      ``Content-Transfer-Encoding`` header.
+
+      :param bytearray data: Data to decode.
+
+      :raises: :exc:`RuntimeError` - if encoding is unknown.
+
+      :rtype: bytes
+
+      .. versionadded:: 3.13.4
 
    .. method:: get_charset(default=None)
 
