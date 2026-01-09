@@ -314,7 +314,7 @@ class BodyPartReader:
             data.extend(await self.read_chunk(self.chunk_size))
         # https://github.com/python/mypy/issues/17537
         if decode:  # type: ignore[unreachable]
-            return await self.decode(data)
+            return await self.decode_async(data)
         return data
 
     async def read_chunk(self, size: int = chunk_size) -> bytes:
@@ -492,20 +492,51 @@ class BodyPartReader:
         """Returns True if the boundary was reached or False otherwise."""
         return self._at_eof
 
-    async def decode(self, data: bytes) -> bytes:
-        """Decodes data.
+    def decode(self, data: bytes) -> bytes:
+        """Decodes data synchronously.
 
-        Decoding is done according the specified Content-Encoding
+        Decodes data according the specified Content-Encoding
         or Content-Transfer-Encoding headers value.
+
+        Note: For large payloads, consider using decode_async() instead
+        to avoid blocking the event loop during decompression.
         """
         if CONTENT_TRANSFER_ENCODING in self.headers:
             data = self._decode_content_transfer(data)
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
         if not self._is_form_data and CONTENT_ENCODING in self.headers:
-            return await self._decode_content(data)
+            return self._decode_content(data)
         return data
 
-    async def _decode_content(self, data: bytes) -> bytes:
+    async def decode_async(self, data: bytes) -> bytes:
+        """Decodes data asynchronously.
+
+        Decodes data according the specified Content-Encoding
+        or Content-Transfer-Encoding headers value.
+
+        This method offloads decompression to an executor for large payloads
+        to avoid blocking the event loop.
+        """
+        if CONTENT_TRANSFER_ENCODING in self.headers:
+            data = self._decode_content_transfer(data)
+        # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
+        if not self._is_form_data and CONTENT_ENCODING in self.headers:
+            return await self._decode_content_async(data)
+        return data
+
+    def _decode_content(self, data: bytes) -> bytes:
+        encoding = self.headers.get(CONTENT_ENCODING, "").lower()
+        if encoding == "identity":
+            return data
+        if encoding in {"deflate", "gzip"}:
+            return ZLibDecompressor(
+                encoding=encoding,
+                suppress_deflate_header=True,
+            ).decompress_sync(data, max_length=self._max_decompress_size)
+
+        raise RuntimeError(f"unknown content encoding: {encoding}")
+
+    async def _decode_content_async(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
             return data
@@ -588,7 +619,7 @@ class BodyPartReaderPayload(Payload):
         field = self._value
         chunk = await field.read_chunk(size=2**16)
         while chunk:
-            await writer.write(await field.decode(chunk))
+            await writer.write(await field.decode_async(chunk))
             chunk = await field.read_chunk(size=2**16)
 
 
