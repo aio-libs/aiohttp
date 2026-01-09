@@ -312,8 +312,7 @@ class BodyPartReader:
         data = bytearray()
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
-        # https://github.com/python/mypy/issues/17537
-        if decode:  # type: ignore[unreachable]
+        if decode:
             return await self.decode_async(data)
         return data
 
