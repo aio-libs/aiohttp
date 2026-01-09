@@ -407,6 +407,33 @@ class TestPartReader:
                 result += await obj.decode_async(chunk)
         assert b"Time to Relax!" == result
 
+    async def test_decode_with_content_encoding_deflate(self) -> None:
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
+        data = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00"
+        with Stream(data + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            chunk = await obj.read_chunk(size=len(data))
+            result = obj.decode(chunk)
+        assert b"Time to Relax!" == result
+
+    async def test_decode_with_content_encoding_identity(self) -> None:
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "identity"}))
+        data = b"Time to Relax!"
+        with Stream(data + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            chunk = await obj.read_chunk(size=len(data))
+            result = obj.decode(chunk)
+        assert data == result
+
+    async def test_decode_with_content_encoding_unknown(self) -> None:
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "snappy"}))
+        data = b"Time to Relax!"
+        with Stream(data + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            chunk = await obj.read_chunk(size=len(data))
+            with pytest.raises(RuntimeError, match="unknown content encoding"):
+                obj.decode(chunk)
+
     async def test_read_with_content_transfer_encoding_quoted_printable(self) -> None:
         h = CIMultiDictProxy(
             CIMultiDict({CONTENT_TRANSFER_ENCODING: "quoted-printable"})
