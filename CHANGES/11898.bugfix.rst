@@ -1,0 +1,6 @@
+Restored :py:meth:`~aiohttp.BodyPartReader.decode` as a synchronous method
+for backward compatibility. The method was inadvertently changed to async
+in 3.13.3 as part of the decompression bomb security fix. A new
+:py:meth:`~aiohttp.BodyPartReader.decode_async` method is now available
+for non-blocking decompression of large payloads. Internal aiohttp code
+uses the async variant to maintain security protections -- by :user:`bdraco`.
