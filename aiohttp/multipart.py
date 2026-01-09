@@ -492,6 +492,17 @@ class BodyPartReader:
         """Returns True if the boundary was reached or False otherwise."""
         return self._at_eof
 
+    def _apply_content_transfer_decoding(self, data: bytes) -> bytes:
+        """Apply Content-Transfer-Encoding decoding if header is present."""
+        if CONTENT_TRANSFER_ENCODING in self.headers:
+            return self._decode_content_transfer(data)
+        return data
+
+    def _needs_content_decoding(self) -> bool:
+        """Check if Content-Encoding decoding should be applied."""
+        # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
+        return not self._is_form_data and CONTENT_ENCODING in self.headers
+
     def decode(self, data: bytes) -> bytes:
         """Decodes data synchronously.
 
@@ -501,10 +512,8 @@ class BodyPartReader:
         Note: For large payloads, consider using decode_async() instead
         to avoid blocking the event loop during decompression.
         """
-        if CONTENT_TRANSFER_ENCODING in self.headers:
-            data = self._decode_content_transfer(data)
-        # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
-        if not self._is_form_data and CONTENT_ENCODING in self.headers:
+        data = self._apply_content_transfer_decoding(data)
+        if self._needs_content_decoding():
             return self._decode_content(data)
         return data
 
@@ -517,10 +526,8 @@ class BodyPartReader:
         This method offloads decompression to an executor for large payloads
         to avoid blocking the event loop.
         """
-        if CONTENT_TRANSFER_ENCODING in self.headers:
-            data = self._decode_content_transfer(data)
-        # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
-        if not self._is_form_data and CONTENT_ENCODING in self.headers:
+        data = self._apply_content_transfer_decoding(data)
+        if self._needs_content_decoding():
             return await self._decode_content_async(data)
         return data
 
