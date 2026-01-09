@@ -749,7 +749,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         )
                         chunk = await field.read_chunk(size=2**16)
                         while chunk:
-                            chunk = await field.decode(chunk)
+                            chunk = await field.decode_async(chunk)
                             await self._loop.run_in_executor(None, tmp.write, chunk)
                             size += len(chunk)
                             if 0 < max_size < size:
