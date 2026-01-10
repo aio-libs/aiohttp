@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/dev.txt --strip-extras requirements/dev.in
 #
-aiodns==3.6.1
+aiodns==4.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -149,7 +149,7 @@ proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-pycares==4.11.0
+pycares==5.0.1
     # via aiodns
 pycparser==2.23
     # via cffi
