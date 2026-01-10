@@ -1262,9 +1262,7 @@ async def test_send_set_cookie_header(
 
 
 async def test_consecutive_write_eof() -> None:
-    writer = mock.Mock()
-    writer.write_eof = mock.AsyncMock()
-    writer.write_headers = mock.AsyncMock()
+    writer = mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True)
     req = make_request("GET", "/", writer=writer)
     data = b"data"
     resp = web.Response(body=data)
@@ -1515,10 +1513,7 @@ async def test_passing_cimultidict_to_web_response_not_mutated(
 
 async def test_stream_response_sends_headers_immediately() -> None:
     """Test that StreamResponse sends headers immediately."""
-    writer = mock.create_autospec(StreamWriter, spec_set=True)
-    writer.write_headers = mock.AsyncMock()
-    writer.send_headers = mock.Mock()
-    writer.write_eof = mock.AsyncMock()
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
 
     req = make_request("GET", "/", writer=writer)
     resp = web.StreamResponse()
@@ -1535,10 +1530,7 @@ async def test_stream_response_sends_headers_immediately() -> None:
 
 async def test_response_buffers_headers() -> None:
     """Test that Response buffers headers for packet coalescing."""
-    writer = mock.create_autospec(StreamWriter, spec_set=True)
-    writer.write_headers = mock.AsyncMock()
-    writer.send_headers = mock.Mock()
-    writer.write_eof = mock.AsyncMock()
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
 
     req = make_request("GET", "/", writer=writer)
     resp = web.Response(body=b"hello")
