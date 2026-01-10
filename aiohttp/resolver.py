@@ -127,8 +127,7 @@ class AsyncResolver(AbstractResolver):
         hosts: list[ResolveResult] = []
         for node in resp.nodes:
             address: tuple[bytes, int] | tuple[bytes, int, int, int] = node.addr
-            family = node.family
-            if family == socket.AF_INET6:
+            if node.family == socket.AF_INET6:
                 if len(address) > 3 and address[3]:
                     # This is essential for link-local IPv6 addresses.
                     # LL IPv6 is a VERY rare case. Strictly speaking, we should use
@@ -142,7 +141,7 @@ class AsyncResolver(AbstractResolver):
                     resolved_host = address[0].decode("ascii")
                     port = address[1]
             else:  # IPv4
-                assert family == socket.AF_INET
+                assert node.family == socket.AF_INET
                 resolved_host = address[0].decode("ascii")
                 port = address[1]
             hosts.append(
@@ -150,7 +149,7 @@ class AsyncResolver(AbstractResolver):
                     hostname=host,
                     host=resolved_host,
                     port=port,
-                    family=family,
+                    family=node.family,
                     proto=0,
                     flags=_NUMERIC_SOCKET_FLAGS,
                 )
