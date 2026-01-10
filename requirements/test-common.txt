@@ -46,7 +46,7 @@ mypy-extensions==1.1.0
     # via mypy
 packaging==25.0
     # via pytest
-pathspec==1.0.2
+pathspec==1.0.3
     # via mypy
 pkgconfig==1.5.5
     # via -r requirements/test-common.in
