@@ -128,7 +128,7 @@ packaging==25.0
     #   gunicorn
     #   pytest
     #   sphinx
-pathspec==1.0.2
+pathspec==1.0.3
     # via mypy
 pip-tools==7.5.2
     # via -r requirements/dev.in
