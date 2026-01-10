@@ -392,6 +392,53 @@ class TestPartReader:
             result = await obj.read(decode=True)
         assert b"Time to Relax!" == result
 
+    async def test_decode_with_content_transfer_encoding_base64(self) -> None:
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        with Stream(b"VG\r\r\nltZSB0byBSZ\r\nWxheCE=\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            result = b""
+            while not obj.at_eof():
+                chunk = await obj.read_chunk(size=6)
+                result += obj.decode(chunk)
+        assert b"Time to Relax!" == result
+
+    async def test_decode_async_with_content_transfer_encoding_base64(self) -> None:
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        with Stream(b"VG\r\r\nltZSB0byBSZ\r\nWxheCE=\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            result = b""
+            while not obj.at_eof():
+                chunk = await obj.read_chunk(size=6)
+                result += await obj.decode_async(chunk)
+        assert b"Time to Relax!" == result
+
+    async def test_decode_with_content_encoding_deflate(self) -> None:
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
+        data = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00"
+        with Stream(data + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            chunk = await obj.read_chunk(size=len(data))
+            result = obj.decode(chunk)
+        assert b"Time to Relax!" == result
+
+    async def test_decode_with_content_encoding_identity(self) -> None:
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "identity"}))
+        data = b"Time to Relax!"
+        with Stream(data + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            chunk = await obj.read_chunk(size=len(data))
+            result = obj.decode(chunk)
+        assert data == result
+
+    async def test_decode_with_content_encoding_unknown(self) -> None:
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "snappy"}))
+        data = b"Time to Relax!"
+        with Stream(data + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            chunk = await obj.read_chunk(size=len(data))
+            with pytest.raises(RuntimeError, match="unknown content encoding"):
+                obj.decode(chunk)
+
     async def test_read_with_content_transfer_encoding_quoted_printable(self) -> None:
         with Stream(
             b"=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,"
@@ -408,17 +455,6 @@ class TestPartReader:
             b" \xd0\xbc\xd0\xb8\xd1\x80!"
         )
         assert result == expected
-
-    async def test_decode_with_content_transfer_encoding_base64(self) -> None:
-        with Stream(b"VG\r\r\nltZSB0byBSZ\r\nWxheCE=\r\n--:--") as stream:
-            obj = aiohttp.BodyPartReader(
-                BOUNDARY, {CONTENT_TRANSFER_ENCODING: "base64"}, stream
-            )
-            result = b""
-            while not obj.at_eof():
-                chunk = await obj.read_chunk(size=6)
-                result += await obj.decode(chunk)
-        assert b"Time to Relax!" == result
 
     @pytest.mark.parametrize("encoding", ("binary", "8bit", "7bit"))
     async def test_read_with_content_transfer_encoding_binary(
