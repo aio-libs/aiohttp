@@ -101,7 +101,7 @@ class TestLineTooLong:
     def test_repr(self) -> None:
         err = http_exceptions.LineTooLong(line=b"spam", limit=10)
         assert repr(err) == (
-            "<LineTooLong: 400, message=\"Got more than "
+            '<LineTooLong: 400, message="Got more than '
             "10 bytes when reading: b'spam'.\">"
         )
 
