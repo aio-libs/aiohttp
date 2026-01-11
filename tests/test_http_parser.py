@@ -766,7 +766,7 @@ def test_max_header_combined_size(parser: HttpRequestParser) -> None:
 
 
 @pytest.mark.parametrize("size", [40960, 8191])
-def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
+async def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
     value = b"t" * size
     text = (
         b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n0\r\ntest: "
