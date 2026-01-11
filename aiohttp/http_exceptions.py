@@ -79,7 +79,7 @@ class DecompressSizeError(PayloadEncodingError):
 
 class LineTooLong(BadHttpMessage):
     def __init__(
-        self, line: str, limit: str = "Unknown", actual_size: str = "Unknown"
+        self, line: bytes, limit: str = "Unknown", actual_size: str = "Unknown"
     ) -> None:
         super().__init__(
             f"Got more than {limit} bytes ({actual_size}) when reading {line}."
