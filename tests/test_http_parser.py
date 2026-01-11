@@ -730,7 +730,7 @@ def test_max_header_field_size(parser: HttpRequestParser, size: int) -> None:
     name = b"t" * size
     text = b"GET /test HTTP/1.1\r\n" + name + b":data\r\n\r\n"
 
-    match = f"400, message:\n  Got more than 8190 bytes when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         for i in range(0, len(text), 5000):
             parser.feed_data(text[i : i + 5000])
@@ -759,7 +759,7 @@ def test_max_header_value_size(parser: HttpRequestParser, size: int) -> None:
     name = b"t" * size
     text = b"GET /test HTTP/1.1\r\ndata:" + name + b"\r\n\r\n"
 
-    match = f"400, message:\n  Got more than 8190 bytes when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         for i in range(0, len(text), 4000):
             parser.feed_data(text[i : i + 4000])
@@ -775,7 +775,7 @@ def test_max_header_combined_size(parser: HttpRequestParser) -> None:
         + b"\r\n\r\n"
     )
 
-    match = f"400, message:\n  Got more than 8190 bytes when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
@@ -789,7 +789,7 @@ def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
         + b"\r\n\r\n"
     )
 
-    match = f"400, message:\n  Got more than 8190 bytes when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         for i in range(0, len(text), 3000):
             parser.feed_data(text[i : i + 3000])
@@ -835,7 +835,7 @@ def test_max_header_value_size_continuation(
     name = b"T" * (size - 5)
     text = b"HTTP/1.1 200 Ok\r\ndata: test\r\n " + name + b"\r\n\r\n"
 
-    match = f"400, message:\n  Got more than 8190 bytes when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         for i in range(0, len(text), 9000):
             response.feed_data(text[i : i + 9000])
@@ -1083,7 +1083,7 @@ def test_http_request_parser_bad_nonascii_uri(parser: HttpRequestParser) -> None
 @pytest.mark.parametrize("size", [40965, 8191])
 def test_http_request_max_status_line(parser: HttpRequestParser, size: int) -> None:
     path = b"t" * (size - 5)
-    match = f"400, message:\n  Got more than 8190 bytes when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(b"GET /path" + path + b" HTTP/1.1\r\n\r\n")
 
@@ -1170,7 +1170,7 @@ def test_http_response_parser_bad_status_line_too_long(
     response: HttpResponseParser, size: int
 ) -> None:
     reason = b"t" * (size - 2)
-    match = f"400, message:\n  Got more than 8190 bytes when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         response.feed_data(b"HTTP/1.1 200 Ok" + reason + b"\r\n\r\n")
 
