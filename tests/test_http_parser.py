@@ -846,7 +846,7 @@ def test_max_header_value_size_continuation(
     match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         for chunk in batched(text, 9000):
-            parser.feed_data(chunk)
+            response.feed_data(chunk)
 
 
 def test_max_header_value_size_continuation_under_limit(
