@@ -796,9 +796,9 @@ def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
 def test_max_headers(parser: HttpRequestParser, headers: int, trailers: int) -> None:
     text = (
         b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked"
-        + sum((b"\r\nHeader-{}: Value".format(i) for i in range(headers)), start=b"")
+        + sum((b"\r\nHeader-%d: Value" % i for i in range(headers)), start=b"")
         + b"\r\n\r\n4\r\ntest\r\n0"
-        + sum((b"\r\nTrailer-{}: Value".format(i) for i in range(trailers)), start=b"")
+        + sum((b"\r\nTrailer-%d: Value" % i for i in range(trailers)), start=b"")
         + b"\r\n\r\n"
     )
 
