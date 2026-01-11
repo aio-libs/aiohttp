@@ -798,7 +798,9 @@ def test_max_headers(parser: HttpRequestParser, headers: int, trailers: int) -> 
 
     match = "Too many (headers|trailers) received"
     with pytest.raises(http_exceptions.BadHttpMessage, match=match):
-        parser.feed_data(text)
+        messages, upgrade, tail = parser.feed_data(text)
+        # Trailers are not seen until payload is read.
+        await messages[0][-1].read()
 
 
 def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
