@@ -727,8 +727,8 @@ def test_max_header_field_size(parser: HttpRequestParser, size: int) -> None:
             parser.feed_data(text[i : i + 5000])
 
 
-def test_max_header_field_size_under_limit(parser: HttpRequestParser) -> None:
-    name = b"t" * 8190
+def test_max_header_size_under_limit(parser: HttpRequestParser) -> None:
+    name = b"t" * 8185
     text = b"GET /test HTTP/1.1\r\n" + name + b":data\r\n\r\n"
 
     messages, upgrade, tail = parser.feed_data(text)
@@ -802,7 +802,7 @@ def test_max_headers(parser: HttpRequestParser, headers: int, trailers: int) -> 
 
 
 def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
-    value = b"A" * 8190
+    value = b"A" * 8185
     text = b"GET /test HTTP/1.1\r\ndata:" + value + b"\r\n\r\n"
 
     messages, upgrade, tail = parser.feed_data(text)
@@ -1080,7 +1080,7 @@ def test_http_request_max_status_line(parser: HttpRequestParser, size: int) -> N
 
 
 def test_http_request_max_status_line_under_limit(parser: HttpRequestParser) -> None:
-    path = b"t" * (8190 - 5)
+    path = b"t" * 8172
     messages, upgraded, tail = parser.feed_data(
         b"GET /path" + path + b" HTTP/1.1\r\n\r\n"
     )
@@ -1169,7 +1169,7 @@ def test_http_response_parser_bad_status_line_too_long(
 def test_http_response_parser_status_line_under_limit(
     response: HttpResponseParser,
 ) -> None:
-    reason = b"O" * 8190
+    reason = b"O" * 8177
     messages, upgraded, tail = response.feed_data(
         b"HTTP/1.1 200 " + reason + b"\r\n\r\n"
     )
