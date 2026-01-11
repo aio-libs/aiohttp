@@ -329,7 +329,7 @@ cdef class HttpParser:
         self, cparser.llhttp_type mode,
         object protocol, object loop, int limit,
         object timer=None,
-        size_t max_line_size=8190, size_t max_headers=32768,
+        size_t max_line_size=8190, size_t max_headers=128,
         size_t max_field_size=8190, payload_exception=None,
         bint response_with_body=True, bint read_until_eof=False,
         bint auto_decompress=True,
@@ -383,6 +383,8 @@ cdef class HttpParser:
             value = self._raw_value.decode('utf-8', 'surrogateescape')
 
             self._headers.append((name, value))
+            if len(self._headers) > self._max_headers:
+                raise BadHttpMessage("Too many headers received")
 
             if name is CONTENT_ENCODING:
                 self._content_encoding = value
@@ -574,7 +576,7 @@ cdef class HttpRequestParser(HttpParser):
 
     def __init__(
         self, protocol, loop, int limit, timer=None,
-        size_t max_line_size=8190, size_t max_headers=32768,
+        size_t max_line_size=8190, size_t max_headers=128,
         size_t max_field_size=8190, payload_exception=None,
         bint response_with_body=True, bint read_until_eof=False,
         bint auto_decompress=True,
@@ -638,7 +640,7 @@ cdef class HttpResponseParser(HttpParser):
 
     def __init__(
         self, protocol, loop, int limit, timer=None,
-            size_t max_line_size=8190, size_t max_headers=32768,
+            size_t max_line_size=8190, size_t max_headers=128,
             size_t max_field_size=8190, payload_exception=None,
             bint response_with_body=True, bint read_until_eof=False,
             bint auto_decompress=True

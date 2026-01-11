@@ -194,6 +194,7 @@ class _RequestOptions(TypedDict, total=False):
     auto_decompress: bool | None
     max_line_size: int | None
     max_field_size: int | None
+    max_headers: int | None
     middlewares: Sequence[ClientMiddlewareType] | None
 
 
@@ -317,6 +318,7 @@ class ClientSession:
         read_bufsize: int = 2**16,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
+        max_headers: int = 128,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
@@ -386,6 +388,7 @@ class ClientSession:
         self._read_bufsize = read_bufsize
         self._max_line_size = max_line_size
         self._max_field_size = max_field_size
+        self._max_headers = max_headers
 
         # Convert to list of tuples
         if headers:
@@ -485,6 +488,7 @@ class ClientSession:
         auto_decompress: bool | None = None,
         max_line_size: int | None = None,
         max_field_size: int | None = None,
+        max_headers: int | None = None,
         middlewares: Sequence[ClientMiddlewareType] | None = None,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
@@ -570,6 +574,9 @@ class ClientSession:
 
         if max_field_size is None:
             max_field_size = self._max_field_size
+
+        if max_headers is None:
+            max_headers = self._max_headers
 
         traces = [
             Trace(
@@ -710,6 +717,7 @@ class ClientSession:
                             timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
                             max_line_size=max_line_size,
                             max_field_size=max_field_size,
+                            max_headers=max_headers,
                         )
                         try:
                             resp = await req._send(conn)

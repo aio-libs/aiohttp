@@ -80,6 +80,7 @@ def parser(
         loop,
         2**16,
         max_line_size=8190,
+        max_headers=128,
         max_field_size=8190,
     )
 
@@ -102,6 +103,7 @@ def response(
         loop,
         2**16,
         max_line_size=8190,
+        max_headers=128,
         max_field_size=8190,
         read_until_eof=True,
     )
@@ -758,6 +760,40 @@ def test_max_header_value_size(parser: HttpRequestParser, size: int) -> None:
 
     match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
+        parser.feed_data(text)
+
+
+def test_max_header_combined_size(parser: HttpRequestParser) -> None:
+    k = b"t" * 4100
+    text = b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n0\r\n" + k + b": " + k + b"\r\n\r\n"
+
+    match = f"400, message:\n  Got more than 8190 bytes \\({8202}\\) when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        parser.feed_data(text)
+
+
+@pytest.mark.parametrize("size", [40960, 8191])
+def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
+    value = b"t" * size
+    text = b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n0\r\ntest: " + value + b"\r\n\r\n"
+
+    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        parser.feed_data(text)
+
+
+@pytest.mark.parametrize("headers,trailers", ((129, 0), (0, 129), (64, 65)))
+def test_max_headers(parser: HttpRequestParser, headers: int, trailers: int) -> None:
+    text = (
+        b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked"
+        + sum(b"\r\nHeader-{}: Value".format(i) for i in range(headers), start=b"") +
+        b"\r\n\r\n4\r\ntest\r\n0"
+        + sum(b"\r\nTrailer-{}: Value".format(i) for i in range(trailers), start=b"") +
+        b"\r\n\r\n"
+    )
+
+    match = "Too many (headers|trailers) received"
+    with pytest.raises(http_exceptions.BadHttpMessage, match=match):
         parser.feed_data(text)
 
 
@@ -1662,6 +1698,7 @@ def test_parse_bad_method_for_c_parser_raises(
         loop,
         2**16,
         max_line_size=8190,
+        max_headers=128,
         max_field_size=8190,
     )
 

@@ -115,10 +115,7 @@ class ChunkState(IntEnum):
 
 
 class HeadersParser:
-    def __init__(
-        self, max_line_size: int = 8190, max_field_size: int = 8190, lax: bool = False
-    ) -> None:
-        self.max_line_size = max_line_size
+    def __init__(self, max_field_size: int = 8190, lax: bool = False) -> None:
         self.max_field_size = max_field_size
         self._lax = lax
 
@@ -148,19 +145,9 @@ class HeadersParser:
                 raise InvalidHeader(line)
 
             bvalue = bvalue.lstrip(b" \t")
-            if len(bname) > self.max_field_size:
-                raise LineTooLong(
-                    "request header name {}".format(
-                        bname.decode("utf8", "backslashreplace")
-                    ),
-                    str(self.max_field_size),
-                    str(len(bname)),
-                )
             name = bname.decode("utf-8", "surrogateescape")
             if not TOKENRE.fullmatch(name):
                 raise InvalidHeader(bname)
-
-            header_length = len(bvalue)
 
             # next line
             lines_idx += 1
@@ -171,6 +158,7 @@ class HeadersParser:
 
             # Deprecated: https://www.rfc-editor.org/rfc/rfc9112.html#name-obsolete-line-folding
             if continuation:
+                header_length = len(bvalue)
                 bvalue_lst = [bvalue]
                 while continuation:
                     header_length += len(line)
@@ -194,15 +182,6 @@ class HeadersParser:
                         line = b""
                         break
                 bvalue = b"".join(bvalue_lst)
-            else:
-                if header_length > self.max_field_size:
-                    raise LineTooLong(
-                        "request header field {}".format(
-                            bname.decode("utf8", "backslashreplace")
-                        ),
-                        str(self.max_field_size),
-                        str(header_length),
-                    )
 
             bvalue = bvalue.strip(b" \t")
             value = bvalue.decode("utf-8", "surrogateescape")
@@ -233,6 +212,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         loop: asyncio.AbstractEventLoop,
         limit: int,
         max_line_size: int = 8190,
+        max_headers: int = 128,
         max_field_size: int = 8190,
         timer: BaseTimerContext | None = None,
         code: int | None = None,
@@ -246,6 +226,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self.loop = loop
         self.max_line_size = max_line_size
         self.max_field_size = max_field_size
+        self.max_headers = max_headers
         self.timer = timer
         self.code = code
         self.method = method
@@ -260,7 +241,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._payload_parser: HttpPayloadParser | None = None
         self._auto_decompress = auto_decompress
         self._limit = limit
-        self._headers_parser = HeadersParser(max_line_size, max_field_size, self.lax)
+        self._headers_parser = HeadersParser(max_field_size, self.lax)
 
     @abc.abstractmethod
     def parse_message(self, lines: list[bytes]) -> _MsgT: ...
@@ -301,6 +282,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         data_len = len(data)
         start_pos = 0
         loop = self.loop
+        max_line_length = self.max_line_size
 
         should_close = False
         while start_pos < data_len:
@@ -319,13 +301,28 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                     # line found
                     line = data[start_pos:pos]
+                    line_length = len(line)
+                    if line_length > max_line_length:
+                        raise LineTooLong(
+                            line[:100] + b"...",
+                            str(max_line_length),
+                            str(line_length),
+                        )
+
                     if SEP == b"\n":  # For lax response parsing
                         line = line.rstrip(b"\r")
                     self._lines.append(line)
+                    # After processing the status/request line, everything is a header.
+                    max_line_length = self.max_field_size
+
+                    if len(self._lines) > self.max_headers:
+                        raise BadHttpMessage("Too many headers received")
+
                     start_pos = pos + len(SEP)
 
                     # \r\n\r\n found
                     if self._lines[-1] == EMPTY:
+                        max_trailers = self.max_headers - len(self._lines)
                         try:
                             msg: _MsgT = self.parse_message(self._lines)
                         finally:
@@ -384,6 +381,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 auto_decompress=self._auto_decompress,
                                 lax=self.lax,
                                 headers_parser=self._headers_parser,
+                                max_line_size=self.max_line_size,
+                                max_field_size=self.max_field_size,
+                                max_trailers=max_trailers,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -403,6 +403,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 auto_decompress=self._auto_decompress,
                                 lax=self.lax,
                                 headers_parser=self._headers_parser,
+                                max_line_size=self.max_line_size,
+                                max_field_size=self.max_field_size,
+                                max_trailers=max_trailers,
                             )
                         elif not empty_body and length is None and self.read_until_eof:
                             payload = StreamReader(
@@ -422,6 +425,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 auto_decompress=self._auto_decompress,
                                 lax=self.lax,
                                 headers_parser=self._headers_parser,
+                                max_line_size=self.max_line_size,
+                                max_field_size=self.max_field_size,
+                                max_trailers=max_trailers,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -432,6 +438,13 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         should_close = msg.should_close
                 else:
                     self._tail = data[start_pos:]
+                    tail_length = len(self._tail)
+                    if tail_length > self.max_line_size:
+                        raise LineTooLong(
+                            self._tail[:100] + b"...",
+                            str(self.max_line_size),
+                            str(tail_length),
+                        )
                     data = EMPTY
                     break
 
@@ -567,11 +580,6 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         except ValueError:
             raise BadHttpMethod(line) from None
 
-        if len(path) > self.max_line_size:
-            raise LineTooLong(
-                "Status line is too long", str(self.max_line_size), str(len(path))
-            )
-
         # method
         if not TOKENRE.fullmatch(method):
             raise BadHttpMethod(method)
@@ -687,11 +695,6 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
             status = status.strip()
             reason = ""
 
-        if len(reason) > self.max_line_size:
-            raise LineTooLong(
-                "Status line is too long", str(self.max_line_size), str(len(reason))
-            )
-
         # version
         match = VERSRE.fullmatch(version)
         if match is None:
@@ -756,6 +759,9 @@ class HttpPayloadParser:
         lax: bool = False,
         *,
         headers_parser: HeadersParser,
+        max_line_size: int = 8190,
+        max_field_size: int = 8190,
+        max_trailers: int = 128,
     ) -> None:
         self._length = 0
         self._type = ParseState.PARSE_UNTIL_EOF
@@ -765,6 +771,9 @@ class HttpPayloadParser:
         self._auto_decompress = auto_decompress
         self._lax = lax
         self._headers_parser = headers_parser
+        self._max_line_size = max_line_size
+        self._max_field_size = max_field_size
+        self._max_trailers = max_trailers
         self._trailer_lines: list[bytes] = []
         self.done = False
 
@@ -820,6 +829,19 @@ class HttpPayloadParser:
         # Chunked transfer encoding parser
         elif self._type == ParseState.PARSE_CHUNKED:
             if self._chunk_tail:
+                # If not processing the body, we should check the length is sane.
+                if self._chunk != ChunkState.PARSE_CHUNKED_CHUNK:
+                    tail_length = len(self._chunk_tail)
+                    max_line_length = self._max_line_size
+                    if self._chunk == ChunkState.PARSE_TRAILERS:
+                        max_line_length = self._max_field_size
+                    if tail_length > max_line_length:
+                        raise LineTooLong(
+                            self._chunk_tail[:100] + b"...",
+                            str(max_line_length),
+                            str(tail_length),
+                        )
+
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
 
@@ -899,6 +921,9 @@ class HttpPayloadParser:
                     if SEP == b"\n":  # For lax response parsing
                         line = line.rstrip(b"\r")
                     self._trailer_lines.append(line)
+
+                    if len(self._trailer_lines) > self._max_trailers:
+                        raise BadHttpMessage("Too many trailers received")
 
                     # \r\n\r\n found, end of stream
                     if self._trailer_lines[-1] == b"":
