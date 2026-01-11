@@ -1,7 +1,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
-import re
+import re_
 import sys
 import zlib
 from collections.abc import Iterable
@@ -758,13 +758,7 @@ def test_max_header_value_size(parser: HttpRequestParser, size: int) -> None:
 
 def test_max_header_combined_size(parser: HttpRequestParser) -> None:
     k = b"t" * 4100
-    text = (
-        b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n0\r\n"
-        + k
-        + b": "
-        + k
-        + b"\r\n\r\n"
-    )
+    text = b"GET /test HTTP/1.1\r\n" + k + b":" + k + b"\r\n\r\n"
 
     match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
@@ -782,8 +776,14 @@ def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
 
     match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
+        payload = None
         for i in range(0, len(text), 3000):
-            parser.feed_data(text[i : i + 3000])
+            messages, upgrade, tail = parser.feed_data(text[i : i + 3000])
+            if messages:
+                payload = messages[0][-1]
+        # Trailers are not seen until payload is read.
+        assert payload is not None
+        await payload.read()
 
 
 @pytest.mark.parametrize("headers,trailers", ((129, 0), (0, 129), (64, 65)))
