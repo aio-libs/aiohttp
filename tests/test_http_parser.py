@@ -787,7 +787,9 @@ def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
 
 
 @pytest.mark.parametrize("headers,trailers", ((129, 0), (0, 129), (64, 65)))
-async def test_max_headers(parser: HttpRequestParser, headers: int, trailers: int) -> None:
+async def test_max_headers(
+    parser: HttpRequestParser, headers: int, trailers: int
+) -> None:
     text = (
         b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked"
         + b"".join(b"\r\nHeader-%d: Value" % i for i in range(headers))
