@@ -682,7 +682,8 @@ cdef int cb_on_url(cparser.llhttp_t* parser,
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         if length > pyparser._max_line_size:
-            raise LineTooLong(b"Status line is too long", pyparser._max_line_size)
+            status = pyparser._buf + at[:length]
+            raise LineTooLong(status[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
     except BaseException as ex:
         pyparser._last_error = ex
@@ -694,10 +695,10 @@ cdef int cb_on_url(cparser.llhttp_t* parser,
 cdef int cb_on_status(cparser.llhttp_t* parser,
                       const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
-    cdef str reason
     try:
         if length > pyparser._max_line_size:
-            raise LineTooLong(b"Status line is too long", pyparser._max_line_size)
+            reason = pyparser._buf + at[:length]
+            raise LineTooLong(reason[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
     except BaseException as ex:
         pyparser._last_error = ex
@@ -714,7 +715,8 @@ cdef int cb_on_header_field(cparser.llhttp_t* parser,
         pyparser._on_status_complete()
         size = len(pyparser._raw_name) + length
         if size > pyparser._max_field_size:
-            raise LineTooLong(b"Header name is too long", pyparser._max_field_size)
+            name = pyparser._raw_name + at[:length]
+            raise LineTooLong(name[:100] + b"...", pyparser._max_field_size)
         pyparser._header_name_size = size
         pyparser._on_header_field(at, length)
     except BaseException as ex:
@@ -731,7 +733,8 @@ cdef int cb_on_header_value(cparser.llhttp_t* parser,
     try:
         size = len(pyparser._raw_value) + length
         if pyparser._header_name_size + size > pyparser._max_field_size:
-            raise LineTooLong(b"Header value is too long", pyparser._max_field_size)
+            value = pyparser._raw_value + at[:length]
+            raise LineTooLong(value[:100] + b"...", pyparser._max_field_size)
         pyparser._on_header_value(at, length)
     except BaseException as ex:
         pyparser._last_error = ex
