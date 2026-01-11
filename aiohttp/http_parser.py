@@ -297,8 +297,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                     # line found
                     line = data[start_pos:pos]
-                    line_length = len(line)
-                    if line_length > max_line_length:
+                    if len(line) > max_line_length:
                         raise LineTooLong(line[:100] + b"...", max_line_length)
 
                     if SEP == b"\n":  # For lax response parsing
@@ -430,8 +429,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         should_close = msg.should_close
                 else:
                     self._tail = data[start_pos:]
-                    tail_length = len(self._tail)
-                    if tail_length > self.max_line_size:
+                    if len(self._tail) > self.max_line_size:
                         raise LineTooLong(self._tail[:100] + b"...", self.max_line_size)
                     data = EMPTY
                     break
@@ -819,11 +817,10 @@ class HttpPayloadParser:
             if self._chunk_tail:
                 # If not processing the body, we should check the length is sane.
                 if self._chunk != ChunkState.PARSE_CHUNKED_CHUNK:
-                    tail_length = len(self._chunk_tail)
                     max_line_length = self._max_line_size
                     if self._chunk == ChunkState.PARSE_TRAILERS:
                         max_line_length = self._max_field_size
-                    if tail_length > max_line_length:
+                    if len(self._chunk_tail) > max_line_length:
                         raise LineTooLong(
                             self._chunk_tail[:100] + b"...", max_line_length
                         )
