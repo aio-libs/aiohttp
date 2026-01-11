@@ -279,6 +279,7 @@ cdef class HttpParser:
         object _name
         bytes _raw_value
         bint      _has_value
+        int _header_name_size
 
         object _protocol
         object _loop
@@ -352,6 +353,7 @@ cdef class HttpParser:
         self._raw_name = EMPTY_BYTES
         self._raw_value = EMPTY_BYTES
         self._has_value = False
+        self._header_name_size = 0
 
         self._max_line_size = max_line_size
         self._max_headers = max_headers
@@ -390,6 +392,7 @@ cdef class HttpParser:
                 self._content_encoding = value
 
             self._has_value = False
+            self._header_name_size = 0
             self._raw_headers.append((self._raw_name, self._raw_value))
             self._raw_name = EMPTY_BYTES
             self._raw_value = EMPTY_BYTES
@@ -712,6 +715,7 @@ cdef int cb_on_header_field(cparser.llhttp_t* parser,
         size = len(pyparser._raw_name) + length
         if size > pyparser._max_field_size:
             raise LineTooLong(b"Header name is too long", pyparser._max_field_size)
+        pyparser._header_name_size = size
         pyparser._on_header_field(at, length)
     except BaseException as ex:
         pyparser._last_error = ex
@@ -726,7 +730,7 @@ cdef int cb_on_header_value(cparser.llhttp_t* parser,
     cdef Py_ssize_t size
     try:
         size = len(pyparser._raw_value) + length
-        if size > pyparser._max_field_size:
+        if pyparser._header_name_size + size > pyparser._max_field_size:
             raise LineTooLong(b"Header value is too long", pyparser._max_field_size)
         pyparser._on_header_value(at, length)
     except BaseException as ex:
