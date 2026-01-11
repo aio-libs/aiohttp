@@ -304,7 +304,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     line_length = len(line)
                     if line_length > max_line_length:
                         raise LineTooLong(
-                            line[:100] + b"...",
+                            line[:100].decode() + "...",
                             str(max_line_length),
                             str(line_length),
                         )
@@ -441,7 +441,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     tail_length = len(self._tail)
                     if tail_length > self.max_line_size:
                         raise LineTooLong(
-                            self._tail[:100] + b"...",
+                            self._tail[:100].decode() + "...",
                             str(self.max_line_size),
                             str(tail_length),
                         )
@@ -837,7 +837,7 @@ class HttpPayloadParser:
                         max_line_length = self._max_field_size
                     if tail_length > max_line_length:
                         raise LineTooLong(
-                            self._chunk_tail[:100] + b"...",
+                            self._chunk_tail[:100].decode() + "...",
                             str(max_line_length),
                             str(tail_length),
                         )
