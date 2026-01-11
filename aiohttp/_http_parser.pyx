@@ -679,8 +679,7 @@ cdef int cb_on_url(cparser.llhttp_t* parser,
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         if length > pyparser._max_line_size:
-            raise LineTooLong(
-                'Status line is too long', pyparser._max_line_size, length)
+            raise LineTooLong(b"Status line is too long", pyparser._max_line_size, length)
         extend(pyparser._buf, at, length)
     except BaseException as ex:
         pyparser._last_error = ex
@@ -695,8 +694,7 @@ cdef int cb_on_status(cparser.llhttp_t* parser,
     cdef str reason
     try:
         if length > pyparser._max_line_size:
-            raise LineTooLong(
-                'Status line is too long', pyparser._max_line_size, length)
+            raise LineTooLong(b"Status line is too long", pyparser._max_line_size, length)
         extend(pyparser._buf, at, length)
     except BaseException as ex:
         pyparser._last_error = ex
@@ -713,8 +711,7 @@ cdef int cb_on_header_field(cparser.llhttp_t* parser,
         pyparser._on_status_complete()
         size = len(pyparser._raw_name) + length
         if size > pyparser._max_field_size:
-            raise LineTooLong(
-                'Header name is too long', pyparser._max_field_size, size)
+            raise LineTooLong(b"Header name is too long", pyparser._max_field_size, size)
         pyparser._on_header_field(at, length)
     except BaseException as ex:
         pyparser._last_error = ex
@@ -730,8 +727,7 @@ cdef int cb_on_header_value(cparser.llhttp_t* parser,
     try:
         size = len(pyparser._raw_value) + length
         if size > pyparser._max_field_size:
-            raise LineTooLong(
-                'Header value is too long', pyparser._max_field_size, size)
+            raise LineTooLong(b"Header value is too long", pyparser._max_field_size, size)
         pyparser._on_header_value(at, length)
     except BaseException as ex:
         pyparser._last_error = ex
