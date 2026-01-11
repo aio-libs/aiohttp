@@ -4424,7 +4424,7 @@ async def test_http_empty_data_text(aiohttp_client: AiohttpClient) -> None:
 
 async def test_max_field_size_session_default(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(headers={"Custom": "x" * 8190})
+        return web.Response(headers={"Custom": "x" * 8183})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -4432,7 +4432,7 @@ async def test_max_field_size_session_default(aiohttp_client: AiohttpClient) -> 
     client = await aiohttp_client(app)
 
     async with client.get("/") as resp:
-        assert resp.headers["Custom"] == "x" * 8190
+        assert resp.headers["Custom"] == "x" * 8183
 
 
 async def test_max_field_size_session_default_fail(
@@ -4451,28 +4451,28 @@ async def test_max_field_size_session_default_fail(
 
 async def test_max_field_size_session_explicit(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(headers={"Custom": "x" * 8191})
+        return web.Response(headers={"Custom": "x" * 8193})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
-    client = await aiohttp_client(app, max_field_size=8191)
+    client = await aiohttp_client(app, max_field_size=8200)
 
     async with client.get("/") as resp:
-        assert resp.headers["Custom"] == "x" * 8191
+        assert resp.headers["Custom"] == "x" * 8193
 
 
 async def test_max_field_size_request_explicit(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(headers={"Custom": "x" * 8191})
+        return web.Response(headers={"Custom": "x" * 8193})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
     client = await aiohttp_client(app)
 
-    async with client.get("/", max_field_size=8191) as resp:
-        assert resp.headers["Custom"] == "x" * 8191
+    async with client.get("/", max_field_size=8200) as resp:
+        assert resp.headers["Custom"] == "x" * 8193
 
 
 async def test_max_line_size_session_default(aiohttp_client: AiohttpClient) -> None:
