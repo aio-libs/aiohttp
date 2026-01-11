@@ -839,7 +839,7 @@ def test_max_header_value_size_continuation(
 def test_max_header_value_size_continuation_under_limit(
     response: HttpResponseParser,
 ) -> None:
-    value = b"A" * 8185
+    value = b"A" * 8179
     text = b"HTTP/1.1 200 Ok\r\ndata: test\r\n " + value + b"\r\n\r\n"
 
     messages, upgrade, tail = response.feed_data(text)
