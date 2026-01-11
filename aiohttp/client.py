@@ -284,6 +284,7 @@ class ClientSession:
         "_read_bufsize",
         "_max_line_size",
         "_max_field_size",
+        "_max_headers",
         "_resolve_charset",
         "_default_proxy",
         "_default_proxy_auth",
