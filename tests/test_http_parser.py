@@ -30,9 +30,6 @@ from aiohttp.http_parser import (
 )
 from aiohttp.http_writer import HttpVersion
 
-if sys.version_info >= (3, 12):
-    from itertools import batched
-
 try:
     try:
         import brotlicffi as brotli
@@ -290,14 +287,13 @@ def test_whitespace_before_header(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 12), reason="batched() is not available")
 def test_parse_headers_longline(parser: HttpRequestParser) -> None:
     invalid_unicode_byte = b"\xd9"
     header_name = b"Test" + invalid_unicode_byte + b"Header" + b"A" * 8192
     text = b"GET /test HTTP/1.1\r\n" + header_name + b": test\r\n" + b"\r\n" + b"\r\n"
     with pytest.raises(http_exceptions.LineTooLong):
-        for chunk in batched(text, 8000):
-            parser.feed_data(chunk)
+        for i in range(0, len(text), 8000):
+            parser.feed_data(text[i:i+8000)
 
 
 @pytest.fixture
@@ -729,7 +725,6 @@ def test_invalid_name(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 12), reason="batched() is not available")
 @pytest.mark.parametrize("size", [40960, 8191])
 def test_max_header_field_size(parser: HttpRequestParser, size: int) -> None:
     name = b"t" * size
@@ -737,8 +732,8 @@ def test_max_header_field_size(parser: HttpRequestParser, size: int) -> None:
 
     match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        for chunk in batched(text, 5000):
-            parser.feed_data(chunk)
+        for i in range(0, len(text), 5000):
+            parser.feed_data(text[i:i+5000)
 
 
 def test_max_header_field_size_under_limit(parser: HttpRequestParser) -> None:
@@ -759,7 +754,6 @@ def test_max_header_field_size_under_limit(parser: HttpRequestParser) -> None:
     assert msg.url == URL("/test")
 
 
-@pytest.mark.skipif(sys.version_info < (3, 12), reason="batched() is not available")
 @pytest.mark.parametrize("size", [40960, 8191])
 def test_max_header_value_size(parser: HttpRequestParser, size: int) -> None:
     name = b"t" * size
@@ -767,8 +761,8 @@ def test_max_header_value_size(parser: HttpRequestParser, size: int) -> None:
 
     match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        for chunk in batched(text, 4000):
-            parser.feed_data(chunk)
+        for i in range(0, len(text), 4000):
+            parser.feed_data(text[i:i+4000)
 
 
 def test_max_header_combined_size(parser: HttpRequestParser) -> None:
@@ -786,7 +780,6 @@ def test_max_header_combined_size(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 12), reason="batched() is not available")
 @pytest.mark.parametrize("size", [40960, 8191])
 def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
     value = b"t" * size
@@ -798,8 +791,8 @@ def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
 
     match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        for chunk in batched(text, 3000):
-            parser.feed_data(chunk)
+        for i in range(0, len(text), 3000):
+            parser.feed_data(text[i:i+3000)
 
 
 @pytest.mark.parametrize("headers,trailers", ((129, 0), (0, 129), (64, 65)))
@@ -835,7 +828,6 @@ def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
     assert msg.url == URL("/test")
 
 
-@pytest.mark.skipif(sys.version_info < (3, 12), reason="batched() is not available")
 @pytest.mark.parametrize("size", [40965, 8191])
 def test_max_header_value_size_continuation(
     response: HttpResponseParser, size: int
@@ -845,8 +837,8 @@ def test_max_header_value_size_continuation(
 
     match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        for chunk in batched(text, 9000):
-            response.feed_data(chunk)
+        for i in range(0, len(text), 9000):
+            response.feed_data(text[i:i+9000)
 
 
 def test_max_header_value_size_continuation_under_limit(
