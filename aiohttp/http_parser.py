@@ -903,6 +903,10 @@ class HttpPayloadParser:
                     chunk = chunk[pos + len(SEP) :]
                     if SEP == b"\n":  # For lax response parsing
                         line = line.rstrip(b"\r")
+
+                    if len(line) > self._max_field_size:
+                        raise LineTooLong(line[:100] + b"...", self._max_field_size)
+
                     self._trailer_lines.append(line)
 
                     if len(self._trailer_lines) > self._max_trailers:
