@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/dev.txt --strip-extras requirements/dev.in
 #
-aiodns==3.6.1
+aiodns==4.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -34,7 +34,7 @@ blockbuster==1.5.26
     #   -r requirements/test-common.in
 brotli==1.2.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==1.3.0
+build==1.4.0
     # via pip-tools
 certifi==2026.1.4
     # via requests
@@ -67,7 +67,7 @@ exceptiongroup==1.3.1
     # via pytest
 execnet==2.1.2
     # via pytest-xdist
-filelock==3.20.2
+filelock==3.20.3
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
@@ -127,7 +127,7 @@ packaging==25.0
     #   pytest
     #   sphinx
     #   wheel
-pathspec==1.0.2
+pathspec==1.0.3
     # via mypy
 pip-tools==7.5.2
     # via -r requirements/dev.in
@@ -149,7 +149,7 @@ proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-pycares==4.11.0
+pycares==5.0.1
     # via aiodns
 pycparser==2.23
     # via cffi
@@ -188,7 +188,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.79.0
+python-on-whales==0.80.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -265,7 +265,7 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==20.36.0
+virtualenv==20.36.1
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
