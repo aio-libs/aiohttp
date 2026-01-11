@@ -1,6 +1,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
+import re
 import sys
 import zlib
 from collections.abc import Iterable
@@ -10,7 +11,6 @@ from unittest import mock
 from urllib.parse import quote
 
 import pytest
-import re_
 from multidict import CIMultiDict
 from yarl import URL
 
