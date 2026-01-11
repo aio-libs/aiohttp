@@ -163,11 +163,7 @@ class HeadersParser:
                 while continuation:
                     header_length += len(line)
                     if header_length > self.max_field_size:
-                        raise LineTooLong(
-                            b"request header field: " + bname,
-                            str(self.max_field_size),
-                            str(header_length),
-                        )
+                        raise LineTooLong(b"request header field: " + bname, self.max_field_size)
                     bvalue_lst.append(line)
 
                     # next line
@@ -301,11 +297,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     line = data[start_pos:pos]
                     line_length = len(line)
                     if line_length > max_line_length:
-                        raise LineTooLong(
-                            line[:100] + b"...",
-                            str(max_line_length),
-                            str(line_length),
-                        )
+                        raise LineTooLong(line[:100] + b"...", max_line_length)
 
                     if SEP == b"\n":  # For lax response parsing
                         line = line.rstrip(b"\r")
@@ -438,11 +430,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     self._tail = data[start_pos:]
                     tail_length = len(self._tail)
                     if tail_length > self.max_line_size:
-                        raise LineTooLong(
-                            self._tail[:100] + b"...",
-                            str(self.max_line_size),
-                            str(tail_length),
-                        )
+                        raise LineTooLong(self._tail[:100] + b"...", self.max_line_size)
                     data = EMPTY
                     break
 
@@ -834,11 +822,7 @@ class HttpPayloadParser:
                     if self._chunk == ChunkState.PARSE_TRAILERS:
                         max_line_length = self._max_field_size
                     if tail_length > max_line_length:
-                        raise LineTooLong(
-                            self._chunk_tail[:100] + b"...",
-                            str(max_line_length),
-                            str(tail_length),
-                        )
+                        raise LineTooLong(self._chunk_tail[:100] + b"...", max_line_length)
 
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
