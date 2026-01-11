@@ -163,9 +163,8 @@ class HeadersParser:
                 while continuation:
                     header_length += len(line)
                     if header_length > self.max_field_size:
-                        raise LineTooLong(
-                            b"request header field: " + bname, self.max_field_size
-                        )
+                        l = bname + b": " + b"".join(bvalue_lst)
+                        raise LineTooLong(l[:100] + b"...", self.max_field_size)
                     bvalue_lst.append(line)
 
                     # next line
