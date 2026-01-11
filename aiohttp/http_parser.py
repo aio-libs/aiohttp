@@ -297,11 +297,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                     # line found
                     line = data[start_pos:pos]
+                    if SEP == b"\n":  # For lax response parsing
+                        line = line.rstrip(b"\r")
                     if len(line) > max_line_length:
                         raise LineTooLong(line[:100] + b"...", max_line_length)
 
-                    if SEP == b"\n":  # For lax response parsing
-                        line = line.rstrip(b"\r")
                     self._lines.append(line)
                     # After processing the status/request line, everything is a header.
                     max_line_length = self.max_field_size
