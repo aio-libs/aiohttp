@@ -816,15 +816,16 @@ class HttpPayloadParser:
         # Chunked transfer encoding parser
         elif self._type == ParseState.PARSE_CHUNKED:
             if self._chunk_tail:
-                # If not processing the body, we should check the length is sane.
-                if self._chunk != ChunkState.PARSE_CHUNKED_CHUNK:
-                    max_line_length = self._max_line_size
-                    if self._chunk == ChunkState.PARSE_TRAILERS:
-                        max_line_length = self._max_field_size
-                    if len(self._chunk_tail) > max_line_length:
-                        raise LineTooLong(
-                            self._chunk_tail[:100] + b"...", max_line_length
-                        )
+                # We should never have a tail if we're inside the payload body.
+                assert self._chunk != ChunkState.PARSE_CHUNKED_CHUNK
+                # We should check the length is sane.
+                max_line_length = self._max_line_size
+                if self._chunk == ChunkState.PARSE_TRAILERS:
+                    max_line_length = self._max_field_size
+                if len(self._chunk_tail) > max_line_length:
+                    raise LineTooLong(
+                        self._chunk_tail[:100] + b"...", max_line_length
+                    )
 
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
