@@ -2723,8 +2723,10 @@ application on specific TCP or Unix socket, e.g.::
         :attr:`helpers.AccessLogger.LOG_FORMAT`.
    :param int max_line_size: Optional maximum header line size. Default:
         ``8190``.
-   :param int max_field_size: Optional maximum header field size. Default:
+   :param int max_field_size: Optional maximum header combined name and value size. Default:
         ``8190``.
+   :param int max_headers: Optional maximum number of headers and trailers combined. Default:
+        ``128``.
 
    :param float lingering_time: Maximum time during which the server
         reads and ignores additional data coming from the client when

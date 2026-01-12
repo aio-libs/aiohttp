@@ -196,6 +196,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         access_log: Logger | None = access_logger,
         access_log_format: str = AccessLogger.LOG_FORMAT,
         max_line_size: int = 8190,
+        max_headers: int = 128,
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
         read_bufsize: int = 2**16,
@@ -238,6 +239,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             read_bufsize,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
+            max_headers=max_headers,
             payload_exception=RequestPayloadError,
             auto_decompress=auto_decompress,
         )
