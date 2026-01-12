@@ -75,7 +75,7 @@ class TestLineTooLong:
         assert err.headers is None
 
     def test_pickle(self) -> None:
-        err = http_exceptions.LineTooLong(line="spam", limit="10", actual_size="12")
+        err = http_exceptions.LineTooLong(line=b"spam", limit=10, actual_size="12")
         err.foo = "bar"
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.dumps(err, proto)
