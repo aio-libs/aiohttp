@@ -4424,7 +4424,7 @@ async def test_http_empty_data_text(aiohttp_client: AiohttpClient) -> None:
 
 async def test_max_field_size_session_default(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(headers={"Custom": "x" * 8190})
+        return web.Response(headers={"Custom": "x" * 8182})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -4432,7 +4432,7 @@ async def test_max_field_size_session_default(aiohttp_client: AiohttpClient) -> 
     client = await aiohttp_client(app)
 
     async with client.get("/") as resp:
-        assert resp.headers["Custom"] == "x" * 8190
+        assert resp.headers["Custom"] == "x" * 8182
 
 
 async def test_max_field_size_session_default_fail(
@@ -4451,33 +4451,86 @@ async def test_max_field_size_session_default_fail(
 
 async def test_max_field_size_session_explicit(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(headers={"Custom": "x" * 8191})
+        return web.Response(headers={"Custom": "x" * 8192})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
-    client = await aiohttp_client(app, max_field_size=8191)
+    client = await aiohttp_client(app, max_field_size=8200)
 
     async with client.get("/") as resp:
-        assert resp.headers["Custom"] == "x" * 8191
+        assert resp.headers["Custom"] == "x" * 8192
+
+
+async def test_max_headers_session_default(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(120)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.headers["Custom-119"] == "x"
+
+
+async def test_max_headers_session_default_fail(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(129)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get("/")
+
+
+async def test_max_headers_session_explicit(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(130)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app, max_headers=140)
+
+    async with client.get("/") as resp:
+        assert resp.headers["Custom-129"] == "x"
+
+
+async def test_max_headers_request_explicit(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(130)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get("/", max_headers=140) as resp:
+        assert resp.headers["Custom-129"] == "x"
 
 
 async def test_max_field_size_request_explicit(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(headers={"Custom": "x" * 8191})
+        return web.Response(headers={"Custom": "x" * 8192})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
     client = await aiohttp_client(app)
 
-    async with client.get("/", max_field_size=8191) as resp:
-        assert resp.headers["Custom"] == "x" * 8191
+    async with client.get("/", max_field_size=8200) as resp:
+        assert resp.headers["Custom"] == "x" * 8192
 
 
 async def test_max_line_size_session_default(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(status=200, reason="x" * 8190)
+        return web.Response(status=200, reason="x" * 8177)
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -4485,7 +4538,7 @@ async def test_max_line_size_session_default(aiohttp_client: AiohttpClient) -> N
     client = await aiohttp_client(app)
 
     async with client.get("/") as resp:
-        assert resp.reason == "x" * 8190
+        assert resp.reason == "x" * 8177
 
 
 async def test_max_line_size_session_default_fail(
@@ -4504,28 +4557,28 @@ async def test_max_line_size_session_default_fail(
 
 async def test_max_line_size_session_explicit(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(status=200, reason="x" * 8191)
+        return web.Response(status=200, reason="x" * 8197)
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
-    client = await aiohttp_client(app, max_line_size=8191)
+    client = await aiohttp_client(app, max_line_size=8210)
 
     async with client.get("/") as resp:
-        assert resp.reason == "x" * 8191
+        assert resp.reason == "x" * 8197
 
 
 async def test_max_line_size_request_explicit(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(status=200, reason="x" * 8191)
+        return web.Response(status=200, reason="x" * 8197)
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
     client = await aiohttp_client(app)
 
-    async with client.get("/", max_line_size=8191) as resp:
-        assert resp.reason == "x" * 8191
+    async with client.get("/", max_line_size=8210) as resp:
+        assert resp.reason == "x" * 8197
 
 
 async def test_rejected_upload(
