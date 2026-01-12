@@ -69,9 +69,9 @@ class TestBadHttpMessage:
 
 class TestLineTooLong:
     def test_ctor(self) -> None:
-        err = http_exceptions.LineTooLong("spam", "10", "12")
+        err = http_exceptions.LineTooLong(b"spam", 10)
         assert err.code == 400
-        assert err.message == "Got more than 10 bytes (12) when reading spam."
+        assert err.message == "Got more than 10 bytes when reading: b'spam'."
         assert err.headers is None
 
     def test_pickle(self) -> None:
@@ -81,20 +81,20 @@ class TestLineTooLong:
             pickled = pickle.dumps(err, proto)
             err2 = pickle.loads(pickled)
             assert err2.code == 400
-            assert err2.message == ("Got more than 10 bytes (12) when reading spam.")
+            assert err2.message == ("Got more than 10 bytes when reading: b'spam'.")
             assert err2.headers is None
             assert err2.foo == "bar"
 
     def test_str(self) -> None:
-        err = http_exceptions.LineTooLong(line="spam", limit="10", actual_size="12")
-        expected = "400, message:\n  Got more than 10 bytes (12) when reading spam."
+        err = http_exceptions.LineTooLong(line=b"spam", limit=10)
+        expected = "400, message:\n  Got more than 10 bytes when reading: b'spam'."
         assert str(err) == expected
 
     def test_repr(self) -> None:
-        err = http_exceptions.LineTooLong(line="spam", limit="10", actual_size="12")
+        err = http_exceptions.LineTooLong(line=b"spam", limit=10)
         assert repr(err) == (
-            "<LineTooLong: 400, message='Got more than "
-            "10 bytes (12) when reading spam.'>"
+            '<LineTooLong: 400, message="Got more than '
+            "10 bytes when reading: b'spam'.\">"
         )
 
 
