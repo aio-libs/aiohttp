@@ -723,7 +723,7 @@ def test_max_header_field_size(parser: HttpRequestParser, size: int) -> None:
 
     match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        for i in range(0, len(text), 5000):
+        for i in range(0, len(text), 5000):  # pragma: no branch
             parser.feed_data(text[i : i + 5000])
 
 
@@ -752,7 +752,7 @@ def test_max_header_value_size(parser: HttpRequestParser, size: int) -> None:
 
     match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        for i in range(0, len(text), 4000):
+        for i in range(0, len(text), 4000):  # pragma: no branch
             parser.feed_data(text[i : i + 4000])
 
 
@@ -781,7 +781,7 @@ async def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
     match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         payload = None
-        for i in range(0, len(text), 3000):
+        for i in range(0, len(text), 3000):  # pragma: no branch
             messages, upgrade, tail = parser.feed_data(text[i : i + 3000])
             if messages:
                 payload = messages[0][-1]
@@ -836,7 +836,7 @@ def test_max_header_value_size_continuation(
 
     match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        for i in range(0, len(text), 9000):
+        for i in range(0, len(text), 9000):  # pragma: no branch
             response.feed_data(text[i : i + 9000])
 
 
@@ -2044,7 +2044,7 @@ class TestDeflateBuffer:
         dbuf = DeflateBuffer(buf, "deflate")
 
         # Feed compressed data in chunks (simulating network streaming)
-        for i in range(0, len(compressed), chunk_size):
+        for i in range(0, len(compressed), chunk_size):  # pragma: no branch
             chunk = compressed[i : i + chunk_size]
             dbuf.feed_data(chunk)
 
