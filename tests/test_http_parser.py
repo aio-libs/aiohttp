@@ -23,6 +23,7 @@ from aiohttp.http_parser import (
     HttpPayloadParser,
     HttpRequestParser,
     HttpRequestParserPy,
+    HttpResponseParser,
     HttpResponseParserPy,
     HttpVersion,
 )
