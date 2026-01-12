@@ -4462,6 +4462,46 @@ async def test_max_field_size_session_explicit(aiohttp_client: AiohttpClient) ->
         assert resp.headers["Custom"] == "x" * 8192
 
 
+async def test_max_headers_session_default(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(127)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.headers["Custom-126"] == "x"
+
+
+async def test_max_headers_session_default_fail(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(129)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get("/")
+
+
+async def test_max_headers_session_explicit(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(130)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app, max_headers=132)
+
+    async with client.get("/") as resp:
+        assert resp.headers["Custom-129"] == "x"
+
+
 async def test_max_field_size_request_explicit(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(headers={"Custom": "x" * 8192})
