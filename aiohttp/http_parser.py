@@ -823,9 +823,7 @@ class HttpPayloadParser:
                 if self._chunk == ChunkState.PARSE_TRAILERS:
                     max_line_length = self._max_field_size
                 if len(self._chunk_tail) > max_line_length:
-                    raise LineTooLong(
-                        self._chunk_tail[:100] + b"...", max_line_length
-                    )
+                    raise LineTooLong(self._chunk_tail[:100] + b"...", max_line_length)
 
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
