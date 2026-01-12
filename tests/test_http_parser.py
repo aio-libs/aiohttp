@@ -769,7 +769,9 @@ def test_max_header_combined_size(parser: HttpRequestParser) -> None:
 async def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
     value = b"t" * size
     text = (
-        b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n0\r\ntest: "
+        b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n4000\r\n"
+        + b"b" * 4000
+        + b"\r\n0\r\ntest: "
         + value
         + b"\r\n\r\n"
     )
