@@ -4464,7 +4464,7 @@ async def test_max_field_size_session_explicit(aiohttp_client: AiohttpClient) ->
 
 async def test_max_headers_session_default(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(headers={f"Custom-{i}": "x" for i in range(127)})
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(120)})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -4472,7 +4472,7 @@ async def test_max_headers_session_default(aiohttp_client: AiohttpClient) -> Non
     client = await aiohttp_client(app)
 
     async with client.get("/") as resp:
-        assert resp.headers["Custom-126"] == "x"
+        assert resp.headers["Custom-119"] == "x"
 
 
 async def test_max_headers_session_default_fail(
@@ -4496,7 +4496,7 @@ async def test_max_headers_session_explicit(aiohttp_client: AiohttpClient) -> No
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
-    client = await aiohttp_client(app, max_headers=132)
+    client = await aiohttp_client(app, max_headers=140)
 
     async with client.get("/") as resp:
         assert resp.headers["Custom-129"] == "x"
