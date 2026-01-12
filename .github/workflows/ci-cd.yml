@@ -372,7 +372,7 @@ jobs:
     needs: pre-deploy
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-latest", "ubuntu-24.04-arm"]
+        os: ["ubuntu-latest", "windows-latest", "windows-11-arm", "macos-latest", "ubuntu-24.04-arm"]
         qemu: ['']
         musl: [""]
         include:
