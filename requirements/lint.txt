@@ -35,7 +35,7 @@ forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
     # via -r requirements/lint.in
-identify==2.6.15
+identify==2.6.16
     # via pre-commit
 idna==3.10
     # via trustme
