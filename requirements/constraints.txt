@@ -85,7 +85,7 @@ frozenlist==1.8.0
     #   aiosignal
 gunicorn==23.0.0
     # via -r requirements/base.in
-identify==2.6.15
+identify==2.6.16
     # via pre-commit
 idna==3.10
     # via
