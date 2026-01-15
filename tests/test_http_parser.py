@@ -828,14 +828,12 @@ def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
 
 
 async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
-    value = b"t" * size
     text = (
         b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
         + b"1\r\nb\r\n" * 50000
         + b"0\r\n\r\n"
     )
 
-    payload = None
     messages, upgrade, tail = parser.feed_data(text)
     payload = messages[0][-1]
     # Payload should have paused reading and stopped receiving new chunks after 16k.
