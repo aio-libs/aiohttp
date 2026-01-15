@@ -1,10 +1,12 @@
 import asyncio
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from .client_exceptions import ClientConnectionResetError
 from .helpers import set_exception
-from .http_parser import HttpParser
 from .tcp_helpers import tcp_nodelay
+
+if TYPE_CHECKING:
+    from .http_parser import HttpParser
 
 
 class BaseProtocol(asyncio.Protocol):
@@ -18,7 +20,7 @@ class BaseProtocol(asyncio.Protocol):
         "transport",
     )
 
-    def __init__(self, loop: asyncio.AbstractEventLoop, parser: HttpParser) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop, parser: "HttpParser | None") -> None:
         self._loop: asyncio.AbstractEventLoop = loop
         self._paused = False
         self._drain_waiter: asyncio.Future[None] | None = None

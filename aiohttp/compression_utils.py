@@ -97,6 +97,10 @@ class ZLibBackendWrapper:
         return getattr(self._zlib_backend, "__name__", "undefined")
 
     @property
+    def unconsumed_tail(self) -> bytes:
+        return self._zlib_backend.unconsumed_tail
+
+    @property
     def MAX_WBITS(self) -> int:
         return self._zlib_backend.MAX_WBITS
 
@@ -281,7 +285,7 @@ class ZLibDecompressor(DecompressionBaseHandler):
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
-        return self._decompressor.decompress(self._decompressor._unconsumed_tail + data, max_length)
+        return self._decompressor.decompress(self._decompressor.unconsumed_tail + data, max_length)
 
     def flush(self, length: int = 0) -> bytes:
         return (

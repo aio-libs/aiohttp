@@ -202,7 +202,17 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):
-        super().__init__(loop)
+        parser = HttpRequestParser(
+            self,
+            loop,
+            read_bufsize,
+            max_line_size=max_line_size,
+            max_field_size=max_field_size,
+            max_headers=max_headers,
+            payload_exception=RequestPayloadError,
+            auto_decompress=auto_decompress,
+        )
+        super().__init__(loop, parser)
 
         # _request_count is the number of requests processed with the same connection.
         self._request_count = 0
@@ -232,16 +242,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         self._upgrade = False
         self._payload_parser: Any = None
-        self._request_parser: HttpRequestParser | None = HttpRequestParser(
-            self,
-            loop,
-            read_bufsize,
-            max_line_size=max_line_size,
-            max_field_size=max_field_size,
-            max_headers=max_headers,
-            payload_exception=RequestPayloadError,
-            auto_decompress=auto_decompress,
-        )
 
         self._timeout_ceil_threshold: float = 5
         try:
