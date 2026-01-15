@@ -827,6 +827,24 @@ def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
     assert msg.url == URL("/test")
 
 
+async def test_chunk_split_after_pause(parser: HttpRequestParser) -> None:
+    value = b"t" * size
+    text = (
+        b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
+        + b"1\r\nb\r\n" * 50000
+        + b"0\r\n\r\n"
+    )
+
+    payload = None
+    messages, upgrade, tail = parser.feed_data(text)
+    payload = messages[0][-1]
+    # Payload should have paused reading and stopped receiving new chunks after 16k.
+    assert len(payload._http_chunk_splits) == 160001
+    # We should still get the full result after read(), as it will continue processing.
+    result = await payload.read()
+    assert result == b"b" * 50000
+
+
 @pytest.mark.parametrize("size", [40965, 8191])
 def test_max_header_value_size_continuation(
     response: HttpResponseParser, size: int
