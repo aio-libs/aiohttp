@@ -455,7 +455,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 assert not self._lines
                 assert self._payload_parser is not None
                 try:
-                    payload_state, data = self._payload_parser.feed_data(data[start_pos:], SEP)
+                    payload_state, data = self._payload_parser.feed_data(
+                        data[start_pos:], SEP
+                    )
                 except BaseException as underlying_exc:
                     reraised_exc = underlying_exc
                     if self.payload_exception is not None:
@@ -863,7 +865,9 @@ class HttpPayloadParser:
                     if self._chunk == ChunkState.PARSE_TRAILERS:
                         max_line_length = self._max_field_size
                     if len(self._chunk_tail) > max_line_length:
-                        raise LineTooLong(self._chunk_tail[:100] + b"...", max_line_length)
+                        raise LineTooLong(
+                            self._chunk_tail[:100] + b"...", max_line_length
+                        )
 
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
@@ -1063,7 +1067,11 @@ class DeflateBuffer:
 
         if chunk:
             self.out.feed_data(chunk)
-        return self.decompressor.unconsumed_tail if self.decompressor.data_available else None
+        return (
+            self.decompressor.unconsumed_tail
+            if self.decompressor.data_available
+            else None
+        )
 
     def feed_eof(self) -> None:
         chunk = self.decompressor.flush()

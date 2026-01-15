@@ -281,7 +281,9 @@ class ZLibDecompressor(DecompressionBaseHandler):
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
-        return self._decompressor.decompress(self._decompressor._unconsumed_tail + data, max_length)
+        return self._decompressor.decompress(
+            self._decompressor._unconsumed_tail + data, max_length
+        )
 
     def flush(self, length: int = 0) -> bytes:
         return (
@@ -337,11 +339,11 @@ class BrotliDecompressor(DecompressionBaseHandler):
 
     @property
     def unconsumed_tail(self) -> bytes:
-        pass # TODO
+        pass  # TODO
 
     @property
     def data_available(self) -> bool:
-        pass # TODO
+        pass  # TODO
 
 
 class ZSTDDecompressor(DecompressionBaseHandler):

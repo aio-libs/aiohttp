@@ -551,7 +551,9 @@ class BodyPartReader:
             return await ZLibDecompressor(
                 encoding=encoding,
                 suppress_deflate_header=True,
-            ).decompress(data, max_length=self._max_decompress_size)  # TODO
+            ).decompress(
+                data, max_length=self._max_decompress_size
+            )  # TODO
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
