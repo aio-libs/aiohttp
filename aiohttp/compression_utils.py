@@ -183,13 +183,13 @@ class DecompressionBaseHandler(ABC):
             )
         return self.decompress_sync(data, max_length)
 
-    @abstractmethod
     @property
+    @abstractmethod
     def unconsumed_tail(self) -> bytes:
         """Unused input that must be fed back to decompress() after using max_length."""
 
-    @abstractmethod
     @property
+    @abstractmethod
     def data_available(self) -> bool:
         """Return True if more output is available using only .unconsumed_tail."""
 
