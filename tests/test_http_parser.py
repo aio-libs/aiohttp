@@ -827,7 +827,7 @@ def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
     assert msg.url == URL("/test")
 
 
-async def test_chunk_split_after_pause(parser: HttpRequestParser) -> None:
+async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
     value = b"t" * size
     text = (
         b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
