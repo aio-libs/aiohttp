@@ -20,7 +20,9 @@ class BaseProtocol(asyncio.Protocol):
         "transport",
     )
 
-    def __init__(self, loop: asyncio.AbstractEventLoop, parser: "HttpParser | None") -> None:
+    def __init__(
+        self, loop: asyncio.AbstractEventLoop, parser: "HttpParser | None"
+    ) -> None:
         self._loop: asyncio.AbstractEventLoop = loop
         self._paused = False
         self._drain_waiter: asyncio.Future[None] | None = None
