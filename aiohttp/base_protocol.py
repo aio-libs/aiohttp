@@ -3,6 +3,7 @@ from typing import cast
 
 from .client_exceptions import ClientConnectionResetError
 from .helpers import set_exception
+from .http_parser import HttpParser
 from .tcp_helpers import tcp_nodelay
 
 
@@ -10,17 +11,19 @@ class BaseProtocol(asyncio.Protocol):
     __slots__ = (
         "_loop",
         "_paused",
+        "_parser",
         "_drain_waiter",
         "_connection_lost",
         "_reading_paused",
         "transport",
     )
 
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop, parser: HttpParser) -> None:
         self._loop: asyncio.AbstractEventLoop = loop
         self._paused = False
         self._drain_waiter: asyncio.Future[None] | None = None
         self._reading_paused = False
+        self._parser = parser
 
         self.transport: asyncio.Transport | None = None
 
@@ -48,15 +51,23 @@ class BaseProtocol(asyncio.Protocol):
                 waiter.set_result(None)
 
     def pause_reading(self) -> None:
-        if not self._reading_paused and self.transport is not None:
+        self._reading_paused = True
+        self._parser.pause_reading()
+        if self.transport is not None:
             try:
                 self.transport.pause_reading()
             except (AttributeError, NotImplementedError, RuntimeError):
                 pass
-            self._reading_paused = True
 
     def resume_reading(self) -> None:
-        if self._reading_paused and self.transport is not None:
+        self._reading_paused = False
+
+        # This will resume parsing any unprocessed data from the last pause.
+        self.data_received(b"")
+
+        # Reading may have been paused again in the above call if there was a lot of
+        # compressed data still pending.
+        if not self._reading_paused and self.transport is not None:
             try:
                 self.transport.resume_reading()
             except (AttributeError, NotImplementedError, RuntimeError):

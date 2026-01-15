@@ -34,7 +34,7 @@ except ImportError:
 
 
 MAX_SYNC_CHUNK_SIZE = 4096
-DEFAULT_MAX_DECOMPRESS_SIZE = 2**25  # 32MiB
+DEFAULT_MAX_DECOMPRESS_SIZE = 256 * 1024
 
 # Unlimited decompression constants - different libraries use different conventions
 ZLIB_MAX_LENGTH_UNLIMITED = 0  # zlib uses 0 to mean unlimited
@@ -179,6 +179,16 @@ class DecompressionBaseHandler(ABC):
             )
         return self.decompress_sync(data, max_length)
 
+    @abstractmethod
+    @property
+    def unconsumed_tail(self) -> bytes:
+        """Unused input that must be fed back to decompress() after using max_length."""
+
+    @abstractmethod
+    @property
+    def data_available(self) -> bool:
+        """Return True if more output is available using only .unconsumed_tail."""
+
 
 class ZLibCompressor:
     def __init__(
@@ -271,7 +281,7 @@ class ZLibDecompressor(DecompressionBaseHandler):
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
-        return self._decompressor.decompress(data, max_length)
+        return self._decompressor.decompress(self._decompressor._unconsumed_tail + data, max_length)
 
     def flush(self, length: int = 0) -> bytes:
         return (
@@ -279,6 +289,14 @@ class ZLibDecompressor(DecompressionBaseHandler):
             if length > 0
             else self._decompressor.flush()
         )
+
+    @property
+    def unconsumed_tail(self) -> bytes:
+        return self._decompressor.unconsumed_tail
+
+    @property
+    def data_available(self) -> bool:
+        return bool(self._decompressor.unconsumed_tail)
 
     @property
     def eof(self) -> bool:
@@ -317,6 +335,14 @@ class BrotliDecompressor(DecompressionBaseHandler):
             return cast(bytes, self._obj.flush())
         return b""
 
+    @property
+    def unconsumed_tail(self) -> bytes:
+        pass # TODO
+
+    @property
+    def data_available(self) -> bool:
+        pass # TODO
+
 
 class ZSTDDecompressor(DecompressionBaseHandler):
     def __init__(
@@ -346,3 +372,11 @@ class ZSTDDecompressor(DecompressionBaseHandler):
 
     def flush(self) -> bytes:
         return b""
+
+    @property
+    def unconsumed_tail(self) -> bytes:
+        return b""
+
+    @property
+    def data_available(self) -> bool:
+        return not self._obj.needs_input

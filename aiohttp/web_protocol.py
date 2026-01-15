@@ -170,7 +170,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_task_handler",
         "_upgrade",
         "_payload_parser",
-        "_request_parser",
         "logger",
         "access_log",
         "access_logger",
@@ -383,7 +382,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._manager = None
         self._request_factory = None
         self._request_handler = None
-        self._request_parser = None
+        self._parser = None
 
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
@@ -421,9 +420,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # parse http messages
         messages: Sequence[_MsgType]
         if self._payload_parser is None and not self._upgrade:
-            assert self._request_parser is not None
+            assert self._parser is not None
             try:
-                messages, upgraded, tail = self._request_parser.feed_data(data)
+                messages, upgraded, tail = self._parser.feed_data(data)
             except HttpProcessingError as exc:
                 messages = [
                     (_ErrInfo(status=400, exc=exc, message=exc.message), EMPTY_PAYLOAD)
@@ -705,11 +704,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         prematurely.
         """
         request._finish()
-        if self._request_parser is not None:
-            self._request_parser.set_upgraded(False)
+        if self._parser is not None:
+            self._parser.set_upgraded(False)
             self._upgrade = False
             if self._message_tail:
-                self._request_parser.feed_data(self._message_tail)
+                self._parser.feed_data(self._message_tail)
                 self._message_tail = b""
         try:
             prepare_meth = resp.prepare

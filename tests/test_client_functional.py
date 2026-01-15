@@ -2406,7 +2406,7 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
+        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:  # TODO
             await resp.read()
 
         assert isinstance(exc_info.value.__cause__, DecompressSizeError)
@@ -2436,7 +2436,7 @@ async def test_payload_decompress_size_limit_brotli(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
+        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:  # TODO
             await resp.read()
 
         assert isinstance(exc_info.value.__cause__, DecompressSizeError)
@@ -2467,7 +2467,7 @@ async def test_payload_decompress_size_limit_zstd(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
+        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:  # TODO
             await resp.read()
 
         assert isinstance(exc_info.value.__cause__, DecompressSizeError)

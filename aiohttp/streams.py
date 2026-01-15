@@ -277,7 +277,7 @@ class StreamReader(AsyncStreamReaderMixin):
         assert not self._eof, "feed_data after feed_eof"
 
         if not data:
-            return
+            return None
 
         data_len = len(data)
         self._size += data_len
@@ -291,6 +291,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
         if self._size > self._high_water and not self._protocol._reading_paused:
             self._protocol.pause_reading()
+        return None
 
     def begin_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
