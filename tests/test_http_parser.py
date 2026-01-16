@@ -81,7 +81,9 @@ def parser(
     loop: asyncio.AbstractEventLoop,
     request: pytest.FixtureRequest,
 ) -> HttpRequestParser:
-    protocol = RequestHandler(mock.create_autospec(Server, spec_set=True, instance=True), loop=loop)
+    protocol = RequestHandler(
+        mock.create_autospec(Server, spec_set=True, instance=True), loop=loop
+    )
 
     # Parser implementations
     parser = request.param(
@@ -171,7 +173,9 @@ def test_invalid_character(
     loop: asyncio.AbstractEventLoop,
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(mock.create_autospec(Server, spec_set=True, instance=True), loop)
+    protocol = RequestHandler(
+        mock.create_autospec(Server, spec_set=True, instance=True), loop
+    )
 
     parser = HttpRequestParserC(
         protocol,
@@ -197,7 +201,9 @@ def test_invalid_linebreak(
     loop: asyncio.AbstractEventLoop,
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(mock.create_autospec(Server, spec_set=True, instance=True), loop)
+    protocol = RequestHandler(
+        mock.create_autospec(Server, spec_set=True, instance=True), loop
+    )
 
     parser = HttpRequestParserC(
         protocol,
@@ -262,10 +268,10 @@ def test_bad_headers(parser: HttpRequestParser, hdr: str) -> None:
         parser.feed_data(text)
 
 
-def test_unpaired_surrogate_in_header_py(
-    loop: asyncio.AbstractEventLoop
-) -> None:
-    protocol = RequestHandler(mock.create_autospec(Server, spec_set=True, instance=True), loop)
+def test_unpaired_surrogate_in_header_py(loop: asyncio.AbstractEventLoop) -> None:
+    protocol = RequestHandler(
+        mock.create_autospec(Server, spec_set=True, instance=True), loop
+    )
 
     parser = HttpRequestParserPy(
         protocol,
@@ -1285,7 +1291,7 @@ async def test_http_response_parser_bad_chunked_lax(
 
 @pytest.mark.dev_mode
 async def test_http_response_parser_bad_chunked_strict_py(
-    loop: asyncio.AbstractEventLoop
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     protocol = ResponseHandler(loop)
 
@@ -1310,7 +1316,7 @@ async def test_http_response_parser_bad_chunked_strict_py(
     reason="C based HTTP parser not available",
 )
 async def test_http_response_parser_bad_chunked_strict_c(
-    loop: asyncio.AbstractEventLoop
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
     protocol = ResponseHandler(loop)
 
@@ -1474,7 +1480,9 @@ def test_parse_no_length_or_te_on_post(
     loop: asyncio.AbstractEventLoop,
     request_cls: type[HttpRequestParser],
 ) -> None:
-    protocol = RequestHandler(mock.create_autospec(Server, spec_set=True, instance=True), loop)
+    protocol = RequestHandler(
+        mock.create_autospec(Server, spec_set=True, instance=True), loop
+    )
     parser = request_cls(protocol, loop, limit=2**16)
     protocol._parser = parser
     text = b"POST /test HTTP/1.1\r\n\r\n"
@@ -1749,10 +1757,10 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
 )
-def test_parse_bad_method_for_c_parser_raises(
-    loop: asyncio.AbstractEventLoop
-) -> None:
-    protocol = RequestHandler(mock.create_autospec(Server, spec_set=True, instance=True), loop)
+def test_parse_bad_method_for_c_parser_raises(loop: asyncio.AbstractEventLoop) -> None:
+    protocol = RequestHandler(
+        mock.create_autospec(Server, spec_set=True, instance=True), loop
+    )
 
     payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(
