@@ -540,7 +540,7 @@ cdef class HttpParser:
         if self._tail:
             tail = self._tail
             self._tail = b""
-            result = cb_on_body(self._cparser, tail, -1)
+            result = cb_on_body(self._cparser, tail, len(tail))
 
             if result is cparser.HPE_PAUSED:
                 assert data == b""
