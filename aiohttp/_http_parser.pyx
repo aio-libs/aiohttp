@@ -546,7 +546,7 @@ cdef class HttpParser:
                 assert data == b""
                 return (), False, EMPTY_BYTES
             # TODO: Do we need to handle error case (-1)?
-            
+
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
         data_len = <size_t>self.py_buf.len
 
@@ -792,9 +792,9 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
             reraised_exc = underlying_exc
             if pyparser._payload_exception is not None:
                 reraised_exc = pyparser._payload_exception(str(underlying_exc))
-    
+
             set_exception(pyparser._payload, reraised_exc, underlying_exc)
-    
+
             pyparser._payload_error = 1
             return -1
     return 0
