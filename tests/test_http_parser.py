@@ -276,7 +276,9 @@ def test_bad_headers(parser: HttpRequestParser, hdr: str) -> None:
         parser.feed_data(text)
 
 
-def test_unpaired_surrogate_in_header_py(loop: asyncio.AbstractEventLoop, server: Server) -> None:
+def test_unpaired_surrogate_in_header_py(
+    loop: asyncio.AbstractEventLoop, server: Server
+) -> None:
     protocol = RequestHandler(server, loop)
 
     parser = HttpRequestParserPy(
@@ -1762,7 +1764,9 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
 )
-def test_parse_bad_method_for_c_parser_raises(loop: asyncio.AbstractEventLoop, server: Server) -> None:
+def test_parse_bad_method_for_c_parser_raises(
+    loop: asyncio.AbstractEventLoop, server: Server
+) -> None:
     protocol = RequestHandler(server, loop)
 
     payload = b"GET1 /test HTTP/1.1\r\n\r\n"
