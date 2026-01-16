@@ -328,10 +328,7 @@ class StreamReader(AsyncStreamReaderMixin):
         # If we get too many small chunks before self._high_water is reached, then any
         # .read() call becomes computationally expensive, and could block the event loop
         # for too long, hence an additional self._high_water_chunks here.
-        if (
-            len(self._http_chunk_splits) > self._high_water_chunks
-            and not self._protocol._reading_paused
-        ):
+        if (len(self._http_chunk_splits) > self._high_water_chunks):
             self._protocol.pause_reading()
 
         # wake up readchunk when end of http chunk received
