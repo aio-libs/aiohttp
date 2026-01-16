@@ -6,6 +6,7 @@ import sys
 import zlib
 from collections.abc import Iterable
 from contextlib import suppress
+from types import MethodType
 from typing import Any
 from unittest import mock
 from urllib.parse import quote
@@ -64,8 +65,8 @@ def protocol() -> Any:
         spec_set=True,
         instance=True,
     )
-    m.pause_reading = BaseProtocol.pause_reading.__get__(m, BaseProtocol)
-    m.resume_reading = BaseProtocol.resume_reading.__get__(m, BaseProtocol)
+    m.pause_reading = MethodType(BaseProtocol.pause_reading, m)
+    m.resume_reading = MethodType(BaseProtocol.resume_reading, m)
     return m
 
 
