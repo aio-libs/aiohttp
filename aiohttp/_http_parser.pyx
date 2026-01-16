@@ -557,12 +557,14 @@ cdef class HttpParser:
 
         if errno is cparser.HPE_PAUSED_UPGRADE:
             cparser.llhttp_resume_after_upgrade(self._cparser)
-
+            nb = cparser.llhttp_get_error_pos(self._cparser) - <char*>self.py_buf.buf
+        elif errno is cparser.HPE_PAUSED:
+            cparser.llhttp_resume(self._cparser)
             nb = cparser.llhttp_get_error_pos(self._cparser) - <char*>self.py_buf.buf
 
         PyBuffer_Release(&self.py_buf)
 
-        if errno not in (cparser.HPE_OK, cparser.HPE_PAUSED_UPGRADE):
+        if errno not in (cparser.HPE_OK, cparser.HPE_PAUSED, cparser.HPE_PAUSED_UPGRADE):
             if self._payload_error == 0:
                 if self._last_error is not None:
                     ex = self._last_error
@@ -586,6 +588,8 @@ cdef class HttpParser:
 
         if self._upgraded:
             return messages, True, data[nb:]
+        elif errno is cparser.HPE_PAUSED:
+            return messages, False, data[nb:]
         else:
             return messages, False, EMPTY_BYTES
 
