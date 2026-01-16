@@ -58,7 +58,7 @@ with suppress(ImportError):
 
 @pytest.fixture
 def protocol() -> Any:
-    return mock.create_autospec(BaseProtocol, spec_set=True, instance=True)
+    return mock.create_autospec(BaseProtocol, transport=None, pause_reading=BaseProtocol.pause_reading, resume_reading=BaseProtocol.resume_reading, spec_set=True, instance=True)
 
 
 def _gen_ids(parsers: Iterable[type[HttpParser[Any]]]) -> list[str]:
