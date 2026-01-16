@@ -61,6 +61,16 @@ with suppress(ImportError):
 
 
 @pytest.fixture
+def server() -> Any:
+    m = mock.create_autospec(
+        Server,
+        request_handler=mock.AsyncMock()
+        instance=True,
+    )
+    return m
+
+
+@pytest.fixture
 def protocol() -> Any:
     m = mock.create_autospec(
         BaseProtocol,
@@ -80,11 +90,10 @@ def _gen_ids(parsers: Iterable[type[HttpParser[Any]]]) -> list[str]:
 @pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
 def parser(
     loop: asyncio.AbstractEventLoop,
+    server: Server,
     request: pytest.FixtureRequest,
 ) -> HttpRequestParser:
-    protocol = RequestHandler(
-        mock.create_autospec(Server, spec_set=True, instance=True), loop=loop
-    )
+    protocol = RequestHandler(server, loop=loop)
 
     # Parser implementations
     parser = request.param(
@@ -172,11 +181,10 @@ test2: data\r
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_character(
     loop: asyncio.AbstractEventLoop,
+    server: Server,
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(
-        mock.create_autospec(Server, spec_set=True, instance=True), loop
-    )
+    protocol = RequestHandler(server, loop)
 
     parser = HttpRequestParserC(
         protocol,
@@ -200,11 +208,10 @@ def test_invalid_character(
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_linebreak(
     loop: asyncio.AbstractEventLoop,
+    server: Server,
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(
-        mock.create_autospec(Server, spec_set=True, instance=True), loop
-    )
+    protocol = RequestHandler(server, loop)
 
     parser = HttpRequestParserC(
         protocol,
@@ -269,10 +276,8 @@ def test_bad_headers(parser: HttpRequestParser, hdr: str) -> None:
         parser.feed_data(text)
 
 
-def test_unpaired_surrogate_in_header_py(loop: asyncio.AbstractEventLoop) -> None:
-    protocol = RequestHandler(
-        mock.create_autospec(Server, spec_set=True, instance=True), loop
-    )
+def test_unpaired_surrogate_in_header_py(loop: asyncio.AbstractEventLoop, server: Server) -> None:
+    protocol = RequestHandler(server, loop)
 
     parser = HttpRequestParserPy(
         protocol,
@@ -1479,11 +1484,10 @@ async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> 
 
 def test_parse_no_length_or_te_on_post(
     loop: asyncio.AbstractEventLoop,
+    server: Server,
     request_cls: type[HttpRequestParser],
 ) -> None:
-    protocol = RequestHandler(
-        mock.create_autospec(Server, spec_set=True, instance=True), loop
-    )
+    protocol = RequestHandler(server, loop)
     parser = request_cls(protocol, loop, limit=2**16)
     protocol._parser = parser
     text = b"POST /test HTTP/1.1\r\n\r\n"
@@ -1758,10 +1762,8 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
 )
-def test_parse_bad_method_for_c_parser_raises(loop: asyncio.AbstractEventLoop) -> None:
-    protocol = RequestHandler(
-        mock.create_autospec(Server, spec_set=True, instance=True), loop
-    )
+def test_parse_bad_method_for_c_parser_raises(loop: asyncio.AbstractEventLoop, server: Server) -> None:
+    protocol = RequestHandler(server, loop)
 
     payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(
