@@ -84,7 +84,7 @@ def parser(
     request: pytest.FixtureRequest,
 ) -> HttpRequestParser:
     # Parser implementations
-    return request.param(  # type: ignore[no-any-return]
+    parser = request.param(
         protocol,
         loop,
         2**16,
@@ -92,6 +92,8 @@ def parser(
         max_headers=128,
         max_field_size=8190,
     )
+    protocol._parser = parser
+    return parser  # type: ignore[no-any-return]
 
 
 @pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
@@ -107,7 +109,7 @@ def response(
     request: pytest.FixtureRequest,
 ) -> HttpResponseParser:
     # Parser implementations
-    return request.param(  # type: ignore[no-any-return]
+    parser = request.param(
         protocol,
         loop,
         2**16,
@@ -116,6 +118,8 @@ def response(
         max_field_size=8190,
         read_until_eof=True,
     )
+    protocol._parser = parser
+    return parser  # type: ignore[no-any-return]
 
 
 @pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
@@ -173,6 +177,7 @@ def test_invalid_character(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = parser
     text = b"POST / HTTP/1.1\r\nHost: localhost:8080\r\nSet-Cookie: abc\x01def\r\n\r\n"
     error_detail = re.escape(
         r""":
@@ -197,6 +202,7 @@ def test_invalid_linebreak(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = parser
     text = b"GET /world HTTP/1.1\r\nHost: 127.0.0.1\n\r\n"
     error_detail = re.escape(
         r""":
@@ -262,6 +268,7 @@ def test_unpaired_surrogate_in_header_py(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = parser
     text = b"POST / HTTP/1.1\r\n\xff\r\n\r\n"
     message = None
     try:
@@ -1283,6 +1290,7 @@ async def test_http_response_parser_bad_chunked_strict_py(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = parser
     text = (
         b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
     )
@@ -1305,6 +1313,7 @@ async def test_http_response_parser_bad_chunked_strict_c(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = parser
     text = (
         b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
     )
@@ -1459,6 +1468,7 @@ def test_parse_no_length_or_te_on_post(
     request_cls: type[HttpRequestParser],
 ) -> None:
     parser = request_cls(protocol, loop, limit=2**16)
+    protocol._parser = parser
     text = b"POST /test HTTP/1.1\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
@@ -1471,6 +1481,7 @@ def test_parse_payload_response_without_body(
     response_cls: type[HttpResponseParser],
 ) -> None:
     parser = response_cls(protocol, loop, 2**16, response_with_body=False)
+    protocol._parser = parser
     text = b"HTTP/1.1 200 Ok\r\ncontent-length: 10\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
@@ -1742,6 +1753,7 @@ def test_parse_bad_method_for_c_parser_raises(
         max_headers=128,
         max_field_size=8190,
     )
+    protocol._parser = parser
 
     with pytest.raises(aiohttp.http_exceptions.BadStatusLine):
         messages, upgrade, tail = parser.feed_data(payload)
