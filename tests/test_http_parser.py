@@ -18,6 +18,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.helpers import NO_EXTENSIONS
 from aiohttp.http_parser import (
     DeflateBuffer,
@@ -30,6 +31,7 @@ from aiohttp.http_parser import (
     HttpResponseParserPy,
 )
 from aiohttp.http_writer import HttpVersion
+from aiohttp.web_protocol import RequestHandler
 
 try:
     try:
@@ -93,6 +95,7 @@ def parser(
         max_field_size=8190,
     )
     protocol._parser = parser
+    protocol.data_received = MethodType(RequestHandler.data_received, protocol)
     return parser  # type: ignore[no-any-return]
 
 
@@ -119,6 +122,7 @@ def response(
         read_until_eof=True,
     )
     protocol._parser = parser
+    protocol.data_received = MethodType(ResponseHandler.data_received, protocol)
     return parser  # type: ignore[no-any-return]
 
 
