@@ -876,7 +876,12 @@ async def test_write_calls_callback(
     transport: asyncio.Transport,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    on_chunk_sent = mock.AsyncMock()
+
+    async def on_chunk_sent(chunk: bytes) -> None:
+        # define callback signature
+        pass
+
+    on_chunk_sent = mock.create_autospec(on_chunk_sent, spec_set=True)
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
     await msg.write(chunk)
@@ -889,7 +894,13 @@ async def test_write_eof_calls_callback(
     transport: asyncio.Transport,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-    on_chunk_sent = mock.AsyncMock()
+
+    async def on_chunk_sent(chunk: bytes) -> None:
+        # define callback signature
+        pass
+
+    on_chunk_sent = mock.create_autospec(on_chunk_sent, spec_set=True)
+
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
     chunk = b"1"
     await msg.write_eof(chunk=chunk)
