@@ -525,7 +525,7 @@ class StreamReader(AsyncStreamReaderMixin):
             chunk_splits.popleft()
 
         if (
-            and self._size < self._low_water
+            self._size < self._low_water
             and (
                 self._http_chunk_splits is None
                 or len(self._http_chunk_splits) < self._low_water_chunks
