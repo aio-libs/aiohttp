@@ -542,7 +542,7 @@ cdef class HttpParser:
             self._tail = b""
             result = cb_on_body(self._cparser, tail, -1)
 
-            if result == cparser.HPE_PAUSED:
+            if result is cparser.HPE_PAUSED:
                 assert data == b""
                 return (), False, EMPTY_BYTES
             # TODO: Do we need to handle error case (-1)?
