@@ -242,6 +242,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._upgraded = False
         self._payload = None
         self._payload_parser: HttpPayloadParser | None = None
+        self._payload_has_more_data = False
         self._auto_decompress = auto_decompress
         self._limit = limit
         self._headers_parser = HeadersParser(max_field_size, self.lax)
@@ -292,7 +293,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         max_line_length = self.max_line_size
 
         should_close = False
-        while start_pos < data_len:
+        while start_pos < data_len or self._payload_has_more_data:
             # read HTTP message (request/response line + headers), \r\n\r\n
             # and split by lines
             if self._payload_parser is None and not self._upgraded:
@@ -451,7 +452,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 break
 
             # feed payload
-            elif data and start_pos < data_len:
+            elif self._payload_has_more_data or (data and start_pos < data_len):
                 assert not self._lines
                 assert self._payload_parser is not None
                 try:
@@ -475,6 +476,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         underlying_exc, (InvalidHeader, TransferEncodingError)
                     ):
                         raise
+
+                self._payload_has_more_data = payload_state == PayloadState.PAYLOAD_HAS_PENDING_DATA
 
                 if payload_state is not PayloadState.PAYLOAD_COMPLETE:
                     # We've either consumed all available data, or we're pausing
