@@ -857,10 +857,10 @@ async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
     messages, upgrade, tail = parser.feed_data(text)
     payload = messages[0][-1]
     # Payload should have paused reading and stopped receiving new chunks after 16k.
-    # assert parser._payload_parser is not None
-    # assert parser._payload_parser._paused
     assert payload._http_chunk_splits is not None
-    assert len(payload._http_chunk_splits) == 16001
+    assert len(payload._http_chunk_splits) == 16385
+    assert parser._payload_parser is not None
+    assert parser._payload_parser._paused
     # We should still get the full result after read(), as it will continue processing.
     result = await payload.read()
     assert result == b"b" * 50000
