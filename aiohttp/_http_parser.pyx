@@ -508,7 +508,7 @@ cdef class HttpParser:
     ### Public API ###
 
     def pause_reading(self):
-        assert pyparser._payload is not None
+        assert self._payload is not None
         self._paused = True
 
     def feed_eof(self):
@@ -540,7 +540,7 @@ cdef class HttpParser:
         if self._tail:
             tail = self._tail
             self._tail = b""
-            result = cb_on_body(self, tail, -1)
+            result = cb_on_body(self._cparser, tail, -1)
 
             if result == cparser.HPE_PAUSED:
                 assert data == b""
