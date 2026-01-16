@@ -64,7 +64,6 @@ def protocol() -> Any:
     m = mock.create_autospec(
         BaseProtocol,
         transport=None,
-        spec_set=True,
         instance=True,
     )
     m.pause_reading = MethodType(BaseProtocol.pause_reading, m)
@@ -94,6 +93,7 @@ def parser(
         max_headers=128,
         max_field_size=8190,
     )
+    protocol._force_close = False
     protocol._parser = parser
     protocol.data_received = MethodType(RequestHandler.data_received, protocol)
     return parser  # type: ignore[no-any-return]
