@@ -64,6 +64,7 @@ with suppress(ImportError):
 def server() -> Any:
     m = mock.create_autospec(
         Server,
+        request_factory=mock.Mock(),
         request_handler=mock.AsyncMock(),
         instance=True,
     )
