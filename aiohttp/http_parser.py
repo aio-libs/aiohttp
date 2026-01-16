@@ -478,7 +478,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         raise
 
                 self._payload_has_more_data = (
-                    payload_state == PayloadState.PAYLOAD_HAS_PENDING_DATA
+                    payload_state == PayloadState.PAYLOAD_HAS_PENDING_INPUT
                 )
 
                 if payload_state is not PayloadState.PAYLOAD_COMPLETE:
