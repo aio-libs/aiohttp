@@ -107,7 +107,8 @@ def parser(
     )
     protocol._force_close = False
     protocol._parser = parser
-    return parser  # type: ignore[no-any-return]
+    with mock.patch.object(protocol, "connected", True):
+        yield parser  # type: ignore[no-any-return]
 
 
 @pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
