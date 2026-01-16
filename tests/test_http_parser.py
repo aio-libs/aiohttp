@@ -107,7 +107,7 @@ def parser(
     )
     protocol._force_close = False
     protocol._parser = parser
-    with mock.patch.object(protocol, "connected", True):
+    with mock.patch.object(protocol, "transport", True):
         yield parser  # type: ignore[no-any-return]
 
 
