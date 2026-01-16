@@ -524,12 +524,9 @@ class StreamReader(AsyncStreamReaderMixin):
         while chunk_splits and chunk_splits[0] < self._cursor:
             chunk_splits.popleft()
 
-        if (
-            self._size < self._low_water
-            and (
-                self._http_chunk_splits is None
-                or len(self._http_chunk_splits) < self._low_water_chunks
-            )
+        if self._size < self._low_water and (
+            self._http_chunk_splits is None
+            or len(self._http_chunk_splits) < self._low_water_chunks
         ):
             self._protocol.resume_reading()
         return data
