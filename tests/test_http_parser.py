@@ -92,6 +92,7 @@ def parser(
         max_headers=128,
         max_field_size=8190,
     )
+    protocol._force_close = False
     protocol._parser = parser
     return parser  # type: ignore[no-any-return]
 
