@@ -931,6 +931,7 @@ class HttpPayloadParser:
                         continue
 
                     if self._chunk_size:
+                        self._paused = False
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
                     self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
                     self.payload.end_http_chunk_receiving()
