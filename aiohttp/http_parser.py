@@ -782,6 +782,7 @@ class HttpPayloadParser:
         self._max_line_size = max_line_size
         self._max_field_size = max_field_size
         self._max_trailers = max_trailers
+        self._more_data_available = False
         self._trailer_lines: list[bytes] = []
         self.done = False
 
@@ -843,24 +844,19 @@ class HttpPayloadParser:
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
 
-            while chunk:
-                required = self._length
-                self._length = max(required - len(chunk), 0)
-                tail = self.payload.feed_data(chunk[:required])
+            required = self._length
+            self._length = max(required - len(chunk), 0)
+            self._more_data_available = self.payload.feed_data(chunk[:required])
+            while self._more_data_available:
+                if self._paused:
+                    self._paused = False
+                    self._chunk_tail = chunk[required:]
+                    return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
+                self._more_data_available = self.payload.feed_data(b"")
 
-                if tail is not None:
-                    self._length += len(tail)
-                    chunk = tail + chunk[required:]
-                    if self._paused:
-                        self._paused = False
-                        self._chunk_tail = chunk
-                        return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
-
-                if self._length == 0:
-                    self.payload.feed_eof()
-                    return PayloadState.PAYLOAD_COMPLETE, chunk[required:]
-                if tail is None:
-                    break
+            if self._length == 0:
+                self.payload.feed_eof()
+                return PayloadState.PAYLOAD_COMPLETE, chunk[required:]
         # Chunked transfer encoding parser
         elif self._type == ParseState.PARSE_CHUNKED:
             if self._chunk_tail:
@@ -877,7 +873,7 @@ class HttpPayloadParser:
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
 
-            while chunk:
+            while chunk or self._more_data_available:
                 # read next chunk size
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
                     pos = chunk.find(SEP)
@@ -928,16 +924,14 @@ class HttpPayloadParser:
 
                     required = self._chunk_size
                     self._chunk_size = max(required - len(chunk), 0)
-                    tail = self.payload.feed_data(chunk[:required])
+                    self._more_data_available = self.payload.feed_data(chunk[:required])
+                    chunk = chunk[required:]
 
-                    if tail is not None:
-                        self._chunk_size += len(tail)
-                        chunk = tail + chunk[required:]
+                    if self._more_data_available:
                         continue
 
                     if self._chunk_size:
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
-                    chunk = chunk[required:]
                     self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
                     self.payload.end_http_chunk_receiving()
 
@@ -986,13 +980,11 @@ class HttpPayloadParser:
 
         # Read all bytes until eof
         elif self._type == ParseState.PARSE_UNTIL_EOF:
-            tail = chunk
-            while tail is not None:
+            while self._more_data_available := self.payload.feed_data(chunk):
+                chunk = b""
                 if self._paused:
                     self._paused = False
-                    self._chunk_tail = tail
                     return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
-                tail = self.payload.feed_data(tail)
 
         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
@@ -1039,10 +1031,8 @@ class DeflateBuffer:
     ) -> None:
         set_exception(self.out, exc, exc_cause)
 
-    def feed_data(self, chunk: bytes) -> bytes | None:
-        if not chunk:
-            return None
-
+    def feed_data(self, chunk: bytes) -> bool:
+        """Return True if more data is available and this method should be called again with b""."""
         self.size += len(chunk)
         self.out.total_compressed_bytes = self.size
 
@@ -1073,11 +1063,7 @@ class DeflateBuffer:
 
         if chunk:
             self.out.feed_data(chunk)
-        return (
-            self.decompressor.unconsumed_tail
-            if self.decompressor.data_available
-            else None
-        )
+        return self.decompressor.data_available
 
     def feed_eof(self) -> None:
         chunk = self.decompressor.flush()
