@@ -185,11 +185,6 @@ class DecompressionBaseHandler(ABC):
 
     @property
     @abstractmethod
-    def unconsumed_tail(self) -> bytes:
-        """Unused input that must be fed back to decompress() after using max_length."""
-
-    @property
-    @abstractmethod
     def data_available(self) -> bool:
         """Return True if more output is available using only .unconsumed_tail."""
 
@@ -297,10 +292,6 @@ class ZLibDecompressor(DecompressionBaseHandler):
         )
 
     @property
-    def unconsumed_tail(self) -> bytes:
-        return self._decompressor.unconsumed_tail
-
-    @property
     def data_available(self) -> bool:
         return bool(self._decompressor.unconsumed_tail)
 
@@ -342,10 +333,6 @@ class BrotliDecompressor(DecompressionBaseHandler):
         return b""
 
     @property
-    def unconsumed_tail(self) -> bytes:
-        pass  # TODO
-
-    @property
     def data_available(self) -> bool:
         pass  # TODO
 
@@ -377,10 +364,6 @@ class ZSTDDecompressor(DecompressionBaseHandler):
         return self._obj.decompress(data, zstd_max_length)
 
     def flush(self) -> bytes:
-        return b""
-
-    @property
-    def unconsumed_tail(self) -> bytes:
         return b""
 
     @property
