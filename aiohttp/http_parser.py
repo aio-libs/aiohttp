@@ -980,11 +980,12 @@ class HttpPayloadParser:
 
         # Read all bytes until eof
         elif self._type == ParseState.PARSE_UNTIL_EOF:
-            while self._more_data_available := self.payload.feed_data(chunk):
-                chunk = b""
+            self._more_data_available = self.payload.feed_data(chunk)
+            while self._more_data_available:
                 if self._paused:
                     self._paused = False
                     return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
+                self._more_data_available = self.payload.feed_data(b"")
 
         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
