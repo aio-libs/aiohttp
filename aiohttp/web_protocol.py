@@ -401,8 +401,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._payload_parser.feed_eof()
             self._payload_parser = None
 
-    def set_parser(self, parser: Any) -> None:
-        # Actual type is WebReader
+    def set_parser(self, parser: WebSocketReader) -> None:
         assert self._payload_parser is None
 
         self._payload_parser = parser
