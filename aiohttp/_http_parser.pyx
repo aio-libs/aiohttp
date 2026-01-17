@@ -291,7 +291,6 @@ cdef class HttpParser:
         bint _response_with_body
         bint _read_until_eof
 
-        bint    _more_data_available
         bint    _started
         object  _url
         bytearray   _buf
@@ -301,6 +300,7 @@ cdef class HttpParser:
         list    _raw_headers
         bint    _upgraded
         list    _messages
+        bint    _more_data_available
         bint    _paused
         object  _payload
         bint    _payload_error
