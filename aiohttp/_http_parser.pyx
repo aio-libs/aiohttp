@@ -804,6 +804,7 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
             return -1
         body = EMPTY_BYTES
     pyparser._more_data_available = False
+    pyparser._paused = False
     return 0
 
 
