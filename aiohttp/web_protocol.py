@@ -22,6 +22,7 @@ from .http import (
     HttpVersion10,
     RawRequestMessage,
     StreamWriter,
+    WebSocketReader,
 )
 from .http_exceptions import BadHttpMethod
 from .log import access_logger, server_logger
