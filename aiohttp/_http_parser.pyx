@@ -291,6 +291,7 @@ cdef class HttpParser:
         bint _response_with_body
         bint _read_until_eof
 
+        bytes   _tail
         bint    _started
         object  _url
         bytearray   _buf
@@ -356,6 +357,7 @@ cdef class HttpParser:
 
         self._raw_name = EMPTY_BYTES
         self._raw_value = EMPTY_BYTES
+        self._tail = b""
         self._has_value = False
         self._header_name_size = 0
 
@@ -537,10 +539,13 @@ cdef class HttpParser:
             size_t nb
             cdef cparser.llhttp_errno_t errno
 
+        if self._tail:
+            data, self._tail = self._tail + data, b""
+
         if self._more_data_available:
             result = cb_on_body(self._cparser, EMPTY_BYTES, 0)
             if result is cparser.HPE_PAUSED:
-                assert data == b""
+                self._tail = data
                 return (), False, EMPTY_BYTES
             # TODO: Do we need to handle error case (-1)?
 
@@ -558,6 +563,7 @@ cdef class HttpParser:
         elif errno is cparser.HPE_PAUSED:
             cparser.llhttp_resume(self._cparser)
             nb = cparser.llhttp_get_error_pos(self._cparser) - <char*>self.py_buf.buf
+            self._tail = data[nb:]
 
         PyBuffer_Release(&self.py_buf)
 
@@ -585,8 +591,6 @@ cdef class HttpParser:
 
         if self._upgraded:
             return messages, True, data[nb:]
-        elif errno is cparser.HPE_PAUSED:
-            return messages, False, data[nb:]
         else:
             return messages, False, EMPTY_BYTES
 
@@ -781,7 +785,7 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
                     const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     body = at[:length]
-    while more_data_available:
+    while body or pyparser._more_data_available:
         if pyparser._paused:
             pyparser._paused = False
             pyparser._more_data_available = True
