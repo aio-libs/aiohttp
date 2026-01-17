@@ -21,7 +21,7 @@ class BaseProtocol(asyncio.Protocol):
     )
 
     def __init__(
-        self, loop: asyncio.AbstractEventLoop, parser: "HttpParser | None"
+        self, loop: asyncio.AbstractEventLoop, parser: "HttpParser | None" = None
     ) -> None:
         self._loop: asyncio.AbstractEventLoop = loop
         self._paused = False
