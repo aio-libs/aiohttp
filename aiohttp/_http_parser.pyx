@@ -291,7 +291,7 @@ cdef class HttpParser:
         bint _response_with_body
         bint _read_until_eof
 
-        bytes   _tail
+        bint    _more_data_available
         bint    _started
         object  _url
         bytearray   _buf
@@ -347,6 +347,7 @@ cdef class HttpParser:
         self._timer = timer
 
         self._buf = bytearray()
+        self._more_data_available = False
         self._paused = False
         self._payload = None
         self._payload_error = 0
@@ -358,7 +359,6 @@ cdef class HttpParser:
         self._has_value = False
         self._header_name_size = 0
 
-        self._tail = EMPTY_BYTES
         self._max_line_size = max_line_size
         self._max_headers = max_headers
         self._max_field_size = max_field_size
@@ -537,11 +537,8 @@ cdef class HttpParser:
             size_t nb
             cdef cparser.llhttp_errno_t errno
 
-        if self._tail:
-            tail = self._tail
-            self._tail = b""
-            result = cb_on_body(self._cparser, tail, len(tail))
-
+        if self._more_data_available:
+            result = cb_on_body(self._cparser, EMPTY_BYTES, 0)
             if result is cparser.HPE_PAUSED:
                 assert data == b""
                 return (), False, EMPTY_BYTES
@@ -784,14 +781,14 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
                     const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     body = at[:length]
-    while body is not None:
+    while more_data_available:
         if pyparser._paused:
             pyparser._paused = False
-            pyparser._tail = body
+            pyparser._more_data_available = True
             return cparser.HPE_PAUSED
 
         try:
-            body = pyparser._payload.feed_data(body)
+            more_data_available = pyparser._payload.feed_data(body)
         except BaseException as underlying_exc:
             reraised_exc = underlying_exc
             if pyparser._payload_exception is not None:
@@ -801,6 +798,8 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
 
             pyparser._payload_error = 1
             return -1
+        body = EMPTY_BYTES
+    pyparser._more_data_available = False
     return 0
 
 
