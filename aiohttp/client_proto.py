@@ -26,7 +26,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     """Helper class to adapt between Protocol and StreamReader."""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
-        BaseProtocol.__init__(self, loop=loop)
+        BaseProtocol.__init__(self, loop=loop, parser=None)
         DataQueue.__init__(self, loop)
 
         self._should_close = False
@@ -39,7 +39,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._tail = b""
         self._upgraded = False
-        self._parser: HttpResponseParser | None = None
 
         self._read_timeout: float | None = None
         self._read_timeout_handle: asyncio.TimerHandle | None = None
@@ -292,9 +291,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
     def data_received(self, data: bytes) -> None:
         self._reschedule_timeout()
-
-        if not data:
-            return
 
         # custom payload parser - currently always WebSocketReader
         if self._payload_parser is not None:
