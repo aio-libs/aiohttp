@@ -36,16 +36,18 @@ class TokenBucket:
         self.last_refill = time.monotonic()
         self._lock = asyncio.Lock()
 
-    async def acquire(self) -> float:
-        """Acquire a token, returning wait time if bucket is empty."""
-        async with self._lock:
-            now = time.monotonic()
-            self._refill(now)
-            if self.tokens >= 1:
-                self.tokens -= 1
-                return 0.0
-            wait_time = (1 - self.tokens) / self.rate
-            return wait_time
+    async def acquire(self) -> None:
+        """Acquire a token, waiting if necessary."""
+        while True:
+            async with self._lock:
+                now = time.monotonic()
+                self._refill(now)
+                if self.tokens >= 1:
+                    self.tokens -= 1
+                    return
+                wait_time = (1 - self.tokens) / self.rate
+
+            await asyncio.sleep(wait_time)
 
     def _refill(self, now: float) -> None:
         elapsed = now - self.last_refill
@@ -97,10 +99,7 @@ class RateLimitMiddleware:
     ) -> ClientResponse:
         """Execute request with rate limiting."""
         bucket = self._get_bucket(request)
-        wait_time = await bucket.acquire()
-        if wait_time > 0:
-            _LOGGER.debug("Rate limited, waiting %.2fs", wait_time)
-            await asyncio.sleep(wait_time)
+        await bucket.acquire()
 
         response = await handler(request)
 
