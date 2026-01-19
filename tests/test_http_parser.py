@@ -6,7 +6,6 @@ import sys
 import zlib
 from collections.abc import Iterable
 from contextlib import suppress
-from types import MethodType
 from typing import Any
 from unittest import mock
 from urllib.parse import quote
@@ -879,6 +878,7 @@ async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
     assert len(payload._http_chunk_splits) == 16385
     # We should still get the full result after read(), as it will continue processing.
     result = await payload.read()
+    assert len(result) == 50000  # Compare len first, as it's easier to debug in diff.
     assert result == b"b" * 50000
 
 
