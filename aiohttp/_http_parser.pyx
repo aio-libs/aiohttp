@@ -786,11 +786,6 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
     cdef HttpParser pyparser = <HttpParser>parser.data
     body = at[:length]
     while body or pyparser._more_data_available:
-        if pyparser._paused:
-            pyparser._paused = False
-            pyparser._more_data_available = True
-            return cparser.HPE_PAUSED
-
         try:
             pyparser._more_data_available = pyparser._payload.feed_data(body)
         except BaseException as underlying_exc:
@@ -803,6 +798,11 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
             pyparser._payload_error = 1
             return -1
         body = EMPTY_BYTES
+
+        if pyparser._paused and (body or pyparser._more_data_available):
+            pyparser._paused = False
+            pyparser._more_data_available = True
+            return cparser.HPE_PAUSED
     pyparser._paused = False
     return 0
 
