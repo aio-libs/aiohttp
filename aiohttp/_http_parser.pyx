@@ -792,7 +792,7 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
             return cparser.HPE_PAUSED
 
         try:
-            more_data_available = pyparser._payload.feed_data(body)
+            pyparser._more_data_available = pyparser._payload.feed_data(body)
         except BaseException as underlying_exc:
             reraised_exc = underlying_exc
             if pyparser._payload_exception is not None:
@@ -803,7 +803,6 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
             pyparser._payload_error = 1
             return -1
         body = EMPTY_BYTES
-    pyparser._more_data_available = False
     pyparser._paused = False
     return 0
 
