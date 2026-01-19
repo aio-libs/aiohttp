@@ -562,8 +562,8 @@ cdef class HttpParser:
             nb = cparser.llhttp_get_error_pos(self._cparser) - <char*>self.py_buf.buf
         elif errno is cparser.HPE_PAUSED:
             cparser.llhttp_resume(self._cparser)
-            nb = cparser.llhttp_get_error_pos(self._cparser) - <char*>self.py_buf.buf
-            self._tail = data[nb:]
+            pos = cparser.llhttp_get_error_pos(self._cparser) - <char*>self.py_buf.buf
+            self._tail = data[pos:]
 
         PyBuffer_Release(&self.py_buf)
 
