@@ -1,2 +1,2 @@
-Fixed false-positive :py:class:`DeprecationWarning` for passing ``enable_cleanup_closed=True`` to :py:class:`~aiohttp.TCPConnecto` specifically on Python 3.12.7.
+Fixed false-positive :py:class:`DeprecationWarning` for passing ``enable_cleanup_closed=True`` to :py:class:`~aiohttp.TCPConnector` specifically on Python 3.12.7.
 -- by :user:`Robsdedude`.
