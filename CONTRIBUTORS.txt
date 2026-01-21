@@ -311,6 +311,7 @@ Robert Nikolich
 Roman Podoliaka
 Roman Postnov
 Rong Zhang
+Rouven Bauer
 Samir Akarioh
 Samuel Colvin
 Samuel Gaist
