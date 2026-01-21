@@ -75,9 +75,9 @@ NEEDS_CLEANUP_CLOSED = (3, 13, 0) <= sys.version_info < (
     3,
     13,
     1,
-) or sys.version_info < (3, 12, 7)
+) or sys.version_info < (3, 12, 8)
 # Cleanup closed is no longer needed after https://github.com/python/cpython/pull/118960
-# which first appeared in Python 3.12.7 and 3.13.1
+# which first appeared in Python 3.12.8 and 3.13.1
 
 
 __all__ = (
