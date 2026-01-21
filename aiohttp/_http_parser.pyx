@@ -784,7 +784,7 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
 cdef int cb_on_body(cparser.llhttp_t* parser,
                     const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
-    body = at[:length]
+    cdef bytes body = at[:length]
     while body or pyparser._more_data_available:
         try:
             pyparser._more_data_available = pyparser._payload.feed_data(body)
