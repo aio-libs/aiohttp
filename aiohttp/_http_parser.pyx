@@ -796,6 +796,7 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
             set_exception(pyparser._payload, reraised_exc, underlying_exc)
 
             pyparser._payload_error = 1
+            pyparser._paused = False
             return -1
         body = EMPTY_BYTES
 
