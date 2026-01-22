@@ -30,7 +30,7 @@ multidict==6.7.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-packaging==25.0
+packaging==26.0
     # via gunicorn
 propcache==0.4.1
     # via

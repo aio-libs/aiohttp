@@ -55,7 +55,7 @@ mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.10.0
     # via pre-commit
-packaging==25.0
+packaging==26.0
     # via pytest
 pathspec==1.0.3
     # via mypy
