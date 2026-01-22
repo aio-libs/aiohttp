@@ -154,7 +154,7 @@ proxy-py==2.4.10
     # via -r requirements/test-common.in
 pycares==4.11.0
     # via aiodns
-pycparser==2.23
+pycparser==3.0
     # via cffi
 pydantic==2.12.5
     # via python-on-whales
