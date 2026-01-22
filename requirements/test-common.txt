@@ -56,7 +56,7 @@ pluggy==1.6.0
     #   pytest-cov
 proxy-py==2.4.10
     # via -r requirements/test-common.in
-pycparser==2.23
+pycparser==3.0
     # via cffi
 pydantic==2.12.5
     # via python-on-whales
