@@ -128,6 +128,7 @@ packaging==25.0
     #   gunicorn
     #   pytest
     #   sphinx
+    #   wheel
 pathspec==1.0.3
     # via mypy
 pip-tools==7.5.2
@@ -272,7 +273,7 @@ virtualenv==20.36.1
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
-wheel==0.45.1
+wheel==0.46.2
     # via pip-tools
 yarl==1.22.0
     # via -r requirements/runtime-deps.in
