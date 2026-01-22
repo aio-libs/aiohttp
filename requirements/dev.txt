@@ -269,7 +269,7 @@ virtualenv==20.36.1
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
-wheel==0.46.0
+wheel==0.46.2
     # via pip-tools
 yarl==1.22.0
     # via -r requirements/runtime-deps.in
