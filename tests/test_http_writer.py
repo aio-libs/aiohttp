@@ -878,15 +878,14 @@ async def test_write_calls_callback(
 ) -> None:
 
     async def on_chunk_sent(chunk: bytes) -> None:
-        # define callback signature
         pass
 
-    on_chunk_sent = mock.create_autospec(on_chunk_sent, spec_set=True)
-    msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
+    on_chunk_sent_mock = mock.create_autospec(on_chunk_sent, spec_set=True)
+    msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent_mock)
     chunk = b"1"
     await msg.write(chunk)
-    assert on_chunk_sent.called
-    assert on_chunk_sent.call_args == mock.call(chunk)
+    assert on_chunk_sent_mock.called
+    assert on_chunk_sent_mock.call_args == mock.call(chunk)
 
 
 async def test_write_eof_calls_callback(
@@ -894,18 +893,15 @@ async def test_write_eof_calls_callback(
     transport: asyncio.Transport,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
-
     async def on_chunk_sent(chunk: bytes) -> None:
-        # define callback signature
         pass
 
-    on_chunk_sent = mock.create_autospec(on_chunk_sent, spec_set=True)
-
-    msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent)
+    on_chunk_sent_mock = mock.create_autospec(on_chunk_sent, spec_set=True)
+    msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent_mock)
     chunk = b"1"
     await msg.write_eof(chunk=chunk)
-    assert on_chunk_sent.called
-    assert on_chunk_sent.call_args == mock.call(chunk)
+    assert on_chunk_sent_mock.called
+    assert on_chunk_sent_mock.call_args == mock.call(chunk)
 
 
 async def test_write_to_closing_transport(
