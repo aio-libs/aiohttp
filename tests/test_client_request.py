@@ -980,11 +980,9 @@ async def test_content_encoding(  # type: ignore[misc]
     req = make_client_request(
         "post", URL("http://python.org/"), data="foo", compress="deflate", loop=loop
     )
-    with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
-        mock_writer_instance = mock.create_autospec(
-            StreamWriter, instance=True, spec_set=True
-        )
-        m_writer.return_value = mock_writer_instance
+    with mock.patch(
+        "aiohttp.client_reqrep.StreamWriter", autospec=True, spec_set=True
+    ) as m_writer:
         resp = await req._send(conn)
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
     assert req.headers["CONTENT-ENCODING"] == "deflate"
@@ -1021,11 +1019,9 @@ async def test_content_encoding_header(  # type: ignore[misc]
         headers=CIMultiDict({"Content-Encoding": "deflate"}),
         loop=loop,
     )
-    with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
-        mock_writer_instance = mock.create_autospec(
-            StreamWriter, instance=True, spec_set=True
-        )
-        m_writer.return_value = mock_writer_instance
+    with mock.patch(
+        "aiohttp.client_reqrep.StreamWriter", autospec=True, spec_set=True
+    ) as m_writer:
         resp = await req._send(conn)
 
     assert not m_writer.return_value.enable_compression.called
@@ -1113,11 +1109,9 @@ async def test_chunked_explicit(
     req = make_client_request(
         "post", URL("http://python.org/"), chunked=True, loop=loop
     )
-    with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
-        mock_writer_instance = mock.create_autospec(
-            StreamWriter, instance=True, spec_set=True
-        )
-        m_writer.return_value = mock_writer_instance
+    with mock.patch(
+        "aiohttp.client_reqrep.StreamWriter", autospec=True, spec_set=True
+    ) as m_writer:
         resp = await req._send(conn)
 
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
