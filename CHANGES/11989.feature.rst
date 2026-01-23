@@ -1,4 +1,4 @@
 Updated the ``JSONEncoder`` type to accept callables returning either ``str`` or ``bytes``.
-This allows custom JSON serializers that directly produce bytes to be used with
-``ClientSession.json_serialize``, ``JsonPayload``, ``json_response``, and WebSocket
-``send_json()`` methods without unnecessary decode/encode cycles -- by :user:`kevinpark1217`.
+This allows a custom JSON serializer that directly produces bytes to be used with
+``ClientSession.json_serialize``, ``JsonPayload``, ``json_response``, and websocket
+``send_json()`` methods without unnecessary encoding cycles -- by :user:`kevinpark1217`.
