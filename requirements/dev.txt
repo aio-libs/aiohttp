@@ -81,7 +81,7 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==23.0.0
+gunicorn==24.0.0
     # via -r requirements/base.in
 identify==2.6.16
     # via pre-commit
