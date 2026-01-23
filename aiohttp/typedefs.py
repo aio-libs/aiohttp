@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from .web import Request, StreamResponse
 
 Byteish = bytes | bytearray | memoryview
-JSONEncoder = Callable[[Any], str]
+JSONEncoder = Callable[[Any], str | bytes]
 JSONDecoder = Callable[[str], Any]
 LooseHeaders = (
     Mapping[str, str]

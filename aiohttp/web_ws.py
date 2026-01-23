@@ -448,7 +448,11 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         *,
         dumps: JSONEncoder = json.dumps,
     ) -> None:
-        await self.send_str(dumps(data), compress=compress)
+        result = dumps(data)
+        if isinstance(result, bytes):
+            await self.send_bytes(result, compress=compress)
+        else:
+            await self.send_str(result, compress=compress)
 
     async def write_eof(self) -> None:  # type: ignore[override]
         if self._eof_sent:

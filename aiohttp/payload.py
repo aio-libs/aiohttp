@@ -930,8 +930,11 @@ class JsonPayload(BytesPayload):
         *args: Any,
         **kwargs: Any,
     ) -> None:
+        data = dumps(value)
+        if isinstance(data, str):
+            data = data.encode(encoding)
         super().__init__(
-            dumps(value).encode(encoding),
+            data,
             content_type=content_type,
             encoding=encoding,
             *args,
