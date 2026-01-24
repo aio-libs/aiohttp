@@ -1333,11 +1333,23 @@ async def test_case_sensitive_algorithm_server(
 
 def test_regex_performance() -> None:
     value = "0" * 54773 + "\\0=a"
-    start = time.perf_counter()
-    matches = _HEADER_PAIRS_PATTERN.findall(value)
-    end = time.perf_counter()
 
-    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
-    assert (end - start) < 0.01
+    best_time = float("inf")
+    best_matches: list[tuple[str, str]] = []
+
+    for _ in range(5):
+        start = time.perf_counter()
+        matches = _HEADER_PAIRS_PATTERN.findall(value)
+        elapsed = time.perf_counter() - start
+
+        if elapsed < best_time:
+            best_time = elapsed
+            best_matches = matches
+
+    # Relaxed for CI/platform variability (e.g., macOS runners ~40-50ms observed)
+    assert (
+        best_time < 0.1
+    ), f"Regex took {best_time * 1000:.1f}ms, expected <100ms - potential ReDoS issue"
+
     # This example probably shouldn't produce a match either.
-    assert not matches
+    assert not best_matches
