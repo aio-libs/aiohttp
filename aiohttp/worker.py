@@ -123,6 +123,9 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 else:
                     await self._wait_next_notify()
         except Exception:
+            # Silently ignore exceptions in the worker loop and proceed to cleanup.
+            # Using Exception instead of BaseException to avoid catching
+            # KeyboardInterrupt and other system exceptions.
             pass
 
         await runner.cleanup()
