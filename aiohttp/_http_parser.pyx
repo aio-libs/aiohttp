@@ -685,7 +685,7 @@ cdef int cb_on_url(cparser.llhttp_t* parser,
             status = pyparser._buf + at[:length]
             raise LineTooLong(status[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
-    except BaseException as ex:
+    except Exception as ex:
         pyparser._last_error = ex
         return -1
     else:
@@ -700,7 +700,7 @@ cdef int cb_on_status(cparser.llhttp_t* parser,
             reason = pyparser._buf + at[:length]
             raise LineTooLong(reason[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
-    except BaseException as ex:
+    except Exception as ex:
         pyparser._last_error = ex
         return -1
     else:
@@ -719,7 +719,7 @@ cdef int cb_on_header_field(cparser.llhttp_t* parser,
             raise LineTooLong(name[:100] + b"...", pyparser._max_field_size)
         pyparser._header_name_size = size
         pyparser._on_header_field(at, length)
-    except BaseException as ex:
+    except Exception as ex:
         pyparser._last_error = ex
         return -1
     else:
@@ -736,7 +736,7 @@ cdef int cb_on_header_value(cparser.llhttp_t* parser,
             value = pyparser._raw_value + at[:length]
             raise LineTooLong(value[:100] + b"...", pyparser._max_field_size)
         pyparser._on_header_value(at, length)
-    except BaseException as ex:
+    except Exception as ex:
         pyparser._last_error = ex
         return -1
     else:
@@ -748,7 +748,7 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
     try:
         pyparser._on_status_complete()
         pyparser._on_headers_complete()
-    except BaseException as exc:
+    except Exception as exc:
         pyparser._last_error = exc
         return -1
     else:
@@ -764,7 +764,7 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
     cdef bytes body = at[:length]
     try:
         pyparser._payload.feed_data(body)
-    except BaseException as underlying_exc:
+    except Exception as underlying_exc:
         reraised_exc = underlying_exc
         if pyparser._payload_exception is not None:
             reraised_exc = pyparser._payload_exception(str(underlying_exc))
@@ -782,7 +782,7 @@ cdef int cb_on_message_complete(cparser.llhttp_t* parser) except -1:
     try:
         pyparser._started = False
         pyparser._on_message_complete()
-    except BaseException as exc:
+    except Exception as exc:
         pyparser._last_error = exc
         return -1
     else:
@@ -793,7 +793,7 @@ cdef int cb_on_chunk_header(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         pyparser._on_chunk_header()
-    except BaseException as exc:
+    except Exception as exc:
         pyparser._last_error = exc
         return -1
     else:
@@ -804,7 +804,7 @@ cdef int cb_on_chunk_complete(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         pyparser._on_chunk_complete()
-    except BaseException as exc:
+    except Exception as exc:
         pyparser._last_error = exc
         return -1
     else:

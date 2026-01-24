@@ -1,0 +1,1 @@
+Changed most ``except BaseException`` to ``except Exception`` with special handling for BaseException cases.

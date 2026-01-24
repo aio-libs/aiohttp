@@ -904,10 +904,11 @@ class ClientSession:
                 handle.cancel()
                 handle = None
 
-            for trace in traces:
-                await trace.send_request_exception(
-                    method, url.update_query(params), headers, e
-                )
+            if isinstance(e, Exception):
+                for trace in traces:
+                    await trace.send_request_exception(
+                        method, url.update_query(params), headers, e
+                    )
             raise
 
     if sys.version_info >= (3, 11) and TYPE_CHECKING:

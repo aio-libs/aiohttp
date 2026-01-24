@@ -447,6 +447,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 try:
                     eof, data = self._payload_parser.feed_data(data[start_pos:], SEP)
                 except BaseException as underlying_exc:
+                    if not isinstance(underlying_exc, Exception):
+                        raise
+
                     reraised_exc = underlying_exc
                     if self.payload_exception is not None:
                         reraised_exc = self.payload_exception(str(underlying_exc))
