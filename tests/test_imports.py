@@ -73,4 +73,3 @@ def test_import_time(pytester: pytest.Pytester) -> None:
 
     expected_time = _get_import_time_threshold()
     assert best_time_ms < expected_time
-
