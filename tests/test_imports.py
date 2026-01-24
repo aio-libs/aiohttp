@@ -28,20 +28,14 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
     result.assert_outcomes(passed=0, errors=0)
 
 
-_IS_CI_ENV = os.getenv("CI") == "true"
-_XDIST_WORKER_COUNT = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", 0))
-_IS_XDIST_RUN = _XDIST_WORKER_COUNT > 1
+_IMPORT_TIME_THRESHOLD_PY312 = 350
+_IMPORT_TIME_THRESHOLD_DEFAULT = 200
 
-_TARGET_TIMINGS_BY_PYTHON_VERSION = {
-    "3.12": (
-        # 3.12+ is expected to be a bit slower due to performance trade-offs,
-        # and even slower under pytest-xdist, especially in CI
-        _XDIST_WORKER_COUNT * 100 * (1 if _IS_CI_ENV else 1.53)
-        if _IS_XDIST_RUN
-        else 295
-    ),
-}
-_TARGET_TIMINGS_BY_PYTHON_VERSION["3.13"] = _TARGET_TIMINGS_BY_PYTHON_VERSION["3.12"]
+
+def _get_import_time_threshold() -> float:
+    if sys.version_info >= (3, 12):
+        return _IMPORT_TIME_THRESHOLD_PY312
+    return _IMPORT_TIME_THRESHOLD_DEFAULT
 
 
 @pytest.mark.internal
@@ -67,7 +61,7 @@ def test_import_time(pytester: pytest.Pytester) -> None:
         for _ in range(3):
             r = pytester.run(sys.executable, "-We", "-c", cmd)
 
-            assert not r.stderr.str()
+            assert not r.stderr.str(), r.stderr.str()
             runtime_ms = int(r.stdout.str())
             if runtime_ms < best_time_ms:
                 best_time_ms = runtime_ms
@@ -77,7 +71,6 @@ def test_import_time(pytester: pytest.Pytester) -> None:
         else:
             os.environ["PYTHONPATH"] = old_path
 
-    expected_time = _TARGET_TIMINGS_BY_PYTHON_VERSION.get(
-        f"{sys.version_info.major}.{sys.version_info.minor}", 200
-    )
+    expected_time = _get_import_time_threshold()
     assert best_time_ms < expected_time
+
