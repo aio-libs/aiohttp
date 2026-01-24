@@ -452,7 +452,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                     reraised_exc = underlying_exc
                     if self.payload_exception is not None:
-                        reraised_exc = self.payload_exception(str(underlying_exc))
+                        reraised_exc = self.payload_exception(str(underlying_exc))  # type: ignore[assignment]
 
                     set_exception(
                         self._payload_parser.payload,
