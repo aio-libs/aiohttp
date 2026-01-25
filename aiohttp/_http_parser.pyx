@@ -548,6 +548,8 @@ cdef class HttpParser:
                 self._tail = data
                 return (), False, EMPTY_BYTES
             # TODO: Do we need to handle error case (-1)?
+        elif not data:
+            return (), False, EMPTY_BYTES
 
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
         data_len = <size_t>self.py_buf.len
