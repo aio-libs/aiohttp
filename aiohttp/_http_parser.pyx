@@ -540,7 +540,7 @@ cdef class HttpParser:
             cdef cparser.llhttp_errno_t errno
 
         if self._tail:
-            data, self._tail = self._tail + data, b""
+            data, self._tail = self._tail + data, EMPTY_BYTES
 
         if self._more_data_available:
             result = cb_on_body(self._cparser, EMPTY_BYTES, 0)
