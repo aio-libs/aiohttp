@@ -2,7 +2,9 @@ import os
 import platform
 import sys
 from pathlib import Path
+
 import pytest
+
 from aiohttp.pytest_plugin import get_flaky_threshold
 
 

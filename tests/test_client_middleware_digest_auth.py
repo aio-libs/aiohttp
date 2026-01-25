@@ -24,9 +24,8 @@ from aiohttp.client_middleware_digest_auth import (
 )
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.payload import BytesIOPayload
-from aiohttp.pytest_plugin import AiohttpServer
+from aiohttp.pytest_plugin import AiohttpServer, get_flaky_threshold
 from aiohttp.web import Application, Request, Response
-from aiohttp.pytest_plugin import get_flaky_threshold
 
 
 @pytest.fixture
