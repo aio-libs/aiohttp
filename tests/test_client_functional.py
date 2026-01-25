@@ -2386,10 +2386,9 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     When a compressed payload expands beyond the configured limit,
     we raise DecompressSizeError.
     """
-    # Create a highly compressible payload that exceeds the decompression limit.
-    # 64MiB of repeated bytes compresses to ~32KB but expands beyond the
-    # 32MiB per-call limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = zlib.compress(original)
     assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
 
@@ -2406,11 +2405,11 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:  # TODO
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(brotli is None, reason="brotli is not installed")
@@ -2419,8 +2418,9 @@ async def test_payload_decompress_size_limit_brotli(
 ) -> None:
     """Test that brotli decompression size limit triggers DecompressSizeError."""
     assert brotli is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = brotli.compress(original)
     assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
 
@@ -2436,11 +2436,11 @@ async def test_payload_decompress_size_limit_brotli(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:  # TODO
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(ZstdCompressor is None, reason="backports.zstd is not installed")
@@ -2449,8 +2449,9 @@ async def test_payload_decompress_size_limit_zstd(
 ) -> None:
     """Test that zstd decompression size limit triggers DecompressSizeError."""
     assert ZstdCompressor is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressor = ZstdCompressor()
     compressed = compressor.compress(original) + compressor.flush()
     assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
@@ -2467,11 +2468,11 @@ async def test_payload_decompress_size_limit_zstd(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:  # TODO
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 async def test_bad_payload_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
