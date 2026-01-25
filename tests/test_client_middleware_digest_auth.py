@@ -26,6 +26,7 @@ from aiohttp.client_reqrep import ClientResponse
 from aiohttp.payload import BytesIOPayload
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
+from aiohttp.pytest_plugin import get_flaky_threshold
 
 
 @pytest.fixture
@@ -1331,25 +1332,27 @@ async def test_case_sensitive_algorithm_server(
     assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
 
 
-def test_regex_performance() -> None:
+@pytest.mark.flaky(reruns=3)
+def test_regex_performance(request: pytest.FixtureRequest) -> None:
+    """Test that the regex pattern doesn't suffer from ReDoS issues.
+
+    Threshold starts at 20ms and increases on each rerun for CI variability.
+    """
+    REGEX_TIME_THRESHOLD_DEFAULT = 0.02  # 20ms
+    REGEX_TIME_INCREMENT_PER_RERUN = 0.03  # 30ms
+    # CI/platform variability (e.g., macOS runners ~40-50ms observed)
+    threshold_ms = get_flaky_threshold(
+        request, REGEX_TIME_THRESHOLD_DEFAULT, REGEX_TIME_INCREMENT_PER_RERUN
+    )
+
     value = "0" * 54773 + "\\0=a"
 
-    best_time = float("inf")
-    best_matches: list[tuple[str, str]] = []
+    start = time.perf_counter()
+    matches = _HEADER_PAIRS_PATTERN.findall(value)
+    elapsed = time.perf_counter() - start
 
-    for _ in range(5):
-        start = time.perf_counter()
-        matches = _HEADER_PAIRS_PATTERN.findall(value)
-        elapsed = time.perf_counter() - start
-
-        if elapsed < best_time:
-            best_time = elapsed
-            best_matches = matches
-
-    # Relaxed for CI/platform variability (e.g., macOS runners ~40-50ms observed)
     assert (
-        best_time < 0.1
-    ), f"Regex took {best_time * 1000:.1f}ms, expected <100ms - potential ReDoS issue"
+        elapsed < threshold_ms
+    ), f"Regex took {elapsed * 1000:.1f}ms, expected <{threshold_ms * 1000:.0f}ms - potential ReDoS issue"
 
-    # This example probably shouldn't produce a match either.
-    assert not best_matches
+    assert not matches
