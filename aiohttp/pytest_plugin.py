@@ -64,6 +64,26 @@ class AiohttpRawServer(Protocol):
     ) -> Awaitable[RawTestServer]: ...
 
 
+def get_flaky_threshold(
+    request: pytest.FixtureRequest,
+    base: float,
+    increment: float,
+) -> float:
+    """Calculate dynamic threshold for flaky tests based on rerun count.
+
+    When using `@pytest.mark.flaky(reruns=N)`:
+    - execution_count is 1-based (1 for first run, 2 for first rerun, etc.)
+    - With reruns=3, the test runs up to 4 times (1 initial + 3 reruns)
+    - Returns base threshold on first run, incrementing by `increment` per rerun
+
+    Example with reruns=3, base=20ms, increment=30ms:
+      Run 1: 20ms, Rerun 1: 50ms, Rerun 2: 80ms, Rerun 3: 110ms
+    """
+    execution_count: int = getattr(request.node, "execution_count", 0)
+    rerun_count = max(0, execution_count - 1)
+    return base + (rerun_count * increment)
+
+
 def pytest_addoption(parser):  # type: ignore[no-untyped-def]
     parser.addoption(
         "--aiohttp-fast",
