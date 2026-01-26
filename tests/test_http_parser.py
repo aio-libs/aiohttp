@@ -28,6 +28,7 @@ from aiohttp.http_parser import (
     HttpRequestParserPy,
     HttpResponseParser,
     HttpResponseParserPy,
+    PayloadState,
 )
 from aiohttp.http_writer import HttpVersion
 from aiohttp.web_protocol import RequestHandler
@@ -1885,8 +1886,8 @@ class TestParsePayload:
     async def test_http_payload_parser_length(self, protocol: BaseProtocol) -> None:
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         p = HttpPayloadParser(out, length=2, headers_parser=HeadersParser())
-        eof, tail = p.feed_data(b"1245")
-        assert eof
+        state, tail = p.feed_data(b"1245")
+        assert state is PayloadState.PAYLOAD_COMPLETE
 
         assert b"12" == out._buffer[0]
         assert b"45" == tail
