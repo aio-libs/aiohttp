@@ -1219,13 +1219,15 @@ class TestShutdown:
         sock = unused_port_socket
         port = sock.getsockname()[1]
         t = None
+        sess_holder: list[ClientSession] = []
 
         async def test() -> None:
             await asyncio.sleep(1)
-            async with ClientSession() as sess:
+            sess = ClientSession()
+            sess_holder.append(sess)
+            async with sess:
                 async with sess.get(f"http://127.0.0.1:{port}/stop"):
                     pass
-
                 # Hold on to keep-alive connection.
                 await asyncio.sleep(5)
 
@@ -1233,9 +1235,19 @@ class TestShutdown:
             nonlocal t
             t = asyncio.create_task(test())
             yield
-            t.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await t
+            try:
+                t.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await t
+            finally:
+                if sys.platform == "win32":
+                    # On Windows, explicitly close the session and yield to the
+                    # event loop to mitigate resource warnings related to unclosed
+                    # sockets, which are more common due to ProactorEventLoop
+                    # timing issues.
+                    for sess in sess_holder:
+                        await sess.close()
+                    await asyncio.sleep(0.1)
 
         app = web.Application()
         app.cleanup_ctx.append(run_test)
@@ -1268,9 +1280,13 @@ class TestShutdown:
             for ws in app[WS]:
                 await ws.close(code=WSCloseCode.GOING_AWAY)
 
+        sess_holder: list[ClientSession] = []
+
         async def test() -> None:
             await asyncio.sleep(1)
-            async with ClientSession() as sess:
+            sess = ClientSession()
+            sess_holder.append(sess)
+            async with sess:
                 async with sess.ws_connect(f"http://127.0.0.1:{port}/ws") as ws:
                     async with sess.get(f"http://127.0.0.1:{port}/stop"):
                         pass
@@ -1285,9 +1301,18 @@ class TestShutdown:
             t = asyncio.create_task(test())
             yield
             await asyncio.sleep(0)  # In case test() hasn't resumed yet.
-            t.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await t
+            try:
+                try:
+                    await asyncio.wait_for(t, timeout=3.0)
+                except asyncio.TimeoutError:
+                    t.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await t
+            finally:
+                if sys.platform == "win32":
+                    for sess in sess_holder:
+                        await sess.close()
+                    await asyncio.sleep(0.1)
 
         app = web.Application()
         app[WS] = set()
