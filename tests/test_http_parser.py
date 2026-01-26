@@ -1770,7 +1770,7 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
 def test_parse_bad_method_for_c_parser_raises(
     loop: asyncio.AbstractEventLoop, server: Server
 ) -> None:
-    protocol = RequestHandler(server, loop)
+    protocol = RequestHandler(server, loop=loop)
 
     payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(
