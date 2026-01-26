@@ -212,7 +212,7 @@ def test_invalid_linebreak(
     server: Server,
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(server, loop)
+    protocol = RequestHandler(server, loop=loop)
 
     parser = HttpRequestParserC(
         protocol,
@@ -280,7 +280,7 @@ def test_bad_headers(parser: HttpRequestParser, hdr: str) -> None:
 def test_unpaired_surrogate_in_header_py(
     loop: asyncio.AbstractEventLoop, server: Server
 ) -> None:
-    protocol = RequestHandler(server, loop)
+    protocol = RequestHandler(server, loop=loop)
 
     parser = HttpRequestParserPy(
         protocol,
