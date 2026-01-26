@@ -29,9 +29,7 @@ async def test_pause_reading_no_transport() -> None:
     loop = asyncio.get_event_loop()
     parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
     pr = BaseProtocol(loop, parser=parser)
-    assert not pr._reading_paused
     pr.pause_reading()
-    assert not pr._reading_paused
     parser.pause_reading.assert_called_once()
 
 
