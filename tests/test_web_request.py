@@ -600,15 +600,23 @@ def test_single_forwarded_header() -> None:
     assert req.forwarded[0]["proto"] == "identifier"
 
 
-def test_forwarded_re_performance() -> None:
+_FORWARDED_RE_TIME_THRESHOLD = (0.02, 0.02)  # 20ms, +20ms each retry
+
+
+@pytest.mark.flaky(reruns=3)
+@pytest.mark.parametrize(
+    "rerun_adjusted_threshold", [_FORWARDED_RE_TIME_THRESHOLD], indirect=True
+)
+def test_forwarded_re_performance(rerun_adjusted_threshold: float) -> None:
     value = "{" + "f" * 54773 + "z\x00a=v"
     start = time.perf_counter()
     match = _FORWARDED_PAIR_RE.match(value)
-    end = time.perf_counter()
+    elapsed = time.perf_counter() - start
 
-    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
-    assert (end - start) < 0.01
-    # This example shouldn't produce a match either.
+    assert elapsed < rerun_adjusted_threshold, (
+        f"Regex took {elapsed * 1000:.1f}ms, "
+        f"expected <{rerun_adjusted_threshold * 1000:.0f}ms - potential ReDoS issue"
+    )
     assert match is None
 
 

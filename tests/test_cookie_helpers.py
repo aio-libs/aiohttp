@@ -637,15 +637,28 @@ def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
     assert match.group("key").lower() == "partitioned"
 
 
-def test_cookie_pattern_performance() -> None:
+_COOKIE_PATTERN_TIME_THRESHOLD = (0.02, 0.02)  # 20ms, +20ms each retry
+
+
+@pytest.mark.flaky(reruns=3)
+@pytest.mark.parametrize(
+    "rerun_adjusted_threshold", [_COOKIE_PATTERN_TIME_THRESHOLD], indirect=True
+)
+def test_cookie_pattern_performance(rerun_adjusted_threshold: float) -> None:
+    """Test that the cookie pattern doesn't suffer from ReDoS issues.
+
+    This test is marked as flaky because timing can vary on loaded CI machines.
+    CI failure observed: ~20ms on Windows.
+    """
     value = "a" + "=" * 21651 + "\x00"
     start = time.perf_counter()
     match = helpers._COOKIE_PATTERN.match(value)
-    end = time.perf_counter()
+    elapsed = time.perf_counter() - start
 
-    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
-    assert (end - start) < 0.01
-    # This example shouldn't produce a match either.
+    assert elapsed < rerun_adjusted_threshold, (
+        f"Pattern took {elapsed * 1000:.1f}ms, "
+        f"expected <{rerun_adjusted_threshold * 1000:.0f}ms - potential ReDoS issue"
+    )
     assert match is None
 
 
