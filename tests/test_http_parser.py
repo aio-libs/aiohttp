@@ -1491,7 +1491,7 @@ def test_parse_no_length_or_te_on_post(
     server: Server,
     request_cls: type[HttpRequestParser],
 ) -> None:
-    protocol = RequestHandler(server, loop)
+    protocol = RequestHandler(server, loop=loop)
     parser = request_cls(protocol, loop, limit=2**16)
     protocol._parser = parser
     text = b"POST /test HTTP/1.1\r\n\r\n"
