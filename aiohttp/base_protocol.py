@@ -17,6 +17,7 @@ class BaseProtocol(asyncio.Protocol):
         "_drain_waiter",
         "_connection_lost",
         "_reading_paused",
+        "_upgraded",
         "transport",
     )
 
@@ -28,6 +29,7 @@ class BaseProtocol(asyncio.Protocol):
         self._drain_waiter: asyncio.Future[None] | None = None
         self._reading_paused = False
         self._parser = parser
+        self._upgraded = False
 
         self.transport: asyncio.Transport | None = None
 
@@ -56,7 +58,9 @@ class BaseProtocol(asyncio.Protocol):
 
     def pause_reading(self) -> None:
         self._reading_paused = True
-        self._parser.pause_reading()
+        # Parser shouldn't be paused on websockets.
+        if not self._upgraded:
+            self._parser.pause_reading()
         if self.transport is not None:
             try:
                 self.transport.pause_reading()
@@ -67,7 +71,8 @@ class BaseProtocol(asyncio.Protocol):
         self._reading_paused = False
 
         # This will resume parsing any unprocessed data from the last pause.
-        self.data_received(b"")
+        if not self._upgraded:
+            self.data_received(b"")
 
         # Reading may have been paused again in the above call if there was a lot of
         # compressed data still pending.
