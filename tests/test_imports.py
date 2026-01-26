@@ -5,8 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from aiohttp.pytest_plugin import get_flaky_threshold
-
 
 def test___all__(pytester: pytest.Pytester) -> None:
     """See https://github.com/aio-libs/aiohttp/issues/6197"""
@@ -33,16 +31,26 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
 _IMPORT_TIME_THRESHOLD_PY312 = 300
 _IMPORT_TIME_THRESHOLD_DEFAULT = 200
 _IMPORT_TIME_INCREMENT_PER_RERUN = 50
+_IMPORT_TIME_THRESHOLD = (
+    (_IMPORT_TIME_THRESHOLD_PY312, _IMPORT_TIME_INCREMENT_PER_RERUN)
+    if sys.version_info >= (3, 12)
+    else (_IMPORT_TIME_THRESHOLD_DEFAULT, _IMPORT_TIME_INCREMENT_PER_RERUN)
+)
 
 
 @pytest.mark.internal
 @pytest.mark.dev_mode
 @pytest.mark.flaky(reruns=3)
+@pytest.mark.parametrize(
+    "rerun_adjusted_threshold", [_IMPORT_TIME_THRESHOLD], indirect=True
+)
 @pytest.mark.skipif(
     not sys.platform.startswith("linux") or platform.python_implementation() == "PyPy",
     reason="Timing is more reliable on Linux",
 )
-def test_import_time(request: pytest.FixtureRequest, pytester: pytest.Pytester) -> None:
+def test_import_time(
+    rerun_adjusted_threshold: float, pytester: pytest.Pytester
+) -> None:
     """Check that importing aiohttp doesn't take too long.
 
     Obviously, the time may vary on different machines and may need to be adjusted
@@ -52,15 +60,6 @@ def test_import_time(request: pytest.FixtureRequest, pytester: pytest.Pytester) 
     Threshold increases by _IMPORT_TIME_INCREMENT_PER_RERUN ms on each rerun
     to account for CI variability.
     """
-    base_threshold = (
-        _IMPORT_TIME_THRESHOLD_PY312
-        if sys.version_info >= (3, 12)
-        else _IMPORT_TIME_THRESHOLD_DEFAULT
-    )
-    expected_time = get_flaky_threshold(
-        request, base_threshold, _IMPORT_TIME_INCREMENT_PER_RERUN
-    )
-
     root = Path(__file__).parent.parent
     old_path = os.environ.get("PYTHONPATH")
     os.environ["PYTHONPATH"] = os.pathsep.join([str(root)] + sys.path)
@@ -76,4 +75,4 @@ def test_import_time(request: pytest.FixtureRequest, pytester: pytest.Pytester) 
         else:
             os.environ["PYTHONPATH"] = old_path
 
-    assert runtime_ms < expected_time
+    assert runtime_ms < rerun_adjusted_threshold
