@@ -36,7 +36,8 @@ async def test_oserror(loop: asyncio.AbstractEventLoop) -> None:
 
 async def test_pause_resume_on_error(loop: asyncio.AbstractEventLoop) -> None:
     parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
-    proto = ResponseHandler(loop=loop, parser=parser)
+    proto = ResponseHandler(loop=loop)
+    proto._parser = parser
     transport = mock.Mock()
     proto.connection_made(transport)
 
