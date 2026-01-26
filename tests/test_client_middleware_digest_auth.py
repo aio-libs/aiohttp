@@ -24,7 +24,7 @@ from aiohttp.client_middleware_digest_auth import (
 )
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.payload import BytesIOPayload
-from aiohttp.pytest_plugin import AiohttpServer, get_flaky_threshold
+from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 
 
@@ -1331,27 +1331,28 @@ async def test_case_sensitive_algorithm_server(
     assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
 
 
+_REGEX_TIME_THRESHOLD = (0.02, 0.03)  # (base=20ms, increment=30ms)
+
+
 @pytest.mark.flaky(reruns=3)
-def test_regex_performance(request: pytest.FixtureRequest) -> None:
+@pytest.mark.parametrize(
+    "rerun_adjusted_threshold", [_REGEX_TIME_THRESHOLD], indirect=True
+)
+def test_regex_performance(rerun_adjusted_threshold: float) -> None:
     """Test that the regex pattern doesn't suffer from ReDoS issues.
 
     Threshold starts at 20ms and increases on each rerun for CI variability.
     """
-    REGEX_TIME_THRESHOLD_DEFAULT = 0.02  # 20ms
-    REGEX_TIME_INCREMENT_PER_RERUN = 0.03  # 30ms
-    # CI/platform variability (e.g., macOS runners ~40-50ms observed)
-    threshold_ms = get_flaky_threshold(
-        request, REGEX_TIME_THRESHOLD_DEFAULT, REGEX_TIME_INCREMENT_PER_RERUN
-    )
-
     value = "0" * 54773 + "\\0=a"
 
     start = time.perf_counter()
     matches = _HEADER_PAIRS_PATTERN.findall(value)
     elapsed = time.perf_counter() - start
 
-    assert (
-        elapsed < threshold_ms
-    ), f"Regex took {elapsed * 1000:.1f}ms, expected <{threshold_ms * 1000:.0f}ms - potential ReDoS issue"
+    # Relaxed for CI/platform variability (e.g., macOS runners ~40-50ms observed)
+    assert elapsed < rerun_adjusted_threshold, (
+        f"Regex took {elapsed * 1000:.1f}ms, "
+        f"expected <{rerun_adjusted_threshold * 1000:.0f}ms - potential ReDoS issue"
+    )
 
     assert not matches
