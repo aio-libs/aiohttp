@@ -36,9 +36,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._payload_parser: WebSocketReader | None = None
 
         self._timer = None
-
         self._tail = b""
-        self._upgraded = False
 
         self._read_timeout: float | None = None
         self._read_timeout_handle: asyncio.TimerHandle | None = None
