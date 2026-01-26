@@ -169,7 +169,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_handler_waiter",
         "_waiter",
         "_task_handler",
-        "_upgrade",
         "_payload_parser",
         "logger",
         "access_log",
@@ -240,8 +239,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._waiter: asyncio.Future[None] | None = None
         self._handler_waiter: asyncio.Future[None] | None = None
         self._task_handler: asyncio.Task[None] | None = None
-
-        self._upgrade = False
         self._payload_parser: Any = None
 
         self._timeout_ceil_threshold: float = 5
@@ -419,7 +416,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             return
         # parse http messages
         messages: Sequence[_MsgType]
-        if self._payload_parser is None and not self._upgrade:
+        if self._payload_parser is None and not self._upgraded:
             assert self._parser is not None
             try:
                 messages, upgraded, tail = self._parser.feed_data(data)
@@ -439,12 +436,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 # don't set result twice
                 waiter.set_result(None)
 
-            self._upgrade = upgraded
+            self._upgraded = upgraded
             if upgraded and tail:
                 self._message_tail = tail
 
         # no parser, just store
-        elif self._payload_parser is None and self._upgrade and data:
+        elif self._payload_parser is None and self._upgraded and data:
             self._message_tail += data
 
         # feed payload
@@ -706,7 +703,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         request._finish()
         if self._parser is not None:
             self._parser.set_upgraded(False)
-            self._upgrade = False
+            self._upgraded = False
             if self._message_tail:
                 self._parser.feed_data(self._message_tail)
                 self._message_tail = b""
