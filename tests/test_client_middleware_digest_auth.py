@@ -1331,7 +1331,7 @@ async def test_case_sensitive_algorithm_server(
     assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
 
 
-_REGEX_TIME_THRESHOLD = (0.02, 0.03)  # (base=20ms, increment=30ms)
+_REGEX_TIME_THRESHOLD = (0.02, 0.02) # 20ms, +20ms each retry
 
 
 @pytest.mark.flaky(reruns=3)
