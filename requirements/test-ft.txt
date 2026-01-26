@@ -124,7 +124,7 @@ re-assert==1.1.0
     # via -r requirements/test-common.in
 regex==2026.1.15
     # via re-assert
-rich==14.2.0
+rich==14.3.1
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in

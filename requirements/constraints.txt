@@ -207,7 +207,7 @@ requests==2.32.5
     # via
     #   sphinx
     #   sphinxcontrib-spelling
-rich==14.2.0
+rich==14.3.1
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
