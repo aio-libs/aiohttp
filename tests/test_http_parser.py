@@ -185,7 +185,7 @@ def test_invalid_character(
     server: Server,
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(server, loop)
+    protocol = RequestHandler(server, loop=loop)
 
     parser = HttpRequestParserC(
         protocol,
