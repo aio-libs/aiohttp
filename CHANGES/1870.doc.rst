@@ -1,0 +1,1 @@
+Added documentation and examples for exception handling in background tasks created with ``asyncio.create_task()``, addressing silent failure patterns in high-throughput async systems -- by :user:`tsayin4`.
