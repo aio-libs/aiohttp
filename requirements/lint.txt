@@ -57,7 +57,7 @@ nodeenv==1.10.0
     # via pre-commit
 packaging==26.0
     # via pytest
-pathspec==1.0.3
+pathspec==1.0.4
     # via mypy
 platformdirs==4.5.1
     # via virtualenv
