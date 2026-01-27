@@ -271,7 +271,11 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         *,
         dumps: JSONEncoder = DEFAULT_JSON_ENCODER,
     ) -> None:
-        await self.send_str(dumps(data), compress=compress)
+        result = dumps(data)
+        if isinstance(result, bytes):
+            await self.send_bytes(result, compress=compress)
+        else:
+            await self.send_str(result, compress=compress)
 
     async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,
