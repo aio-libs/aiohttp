@@ -368,4 +368,4 @@ class ZSTDDecompressor(DecompressionBaseHandler):
 
     @property
     def data_available(self) -> bool:
-        return not self._obj.needs_input
+        return not self._obj.needs_input and not self._obj.eof
