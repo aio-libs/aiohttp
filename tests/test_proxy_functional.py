@@ -94,11 +94,12 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
     # pytest cleanup. A longer delay + multiple gc.collect() passes ensures
     # the proxy threads finish cleanup before pytest's unraisableexception
     # plugin collects warnings.
+    # TEMPORARY: Using 5 second delay to test if this is the source of leaks
     if os.name == "nt":
         import gc
         import time
 
-        time.sleep(0.5)
+        time.sleep(5)
         gc.collect()
         gc.collect()
         gc.collect()
