@@ -1331,13 +1331,28 @@ async def test_case_sensitive_algorithm_server(
     assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
 
 
-def test_regex_performance() -> None:
+_REGEX_TIME_THRESHOLD = (0.02, 0.02)  # 20ms, +20ms each retry
+
+
+@pytest.mark.flaky(reruns=3)
+@pytest.mark.parametrize(
+    "rerun_adjusted_threshold", [_REGEX_TIME_THRESHOLD], indirect=True
+)
+def test_regex_performance(rerun_adjusted_threshold: float) -> None:
+    """Test that the regex pattern doesn't suffer from ReDoS issues.
+
+    Threshold starts at 20ms and increases on each rerun for CI variability.
+    """
     value = "0" * 54773 + "\\0=a"
+
     start = time.perf_counter()
     matches = _HEADER_PAIRS_PATTERN.findall(value)
-    end = time.perf_counter()
+    elapsed = time.perf_counter() - start
 
-    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
-    assert (end - start) < 0.01
-    # This example probably shouldn't produce a match either.
+    # Relaxed for CI/platform variability (e.g., macOS runners ~40-50ms observed)
+    assert elapsed < rerun_adjusted_threshold, (
+        f"Regex took {elapsed * 1000:.1f}ms, "
+        f"expected <{rerun_adjusted_threshold * 1000:.0f}ms - potential ReDoS issue"
+    )
+
     assert not matches

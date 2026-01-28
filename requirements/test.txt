@@ -105,12 +105,15 @@ pytest==9.0.2
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+    #   pytest-rerunfailures
     #   pytest-xdist
 pytest-codspeed==4.2.0
     # via -r requirements/test-common.in
 pytest-cov==7.0.0
     # via -r requirements/test-common.in
 pytest-mock==3.15.1
+    # via -r requirements/test-common.in
+pytest-rerunfailures==16.1
     # via -r requirements/test-common.in
 pytest-xdist==3.8.0
     # via -r requirements/test-common.in
