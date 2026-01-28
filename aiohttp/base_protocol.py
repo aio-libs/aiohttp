@@ -67,7 +67,7 @@ class BaseProtocol(asyncio.Protocol):
             except (AttributeError, NotImplementedError, RuntimeError):
                 pass
 
-    def resume_reading(self, resume_parsing: bool = True) -> None:
+    def resume_reading(self, resume_parser: bool = True) -> None:
         self._reading_paused = False
 
         # This will resume parsing any unprocessed data from the last pause.
