@@ -59,7 +59,7 @@ coverage==7.13.2
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==46.0.3
+cryptography==46.0.4
     # via trustme
 distlib==0.4.0
     # via virtualenv
