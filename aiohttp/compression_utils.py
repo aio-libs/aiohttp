@@ -316,6 +316,7 @@ class BrotliDecompressor(DecompressionBaseHandler):
                 "Please install `Brotli` module"
             )
         self._obj = brotli.Decompressor()
+        self._last_empty = False
         super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
     def decompress_sync(
@@ -323,8 +324,11 @@ class BrotliDecompressor(DecompressionBaseHandler):
     ) -> bytes:
         """Decompress the given data."""
         if hasattr(self._obj, "decompress"):
-            return cast(bytes, self._obj.decompress(data, max_length))
-        return cast(bytes, self._obj.process(data, max_length))
+            result = cast(bytes, self._obj.decompress(data, max_length))
+        result = cast(bytes, self._obj.process(data, max_length))
+        # Only way to know that brotli has no further data is checking we get no output
+        self._last_empty = result == b""
+        return result
 
     def flush(self) -> bytes:
         """Flush the decompressor."""
@@ -334,7 +338,7 @@ class BrotliDecompressor(DecompressionBaseHandler):
 
     @property
     def data_available(self) -> bool:
-        return not self._obj.can_accept_more_data()
+        return not self._obj.is_finished() and not self._last_empty
 
 
 class ZSTDDecompressor(DecompressionBaseHandler):
