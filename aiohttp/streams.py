@@ -218,7 +218,8 @@ class StreamReader(AsyncStreamReaderMixin):
             self._eof_waiter = None
             set_result(waiter, None)
 
-        self._protocol.resume_reading()
+        # At EOF the parser is done, there won't be unprocessed data.
+        self._protocol.resume_reading(resume_parser=False)
 
         for cb in self._eof_callbacks:
             try:
