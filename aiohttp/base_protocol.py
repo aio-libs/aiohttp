@@ -71,7 +71,7 @@ class BaseProtocol(asyncio.Protocol):
         self._reading_paused = False
 
         # This will resume parsing any unprocessed data from the last pause.
-        if not self._upgraded and resume_parsing:
+        if not self._upgraded and resume_parser:
             self.data_received(b"")
 
         # Reading may have been paused again in the above call if there was a lot of
