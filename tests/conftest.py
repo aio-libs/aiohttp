@@ -431,13 +431,14 @@ async def make_client_request(
     loop: asyncio.AbstractEventLoop,
 ) -> AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]:
     """Fixture to help creating test ClientRequest objects with defaults."""
-    request = session = None
+    requests: list[ClientRequest] = []
+    sessions: list[ClientSession] = []
 
     def maker(
         method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
     ) -> ClientRequest:
-        nonlocal request, session
         session = ClientSession()
+        sessions.append(session)
         default_args: ClientRequestArgs = {
             "loop": loop,
             "params": {},
@@ -462,13 +463,14 @@ async def make_client_request(
             "server_hostname": None,
         }
         request = ClientRequest(method, url, **(default_args | kwargs))
+        requests.append(request)
         return request
 
     yield maker
 
-    if request is not None:
+    for request in requests:
         await request._close()
-        assert session is not None
+    for session in sessions:
         await session.close()
 
 
