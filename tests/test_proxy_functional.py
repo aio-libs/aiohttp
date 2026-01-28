@@ -95,10 +95,12 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
     # proxy threads finish cleanup before pytest's unraisableexception
     # plugin collects warnings.
     if os.name == "nt":
-        import time
         import gc
+        import time
+
         time.sleep(0.1)
         gc.collect()
+
 
 @pytest.fixture
 def web_server_endpoint_payload() -> str:
