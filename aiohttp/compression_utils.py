@@ -334,7 +334,7 @@ class BrotliDecompressor(DecompressionBaseHandler):
 
     @property
     def data_available(self) -> bool:
-        pass  # TODO
+        return not self._obj.can_accept_more_data()
 
 
 class ZSTDDecompressor(DecompressionBaseHandler):
