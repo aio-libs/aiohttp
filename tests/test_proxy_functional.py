@@ -89,6 +89,16 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
             port=proxy_instance.flags.port,
         )
 
+    # On Windows, proxy.py uses threaded mode which can leave sockets in
+    # a state where they haven't been fully released when GC runs during
+    # pytest cleanup. A short delay + explicit gc.collect() ensures the
+    # proxy threads finish cleanup before pytest's unraisableexception
+    # plugin collects warnings.
+    if os.name == "nt":
+        import time
+        import gc
+        time.sleep(0.1)
+        gc.collect()
 
 @pytest.fixture
 def web_server_endpoint_payload() -> str:
