@@ -22,6 +22,7 @@ from .http import (
     HttpVersion10,
     RawRequestMessage,
     StreamWriter,
+    WebSocketReader,
 )
 from .http_exceptions import BadHttpMethod
 from .log import access_logger, server_logger
@@ -168,9 +169,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_handler_waiter",
         "_waiter",
         "_task_handler",
-        "_upgrade",
         "_payload_parser",
-        "_request_parser",
         "logger",
         "access_log",
         "access_logger",
@@ -203,7 +202,17 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):
-        super().__init__(loop)
+        parser = HttpRequestParser(
+            self,
+            loop,
+            read_bufsize,
+            max_line_size=max_line_size,
+            max_field_size=max_field_size,
+            max_headers=max_headers,
+            payload_exception=RequestPayloadError,
+            auto_decompress=auto_decompress,
+        )
+        super().__init__(loop, parser)
 
         # _request_count is the number of requests processed with the same connection.
         self._request_count = 0
@@ -230,19 +239,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._waiter: asyncio.Future[None] | None = None
         self._handler_waiter: asyncio.Future[None] | None = None
         self._task_handler: asyncio.Task[None] | None = None
-
-        self._upgrade = False
         self._payload_parser: Any = None
-        self._request_parser: HttpRequestParser | None = HttpRequestParser(
-            self,
-            loop,
-            read_bufsize,
-            max_line_size=max_line_size,
-            max_field_size=max_field_size,
-            max_headers=max_headers,
-            payload_exception=RequestPayloadError,
-            auto_decompress=auto_decompress,
-        )
 
         self._timeout_ceil_threshold: float = 5
         try:
@@ -383,7 +380,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._manager = None
         self._request_factory = None
         self._request_handler = None
-        self._request_parser = None
+        self._parser = None
 
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
@@ -402,8 +399,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._payload_parser.feed_eof()
             self._payload_parser = None
 
-    def set_parser(self, parser: Any) -> None:
-        # Actual type is WebReader
+    def set_parser(self, parser: WebSocketReader) -> None:
         assert self._payload_parser is None
 
         self._payload_parser = parser
@@ -420,10 +416,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             return
         # parse http messages
         messages: Sequence[_MsgType]
-        if self._payload_parser is None and not self._upgrade:
-            assert self._request_parser is not None
+        if self._payload_parser is None and not self._upgraded:
+            assert self._parser is not None
             try:
-                messages, upgraded, tail = self._request_parser.feed_data(data)
+                messages, upgraded, tail = self._parser.feed_data(data)
             except HttpProcessingError as exc:
                 messages = [
                     (_ErrInfo(status=400, exc=exc, message=exc.message), EMPTY_PAYLOAD)
@@ -440,12 +436,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 # don't set result twice
                 waiter.set_result(None)
 
-            self._upgrade = upgraded
+            self._upgraded = upgraded
             if upgraded and tail:
                 self._message_tail = tail
 
         # no parser, just store
-        elif self._payload_parser is None and self._upgrade and data:
+        elif self._payload_parser is None and self._upgraded and data:
             self._message_tail += data
 
         # feed payload
@@ -705,11 +701,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         prematurely.
         """
         request._finish()
-        if self._request_parser is not None:
-            self._request_parser.set_upgraded(False)
-            self._upgrade = False
+        if self._parser is not None:
+            self._parser.set_upgraded(False)
+            self._upgraded = False
             if self._message_tail:
-                self._request_parser.feed_data(self._message_tail)
+                self._parser.feed_data(self._message_tail)
                 self._message_tail = b""
         try:
             prepare_meth = resp.prepare
