@@ -587,8 +587,8 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def wait_eof(self) -> None:
         return
 
-    def feed_data(self, data: bytes) -> None:
-        pass
+    def feed_data(self, data: bytes) -> bool:
+        return False
 
     async def readline(self) -> bytes:
         return b""
