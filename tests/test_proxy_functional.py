@@ -90,9 +90,6 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
     ]
 
     with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
-        if os.name == "nt":
-            spawned_threads = set(threading.enumerate()) - baseline_threads
-
         yield URL.build(
             scheme="https",
             host=str(proxy_instance.flags.hostname),
@@ -103,10 +100,13 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
         deadline = time.monotonic() + 5.0
         while time.monotonic() < deadline:
             gc.collect()
-            remaining = set(threading.enumerate()).intersection(spawned_threads)
-            if not remaining:
+            new_threads = set(threading.enumerate()) - baseline_threads
+            if not new_threads:
                 break
             time.sleep(0.05)
+        for _ in range(3):
+            gc.collect()
+            time.sleep(0.1)
 
 
 @pytest.fixture
