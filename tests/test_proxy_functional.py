@@ -66,6 +66,13 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
 
     This fixture also spawns that instance and tears it down after the test.
     """
+    if os.name == "nt":
+        import gc
+        import threading
+        import time
+
+        baseline_threads = set(threading.enumerate())
+
     proxypy_args = [
         # --threadless does not work on windows, see
         # https://github.com/abhinavsingh/proxy.py/issues/492
@@ -83,6 +90,9 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
     ]
 
     with proxy.Proxy(input_args=proxypy_args) as proxy_instance:
+        if os.name == "nt":
+            spawned_threads = set(threading.enumerate()) - baseline_threads
+
         yield URL.build(
             scheme="https",
             host=str(proxy_instance.flags.hostname),
@@ -90,19 +100,11 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
         )
 
     if os.name == "nt":
-        import gc
-        import threading
-        import time
-
         deadline = time.monotonic() + 5.0
         while time.monotonic() < deadline:
             gc.collect()
-            proxy_threads = [
-                t
-                for t in threading.enumerate()
-                if "proxy" in t.name.lower() or "acceptor" in t.name.lower()
-            ]
-            if not proxy_threads:
+            remaining = set(threading.enumerate()).intersection(spawned_threads)
+            if not remaining:
                 break
             time.sleep(0.05)
 
