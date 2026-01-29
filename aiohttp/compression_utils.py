@@ -53,6 +53,9 @@ class ZLibDecompressObjProtocol(Protocol):
     @property
     def eof(self) -> bool: ...
 
+    @property
+    def unconsumed_tail(self) -> bytes: ...
+
 
 class ZLibBackendProtocol(Protocol):
     MAX_WBITS: int
@@ -95,10 +98,6 @@ class ZLibBackendWrapper:
     @property
     def name(self) -> str:
         return getattr(self._zlib_backend, "__name__", "undefined")
-
-    @property
-    def unconsumed_tail(self) -> bytes:
-        return self._zlib_backend.unconsumed_tail
 
     @property
     def MAX_WBITS(self) -> int:
