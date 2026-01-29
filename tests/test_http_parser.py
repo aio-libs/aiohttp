@@ -182,7 +182,7 @@ test2: data\r
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
-def test_invalid_character(  # type: ignore[misc]
+def test_invalid_character(
     loop: asyncio.AbstractEventLoop,
     server: Server[Request],
     request: pytest.FixtureRequest,
@@ -209,7 +209,7 @@ def test_invalid_character(  # type: ignore[misc]
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
-def test_invalid_linebreak(  # type: ignore[misc]
+def test_invalid_linebreak(
     loop: asyncio.AbstractEventLoop,
     server: Server[Request],
     request: pytest.FixtureRequest,
@@ -1304,7 +1304,6 @@ async def test_http_response_parser_bad_chunked_lax(
 @pytest.mark.dev_mode
 async def test_http_response_parser_bad_chunked_strict_py(
     loop: asyncio.AbstractEventLoop,
-    parser: HttpParser,
 ) -> None:
     protocol = ResponseHandler(loop)
 
@@ -1315,7 +1314,7 @@ async def test_http_response_parser_bad_chunked_strict_py(
         max_line_size=8190,
         max_field_size=8190,
     )
-    protocol._parser = parser
+    protocol._parser = response
     text = (
         b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
     )
@@ -1330,7 +1329,6 @@ async def test_http_response_parser_bad_chunked_strict_py(
 )
 async def test_http_response_parser_bad_chunked_strict_c(
     loop: asyncio.AbstractEventLoop,
-    parser: HttpParser,
 ) -> None:
     protocol = ResponseHandler(loop)
 
@@ -1341,7 +1339,7 @@ async def test_http_response_parser_bad_chunked_strict_c(
         max_line_size=8190,
         max_field_size=8190,
     )
-    protocol._parser = parser
+    protocol._parser = response
     text = (
         b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
     )
@@ -1770,7 +1768,7 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
 )
-def test_parse_bad_method_for_c_parser_raises(  # type: ignore[misc]
+def test_parse_bad_method_for_c_parser_raises(
     loop: asyncio.AbstractEventLoop, server: Server[Request]
 ) -> None:
     protocol = RequestHandler(server, loop=loop)
