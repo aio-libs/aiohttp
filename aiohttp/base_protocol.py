@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from .client_exceptions import ClientConnectionResetError
 from .helpers import set_exception
@@ -22,7 +22,7 @@ class BaseProtocol(asyncio.Protocol):
     )
 
     def __init__(
-        self, loop: asyncio.AbstractEventLoop, parser: "HttpParser | None" = None
+        self, loop: asyncio.AbstractEventLoop, parser: "HttpParser[Any] | None" = None
     ) -> None:
         self._loop: asyncio.AbstractEventLoop = loop
         self._paused = False
@@ -60,6 +60,7 @@ class BaseProtocol(asyncio.Protocol):
         self._reading_paused = True
         # Parser shouldn't be paused on websockets.
         if not self._upgraded:
+            assert self._parser is not None
             self._parser.pause_reading()
         if self.transport is not None:
             try:
