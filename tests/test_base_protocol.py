@@ -42,7 +42,7 @@ async def test_pause_reading_stub_transport() -> None:
     assert not pr._reading_paused
     pr.pause_reading()
     assert pr._reading_paused
-    parser.pause_reading.assert_called_once()
+    parser.pause_reading.assert_called_once()  # type: ignore[unreachable]
 
 
 async def test_resume_reading_stub_transport() -> None:
