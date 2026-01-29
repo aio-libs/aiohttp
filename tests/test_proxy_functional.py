@@ -98,7 +98,8 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
         while time.monotonic() < deadline:
             gc.collect()
             proxy_threads = [
-                t for t in threading.enumerate()
+                t
+                for t in threading.enumerate()
                 if "proxy" in t.name.lower() or "acceptor" in t.name.lower()
             ]
             if not proxy_threads:
