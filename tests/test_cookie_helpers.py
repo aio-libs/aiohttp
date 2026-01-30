@@ -19,6 +19,7 @@ from aiohttp._cookie_helpers import (
     parse_set_cookie_headers,
     preserve_morsel_with_coded_value,
 )
+from aiohttp.pytest_plugin import RerunThresholdParams
 
 
 def test_known_attrs_is_superset_of_morsel_reserved() -> None:
@@ -637,7 +638,9 @@ def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
     assert match.group("key").lower() == "partitioned"
 
 
-_COOKIE_PATTERN_TIME_THRESHOLD = (0.02, 0.02)  # 20ms, +20ms each retry
+_COOKIE_PATTERN_TIME_THRESHOLD = RerunThresholdParams(
+    base=0.02, increment_per_rerun=0.02
+)
 
 
 @pytest.mark.flaky(reruns=3)

@@ -17,7 +17,7 @@ from yarl import URL
 from aiohttp import ETag, HttpVersion, web
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_parser import RawRequestMessage
-from aiohttp.pytest_plugin import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient, RerunThresholdParams
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web_request import _FORWARDED_PAIR_RE
@@ -600,7 +600,7 @@ def test_single_forwarded_header() -> None:
     assert req.forwarded[0]["proto"] == "identifier"
 
 
-_FORWARDED_RE_TIME_THRESHOLD = (0.02, 0.02)  # 20ms, +20ms each retry
+_FORWARDED_RE_TIME_THRESHOLD = RerunThresholdParams(base=0.02, increment_per_rerun=0.02)
 
 
 @pytest.mark.flaky(reruns=3)
