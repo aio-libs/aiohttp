@@ -104,7 +104,7 @@ def test_example_runs_successfully(config: ExampleConfig) -> None:
 @pytest.mark.example
 async def test_server_simple_routes(aiohttp_client: Any) -> None:
     """Functional test for server_simple.py routes."""
-    from examples import server_simple
+    from examples import server_simple  # noqa: I900
 
     app = server_simple.init()
     client: TestClient[Any, Any] = await aiohttp_client(app)
@@ -128,7 +128,7 @@ async def test_server_simple_routes(aiohttp_client: Any) -> None:
 @pytest.mark.example
 async def test_web_ws_broadcast(aiohttp_client: Any) -> None:
     """Functional test for web_ws.py broadcasting behavior."""
-    from examples import web_ws
+    from examples import web_ws  # noqa: I900
 
     app = web_ws.init()
     client: TestClient[Any, Any] = await aiohttp_client(app)
