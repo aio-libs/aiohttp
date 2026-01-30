@@ -476,10 +476,10 @@ async def make_client_request(
 
     yield maker
 
-    for request in requests:
-        await request._close()
-    for session in sessions:
-        await session.close()
+    await asyncio.gather(
+        *[request._close() for request in requests],
+        *[session.close() for session in sessions],
+    )
 
 
 @pytest.fixture
