@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from aiohttp.pytest_plugin import RerunThresholdParams
+
 
 def test___all__(pytester: pytest.Pytester) -> None:
     """See https://github.com/aio-libs/aiohttp/issues/6197"""
@@ -31,10 +33,13 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
 _IMPORT_TIME_THRESHOLD_PY312 = 300
 _IMPORT_TIME_THRESHOLD_DEFAULT = 200
 _IMPORT_TIME_INCREMENT_PER_RERUN = 50
-_IMPORT_TIME_THRESHOLD = (
-    (_IMPORT_TIME_THRESHOLD_PY312, _IMPORT_TIME_INCREMENT_PER_RERUN)
-    if sys.version_info >= (3, 12)
-    else (_IMPORT_TIME_THRESHOLD_DEFAULT, _IMPORT_TIME_INCREMENT_PER_RERUN)
+_IMPORT_TIME_THRESHOLD = RerunThresholdParams(
+    base=(
+        _IMPORT_TIME_THRESHOLD_PY312
+        if sys.version_info >= (3, 12)
+        else _IMPORT_TIME_THRESHOLD_DEFAULT
+    ),
+    increment_per_rerun=_IMPORT_TIME_INCREMENT_PER_RERUN,
 )
 
 

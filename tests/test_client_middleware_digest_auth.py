@@ -24,7 +24,7 @@ from aiohttp.client_middleware_digest_auth import (
 )
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.payload import BytesIOPayload
-from aiohttp.pytest_plugin import AiohttpServer
+from aiohttp.pytest_plugin import AiohttpServer, RerunThresholdParams
 from aiohttp.web import Application, Request, Response
 
 
@@ -1331,7 +1331,7 @@ async def test_case_sensitive_algorithm_server(
     assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
 
 
-_REGEX_TIME_THRESHOLD = (0.02, 0.02)  # 20ms, +20ms each retry
+_REGEX_TIME_THRESHOLD = RerunThresholdParams(base=0.02, increment_per_rerun=0.02)
 
 
 @pytest.mark.flaky(reruns=3)
