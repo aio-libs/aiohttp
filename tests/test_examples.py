@@ -62,7 +62,7 @@ def test_example_runs_successfully(config: ExampleConfig) -> None:
 
     result = _run_example(example_path, config.timeout)
 
-    assert result.returncode == 0, (
+    assert result.returncode == 0, (  # pragma: no cover
         f"Example {config.name} failed with exit code {result.returncode}\n"
         f"stdout:\n{result.stdout}\n"
         f"stderr:\n{result.stderr}"
