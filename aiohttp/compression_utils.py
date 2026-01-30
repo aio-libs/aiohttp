@@ -34,6 +34,8 @@ except ImportError:
 
 
 MAX_SYNC_CHUNK_SIZE = 4096
+# Matches the max size we receive from sockets:
+# https://github.com/python/cpython/blob/1857a40807daeae3a1bf5efb682de9c9ae6df845/Lib/asyncio/selector_events.py#L766
 DEFAULT_MAX_DECOMPRESS_SIZE = 256 * 1024
 
 # Unlimited decompression constants - different libraries use different conventions
@@ -185,7 +187,7 @@ class DecompressionBaseHandler(ABC):
     @property
     @abstractmethod
     def data_available(self) -> bool:
-        """Return True if more output is available using only .unconsumed_tail."""
+        """Return True if more output is available by passing b""."""
 
 
 class ZLibCompressor:
