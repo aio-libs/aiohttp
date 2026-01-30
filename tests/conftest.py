@@ -49,6 +49,13 @@ except ImportError:
     TRUSTME = False
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    if os.name == "nt" and sys.version_info[:2] in ((3, 10), (3, 11)):
+        config.addinivalue_line(
+            "filterwarnings",
+            "ignore:Exception ignored in.*socket.*:pytest.PytestUnraisableExceptionWarning",
+        )
+
 try:
     if sys.platform == "win32":
         import winloop as uvloop
