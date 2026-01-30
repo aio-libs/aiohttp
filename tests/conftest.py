@@ -56,6 +56,7 @@ def pytest_configure(config: pytest.Config) -> None:
             "ignore:Exception ignored in.*socket.*:pytest.PytestUnraisableExceptionWarning",
         )
 
+
 try:
     if sys.platform == "win32":
         import winloop as uvloop
