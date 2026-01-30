@@ -35,7 +35,6 @@ from .http_exceptions import (
     BadStatusLine,
     ContentEncodingError,
     ContentLengthError,
-    DecompressSizeError,
     InvalidHeader,
     InvalidURLError,
     LineTooLong,
