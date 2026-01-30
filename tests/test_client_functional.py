@@ -53,7 +53,6 @@ from aiohttp.client_exceptions import (
 )
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
-from aiohttp.http_exceptions import DecompressSizeError
 from aiohttp.payload import (
     AsyncIterablePayload,
     BufferedReaderPayload,
