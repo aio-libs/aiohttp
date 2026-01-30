@@ -66,13 +66,6 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
 
     This fixture also spawns that instance and tears it down after the test.
     """
-    if os.name == "nt":
-        import gc
-        import threading
-        import time
-
-        baseline_threads = set(threading.enumerate())
-
     proxypy_args = [
         # --threadless does not work on windows, see
         # https://github.com/abhinavsingh/proxy.py/issues/492
@@ -95,18 +88,6 @@ def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
             host=str(proxy_instance.flags.hostname),
             port=proxy_instance.flags.port,
         )
-
-    if os.name == "nt":
-        deadline = time.monotonic() + 5.0
-        while time.monotonic() < deadline:
-            gc.collect()
-            new_threads = set(threading.enumerate()) - baseline_threads
-            if not new_threads:
-                break
-            time.sleep(0.05)
-        for _ in range(3):
-            gc.collect()
-            time.sleep(0.1)
 
 
 @pytest.fixture
