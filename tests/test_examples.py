@@ -44,6 +44,7 @@ SELF_CONTAINED_EXAMPLES = [
     ExampleConfig("digest_auth_qop_auth.py", timeout=30),
     ExampleConfig("combined_middleware.py", timeout=60),
     ExampleConfig("token_refresh_middleware.py", timeout=60),
+    ExampleConfig("fake_server.py", timeout=30),
 ]
 
 
@@ -96,6 +97,108 @@ def test_example_runs_successfully(config: ExampleConfig) -> None:
     assert not _has_unexpected_warnings(
         result.stderr
     ), f"Warnings in {config.name}:\n{result.stderr}"
+
+
+@pytest.mark.example
+async def test_client_json(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for client_json.py using a mock server."""
+    from aiohttp import web
+    from examples import client_json  # noqa: I900
+
+    async def json_handler(request: web.Request) -> web.Response:
+        return web.json_response({"url": str(request.url), "method": request.method})
+
+    app = web.Application()
+    app.router.add_get("/get", json_handler)
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    result = await client_json.go(f"{client.make_url('/get')}")
+    assert result["method"] == "GET"
+
+
+@pytest.mark.example
+async def test_client_auth(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for client_auth.py using a mock server."""
+    from aiohttp import BasicAuth, hdrs, web
+    from examples import client_auth  # noqa: I900
+
+    async def auth_handler(request: web.Request) -> web.Response:
+        auth_header = request.headers.get(hdrs.AUTHORIZATION, "")
+        if auth_header:
+            auth = BasicAuth.decode(auth_header)
+            if auth.login == "andrew" and auth.password == "password":
+                return web.Response(text="Authenticated")
+        return web.Response(status=401, text="Unauthorized")
+
+    app = web.Application()
+    app.router.add_get("/auth", auth_handler)
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    result = await client_auth.go(f"{client.make_url('/auth')}")
+    assert result == "Authenticated"
+
+
+@pytest.mark.example
+async def test_curl(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for curl.py using a mock server."""
+    from aiohttp import web
+    from examples import curl  # noqa: I900
+
+    async def simple_handler(request: web.Request) -> web.Response:
+        return web.Response(text="Hello from curl test")
+
+    app = web.Application()
+    app.router.add_get("/", simple_handler)
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    await curl.curl(str(client.make_url("/")))
+
+
+@pytest.mark.example
+async def test_background_tasks(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for background_tasks.py with valkey disabled."""
+    pytest.importorskip("valkey")
+    from examples import background_tasks  # noqa: I900
+
+    app = background_tasks.init(skip_valkey=True)
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.ws_connect("/news") as ws:
+        await ws.send_str("test message")
+        await ws.close()
+
+
+@pytest.mark.example
+async def test_client_ws(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for client_ws.py using a mock server."""
+    from aiohttp import web
+    from examples import client_ws  # noqa: I900
+
+    received_messages: list[str] = []
+
+    async def ws_handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        async for msg in ws:
+            if msg.type == web.WSMsgType.TEXT:
+                received_messages.append(msg.data)
+                await ws.send_str(f"Echo: {msg.data}")
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", ws_handler)
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    messages = iter(["Hello\n", "World\n", ""])
+
+    await client_ws.start_client(
+        str(client.make_url("/")),
+        name="TestUser",
+        input_func=lambda: next(messages),
+    )
+
+    assert len(received_messages) == 2
+    assert "TestUser: Hello\n" in received_messages[0]
 
 
 @pytest.mark.example

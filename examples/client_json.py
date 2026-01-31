@@ -1,23 +1,27 @@
 #!/usr/bin/env python3
 import asyncio
+from typing import Any
 
 import aiohttp
 
+DEFAULT_URL = "http://httpbin.org/get"
 
-async def fetch(session: aiohttp.ClientSession) -> None:
-    print("Query http://httpbin.org/get")
-    async with session.get("http://httpbin.org/get") as resp:
+
+async def fetch(
+    session: aiohttp.ClientSession, url: str = DEFAULT_URL
+) -> dict[str, Any]:
+    print(f"Query {url}")
+    async with session.get(url) as resp:
         print(resp.status)
-        data = await resp.json()
+        data: dict[str, Any] = await resp.json()
         print(data)
+        return data
 
 
-async def go() -> None:
+async def go(url: str = DEFAULT_URL) -> dict[str, Any]:
     async with aiohttp.ClientSession() as session:
-        await fetch(session)
+        return await fetch(session, url)
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(go())
-    loop.close()
+    asyncio.run(go())

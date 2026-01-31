@@ -3,23 +3,24 @@ import asyncio
 
 import aiohttp
 
+DEFAULT_URL = "http://httpbin.org/basic-auth/andrew/password"
 
-async def fetch(session: aiohttp.ClientSession) -> None:
-    print("Query http://httpbin.org/basic-auth/andrew/password")
-    async with session.get("http://httpbin.org/basic-auth/andrew/password") as resp:
+
+async def fetch(session: aiohttp.ClientSession, url: str = DEFAULT_URL) -> str:
+    print(f"Query {url}")
+    async with session.get(url) as resp:
         print(resp.status)
         body = await resp.text()
         print(body)
+        return body
 
 
-async def go() -> None:
+async def go(url: str = DEFAULT_URL) -> str:
     async with aiohttp.ClientSession(
         auth=aiohttp.BasicAuth("andrew", "password")
     ) as session:
-        await fetch(session)
+        return await fetch(session, url)
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(go())
-    loop.close()
+    asyncio.run(go())
