@@ -84,7 +84,7 @@ class TestServer:
             return web.json_response({"error": "Invalid JSON"}, status=400)
 
 
-async def run_test_server() -> web.AppRunner:
+async def run_test_server() -> tuple[web.AppRunner, int]:
     """Run a simple test server."""
     app = web.Application()
     server = TestServer()
@@ -97,54 +97,48 @@ async def run_test_server() -> web.AppRunner:
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "localhost", 8080)
+    site = web.TCPSite(runner, "localhost", 0)
     await site.start()
-    return runner
+    port = site._server.sockets[0].getsockname()[1]
+    return runner, port
 
 
-async def run_tests() -> None:
+async def run_tests(port: int) -> None:
     """Run all the middleware tests."""
-    # Create logging middleware
+    base_url = f"http://localhost:{port}"
     logging_middleware = LoggingMiddleware()
 
-    # Use middleware in session
     async with ClientSession(middlewares=(logging_middleware,)) as session:
-        # Test 1: Simple GET request
         print("\n=== Test 1: Simple GET request ===")
-        async with session.get("http://localhost:8080/hello") as resp:
+        async with session.get(f"{base_url}/hello") as resp:
             data = await resp.json()
             print(f"Response: {data}")
 
-        # Test 2: GET with parameter
         print("\n=== Test 2: GET with parameter ===")
-        async with session.get("http://localhost:8080/hello/Alice") as resp:
+        async with session.get(f"{base_url}/hello/Alice") as resp:
             data = await resp.json()
             print(f"Response: {data}")
 
-        # Test 3: Slow request
         print("\n=== Test 3: Slow request (2 seconds) ===")
-        async with session.get("http://localhost:8080/slow/2") as resp:
+        async with session.get(f"{base_url}/slow/2") as resp:
             data = await resp.json()
             print(f"Response: {data}")
 
-        # Test 4: Error response
         print("\n=== Test 4: Error response ===")
-        async with session.get("http://localhost:8080/error/404") as resp:
+        async with session.get(f"{base_url}/error/404") as resp:
             text = await resp.text()
             print(f"Response: {text}")
 
-        # Test 5: POST with JSON data
         print("\n=== Test 5: POST with JSON data ===")
         payload = {"name": "Bob", "age": 30, "city": "New York"}
-        async with session.post("http://localhost:8080/echo", json=payload) as resp:
+        async with session.post(f"{base_url}/echo", json=payload) as resp:
             data = await resp.json()
             print(f"Response: {data}")
 
-        # Test 6: Multiple concurrent requests
         print("\n=== Test 6: Multiple concurrent requests ===")
         coros: list[Coroutine[Any, Any, ClientResponse]] = []
         for i in range(3):
-            coro = session.get(f"http://localhost:8080/hello/User{i}")
+            coro = session.get(f"{base_url}/hello/User{i}")
             coros.append(coro)
 
         responses = await asyncio.gather(*coros)
@@ -155,11 +149,10 @@ async def run_tests() -> None:
 
 
 async def main() -> None:
-    # Start test server
-    server = await run_test_server()
+    server, port = await run_test_server()
 
     try:
-        await run_tests()
+        await run_tests(port)
 
     finally:
         # Cleanup server

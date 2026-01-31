@@ -243,7 +243,7 @@ class TestServer:
         )
 
 
-async def run_test_server() -> web.AppRunner:
+async def run_test_server() -> tuple[web.AppRunner, int]:
     """Run a test server with JWT auth endpoints."""
     test_server = TestServer()
     app = web.Application()
@@ -253,23 +253,25 @@ async def run_test_server() -> web.AppRunner:
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "localhost", 8080)
+    site = web.TCPSite(runner, "localhost", 0)
     await site.start()
-    return runner
+    port = site._server.sockets[0].getsockname()[1]
+    return runner, port
 
 
-async def run_tests() -> None:
+async def run_tests(port: int) -> None:
     """Run all token refresh middleware tests."""
     # Create token refresh middleware
     # In a real app, this refresh token would be securely stored
+    base_url = f"http://localhost:{port}"
     token_middleware = TokenRefreshMiddleware(
-        token_endpoint="http://localhost:8080/token/refresh",
+        token_endpoint=f"{base_url}/token/refresh",
         refresh_token="demo_refresh_token_12345",
     )
 
     async with ClientSession(middlewares=(token_middleware,)) as session:
         print("=== Test 1: First request (will trigger token refresh) ===")
-        async with session.get("http://localhost:8080/api/protected") as resp:
+        async with session.get(f"{base_url}/api/protected") as resp:
             if resp.status == 200:
                 data = await resp.json()
                 print(f"Success! Response: {data}")
@@ -277,7 +279,7 @@ async def run_tests() -> None:
                 print(f"Failed with status: {resp.status}")
 
         print("\n=== Test 2: Second request (uses cached token) ===")
-        async with session.get("http://localhost:8080/api/user") as resp:
+        async with session.get(f"{base_url}/api/user") as resp:
             if resp.status == 200:
                 data = await resp.json()
                 print(f"User info: {data}")
@@ -288,7 +290,7 @@ async def run_tests() -> None:
         print("(Should only refresh token once)")
         coros: list[Coroutine[Any, Any, ClientResponse]] = []
         for i in range(3):
-            coro = session.get("http://localhost:8080/api/protected")
+            coro = session.get(f"{base_url}/api/protected")
             coros.append(coro)
 
         responses = await asyncio.gather(*coros)
@@ -304,7 +306,7 @@ async def run_tests() -> None:
         token_middleware.token_expires_at = time.time() - 1
 
         print("Token expired, next request should trigger refresh...")
-        async with session.get("http://localhost:8080/api/protected") as resp:
+        async with session.get(f"{base_url}/api/protected") as resp:
             if resp.status == 200:
                 data = await resp.json()
                 print(f"Success after token refresh! Response: {data}")
@@ -314,7 +316,7 @@ async def run_tests() -> None:
         print("\n=== Test 5: Request without middleware (no auth) ===")
         # Make a request without any middleware to show the difference
         async with session.get(
-            "http://localhost:8080/api/protected",
+            f"{base_url}/api/protected",
             middlewares=(),  # Bypass all middleware for this request
         ) as resp:
             print(f"Status: {resp.status}")
@@ -324,11 +326,10 @@ async def run_tests() -> None:
 
 
 async def main() -> None:
-    # Start test server
-    server = await run_test_server()
+    server, port = await run_test_server()
 
     try:
-        await run_tests()
+        await run_tests(port)
     finally:
         await server.cleanup()
 

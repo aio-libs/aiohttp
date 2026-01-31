@@ -162,7 +162,7 @@ class TestServer:
         return web.Response(text="Reset")
 
 
-async def run_test_server() -> web.AppRunner:
+async def run_test_server() -> tuple[web.AppRunner, int]:
     """Run a test server with rate limiting simulation."""
     app = web.Application()
     server = TestServer()
@@ -174,38 +174,40 @@ async def run_test_server() -> web.AppRunner:
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "localhost", 8080)
+    site = web.TCPSite(runner, "localhost", 0)
     await site.start()
-    return runner
+    port = site._server.sockets[0].getsockname()[1]
+    return runner, port
 
 
-async def run_tests() -> None:
+async def run_tests(port: int) -> None:
     """Run rate limit middleware tests."""
+    base_url = f"http://localhost:{port}"
     rate_limit = RateLimitMiddleware(rate=5.0, burst=2, per_domain=False)
 
     async with ClientSession(middlewares=(rate_limit,)) as session:
-        await session.post("http://localhost:8080/reset")
+        await session.post(f"{base_url}/reset")
 
         print("=== Test 1: Burst requests (limit: 5/s, burst: 2) ===")
         print("Sending 5 requests rapidly...")
         start = time.monotonic()
 
         for i in range(5):
-            async with session.get("http://localhost:8080/api") as resp:
+            async with session.get(f"{base_url}/api") as resp:
                 data = await resp.json()
                 elapsed = time.monotonic() - start
                 print(f"Request {i + 1}: {elapsed:.2f}s - {data['message']}")
 
         print("\n=== Test 2: Check actual request rate ===")
-        async with session.get("http://localhost:8080/stats") as resp:
+        async with session.get(f"{base_url}/stats") as resp:
             stats = await resp.json()
             print(f"Request intervals: {stats['intervals']}")
             print(f"Average rate: {stats['average_rate']} req/s")
 
         print("\n=== Test 3: Server-side 429 with Retry-After ===")
-        await session.post("http://localhost:8080/reset")
+        await session.post(f"{base_url}/reset")
         for i in range(3):
-            async with session.get("http://localhost:8080/rate-limited") as resp:
+            async with session.get(f"{base_url}/rate-limited") as resp:
                 text = await resp.text() if resp.status == 429 else (await resp.json())
                 print(f"Request {i + 1}: Status {resp.status} - {text}")
 
@@ -213,22 +215,22 @@ async def run_tests() -> None:
     per_domain_limit = RateLimitMiddleware(rate=10.0, burst=1, per_domain=True)
 
     async with ClientSession(middlewares=(per_domain_limit,)) as session:
-        await session.post("http://localhost:8080/reset")
+        await session.post(f"{base_url}/reset")
         print("Simulating requests to different 'domains' (same server)...")
         print("(In real usage, different domains get separate rate limits)")
 
         start = time.monotonic()
         for i in range(3):
-            async with session.get("http://localhost:8080/api") as resp:
+            async with session.get(f"{base_url}/api") as resp:
                 elapsed = time.monotonic() - start
                 print(f"Request {i + 1} to localhost: {elapsed:.2f}s")
 
 
 async def main() -> None:
-    server = await run_test_server()
+    server, port = await run_test_server()
 
     try:
-        await run_tests()
+        await run_tests(port)
     finally:
         await server.cleanup()
 
