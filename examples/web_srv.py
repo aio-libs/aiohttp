@@ -4,8 +4,7 @@
 import asyncio
 import textwrap
 
-import aiohttp
-from aiohttp import web
+from aiohttp import ClientSession, web
 
 
 async def intro(request: web.Request) -> web.StreamResponse:
@@ -72,7 +71,7 @@ async def run_tests(port: int) -> None:
     """Run all tests against the server."""
     base_url = f"http://localhost:{port}"
 
-    async with aiohttp.ClientSession() as session:
+    async with ClientSession() as session:
         print("=== Test 1: Intro page ===")
         async with session.get(f"{base_url}/") as resp:
             assert resp.status == 200
