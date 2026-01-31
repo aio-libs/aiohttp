@@ -3,13 +3,15 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
-
-try:
-    import valkey.asyncio as valkey  # type: ignore[import-not-found]
-except ImportError:
-    valkey = None
+from typing import Any
 
 from aiohttp import web
+
+valkey: Any
+try:
+    import valkey.asyncio as valkey  # noqa: E402
+except ImportError:
+    valkey = None
 
 valkey_listener = web.AppKey("valkey_listener", asyncio.Task[None])
 websockets = web.AppKey("websockets", list[web.WebSocketResponse])
