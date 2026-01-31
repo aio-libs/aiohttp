@@ -298,9 +298,7 @@ async def run_tests(port: int) -> None:
         # Test without middleware for comparison
         print("\n=== Test 5: Request without middleware ===")
         print("Making a request to protected endpoint without middleware...")
-        async with session.get(
-            f"{base_url}/protected", middlewares=()
-        ) as resp:
+        async with session.get(f"{base_url}/protected", middlewares=()) as resp:
             print(f"Status without middleware: {resp.status}")
             if resp.status == 401:
                 print("Failed as expected - no auth header added")
