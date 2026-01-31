@@ -90,7 +90,9 @@ class RateLimitMiddleware:
                 _LOGGER.info("Server requested Retry-After: %ss", wait_seconds)
                 await asyncio.sleep(wait_seconds)
             except ValueError:
-                _LOGGER.debug("Retry-After is not a number (likely HTTP-date): %s", retry_after)
+                _LOGGER.debug(
+                    "Retry-After is not a number (likely HTTP-date): %s", retry_after
+                )
 
     async def __call__(
         self,
