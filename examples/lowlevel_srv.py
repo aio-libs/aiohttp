@@ -23,5 +23,5 @@ if __name__ == "__main__":
     try:
         loop.run_until_complete(main(loop))
     except KeyboardInterrupt:
-        pass
+        pass  # Graceful shutdown on Ctrl+C
     loop.close()
