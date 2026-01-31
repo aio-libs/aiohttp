@@ -4,7 +4,10 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 
-import valkey.asyncio as valkey
+try:
+    import valkey.asyncio as valkey  # type: ignore[import-not-found]
+except ImportError:
+    valkey = None
 
 from aiohttp import web
 
