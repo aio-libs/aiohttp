@@ -245,9 +245,9 @@ async def test_web_classview(aiohttp_client: Any) -> None:  # type: ignore[misc]
 
 
 @pytest.mark.example
-async def test_web_rewrite_headers_middleware(
+async def test_web_rewrite_headers_middleware(  # type: ignore[misc]
     aiohttp_client: Any,
-) -> None:  # type: ignore[misc]
+) -> None:
     """Functional test for web_rewrite_headers_middleware.py."""
     from examples import web_rewrite_headers_middleware  # noqa: I900
 
@@ -271,3 +271,33 @@ async def test_static_files(aiohttp_client: Any) -> None:  # type: ignore[misc]
 
     async with client.get("/") as resp:
         assert resp.status == 200
+
+
+@pytest.mark.example
+async def test_cli_app(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for cli_app.py CLI application."""
+    from examples import cli_app  # noqa: I900
+
+    app = cli_app.init(["--repeat", "3", "Hello"])
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Hello\nHello\nHello"
+
+
+@pytest.mark.example
+async def test_lowlevel_srv(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for lowlevel_srv.py low-level handler."""
+    from aiohttp import web
+    from examples import lowlevel_srv  # noqa: I900
+
+    app = web.Application()
+    app.router.add_get("/", lowlevel_srv.handler)
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "OK"

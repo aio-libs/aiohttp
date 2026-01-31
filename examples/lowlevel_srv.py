@@ -17,10 +17,11 @@ async def main(loop: asyncio.AbstractEventLoop) -> None:
     await asyncio.sleep(100 * 3600)
 
 
-loop = asyncio.get_event_loop()
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
 
-try:
-    loop.run_until_complete(main(loop))
-except KeyboardInterrupt:
-    pass
-loop.close()
+    try:
+        loop.run_until_complete(main(loop))
+    except KeyboardInterrupt:
+        pass
+    loop.close()

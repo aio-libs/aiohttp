@@ -17,6 +17,7 @@ async def go() -> None:
         await fetch(session)
 
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(go())
-loop.close()
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(go())
+    loop.close()
