@@ -9,7 +9,7 @@ from aiohttp import web
 
 valkey: Any
 try:
-    import valkey.asyncio as valkey  # noqa: E402
+    import valkey.asyncio as valkey
 except ImportError:
     valkey = None
 
