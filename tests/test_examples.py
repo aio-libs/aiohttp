@@ -6,12 +6,9 @@ This module contains two types of tests:
    complete without errors or warnings.
 2. Functional tests: Import and test server examples using aiohttp_client.
 
-All tests are marked with @pytest.mark.example and excluded from the main
-test suite. Run them separately with:
+All tests are marked with @pytest.mark.example. Run them with:
 
-    pytest -m example --numprocesses=0
-
-Note: --numprocesses=0 is required because examples may use hardcoded ports.
+    pytest -m example
 """
 
 from __future__ import annotations
@@ -148,3 +145,129 @@ async def test_web_ws_broadcast(aiohttp_client: Any) -> None:  # type: ignore[mi
 
             msg = await ws2.receive_str()
             assert msg == "Hello"
+
+
+@pytest.mark.example
+async def test_web_srv_routes(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for web_srv.py routes."""
+    from examples import web_srv  # noqa: I900
+
+    app = web_srv.init()
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.get("/simple") as resp:
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Simple answer"
+
+    async with client.get("/change_body") as resp:
+        assert resp.status == 200
+        body = await resp.read()
+        assert body == b"Body changed"
+
+    async with client.get("/hello/World") as resp:
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Hello, World"
+
+
+@pytest.mark.example
+async def test_web_srv_route_deco(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for web_srv_route_deco.py routes."""
+    from examples import web_srv_route_deco  # noqa: I900
+
+    app = web_srv_route_deco.init()
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.get("/simple") as resp:
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Simple answer"
+
+
+@pytest.mark.example
+async def test_web_srv_route_table(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for web_srv_route_table.py routes."""
+    from examples import web_srv_route_table  # noqa: I900
+
+    app = web_srv_route_table.init()
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.get("/simple") as resp:
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Simple answer"
+
+    async with client.get("/hello/Test") as resp:
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Hello, Test"
+
+
+@pytest.mark.example
+async def test_web_cookies(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for web_cookies.py cookie handling."""
+    from examples import web_cookies  # noqa: I900
+
+    app = web_cookies.init()
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert "text/html" in resp.content_type
+
+    async with client.get("/login", allow_redirects=False) as resp:
+        assert resp.status == 302
+        assert "AUTH" in resp.cookies
+
+
+@pytest.mark.example
+async def test_web_classview(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for web_classview.py class-based views."""
+    from examples import web_classview  # noqa: I900
+
+    app = web_classview.init()
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert "text/html" in resp.content_type
+
+    async with client.get("/get") as resp:
+        assert resp.status == 200
+        data = await resp.json()
+        assert data["method"] == "GET"
+
+    async with client.post("/post", data={"key": "value"}) as resp:
+        assert resp.status == 200
+        data = await resp.json()
+        assert data["method"] == "POST"
+
+
+@pytest.mark.example
+async def test_web_rewrite_headers_middleware(
+    aiohttp_client: Any,
+) -> None:  # type: ignore[misc]
+    """Functional test for web_rewrite_headers_middleware.py."""
+    from examples import web_rewrite_headers_middleware  # noqa: I900
+
+    app = web_rewrite_headers_middleware.init()
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert resp.headers.get("SERVER") == "Secured Server Software"
+        text = await resp.text()
+        assert text == "Everything is fine"
+
+
+@pytest.mark.example
+async def test_static_files(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for static_files.py static file serving."""
+    from examples import static_files  # noqa: I900
+
+    app = static_files.init()
+    client: TestClient[Any, Any] = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200

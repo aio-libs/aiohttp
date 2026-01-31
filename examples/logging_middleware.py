@@ -99,7 +99,8 @@ async def run_test_server() -> tuple[web.AppRunner, int]:
     await runner.setup()
     site = web.TCPSite(runner, "localhost", 0)
     await site.start()
-    port = site._server.sockets[0].getsockname()[1]
+    assert site._server is not None
+    port: int = site._server.sockets[0].getsockname()[1]
     return runner, port
 
 
@@ -109,32 +110,38 @@ async def run_tests(port: int) -> None:
     logging_middleware = LoggingMiddleware()
 
     async with ClientSession(middlewares=(logging_middleware,)) as session:
+        # Test 1: Simple GET request
         print("\n=== Test 1: Simple GET request ===")
         async with session.get(f"{base_url}/hello") as resp:
             data = await resp.json()
             print(f"Response: {data}")
 
+        # Test 2: GET with parameter
         print("\n=== Test 2: GET with parameter ===")
         async with session.get(f"{base_url}/hello/Alice") as resp:
             data = await resp.json()
             print(f"Response: {data}")
 
+        # Test 3: Slow request
         print("\n=== Test 3: Slow request (2 seconds) ===")
         async with session.get(f"{base_url}/slow/2") as resp:
             data = await resp.json()
             print(f"Response: {data}")
 
+        # Test 4: Error response
         print("\n=== Test 4: Error response ===")
         async with session.get(f"{base_url}/error/404") as resp:
             text = await resp.text()
             print(f"Response: {text}")
 
+        # Test 5: POST with JSON data
         print("\n=== Test 5: POST with JSON data ===")
         payload = {"name": "Bob", "age": 30, "city": "New York"}
         async with session.post(f"{base_url}/echo", json=payload) as resp:
             data = await resp.json()
             print(f"Response: {data}")
 
+        # Test 6: Multiple concurrent requests
         print("\n=== Test 6: Multiple concurrent requests ===")
         coros: list[Coroutine[Any, Any, ClientResponse]] = []
         for i in range(3):

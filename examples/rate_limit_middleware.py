@@ -176,7 +176,8 @@ async def run_test_server() -> tuple[web.AppRunner, int]:
     await runner.setup()
     site = web.TCPSite(runner, "localhost", 0)
     await site.start()
-    port = site._server.sockets[0].getsockname()[1]
+    assert site._server is not None
+    port: int = site._server.sockets[0].getsockname()[1]
     return runner, port
 
 
