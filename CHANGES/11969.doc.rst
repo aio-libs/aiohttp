@@ -1,3 +1,4 @@
 Added a rate limiting middleware example demonstrating how to limit request
 rate using the token bucket algorithm with support for per-domain rate limits
-and ``Retry-After`` header handling -- by :user:`rodrigobnogueira`.
+and ``Retry-After`` header handling. Also refactored existing examples for
+improved testability -- by :user:`rodrigobnogueira`.
