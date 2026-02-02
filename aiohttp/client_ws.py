@@ -26,6 +26,7 @@ from .typedefs import (
     DEFAULT_JSON_ENCODER,
     JSONDecoder,
     JSONEncoder,
+    JSONEncoderBytes,
 )
 
 if sys.version_info >= (3, 13):
@@ -272,6 +273,19 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         dumps: JSONEncoder = DEFAULT_JSON_ENCODER,
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
+
+    async def send_json_bytes(
+        self,
+        data: Any,
+        dumps: JSONEncoderBytes,
+        compress: int | None = None,
+    ) -> None:
+        """Send JSON data using a bytes-returning encoder as a binary frame.
+
+        Use this when your JSON encoder (like orjson) returns bytes
+        instead of str, avoiding the encode/decode overhead.
+        """
+        await self.send_bytes(dumps(data), compress=compress)
 
     async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,

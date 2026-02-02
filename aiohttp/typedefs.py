@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 Byteish = bytes | bytearray | memoryview
 JSONEncoder = Callable[[Any], str]
+JSONEncoderBytes = Callable[[Any], bytes]
 JSONDecoder = Callable[[str], Any]
 LooseHeaders = (
     Mapping[str, str]
