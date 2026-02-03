@@ -528,7 +528,8 @@ class BodyPartReader:
         """
         data = self._apply_content_transfer_decoding(data)
         if self._needs_content_decoding():
-            yield from self._decode_content_async(data)
+            async for d in self._decode_content_async(data):
+                yield d
         yield data
 
     def _decode_content(self, data: bytes) -> bytes:
