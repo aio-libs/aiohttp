@@ -714,17 +714,15 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         tmp = await self._loop.run_in_executor(
                             None, tempfile.TemporaryFile
                         )
-                        chunk = await field.read_chunk(size=2**16)
-                        while chunk:
-                            chunk = await field.decode_async(chunk)
-                            await self._loop.run_in_executor(None, tmp.write, chunk)
-                            size += len(chunk)
-                            if 0 < max_size < size:
-                                await self._loop.run_in_executor(None, tmp.close)
-                                raise HTTPRequestEntityTooLarge(
-                                    max_size=max_size, actual_size=size
-                                )
-                            chunk = await field.read_chunk(size=2**16)
+                        while chunk := await field.read_chunk(size=2**16):
+                            async for decoded_chunk in field.decode_async(chunk):
+                                await self._loop.run_in_executor(None, tmp.write, decoded_chunk)
+                                size += len(decoded_chunk)
+                                if 0 < max_size < size:
+                                    await self._loop.run_in_executor(None, tmp.close)
+                                    raise HTTPRequestEntityTooLarge(
+                                        max_size=max_size, actual_size=size
+                                    )
                         await self._loop.run_in_executor(None, tmp.seek, 0)
 
                         if field_ct is None:
