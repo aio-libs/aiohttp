@@ -528,8 +528,8 @@ class BodyPartReader:
         """
         data = self._apply_content_transfer_decoding(data)
         if self._needs_content_decoding():
-            return await self._decode_content_async(data)
-        return data
+            yield from self._decode_content_async(data)
+        yield data
 
     def _decode_content(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
@@ -552,9 +552,9 @@ class BodyPartReader:
                 encoding=encoding,
                 suppress_deflate_header=True,
             )
-            yield d.decompress(data, max_length=self._max_decompress_size)
+            yield await d.decompress(data, max_length=self._max_decompress_size)
             while d.data_available:
-                yield d.decompress(b"", max_length=self._max_decompress_size)
+                yield await d.decompress(b"", max_length=self._max_decompress_size)
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
