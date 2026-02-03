@@ -551,7 +551,7 @@ class BodyPartReader:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
             yield data
-        if encoding in {"deflate", "gzip"}:
+        elif encoding in {"deflate", "gzip"}:
             d = ZLibDecompressor(
                 encoding=encoding,
                 suppress_deflate_header=True,
@@ -559,8 +559,8 @@ class BodyPartReader:
             yield await d.decompress(data, max_length=self._max_decompress_size)
             while d.data_available:
                 yield await d.decompress(b"", max_length=self._max_decompress_size)
-
-        raise RuntimeError(f"unknown content encoding: {encoding}")
+        else:
+            raise RuntimeError(f"unknown content encoding: {encoding}")
 
     def _decode_content_transfer(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING, "").lower()
