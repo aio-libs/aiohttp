@@ -533,7 +533,8 @@ class BodyPartReader:
         if self._needs_content_decoding():
             async for d in self._decode_content_async(data):
                 yield d
-        yield data
+        else:
+            yield data
 
     def _decode_content(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
