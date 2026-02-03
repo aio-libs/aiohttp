@@ -1743,6 +1743,7 @@ async def test_body_part_reader_payload_write() -> None:
     output = b""
 
     async def write(inp: bytes) -> None:
+        nonlocal output
         output += inp
 
     h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
