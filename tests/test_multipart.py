@@ -358,7 +358,7 @@ class TestPartReader:
     async def test_read_with_content_encoding_deflate(self) -> None:
         content = b"A" * 1_000_000  # Large enough to exceed max_length.
         compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
-        
+
         h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
         with Stream(compressed + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -369,7 +369,7 @@ class TestPartReader:
     async def test_read_chunk_with_content_encoding_deflate(self) -> None:
         content = b"A" * 1_000_000  # Large enough to exceed max_length.
         compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
-        
+
         h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
         with Stream(compressed + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -1746,7 +1746,9 @@ async def test_body_part_reader_payload_write() -> None:
         output += inp
 
     h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
-    writer = mock.create_autospec(AbstractStreamWriter, write=write, spec_set=True, instance=True)
+    writer = mock.create_autospec(
+        AbstractStreamWriter, write=write, spec_set=True, instance=True
+    )
     with Stream(compressed + b"\r\n--:--") as stream:
         body_part = aiohttp.BodyPartReader(BOUNDARY, h, stream)
         payload = BodyPartReaderPayload(body_part)
