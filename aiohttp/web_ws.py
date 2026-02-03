@@ -358,6 +358,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                 self._max_msg_size,
                 compress=bool(self._compress),
                 decode_text=self._decode_text,
+                reset_heartbeat_cb=self._reset_heartbeat,
             )
         )
         # disable HTTP keepalive for WebSocket

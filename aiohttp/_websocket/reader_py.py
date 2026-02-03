@@ -3,6 +3,7 @@
 import asyncio
 import builtins
 from collections import deque
+from collections.abc import Callable
 from typing import Final
 
 from ..base_protocol import BaseProtocol
@@ -145,10 +146,12 @@ class WebSocketReader:
         max_msg_size: int,
         compress: bool = True,
         decode_text: bool = True,
+        reset_heartbeat_cb: Callable[[], None] | None = None,
     ) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size
         self._decode_text = decode_text
+        self._reset_heartbeat_cb = reset_heartbeat_cb
 
         self._exc: Exception | None = None
         self._partial = bytearray()
@@ -183,6 +186,8 @@ class WebSocketReader:
             return True, data
 
         try:
+            if self._reset_heartbeat_cb:
+                self._reset_heartbeat_cb()
             self._feed_data(data)
         except Exception as exc:
             self._exc = exc
