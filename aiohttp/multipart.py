@@ -314,7 +314,8 @@ class BodyPartReader:
             data.extend(await self.read_chunk(self.chunk_size))
         # https://github.com/python/mypy/issues/17537
         if decode:  # type: ignore[unreachable]
-            return b"".join(d async for d in self.decode_iter(data))
+            async for d in self.decode_iter(data):
+                data.extend(d)
         return data
 
     async def read_chunk(self, size: int = chunk_size, decode: bool = False) -> bytes:
