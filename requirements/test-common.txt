@@ -91,7 +91,7 @@ setuptools-git==1.2
     # via -r requirements/test-common.in
 six==1.17.0
     # via python-dateutil
-tomli==2.3.0
+tomli==2.4.0
     # via
     #   coverage
     #   mypy
