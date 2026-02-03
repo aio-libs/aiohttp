@@ -716,7 +716,9 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         )
                         while chunk := await field.read_chunk(size=2**16):
                             async for decoded_chunk in field.decode_async(chunk):
-                                await self._loop.run_in_executor(None, tmp.write, decoded_chunk)
+                                await self._loop.run_in_executor(
+                                    None, tmp.write, decoded_chunk
+                                )
                                 size += len(decoded_chunk)
                                 if 0 < max_size < size:
                                     await self._loop.run_in_executor(None, tmp.close)
