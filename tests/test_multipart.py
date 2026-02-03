@@ -363,6 +363,7 @@ class TestPartReader:
         with Stream(compressed + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read(decode=True)
+        assert len(result) == len(content)  # Simplifies diff on failure
         assert result == content
 
     @pytest.mark.skipif(sys.version_info < (3, 11), reason="wbits not available")
@@ -1755,6 +1756,7 @@ async def test_body_part_reader_payload_write() -> None:
         payload = BodyPartReaderPayload(body_part)
         await payload.write(writer)
 
+    assert len(output) == len(content)  # Simplifies diff on failure
     assert output == content
 
 
