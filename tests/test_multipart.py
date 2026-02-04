@@ -404,7 +404,8 @@ class TestPartReader:
             result = b""
             while not obj.at_eof():
                 chunk = await obj.read_chunk(size=6)
-                result += await obj.decode_async(chunk)
+                async for decoded_chunk in obj.decode_iter(chunk):
+                    result += decoded_chunk
         assert b"Time to Relax!" == result
 
     async def test_decode_with_content_encoding_deflate(self) -> None:
