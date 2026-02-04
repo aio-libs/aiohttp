@@ -660,7 +660,13 @@ class MultipartReader:
     #: Body part reader class for non multipart/* content types.
     part_reader_cls = BodyPartReader
 
-    def __init__(self, headers: Mapping[str, str], content: StreamReader) -> None:
+    def __init__(
+        self,
+        headers: Mapping[str, str],
+        content: StreamReader,
+        *,
+        client_max_size: int = math.inf,
+    ) -> None:
         self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
         if "boundary" not in self._mimetype.parameters:
@@ -670,6 +676,7 @@ class MultipartReader:
 
         self.headers = headers
         self._boundary = ("--" + self._get_boundary()).encode()
+        self._client_max_size = client_max_size
         self._content = content
         self._default_charset: str | None = None
         self._last_part: MultipartReader | BodyPartReader | None = None
@@ -772,8 +779,10 @@ class MultipartReader:
 
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
-                return type(self)(headers, self._content)
-            return self.multipart_reader_cls(headers, self._content)
+                return type(self)(headers, self._content, client_max_size=client_max_size)
+            return self.multipart_reader_cls(
+                headers, self._content, client_max_size=self._client_max_size
+            )
         else:
             return self.part_reader_cls(
                 self._boundary,
@@ -781,6 +790,7 @@ class MultipartReader:
                 self._content,
                 subtype=self._mimetype.subtype,
                 default_charset=self._default_charset,
+                client_max_size=self._client_max_size,
             )
 
     def _get_boundary(self) -> str:
