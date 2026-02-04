@@ -40,7 +40,7 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
-from .web_exceptions import HttpRequestEntityTooLarge
+from .web_exceptions import HTTPRequestEntityTooLarge
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -317,7 +317,7 @@ class BodyPartReader:
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
             if len(data) > self._client_max_size:
-                raise HttpRequestEntityTooLarge(
+                raise HTTPRequestEntityTooLarge(
                     max_size=self._client_max_size, actual_size=len(data)
                 )
         # https://github.com/python/mypy/issues/17537
@@ -326,7 +326,7 @@ class BodyPartReader:
             async for d in self.decode_iter(data):
                 decoded_data.extend(d)
                 if len(decoded_data) > self._client_max_size:
-                    raise HttpRequestEntityTooLarge(
+                    raise HTTPRequestEntityTooLarge(
                         max_size=self._client_max_size, actual_size=len(decoded_data)
                     )
             return decoded_data
