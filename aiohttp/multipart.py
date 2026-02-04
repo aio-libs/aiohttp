@@ -268,7 +268,7 @@ class BodyPartReader:
         subtype: str = "mixed",
         default_charset: str | None = None,
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
-        client_max_size: int = math.inf
+        client_max_size: int = math.inf,
     ) -> None:
         self.headers = headers
         self._boundary = boundary
