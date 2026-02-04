@@ -558,8 +558,6 @@ class BodyPartReader:
                 suppress_deflate_header=True,
             )
             yield await d.decompress(data, max_length=self._max_decompress_size)
-            while d.data_available:
-                yield await d.decompress(b"", max_length=self._max_decompress_size)
         else:
             raise RuntimeError(f"unknown content encoding: {encoding}")
 
