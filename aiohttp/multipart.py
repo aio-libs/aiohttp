@@ -6,7 +6,7 @@ import sys
 import uuid
 import warnings
 from collections import deque
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Union, cast
 from urllib.parse import parse_qsl, unquote, urlencode
@@ -314,7 +314,10 @@ class BodyPartReader:
             data.extend(await self.read_chunk(self.chunk_size))
         # https://github.com/python/mypy/issues/17537
         if decode:  # type: ignore[unreachable]
-            return await self.decode_async(data)
+            decoded_data = bytearray()
+            async for d in self.decode_iter(data):
+                decoded_data.extend(d)
+            return decoded_data
         return data
 
     async def read_chunk(self, size: int = chunk_size) -> bytes:
@@ -509,7 +512,7 @@ class BodyPartReader:
         Decodes data according the specified Content-Encoding
         or Content-Transfer-Encoding headers value.
 
-        Note: For large payloads, consider using decode_async() instead
+        Note: For large payloads, consider using decode_iter() instead
         to avoid blocking the event loop during decompression.
         """
         data = self._apply_content_transfer_decoding(data)
@@ -517,7 +520,7 @@ class BodyPartReader:
             return self._decode_content(data)
         return data
 
-    async def decode_async(self, data: bytes) -> bytes:
+    async def decode_iter(self, data: bytes) -> AsyncIterator[bytes]:
         """Decodes data asynchronously.
 
         Decodes data according the specified Content-Encoding
@@ -528,8 +531,10 @@ class BodyPartReader:
         """
         data = self._apply_content_transfer_decoding(data)
         if self._needs_content_decoding():
-            return await self._decode_content_async(data)
-        return data
+            async for d in self._decode_content_async(data):
+                yield d
+        else:
+            yield data
 
     def _decode_content(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
@@ -543,17 +548,20 @@ class BodyPartReader:
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
-    async def _decode_content_async(self, data: bytes) -> bytes:
+    async def _decode_content_async(self, data: bytes) -> AsyncIterator[bytes]:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
-            return data
-        if encoding in {"deflate", "gzip"}:
-            return await ZLibDecompressor(
+            yield data
+        elif encoding in {"deflate", "gzip"}:
+            d = ZLibDecompressor(
                 encoding=encoding,
                 suppress_deflate_header=True,
-            ).decompress(data, max_length=self._max_decompress_size)
-
-        raise RuntimeError(f"unknown content encoding: {encoding}")
+            )
+            yield await d.decompress(data, max_length=self._max_decompress_size)
+            while d.data_available:
+                yield await d.decompress(b"", max_length=self._max_decompress_size)
+        else:
+            raise RuntimeError(f"unknown content encoding: {encoding}")
 
     def _decode_content_transfer(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING, "").lower()
@@ -624,10 +632,9 @@ class BodyPartReaderPayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         field = self._value
-        chunk = await field.read_chunk(size=2**16)
-        while chunk:
-            await writer.write(await field.decode_async(chunk))
-            chunk = await field.read_chunk(size=2**16)
+        while chunk := await field.read_chunk(size=2**18):
+            async for d in field.decode_iter(chunk):
+                await writer.write(d)
 
 
 class MultipartReader:
