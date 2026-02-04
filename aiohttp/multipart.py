@@ -1,6 +1,7 @@
 import base64
 import binascii
 import json
+import math
 import re
 import sys
 import uuid
@@ -267,6 +268,7 @@ class BodyPartReader:
         subtype: str = "mixed",
         default_charset: str | None = None,
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        client_max_size: int = math.inf
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -284,6 +286,7 @@ class BodyPartReader:
         self._content_eof = 0
         self._cache: dict[str, Any] = {}
         self._max_decompress_size = max_decompress_size
+        self._client_max_size = client_max_size
 
     def __aiter__(self) -> Self:
         return self
@@ -312,11 +315,19 @@ class BodyPartReader:
         data = bytearray()
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
+            if len(data) > self._client_max_size:
+                raise HttpRequestEntityTooLarge(
+                    max_size=self._client_max_size, actual_size=len(data)
+                )
         # https://github.com/python/mypy/issues/17537
         if decode:  # type: ignore[unreachable]
             decoded_data = bytearray()
             async for d in self.decode_iter(data):
                 decoded_data.extend(d)
+                if len(decoded_data) > self._client_max_size:
+                    raise HttpRequestEntityTooLarge(
+                        max_size=self._client_max_size, actual_size=len(decoded_data)
+                    )
             return decoded_data
         return data
 
