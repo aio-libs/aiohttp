@@ -40,6 +40,7 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
+from .web_exceptions import HttpRequestEntityTooLarge
 
 if sys.version_info >= (3, 11):
     from typing import Self
