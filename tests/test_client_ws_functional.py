@@ -820,7 +820,7 @@ async def test_heartbeat_no_pong(aiohttp_client: AiohttpClient) -> None:
     assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
 
 
-async def test_heartbeat_is_reset_on_any_data_reception(
+async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Slowly receiving a single large frame should not trip heartbeat.
