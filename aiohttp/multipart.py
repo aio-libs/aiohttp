@@ -779,7 +779,9 @@ class MultipartReader:
 
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
-                return type(self)(headers, self._content, client_max_size=client_max_size)
+                return type(self)(
+                    headers, self._content, client_max_size=client_max_size
+                )
             return self.multipart_reader_cls(
                 headers, self._content, client_max_size=self._client_max_size
             )
