@@ -97,11 +97,17 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self._compress = compress
         self._client_notakeover = client_notakeover
         self._ping_task: asyncio.Task[None] | None = None
+        self._need_heartbeat_reset = False
+        self._heartbeat_reset_handle: asyncio.Handle | None = None
 
         self._reset_heartbeat()
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
+        if self._heartbeat_reset_handle is not None:
+            self._heartbeat_reset_handle.cancel()
+            self._heartbeat_reset_handle = None
+        self._need_heartbeat_reset = False
         if self._heartbeat_cb is not None:
             self._heartbeat_cb.cancel()
             self._heartbeat_cb = None
@@ -113,6 +119,21 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         if self._pong_response_cb is not None:
             self._pong_response_cb.cancel()
             self._pong_response_cb = None
+
+    def _on_data_received(self) -> None:
+        if self._heartbeat is None or self._need_heartbeat_reset:
+            return
+        loop = self._loop
+        assert loop is not None
+        self._need_heartbeat_reset = True
+        self._heartbeat_reset_handle = loop.call_soon(self._flush_heartbeat_reset)
+
+    def _flush_heartbeat_reset(self) -> None:
+        self._heartbeat_reset_handle = None
+        if not self._need_heartbeat_reset:
+            return
+        self._need_heartbeat_reset = False
+        self._reset_heartbeat()
 
     def _reset_heartbeat(self) -> None:
         if self._heartbeat is None:

@@ -93,6 +93,8 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     _heartbeat_cb: asyncio.TimerHandle | None = None
     _pong_response_cb: asyncio.TimerHandle | None = None
     _ping_task: asyncio.Task[None] | None = None
+    _need_heartbeat_reset: bool = False
+    _heartbeat_reset_handle: asyncio.Handle | None = None
 
     def __init__(
         self,
@@ -121,9 +123,15 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._max_msg_size = max_msg_size
         self._writer_limit = writer_limit
         self._decode_text = decode_text
+        self._need_heartbeat_reset = False
+        self._heartbeat_reset_handle = None
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
+        if self._heartbeat_reset_handle is not None:
+            self._heartbeat_reset_handle.cancel()
+            self._heartbeat_reset_handle = None
+        self._need_heartbeat_reset = False
         if self._heartbeat_cb is not None:
             self._heartbeat_cb.cancel()
             self._heartbeat_cb = None
@@ -135,6 +143,21 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         if self._pong_response_cb is not None:
             self._pong_response_cb.cancel()
             self._pong_response_cb = None
+
+    def _on_data_received(self) -> None:
+        if self._heartbeat is None or self._need_heartbeat_reset:
+            return
+        loop = self._loop
+        assert loop is not None
+        self._need_heartbeat_reset = True
+        self._heartbeat_reset_handle = loop.call_soon(self._flush_heartbeat_reset)
+
+    def _flush_heartbeat_reset(self) -> None:
+        self._heartbeat_reset_handle = None
+        if not self._need_heartbeat_reset:
+            return
+        self._need_heartbeat_reset = False
+        self._reset_heartbeat()
 
     def _reset_heartbeat(self) -> None:
         if self._heartbeat is None:
@@ -352,21 +375,16 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         loop = self._loop
         assert loop is not None
         self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
-        # The parser may be wrapped to reset heartbeat on inbound bytes.
         parser: Any = WebSocketReader(
             self._reader,
             self._max_msg_size,
             compress=bool(self._compress),
             decode_text=self._decode_text,
         )
-        # Only wrap when heartbeat is enabled to avoid overhead.
         if self._heartbeat is not None:
-            from ._websocket.heartbeat import _WebSocketDataReceivedCallbackWrapper
-
-            parser = _WebSocketDataReceivedCallbackWrapper(
-                parser, self._reset_heartbeat, loop
-            )
-        request.protocol.set_parser(parser)
+            request.protocol.set_parser(parser, data_received_cb=self._on_data_received)
+        else:
+            request.protocol.set_parser(parser)
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
 

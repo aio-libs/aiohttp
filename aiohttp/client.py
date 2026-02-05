@@ -1227,18 +1227,13 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
-            # The parser may be wrapped to reset heartbeat on inbound bytes.
             parser: Any = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
-            # Only wrap when heartbeat is enabled to avoid overhead.
             if heartbeat is not None:
-                from ._websocket.heartbeat import _WebSocketDataReceivedCallbackWrapper
-
-                parser = _WebSocketDataReceivedCallbackWrapper(
-                    parser,
-                    ws_resp._reset_heartbeat,
-                    self._loop,
+                conn_proto.set_parser(
+                    parser, reader, data_received_cb=ws_resp._on_data_received
                 )
-            conn_proto.set_parser(parser, reader)
+            else:
+                conn_proto.set_parser(parser, reader)
             return ws_resp
 
     def _prepare_headers(self, headers: LooseHeaders | None) -> "CIMultiDict[str]":
