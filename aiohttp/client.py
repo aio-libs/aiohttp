@@ -37,7 +37,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL, Query
 
 from . import hdrs, http, payload
-from ._websocket.reader import WebSocketDataQueue, _WebSocketDataReceivedCallbackWrapper
+from ._websocket.reader import WebSocketDataQueue
 from .abc import AbstractCookieJar
 from .client_exceptions import (
     ClientConnectionError,
@@ -1231,6 +1231,8 @@ class ClientSession:
             parser: Any = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
             # Only wrap when heartbeat is enabled to avoid overhead.
             if heartbeat is not None:
+                from ._websocket.heartbeat import _WebSocketDataReceivedCallbackWrapper
+
                 parser = _WebSocketDataReceivedCallbackWrapper(
                     parser,
                     ws_resp._reset_heartbeat,

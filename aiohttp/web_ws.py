@@ -10,7 +10,7 @@ from typing import Any, Final, Generic, Literal, Union, overload
 from multidict import CIMultiDict
 
 from . import hdrs
-from ._websocket.reader import WebSocketDataQueue, _WebSocketDataReceivedCallbackWrapper
+from ._websocket.reader import WebSocketDataQueue
 from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
 from .client_exceptions import WSMessageTypeError
@@ -361,6 +361,8 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         )
         # Only wrap when heartbeat is enabled to avoid overhead.
         if self._heartbeat is not None:
+            from ._websocket.heartbeat import _WebSocketDataReceivedCallbackWrapper
+
             parser = _WebSocketDataReceivedCallbackWrapper(
                 parser, self._reset_heartbeat, loop
             )

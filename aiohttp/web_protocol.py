@@ -609,6 +609,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, request_handler)
+                task: asyncio.Task[Any]
                 if sys.version_info >= (3, 12):
                     task = asyncio.Task(coro, loop=loop, eager_start=True)
                 else:
@@ -618,13 +619,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 except ConnectionError:
                     self.log_debug("Ignored premature client disconnection")
                     break
-
-                # Drop the processed task from asyncio.Task.all_tasks() early
-                del task
-                # https://github.com/python/mypy/issues/14309
-                if reset:  # type: ignore[possibly-undefined]
-                    self.log_debug("Ignored premature client disconnection 2")
-                    break
+                else:
+                    # Drop the processed task from asyncio.Task.all_tasks() early
+                    del task
+                    if reset:
+                        self.log_debug("Ignored premature client disconnection 2")
+                        break
 
                 # notify server about keep-alive
                 self._keepalive = bool(resp.keep_alive)
