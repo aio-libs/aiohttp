@@ -672,7 +672,9 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
     async def multipart(self) -> MultipartReader:
         """Return async iterator to process BODY as multipart."""
-        return MultipartReader(self._headers, self._payload)
+        return MultipartReader(
+            self._headers, self._payload, client_max_size=self._client_max_size
+        )
 
     async def post(self) -> "MultiDictProxy[str | bytes | FileField]":
         """Return POST parameters."""

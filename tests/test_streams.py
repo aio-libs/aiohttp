@@ -1109,7 +1109,7 @@ async def test_empty_stream_reader() -> None:
     assert s.set_exception(ValueError()) is None  # type: ignore[func-returns-value]
     assert s.exception() is None
     assert s.feed_eof() is None  # type: ignore[func-returns-value]
-    assert s.feed_data(b"data") is None  # type: ignore[func-returns-value]
+    assert s.feed_data(b"data") is False
     assert s.at_eof()
     await s.wait_eof()
     assert await s.read() == b""

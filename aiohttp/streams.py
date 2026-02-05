@@ -218,8 +218,8 @@ class StreamReader(AsyncStreamReaderMixin):
             self._eof_waiter = None
             set_result(waiter, None)
 
-        if self._protocol._reading_paused:
-            self._protocol.resume_reading()
+        # At EOF the parser is done, there won't be unprocessed data.
+        self._protocol.resume_reading(resume_parser=False)
 
         for cb in self._eof_callbacks:
             try:
@@ -273,11 +273,11 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer.appendleft(data)
         self._eof_counter = 0
 
-    def feed_data(self, data: bytes) -> None:
+    def feed_data(self, data: bytes) -> bool:
         assert not self._eof, "feed_data after feed_eof"
 
         if not data:
-            return
+            return False
 
         data_len = len(data)
         self._size += data_len
@@ -289,8 +289,9 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
             set_result(waiter, None)
 
-        if self._size > self._high_water and not self._protocol._reading_paused:
+        if self._size > self._high_water:
             self._protocol.pause_reading()
+        return False
 
     def begin_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
@@ -327,10 +328,7 @@ class StreamReader(AsyncStreamReaderMixin):
         # If we get too many small chunks before self._high_water is reached, then any
         # .read() call becomes computationally expensive, and could block the event loop
         # for too long, hence an additional self._high_water_chunks here.
-        if (
-            len(self._http_chunk_splits) > self._high_water_chunks
-            and not self._protocol._reading_paused
-        ):
+        if len(self._http_chunk_splits) > self._high_water_chunks:
             self._protocol.pause_reading()
 
         # wake up readchunk when end of http chunk received
@@ -527,13 +525,9 @@ class StreamReader(AsyncStreamReaderMixin):
         while chunk_splits and chunk_splits[0] < self._cursor:
             chunk_splits.popleft()
 
-        if (
-            self._protocol._reading_paused
-            and self._size < self._low_water
-            and (
-                self._http_chunk_splits is None
-                or len(self._http_chunk_splits) < self._low_water_chunks
-            )
+        if self._size < self._low_water and (
+            self._http_chunk_splits is None
+            or len(self._http_chunk_splits) < self._low_water_chunks
         ):
             self._protocol.resume_reading()
         return data
@@ -593,8 +587,8 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def wait_eof(self) -> None:
         return
 
-    def feed_data(self, data: bytes) -> None:
-        pass
+    def feed_data(self, data: bytes) -> bool:
+        return False
 
     async def readline(self) -> bytes:
         return b""

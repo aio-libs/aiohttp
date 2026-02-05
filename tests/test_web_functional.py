@@ -328,6 +328,27 @@ async def test_multipart(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
+async def test_multipart_client_max_size(aiohttp_client: AiohttpClient) -> None:
+    with multipart.MultipartWriter() as writer:
+        writer.append("A" * 1020)
+
+    async def handler(request: web.Request) -> web.Response:
+        reader = await request.multipart()
+        assert isinstance(reader, multipart.MultipartReader)
+
+        part = await reader.next()
+        assert isinstance(part, multipart.BodyPartReader)
+        await part.text()  # Should raise HttpRequestEntityTooLarge
+        assert False
+
+    app = web.Application(client_max_size=1000)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", data=writer) as resp:
+        assert resp.status == 413
+
+
 async def test_multipart_empty(aiohttp_client: AiohttpClient) -> None:
     with multipart.MultipartWriter() as writer:
         pass
