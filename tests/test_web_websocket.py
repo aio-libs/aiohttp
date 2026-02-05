@@ -175,6 +175,22 @@ async def test_heartbeat_timeout(make_request: _RequestMaker) -> None:
     assert ws.closed
 
 
+async def test_heartbeat_reset_coalesces_on_data(
+    make_request: _RequestMaker,
+) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    await ws.prepare(req)
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        ws._on_data_received()
+        ws._on_data_received()
+
+        await asyncio.sleep(0)
+
+        assert reset.call_count == 1
+
+
 def test_websocket_ready() -> None:
     websocket_ready = WebSocketReady(True, "chat")
     assert websocket_ready.ok is True

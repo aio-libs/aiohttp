@@ -659,6 +659,31 @@ async def test_receive_runtime_err(loop: asyncio.AbstractEventLoop) -> None:
         await resp.receive()
 
 
+async def test_heartbeat_reset_coalesces_on_data(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    response = mock.Mock()
+    response.connection = None
+    resp = client.ClientWebSocketResponse(
+        mock.Mock(),
+        mock.Mock(),
+        None,
+        response,
+        ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
+        heartbeat=0.05,
+    )
+    with mock.patch.object(resp, "_reset_heartbeat") as reset:
+        resp._on_data_received()
+        resp._on_data_received()
+
+        await asyncio.sleep(0)
+
+        assert reset.call_count == 1
+
+
 async def test_ws_connect_close_resp_on_err(
     loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:
