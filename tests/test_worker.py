@@ -3,7 +3,7 @@ import asyncio
 import os
 import socket
 import ssl
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
@@ -42,7 +42,7 @@ class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
     pass
 
 
-PARAMS: list[type[base_worker.GunicornWebWorker]] = [AsyncioWorker]
+PARAMS = [AsyncioWorker]
 if uvloop is not None:
 
     class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
@@ -57,9 +57,8 @@ def worker(
 ) -> base_worker.GunicornWebWorker:
     asyncio.set_event_loop(loop)
     ret = request.param()
-    # `notify` is a gunicorn method; in tests we replace it with a mock.
     ret.notify = mock.Mock()
-    return cast(base_worker.GunicornWebWorker, ret)
+    return ret  # type: ignore[no-any-return]
 
 
 def test_init_process(worker: base_worker.GunicornWebWorker) -> None:
@@ -221,7 +220,7 @@ async def test__run_ok_parent_changed(
 
     await worker._run()
 
-    cast(mock.Mock, worker.notify).assert_called_with()
+    worker.notify.assert_called_with()
     worker.log.info.assert_called_with("Parent changed, shutting down: %s", worker)
 
 
@@ -249,7 +248,7 @@ async def test__run_exc(
     loop.call_later(0.1, raiser)
     await worker._run()
 
-    cast(mock.Mock, worker.notify).assert_called_with()
+    worker.notify.assert_called_with()
 
 
 def test__create_ssl_context_without_certs_and_ciphers(

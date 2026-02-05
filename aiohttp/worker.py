@@ -30,15 +30,9 @@ except ImportError:  # pragma: no cover
 __all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker")
 
 
-# `gunicorn` is an optional dependency and doesn't ship typing information.
-# Treat the base class as `Any` so strict mypy settings don't trip over it.
-_GunicornWorker: Any = base.Worker
-
-
-class GunicornWebWorker(_GunicornWorker):  # type: ignore[misc,no-any-unimported]
+class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
-    alive: bool
 
     def __init__(self, *args: Any, **kw: Any) -> None:
         super().__init__(*args, **kw)
@@ -115,7 +109,7 @@ class GunicornWebWorker(_GunicornWorker):  # type: ignore[misc,no-any-unimported
         # If our parent changed then we shut down.
         pid = os.getpid()
         try:
-            while self.alive:
+            while self.alive:  # type: ignore[has-type]
                 self.notify()
 
                 cnt = server.requests_count

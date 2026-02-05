@@ -231,9 +231,7 @@ class ZLibCompressor:
         # For large payloads, offload compression to executor to avoid blocking event loop
         should_use_executor = (
             self._max_sync_chunk_size is not None
-            # `Buffer` is not guaranteed to be `Sized` in typing terms.
-            # `memoryview` provides a sized view of any buffer-protocol object.
-            and len(memoryview(data)) > self._max_sync_chunk_size
+            and len(data) > self._max_sync_chunk_size
         )
         if should_use_executor:
             return await asyncio.get_running_loop().run_in_executor(
