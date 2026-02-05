@@ -332,7 +332,7 @@ class BodyPartReader:
             return decoded_data
         return data
 
-    async def read_chunk(self, size: int = chunk_size, decode: bool = False) -> bytes:
+    async def read_chunk(self, size: int = chunk_size) -> bytes:
         """Reads body part content chunk of the specified size.
 
         size: chunk size
