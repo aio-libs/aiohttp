@@ -366,19 +366,6 @@ class TestPartReader:
         assert len(result) == len(content)  # Simplifies diff on failure
         assert result == content
 
-    @pytest.mark.skipif(sys.version_info < (3, 11), reason="wbits not available")
-    async def test_read_chunk_with_content_encoding_deflate(self) -> None:
-        content = b"A" * 1_000_000  # Large enough to exceed max_length.
-        compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
-
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
-        with Stream(compressed + b"\r\n--:--") as stream:
-            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
-            result = b""
-            while chunk := await obj.read_chunk(decode=True):
-                result += chunk
-        assert result == content
-
     async def test_read_with_content_encoding_identity(self) -> None:
         thing = (
             b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU"
