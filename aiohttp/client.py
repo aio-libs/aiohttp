@@ -37,7 +37,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL, Query
 
 from . import hdrs, http, payload
-from ._websocket.reader import WebSocketDataQueue
+from ._websocket.reader import WebSocketDataQueue, _WebSocketDataReceivedCallbackWrapper
 from .abc import AbstractCookieJar
 from .client_exceptions import (
     ClientConnectionError,
@@ -1203,9 +1203,6 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
-            conn_proto.set_parser(
-                WebSocketReader(reader, max_msg_size, decode_text=decode_text), reader
-            )
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
@@ -1217,7 +1214,7 @@ class ClientSession:
             resp.close()
             raise
         else:
-            return self._ws_response_class(
+            ws_resp = self._ws_response_class(
                 reader,
                 writer,
                 protocol,
@@ -1230,6 +1227,16 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
+            parser = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
+            # Only wrap when heartbeat is enabled to avoid overhead.
+            if heartbeat is not None:
+                parser = _WebSocketDataReceivedCallbackWrapper(
+                    parser,
+                    ws_resp._reset_heartbeat,
+                    self._loop,
+                )
+            conn_proto.set_parser(parser, reader)
+            return ws_resp
 
     def _prepare_headers(self, headers: LooseHeaders | None) -> "CIMultiDict[str]":
         """Add default headers and transform it to CIMultiDict"""
