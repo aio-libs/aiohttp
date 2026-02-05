@@ -55,9 +55,9 @@ mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.10.0
     # via pre-commit
-packaging==25.0
+packaging==26.0
     # via pytest
-pathspec==1.0.3
+pathspec==1.0.4
     # via mypy
 platformdirs==4.5.1
     # via virtualenv
@@ -69,7 +69,7 @@ proxy-py==2.4.10
     # via -r requirements/lint.in
 pycares==5.0.1
     # via aiodns
-pycparser==2.23
+pycparser==3.0
     # via cffi
 pydantic==2.12.5
     # via python-on-whales
@@ -94,13 +94,13 @@ python-on-whales==0.80.0
     # via -r requirements/lint.in
 pyyaml==6.0.3
     # via pre-commit
-rich==14.2.0
+rich==14.3.2
     # via pytest-codspeed
 six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
     # via -r requirements/lint.in
-tomli==2.3.0
+tomli==2.4.0
     # via
     #   mypy
     #   pytest

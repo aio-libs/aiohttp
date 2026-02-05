@@ -533,7 +533,7 @@ class BodyPartReader:
         return data
 
     async def decode_iter(self, data: bytes) -> AsyncIterator[bytes]:
-        """Decodes data asynchronously.
+        """Async generator that yields decoded data chunks.
 
         Decodes data according the specified Content-Encoding
         or Content-Transfer-Encoding headers value.

@@ -716,7 +716,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         tmp = await self._loop.run_in_executor(
                             None, tempfile.TemporaryFile
                         )
-                        while chunk := await field.read_chunk(size=2**16):
+                        while chunk := await field.read_chunk(size=2**18):
                             async for decoded_chunk in field.decode_iter(chunk):
                                 await self._loop.run_in_executor(
                                     None, tmp.write, decoded_chunk

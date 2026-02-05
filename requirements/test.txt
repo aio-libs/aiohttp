@@ -27,7 +27,7 @@ cffi==2.0.0
     #   pytest-codspeed
 click==8.3.1
     # via wait-for-it
-coverage==7.13.1
+coverage==7.13.2
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -45,7 +45,7 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==23.0.0
+gunicorn==25.0.1
     # via -r requirements/base.in
 idna==3.7
     # via
@@ -61,7 +61,7 @@ markdown-it-py==4.0.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.7.0
+multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -69,11 +69,11 @@ mypy==1.19.1 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
-packaging==25.0
+packaging==26.0
     # via
     #   gunicorn
     #   pytest
-pathspec==1.0.3
+pathspec==1.0.4
     # via mypy
 pkgconfig==1.5.5
     # via -r requirements/test-common.in
@@ -89,7 +89,7 @@ proxy-py==2.4.10
     # via -r requirements/test-common.in
 pycares==5.0.1
     # via aiodns
-pycparser==2.23
+pycparser==3.0
     # via cffi
 pydantic==2.12.5
     # via python-on-whales
@@ -118,13 +118,13 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.80.0
     # via -r requirements/test-common.in
-rich==14.2.0
+rich==14.3.2
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
 six==1.17.0
     # via python-dateutil
-tomli==2.3.0
+tomli==2.4.0
     # via
     #   coverage
     #   mypy

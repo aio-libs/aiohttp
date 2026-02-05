@@ -14,7 +14,7 @@ cffi==2.0.0
     #   pytest-codspeed
 click==8.3.1
     # via wait-for-it
-coverage==7.13.1
+coverage==7.13.2
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -44,9 +44,9 @@ mypy==1.19.1 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
-packaging==25.0
+packaging==26.0
     # via pytest
-pathspec==1.0.3
+pathspec==1.0.4
     # via mypy
 pkgconfig==1.5.5
     # via -r requirements/test-common.in
@@ -56,7 +56,7 @@ pluggy==1.6.0
     #   pytest-cov
 proxy-py==2.4.10
     # via -r requirements/test-common.in
-pycparser==2.23
+pycparser==3.0
     # via cffi
 pydantic==2.12.5
     # via python-on-whales
@@ -85,13 +85,13 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.80.0
     # via -r requirements/test-common.in
-rich==14.2.0
+rich==14.3.2
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
 six==1.17.0
     # via python-dateutil
-tomli==2.3.0
+tomli==2.4.0
     # via
     #   coverage
     #   mypy
