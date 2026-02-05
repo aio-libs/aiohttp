@@ -402,14 +402,15 @@ class TestPartReader:
                 result += obj.decode(chunk)
         assert b"Time to Relax!" == result
 
-    async def test_decode_async_with_content_transfer_encoding_base64(self) -> None:
+    async def test_decode_iter_with_content_transfer_encoding_base64(self) -> None:
         h = CIMultiDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
         with Stream(b"VG\r\r\nltZSB0byBSZ\r\nWxheCE=\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = b""
             while not obj.at_eof():
                 chunk = await obj.read_chunk(size=6)
-                result += await obj.decode_async(chunk)
+                async for decoded_chunk in obj.decode_iter(chunk):
+                    result += decoded_chunk
         assert b"Time to Relax!" == result
 
     async def test_decode_with_content_encoding_deflate(self) -> None:
