@@ -1227,7 +1227,8 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
-            parser = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
+            # The parser may be wrapped to reset heartbeat on inbound bytes.
+            parser: Any = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
             # Only wrap when heartbeat is enabled to avoid overhead.
             if heartbeat is not None:
                 parser = _WebSocketDataReceivedCallbackWrapper(
