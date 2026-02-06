@@ -4,44 +4,46 @@
 import argparse
 import asyncio
 import sys
+from collections.abc import Callable
 from contextlib import suppress
 
 import aiohttp
 
 
-async def start_client(url: str) -> None:
-    name = input("Please enter your name: ")
+async def dispatch(ws: aiohttp.ClientWebSocketResponse) -> None:
+    while True:
+        msg = await ws.receive()
 
-    async def dispatch(ws: aiohttp.ClientWebSocketResponse) -> None:
-        while True:
-            msg = await ws.receive()
+        if msg.type is aiohttp.WSMsgType.TEXT:
+            print("Text: ", msg.data.strip())
+        elif msg.type is aiohttp.WSMsgType.BINARY:
+            print("Binary: ", msg.data)
+        elif msg.type is aiohttp.WSMsgType.PING:
+            await ws.pong()
+        elif msg.type is aiohttp.WSMsgType.PONG:
+            print("Pong received")
+        else:
+            if msg.type is aiohttp.WSMsgType.CLOSE:
+                await ws.close()
+            elif msg.type is aiohttp.WSMsgType.ERROR:
+                print("Error during receive %s" % ws.exception())
+            break
 
-            if msg.type is aiohttp.WSMsgType.TEXT:
-                print("Text: ", msg.data.strip())
-            elif msg.type is aiohttp.WSMsgType.BINARY:
-                print("Binary: ", msg.data)
-            elif msg.type is aiohttp.WSMsgType.PING:
-                await ws.pong()
-            elif msg.type is aiohttp.WSMsgType.PONG:
-                print("Pong received")
-            else:
-                if msg.type is aiohttp.WSMsgType.CLOSE:
-                    await ws.close()
-                elif msg.type is aiohttp.WSMsgType.ERROR:
-                    print("Error during receive %s" % ws.exception())
-                elif msg.type is aiohttp.WSMsgType.CLOSED:
-                    pass
 
-                break
+async def start_client(
+    url: str,
+    name: str | None = None,
+    input_func: Callable[[], str] | None = None,
+) -> None:
+    client_name = name if name is not None else input("Please enter your name: ")
+    read_input = input_func if input_func is not None else sys.stdin.readline
 
     async with aiohttp.ClientSession() as session:
         async with session.ws_connect(url, autoclose=False, autoping=False) as ws:
-            # send request
-            dispatch_task = asyncio.create_task(dispatch(ws))
+            dispatch_task: asyncio.Task[None] = asyncio.create_task(dispatch(ws))
 
-            # Exit with Ctrl+D
-            while line := await asyncio.to_thread(sys.stdin.readline):
-                await ws.send_str(name + ": " + line)
+            while line := await asyncio.to_thread(read_input):
+                await ws.send_str(client_name + ": " + line)
 
             dispatch_task.cancel()
             with suppress(asyncio.CancelledError):

@@ -23,9 +23,13 @@ async def wshandle(request: web.Request) -> web.StreamResponse:
     return ws
 
 
-app = web.Application()
-app.add_routes(
-    [web.get("/", handle), web.get("/echo", wshandle), web.get("/{name}", handle)]
-)
+def init() -> web.Application:
+    app = web.Application()
+    app.add_routes(
+        [web.get("/", handle), web.get("/echo", wshandle), web.get("/{name}", handle)]
+    )
+    return app
 
-web.run_app(app)
+
+if __name__ == "__main__":
+    web.run_app(init())

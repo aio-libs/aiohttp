@@ -3,13 +3,19 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
-
-import valkey.asyncio as valkey
+from typing import Any
 
 from aiohttp import web
 
+valkey: Any
+try:
+    import valkey.asyncio as valkey
+except ImportError:
+    valkey = None
+
 valkey_listener = web.AppKey("valkey_listener", asyncio.Task[None])
 websockets = web.AppKey("websockets", list[web.WebSocketResponse])
+skip_valkey_key = web.AppKey("skip_valkey", bool)
 
 
 async def websocket_handler(request: web.Request) -> web.StreamResponse:
@@ -38,7 +44,6 @@ async def listen_to_valkey(app: web.Application) -> None:
         async for msg in sub.listen():
             if msg["type"] != "message":
                 continue
-            # Forward message to all connected websockets:
             for ws in app[websockets]:
                 await ws.send_str(f"{channel}: {msg}")
             print(f"message in {channel}: {msg}")
@@ -46,24 +51,27 @@ async def listen_to_valkey(app: web.Application) -> None:
 
 @asynccontextmanager
 async def background_tasks(app: web.Application) -> AsyncIterator[None]:
+    if app.get(skip_valkey_key, False):
+        yield
+        return
+
     app[valkey_listener] = asyncio.create_task(listen_to_valkey(app))
-
     yield
-
     print("cleanup background tasks...")
     app[valkey_listener].cancel()
     with suppress(asyncio.CancelledError):
         await app[valkey_listener]
 
 
-def init() -> web.Application:
+def init(skip_valkey: bool = False) -> web.Application:
     app = web.Application()
-    l: list[web.WebSocketResponse] = []
-    app[websockets] = l
+    app[websockets] = []
+    app[skip_valkey_key] = skip_valkey
     app.router.add_get("/news", websocket_handler)
     app.cleanup_ctx.append(background_tasks)
     app.on_shutdown.append(on_shutdown)
     return app
 
 
-web.run_app(init())
+if __name__ == "__main__":
+    web.run_app(init())
