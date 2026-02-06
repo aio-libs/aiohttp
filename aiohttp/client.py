@@ -107,8 +107,8 @@ from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
 from .typedefs import (
+    JSONBytesEncoder,
     JSONEncoder,
-    JSONEncoderBytes,
     LooseCookies,
     LooseHeaders,
     StrOrURL,
@@ -311,7 +311,7 @@ class ClientSession:
         skip_auto_headers: Iterable[str] | None = None,
         auth: BasicAuth | None = None,
         json_serialize: JSONEncoder = json.dumps,
-        json_serialize_bytes: JSONEncoderBytes | None = None,
+        json_serialize_bytes: JSONBytesEncoder | None = None,
         request_class: type[ClientRequest] = ClientRequest,
         response_class: type[ClientResponse] = ClientResponse,
         ws_response_class: type[ClientWebSocketResponse] = ClientWebSocketResponse,

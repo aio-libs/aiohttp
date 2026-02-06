@@ -1,5 +1,5 @@
 Added explicit APIs for bytes-returning JSON serializer:
-``JSONEncoderBytes`` type, ``JsonBytesPayload``,
+``JSONBytesEncoder`` type, ``JsonBytesPayload``,
 ``json_bytes_response()``, ``WebSocketResponse.send_json_bytes()`` and
 ``ClientWebSocketResponse.send_json_bytes()`` methods, and
 ``json_serialize_bytes`` parameter for ``ClientSession``

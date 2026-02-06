@@ -37,7 +37,7 @@ from .http import (
 from .http_websocket import _INTERNAL_RECEIVE_TYPES, WSMessageError
 from .log import ws_logger
 from .streams import EofStream
-from .typedefs import JSONDecoder, JSONEncoder, JSONEncoderBytes
+from .typedefs import JSONBytesEncoder, JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
@@ -452,9 +452,10 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
     async def send_json_bytes(
         self,
-        data: Any,
-        dumps: JSONEncoderBytes,
+        data: object,
         compress: int | None = None,
+        *,
+        dumps: JSONBytesEncoder,
     ) -> None:
         """Send JSON data using a bytes-returning encoder as a binary frame.
 

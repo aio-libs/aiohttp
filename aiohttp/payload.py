@@ -23,7 +23,7 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import JSONEncoder, JSONEncoderBytes
+from .typedefs import JSONBytesEncoder, JSONEncoder
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -949,11 +949,11 @@ class JsonBytesPayload(BytesPayload):
 
     def __init__(
         self,
-        value: Any,
-        dumps: JSONEncoderBytes,
+        value: object,
+        dumps: JSONBytesEncoder,
         content_type: str = "application/json",
-        *args: Any,
-        **kwargs: Any,
+        *args: object,
+        **kwargs: object,
     ) -> None:
         super().__init__(
             dumps(value),

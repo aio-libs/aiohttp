@@ -24,9 +24,9 @@ from .streams import EofStream
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
+    JSONBytesEncoder,
     JSONDecoder,
     JSONEncoder,
-    JSONEncoderBytes,
 )
 
 if sys.version_info >= (3, 13):
@@ -276,9 +276,10 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
 
     async def send_json_bytes(
         self,
-        data: Any,
-        dumps: JSONEncoderBytes,
+        data: object,
         compress: int | None = None,
+        *,
+        dumps: JSONBytesEncoder,
     ) -> None:
         """Send JSON data using a bytes-returning encoder as a binary frame.
 

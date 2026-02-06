@@ -32,7 +32,7 @@ from .helpers import (
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
-from .typedefs import JSONEncoder, JSONEncoderBytes, LooseHeaders
+from .typedefs import JSONBytesEncoder, JSONEncoder, LooseHeaders
 
 REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
 LARGE_BODY_SIZE = 1024**2
@@ -767,9 +767,9 @@ def json_response(
 
 
 def json_bytes_response(
-    data: Any = sentinel,
+    data: object = sentinel,
     *,
-    dumps: JSONEncoderBytes,
+    dumps: JSONBytesEncoder,
     body: bytes | None = None,
     status: int = 200,
     reason: str | None = None,
@@ -782,7 +782,7 @@ def json_bytes_response(
     instead of str, avoiding the encode/decode overhead.
     """
     if data is not sentinel:
-        if body:
+        if body is not None:
             raise ValueError("only one of data or body should be specified")
         else:
             body = dumps(data)

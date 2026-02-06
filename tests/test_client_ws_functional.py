@@ -259,7 +259,7 @@ async def test_send_json_bytes_custom_encoder(aiohttp_client: AiohttpClient) -> 
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/")
-    await resp.send_json_bytes({"test": "value"}, custom_encoder)
+    await resp.send_json_bytes({"test": "value"}, dumps=custom_encoder)
     await resp.close()
 
 
