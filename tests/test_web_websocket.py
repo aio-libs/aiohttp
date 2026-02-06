@@ -119,6 +119,23 @@ async def test_nonstarted_receive_str() -> None:
         await ws.receive_str()
 
 
+async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._heartbeat_reset_handle = loop.call_soon(lambda: None)
+    ws._need_heartbeat_reset = True
+
+    handle = ws._heartbeat_reset_handle
+    assert handle is not None
+
+    ws._cancel_heartbeat()
+
+    assert ws._heartbeat_reset_handle is None
+    assert ws._need_heartbeat_reset is False
+    assert handle.cancelled()
+
+
 async def test_nonstarted_receive_bytes() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
