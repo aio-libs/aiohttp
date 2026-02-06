@@ -1,6 +1,7 @@
 Added explicit APIs for bytes-returning JSON serializer:
 ``JSONBytesEncoder`` type, ``JsonBytesPayload``,
-``json_bytes_response()``, ``WebSocketResponse.send_json_bytes()`` and
-``ClientWebSocketResponse.send_json_bytes()`` methods, and
-``json_serialize_bytes`` parameter for ``ClientSession``
+:func:`~aiohttp.web.json_bytes_response`,
+:meth:`~aiohttp.web.WebSocketResponse.send_json_bytes` and
+:meth:`~aiohttp.ClientWebSocketResponse.send_json_bytes` methods, and
+``json_serialize_bytes`` parameter for :class:`~aiohttp.ClientSession`
 -- by :user:`kevinpark1217`.

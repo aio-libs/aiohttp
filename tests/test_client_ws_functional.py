@@ -241,9 +241,6 @@ async def test_send_json_bytes_client(aiohttp_client: AiohttpClient) -> None:
 async def test_send_json_bytes_custom_encoder(aiohttp_client: AiohttpClient) -> None:
     """Test send_json_bytes with custom bytes-returning encoder."""
 
-    def custom_encoder(obj: object) -> bytes:
-        return json.dumps(obj, separators=(",", ":")).encode("utf-8")
-
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
@@ -259,7 +256,10 @@ async def test_send_json_bytes_custom_encoder(aiohttp_client: AiohttpClient) -> 
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/")
-    await resp.send_json_bytes({"test": "value"}, dumps=custom_encoder)
+    await resp.send_json_bytes(
+        {"test": "value"},
+        dumps=lambda x: json.dumps(x, separators=(",", ":")).encode("utf-8"),
+    )
     await resp.close()
 
 

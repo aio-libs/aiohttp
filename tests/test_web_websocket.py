@@ -170,6 +170,10 @@ async def test_send_json_bytes_nonjson(make_request: _RequestMaker) -> None:
     with pytest.raises(TypeError):
         await ws.send_json_bytes(set(), dumps=lambda x: json.dumps(x).encode("utf-8"))
 
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    await ws.close()
+
 
 async def test_write_non_prepared() -> None:
     ws = web.WebSocketResponse()
