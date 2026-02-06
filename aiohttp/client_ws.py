@@ -132,8 +132,8 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self._heartbeat_reset_handle = None
         if not self._need_heartbeat_reset:
             return
-        self._need_heartbeat_reset = False
         self._reset_heartbeat()
+        self._need_heartbeat_reset = False
 
     def _reset_heartbeat(self) -> None:
         if self._heartbeat is None:
@@ -158,6 +158,12 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
 
     def _send_heartbeat(self) -> None:
         self._heartbeat_cb = None
+
+        # If heartbeat reset is pending (data is being received), skip sending
+        # the ping and let the reset callback handle rescheduling the heartbeat.
+        if self._need_heartbeat_reset:
+            return
+
         loop = self._loop
         now = loop.time()
         if now < self._heartbeat_when:
