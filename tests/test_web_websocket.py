@@ -38,6 +38,7 @@ def app(loop: asyncio.AbstractEventLoop) -> web.Application:
 def protocol() -> web.RequestHandler[web.Request]:
     ret = mock.Mock()
     ret.set_parser.return_value = ret
+    ret._timeout_ceil_threshold = 5
     return ret
 
 
