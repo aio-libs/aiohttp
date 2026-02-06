@@ -81,7 +81,7 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==24.1.1
+gunicorn==25.0.1
     # via -r requirements/base.in
 identify==2.6.16
     # via pre-commit
@@ -203,7 +203,7 @@ requests==2.32.5
     # via
     #   sphinx
     #   sphinxcontrib-spelling
-rich==14.3.1
+rich==14.3.2
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
@@ -234,7 +234,7 @@ sphinxcontrib-spelling==8.0.2 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
-tomli==2.3.0
+tomli==2.4.0
     # via
     #   build
     #   coverage
@@ -289,7 +289,7 @@ zlib-ng==1.0.0
     #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==25.3
+pip==26.0.1
     # via pip-tools
 setuptools==80.10.2
     # via pip-tools
