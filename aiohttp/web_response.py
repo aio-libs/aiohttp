@@ -767,7 +767,7 @@ def json_response(
 
 
 def json_bytes_response(
-    data: object = sentinel,
+    data: Any = sentinel,
     *,
     dumps: JSONBytesEncoder,
     body: bytes | None = None,

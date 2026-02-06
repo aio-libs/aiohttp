@@ -1474,9 +1474,9 @@ class TestJSONBytesResponse:
     def test_passing_body_only(self) -> None:
         resp = web.json_bytes_response(
             dumps=lambda x: json.dumps(x).encode("utf-8"),
-            body=json.dumps("jaysawn").encode("utf-8"),
+            body=b'"jaysawn"',
         )
-        assert resp.body == json.dumps("jaysawn").encode("utf-8")
+        assert resp.body == b'"jaysawn"'
 
     def test_data_and_body_raises_value_error(self) -> None:
         with pytest.raises(ValueError) as excinfo:

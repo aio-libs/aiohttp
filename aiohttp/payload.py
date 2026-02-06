@@ -949,11 +949,11 @@ class JsonBytesPayload(BytesPayload):
 
     def __init__(
         self,
-        value: object,
+        value: Any,
         dumps: JSONBytesEncoder,
         content_type: str = "application/json",
-        *args: object,
-        **kwargs: object,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             dumps(value),

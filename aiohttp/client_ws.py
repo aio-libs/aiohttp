@@ -276,7 +276,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
 
     async def send_json_bytes(
         self,
-        data: object,
+        data: Any,
         compress: int | None = None,
         *,
         dumps: JSONBytesEncoder,

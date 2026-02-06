@@ -1401,8 +1401,8 @@ Return :class:`Response` with predefined ``'application/json'``
 content type and *data* encoded by ``dumps`` parameter
 which must return :class:`bytes` directly (e.g. ``orjson.dumps``).
 
-Use this when your JSON encoder returns bytes instead of str,
-avoiding the str-to-bytes encoding overhead.
+Use this when your JSON encoder returns :class:`bytes` instead of :class:`str`,
+avoiding the :class:`str`-to-:class:`bytes` encoding overhead.
 
 
 .. class:: ResponseKey(name, t)
