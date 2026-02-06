@@ -712,6 +712,53 @@ async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle(
     assert handle.cancelled()
 
 
+async def test_flush_heartbeat_reset_returns_early_when_not_needed(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    response = mock.Mock()
+    response.connection = None
+    resp = client.ClientWebSocketResponse(
+        mock.Mock(),
+        mock.Mock(),
+        None,
+        response,
+        ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
+        heartbeat=0.05,
+    )
+    resp._need_heartbeat_reset = False
+
+    with mock.patch.object(resp, "_reset_heartbeat") as reset:
+        resp._flush_heartbeat_reset()
+        reset.assert_not_called()
+
+
+async def test_send_heartbeat_returns_early_when_reset_is_pending(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    response = mock.Mock()
+    response.connection = None
+    writer = mock.Mock()
+    resp = client.ClientWebSocketResponse(
+        mock.Mock(),
+        writer,
+        None,
+        response,
+        ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
+        heartbeat=0.05,
+    )
+    resp._need_heartbeat_reset = True
+
+    resp._send_heartbeat()
+
+    writer.send_frame.assert_not_called()
+
+
 async def test_ws_connect_close_resp_on_err(
     loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
 ) -> None:

@@ -136,6 +136,25 @@ async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle(
     assert scheduled.cancelled()
 
 
+async def test_flush_heartbeat_reset_returns_early_when_not_needed() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._need_heartbeat_reset = False
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        ws._flush_heartbeat_reset()
+        reset.assert_not_called()
+
+
+async def test_send_heartbeat_returns_early_when_reset_is_pending() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._need_heartbeat_reset = True
+
+    ws._send_heartbeat()
+
+    assert ws._pong_response_cb is None
+    assert ws._ping_task is None
+
+
 async def test_nonstarted_receive_bytes() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
