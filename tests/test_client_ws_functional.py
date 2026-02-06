@@ -848,8 +848,6 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
 
         frame = header + payload
         for i in range(0, len(frame), chunk_size):
-            if transport.is_closing():
-                break
             transport.write(frame[i : i + chunk_size])
             await asyncio.sleep(delay)
 
