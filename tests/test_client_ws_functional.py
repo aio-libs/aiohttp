@@ -843,13 +843,8 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
         transport = ws._writer.transport
 
         # Server-to-client frames are not masked.
-        length = len(payload)
-        if length < 126:
-            header = bytes((0x82, length))
-        elif length < 65536:
-            header = bytes((0x82, 126)) + struct.pack("!H", length)
-        else:
-            header = bytes((0x82, 127)) + struct.pack("!Q", length)
+        length = len(payload) # payload is fixed length of 2048 bytes
+        header = bytes((0x82, 126)) + struct.pack("!H", length)
 
         frame = header + payload
         for i in range(0, len(frame), chunk_size):
