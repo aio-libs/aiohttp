@@ -64,7 +64,7 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/psf/black-pre-commit-mirror
-  rev: '25.9.0'
+  rev: '26.1.0'
   hooks:
     - id: black
       language_version: python3 # Should be a command that runs python
@@ -99,7 +99,7 @@ repos:
   - id: detect-private-key
     exclude: ^examples/
 - repo: https://github.com/asottile/pyupgrade
-  rev: 'v3.21.0'
+  rev: 'v3.21.2'
   hooks:
   - id: pyupgrade
     args: ['--py37-plus']
