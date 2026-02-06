@@ -170,6 +170,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_task_handler",
         "_upgrade",
         "_payload_parser",
+        "_data_received_cb",
         "_request_parser",
         "logger",
         "access_log",
@@ -226,6 +227,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         self._messages: deque[_MsgType] = deque()
         self._message_tail = b""
+        self._data_received_cb: Callable[[], None] | None = None
 
         self._waiter: asyncio.Future[None] | None = None
         self._handler_waiter: asyncio.Future[None] | None = None
@@ -402,13 +404,18 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._payload_parser.feed_eof()
             self._payload_parser = None
 
-    def set_parser(self, parser: Any) -> None:
+    def set_parser(
+        self, parser: Any, data_received_cb: Callable[[], None] | None = None
+    ) -> None:
         # Actual type is WebReader
         assert self._payload_parser is None
 
         self._payload_parser = parser
+        self._data_received_cb = data_received_cb
 
         if self._message_tail:
+            if self._data_received_cb is not None:
+                self._data_received_cb()
             self._payload_parser.feed_data(self._message_tail)
             self._message_tail = b""
 
@@ -450,6 +457,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         # feed payload
         elif data:
+            if self._data_received_cb is not None:
+                self._data_received_cb()
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
                 self.close()

@@ -968,7 +968,8 @@ and :ref:`aiohttp-web-signals` handlers::
    :param float heartbeat: Send `ping` message every `heartbeat`
                            seconds and wait `pong` response, close
                            connection if `pong` response is not
-                           received. The timer is reset on any data reception.
+                           received. The timer is reset on any inbound data
+                           reception (coalesced per event loop iteration).
 
    :param float timeout: Timeout value for the ``close``
                          operation. After sending the close websocket message,
