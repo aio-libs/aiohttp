@@ -340,6 +340,7 @@ Serhiy Storchaka
 Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
+Soheil Dolatabadi
 Stanislas Plum
 Stanislav Prokop
 Stefan Tjarks

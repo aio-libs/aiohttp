@@ -8,6 +8,7 @@ import warnings
 from collections import deque
 from collections.abc import Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
+from types import SimpleNamespace
 from typing import Any, NoReturn, TypedDict, cast
 from unittest import mock
 from uuid import uuid4
@@ -25,9 +26,19 @@ from aiohttp.client_reqrep import ClientRequest, ConnectionKey
 from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
+from aiohttp.payload import Payload
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestServer
-from aiohttp.tracing import Trace
+from aiohttp.tracing import (
+    Trace,
+    TraceRequestChunkSentParams,
+    TraceRequestEndParams,
+    TraceRequestExceptionParams,
+    TraceRequestHeadersSentParams,
+    TraceRequestRedirectParams,
+    TraceRequestStartParams,
+    TraceResponseChunkReceivedParams,
+)
 
 
 class _Params(TypedDict):
@@ -557,9 +568,8 @@ async def test_reraise_os_error(
     err = OSError(1, "permission error")
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
-    req._send = mock.AsyncMock(side_effect=err)
-    req._body = mock.Mock()
-    req._body.close = mock.AsyncMock()
+    req._send.side_effect = err
+    req._body = mock.create_autospec(Payload, spec_set=True, instance=True)
     session = await create_session(request_class=req_factory)
 
     async def create_connection(
@@ -589,9 +599,8 @@ async def test_close_conn_on_error(
     err = UnexpectedException("permission error")
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
-    req._send = mock.AsyncMock(side_effect=err)
-    req._body = mock.Mock()
-    req._body.close = mock.AsyncMock()
+    req._send.side_effect = err
+    req._body = mock.create_autospec(Payload, spec_set=True, instance=True)
     session = await create_session(request_class=req_factory)
 
     connections = []
@@ -637,7 +646,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     ws_key: str,
     key_data: bytes,
 ) -> None:
-    resp = mock.create_autospec(aiohttp.ClientResponse)
+    resp = mock.create_autospec(aiohttp.ClientResponse, spec_set=True, instance=True)
     resp.status = 101
     resp.headers = {
         hdrs.UPGRADE: "websocket",
@@ -646,7 +655,6 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     }
     resp.url = URL(f"{protocol}://example")
     resp.cookies = SimpleCookie()
-    resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req._body = None  # No body for WebSocket upgrade requests
@@ -700,7 +708,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     ws_key: str,
     key_data: bytes,
 ) -> None:
-    resp = mock.create_autospec(aiohttp.ClientResponse)
+    resp = mock.create_autospec(aiohttp.ClientResponse, spec_set=True, instance=True)
     resp.status = 101
     resp.headers = {
         hdrs.UPGRADE: "websocket",
@@ -709,7 +717,6 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     }
     resp.url = URL(f"{protocol}://example")
     resp.cookies = SimpleCookie()
-    resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req._body = None  # No body for WebSocket upgrade requests
@@ -923,15 +930,41 @@ async def test_request_tracing(
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
+    # Define callback signatures
+    async def on_request_start_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestStartParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_end_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestEndParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_redirect_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestRedirectParams,
+    ) -> None:
+        """Mock signature"""
+
     app = web.Application()
     app.router.add_post("/", handler)
 
     trace_config_ctx = mock.Mock()
     body = "This is request body"
     gathered_req_headers: CIMultiDict[str] = CIMultiDict()
-    on_request_start = mock.AsyncMock()
-    on_request_redirect = mock.AsyncMock()
-    on_request_end = mock.AsyncMock()
+
+    # Create mocks with signatures(above)
+    on_request_start = mock.create_autospec(on_request_start_callback, spec_set=True)
+    on_request_end = mock.create_autospec(on_request_end_callback, spec_set=True)
+    on_request_redirect = mock.create_autospec(
+        on_request_redirect_callback, spec_set=True
+    )
 
     with io.BytesIO() as gathered_req_body, io.BytesIO() as gathered_res_body:
 
@@ -1006,12 +1039,78 @@ async def test_request_tracing_url_params(
     async def redirect_handler(request: web.Request) -> NoReturn:
         raise web.HTTPFound("/")
 
+    # Define callback signatures
+    async def on_request_start_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestStartParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_end_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestEndParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_redirect_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestRedirectParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_exception_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestExceptionParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_chunk_sent_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestChunkSentParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_response_chunk_received_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceResponseChunkReceivedParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_headers_sent_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestHeadersSentParams,
+    ) -> None:
+        """Mock signature"""
+
     app = web.Application()
     app.router.add_get("/", root_handler)
     app.router.add_get("/redirect", redirect_handler)
 
-    mocks = [mock.AsyncMock() for _ in range(7)]
-    (
+    on_request_start = mock.create_autospec(on_request_start_callback, spec_set=True)
+    on_request_redirect = mock.create_autospec(
+        on_request_redirect_callback, spec_set=True
+    )
+    on_request_end = mock.create_autospec(on_request_end_callback, spec_set=True)
+    on_request_exception = mock.create_autospec(
+        on_request_exception_callback, spec_set=True
+    )
+    on_request_chunk_sent = mock.create_autospec(
+        on_request_chunk_sent_callback, spec_set=True
+    )
+    on_response_chunk_received = mock.create_autospec(
+        on_response_chunk_received_callback, spec_set=True
+    )
+    on_request_headers_sent = mock.create_autospec(
+        on_request_headers_sent_callback, spec_set=True
+    )
+    mocks = [
         on_request_start,
         on_request_redirect,
         on_request_end,
@@ -1019,7 +1118,7 @@ async def test_request_tracing_url_params(
         on_request_chunk_sent,
         on_response_chunk_received,
         on_request_headers_sent,
-    ) = mocks
+    ]
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=mock.Mock())
