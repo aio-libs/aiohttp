@@ -93,6 +93,7 @@ _QUOTED_PAIR: Final[str] = r"\\[\t !-~]"
 
 _QUOTED_STRING: Final[str] = rf'"(?:{_QUOTED_PAIR}|{_QDTEXT})*"'
 
+# This does not have a ReDOS/performance concern as long as it used with re.match().
 _FORWARDED_PAIR: Final[str] = rf"({_TOKEN})=({_TOKEN}|{_QUOTED_STRING})(:\d{{1,4}})?"
 
 _QUOTED_PAIR_REPLACE_RE: Final[Pattern[str]] = re.compile(r"\\([\t !-~])")
@@ -573,7 +574,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         if rng is not None:
             try:
                 pattern = r"^bytes=(\d*)-(\d*)$"
-                start, end = re.findall(pattern, rng)[0]
+                start, end = re.findall(pattern, rng, re.ASCII)[0]
             except IndexError:  # pattern was not found in header
                 raise ValueError("range not in acceptable format")
 
@@ -696,13 +697,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             multipart = await self.multipart()
             max_size = self._client_max_size
 
-            field = await multipart.next()
-            while field is not None:
-                size = 0
+            size = 0
+            while (field := await multipart.next()) is not None:
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
                 if isinstance(field, BodyPartReader):
-                    assert field.name is not None
+                    if field.name is None:
+                        raise ValueError("Multipart field missing name.")
 
                     # Note that according to RFC 7578, the Content-Type header
                     # is optional, even for files, so we can't assume it's
@@ -713,17 +714,17 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         tmp = await self._loop.run_in_executor(
                             None, tempfile.TemporaryFile
                         )
-                        chunk = await field.read_chunk(size=2**16)
-                        while chunk:
-                            chunk = field.decode(chunk)
-                            await self._loop.run_in_executor(None, tmp.write, chunk)
-                            size += len(chunk)
-                            if 0 < max_size < size:
-                                await self._loop.run_in_executor(None, tmp.close)
-                                raise HTTPRequestEntityTooLarge(
-                                    max_size=max_size, actual_size=size
+                        while chunk := await field.read_chunk(size=2**18):
+                            async for decoded_chunk in field.decode_iter(chunk):
+                                await self._loop.run_in_executor(
+                                    None, tmp.write, decoded_chunk
                                 )
-                            chunk = await field.read_chunk(size=2**16)
+                                size += len(decoded_chunk)
+                                if 0 < max_size < size:
+                                    await self._loop.run_in_executor(None, tmp.close)
+                                    raise HTTPRequestEntityTooLarge(
+                                        max_size=max_size, actual_size=size
+                                    )
                         await self._loop.run_in_executor(None, tmp.seek, 0)
 
                         if field_ct is None:
@@ -754,8 +755,6 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     raise ValueError(
                         "To decode nested multipart you need to use custom reader",
                     )
-
-                field = await multipart.next()
         else:
             data = await self.read()
             if data:

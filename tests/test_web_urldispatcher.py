@@ -49,6 +49,26 @@ from aiohttp.web_urldispatcher import Resource, SystemRoute
             b"my_file_in_dir</a></li>\n</ul>\n</body>\n</html>",
             id="index_subdir",
         ),
+        pytest.param(
+            True,
+            200,
+            "/static",
+            "/static/",
+            b"<html>\n<head>\n<title>Index of /.</title>\n</head>\n<body>\n<h1>Index of"
+            b' /.</h1>\n<ul>\n<li><a href="/static/my_dir">my_dir/</a></li>\n<li><a href="'
+            b'/static/my_file">my_file</a></li>\n</ul>\n</body>\n</html>',
+            id="index_static_trailing_slash",
+        ),
+        pytest.param(
+            True,
+            200,
+            "/static",
+            "/static/my_dir/",
+            b"<html>\n<head>\n<title>Index of /my_dir</title>\n</head>\n<body>\n<h1>"
+            b'Index of /my_dir</h1>\n<ul>\n<li><a href="/static/my_dir/my_file_in_dir">'
+            b"my_file_in_dir</a></li>\n</ul>\n</body>\n</html>",
+            id="index_subdir_trailing_slash",
+        ),
     ],
 )
 async def test_access_root_of_static_handler(
@@ -805,7 +825,7 @@ async def test_static_absolute_url(
     app.router.add_static("/static", here)
     client = await aiohttp_client(app)
     async with client.get("/static/" + str(file_path.resolve())) as resp:
-        assert resp.status == 403
+        assert resp.status == 404
 
 
 async def test_for_issue_5250(

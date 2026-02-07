@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/constraints.txt --strip-extras requirements/constraints.in
 #
-aiodns==3.6.1
+aiodns==4.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -22,9 +22,9 @@ async-timeout==5.0.1 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
     #   valkey
-babel==2.17.0
+babel==2.18.0
     # via sphinx
-backports-zstd==1.2.0 ; implementation_name == "cpython"
+backports-zstd==1.3.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -34,9 +34,9 @@ blockbuster==1.5.26
     #   -r requirements/test-common.in
 brotli==1.2.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==1.3.0
+build==1.4.0
     # via pip-tools
-certifi==2025.11.12
+certifi==2026.1.4
     # via requests
 cffi==2.0.0
     # via
@@ -53,13 +53,13 @@ click==8.3.1
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.13.0
+coverage==7.13.2
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
 cryptography==46.0.3
     # via trustme
-cython==3.2.3
+cython==3.2.4
     # via -r requirements/cython.in
 distlib==0.4.0
     # via virtualenv
@@ -69,7 +69,7 @@ exceptiongroup==1.3.1
     # via pytest
 execnet==2.1.2
     # via pytest-xdist
-filelock==3.20.1
+filelock==3.20.3
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
@@ -81,9 +81,9 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==23.0.0
+gunicorn==25.0.1
     # via -r requirements/base.in
-identify==2.6.15
+identify==2.6.16
     # via pre-commit
 idna==3.7
     # via
@@ -102,7 +102,7 @@ jinja2==3.1.6
     # via
     #   sphinx
     #   towncrier
-librt==0.7.4
+librt==0.7.8
     # via mypy
 markdown-it-py==4.0.0
     # via rich
@@ -110,7 +110,7 @@ markupsafe==3.0.3
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.7.0
+multidict==6.7.1
     # via
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
@@ -123,14 +123,14 @@ mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.10.0
     # via pre-commit
-packaging==25.0
+packaging==26.0
     # via
     #   build
     #   gunicorn
     #   pytest
     #   sphinx
     #   wheel
-pathspec==0.12.1
+pathspec==1.0.4
     # via mypy
 pip-tools==7.5.2
     # via -r requirements/dev.in
@@ -152,9 +152,9 @@ proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-pycares==4.11.0
+pycares==5.0.1
     # via aiodns
-pycparser==2.23
+pycparser==3.0
     # via cffi
 pydantic==2.12.5
     # via python-on-whales
@@ -193,7 +193,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.79.0
+python-on-whales==0.80.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -203,7 +203,7 @@ requests==2.32.5
     # via
     #   sphinx
     #   sphinxcontrib-spelling
-rich==14.2.0
+rich==14.3.2
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
@@ -234,7 +234,7 @@ sphinxcontrib-spelling==8.0.2 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
-tomli==2.3.0
+tomli==2.4.0
     # via
     #   build
     #   coverage
@@ -267,7 +267,7 @@ typing-extensions==4.15.0 ; python_version < "3.13"
     #   virtualenv
 typing-inspection==0.4.2
     # via pydantic
-urllib3==2.6.2
+urllib3==2.6.3
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows"
     # via
@@ -275,11 +275,11 @@ uvloop==0.21.0 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==20.35.4
+virtualenv==20.36.1
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
-wheel==0.46.0
+wheel==0.46.3
     # via pip-tools
 yarl==1.22.0
     # via -r requirements/runtime-deps.in
@@ -289,7 +289,7 @@ zlib-ng==1.0.0
     #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==25.3
+pip==26.0.1
     # via pip-tools
-setuptools==80.9.0
+setuptools==80.10.2
     # via pip-tools

@@ -73,14 +73,14 @@ class ContentLengthError(PayloadEncodingError):
     """Not enough data to satisfy content length header."""
 
 
+class DecompressSizeError(PayloadEncodingError):
+    """Decompressed size exceeds the configured limit."""
+
+
 class LineTooLong(BadHttpMessage):
-    def __init__(
-        self, line: str, limit: str = "Unknown", actual_size: str = "Unknown"
-    ) -> None:
-        super().__init__(
-            f"Got more than {limit} bytes ({actual_size}) when reading {line}."
-        )
-        self.args = (line, limit, actual_size)
+    def __init__(self, line: bytes, limit: int) -> None:
+        super().__init__(f"Got more than {limit} bytes when reading: {line!r}.")
+        self.args = (line, limit)
 
 
 class InvalidHeader(BadHttpMessage):

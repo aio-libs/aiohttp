@@ -107,6 +107,8 @@ class StreamReader(AsyncStreamReaderMixin):
         "_protocol",
         "_low_water",
         "_high_water",
+        "_low_water_chunks",
+        "_high_water_chunks",
         "_loop",
         "_size",
         "_cursor",
@@ -135,10 +137,15 @@ class StreamReader(AsyncStreamReaderMixin):
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
+        # Ensure high_water_chunks >= 3 so it's always > low_water_chunks.
+        self._high_water_chunks = max(3, limit // 4)
+        # Use max(2, ...) because there's always at least 1 chunk split remaining
+        # (the current position), so we need low_water >= 2 to allow resume.
+        self._low_water_chunks = max(2, self._high_water_chunks // 2)
         self._loop = loop
         self._size = 0
         self._cursor = 0
-        self._http_chunk_splits: list[int] | None = None
+        self._http_chunk_splits: collections.deque[int] | None = None
         self._buffer: collections.deque[bytes] = collections.deque()
         self._buffer_offset = 0
         self._eof = False
@@ -291,7 +298,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 raise RuntimeError(
                     "Called begin_http_chunk_receiving when some data was already fed"
                 )
-            self._http_chunk_splits = []
+            self._http_chunk_splits = collections.deque()
 
     def end_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
@@ -316,6 +323,15 @@ class StreamReader(AsyncStreamReaderMixin):
             return
 
         self._http_chunk_splits.append(self.total_bytes)
+
+        # If we get too many small chunks before self._high_water is reached, then any
+        # .read() call becomes computationally expensive, and could block the event loop
+        # for too long, hence an additional self._high_water_chunks here.
+        if (
+            len(self._http_chunk_splits) > self._high_water_chunks
+            and not self._protocol._reading_paused
+        ):
+            self._protocol.pause_reading()
 
         # wake up readchunk when end of http chunk received
         waiter = self._waiter
@@ -436,7 +452,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 raise self._exception
 
             while self._http_chunk_splits:
-                pos = self._http_chunk_splits.pop(0)
+                pos = self._http_chunk_splits.popleft()
                 if pos == self._cursor:
                     return (b"", True)
                 if pos > self._cursor:
@@ -509,9 +525,16 @@ class StreamReader(AsyncStreamReaderMixin):
         chunk_splits = self._http_chunk_splits
         # Prevent memory leak: drop useless chunk splits
         while chunk_splits and chunk_splits[0] < self._cursor:
-            chunk_splits.pop(0)
+            chunk_splits.popleft()
 
-        if self._size < self._low_water and self._protocol._reading_paused:
+        if (
+            self._protocol._reading_paused
+            and self._size < self._low_water
+            and (
+                self._http_chunk_splits is None
+                or len(self._http_chunk_splits) < self._low_water_chunks
+            )
+        ):
             self._protocol.resume_reading()
         return data
 

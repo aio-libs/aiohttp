@@ -4,13 +4,13 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/lint.txt --strip-extras requirements/lint.in
 #
-aiodns==3.6.1
+aiodns==4.0.0
     # via -r requirements/lint.in
 annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
-backports-zstd==1.2.0 ; implementation_name == "cpython"
+backports-zstd==1.3.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 blockbuster==1.5.26
     # via -r requirements/lint.in
@@ -29,13 +29,13 @@ distlib==0.4.0
     # via virtualenv
 exceptiongroup==1.3.1
     # via pytest
-filelock==3.20.1
+filelock==3.20.3
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
     # via -r requirements/lint.in
-identify==2.6.15
+identify==2.6.16
     # via pre-commit
 idna==3.7
     # via trustme
@@ -43,7 +43,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.7.2
     # via -r requirements/lint.in
-librt==0.7.4
+librt==0.7.8
     # via mypy
 markdown-it-py==4.0.0
     # via rich
@@ -55,9 +55,9 @@ mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.10.0
     # via pre-commit
-packaging==25.0
+packaging==26.0
     # via pytest
-pathspec==0.12.1
+pathspec==1.0.4
     # via mypy
 platformdirs==4.5.1
     # via virtualenv
@@ -67,9 +67,9 @@ pre-commit==4.5.1
     # via -r requirements/lint.in
 proxy-py==2.4.10
     # via -r requirements/lint.in
-pycares==4.11.0
+pycares==5.0.1
     # via aiodns
-pycparser==2.23
+pycparser==3.0
     # via cffi
 pydantic==2.12.5
     # via python-on-whales
@@ -90,17 +90,17 @@ pytest-mock==3.15.1
     # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.79.0
+python-on-whales==0.80.0
     # via -r requirements/lint.in
 pyyaml==6.0.3
     # via pre-commit
-rich==14.2.0
+rich==14.3.2
     # via pytest-codspeed
 six==1.17.0
     # via python-dateutil
 slotscheck==0.19.1
     # via -r requirements/lint.in
-tomli==2.3.0
+tomli==2.4.0
     # via
     #   mypy
     #   pytest
@@ -123,7 +123,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==20.35.4
+virtualenv==20.36.1
     # via pre-commit
 zlib-ng==1.0.0
     # via -r requirements/lint.in

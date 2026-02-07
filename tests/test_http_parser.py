@@ -3,6 +3,7 @@
 import asyncio
 import re
 import sys
+import zlib
 from collections.abc import Iterable
 from contextlib import suppress
 from typing import Any
@@ -79,6 +80,7 @@ def parser(
         loop,
         2**16,
         max_line_size=8190,
+        max_headers=128,
         max_field_size=8190,
     )
 
@@ -101,6 +103,7 @@ def response(
         loop,
         2**16,
         max_line_size=8190,
+        max_headers=128,
         max_field_size=8190,
         read_until_eof=True,
     )
@@ -281,15 +284,6 @@ def test_bad_chunked(parser: HttpRequestParser) -> None:
 def test_whitespace_before_header(parser: HttpRequestParser) -> None:
     text = b"GET / HTTP/1.1\r\n\tContent-Length: 1\r\n\r\nX"
     with pytest.raises(http_exceptions.BadHttpMessage):
-        parser.feed_data(text)
-
-
-def test_parse_headers_longline(parser: HttpRequestParser) -> None:
-    invalid_unicode_byte = b"\xd9"
-    header_name = b"Test" + invalid_unicode_byte + b"Header" + b"A" * 8192
-    text = b"GET /test HTTP/1.1\r\n" + header_name + b": test\r\n" + b"\r\n" + b"\r\n"
-    with pytest.raises((http_exceptions.LineTooLong, http_exceptions.BadHttpMessage)):
-        # FIXME: `LineTooLong` doesn't seem to actually be happening
         parser.feed_data(text)
 
 
@@ -491,6 +485,20 @@ def test_request_chunked(parser: HttpRequestParser) -> None:
     assert isinstance(payload, streams.StreamReader)
 
 
+def test_te_header_non_ascii(parser: HttpRequestParser) -> None:
+    # K = Kelvin sign, not valid ascii.
+    text = "GET /test HTTP/1.1\r\nTransfer-Encoding: chunKed\r\n\r\n"
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text.encode())
+
+
+def test_upgrade_header_non_ascii(parser: HttpRequestParser) -> None:
+    # K = Kelvin sign, not valid ascii.
+    text = "GET /test HTTP/1.1\r\nUpgrade: websocKet\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text.encode())
+    assert not upgrade
+
+
 def test_request_te_chunked_with_content_length(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
@@ -587,6 +595,21 @@ def test_compression_zstd(parser: HttpRequestParser) -> None:
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
     assert msg.compression == "zstd"
+
+
+@pytest.mark.parametrize(
+    "enc",
+    (
+        "zﬆd".encode(),  # "ﬆ".upper() == "ST"
+        "deﬂate".encode(),  # "ﬂ".upper() == "FL"
+    ),
+)
+def test_compression_non_ascii(parser: HttpRequestParser, enc: bytes) -> None:
+    text = b"GET /test HTTP/1.1\r\ncontent-encoding: " + enc + b"\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    # Non-ascii input should not evaluate to a valid encoding scheme.
+    assert msg.compression is None
 
 
 def test_compression_unknown(parser: HttpRequestParser) -> None:
@@ -698,13 +721,14 @@ def test_max_header_field_size(parser: HttpRequestParser, size: int) -> None:
     name = b"t" * size
     text = b"GET /test HTTP/1.1\r\n" + name + b":data\r\n\r\n"
 
-    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        parser.feed_data(text)
+        for i in range(0, len(text), 5000):  # pragma: no branch
+            parser.feed_data(text[i : i + 5000])
 
 
-def test_max_header_field_size_under_limit(parser: HttpRequestParser) -> None:
-    name = b"t" * 8190
+def test_max_header_size_under_limit(parser: HttpRequestParser) -> None:
+    name = b"t" * 8185
     text = b"GET /test HTTP/1.1\r\n" + name + b":data\r\n\r\n"
 
     messages, upgrade, tail = parser.feed_data(text)
@@ -726,13 +750,67 @@ def test_max_header_value_size(parser: HttpRequestParser, size: int) -> None:
     name = b"t" * size
     text = b"GET /test HTTP/1.1\r\ndata:" + name + b"\r\n\r\n"
 
-    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        for i in range(0, len(text), 4000):  # pragma: no branch
+            parser.feed_data(text[i : i + 4000])
+
+
+def test_max_header_combined_size(parser: HttpRequestParser) -> None:
+    k = b"t" * 4100
+    text = b"GET /test HTTP/1.1\r\n" + k + b":" + k + b"\r\n\r\n"
+
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
 
+@pytest.mark.parametrize("size", [40960, 8191])
+async def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
+    value = b"t" * size
+    text = (
+        b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
+        + hex(4000)[2:].encode()
+        + b"\r\n"
+        + b"b" * 4000
+        + b"\r\n0\r\ntest: "
+        + value
+        + b"\r\n\r\n"
+    )
+
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        payload = None
+        for i in range(0, len(text), 3000):  # pragma: no branch
+            messages, upgrade, tail = parser.feed_data(text[i : i + 3000])
+            if messages:
+                payload = messages[0][-1]
+        # Trailers are not seen until payload is read.
+        assert payload is not None
+        await payload.read()
+
+
+@pytest.mark.parametrize("headers,trailers", ((129, 0), (0, 129), (64, 65)))
+async def test_max_headers(
+    parser: HttpRequestParser, headers: int, trailers: int
+) -> None:
+    text = (
+        b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked"
+        + b"".join(b"\r\nHeader-%d: Value" % i for i in range(headers))
+        + b"\r\n\r\n4\r\ntest\r\n0"
+        + b"".join(b"\r\nTrailer-%d: Value" % i for i in range(trailers))
+        + b"\r\n\r\n"
+    )
+
+    match = "Too many (headers|trailers) received"
+    with pytest.raises(http_exceptions.BadHttpMessage, match=match):
+        messages, upgrade, tail = parser.feed_data(text)
+        # Trailers are not seen until payload is read.
+        await messages[0][-1].read()
+
+
 def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
-    value = b"A" * 8190
+    value = b"A" * 8185
     text = b"GET /test HTTP/1.1\r\ndata:" + value + b"\r\n\r\n"
 
     messages, upgrade, tail = parser.feed_data(text)
@@ -756,15 +834,16 @@ def test_max_header_value_size_continuation(
     name = b"T" * (size - 5)
     text = b"HTTP/1.1 200 Ok\r\ndata: test\r\n " + name + b"\r\n\r\n"
 
-    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
-        response.feed_data(text)
+        for i in range(0, len(text), 9000):  # pragma: no branch
+            response.feed_data(text[i : i + 9000])
 
 
 def test_max_header_value_size_continuation_under_limit(
     response: HttpResponseParser,
 ) -> None:
-    value = b"A" * 8185
+    value = b"A" * 8179
     text = b"HTTP/1.1 200 Ok\r\ndata: test\r\n " + value + b"\r\n\r\n"
 
     messages, upgrade, tail = response.feed_data(text)
@@ -1003,13 +1082,13 @@ def test_http_request_parser_bad_nonascii_uri(parser: HttpRequestParser) -> None
 @pytest.mark.parametrize("size", [40965, 8191])
 def test_http_request_max_status_line(parser: HttpRequestParser, size: int) -> None:
     path = b"t" * (size - 5)
-    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(b"GET /path" + path + b" HTTP/1.1\r\n\r\n")
 
 
 def test_http_request_max_status_line_under_limit(parser: HttpRequestParser) -> None:
-    path = b"t" * (8190 - 5)
+    path = b"t" * 8172
     messages, upgraded, tail = parser.feed_data(
         b"GET /path" + path + b" HTTP/1.1\r\n\r\n"
     )
@@ -1090,7 +1169,7 @@ def test_http_response_parser_bad_status_line_too_long(
     response: HttpResponseParser, size: int
 ) -> None:
     reason = b"t" * (size - 2)
-    match = f"400, message:\n  Got more than 8190 bytes \\({size}\\) when reading"
+    match = "400, message:\n  Got more than 8190 bytes when reading"
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         response.feed_data(b"HTTP/1.1 200 Ok" + reason + b"\r\n\r\n")
 
@@ -1098,7 +1177,7 @@ def test_http_response_parser_bad_status_line_too_long(
 def test_http_response_parser_status_line_under_limit(
     response: HttpResponseParser,
 ) -> None:
-    reason = b"O" * 8190
+    reason = b"O" * 8177
     messages, upgraded, tail = response.feed_data(
         b"HTTP/1.1 200 " + reason + b"\r\n\r\n"
     )
@@ -1265,7 +1344,8 @@ def test_http_request_chunked_payload(parser: HttpRequestParser) -> None:
     parser.feed_data(b"4\r\ndata\r\n4\r\nline\r\n0\r\n\r\n")
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert payload._http_chunk_splits is not None
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
 
@@ -1282,7 +1362,8 @@ def test_http_request_chunked_payload_and_next_message(
     )
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert payload._http_chunk_splits is not None
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
     assert len(messages) == 1
@@ -1306,12 +1387,13 @@ def test_http_request_chunked_payload_chunks(parser: HttpRequestParser) -> None:
     parser.feed_data(b"test: test\r\n")
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert payload._http_chunk_splits is not None
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert not payload.is_eof()
 
     parser.feed_data(b"\r\n")
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
 
@@ -1322,7 +1404,8 @@ def test_parse_chunked_payload_chunk_extension(parser: HttpRequestParser) -> Non
     parser.feed_data(b"4;test\r\ndata\r\n4\r\nline\r\n0\r\ntest: test\r\n\r\n")
 
     assert b"dataline" == b"".join(d for d in payload._buffer)
-    assert [4, 8] == payload._http_chunk_splits
+    assert payload._http_chunk_splits is not None
+    assert [4, 8] == list(payload._http_chunk_splits)
     assert payload.is_eof()
 
 
@@ -1628,6 +1711,7 @@ def test_parse_bad_method_for_c_parser_raises(
         loop,
         2**16,
         max_line_size=8190,
+        max_headers=128,
         max_field_size=8190,
     )
 
@@ -1937,3 +2021,36 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
 
         assert buf.at_eof()
+
+    @pytest.mark.parametrize(
+        "chunk_size",
+        [1024, 2**14, 2**16],  # 1KB, 16KB, 64KB
+        ids=["1KB", "16KB", "64KB"],
+    )
+    async def test_streaming_decompress_large_payload(
+        self, protocol: BaseProtocol, chunk_size: int
+    ) -> None:
+        """Test that large payloads decompress correctly when streamed in chunks.
+
+        This simulates real HTTP streaming where compressed data arrives in
+        small network chunks. Each chunk's decompressed output should be within
+        the max_decompress_size limit, allowing full recovery of the original data.
+        """
+        # Create a large payload (3MiB) that compresses well
+        original = b"A" * (3 * 2**20)
+        compressed = zlib.compress(original)
+
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, "deflate")
+
+        # Feed compressed data in chunks (simulating network streaming)
+        for i in range(0, len(compressed), chunk_size):  # pragma: no branch
+            chunk = compressed[i : i + chunk_size]
+            dbuf.feed_data(chunk)
+
+        dbuf.feed_eof()
+
+        # Read all decompressed data
+        result = b"".join(buf._buffer)
+        assert len(result) == len(original)
+        assert result == original

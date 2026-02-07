@@ -57,6 +57,7 @@ The client session supports the context manager protocol for self closing.
                          read_bufsize=2**16, \
                          max_line_size=8190, \
                          max_field_size=8190, \
+                         max_headers=128, \
                          fallback_charset_resolver=lambda r, b: "utf-8", \
                          ssl_shutdown_timeout=0)
 
@@ -229,7 +230,9 @@ The client session supports the context manager protocol for self closing.
 
    :param int max_line_size: Maximum allowed size of lines in responses.
 
-   :param int max_field_size: Maximum allowed size of header fields in responses.
+   :param int max_field_size: Maximum allowed size of header name and value combined in responses.
+
+   :param int max_headers: Maximum number of headers and trailers combined in responses.
 
    :param Callable[[ClientResponse,bytes],str] fallback_charset_resolver:
       A :term:`callable` that accepts a :class:`ClientResponse` and the
@@ -409,7 +412,8 @@ The client session supports the context manager protocol for self closing.
                          read_bufsize=None, \
                          auto_decompress=None, \
                          max_line_size=None, \
-                         max_field_size=None)
+                         max_field_size=None, \
+                         max_headers=None)
       :async:
       :noindexentry:
 
@@ -573,7 +577,9 @@ The client session supports the context manager protocol for self closing.
 
       :param int max_line_size: Maximum allowed size of lines in responses.
 
-      :param int max_field_size: Maximum allowed size of header fields in responses.
+      :param int max_field_size: Maximum allowed size of header name and value combined in responses.
+
+      :param int max_headers: Maximum number of headers and trailers combined in responses.
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
@@ -902,6 +908,7 @@ certification chaining.
                         auto_decompress=None, \
                         max_line_size=None, \
                         max_field_size=None, \
+                        max_headers=None, \
                         version=aiohttp.HttpVersion11, \
                         connector=None)
    :async:
@@ -1039,7 +1046,9 @@ certification chaining.
 
    :param int max_line_size: Maximum allowed size of lines in responses.
 
-   :param int max_field_size: Maximum allowed size of header fields in responses.
+   :param int max_field_size: Maximum allowed size of header name and value combined in responses.
+
+   :param int max_headers: Maximum number of headers and trailers combined in responses.
 
    :param aiohttp.protocol.HttpVersion version: Request HTTP version,
       ``HTTP 1.1`` by default. (optional)
