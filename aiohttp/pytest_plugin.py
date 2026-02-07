@@ -3,7 +3,7 @@ import contextlib
 import inspect
 import warnings
 from collections.abc import Awaitable, Callable, Iterator
-from typing import Any, NamedTuple, Protocol, TypeVar, overload
+from typing import Any, Protocol, TypeVar, overload
 
 import pytest
 
@@ -62,37 +62,6 @@ class AiohttpRawServer(Protocol):
         port: int | None = None,
         **kwargs: Any,
     ) -> Awaitable[RawTestServer]: ...
-
-
-class RerunThresholdParams(NamedTuple):
-    """Parameters for dynamic threshold calculation in flaky tests."""
-
-    base: float
-    increment_per_rerun: float
-
-
-@pytest.fixture
-def rerun_adjusted_threshold(request: pytest.FixtureRequest) -> float:
-    """Calculate dynamic threshold based on rerun count (via indirect parametrization).
-
-    Returns ``base + (rerun_count * increment_per_rerun)``.
-    The ``rerun_count`` is determined from ``pytest-rerunfailures`` (0 for initial run,
-    1 for first rerun, etc.).
-
-    Usage::
-
-        @pytest.mark.flaky(reruns=3)
-        @pytest.mark.parametrize(
-            "rerun_adjusted_threshold",
-            [RerunThresholdParams(base=0.02, increment_per_rerun=0.02)],
-            indirect=True,
-        )
-        def test_timing(rerun_adjusted_threshold: float) -> None: ...
-    """
-    param: RerunThresholdParams = request.param
-    execution_count: int = getattr(request.node, "execution_count", 0)
-    rerun_count = max(0, execution_count - 1)
-    return param.base + (rerun_count * param.increment_per_rerun)
 
 
 def pytest_addoption(parser):  # type: ignore[no-untyped-def]

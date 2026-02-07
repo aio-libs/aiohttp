@@ -5,8 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from aiohttp.pytest_plugin import RerunThresholdParams
-
 
 def test___all__(pytester: pytest.Pytester) -> None:
     """See https://github.com/aio-libs/aiohttp/issues/6197"""
@@ -30,40 +28,21 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
     result.assert_outcomes(passed=0, errors=0)
 
 
-_IMPORT_TIME_THRESHOLD_PY312 = 300
-_IMPORT_TIME_THRESHOLD_DEFAULT = 200
-_IMPORT_TIME_INCREMENT_PER_RERUN = 50
-_IMPORT_TIME_THRESHOLD = RerunThresholdParams(
-    base=(
-        _IMPORT_TIME_THRESHOLD_PY312
-        if sys.version_info >= (3, 12)
-        else _IMPORT_TIME_THRESHOLD_DEFAULT
-    ),
-    increment_per_rerun=_IMPORT_TIME_INCREMENT_PER_RERUN,
-)
+_IMPORT_TIME_THRESHOLD_MS = 400 if sys.version_info >= (3, 12) else 300
 
 
 @pytest.mark.internal
 @pytest.mark.dev_mode
-@pytest.mark.flaky(reruns=3)
-@pytest.mark.parametrize(
-    "rerun_adjusted_threshold", [_IMPORT_TIME_THRESHOLD], indirect=True
-)
 @pytest.mark.skipif(
     not sys.platform.startswith("linux") or platform.python_implementation() == "PyPy",
     reason="Timing is more reliable on Linux",
 )
-def test_import_time(
-    rerun_adjusted_threshold: float, pytester: pytest.Pytester
-) -> None:
+def test_import_time(pytester: pytest.Pytester) -> None:
     """Check that importing aiohttp doesn't take too long.
 
     Obviously, the time may vary on different machines and may need to be adjusted
     from time to time, but this should provide an early warning if something is
     added that significantly increases import time.
-
-    Threshold increases by _IMPORT_TIME_INCREMENT_PER_RERUN ms on each rerun
-    to account for CI variability.
     """
     root = Path(__file__).parent.parent
     old_path = os.environ.get("PYTHONPATH")
@@ -80,4 +59,4 @@ def test_import_time(
         else:
             os.environ["PYTHONPATH"] = old_path
 
-    assert runtime_ms < rerun_adjusted_threshold
+    assert runtime_ms < _IMPORT_TIME_THRESHOLD_MS

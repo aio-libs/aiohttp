@@ -19,7 +19,6 @@ from aiohttp._cookie_helpers import (
     parse_set_cookie_headers,
     preserve_morsel_with_coded_value,
 )
-from aiohttp.pytest_plugin import RerunThresholdParams
 
 
 def test_known_attrs_is_superset_of_morsel_reserved() -> None:
@@ -638,30 +637,22 @@ def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
     assert match.group("key").lower() == "partitioned"
 
 
-_COOKIE_PATTERN_TIME_THRESHOLD = RerunThresholdParams(
-    base=0.02, increment_per_rerun=0.02
-)
+_COOKIE_PATTERN_TIME_THRESHOLD_SECONDS = 0.08
 
 
-@pytest.mark.flaky(reruns=3)
-@pytest.mark.parametrize(
-    "rerun_adjusted_threshold", [_COOKIE_PATTERN_TIME_THRESHOLD], indirect=True
-)
-def test_cookie_pattern_performance(rerun_adjusted_threshold: float) -> None:
-    """Test that the cookie pattern doesn't suffer from ReDoS issues.
-
-    This test is marked as flaky because timing can vary on loaded CI machines.
-    CI failure observed: ~20ms on Windows.
-    """
+def test_cookie_pattern_performance() -> None:
+    """Test that the cookie pattern doesn't suffer from ReDoS issues."""
     value = "a" + "=" * 21651 + "\x00"
     start = time.perf_counter()
     match = helpers._COOKIE_PATTERN.match(value)
     elapsed = time.perf_counter() - start
 
-    assert elapsed < rerun_adjusted_threshold, (
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < _COOKIE_PATTERN_TIME_THRESHOLD_SECONDS, (
         f"Pattern took {elapsed * 1000:.1f}ms, "
-        f"expected <{rerun_adjusted_threshold * 1000:.0f}ms - potential ReDoS issue"
+        f"expected <{_COOKIE_PATTERN_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
     )
+    # This example shouldn't produce a match either.
     assert match is None
 
 

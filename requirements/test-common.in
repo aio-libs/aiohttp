@@ -8,7 +8,6 @@ proxy.py >= 2.4.4rc5
 pytest
 pytest-cov
 pytest-mock
-pytest-rerunfailures
 pytest-xdist
 pytest_codspeed
 python-on-whales

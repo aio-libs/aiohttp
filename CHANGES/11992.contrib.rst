@@ -1,4 +1,1 @@
-Fixed flaky import time test for Python 3.12+ -- by :user:`rodrigobnogueira`.
-
-Refactored to use version comparison instead of explicit version list,
-making the test future-proof for new Python releases.
+Fixed flaky performance tests by using appropriate fixed thresholds that account for CI variability -- by :user:`rodrigobnogueira`.
