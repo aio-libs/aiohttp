@@ -878,7 +878,7 @@ async def test_write_calls_callback(
 ) -> None:
 
     async def on_chunk_sent(chunk: bytes) -> None:
-        pass
+        """Mock signature"""
 
     on_chunk_sent_mock = mock.create_autospec(on_chunk_sent, spec_set=True)
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent_mock)
@@ -894,7 +894,7 @@ async def test_write_eof_calls_callback(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     async def on_chunk_sent(chunk: bytes) -> None:
-        pass
+        """Mock signature"""
 
     on_chunk_sent_mock = mock.create_autospec(on_chunk_sent, spec_set=True)
     msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent_mock)
