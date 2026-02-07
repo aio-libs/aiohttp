@@ -936,21 +936,21 @@ async def test_request_tracing(
         trace_config_ctx: SimpleNamespace,
         params: TraceRequestStartParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     async def on_request_end_callback(
         session: ClientSession,
         trace_config_ctx: SimpleNamespace,
         params: TraceRequestEndParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     async def on_request_redirect_callback(
         session: ClientSession,
         trace_config_ctx: SimpleNamespace,
         params: TraceRequestRedirectParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -1045,49 +1045,49 @@ async def test_request_tracing_url_params(
         trace_config_ctx: SimpleNamespace,
         params: TraceRequestStartParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     async def on_request_end_callback(
         session: ClientSession,
         trace_config_ctx: SimpleNamespace,
         params: TraceRequestEndParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     async def on_request_redirect_callback(
         session: ClientSession,
         trace_config_ctx: SimpleNamespace,
         params: TraceRequestRedirectParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     async def on_request_exception_callback(
         session: ClientSession,
         trace_config_ctx: SimpleNamespace,
         params: TraceRequestExceptionParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     async def on_request_chunk_sent_callback(
         session: ClientSession,
         trace_config_ctx: SimpleNamespace,
         params: TraceRequestChunkSentParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     async def on_response_chunk_received_callback(
         session: ClientSession,
         trace_config_ctx: SimpleNamespace,
         params: TraceResponseChunkReceivedParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     async def on_request_headers_sent_callback(
         session: ClientSession,
         trace_config_ctx: SimpleNamespace,
         params: TraceRequestHeadersSentParams,
     ) -> None:
-        pass
+        """Mock signature"""
 
     app = web.Application()
     app.router.add_get("/", root_handler)
