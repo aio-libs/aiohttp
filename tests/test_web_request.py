@@ -17,7 +17,7 @@ from yarl import URL
 from aiohttp import ETag, HttpVersion, web
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_parser import RawRequestMessage
-from aiohttp.pytest_plugin import AiohttpClient, RerunThresholdParams
+from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web_request import _FORWARDED_PAIR_RE
@@ -600,23 +600,21 @@ def test_single_forwarded_header() -> None:
     assert req.forwarded[0]["proto"] == "identifier"
 
 
-_FORWARDED_RE_TIME_THRESHOLD = RerunThresholdParams(base=0.02, increment_per_rerun=0.02)
+_FORWARDED_RE_TIME_THRESHOLD_SECONDS = 0.08
 
 
-@pytest.mark.flaky(reruns=3)
-@pytest.mark.parametrize(
-    "rerun_adjusted_threshold", [_FORWARDED_RE_TIME_THRESHOLD], indirect=True
-)
-def test_forwarded_re_performance(rerun_adjusted_threshold: float) -> None:
+def test_forwarded_re_performance() -> None:
     value = "{" + "f" * 54773 + "z\x00a=v"
     start = time.perf_counter()
     match = _FORWARDED_PAIR_RE.match(value)
     elapsed = time.perf_counter() - start
 
-    assert elapsed < rerun_adjusted_threshold, (
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < _FORWARDED_RE_TIME_THRESHOLD_SECONDS, (
         f"Regex took {elapsed * 1000:.1f}ms, "
-        f"expected <{rerun_adjusted_threshold * 1000:.0f}ms - potential ReDoS issue"
+        f"expected <{_FORWARDED_RE_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
     )
+    # This example shouldn't produce a match either.
     assert match is None
 
 

@@ -24,7 +24,7 @@ from aiohttp.client_middleware_digest_auth import (
 )
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.payload import BytesIOPayload
-from aiohttp.pytest_plugin import AiohttpServer, RerunThresholdParams
+from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 
 
@@ -1331,28 +1331,21 @@ async def test_case_sensitive_algorithm_server(
     assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
 
 
-_REGEX_TIME_THRESHOLD = RerunThresholdParams(base=0.02, increment_per_rerun=0.02)
+_REGEX_TIME_THRESHOLD_SECONDS = 0.08
 
 
-@pytest.mark.flaky(reruns=3)
-@pytest.mark.parametrize(
-    "rerun_adjusted_threshold", [_REGEX_TIME_THRESHOLD], indirect=True
-)
-def test_regex_performance(rerun_adjusted_threshold: float) -> None:
-    """Test that the regex pattern doesn't suffer from ReDoS issues.
-
-    Threshold starts at 20ms and increases on each rerun for CI variability.
-    """
+def test_regex_performance() -> None:
+    """Test that the regex pattern doesn't suffer from ReDoS issues."""
     value = "0" * 54773 + "\\0=a"
 
     start = time.perf_counter()
     matches = _HEADER_PAIRS_PATTERN.findall(value)
     elapsed = time.perf_counter() - start
 
-    # Relaxed for CI/platform variability (e.g., macOS runners ~40-50ms observed)
-    assert elapsed < rerun_adjusted_threshold, (
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < _REGEX_TIME_THRESHOLD_SECONDS, (
         f"Regex took {elapsed * 1000:.1f}ms, "
-        f"expected <{rerun_adjusted_threshold * 1000:.0f}ms - potential ReDoS issue"
+        f"expected <{_REGEX_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
     )
-
+    # This example shouldn't produce a match either.
     assert not matches
