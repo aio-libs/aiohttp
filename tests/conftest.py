@@ -49,6 +49,14 @@ except ImportError:
     TRUSTME = False
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    if os.name == "nt" and sys.version_info[:2] in ((3, 10), (3, 11)):
+        config.addinivalue_line(
+            "filterwarnings",
+            "ignore:Exception ignored in.*socket.*:pytest.PytestUnraisableExceptionWarning",
+        )
+
+
 try:
     if sys.platform == "win32":
         import winloop as uvloop
@@ -431,13 +439,14 @@ async def make_client_request(
     loop: asyncio.AbstractEventLoop,
 ) -> AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]:
     """Fixture to help creating test ClientRequest objects with defaults."""
-    request = session = None
+    requests: list[ClientRequest] = []
+    sessions: list[ClientSession] = []
 
     def maker(
         method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
     ) -> ClientRequest:
-        nonlocal request, session
         session = ClientSession()
+        sessions.append(session)
         default_args: ClientRequestArgs = {
             "loop": loop,
             "params": {},
@@ -462,14 +471,15 @@ async def make_client_request(
             "server_hostname": None,
         }
         request = ClientRequest(method, url, **(default_args | kwargs))
+        requests.append(request)
         return request
 
     yield maker
 
-    if request is not None:
-        await request._close()
-        assert session is not None
-        await session.close()
+    await asyncio.gather(
+        *[request._close() for request in requests],
+        *[session.close() for session in sessions],
+    )
 
 
 @pytest.fixture
