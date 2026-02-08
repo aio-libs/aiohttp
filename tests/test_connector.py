@@ -2514,6 +2514,7 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
     underlying_transport.close.assert_called_once()
     underlying_transport.abort.assert_not_called()
 
+
 async def test_start_tls_with_zero_total_timeout(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
