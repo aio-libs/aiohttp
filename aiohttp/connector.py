@@ -688,8 +688,10 @@ class BaseConnector:
         t1 = monotonic()
         while conns:
             proto, t0 = conns.popleft()
-            # We will we reuse the connection if its connected and
-            # the keepalive timeout has not been exceeded
+            # Verify the connection is alive. For HTTP/2 connections especially,
+            # the server may have closed the connection between when it was
+            # returned to the pool and now, so we need to explicitly check that
+            # the protocol is still healthy before reusing it.
             if proto.is_connected() and t1 - t0 <= self._keepalive_timeout:
                 if not conns:
                     # The very last connection was reclaimed: drop the key
@@ -707,6 +709,8 @@ class BaseConnector:
                 return Connection(self, key, proto, self._loop)
 
             # Connection cannot be reused, close it
+            # This handles both expired connections (timeout exceeded) and
+            # dead connections (closed by server or network issues)
             transport = proto.transport
             proto.close()
             # only for SSL transports

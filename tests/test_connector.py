@@ -4684,3 +4684,166 @@ async def test_connect_tunnel_connection_release(
 
     # Clean up to avoid resource warning
     conn.close()
+
+
+async def test_get_skips_dead_connections(
+    loop: asyncio.AbstractEventLoop, key: ConnectionKey
+) -> None:
+    """Test that _get skips connections that are no longer connected."""
+    conn = aiohttp.BaseConnector()
+    
+    # Create two mocked connections
+    proto1 = create_mocked_conn(loop)
+    proto1.is_connected.return_value = False  # Dead connection
+    
+    proto2 = create_mocked_conn(loop)
+    proto2.is_connected.return_value = True  # Living connection
+    
+    # Add both to pool (proto1 first, proto2 second)
+    conn._conns[key].append((proto1, monotonic() - 1))
+    conn._conns[key].append((proto2, monotonic() - 1))
+    
+    # Get should skip the dead proto1 and return proto2
+    result = await conn._get(key, [])
+    
+    assert result is not None
+    assert result._protocol is proto2
+    
+    # proto1 should have been closed
+    proto1.close.assert_called_once()
+    
+    # Clean up
+    conn.close()
+
+
+async def test_get_removes_all_dead_connections(
+    loop: asyncio.AbstractEventLoop, key: ConnectionKey
+) -> None:
+    """Test that _get removes all dead connections from pool until finding a live one."""
+    conn = aiohttp.BaseConnector()
+    
+    # Create three mocked connections - first two dead, third alive
+    proto_dead1 = create_mocked_conn(loop)
+    proto_dead1.is_connected.return_value = False
+    
+    proto_dead2 = create_mocked_conn(loop)
+    proto_dead2.is_connected.return_value = False
+    
+    proto_alive = create_mocked_conn(loop)
+    proto_alive.is_connected.return_value = True
+    
+    # Add all to pool
+    conn._conns[key].append((proto_dead1, monotonic() - 1))
+    conn._conns[key].append((proto_dead2, monotonic() - 1))
+    conn._conns[key].append((proto_alive, monotonic() - 1))
+    
+    # Get should return the alive connection
+    result = await conn._get(key, [])
+    
+    assert result is not None
+    assert result._protocol is proto_alive
+    
+    # Both dead connections should have been closed
+    proto_dead1.close.assert_called_once()
+    proto_dead2.close.assert_called_once()
+    proto_alive.close.assert_not_called()
+    
+    # Clean up
+    conn.close()
+
+
+async def test_get_returns_none_when_all_connections_dead(
+    loop: asyncio.AbstractEventLoop, key: ConnectionKey
+) -> None:
+    """Test that _get returns None when all pooled connections are dead."""
+    conn = aiohttp.BaseConnector()
+    
+    # Create two dead connections
+    proto_dead1 = create_mocked_conn(loop)
+    proto_dead1.is_connected.return_value = False
+    
+    proto_dead2 = create_mocked_conn(loop)
+    proto_dead2.is_connected.return_value = False
+    
+    # Add both to pool
+    conn._conns[key].append((proto_dead1, monotonic() - 1))
+    conn._conns[key].append((proto_dead2, monotonic() - 1))
+    
+    # Get should return None since all connections are dead
+    result = await conn._get(key, [])
+    
+    assert result is None
+    
+    # Both dead connections should have been closed
+    proto_dead1.close.assert_called_once()
+    proto_dead2.close.assert_called_once()
+    
+    # Pool should be empty
+    assert key not in conn._conns
+    
+    # Clean up
+    conn.close()
+
+
+async def test_get_respects_keepalive_timeout(
+    loop: asyncio.AbstractEventLoop, key: ConnectionKey
+) -> None:
+    """Test that _get removes connections that exceed keepalive timeout."""
+    conn = aiohttp.BaseConnector(keepalive_timeout=1.0)
+    
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+    
+    # Add connection with very old timestamp (beyond keepalive timeout)
+    old_time = monotonic() - 10.0  # 10 seconds ago
+    conn._conns[key].append((proto, old_time))
+    
+    # Get should return None since connection exceeded timeout
+    result = await conn._get(key, [])
+    
+    assert result is None
+    
+    # Connection should have been closed
+    proto.close.assert_called_once()
+    
+    # Pool should be empty
+    assert key not in conn._conns
+    
+    # Clean up
+    conn.close()
+
+
+async def test_connection_reuse_with_dead_connection_in_http2(
+    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+) -> None:
+    """Test HTTP/2 scenario where connection becomes dead between pool retrieval and use."""
+    # This test simulates the race condition specific to HTTP/2 where
+    # a server closes the connection and the connection pool doesn't detect it
+    
+    conn = aiohttp.BaseConnector()
+    
+    # Create a mock connection that initially appears connected
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+    
+    req = make_client_request("GET", URL("http://host:80"), loop=loop)
+    key = req.connection_key
+    
+    # Manually add connection to pool (simulate a returned connection)
+    conn._conns[key].append((proto, monotonic() - 1))
+    
+    # Retrieve from pool
+    result = await conn._get(key, [])
+    assert result is not None
+    
+    # Simulate the connection becoming dead after retrieval
+    # (normally this is handled by the error during use)
+    proto.is_connected.return_value = False
+    
+    # Next time we try to get a connection for the same key, there should be none
+    # (the previous one is now in the acquired set, not the pool)
+    result2 = await conn._get(key, [])
+    assert result2 is None
+    
+    conn.close()
+
