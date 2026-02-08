@@ -2653,6 +2653,46 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
     underlying_transport.close.assert_called_once()
     underlying_transport.abort.assert_not_called()
 
+async def test_start_tls_with_zero_total_timeout(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test _start_tls_connection with ClientTimeout(total=0).
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/11859
+    When total=0 (meaning no timeout), ssl_handshake_timeout should receive
+    None instead of 0, as asyncio requires a positive number or None.
+    """
+    conn = aiohttp.TCPConnector()
+
+    underlying_transport = mock.Mock()
+    req = mock.Mock()
+    req.server_hostname = None
+    req.host = "example.com"
+    req.is_ssl = mock.Mock(return_value=True)
+
+    tls_transport = mock.Mock(spec=asyncio.Transport)
+    tls_transport.get_extra_info = mock.Mock(return_value=mock.Mock())
+
+    start_tls_mock = mock.AsyncMock(return_value=tls_transport)
+
+    with (
+        mock.patch.object(
+            conn, "_get_ssl_context", return_value=ssl.create_default_context()
+        ),
+        mock.patch.object(conn._loop, "start_tls", start_tls_mock),
+        mock.patch.object(conn, "_get_fingerprint", return_value=None),
+    ):
+        await conn._start_tls_connection(
+            underlying_transport, req, ClientTimeout(total=0)
+        )
+
+    # Verify start_tls was called with ssl_handshake_timeout=None, not 0
+    call_kwargs = start_tls_mock.call_args[1]
+    assert call_kwargs.get("ssl_handshake_timeout") is None, (
+        f"ssl_handshake_timeout should be None when total=0, "
+        f"got {call_kwargs.get('ssl_handshake_timeout')!r}"
+    )
+
 
 async def test_invalid_ssl_param() -> None:
     with pytest.raises(TypeError):
