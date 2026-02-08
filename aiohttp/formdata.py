@@ -70,6 +70,11 @@ class FormData:
                 raise TypeError(
                     "content_type must be an instance of str. Got: %s" % content_type
                 )
+            if "\r" in content_type or "\n" in content_type:
+                raise ValueError(
+                "Newline or carriage return detected in headers. "
+                "Potential header injection attack."
+            )
             headers[hdrs.CONTENT_TYPE] = content_type
             self._is_multipart = True
 

@@ -110,6 +110,12 @@ async def test_formdata_field_name_is_not_quoted(
     await payload.write(writer)
     assert b'name="email 1"' in buf
 
+def test_invalid_formdata_content_type() -> None:
+    form = FormData()
+    invalid_vals = ["\r", "\n", "a\ra\n", "a\na\r"]
+    for invalid_val in invalid_vals:
+        with pytest.raises(ValueError):
+            form.add_field("foo", "bar", content_type=invalid_val)
 
 async def test_formdata_is_reusable(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
