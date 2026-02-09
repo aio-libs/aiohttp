@@ -168,11 +168,6 @@ Optionally you may install the aiodns_ library (highly recommended for sake of s
 .. _frozenlist: https://pypi.org/project/frozenlist/
 .. _yarl: https://pypi.python.org/pypi/yarl
 
-License
-=======
-
-``aiohttp`` is offered under the Apache 2 license.
-
 
 Keepsafe
 ========
