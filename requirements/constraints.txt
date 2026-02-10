@@ -179,7 +179,7 @@ pytest==9.0.2
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.2.0
+pytest-codspeed==4.3.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
