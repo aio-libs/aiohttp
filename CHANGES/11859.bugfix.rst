@@ -1,1 +1,1 @@
-Fixed ``ValueError`` when creating a TLS connection with ``ClientTimeout(total=0)`` by converting ``0`` to ``None`` before passing to ``ssl_handshake_timeout`` in :py:meth:`asyncio.loop.start_tls` -- by :user:`veeceey`.
+Fixed :exc:`ValueError` when creating a TLS connection with ``ClientTimeout(total=0)`` by converting ``0`` to ``None`` before passing to ``ssl_handshake_timeout`` in :py:meth:`asyncio.loop.start_tls` -- by :user:`veeceey`.
