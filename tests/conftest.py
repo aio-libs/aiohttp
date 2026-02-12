@@ -50,6 +50,10 @@ except ImportError:
 
 
 def pytest_configure(config: pytest.Config) -> None:
+    # On Windows with Python 3.10/3.11, proxy.py's threaded mode can leave
+    # sockets not fully released by the time pytest's unraisableexception
+    # plugin collects warnings during teardown. Suppress these warnings
+    # since they are not actionable and only affect older Python versions.
     if os.name == "nt" and sys.version_info[:2] in ((3, 10), (3, 11)):
         config.addinivalue_line(
             "filterwarnings",
@@ -477,8 +481,8 @@ async def make_client_request(
     yield maker
 
     await asyncio.gather(
-        *[request._close() for request in requests],
-        *[session.close() for session in sessions],
+        *(request._close() for request in requests),
+        *(session.close() for session in sessions),
     )
 
 
