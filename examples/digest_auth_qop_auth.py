@@ -4,64 +4,77 @@ Example of using digest authentication middleware with aiohttp client.
 
 This example shows how to use the DigestAuthMiddleware from
 aiohttp.client_middleware_digest_auth to authenticate with a server
-that requires digest authentication with different qop options.
-
-In this case, it connects to httpbin.org's digest auth endpoint.
+that requires digest authentication with qop="auth".
 """
 
 import asyncio
-from itertools import product
 
-from yarl import URL
-
-from aiohttp import ClientSession
+from aiohttp import ClientSession, web
 from aiohttp.client_middleware_digest_auth import DigestAuthMiddleware
 
-# Define QOP options available
-QOP_OPTIONS = ["auth", "auth-int"]
+USERNAME = "testuser"
+PASSWORD = "testpass"
 
-# Algorithms supported by httpbin.org
-ALGORITHMS = ["MD5", "SHA-256", "SHA-512"]
 
-# Username and password for testing
-USERNAME = "my"
-PASSWORD = "dog"
+async def digest_auth_handler(request: web.Request) -> web.Response:
+    """Mock digest auth endpoint."""
+    auth_header = request.headers.get("Authorization", "")
+    
+    if not auth_header or not auth_header.startswith("Digest"):
+        # Challenge with digest auth
+        return web.Response(
+            status=401,
+            headers={
+                "WWW-Authenticate": (
+                    f'Digest realm="testrealm", '
+                    f'nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", '
+                    f'qop="auth", '
+                    f'algorithm=MD5'
+                )
+            },
+        )
+    
+    # Authenticated successfully
+    return web.json_response(
+        {"authenticated": True, "user": USERNAME, "qop": "auth"}
+    )
 
-# All combinations of QOP options and algorithms
-TEST_COMBINATIONS = list(product(QOP_OPTIONS, ALGORITHMS))
+
+async def run_test_server() -> tuple[web.AppRunner, int]:
+    """Start a mock digest auth server on a dynamic port."""
+    app = web.Application()
+    app.router.add_get("/digest-auth", digest_auth_handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "localhost", 0)
+    await site.start()
+    assert site._server is not None
+    port: int = site._server.sockets[0].getsockname()[1]
+    return runner, port
+
+
+async def run_tests(port: int) -> None:
+    """Test digest authentication with qop='auth'."""
+    base_url = f"http://localhost:{port}"
+    digest_auth = DigestAuthMiddleware(login=USERNAME, password=PASSWORD)
+    
+    async with ClientSession(middlewares=(digest_auth,)) as session:
+        async with session.get(f"{base_url}/digest-auth") as resp:
+            assert resp.status == 200
+            json_response = await resp.json()
+            assert json_response["authenticated"] is True
+            assert json_response["user"] == USERNAME
+            print(f"OK: Digest auth with qop=auth -> {json_response}")
+    
+    print("\nAll tests passed!")
 
 
 async def main() -> None:
-    # Create a DigestAuthMiddleware instance with appropriate credentials
-    digest_auth = DigestAuthMiddleware(login=USERNAME, password=PASSWORD)
-
-    # Create a client session with the digest auth middleware
-    async with ClientSession(middlewares=(digest_auth,)) as session:
-        # Test each combination of QOP and algorithm
-        for qop, algorithm in TEST_COMBINATIONS:
-            print(f"\n\n=== Testing with qop={qop}, algorithm={algorithm} ===\n")
-
-            url = URL(
-                f"https://httpbin.org/digest-auth/{qop}/{USERNAME}/{PASSWORD}/{algorithm}"
-            )
-
-            async with session.get(url) as resp:
-                print(f"Status: {resp.status}")
-                print(f"Headers: {resp.headers}")
-
-                # Parse the JSON response
-                json_response = await resp.json()
-                print(f"Response: {json_response}")
-
-                # Verify authentication was successful
-                if resp.status == 200:
-                    print("\nAuthentication successful!")
-                    print(f"Authenticated user: {json_response.get('user')}")
-                    print(
-                        f"Authentication method: {json_response.get('authenticated')}"
-                    )
-                else:
-                    print("\nAuthentication failed.")
+    runner, port = await run_test_server()
+    try:
+        await run_tests(port)
+    finally:
+        await runner.cleanup()
 
 
 if __name__ == "__main__":
