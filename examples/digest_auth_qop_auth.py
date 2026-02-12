@@ -26,10 +26,10 @@ async def digest_auth_handler(request: web.Request) -> web.Response:
             status=401,
             headers={
                 "WWW-Authenticate": (
-                    f'Digest realm="testrealm", '
-                    f'nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", '
-                    f'qop="auth", '
-                    f"algorithm=MD5"
+                    'Digest realm="testrealm", '
+                    'nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", '
+                    'qop="auth", '
+                    'algorithm=MD5'
                 )
             },
         )
