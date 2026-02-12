@@ -19,7 +19,7 @@ PASSWORD = "testpass"
 async def digest_auth_handler(request: web.Request) -> web.Response:
     """Mock digest auth endpoint."""
     auth_header = request.headers.get("Authorization", "")
-    
+
     if not auth_header or not auth_header.startswith("Digest"):
         # Challenge with digest auth
         return web.Response(
@@ -29,15 +29,13 @@ async def digest_auth_handler(request: web.Request) -> web.Response:
                     f'Digest realm="testrealm", '
                     f'nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", '
                     f'qop="auth", '
-                    f'algorithm=MD5'
+                    f"algorithm=MD5"
                 )
             },
         )
-    
+
     # Authenticated successfully
-    return web.json_response(
-        {"authenticated": True, "user": USERNAME, "qop": "auth"}
-    )
+    return web.json_response({"authenticated": True, "user": USERNAME, "qop": "auth"})
 
 
 async def run_test_server() -> tuple[web.AppRunner, int]:
@@ -57,7 +55,7 @@ async def run_tests(port: int) -> None:
     """Test digest authentication with qop='auth'."""
     base_url = f"http://localhost:{port}"
     digest_auth = DigestAuthMiddleware(login=USERNAME, password=PASSWORD)
-    
+
     async with ClientSession(middlewares=(digest_auth,)) as session:
         async with session.get(f"{base_url}/digest-auth") as resp:
             assert resp.status == 200
@@ -65,7 +63,7 @@ async def run_tests(port: int) -> None:
             assert json_response["authenticated"] is True
             assert json_response["user"] == USERNAME
             print(f"OK: Digest auth with qop=auth -> {json_response}")
-    
+
     print("\nAll tests passed!")
 
 
