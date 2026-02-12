@@ -13,6 +13,7 @@ All tests are marked with @pytest.mark.example. Run them with:
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -24,81 +25,56 @@ if TYPE_CHECKING:
     from aiohttp.test_utils import TestClient
 
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
-sys.path.insert(0, str(EXAMPLES_DIR.parent))
 PYTHON = sys.executable
-
-KNOWN_ACCEPTABLE_WARNINGS = [
-    "deprecationwarning: 'audioop' is deprecated",
-]
 
 
 class ExampleConfig(NamedTuple):
     name: str
     timeout: int = 30
 
+    def __str__(self) -> str:
+        return self.name
+
 
 SELF_CONTAINED_EXAMPLES = [
-    ExampleConfig("rate_limit_middleware.py", timeout=60),
-    ExampleConfig("logging_middleware.py", timeout=30),
-    ExampleConfig("retry_middleware.py", timeout=60),
-    ExampleConfig("basic_auth_middleware.py", timeout=30),
-    ExampleConfig("digest_auth_qop_auth.py", timeout=30),
-    ExampleConfig("combined_middleware.py", timeout=60),
-    ExampleConfig("token_refresh_middleware.py", timeout=60),
-    ExampleConfig("fake_server.py", timeout=30),
-    ExampleConfig("web_srv.py", timeout=30),
+    ExampleConfig("rate_limit_middleware", timeout=60),
+    ExampleConfig("logging_middleware", timeout=30),
+    ExampleConfig("retry_middleware", timeout=60),
+    ExampleConfig("basic_auth_middleware", timeout=30),
+    ExampleConfig("digest_auth_qop_auth", timeout=30),
+    ExampleConfig("combined_middleware", timeout=60),
+    ExampleConfig("token_refresh_middleware", timeout=60),
+    ExampleConfig("fake_server", timeout=30),
+    ExampleConfig("web_srv", timeout=30),
 ]
 
 
-def _run_example(example_path: Path, timeout: int) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [PYTHON, "-W", "error", str(example_path)],
-        capture_output=True,
-        text=True,
+def _build_subprocess_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(EXAMPLES_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+    return env
+
+
+def _run_example(module_name: str, timeout: int) -> None:
+    subprocess.check_output(
+        [
+            PYTHON,
+            "-Werror",
+            "-Wignore::DeprecationWarning:audioop",
+            "-m",
+            module_name,
+        ],
+        stderr=subprocess.STDOUT,
         timeout=timeout,
-        cwd=str(example_path.parent),
+        env=_build_subprocess_env(),
     )
-
-
-WARNING_PATTERNS = [
-    "deprecationwarning",
-    "pendingdeprecationwarning",
-    "runtimewarning",
-    "resourcewarning",
-    "syntaxwarning",
-    "userwarning",
-    "futurewarning",
-]
-
-
-def _has_unexpected_warnings(stderr: str) -> bool:
-    stderr_lower = stderr.lower()
-    for acceptable in KNOWN_ACCEPTABLE_WARNINGS:
-        stderr_lower = stderr_lower.replace(acceptable, "")
-    return any(pattern in stderr_lower for pattern in WARNING_PATTERNS)
 
 
 @pytest.mark.example
-@pytest.mark.parametrize(
-    "config",
-    SELF_CONTAINED_EXAMPLES,
-    ids=[e.name for e in SELF_CONTAINED_EXAMPLES],
-)
+@pytest.mark.parametrize("config", SELF_CONTAINED_EXAMPLES, ids=str)
 def test_example_runs_successfully(config: ExampleConfig) -> None:
     """Verify self-contained example completes without errors or warnings."""
-    example_path = EXAMPLES_DIR / config.name
-    assert example_path.exists(), f"Example not found: {example_path}"
-
-    result = _run_example(example_path, config.timeout)
-
-    assert result.returncode == 0, (
-        f"Example {config.name} failed with exit code {result.returncode}\n"
-        f"stdout:\n{result.stdout}\n"
-        f"stderr:\n{result.stderr}"
-    )
-    assert not _has_unexpected_warnings(
-        result.stderr
-    ), f"Warnings in {config.name}:\n{result.stderr}"
+    _run_example(config.name, config.timeout)
 
 
 @pytest.mark.example
@@ -251,28 +227,28 @@ async def test_web_ws_broadcast(aiohttp_client: Any) -> None:  # type: ignore[mi
             assert msg == "Hello"
 
 
-# @pytest.mark.example
-# async def test_web_srv_routes(aiohttp_client: Any) -> None:  # type: ignore[misc]
-#     """Functional test for web_srv.py routes."""
-#     from examples import web_srv
+@pytest.mark.example
+async def test_web_srv_routes(aiohttp_client: Any) -> None:  # type: ignore[misc]
+    """Functional test for web_srv.py routes."""
+    from examples import web_srv  # noqa: I900
 
-#     app = web_srv.init()
-#     client: TestClient[Any, Any] = await aiohttp_client(app)
+    app = web_srv.init()
+    client: TestClient[Any, Any] = await aiohttp_client(app)
 
-#     async with client.get("/simple") as resp:
-#         assert resp.status == 200
-#         text = await resp.text()
-#         assert text == "Simple answer"
+    async with client.get("/simple") as resp:
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Simple answer"
 
-#     async with client.get("/change_body") as resp:
-#         assert resp.status == 200
-#         body = await resp.read()
-#         assert body == b"Body changed"
+    async with client.get("/change_body") as resp:
+        assert resp.status == 200
+        body = await resp.read()
+        assert body == b"Body changed"
 
-#     async with client.get("/hello/World") as resp:
-#         assert resp.status == 200
-#         text = await resp.text()
-#         assert text == "Hello, World"
+    async with client.get("/hello/World") as resp:
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Hello, World"
 
 
 @pytest.mark.example
