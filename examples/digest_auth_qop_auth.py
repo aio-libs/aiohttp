@@ -29,7 +29,7 @@ async def digest_auth_handler(request: web.Request) -> web.Response:
                     'Digest realm="testrealm", '
                     'nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", '
                     'qop="auth", '
-                    'algorithm=MD5'
+                    "algorithm=MD5"
                 )
             },
         )
