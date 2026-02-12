@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from aiohttp.test_utils import TestClient
 
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
+sys.path.insert(0, str(EXAMPLES_DIR.parent))
 PYTHON = sys.executable
 
 
