@@ -1,0 +1,2 @@
+Replaced deprecated ``ujson`` with ``orjson`` in client quickstart documentation
+-- by :user:`veeceey`.
