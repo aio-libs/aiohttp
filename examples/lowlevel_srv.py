@@ -11,7 +11,7 @@ async def handler(request: web_request.BaseRequest) -> web.StreamResponse:
     return web.Response(text="OK")
 
 
-async def run_test_server() -> tuple[web.Server, asyncio.Server, int]:
+async def run_test_server() -> tuple[web.Server[web_request.BaseRequest], asyncio.Server, int]:
     """Start a low-level server on a dynamic port for testing."""
     server = web.Server(handler)
     loop = asyncio.get_running_loop()
