@@ -11,24 +11,20 @@ async def handler(request: web_request.BaseRequest) -> web.StreamResponse:
     return web.Response(text="OK")
 
 
-async def run_test_server() -> tuple[web.AppRunner, int]:
-    """Start the server on a dynamic port for testing."""
-    app = web.Application()
-    app.router.add_get("/", handler)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "localhost", 0)
-    await site.start()
-    assert site._server is not None
-    port: int = site._server.sockets[0].getsockname()[1]
-    return runner, port
+async def run_test_server() -> tuple[web.Server, asyncio.Server, int]:
+    """Start a low-level server on a dynamic port for testing."""
+    server = web.Server(handler)
+    loop = asyncio.get_running_loop()
+    tcp_server = await loop.create_server(server, "localhost", 0)
+    assert tcp_server.sockets
+    port: int = tcp_server.sockets[0].getsockname()[1]
+    return server, tcp_server, port
 
 
 async def run_tests(port: int) -> None:
     """Run all tests against the server."""
-    base_url = f"http://localhost:{port}"
     async with ClientSession() as session:
-        async with session.get(f"{base_url}/") as resp:
+        async with session.get(f"http://localhost:{port}/") as resp:
             assert resp.status == 200
             text = await resp.text()
             assert text == "OK"
@@ -38,11 +34,13 @@ async def run_tests(port: int) -> None:
 
 
 async def main() -> None:
-    runner, port = await run_test_server()
+    server, tcp_server, port = await run_test_server()
     try:
         await run_tests(port)
     finally:
-        await runner.cleanup()
+        tcp_server.close()
+        await tcp_server.wait_closed()
+        await server.shutdown()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""Simple HTTP GET client with CLI support."""
+
+import argparse
 import asyncio
 
 import aiohttp
@@ -49,4 +52,11 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description="GET url example")
+    parser.add_argument("url", nargs="?", metavar="URL", help="URL to download")
+    options = parser.parse_args()
+
+    if options.url:
+        asyncio.run(curl(options.url))
+    else:
+        asyncio.run(main())
