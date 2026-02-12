@@ -13,6 +13,7 @@ All tests are marked with @pytest.mark.example. Run them with:
 
 from __future__ import annotations
 
+import asyncio
 import os
 import subprocess
 import sys
@@ -174,6 +175,9 @@ async def test_client_ws(aiohttp_client: Any) -> None:  # type: ignore[misc]
         name="TestUser",
         input_func=lambda: next(messages),
     )
+
+    # Small delay to allow dispatch task to receive pending responses
+    await asyncio.sleep(0.1)
 
     assert len(received_messages) == 2
     assert "TestUser: Hello\n" in received_messages[0]
