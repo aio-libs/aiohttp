@@ -36,7 +36,6 @@ __all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker")
 
 
 class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
-
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
@@ -49,7 +48,11 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
 
     def init_process(self) -> None:
         # create new event_loop after fork
-        asyncio.get_event_loop().close()
+        try:
+            asyncio.get_event_loop().close()
+        except RuntimeError:
+            # No loop was running
+            pass
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -245,7 +248,11 @@ class GunicornUVLoopWebWorker(GunicornWebWorker):
 
         # Close any existing event loop before setting a
         # new policy.
-        asyncio.get_event_loop().close()
+        try:
+            asyncio.get_event_loop().close()
+        except RuntimeError:
+            # No loop was running
+            pass
 
         # Setup uvloop policy, so that every
         # asyncio.get_event_loop() will create an instance

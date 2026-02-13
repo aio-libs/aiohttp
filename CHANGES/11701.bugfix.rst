@@ -1,0 +1,3 @@
+Fixed ``RuntimeError: An event loop is running`` error when using ``aiohttp.GunicornWebWorker``
+or ``aiohttp.GunicornUVLoopWebWorker`` on Python >=3.14.
+-- by :user:`Tasssadar`.
