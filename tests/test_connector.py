@@ -2654,34 +2654,21 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
     underlying_transport.abort.assert_not_called()
 
 
-async def test_start_tls_with_zero_total_timeout(
-    aiohttp_server: AiohttpServer,
-    aiohttp_client: AiohttpClient,
-    ssl_ctx: ssl.SSLContext,
-    client_ssl_ctx: ssl.SSLContext,
-) -> None:
-    """Test that ClientTimeout(total=0) works with TLS connections.
+def test_client_timeout_total_zero_raises() -> None:
+    """Test that ClientTimeout(total=0) raises ValueError.
 
-    Regression test for https://github.com/aio-libs/aiohttp/issues/11859
-    When total=0 (meaning no timeout), ssl_handshake_timeout should receive
-    None instead of 0, as asyncio raises ValueError for 0.
+    Related to https://github.com/aio-libs/aiohttp/issues/11859
+    Using total=0 to disable timeouts is no longer supported in v4,
+    use None instead.
     """
+    with pytest.raises(ValueError, match="total timeout must be a positive number"):
+        ClientTimeout(total=0)
 
-    async def handler(request: web.Request) -> web.Response:
-        return web.Response(text="ok")
 
-    app = web.Application()
-    app.router.add_get("/", handler)
-    server = await aiohttp_server(app, ssl=ssl_ctx)
-
-    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
-
-    # This used to raise ValueError: ssl_handshake_timeout should be a
-    # positive number, got 0
-    async with client.get("/", timeout=ClientTimeout(total=0)) as resp:
-        assert resp.status == 200
-        assert await resp.text() == "ok"
+def test_client_timeout_total_none_is_valid() -> None:
+    """Test that ClientTimeout(total=None) is still valid for disabling timeouts."""
+    timeout = ClientTimeout(total=None)
+    assert timeout.total is None
 
 
 async def test_invalid_ssl_param() -> None:
