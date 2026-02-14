@@ -1103,7 +1103,7 @@ async def test_static_resource_outside_traversal_windows(
 ) -> None:
     static_file = pathlib.Path(aiohttp.__file__)
     request_path = (
-        "/st" + "\\.." * (len(static_file.parts) - 2) + "\\" + str(static_file)[1:]
+        "/st\\..\\..\\" + "/".join(static_file.parts[-3:])
     )
     assert pathlib.Path(request_path).resolve() == static_file
 
