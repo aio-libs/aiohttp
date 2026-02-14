@@ -1098,9 +1098,13 @@ async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> N
 
 
 @pytest.mark.skipif(platform.system() != "Windows", reason="Windows test")
-async def test_static_resource_outside_traversal_windows(router: web.UrlDispatcher) -> None:
+async def test_static_resource_outside_traversal_windows(
+    router: web.UrlDispatcher,
+) -> None:
     static_file = pathlib.Path(aiohttp.__file__)
-    request_path = "/st" + "\\.." * (len(static_file.parts) - 2) + "\\" + str(static_file)[1:]
+    request_path = (
+        "/st" + "\\.." * (len(static_file.parts) - 2) + "\\" + str(static_file)[1:]
+    )
     assert pathlib.Path(request_path).resolve() == static_file
 
     resource = router.add_static("/st", static_file.parent)
