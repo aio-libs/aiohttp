@@ -1097,6 +1097,18 @@ async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> N
     assert (None, set()) == ret
 
 
+@pytest.mark.skipif(platform.system() != "Windows", reason="Windows test")
+async def test_static_resource_outside_traversal_windows(router: web.UrlDispatcher) -> None:
+    static_file = pathlib.Path(aiohttp.__file__)
+    request_path = "/st" + "\\.." * (len(static_file.parts) - 2) + "\\" + str(static_file)[1:]
+    assert pathlib.Path(request_path).resolve() == static_file
+
+    resource = router.add_static("/st", static_file.parent)
+    ret = await resource.resolve(make_mocked_request("GET", request_path))
+    # Should not resolve, otherwise filesystem information may be leaked.
+    assert (None, set()) == ret
+
+
 async def test_check_allowed_method_for_found_resource(
     router: web.UrlDispatcher,
 ) -> None:
