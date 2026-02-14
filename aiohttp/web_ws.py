@@ -149,6 +149,8 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
             return
         loop = self._loop
         assert loop is not None
+        # Coalesce multiple chunks received in the same loop tick into a single
+        # heartbeat reset. Resetting immediately per chunk increases timer churn.
         self._need_heartbeat_reset = True
         self._heartbeat_reset_handle = loop.call_soon(self._flush_heartbeat_reset)
 
@@ -381,16 +383,14 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         loop = self._loop
         assert loop is not None
         self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
-        parser: Any = WebSocketReader(
+        parser = WebSocketReader(
             self._reader,
             self._max_msg_size,
             compress=bool(self._compress),
             decode_text=self._decode_text,
         )
-        if self._heartbeat is not None:
-            request.protocol.set_parser(parser, data_received_cb=self._on_data_received)
-        else:
-            request.protocol.set_parser(parser)
+        cb = None if self._heartbeat is None else self._on_data_received
+        request.protocol.set_parser(parser, data_received_cb=cb)
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
 

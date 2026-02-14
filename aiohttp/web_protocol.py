@@ -414,8 +414,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._data_received_cb = data_received_cb
 
         if self._message_tail:
-            if self._data_received_cb is not None:
-                self._data_received_cb()
             self._payload_parser.feed_data(self._message_tail)
             self._message_tail = b""
 

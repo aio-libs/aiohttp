@@ -1227,13 +1227,9 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
-            parser: Any = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
-            if heartbeat is not None:
-                conn_proto.set_parser(
-                    parser, reader, data_received_cb=ws_resp._on_data_received
-                )
-            else:
-                conn_proto.set_parser(parser, reader)
+            parser = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
+            cb = None if heartbeat is None else ws_resp._on_data_received
+            conn_proto.set_parser(parser, reader, data_received_cb=cb)
             return ws_resp
 
     def _prepare_headers(self, headers: LooseHeaders | None) -> "CIMultiDict[str]":

@@ -675,7 +675,7 @@ async def test_heartbeat_reset_coalesces_on_data(
         loop,
         heartbeat=0.05,
     )
-    with mock.patch.object(resp, "_reset_heartbeat") as reset:
+    with mock.patch.object(resp, "_reset_heartbeat", autospec=True) as reset:
         resp._on_data_received()
         resp._on_data_received()
 

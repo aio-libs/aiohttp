@@ -862,21 +862,20 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
     app.router.add_route("GET", "/", handler)
     client = await aiohttp_client(app)
 
-    resp = await client.ws_connect("/", heartbeat=heartbeat)
-    # If heartbeat was not reset on any incoming bytes, the client would start
-    # sending PINGs while we're still streaming the message body, and since the
-    # server handler never calls receive(), no PONG would be produced and the
-    # client would close with a ping/pong timeout.
-    with mock.patch.object(
-        resp._writer, "send_frame", wraps=resp._writer.send_frame
-    ) as sf:
-        msg = await resp.receive()
-        assert (
-            sf.call_args_list.count(mock.call(b"", WSMsgType.PING)) == 0
-        ), "Heartbeat PING sent while data was still being received"
-    assert msg.type is WSMsgType.BINARY
-    assert msg.data == payload
-    await resp.close()
+    async with client.ws_connect("/", heartbeat=heartbeat) as resp:
+        # If heartbeat was not reset on any incoming bytes, the client would start
+        # sending PINGs while we're still streaming the message body, and since the
+        # server handler never calls receive(), no PONG would be produced and the
+        # client would close with a ping/pong timeout.
+        with mock.patch.object(
+            resp._writer, "send_frame", wraps=resp._writer.send_frame
+        ) as sf:
+            msg = await resp.receive()
+            assert (
+                sf.call_args_list.count(mock.call(b"", WSMsgType.PING)) == 0
+            ), "Heartbeat PING sent while data was still being received"
+        assert msg.type is WSMsgType.BINARY
+        assert msg.data == payload
 
 
 async def test_heartbeat_no_pong_after_receive_many_messages(

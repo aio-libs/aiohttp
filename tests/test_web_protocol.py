@@ -20,7 +20,7 @@ class _DummyParser:
         return False, b""
 
 
-def test_set_parser_calls_data_received_cb_for_tail(
+def test_set_parser_does_not_call_data_received_cb_for_tail(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     handler: RequestHandler[Any] = RequestHandler(cast(Any, _DummyManager()), loop=loop)
@@ -30,7 +30,7 @@ def test_set_parser_calls_data_received_cb_for_tail(
 
     handler.set_parser(parser, data_received_cb=cb)
 
-    assert cb.call_count == 1
+    cb.assert_not_called()
     assert parser.received == [b"tail"]
 
 

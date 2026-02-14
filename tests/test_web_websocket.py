@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Protocol, cast
+from typing import Protocol
 from unittest import mock
 
 import aiosignal
@@ -123,17 +123,16 @@ async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     ws = web.WebSocketResponse(heartbeat=0.05)
-    scheduled = loop.call_soon(lambda: None)
-    # Keep attribute flow type as Optional[Handle] for mypy: it does not
-    # do interprocedural inference about _cancel_heartbeat() clearing it.
-    ws._heartbeat_reset_handle = cast(asyncio.Handle | None, scheduled)
-    ws._need_heartbeat_reset = True
+    ws._loop = loop
+    ws._on_data_received()
+    handle = ws._heartbeat_reset_handle
+    assert handle is not None
 
     ws._cancel_heartbeat()
 
     assert ws._heartbeat_reset_handle is None
     assert ws._need_heartbeat_reset is False
-    assert scheduled.cancelled()
+    assert handle.cancelled()
 
 
 async def test_flush_heartbeat_reset_returns_early_when_not_needed() -> None:
