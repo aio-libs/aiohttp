@@ -1102,9 +1102,7 @@ async def test_static_resource_outside_traversal_windows(
     router: web.UrlDispatcher,
 ) -> None:
     static_file = pathlib.Path(aiohttp.__file__)
-    request_path = (
-        "/st\\..\\..\\" + "/".join(static_file.parts[-3:])
-    )
+    request_path = "/st\\..\\..\\" + "/".join(static_file.parts[-3:])
     assert pathlib.Path(request_path).resolve() == static_file
 
     resource = router.add_static("/st", static_file.parent)
