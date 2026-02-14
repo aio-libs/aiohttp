@@ -28,9 +28,6 @@ def test_web___all__(pytester: pytest.Pytester) -> None:
     result.assert_outcomes(passed=0, errors=0)
 
 
-_IMPORT_TIME_THRESHOLD_MS = 400 if sys.version_info >= (3, 12) else 300
-
-
 @pytest.mark.internal
 @pytest.mark.dev_mode
 @pytest.mark.skipif(
@@ -43,20 +40,25 @@ def test_import_time(pytester: pytest.Pytester) -> None:
     Obviously, the time may vary on different machines and may need to be adjusted
     from time to time, but this should provide an early warning if something is
     added that significantly increases import time.
+
+    Runs 3 times and keeps the minimum time to reduce flakiness.
     """
+    IMPORT_TIME_THRESHOLD_MS = 300 if sys.version_info >= (3, 12) else 200
+    best_time_ms = 1000
     root = Path(__file__).parent.parent
     old_path = os.environ.get("PYTHONPATH")
     os.environ["PYTHONPATH"] = os.pathsep.join([str(root)] + sys.path)
 
     cmd = "import timeit; print(int(timeit.timeit('import aiohttp', number=1) * 1000))"
     try:
-        r = pytester.run(sys.executable, "-We", "-c", cmd)
-        assert not r.stderr.str(), r.stderr.str()
-        runtime_ms = int(r.stdout.str())
+        for _ in range(3):
+            r = pytester.run(sys.executable, "-We", "-c", cmd)
+            assert not r.stderr.str(), r.stderr.str()
+            best_time_ms = min(best_time_ms, int(r.stdout.str()))
     finally:
         if old_path is None:
             os.environ.pop("PYTHONPATH")
         else:
             os.environ["PYTHONPATH"] = old_path
 
-    assert runtime_ms < _IMPORT_TIME_THRESHOLD_MS
+    assert best_time_ms < IMPORT_TIME_THRESHOLD_MS

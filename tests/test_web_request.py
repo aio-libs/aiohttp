@@ -600,19 +600,17 @@ def test_single_forwarded_header() -> None:
     assert req.forwarded[0]["proto"] == "identifier"
 
 
-_FORWARDED_RE_TIME_THRESHOLD_SECONDS = 0.08
-
-
 def test_forwarded_re_performance() -> None:
+    FORWARDED_RE_TIME_THRESHOLD_SECONDS = 0.08
     value = "{" + "f" * 54773 + "z\x00a=v"
     start = time.perf_counter()
     match = _FORWARDED_PAIR_RE.match(value)
     elapsed = time.perf_counter() - start
 
     # If this is taking more time, there's probably a performance/ReDoS issue.
-    assert elapsed < _FORWARDED_RE_TIME_THRESHOLD_SECONDS, (
+    assert elapsed < FORWARDED_RE_TIME_THRESHOLD_SECONDS, (
         f"Regex took {elapsed * 1000:.1f}ms, "
-        f"expected <{_FORWARDED_RE_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+        f"expected <{FORWARDED_RE_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
     )
     # This example shouldn't produce a match either.
     assert match is None

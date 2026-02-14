@@ -1331,11 +1331,9 @@ async def test_case_sensitive_algorithm_server(
     assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
 
 
-_REGEX_TIME_THRESHOLD_SECONDS = 0.08
-
-
 def test_regex_performance() -> None:
     """Test that the regex pattern doesn't suffer from ReDoS issues."""
+    REGEX_TIME_THRESHOLD_SECONDS = 0.08
     value = "0" * 54773 + "\\0=a"
 
     start = time.perf_counter()
@@ -1343,9 +1341,9 @@ def test_regex_performance() -> None:
     elapsed = time.perf_counter() - start
 
     # If this is taking more time, there's probably a performance/ReDoS issue.
-    assert elapsed < _REGEX_TIME_THRESHOLD_SECONDS, (
+    assert elapsed < REGEX_TIME_THRESHOLD_SECONDS, (
         f"Regex took {elapsed * 1000:.1f}ms, "
-        f"expected <{_REGEX_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+        f"expected <{REGEX_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
     )
     # This example shouldn't produce a match either.
     assert not matches
