@@ -1,2 +1,2 @@
-Replaced deprecated ``ujson`` with ``orjson`` in client quickstart documentation
+Replaced deprecated ``ujson`` with ``orjson`` in client Quickstart documentation
 -- by :user:`veeceey`.
