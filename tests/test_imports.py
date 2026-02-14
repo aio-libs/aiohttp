@@ -44,11 +44,11 @@ def test_import_time(pytester: pytest.Pytester) -> None:
     Runs 3 times and keeps the minimum time to reduce flakiness.
     """
     IMPORT_TIME_THRESHOLD_MS = 300 if sys.version_info >= (3, 12) else 200
-    best_time_ms = 1000
     root = Path(__file__).parent.parent
     old_path = os.environ.get("PYTHONPATH")
     os.environ["PYTHONPATH"] = os.pathsep.join([str(root)] + sys.path)
 
+    best_time_ms = 1000
     cmd = "import timeit; print(int(timeit.timeit('import aiohttp', number=1) * 1000))"
     try:
         for _ in range(3):
