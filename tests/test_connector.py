@@ -36,6 +36,7 @@ from aiohttp.connector import (
     _ConnectTunnelConnection,
     _DNSCacheTable,
 )
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.resolver import ResolveResult
 from aiohttp.test_utils import unused_port
 from aiohttp.tracing import Trace
