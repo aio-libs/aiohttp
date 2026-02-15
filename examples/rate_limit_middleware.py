@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
-Rate-limiting middleware example (client-side).
+Client-side rate-limiting middleware example for aiohttp.
 
-Uses a token-bucket algorithm with optional per-domain limiting and
-automatic Retry-After respect.
+Demonstrates how to throttle outgoing requests using a token-bucket
+algorithm.  This is *not* server-side rate limiting — it limits how
+fast the client sends requests so it does not overwhelm upstream
+servers or exceed API quotas.
+
+Features:
+- Configurable rate and burst size
+- Optional per-domain buckets
+- Automatic ``Retry-After`` header handling
 """
 
 import asyncio
@@ -39,6 +46,7 @@ class TokenBucket:
                     return
                 wait_time = (1 - self.tokens) / self.rate
 
+            # Sleep outside the lock so other coroutines can check/refill.
             await asyncio.sleep(wait_time)
 
     def _refill(self, now: float) -> None:
@@ -107,13 +115,15 @@ class RateLimitMiddleware:
 # Simple demo
 async def main() -> None:
     rate_limit = RateLimitMiddleware(rate=5.0, burst=2)
+    start = time.monotonic()
 
     async with ClientSession(
         base_url="http://httpbin.org", middlewares=(rate_limit,)
     ) as session:
         for i in range(5):
             async with session.get("/get") as resp:
-                print(f"Request {i + 1}: {resp.status}")
+                elapsed = time.monotonic() - start
+                print(f"Request {i + 1}: {resp.status} at t={elapsed:.2f}s")
 
 
 if __name__ == "__main__":
