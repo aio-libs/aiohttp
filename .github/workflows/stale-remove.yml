@@ -13,5 +13,4 @@ jobs:
       - name: Remove needs-info label
         uses: actions-ecosystem/action-remove-labels@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: needs-info
