@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import suppress
-from typing import Any
+from typing import Any, Callable
 
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
@@ -34,6 +34,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._payload: StreamReader | None = None
         self._skip_payload = False
         self._payload_parser = None
+        self._data_received_cb: Callable[[], None] | None = None
 
         self._timer = None
 
@@ -203,7 +204,12 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._drop_timeout()
         super().set_exception(exc, exc_cause)
 
-    def set_parser(self, parser: Any, payload: Any) -> None:
+    def set_parser(
+        self,
+        parser: Any,
+        payload: Any,
+        data_received_cb: Callable[[], None] | None = None,
+    ) -> None:
         # TODO: actual types are:
         #   parser: WebSocketReader
         #   payload: WebSocketDataQueue
@@ -211,6 +217,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         # Need an ABC for both types
         self._payload = payload
         self._payload_parser = parser
+        self._data_received_cb = data_received_cb
 
         self._drop_timeout()
 
@@ -298,6 +305,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         # custom payload parser - currently always WebSocketReader
         if self._payload_parser is not None:
+            if self._data_received_cb is not None:
+                self._data_received_cb()
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
                 self._payload = None
