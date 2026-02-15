@@ -145,6 +145,7 @@ cdef extern from "llhttp.h":
 
     int llhttp_should_keep_alive(const llhttp_t* parser)
 
+    void llhttp_resume(llhttp_t* parser)
     void llhttp_resume_after_upgrade(llhttp_t* parser)
 
     llhttp_errno_t llhttp_get_errno(const llhttp_t* parser)
