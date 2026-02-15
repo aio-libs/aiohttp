@@ -17,5 +17,4 @@ jobs:
       - name: Remove pr-unfinished label
         uses: actions-ecosystem/action-remove-labels@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: pr-unfinished
