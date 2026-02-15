@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
 """
-Example of using rate limiting middleware with aiohttp client.
+Rate-limiting middleware example (client-side).
 
-This example shows how to implement a middleware that limits request rate
-to avoid overwhelming servers or hitting API rate limits. The implementation
-uses a token bucket algorithm that allows for burst traffic while maintaining
-an average rate limit.
-
-Features:
-- Token bucket rate limiting with configurable rate and burst size
-- Per-domain rate limiting for multi-host scenarios
-- Automatic Retry-After header handling
-- Support for both global and per-domain limits
+Uses a token-bucket algorithm with optional per-domain limiting and
+automatic Retry-After respect.
 """
 
 import asyncio
@@ -20,7 +12,7 @@ import time
 from collections import defaultdict
 from http import HTTPStatus
 
-from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession, web
+from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession
 
 logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
@@ -111,129 +103,17 @@ class RateLimitMiddleware:
         return response
 
 
-class TestServer:
-    """Test server that simulates rate limiting."""
-
-    def __init__(self) -> None:
-        self.request_times: list[float] = []
-        self.rate_limit_counter = 0
-
-    async def handle_api(self, request: web.Request) -> web.Response:
-        """Normal API endpoint that tracks request timing."""
-        self.request_times.append(time.monotonic())
-        return web.json_response(
-            {
-                "message": "Success",
-                "request_count": len(self.request_times),
-            }
-        )
-
-    async def handle_rate_limited(self, request: web.Request) -> web.Response:
-        """Endpoint simulating server-side rate limiting."""
-        self.rate_limit_counter += 1
-        if self.rate_limit_counter <= 2:
-            return web.Response(
-                status=429,
-                text="Too Many Requests",
-                headers={"Retry-After": "1"},
-            )
-        return web.json_response({"message": "Rate limit cleared"})
-
-    async def handle_stats(self, request: web.Request) -> web.Response:
-        """Return request timing statistics."""
-        if len(self.request_times) < 2:
-            return web.json_response({"intervals": [], "average_rate": 0})
-        intervals = [
-            self.request_times[i] - self.request_times[i - 1]
-            for i in range(1, len(self.request_times))
-        ]
-        avg_rate = 1.0 / (sum(intervals) / len(intervals)) if intervals else 0
-        return web.json_response(
-            {
-                "intervals": [round(i, 3) for i in intervals],
-                "average_rate": round(avg_rate, 2),
-            }
-        )
-
-    async def handle_reset(self, request: web.Request) -> web.Response:
-        """Reset server state."""
-        self.request_times = []
-        self.rate_limit_counter = 0
-        return web.Response(text="Reset")
-
-
-async def run_test_server() -> tuple[web.AppRunner, int]:
-    """Run a test server with rate limiting simulation."""
-    app = web.Application()
-    server = TestServer()
-
-    app.router.add_get("/api", server.handle_api)
-    app.router.add_get("/rate-limited", server.handle_rate_limited)
-    app.router.add_get("/stats", server.handle_stats)
-    app.router.add_post("/reset", server.handle_reset)
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "localhost", 0)
-    await site.start()
-    assert site._server is not None
-    port: int = site._server.sockets[0].getsockname()[1]
-    return runner, port
-
-
-async def run_tests(port: int) -> None:
-    """Run rate limit middleware tests."""
-    base_url = f"http://localhost:{port}"
-    rate_limit = RateLimitMiddleware(rate=5.0, burst=2, per_domain=False)
-
-    async with ClientSession(middlewares=(rate_limit,)) as session:
-        await session.post(f"{base_url}/reset")
-
-        print("=== Test 1: Burst requests (limit: 5/s, burst: 2) ===")
-        print("Sending 5 requests rapidly...")
-        start = time.monotonic()
-
-        for i in range(5):
-            async with session.get(f"{base_url}/api") as resp:
-                data = await resp.json()
-                elapsed = time.monotonic() - start
-                print(f"Request {i + 1}: {elapsed:.2f}s - {data['message']}")
-
-        print("\n=== Test 2: Check actual request rate ===")
-        async with session.get(f"{base_url}/stats") as resp:
-            stats = await resp.json()
-            print(f"Request intervals: {stats['intervals']}")
-            print(f"Average rate: {stats['average_rate']} req/s")
-
-        print("\n=== Test 3: Server-side 429 with Retry-After ===")
-        await session.post(f"{base_url}/reset")
-        for i in range(3):
-            async with session.get(f"{base_url}/rate-limited") as resp:
-                text = await resp.text() if resp.status == 429 else (await resp.json())
-                print(f"Request {i + 1}: Status {resp.status} - {text}")
-
-    print("\n=== Test 4: Per-domain rate limiting ===")
-    per_domain_limit = RateLimitMiddleware(rate=10.0, burst=1, per_domain=True)
-
-    async with ClientSession(middlewares=(per_domain_limit,)) as session:
-        await session.post(f"{base_url}/reset")
-        print("Simulating requests to different 'domains' (same server)...")
-        print("(In real usage, different domains get separate rate limits)")
-
-        start = time.monotonic()
-        for i in range(3):
-            async with session.get(f"{base_url}/api") as resp:
-                elapsed = time.monotonic() - start
-                print(f"Request {i + 1} to localhost: {elapsed:.2f}s")
-
-
+# ------------------------------------------------------------------
+# Simple demo
 async def main() -> None:
-    server, port = await run_test_server()
+    rate_limit = RateLimitMiddleware(rate=5.0, burst=2)
 
-    try:
-        await run_tests(port)
-    finally:
-        await server.cleanup()
+    async with ClientSession(
+        base_url="http://httpbin.org", middlewares=(rate_limit,)
+    ) as session:
+        for i in range(5):
+            async with session.get("/get") as resp:
+                print(f"Request {i + 1}: {resp.status}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,3 @@
-Added a rate limiting middleware example demonstrating how to limit request
-rate using the token bucket algorithm with support for per-domain rate limits
-and ``Retry-After`` header handling. Also refactored existing examples for
-improved testability -- by :user:`rodrigobnogueira`.
+Added rate-limiting client middleware example (``examples/rate_limit_middleware.py``)
+demonstrating token-bucket rate limiting with per-domain support and ``Retry-After``
+header handling -- by :user:`rodrigobnogueira`.
