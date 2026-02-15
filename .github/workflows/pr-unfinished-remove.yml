@@ -9,7 +9,6 @@ on:
 
 jobs:
   clear-pr-unfinished:
-    if: contains(github.event.issue.labels.*.name, 'pr-unfinished')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
