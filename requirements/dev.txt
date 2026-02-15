@@ -133,7 +133,7 @@ pip-tools==7.5.3
     # via -r requirements/dev.in
 pkgconfig==1.5.5
     # via -r requirements/test-common.in
-platformdirs==4.5.1
+platformdirs==4.9.1
     # via virtualenv
 pluggy==1.6.0
     # via
