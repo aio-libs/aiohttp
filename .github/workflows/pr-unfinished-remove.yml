@@ -17,4 +17,6 @@ jobs:
       - name: Remove pr-unfinished label
         uses: actions-ecosystem/action-remove-labels@v1
         with:
-          labels: pr-unfinished
+          labels: |
+            needs-info
+            pr-unfinished
