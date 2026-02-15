@@ -730,7 +730,7 @@ async def test_flush_heartbeat_reset_returns_early_when_not_needed(
     )
     resp._need_heartbeat_reset = False
 
-    with mock.patch.object(resp, "_reset_heartbeat") as reset:
+    with mock.patch.object(resp, "_reset_heartbeat", autospec=True) as reset:
         resp._flush_heartbeat_reset()
         reset.assert_not_called()
 
