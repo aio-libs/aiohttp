@@ -116,7 +116,7 @@ class TestServer:
         )
 
 
-async def run_test_server() -> tuple[web.AppRunner, int]:
+async def run_test_server() -> web.AppRunner:
     """Run a simple test server with basic auth endpoints."""
     app = web.Application()
     server = TestServer()
@@ -126,23 +126,21 @@ async def run_test_server() -> tuple[web.AppRunner, int]:
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "localhost", 0)
+    site = web.TCPSite(runner, "localhost", 8080)
     await site.start()
-    assert site._server is not None
-    port: int = site._server.sockets[0].getsockname()[1]
-    return runner, port
+    return runner
 
 
-async def run_tests(port: int) -> None:
+async def run_tests() -> None:
     """Run all basic auth middleware tests."""
+    # Create middleware instance
     auth_middleware = BasicAuthMiddleware("user", "pass")
-    base_url = f"http://localhost:{port}"
 
     # Use middleware in session
     async with ClientSession(middlewares=(auth_middleware,)) as session:
         # Test 1: Correct credentials endpoint
         print("=== Test 1: Correct credentials ===")
-        async with session.get(f"{base_url}/basic-auth/user/pass") as resp:
+        async with session.get("http://localhost:8080/basic-auth/user/pass") as resp:
             _LOGGER.info("Status: %s", resp.status)
 
             if resp.status == 200:
@@ -159,7 +157,7 @@ async def run_tests(port: int) -> None:
 
         # Test 2: Wrong credentials endpoint
         print("\n=== Test 2: Wrong credentials endpoint ===")
-        async with session.get(f"{base_url}/basic-auth/other/secret") as resp:
+        async with session.get("http://localhost:8080/basic-auth/other/secret") as resp:
             if resp.status == 401:
                 print("Authentication failed as expected (wrong credentials)")
                 text = await resp.text()
@@ -169,7 +167,7 @@ async def run_tests(port: int) -> None:
 
         # Test 3: Protected resource
         print("\n=== Test 3: Access protected resource ===")
-        async with session.get(f"{base_url}/protected") as resp:
+        async with session.get("http://localhost:8080/protected") as resp:
             if resp.status == 200:
                 data = await resp.json()
                 print("Successfully accessed protected resource!")
@@ -179,10 +177,11 @@ async def run_tests(port: int) -> None:
 
 
 async def main() -> None:
-    server, port = await run_test_server()
+    # Start test server
+    server = await run_test_server()
 
     try:
-        await run_tests(port)
+        await run_tests()
     finally:
         await server.cleanup()
 

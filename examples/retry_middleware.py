@@ -147,7 +147,7 @@ class TestServer:
         return web.Response(text="Counters reset")
 
 
-async def run_test_server() -> tuple[web.AppRunner, int]:
+async def run_test_server() -> web.AppRunner:
     """Run a simple test server."""
     app = web.Application()
     server = TestServer()
@@ -159,16 +159,14 @@ async def run_test_server() -> tuple[web.AppRunner, int]:
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "localhost", 0)
+    site = web.TCPSite(runner, "localhost", 8080)
     await site.start()
-    assert site._server is not None
-    port: int = site._server.sockets[0].getsockname()[1]
-    return runner, port
+    return runner
 
 
-async def run_tests(port: int) -> None:
+async def run_tests() -> None:
     """Run all retry middleware tests."""
-    base_url = f"http://localhost:{port}"
+    # Create retry middleware with custom settings
     retry_middleware = RetryMiddleware(
         max_retries=3,
         retry_statuses=DEFAULT_RETRY_STATUSES,
@@ -178,11 +176,11 @@ async def run_tests(port: int) -> None:
 
     async with ClientSession(middlewares=(retry_middleware,)) as session:
         # Reset counters before tests
-        await session.post(f"{base_url}/reset")
+        await session.post("http://localhost:8080/reset")
 
         # Test 1: Request that succeeds immediately
         print("=== Test 1: Immediate success ===")
-        async with session.get(f"{base_url}/sequence/immediate-ok") as resp:
+        async with session.get("http://localhost:8080/sequence/immediate-ok") as resp:
             text = await resp.text()
             print(f"Final status: {resp.status}")
             print(f"Response: {text}")
@@ -190,7 +188,7 @@ async def run_tests(port: int) -> None:
 
         # Test 2: Request that eventually succeeds after retries
         print("=== Test 2: Eventually succeeds (500->503->502->200) ===")
-        async with session.get(f"{base_url}/sequence/eventually-ok") as resp:
+        async with session.get("http://localhost:8080/sequence/eventually-ok") as resp:
             text = await resp.text()
             print(f"Final status: {resp.status}")
             print(f"Response: {text}")
@@ -201,7 +199,7 @@ async def run_tests(port: int) -> None:
 
         # Test 3: Request that always fails
         print("=== Test 3: Always fails (500->500->500->500) ===")
-        async with session.get(f"{base_url}/sequence/always-error") as resp:
+        async with session.get("http://localhost:8080/sequence/always-error") as resp:
             text = await resp.text()
             print(f"Final status: {resp.status}")
             print(f"Response: {text}")
@@ -209,8 +207,8 @@ async def run_tests(port: int) -> None:
 
         # Test 4: Flaky service (fails once then succeeds)
         print("=== Test 4: Flaky service (503->200) ===")
-        await session.post(f"{base_url}/reset")
-        async with session.get(f"{base_url}/sequence/flaky") as resp:
+        await session.post("http://localhost:8080/reset")  # Reset counters
+        async with session.get("http://localhost:8080/sequence/flaky") as resp:
             text = await resp.text()
             print(f"Final status: {resp.status}")
             print(f"Response: {text}")
@@ -218,14 +216,14 @@ async def run_tests(port: int) -> None:
 
         # Test 5: Non-retryable status
         print("=== Test 5: Non-retryable status (404) ===")
-        async with session.get(f"{base_url}/status/404") as resp:
+        async with session.get("http://localhost:8080/status/404") as resp:
             print(f"Final status: {resp.status}")
             print("Failed immediately - not a retryable status\n")
 
         # Test 6: Delayed response
         print("=== Test 6: Testing with delay endpoint ===")
         try:
-            async with session.get(f"{base_url}/delay/0.5") as resp:
+            async with session.get("http://localhost:8080/delay/0.5") as resp:
                 print(f"Status: {resp.status}")
                 data = await resp.json()
                 print(f"Response received after delay: {data}\n")
@@ -234,10 +232,11 @@ async def run_tests(port: int) -> None:
 
 
 async def main() -> None:
-    server, port = await run_test_server()
+    # Start test server
+    server = await run_test_server()
 
     try:
-        await run_tests(port)
+        await run_tests()
     finally:
         await server.cleanup()
 
