@@ -15,6 +15,7 @@ from aiohttp import (
     client,
     hdrs,
 )
+from aiohttp._websocket.writer import WebSocketWriter as RealWebSocketWriter
 from aiohttp.http import WS_KEY
 from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
@@ -380,9 +381,10 @@ async def test_close(
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(mresp)
-                writer = mock.Mock()
+                writer = mock.create_autospec(
+                    RealWebSocketWriter, instance=True, spec_set=True
+                )
                 WebSocketWriter.return_value = writer
-                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
@@ -489,9 +491,10 @@ async def test_close_exc(
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(mresp)
-                writer = mock.Mock()
+                writer = mock.create_autospec(
+                    RealWebSocketWriter, instance=True, spec_set=True
+                )
                 WebSocketWriter.return_value = writer
-                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
@@ -625,9 +628,10 @@ async def test_reader_read_exception(
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(hresp)
 
-                writer = mock.Mock()
+                writer = mock.create_autospec(
+                    RealWebSocketWriter, instance=True, spec_set=True
+                )
                 WebSocketWriter.return_value = writer
-                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
@@ -878,29 +882,34 @@ async def test_ws_connect_deflate_per_message(
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(mresp)
-                writer = WebSocketWriter.return_value = mock.Mock()
-                send_frame = writer.send_frame = mock.AsyncMock()
+                writer = mock.create_autospec(
+                    RealWebSocketWriter, instance=True, spec_set=True
+                )
+
+                WebSocketWriter.return_value = writer
 
                 session = aiohttp.ClientSession()
                 resp = await session.ws_connect("http://test.org")
 
                 await resp.send_str("string", compress=-1)
-                send_frame.assert_called_with(
+                writer.send_frame.assert_called_with(
                     b"string", aiohttp.WSMsgType.TEXT, compress=-1
                 )
 
                 await resp.send_bytes(b"bytes", compress=15)
-                send_frame.assert_called_with(
+                writer.send_frame.assert_called_with(
                     b"bytes", aiohttp.WSMsgType.BINARY, compress=15
                 )
 
                 await resp.send_json([{}], compress=-9)
-                send_frame.assert_called_with(
+                writer.send_frame.assert_called_with(
                     b"[{}]", aiohttp.WSMsgType.TEXT, compress=-9
                 )
 
                 await resp.send_frame(b"[{}]", aiohttp.WSMsgType.TEXT, compress=-9)
-                send_frame.assert_called_with(b"[{}]", aiohttp.WSMsgType.TEXT, -9)
+                writer.send_frame.assert_called_with(
+                    b"[{}]", aiohttp.WSMsgType.TEXT, -9
+                )
 
                 await session.close()
 

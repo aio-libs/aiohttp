@@ -27,7 +27,7 @@ cffi==2.0.0
     #   pytest-codspeed
 click==8.3.1
     # via wait-for-it
-coverage==7.13.2
+coverage==7.13.4
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -106,7 +106,7 @@ pytest==9.0.2
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.2.0
+pytest-codspeed==4.3.0
     # via -r requirements/test-common.in
 pytest-cov==7.0.0
     # via -r requirements/test-common.in
