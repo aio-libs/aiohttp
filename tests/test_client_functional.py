@@ -3332,7 +3332,7 @@ async def test_invalid_idna() -> None:
     session = aiohttp.ClientSession()
     try:
         with pytest.raises(aiohttp.InvalidURL):
-            await session.get("http://\u2061owhefopw.com")
+            await session.get("http://\u0080owhefopw.com")
     finally:
         await session.close()
 
