@@ -1,4 +1,4 @@
-name: Clear pr-unfinished on activity
+name: Clear needs-info/pr-unfinished on activity
 on:
   pull_request:
     types: [synchronize, review_requested]
@@ -14,7 +14,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Remove pr-unfinished label
+      - name: Remove label
         uses: actions-ecosystem/action-remove-labels@v1
         with:
           labels: |
