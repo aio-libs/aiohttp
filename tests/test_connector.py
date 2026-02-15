@@ -1492,7 +1492,7 @@ async def test_tcp_connector_cancel_dns_error_captured(
         )
         m_resolver().resolve.return_value = dns_response_error()
         m_resolver().close = mock.AsyncMock()
-        f = loop.create_task(conn._create_direct_connection(req, [], ClientTimeout(0)))
+        f = loop.create_task(conn._create_direct_connection(req, [], ClientTimeout()))
 
         await asyncio.sleep(0)
         f.cancel()
