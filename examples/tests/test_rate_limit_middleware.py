@@ -10,7 +10,6 @@ import time
 from unittest.mock import AsyncMock
 
 import pytest
-
 from rate_limit_middleware import RateLimitMiddleware, TokenBucket
 
 
