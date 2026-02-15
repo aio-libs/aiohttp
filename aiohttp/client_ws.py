@@ -393,7 +393,6 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                             msg = await self._reader.read()
                     else:
                         msg = await self._reader.read()
-                    self._reset_heartbeat()
                 finally:
                     self._waiting = False
                     if self._close_wait:

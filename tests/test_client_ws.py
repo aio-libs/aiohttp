@@ -688,6 +688,32 @@ async def test_heartbeat_reset_coalesces_on_data(
         assert reset.call_count == 1
 
 
+async def test_receive_does_not_reset_heartbeat(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    response = mock.Mock()
+    response.connection = None
+    msg = mock.Mock(type=aiohttp.WSMsgType.TEXT)
+    reader = mock.Mock()
+    reader.read = mock.AsyncMock(return_value=msg)
+    resp = client.ClientWebSocketResponse(
+        reader,
+        mock.Mock(),
+        None,
+        response,
+        ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
+        heartbeat=0.05,
+    )
+    with mock.patch.object(resp, "_reset_heartbeat", autospec=True) as reset:
+        received = await resp.receive()
+
+    assert received is msg
+    reset.assert_not_called()
+
+
 async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle(
     loop: asyncio.AbstractEventLoop,
 ) -> None:

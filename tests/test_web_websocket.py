@@ -227,6 +227,20 @@ async def test_heartbeat_reset_coalesces_on_data(
         assert reset.call_count == 1
 
 
+async def test_receive_does_not_reset_heartbeat() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    msg = mock.Mock(type=WSMsgType.TEXT)
+    reader = mock.Mock()
+    reader.read = mock.AsyncMock(return_value=msg)
+    ws._reader = reader
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        received = await ws.receive()
+
+    assert received is msg
+    reset.assert_not_called()
+
+
 def test_websocket_ready() -> None:
     websocket_ready = WebSocketReady(True, "chat")
     assert websocket_ready.ok is True
