@@ -2,6 +2,7 @@ import asyncio
 from contextlib import suppress
 from typing import Any, Callable
 
+from ._websocket.reader import WebSocketDataQueue
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
     ClientConnectionError,
@@ -206,15 +207,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
     def set_parser(
         self,
-        parser: Any,
-        payload: Any,
+        parser: WebSocketReader,
+        payload: WebSocketDataQueue,
         data_received_cb: Callable[[], None] | None = None,
     ) -> None:
-        # TODO: actual types are:
-        #   parser: WebSocketReader
-        #   payload: WebSocketDataQueue
-        # but they are not generi enough
-        # Need an ABC for both types
         self._payload = payload
         self._payload_parser = parser
         self._data_received_cb = data_received_cb
