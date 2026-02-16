@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import suppress
-from typing import Any, Callable
+from typing import Any, Callable, Protocol
 
 from ._websocket.reader import WebSocketDataQueue
 from .base_protocol import BaseProtocol
@@ -23,6 +23,11 @@ from .http_exceptions import HttpProcessingError
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
+class _Payload(Protocol):
+    def is_eof(self) -> bool:
+        ...
+
+
 class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamReader]]):
     """Helper class to adapt between Protocol and StreamReader."""
 
@@ -32,7 +37,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._should_close = False
 
-        self._payload: StreamReader | None = None
+        self._payload: _Payload | None = None
         self._skip_payload = False
         self._payload_parser: WebSocketReader | None = None
         self._data_received_cb: Callable[[], None] | None = None
