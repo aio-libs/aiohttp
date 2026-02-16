@@ -147,8 +147,8 @@ async def main() -> None:
     site = web.TCPSite(runner, "127.0.0.1", 0)
     await site.start()
 
-    assert site._server is not None  # type: ignore[attr-defined]
-    port: int = site._server.sockets[0].getsockname()[1]  # type: ignore[index]
+    assert site._server is not None
+    port: int = site._server.sockets[0].getsockname()[1]
     rate_limit = RateLimitMiddleware(rate=5.0, burst=2)
     start = time.monotonic()
 
