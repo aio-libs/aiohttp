@@ -12,7 +12,7 @@ import pytest
 
 from aiohttp import web
 from aiohttp.pytest_plugin import AiohttpClient
-from examples.rate_limit_middleware import RateLimitMiddleware, TokenBucket
+from rate_limit_middleware import RateLimitMiddleware, TokenBucket
 
 
 async def _ok_handler(request: web.Request) -> web.Response:
