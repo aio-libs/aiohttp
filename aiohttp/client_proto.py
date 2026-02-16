@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import suppress
-from typing import Any, Callable, Protocol
+from typing import Callable, Protocol
 
 from ._websocket.reader import WebSocketDataQueue
 from .base_protocol import BaseProtocol
@@ -15,6 +15,7 @@ from .helpers import (
     _EXC_SENTINEL,
     EMPTY_BODY_STATUS_CODES,
     BaseTimerContext,
+    ErrorableProtocol,
     set_exception,
     set_result,
 )
@@ -23,7 +24,7 @@ from .http_exceptions import HttpProcessingError
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
-class _Payload(Protocol):
+class _Payload(ErrorableProtocol):
     def is_eof(self) -> bool: ...
 
 
