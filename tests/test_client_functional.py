@@ -3294,7 +3294,7 @@ async def test_request_raise_for_status_coro(aiohttp_client: AiohttpClient) -> N
 async def test_invalid_idna() -> None:
     async with aiohttp.ClientSession() as session:
         with pytest.raises(aiohttp.InvalidURL):
-            await session.get("http://\u2061owhefopw.com")
+            await session.get("http://\u0080owhefopw.com")
 
 
 async def test_creds_in_auth_and_url() -> None:

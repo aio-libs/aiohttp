@@ -1215,9 +1215,6 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
-            conn_proto.set_parser(
-                WebSocketReader(reader, max_msg_size, decode_text=decode_text), reader
-            )
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
@@ -1229,7 +1226,7 @@ class ClientSession:
             resp.close()
             raise
         else:
-            return self._ws_response_class(
+            ws_resp = self._ws_response_class(
                 reader,
                 writer,
                 protocol,
@@ -1242,6 +1239,10 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
+            parser = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
+            cb = None if heartbeat is None else ws_resp._on_data_received
+            conn_proto.set_parser(parser, reader, data_received_cb=cb)
+            return ws_resp
 
     def _prepare_headers(self, headers: LooseHeaders | None) -> "CIMultiDict[str]":
         """Add default headers and transform it to CIMultiDict"""

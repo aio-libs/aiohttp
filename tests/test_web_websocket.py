@@ -39,6 +39,7 @@ def app(loop: asyncio.AbstractEventLoop) -> web.Application:
 def protocol() -> web.RequestHandler[web.Request]:
     ret = mock.Mock()
     ret.set_parser.return_value = ret
+    ret._timeout_ceil_threshold = 5
     return ret
 
 
@@ -119,6 +120,41 @@ async def test_nonstarted_receive_str() -> None:
         await ws.receive_str()
 
 
+async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._loop = loop
+    ws._on_data_received()
+    handle = ws._heartbeat_reset_handle
+    assert handle is not None
+
+    ws._cancel_heartbeat()
+
+    assert ws._heartbeat_reset_handle is None
+    assert ws._need_heartbeat_reset is False
+    assert handle.cancelled()
+
+
+async def test_flush_heartbeat_reset_returns_early_when_not_needed() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._need_heartbeat_reset = False
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        ws._flush_heartbeat_reset()
+        reset.assert_not_called()
+
+
+async def test_send_heartbeat_returns_early_when_reset_is_pending() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._need_heartbeat_reset = True
+
+    ws._send_heartbeat()
+
+    assert ws._pong_response_cb is None
+    assert ws._ping_task is None
+
+
 async def test_nonstarted_receive_bytes() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
@@ -194,6 +230,36 @@ async def test_heartbeat_timeout(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     await future
     assert ws.closed
+
+
+async def test_heartbeat_reset_coalesces_on_data(
+    make_request: _RequestMaker,
+) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    await ws.prepare(req)
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        ws._on_data_received()
+        ws._on_data_received()
+
+        await asyncio.sleep(0)
+
+        assert reset.call_count == 1
+
+
+async def test_receive_does_not_reset_heartbeat() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    msg = mock.Mock(type=WSMsgType.TEXT)
+    reader = mock.Mock()
+    reader.read = mock.AsyncMock(return_value=msg)
+    ws._reader = reader
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        received = await ws.receive()
+
+    assert received is msg
+    reset.assert_not_called()
 
 
 def test_websocket_ready() -> None:
