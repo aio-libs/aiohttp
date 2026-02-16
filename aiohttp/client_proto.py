@@ -24,7 +24,7 @@ from .http_exceptions import HttpProcessingError
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
-class _Payload(ErrorableProtocol):
+class _Payload(ErrorableProtocol, Protocol):
     def is_eof(self) -> bool: ...
 
 
