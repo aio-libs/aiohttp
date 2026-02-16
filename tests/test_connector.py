@@ -1492,7 +1492,7 @@ async def test_tcp_connector_cancel_dns_error_captured(
         )
         m_resolver().resolve.return_value = dns_response_error()
         m_resolver().close = mock.AsyncMock()
-        f = loop.create_task(conn._create_direct_connection(req, [], ClientTimeout(0)))
+        f = loop.create_task(conn._create_direct_connection(req, [], ClientTimeout()))
 
         await asyncio.sleep(0)
         f.cancel()
@@ -2652,6 +2652,23 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
     # Should close, not abort
     underlying_transport.close.assert_called_once()
     underlying_transport.abort.assert_not_called()
+
+
+def test_client_timeout_total_zero_raises() -> None:
+    """Test that ClientTimeout(total=0) raises ValueError.
+
+    Related to https://github.com/aio-libs/aiohttp/issues/11859
+    Using total=0 to disable timeouts is no longer supported in v4,
+    use None instead.
+    """
+    with pytest.raises(ValueError, match="total timeout must be a positive number"):
+        ClientTimeout(total=0)
+
+
+def test_client_timeout_total_none_is_valid() -> None:
+    """Test that ClientTimeout(total=None) is still valid for disabling timeouts."""
+    timeout = ClientTimeout(total=None)
+    assert timeout.total is None
 
 
 async def test_invalid_ssl_param() -> None:
