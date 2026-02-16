@@ -16,47 +16,69 @@ Features:
 import asyncio
 import logging
 import time
-from collections import defaultdict
+from collections import defaultdict, deque
 from http import HTTPStatus
 
-from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession
+from aiohttp import ClientHandlerType, ClientRequest, ClientResponse, ClientSession, web
 
 logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
 
 class TokenBucket:
-    """Token bucket rate limiter implementation."""
+    """FIFO token-bucket using an ``asyncio.Event`` queue.
+
+    Each caller appends its own event to a FIFO queue and waits.
+    A single ``_schedule`` coroutine services the queue front-to-back,
+    sleeping until each slot's send time arrives and then unblocking
+    the corresponding caller.  This guarantees strict FIFO ordering
+    even under high concurrency.
+    """
 
     def __init__(self, rate: float, burst: int) -> None:
-        self.rate = rate
-        self.burst = burst
-        self.tokens = float(burst)
-        self.last_refill = time.monotonic()
-        self._lock = asyncio.Lock()
+        self._interval = 1.0 / rate
+        self._burst = burst
+        # Start *burst* intervals in the past so the first
+        # ``burst`` acquires are instant.
+        self._next_send = time.monotonic() - burst * self._interval
+        self._waiters: deque[asyncio.Event] = deque()
+        self._scheduling: bool = False
 
     async def acquire(self) -> None:
-        """Acquire a token, waiting if necessary."""
-        while True:
-            async with self._lock:
-                now = time.monotonic()
-                self._refill(now)
-                if self.tokens >= 1:
-                    self.tokens -= 1
-                    return
-                wait_time = (1 - self.tokens) / self.rate
+        """Reserve the next send slot and wait until it arrives."""
+        event = asyncio.Event()
+        self._waiters.append(event)
+        self._ensure_scheduling()
+        await event.wait()
 
-            # Sleep outside the lock so other coroutines can check/refill.
-            await asyncio.sleep(wait_time)
+    def _ensure_scheduling(self) -> None:
+        """Start the scheduler loop if it is not already running."""
+        if not self._scheduling:
+            self._scheduling = True
+            _ = asyncio.ensure_future(self._schedule())
 
-    def _refill(self, now: float) -> None:
-        elapsed = now - self.last_refill
-        self.tokens = min(self.burst, self.tokens + elapsed * self.rate)
-        self.last_refill = now
+    async def _schedule(self) -> None:
+        """Service waiters in FIFO order, one slot at a time."""
+        while self._waiters:
+            now = time.monotonic()
+            # Cap drift so idle periods never accumulate
+            # more than *burst* free slots.
+            self._next_send = max(self._next_send, now - self._burst * self._interval)
+            self._next_send += self._interval
+            delay = self._next_send - now
+            if delay > 0:
+                await asyncio.sleep(delay)
+            self._waiters.popleft().set()
+        self._scheduling = False
 
 
 class RateLimitMiddleware:
     """Middleware that rate limits requests using token bucket algorithm."""
+
+    rate: float
+    burst: int
+    per_domain: bool
+    respect_retry_after: bool
 
     def __init__(
         self,
@@ -112,18 +134,35 @@ class RateLimitMiddleware:
 
 
 # ------------------------------------------------------------------
-# Simple demo
+# Self-contained demo (no external dependencies)
+async def _demo_handler(_request: web.Request) -> web.Response:
+    return web.Response(text="OK")
+
+
 async def main() -> None:
+    app = web.Application()
+    _ = app.router.add_get("/get", _demo_handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+
+    assert site._server is not None  # type: ignore[attr-defined]
+    port: int = site._server.sockets[0].getsockname()[1]  # type: ignore[index]
     rate_limit = RateLimitMiddleware(rate=5.0, burst=2)
     start = time.monotonic()
 
-    async with ClientSession(
-        base_url="http://httpbin.org", middlewares=(rate_limit,)
-    ) as session:
-        for i in range(5):
-            async with session.get("/get") as resp:
-                elapsed = time.monotonic() - start
-                print(f"Request {i + 1}: {resp.status} at t={elapsed:.2f}s")
+    try:
+        async with ClientSession(
+            base_url=f"http://127.0.0.1:{port}",
+            middlewares=(rate_limit,),
+        ) as session:
+            for i in range(5):
+                async with session.get("/get") as resp:
+                    elapsed = time.monotonic() - start
+                    print(f"Request {i + 1}: {resp.status} at t={elapsed:.2f}s")
+    finally:
+        await runner.cleanup()
 
 
 if __name__ == "__main__":
