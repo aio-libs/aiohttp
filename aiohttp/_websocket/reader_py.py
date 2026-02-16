@@ -8,7 +8,7 @@ from typing import Final
 from ..base_protocol import BaseProtocol
 from ..compression_utils import ZLibDecompressor
 from ..helpers import _EXC_SENTINEL, set_exception
-from ..streams import EofStream
+from ..streams import EofStream, StreamReader
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
     WS_DEFLATE_TRAILING,
@@ -57,7 +57,7 @@ TUPLE_NEW = tuple.__new__
 cython_int = int  # Typed to int in Python, but cython with use a signed int in the pxd
 
 
-class WebSocketDataQueue:
+class WebSocketDataQueue(StreamReader):
     """WebSocketDataQueue resumes and pauses an underlying stream.
 
     It is a destination for WebSocket data.
@@ -76,12 +76,6 @@ class WebSocketDataQueue:
         self._buffer: deque[WSMessage] = deque()
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
-
-    def is_eof(self) -> bool:
-        return self._eof
-
-    def exception(self) -> type[BaseException] | BaseException | None:
-        return self._exception
 
     def set_exception(
         self,
