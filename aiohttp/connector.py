@@ -1455,7 +1455,7 @@ class TCPConnector(BaseConnector):
                             tls_proto,
                             sslcontext,
                             server_hostname=req.server_hostname or req.host,
-                            ssl_handshake_timeout=timeout.total,
+                            ssl_handshake_timeout=timeout.total or None,
                             ssl_shutdown_timeout=self._ssl_shutdown_timeout,
                         )
                     else:
@@ -1464,7 +1464,7 @@ class TCPConnector(BaseConnector):
                             tls_proto,
                             sslcontext,
                             server_hostname=req.server_hostname or req.host,
-                            ssl_handshake_timeout=timeout.total,
+                            ssl_handshake_timeout=timeout.total or None,
                         )
                 except BaseException:
                     # We need to close the underlying transport since
