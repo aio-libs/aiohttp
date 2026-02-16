@@ -240,6 +240,14 @@ class ClientTimeout:
     # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
     # to overwrite the defaults
 
+    def __post_init__(self) -> None:
+        if self.total is not None and self.total == 0:
+            raise ValueError(
+                "total timeout must be a positive number or None to disable, "
+                "got 0. Using 0 to disable timeouts is no longer supported, "
+                "use None instead."
+            )
+
 
 # 5 Minute default read timeout
 DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
