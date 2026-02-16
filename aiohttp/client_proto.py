@@ -24,8 +24,7 @@ from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
 class _Payload(Protocol):
-    def is_eof(self) -> bool:
-        ...
+    def is_eof(self) -> bool: ...
 
 
 class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamReader]]):
