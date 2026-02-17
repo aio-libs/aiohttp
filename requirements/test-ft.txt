@@ -47,7 +47,7 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==25.0.3
+gunicorn==25.1.0
     # via -r requirements/base-ft.in
 idna==3.10
     # via
