@@ -3,6 +3,7 @@ import contextlib
 import datetime
 import heapq
 import itertools
+import json
 import os  # noqa
 import pathlib
 import pickle
@@ -35,6 +36,41 @@ _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 # heap too often when there are only a few scheduled expirations.
 _MIN_SCHEDULED_COOKIE_EXPIRATION = 100
 _SIMPLE_COOKIE = SimpleCookie()
+
+
+class _RestrictedCookieUnpickler(pickle.Unpickler):
+    """A restricted unpickler that only allows cookie-related types.
+
+    This prevents arbitrary code execution when loading pickled cookie data
+    from untrusted sources. Only types that are expected in a serialized
+    CookieJar are permitted.
+
+    See: https://docs.python.org/3/library/pickle.html#restricting-globals
+    """
+
+    _ALLOWED_CLASSES: frozenset[tuple[str, str]] = frozenset(
+        {
+            # Core cookie types
+            ("http.cookies", "SimpleCookie"),
+            ("http.cookies", "Morsel"),
+            # Container types used by CookieJar._cookies
+            ("collections", "defaultdict"),
+            # builtins that pickle uses for reconstruction
+            ("builtins", "tuple"),
+            ("builtins", "set"),
+            ("builtins", "frozenset"),
+            ("builtins", "dict"),
+        }
+    )
+
+    def find_class(self, module: str, name: str) -> type:
+        if (module, name) not in self._ALLOWED_CLASSES:
+            raise pickle.UnpicklingError(
+                f"Forbidden class: {module}.{name}. "
+                "CookieJar.load() only allows cookie-related types for security. "
+                "See https://docs.python.org/3/library/pickle.html#restricting-globals"
+            )
+        return super().find_class(module, name)
 
 
 class CookieJar(AbstractCookieJar):
@@ -117,9 +153,108 @@ class CookieJar(AbstractCookieJar):
             pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
 
     def load(self, file_path: PathLike) -> None:
+        """Load cookies from a pickled file using a restricted unpickler.
+
+        .. warning::
+
+            Cookie files loaded from untrusted sources could previously
+            execute arbitrary code. This method now uses a restricted
+            unpickler that only allows cookie-related types.
+
+            For new code, consider using :meth:`save_json` and
+            :meth:`load_json` instead, which use a safe JSON format.
+
+        :param file_path: Path to file from where cookies will be
+            imported, :class:`str` or :class:`pathlib.Path` instance.
+        """
         file_path = pathlib.Path(file_path)
         with file_path.open(mode="rb") as f:
-            self._cookies = pickle.load(f)
+            self._cookies = _RestrictedCookieUnpickler(f).load()
+
+    def save_json(self, file_path: PathLike) -> None:
+        """Save cookies to a JSON file (safe alternative to :meth:`save`).
+
+        This method serializes cookies using JSON, which is inherently safe
+        against deserialization attacks unlike the pickle-based :meth:`save`.
+
+        :param file_path: Path to file where cookies will be serialized,
+            :class:`str` or :class:`pathlib.Path` instance.
+
+        .. versionadded:: 3.14
+        """
+        file_path = pathlib.Path(file_path)
+        data: dict[str, dict[str, dict[str, str]]] = {}
+        for (domain, path), cookie in self._cookies.items():
+            key = f"{domain}|{path}"
+            data[key] = {}
+            for name, morsel in cookie.items():
+                morsel_data: dict[str, str] = {
+                    "key": morsel.key,
+                    "value": morsel.value,
+                    "coded_value": morsel.coded_value,
+                }
+                # Save all morsel attributes that have values
+                for attr in morsel._reserved:
+                    attr_val = morsel[attr]
+                    if attr_val:
+                        if isinstance(attr_val, bool):
+                            morsel_data[attr] = "true"
+                        else:
+                            morsel_data[attr] = str(attr_val)
+                data[key][name] = morsel_data
+        with file_path.open(mode="w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+    def load_json(self, file_path: PathLike) -> None:
+        """Load cookies from a JSON file (safe alternative to :meth:`load`).
+
+        This method deserializes cookies from JSON format, which is inherently
+        safe against code execution attacks.
+
+        :param file_path: Path to file from where cookies will be imported,
+            :class:`str` or :class:`pathlib.Path` instance.
+
+        .. versionadded:: 3.14
+        """
+        file_path = pathlib.Path(file_path)
+        with file_path.open(mode="r", encoding="utf-8") as f:
+            data = json.load(f)
+        cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(
+            SimpleCookie
+        )
+        for compound_key, cookie_data in data.items():
+            parts = compound_key.split("|", 1)
+            domain = parts[0]
+            path = parts[1] if len(parts) > 1 else ""
+            key = (domain, path)
+            for name, morsel_data in cookie_data.items():
+                morsel: Morsel[str] = Morsel()
+                morsel_key = morsel_data.get("key", name)
+                morsel_value = morsel_data.get("value", "")
+                morsel_coded_value = morsel_data.get("coded_value", morsel_value)
+                # Use __setstate__ to bypass validation, same pattern
+                # used in _build_morsel and _cookie_helpers.
+                morsel.__setstate__(  # type: ignore[attr-defined]
+                    {
+                        "key": morsel_key,
+                        "value": morsel_value,
+                        "coded_value": morsel_coded_value,
+                    }
+                )
+                # Restore morsel attributes
+                for attr in morsel._reserved:
+                    if attr in morsel_data and attr not in (
+                        "key",
+                        "value",
+                        "coded_value",
+                    ):
+                        attr_val = morsel_data[attr]
+                        if attr in ("secure", "httponly"):
+                            morsel[attr] = True if attr_val == "true" else attr_val  # type: ignore[assignment]
+                        else:
+                            morsel[attr] = attr_val
+                cookies[key][name] = morsel
+        self._cookies = cookies
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         if predicate is None:
