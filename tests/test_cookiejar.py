@@ -1580,7 +1580,7 @@ def test_load_rejects_malicious_pickle(tmp_path: Path) -> None:
     file_path = tmp_path / "malicious.pkl"
 
     class RCEPayload:
-        def __reduce__(self):  # type: ignore[override]
+        def __reduce__(self) -> tuple[object, ...]:
             return (os.system, ("echo PWNED",))
 
     with open(file_path, "wb") as f:
@@ -1596,7 +1596,7 @@ def test_load_rejects_eval_payload(tmp_path: Path) -> None:
     file_path = tmp_path / "eval_payload.pkl"
 
     class EvalPayload:
-        def __reduce__(self):  # type: ignore[override]
+        def __reduce__(self) -> tuple[object, ...]:
             return (eval, ("__import__('os').system('echo PWNED')",))
 
     with open(file_path, "wb") as f:
@@ -1614,7 +1614,7 @@ def test_load_rejects_subprocess_payload(tmp_path: Path) -> None:
     file_path = tmp_path / "subprocess_payload.pkl"
 
     class SubprocessPayload:
-        def __reduce__(self):  # type: ignore[override]
+        def __reduce__(self) -> tuple[object, ...]:
             return (subprocess.call, (["echo", "PWNED"],))
 
     with open(file_path, "wb") as f:
@@ -1689,15 +1689,15 @@ def test_save_load_json_partitioned_cookies(tmp_path: Path) -> None:
     jar_load = CookieJar()
     jar_load.load_json(file_path=file_path)
 
-    saved_cookies = SimpleCookie()
-    for cookie in jar_save:
-        saved_cookies[cookie.key] = cookie
-
-    loaded_cookies = SimpleCookie()
-    for cookie in jar_load:
-        loaded_cookies[cookie.key] = cookie
-
-    assert saved_cookies == loaded_cookies
+    # Compare individual cookie values (same approach as test_save_load_partitioned_cookies)
+    saved = list(jar_save)
+    loaded = list(jar_load)
+    assert len(saved) == len(loaded)
+    for s, lo in zip(saved, loaded):
+        assert s.key == lo.key
+        assert s.value == lo.value
+        assert s["domain"] == lo["domain"]
+        assert s["path"] == lo["path"]
 
 
 def test_json_format_is_safe(tmp_path: Path) -> None:

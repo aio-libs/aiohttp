@@ -70,7 +70,7 @@ class _RestrictedCookieUnpickler(pickle.Unpickler):
                 "CookieJar.load() only allows cookie-related types for security. "
                 "See https://docs.python.org/3/library/pickle.html#restricting-globals"
             )
-        return super().find_class(module, name)
+        return super().find_class(module, name)  # type: ignore[no-any-return]
 
 
 class CookieJar(AbstractCookieJar):
@@ -194,7 +194,7 @@ class CookieJar(AbstractCookieJar):
                     "coded_value": morsel.coded_value,
                 }
                 # Save all morsel attributes that have values
-                for attr in morsel._reserved:
+                for attr in morsel._reserved:  # type: ignore[attr-defined]
                     attr_val = morsel[attr]
                     if attr_val:
                         if isinstance(attr_val, bool):
@@ -240,7 +240,7 @@ class CookieJar(AbstractCookieJar):
                     }
                 )
                 # Restore morsel attributes
-                for attr in morsel._reserved:
+                for attr in morsel._reserved:  # type: ignore[attr-defined]
                     if attr in morsel_data and attr not in (
                         "key",
                         "value",
@@ -248,7 +248,7 @@ class CookieJar(AbstractCookieJar):
                     ):
                         attr_val = morsel_data[attr]
                         if attr in ("secure", "httponly", "partitioned"):
-                            morsel[attr] = True if attr_val == "true" else attr_val  # type: ignore[assignment]
+                            morsel[attr] = True if attr_val == "true" else attr_val
                         else:
                             morsel[attr] = attr_val
                 cookies[key][name] = morsel
