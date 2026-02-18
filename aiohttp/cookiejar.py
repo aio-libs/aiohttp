@@ -219,9 +219,7 @@ class CookieJar(AbstractCookieJar):
         file_path = pathlib.Path(file_path)
         with file_path.open(mode="r", encoding="utf-8") as f:
             data = json.load(f)
-        cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(
-            SimpleCookie
-        )
+        cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(SimpleCookie)
         for compound_key, cookie_data in data.items():
             parts = compound_key.split("|", 1)
             domain = parts[0]
