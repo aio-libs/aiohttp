@@ -359,6 +359,7 @@ unicode
 unittest
 Unittest
 unpickler
+untrusted
 unix
 unobvious
 unsets
