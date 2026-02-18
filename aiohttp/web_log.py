@@ -136,9 +136,21 @@ class AccessLogger(AbstractAccessLogger):
         ip = request.remote
         return ip if ip is not None else "-"
 
+    _cached_tz: datetime.timezone | None = None
+    _cached_tz_expires: float = 0.0
+
+    @classmethod
+    def _get_local_timezone(cls) -> datetime.timezone:
+        now = time_mod.monotonic()
+        if cls._cached_tz is None or now >= cls._cached_tz_expires:
+            gmtoff = time_mod.localtime().tm_gmtoff
+            cls._cached_tz = datetime.timezone(datetime.timedelta(seconds=gmtoff))
+            cls._cached_tz_expires = now + 60.0
+        return cls._cached_tz
+
     @staticmethod
     def _format_t(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        tz = datetime.timezone(datetime.timedelta(seconds=-time_mod.timezone))
+        tz = AccessLogger._get_local_timezone()
         now = datetime.datetime.now(tz)
         start_time = now - datetime.timedelta(seconds=time)
         return start_time.strftime("[%d/%b/%Y:%H:%M:%S %z]")
