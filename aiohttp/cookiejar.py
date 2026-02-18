@@ -247,7 +247,7 @@ class CookieJar(AbstractCookieJar):
                         "coded_value",
                     ):
                         attr_val = morsel_data[attr]
-                        if attr in ("secure", "httponly"):
+                        if attr in ("secure", "httponly", "partitioned"):
                             morsel[attr] = True if attr_val == "true" else attr_val  # type: ignore[assignment]
                         else:
                             morsel[attr] = attr_val
