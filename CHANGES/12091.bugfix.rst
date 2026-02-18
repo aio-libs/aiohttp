@@ -1,0 +1,6 @@
+Added a restricted unpickler to :py:meth:`~aiohttp.CookieJar.load` that only allows
+cookie-related types (``SimpleCookie``, ``Morsel``, ``defaultdict``, etc.) to be
+deserialized, preventing arbitrary code execution via malicious pickle payloads
+(CWE-502). Also added :py:meth:`~aiohttp.CookieJar.save_json` and
+:py:meth:`~aiohttp.CookieJar.load_json` as safe JSON-based alternatives for
+cookie persistence -- by :user:`YuvalElbar6`.
