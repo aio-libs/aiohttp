@@ -123,7 +123,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==20.37.0
+virtualenv==20.38.0
     # via pre-commit
 zlib-ng==1.0.0
     # via -r requirements/lint.in
