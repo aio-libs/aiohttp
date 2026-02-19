@@ -191,7 +191,7 @@ class CookieJar(AbstractCookieJar):
         try:
             with file_path.open(mode="r", encoding="utf-8") as f:
                 data = json.load(f)
-            self._load_json_data(data)
+            self._cookies = self._load_json_data(data)
             return
         except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
             pass
