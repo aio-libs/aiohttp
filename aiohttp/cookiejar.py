@@ -171,7 +171,7 @@ class CookieJar(AbstractCookieJar):
                         if isinstance(attr_val, bool):
                             morsel_data[attr] = "true"
                         else:
-                            morsel_data[attr] = str(attr_val)
+                            morsel_data[attr] = attr_val
                 data[key][name] = morsel_data
         with file_path.open(mode="w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -199,19 +199,19 @@ class CookieJar(AbstractCookieJar):
         with file_path.open(mode="rb") as f:
             self._cookies = _RestrictedCookieUnpickler(f).load()
 
-    def _load_json_data(self, data: dict[str, dict[str, dict[str, str]]]) -> None:
+    def _load_json_data(
+        self, data: dict[str, dict[str, dict[str, str]]]
+    ) -> defaultdict[tuple[str, str], SimpleCookie]:
         """Load cookies from parsed JSON data."""
         cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(SimpleCookie)
         for compound_key, cookie_data in data.items():
-            parts = compound_key.split("|", 1)
-            domain = parts[0]
-            path = parts[1] if len(parts) > 1 else ""
+            domain, path = compound_key.split("|", 1)
             key = (domain, path)
             for name, morsel_data in cookie_data.items():
                 morsel: Morsel[str] = Morsel()
-                morsel_key = morsel_data.get("key", name)
-                morsel_value = morsel_data.get("value", "")
-                morsel_coded_value = morsel_data.get("coded_value", morsel_value)
+                morsel_key = morsel_data["key"]
+                morsel_value = morsel_data["value"]
+                morsel_coded_value = morsel_data["coded_value"]
                 # Use __setstate__ to bypass validation, same pattern
                 # used in _build_morsel and _cookie_helpers.
                 morsel.__setstate__(  # type: ignore[attr-defined]
@@ -234,7 +234,7 @@ class CookieJar(AbstractCookieJar):
                         else:
                             morsel[attr] = attr_val
                 cookies[key][name] = morsel
-        self._cookies = cookies
+        return cookies
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         if predicate is None:
