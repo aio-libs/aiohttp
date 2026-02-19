@@ -148,39 +148,10 @@ class CookieJar(AbstractCookieJar):
         return self._quote_cookie
 
     def save(self, file_path: PathLike) -> None:
-        file_path = pathlib.Path(file_path)
-        with file_path.open(mode="wb") as f:
-            pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
-
-    def load(self, file_path: PathLike) -> None:
-        """Load cookies from a pickled file using a restricted unpickler.
-
-        .. warning::
-
-            Cookie files loaded from untrusted sources could previously
-            execute arbitrary code. This method now uses a restricted
-            unpickler that only allows cookie-related types.
-
-            For new code, consider using :meth:`save_json` and
-            :meth:`load_json` instead, which use a safe JSON format.
-
-        :param file_path: Path to file from where cookies will be
-            imported, :class:`str` or :class:`pathlib.Path` instance.
-        """
-        file_path = pathlib.Path(file_path)
-        with file_path.open(mode="rb") as f:
-            self._cookies = _RestrictedCookieUnpickler(f).load()
-
-    def save_json(self, file_path: PathLike) -> None:
-        """Save cookies to a JSON file (safe alternative to :meth:`save`).
-
-        This method serializes cookies using JSON, which is inherently safe
-        against deserialization attacks unlike the pickle-based :meth:`save`.
+        """Save cookies to a file using JSON format.
 
         :param file_path: Path to file where cookies will be serialized,
             :class:`str` or :class:`pathlib.Path` instance.
-
-        .. versionadded:: 3.14
         """
         file_path = pathlib.Path(file_path)
         data: dict[str, dict[str, dict[str, str]]] = {}
@@ -205,20 +176,31 @@ class CookieJar(AbstractCookieJar):
         with file_path.open(mode="w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
-    def load_json(self, file_path: PathLike) -> None:
-        """Load cookies from a JSON file (safe alternative to :meth:`load`).
+    def load(self, file_path: PathLike) -> None:
+        """Load cookies from a file.
 
-        This method deserializes cookies from JSON format, which is inherently
-        safe against code execution attacks.
+        Tries to load JSON format first. Falls back to loading legacy
+        pickle format (using a restricted unpickler) for backward
+        compatibility with existing cookie files.
 
-        :param file_path: Path to file from where cookies will be imported,
-            :class:`str` or :class:`pathlib.Path` instance.
-
-        .. versionadded:: 3.14
+        :param file_path: Path to file from where cookies will be
+            imported, :class:`str` or :class:`pathlib.Path` instance.
         """
         file_path = pathlib.Path(file_path)
-        with file_path.open(mode="r", encoding="utf-8") as f:
-            data = json.load(f)
+        # Try JSON format first
+        try:
+            with file_path.open(mode="r", encoding="utf-8") as f:
+                data = json.load(f)
+            self._load_json_data(data)
+            return
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            pass
+        # Fall back to legacy pickle format with restricted unpickler
+        with file_path.open(mode="rb") as f:
+            self._cookies = _RestrictedCookieUnpickler(f).load()
+
+    def _load_json_data(self, data: dict[str, dict[str, dict[str, str]]]) -> None:
+        """Load cookies from parsed JSON data."""
         cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(SimpleCookie)
         for compound_key, cookie_data in data.items():
             parts = compound_key.split("|", 1)

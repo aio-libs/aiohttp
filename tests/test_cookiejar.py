@@ -1625,21 +1625,23 @@ def test_load_rejects_subprocess_payload(tmp_path: Path) -> None:
         jar.load(file_path)
 
 
-def test_load_still_works_with_legitimate_cookies(
+def test_load_falls_back_to_pickle(
     tmp_path: Path,
-    cookies_to_send: SimpleCookie,
     cookies_to_receive: SimpleCookie,
 ) -> None:
-    """Verify CookieJar.load() still works with legitimate pickled cookies.
+    """Verify load() falls back to restricted pickle for legacy cookie files.
 
-    The restricted unpickler must allow SimpleCookie, Morsel, defaultdict,
-    etc. — all the types that legitimate cookie data uses.
+    Existing cookie files saved with older versions of aiohttp used pickle.
+    load() should detect that the file is not JSON and fall back to the
+    restricted pickle unpickler for backward compatibility.
     """
     file_path = tmp_path / "legit.pkl"
 
+    # Write a legacy pickle file directly (as old aiohttp save() would)
     jar_save = CookieJar()
     jar_save.update_cookies(cookies_to_receive)
-    jar_save.save(file_path=file_path)
+    with file_path.open(mode="wb") as f:
+        pickle.dump(jar_save._cookies, f, pickle.HIGHEST_PROTOCOL)
 
     jar_load = CookieJar()
     jar_load.load(file_path=file_path)
@@ -1655,15 +1657,15 @@ def test_save_load_json_roundtrip(
     tmp_path: Path,
     cookies_to_receive: SimpleCookie,
 ) -> None:
-    """Verify save_json/load_json roundtrip preserves cookies."""
+    """Verify save/load roundtrip preserves cookies via JSON format."""
     file_path = tmp_path / "cookies.json"
 
     jar_save = CookieJar()
     jar_save.update_cookies(cookies_to_receive)
-    jar_save.save_json(file_path=file_path)
+    jar_save.save(file_path=file_path)
 
     jar_load = CookieJar()
-    jar_load.load_json(file_path=file_path)
+    jar_load.load(file_path=file_path)
 
     saved_cookies = SimpleCookie()
     for cookie in jar_save:
@@ -1677,17 +1679,17 @@ def test_save_load_json_roundtrip(
 
 
 def test_save_load_json_partitioned_cookies(tmp_path: Path) -> None:
-    """Verify save_json/load_json roundtrip works with partitioned cookies."""
+    """Verify save/load roundtrip works with partitioned cookies."""
     file_path = tmp_path / "partitioned.json"
 
     jar_save = CookieJar()
     jar_save.update_cookies_from_headers(
         ["session=cookie; Partitioned"], URL("https://example.com/")
     )
-    jar_save.save_json(file_path=file_path)
+    jar_save.save(file_path=file_path)
 
     jar_load = CookieJar()
-    jar_load.load_json(file_path=file_path)
+    jar_load.load(file_path=file_path)
 
     # Compare individual cookie values (same approach as test_save_load_partitioned_cookies)
     saved = list(jar_save)
@@ -1720,7 +1722,7 @@ def test_json_format_is_safe(tmp_path: Path) -> None:
         json.dump(malicious_data, f)
 
     jar = CookieJar()
-    jar.load_json(file_path=file_path)
+    jar.load(file_path=file_path)
 
     # The "malicious" string is just a cookie value, not executed code
     cookies = list(jar)
@@ -1729,7 +1731,7 @@ def test_json_format_is_safe(tmp_path: Path) -> None:
 
 
 def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
-    """Verify save_json/load_json preserves Secure and HttpOnly flags."""
+    """Verify save/load preserves Secure and HttpOnly flags."""
     file_path = tmp_path / "secure.json"
 
     jar_save = CookieJar()
@@ -1737,10 +1739,10 @@ def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
         ["token=abc123; Secure; HttpOnly; Path=/; Domain=example.com"],
         URL("https://example.com/"),
     )
-    jar_save.save_json(file_path=file_path)
+    jar_save.save(file_path=file_path)
 
     jar_load = CookieJar()
-    jar_load.load_json(file_path=file_path)
+    jar_load.load(file_path=file_path)
 
     loaded_cookies = list(jar_load)
     assert len(loaded_cookies) == 1

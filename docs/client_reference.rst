@@ -2456,54 +2456,28 @@ Utilities
 
    .. method:: save(file_path)
 
-      Write a pickled representation of cookies into the file
+      Write a JSON representation of cookies into the file
       at provided path.
 
-      .. warning::
+      .. versionchanged:: 3.14
 
-         The pickle format is kept for backward compatibility but is
-         inherently unsafe if the cookie file can be modified by an
-         untrusted party (e.g. shared volumes, NFS mounts, or
-         multi-tenant environments). Consider using :meth:`save_json`
-         instead for new code.
+         Previously used pickle format. Now uses JSON for safe
+         serialization.
 
       :param file_path: Path to file where cookies will be serialized,
           :class:`str` or :class:`pathlib.Path` instance.
 
    .. method:: load(file_path)
 
-      Load a pickled representation of cookies from the file
-      at provided path. This method uses a restricted unpickler that
-      only allows cookie-related types, preventing arbitrary code
-      execution from malicious pickle payloads.
+      Load cookies from the file at provided path. Tries JSON format
+      first, then falls back to legacy pickle format (using a restricted
+      unpickler that only allows cookie-related types) for backward
+      compatibility with existing cookie files.
 
-      .. warning::
+      .. versionchanged:: 3.14
 
-         While :meth:`load` now uses a restricted unpickler for
-         defense in depth, the pickle format is inherently risky
-         when loading files from untrusted sources. Consider using
-         :meth:`load_json` instead for new code.
-
-      :param file_path: Path to file from where cookies will be
-           imported, :class:`str` or :class:`pathlib.Path` instance.
-
-   .. method:: save_json(file_path)
-
-      Write a JSON representation of cookies into the file at the
-      provided path. This is a safe alternative to :meth:`save` that
-      uses a format immune to deserialization attacks.
-
-      .. versionadded:: 3.14
-
-      :param file_path: Path to file where cookies will be serialized,
-          :class:`str` or :class:`pathlib.Path` instance.
-
-   .. method:: load_json(file_path)
-
-      Load a JSON representation of cookies from the file at the
-      provided path. This is a safe alternative to :meth:`load`.
-
-      .. versionadded:: 3.14
+         Now loads JSON format by default. Falls back to restricted
+         pickle for files saved by older versions.
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
