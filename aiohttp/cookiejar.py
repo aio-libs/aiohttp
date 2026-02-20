@@ -154,12 +154,12 @@ class CookieJar(AbstractCookieJar):
             :class:`str` or :class:`pathlib.Path` instance.
         """
         file_path = pathlib.Path(file_path)
-        data: dict[str, dict[str, dict[str, str]]] = {}
+        data: dict[str, dict[str, dict[str, str | bool]]] = {}
         for (domain, path), cookie in self._cookies.items():
             key = f"{domain}|{path}"
             data[key] = {}
             for name, morsel in cookie.items():
-                morsel_data: dict[str, str] = {
+                morsel_data: dict[str, str | bool] = {
                     "key": morsel.key,
                     "value": morsel.value,
                     "coded_value": morsel.coded_value,
@@ -168,10 +168,7 @@ class CookieJar(AbstractCookieJar):
                 for attr in morsel._reserved:  # type: ignore[attr-defined]
                     attr_val = morsel[attr]
                     if attr_val:
-                        if isinstance(attr_val, bool):
-                            morsel_data[attr] = "true"
-                        else:
-                            morsel_data[attr] = attr_val
+                        morsel_data[attr] = attr_val
                 data[key][name] = morsel_data
         with file_path.open(mode="w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -200,7 +197,7 @@ class CookieJar(AbstractCookieJar):
             self._cookies = _RestrictedCookieUnpickler(f).load()
 
     def _load_json_data(
-        self, data: dict[str, dict[str, dict[str, str]]]
+        self, data: dict[str, dict[str, dict[str, str | bool]]]
     ) -> defaultdict[tuple[str, str], SimpleCookie]:
         """Load cookies from parsed JSON data."""
         cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(SimpleCookie)
@@ -228,11 +225,7 @@ class CookieJar(AbstractCookieJar):
                         "value",
                         "coded_value",
                     ):
-                        attr_val = morsel_data[attr]
-                        if attr in ("secure", "httponly", "partitioned"):
-                            morsel[attr] = True if attr_val == "true" else attr_val
-                        else:
-                            morsel[attr] = attr_val
+                        morsel[attr] = morsel_data[attr]
                 cookies[key][name] = morsel
         return cookies
 
