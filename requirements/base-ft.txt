@@ -22,15 +22,15 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==23.0.0
+gunicorn==25.1.0
     # via -r requirements/base-ft.in
-idna==3.7
+idna==3.11
     # via yarl
-multidict==6.7.0
+multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-packaging==25.0
+packaging==26.0
     # via gunicorn
 propcache==0.4.1
     # via
@@ -38,7 +38,7 @@ propcache==0.4.1
     #   yarl
 pycares==5.0.1
     # via aiodns
-pycparser==2.23
+pycparser==3.0
     # via cffi
 typing-extensions==4.15.0 ; python_version < "3.13"
     # via
