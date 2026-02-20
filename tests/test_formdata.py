@@ -115,7 +115,7 @@ async def test_formdata_field_name_is_not_quoted(
 def test_invalid_formdata_content_type(val: str) -> None:
     form = FormData()
     with pytest.raises(ValueError):
-        form.add_field("foo", "bar", content_type=invalid_val)
+        form.add_field("foo", "bar", content_type=val)
 
 
 async def test_formdata_is_reusable(aiohttp_client: AiohttpClient) -> None:
