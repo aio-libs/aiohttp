@@ -6,6 +6,7 @@ Multipart reference
 ===================
 
 .. class:: MultipartResponseWrapper(resp, stream)
+   :canonical: aiohttp.multipart.MultipartResponseWrapper
 
    Wrapper around the :class:`MultipartReader` to take care about
    underlying connection and close it when it needs in.
@@ -30,6 +31,7 @@ Multipart reference
 
 
 .. class:: BodyPartReader(boundary, headers, content)
+   :canonical: aiohttp.multipart.BodyPartReader
 
    Multipart reader for single body part.
 
@@ -168,6 +170,7 @@ Multipart reference
 
 
 .. class:: MultipartReader(headers, content)
+   :canonical: aiohttp.multipart.MultipartReader
 
    Multipart body reader.
 
@@ -201,6 +204,7 @@ Multipart reference
 
 
 .. class:: MultipartWriter(subtype='mixed', boundary=None, close_boundary=True)
+   :canonical: aiohttp.multipart.MultipartWriter
 
    Multipart body writer.
 

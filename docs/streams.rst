@@ -12,6 +12,7 @@ Streaming API
 
 
 .. class:: StreamReader
+   :canonical: aiohttp.streams.StreamReader
 
    The reader from incoming stream.
 

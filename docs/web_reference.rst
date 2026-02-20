@@ -24,6 +24,7 @@ data<aiohttp-web-data-sharing>` among :ref:`aiohttp-web-middlewares`
 and :ref:`aiohttp-web-signals` handlers.
 
 .. class:: BaseRequest
+   :canonical: aiohttp.web_request.BaseRequest
 
    .. attribute:: version
 
@@ -491,6 +492,7 @@ and :ref:`aiohttp-web-signals` handlers.
           internal machinery.
 
 .. class:: Request
+   :canonical: aiohttp.web_request.Request
 
    A request used for receiving request's information by *web handler*.
 
@@ -535,6 +537,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
 
 .. class:: RequestKey(name, t)
+   :canonical: aiohttp.helpers.RequestKey
 
    Keys for use in :class:`Request`.
 
@@ -585,6 +588,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
 
 .. class:: StreamResponse(*, status=200, reason=None)
+   :canonical: aiohttp.web_response.StreamResponse
 
    The base class for the *HTTP response* handling.
 
@@ -861,6 +865,7 @@ and :ref:`aiohttp-web-signals` handlers::
 .. class:: Response(*, body=None, status=200, reason=None, text=None, \
                     headers=None, content_type=None, charset=None, \
                     zlib_executor_size=sentinel, zlib_executor=None)
+   :canonical: aiohttp.web_response.Response
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
@@ -912,6 +917,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
 
 .. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None)
+   :canonical: aiohttp.web_fileresponse.FileResponse
 
    The response class used to send files, inherited from :class:`StreamResponse`.
 
@@ -940,6 +946,7 @@ and :ref:`aiohttp-web-signals` handlers::
                              autoclose=True, autoping=True, heartbeat=None, \
                              protocols=(), compress=True, max_msg_size=4194304, \
                              writer_limit=65536, decode_text=True)
+   :canonical: aiohttp.web_ws.WebSocketResponse
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -1275,6 +1282,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :raise RuntimeError: if connection is not started
 
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
+
    .. method:: receive_str(*, timeout=None)
       :async:
 
@@ -1292,6 +1301,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :return str: peer's message content.
 
       :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.TEXT`.
+
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
    .. method:: receive_bytes(*, timeout=None)
       :async:
@@ -1311,6 +1322,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :return bytes: peer's message content.
 
       :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.BINARY`.
+
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
    .. method:: receive_json(*, loads=json.loads, timeout=None)
       :async:
@@ -1335,12 +1348,14 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
 
 
 .. class:: WebSocketReady
+   :canonical: aiohttp.web_ws.WebSocketReady
 
    A named tuple for returning result from
    :meth:`WebSocketResponse.can_prepare`.
@@ -1367,6 +1382,7 @@ and :ref:`aiohttp-web-signals` handlers::
                             status=200, reason=None, headers=None, \
                             content_type='application/json', \
                             dumps=json.dumps)
+   :canonical: aiohttp.web_response.json_response
 
 Return :class:`Response` with predefined ``'application/json'``
 content type and *data* encoded by ``dumps`` parameter
@@ -1374,6 +1390,7 @@ content type and *data* encoded by ``dumps`` parameter
 
 
 .. class:: ResponseKey(name, t)
+   :canonical: aiohttp.helpers.ResponseKey
 
    Keys for use in :class:`Response`.
 
@@ -1391,6 +1408,7 @@ Application and Router
 .. class:: Application(*, logger=<default>, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
                        debug=...)
+   :canonical: aiohttp.web_app.Application
 
    Application is a synonym for web-server.
 
@@ -1644,6 +1662,7 @@ Application and Router
 
 
 .. class:: AppKey(name, t)
+   :canonical: aiohttp.helpers.AppKey
 
    This class should be used for the keys in :class:`Application`. They
    provide a type-safe alternative to `str` keys when checking your code
@@ -1659,6 +1678,7 @@ Application and Router
 
 
 .. class:: Server
+   :canonical: aiohttp.web_server.Server
 
    A protocol factory compatible with
    :meth:`~asyncio.AbstractEventLoop.create_server`.
@@ -1682,6 +1702,7 @@ Application and Router
 
 
 .. class:: UrlDispatcher()
+   :canonical: aiohttp.web_urldispatcher.UrlDispatcher
 
    For dispatching URLs to :ref:`handlers<aiohttp-web-handler>`
    :mod:`aiohttp.web` uses *routers*, which is any object that implements
@@ -2023,6 +2044,7 @@ Resource classes hierarchy::
 
 
 .. class:: AbstractResource
+   :canonical: aiohttp.web_urldispatcher.AbstractResource
 
    A base class for all resources.
 
@@ -2075,6 +2097,7 @@ Resource classes hierarchy::
 
 
 .. class:: Resource
+   :canonical: aiohttp.web_urldispatcher.Resource
 
    A base class for new-style resources, inherits :class:`AbstractResource`.
 
@@ -2101,6 +2124,7 @@ Resource classes hierarchy::
 
 
 .. class:: PlainResource
+   :canonical: aiohttp.web_urldispatcher.PlainResource
 
    A resource, inherited from :class:`Resource`.
 
@@ -2120,6 +2144,7 @@ Resource classes hierarchy::
 
 
 .. class:: DynamicResource
+   :canonical: aiohttp.web_urldispatcher.DynamicResource
 
    A resource, inherited from :class:`Resource`.
 
@@ -2146,6 +2171,7 @@ Resource classes hierarchy::
 
 
 .. class:: StaticResource
+   :canonical: aiohttp.web_urldispatcher.StaticResource
 
    A resource, inherited from :class:`Resource`.
 
@@ -2182,6 +2208,7 @@ Resource classes hierarchy::
 
 
 .. class:: PrefixedSubAppResource
+   :canonical: aiohttp.web_urldispatcher.PrefixedSubAppResource
 
    A resource for serving nested applications. The class instance is
    returned by :class:`~aiohttp.web.Application.add_subapp` call.
@@ -2220,6 +2247,7 @@ Route classes hierarchy::
 and *405 Method Not Allowed*.
 
 .. class:: AbstractRoute
+   :canonical: aiohttp.web_urldispatcher.AbstractRoute
 
    Base class for routes served by :class:`UrlDispatcher`.
 
@@ -2252,11 +2280,13 @@ and *405 Method Not Allowed*.
       ``100-continue`` handler.
 
 .. class:: ResourceRoute
+   :canonical: aiohttp.web_urldispatcher.ResourceRoute
 
    The route class for handling different HTTP methods for :class:`Resource`.
 
 
 .. class:: SystemRoute
+   :canonical: aiohttp.web_urldispatcher.SystemRoute
 
    The route class for handling URL resolution errors like like *404 Not Found*
    and *405 Method Not Allowed*.
@@ -2298,6 +2328,7 @@ The definition is created by functions like :func:`get` or
                           web.post('/post', handle_post),
 
 .. class:: AbstractRouteDef
+   :canonical: aiohttp.web_routedef.AbstractRouteDef
 
    A base class for route definitions.
 
@@ -2320,6 +2351,7 @@ The definition is created by functions like :func:`get` or
 
 
 .. class:: RouteDef
+   :canonical: aiohttp.web_routedef.RouteDef
 
    A definition of not registered yet route.
 
@@ -2351,6 +2383,7 @@ The definition is created by functions like :func:`get` or
 
 
 .. class:: StaticDef
+   :canonical: aiohttp.web_routedef.StaticDef
 
    A definition of static file resource.
 
@@ -2377,6 +2410,7 @@ The definition is created by functions like :func:`get` or
 
 .. function:: get(path, handler, *, name=None, allow_head=True, \
               expect_handler=None)
+   :canonical: aiohttp.web_routedef.get
 
    Return :class:`RouteDef` for processing ``GET`` requests. See
    :meth:`UrlDispatcher.add_get` for information about parameters.
@@ -2384,6 +2418,7 @@ The definition is created by functions like :func:`get` or
    .. versionadded:: 2.3
 
 .. function:: post(path, handler, *, name=None, expect_handler=None)
+   :canonical: aiohttp.web_routedef.post
 
    Return :class:`RouteDef` for processing ``POST`` requests. See
    :meth:`UrlDispatcher.add_post` for information about parameters.
@@ -2391,6 +2426,7 @@ The definition is created by functions like :func:`get` or
    .. versionadded:: 2.3
 
 .. function:: head(path, handler, *, name=None, expect_handler=None)
+   :canonical: aiohttp.web_routedef.head
 
    Return :class:`RouteDef` for processing ``HEAD`` requests. See
    :meth:`UrlDispatcher.add_head` for information about parameters.
@@ -2398,6 +2434,7 @@ The definition is created by functions like :func:`get` or
    .. versionadded:: 2.3
 
 .. function:: put(path, handler, *, name=None, expect_handler=None)
+   :canonical: aiohttp.web_routedef.put
 
    Return :class:`RouteDef` for processing ``PUT`` requests. See
    :meth:`UrlDispatcher.add_put` for information about parameters.
@@ -2405,6 +2442,7 @@ The definition is created by functions like :func:`get` or
    .. versionadded:: 2.3
 
 .. function:: patch(path, handler, *, name=None, expect_handler=None)
+   :canonical: aiohttp.web_routedef.patch
 
    Return :class:`RouteDef` for processing ``PATCH`` requests. See
    :meth:`UrlDispatcher.add_patch` for information about parameters.
@@ -2412,6 +2450,7 @@ The definition is created by functions like :func:`get` or
    .. versionadded:: 2.3
 
 .. function:: delete(path, handler, *, name=None, expect_handler=None)
+   :canonical: aiohttp.web_routedef.delete
 
    Return :class:`RouteDef` for processing ``DELETE`` requests. See
    :meth:`UrlDispatcher.add_delete` for information about parameters.
@@ -2419,6 +2458,7 @@ The definition is created by functions like :func:`get` or
    .. versionadded:: 2.3
 
 .. function:: view(path, handler, *, name=None, expect_handler=None)
+   :canonical: aiohttp.web_routedef.view
 
    Return :class:`RouteDef` for processing ``ANY`` requests. See
    :meth:`UrlDispatcher.add_view` for information about parameters.
@@ -2429,6 +2469,7 @@ The definition is created by functions like :func:`get` or
                      chunk_size=256*1024, \
                      show_index=False, follow_symlinks=False, \
                      append_version=False)
+   :canonical: aiohttp.web_routedef.static
 
    Return :class:`StaticDef` for processing static files.
 
@@ -2438,6 +2479,7 @@ The definition is created by functions like :func:`get` or
    .. versionadded:: 3.1
 
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
+   :canonical: aiohttp.web_routedef.route
 
    Return :class:`RouteDef` for processing requests that decided by
    ``method``. See :meth:`UrlDispatcher.add_route` for information
@@ -2479,6 +2521,7 @@ A routes table definition used for describing routes by decorators
            ...
 
 .. class:: RouteTableDef()
+   :canonical: aiohttp.web_routedef.RouteTableDef
 
    A sequence of :class:`RouteDef` instances (implements
    :class:`collections.abc.Sequence` protocol).
@@ -2569,6 +2612,7 @@ In general the result may be any object derived from
 :class:`UrlDispatcher` router).
 
 .. class:: UrlMappingMatchInfo
+   :canonical: aiohttp.web_urldispatcher.UrlMappingMatchInfo
 
    Inherited from :class:`dict` and :class:`~aiohttp.abc.AbstractMatchInfo`. Dict
    items are filled by matching info and is :term:`resource`\-specific.
@@ -2590,6 +2634,7 @@ View
 ^^^^
 
 .. class:: View(request)
+   :canonical: aiohttp.web_urldispatcher.View
 
    Inherited from :class:`~aiohttp.abc.AbstractView`.
 
@@ -2654,6 +2699,7 @@ application on specific TCP or Unix socket, e.g.::
 
 
 .. class:: BaseRunner
+   :canonical: aiohttp.web_runner.BaseRunner
 
    A base class for runners. Use :class:`AppRunner` for serving
    :class:`Application`, :class:`ServerRunner` for low-level
@@ -2689,6 +2735,7 @@ application on specific TCP or Unix socket, e.g.::
 
 
 .. class:: AppRunner(app, *, handle_signals=False, **kwargs)
+   :canonical: aiohttp.web_runner.AppRunner
 
    A runner for :class:`Application`. Used with conjunction with sites
    to serve on specific port.
@@ -2767,6 +2814,7 @@ application on specific TCP or Unix socket, e.g.::
 
 
 .. class:: ServerRunner(web_server, *, handle_signals=False, **kwargs)
+   :canonical: aiohttp.web_runner.ServerRunner
 
    A runner for low-level :class:`Server`. Used with conjunction with sites
    to serve on specific port.
@@ -2789,6 +2837,7 @@ application on specific TCP or Unix socket, e.g.::
       :ref:`aiohttp-web-lowlevel` demonstrates low-level server usage
 
 .. class:: BaseSite
+   :canonical: aiohttp.web_runner.BaseSite
 
    An abstract class for handled sites.
 
@@ -2812,6 +2861,7 @@ application on specific TCP or Unix socket, e.g.::
                    shutdown_timeout=60.0, ssl_context=None, \
                    backlog=128, reuse_address=None, \
                    reuse_port=None)
+   :canonical: aiohttp.web_runner.TCPSite
 
    Serve a runner on TCP socket.
 
@@ -2850,6 +2900,7 @@ application on specific TCP or Unix socket, e.g.::
 .. class:: UnixSite(runner, path, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
                    backlog=128)
+   :canonical: aiohttp.web_runner.UnixSite
 
    Serve a runner on UNIX socket.
 
@@ -2873,6 +2924,7 @@ application on specific TCP or Unix socket, e.g.::
                        ``128`` by default.
 
 .. class:: NamedPipeSite(runner, path, *, shutdown_timeout=60.0)
+   :canonical: aiohttp.web_runner.NamedPipeSite
 
    Serve a runner on Named Pipe in Windows.
 
@@ -2888,6 +2940,7 @@ application on specific TCP or Unix socket, e.g.::
 .. class:: SockSite(runner, sock, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
                    backlog=128)
+   :canonical: aiohttp.web_runner.SockSite
 
    Serve a runner on UNIX socket.
 
@@ -2911,6 +2964,7 @@ application on specific TCP or Unix socket, e.g.::
                        ``128`` by default.
 
 .. exception:: GracefulExit
+   :canonical: aiohttp.web_runner.GracefulExit
 
    Raised by signal handlers for :data:`signal.SIGINT` and :data:`signal.SIGTERM`
    defined in :class:`AppRunner` and :class:`ServerRunner`
@@ -2924,6 +2978,7 @@ Utilities
 ---------
 
 .. class:: FileField
+   :canonical: aiohttp.web_request.FileField
 
    A :mod:`dataclass <dataclasses>` instance that is returned as
    multidict value by :meth:`aiohttp.web.BaseRequest.post` if field is uploaded file.
@@ -3092,6 +3147,7 @@ Constants
 ---------
 
 .. class:: ContentCoding
+   :canonical: aiohttp.web_response.ContentCoding
 
    An :class:`enum.Enum` class of available Content Codings.
 
@@ -3116,6 +3172,7 @@ Middlewares
                                         remove_slash=False, \
                                         merge_slashes=True, \
                                         redirect_class=HTTPPermanentRedirect)
+   :canonical: aiohttp.web_middlewares.normalize_path_middleware
 
    Middleware factory which produces a middleware that normalizes
    the path of a request. By normalizing it means:
