@@ -959,7 +959,9 @@ class TCPConnector(BaseConnector):
             self._resolver_owner = False
 
         self._use_dns_cache = use_dns_cache
-        self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache, max_size=dns_cache_max_size)
+        self._cached_hosts = _DNSCacheTable(
+            ttl=ttl_dns_cache, max_size=dns_cache_max_size
+        )
         self._throttle_dns_futures: dict[tuple[str, int], set[asyncio.Future[None]]] = (
             {}
         )
