@@ -87,7 +87,7 @@ python-on-whales==0.80.0
     # via -r requirements/test-common.in
 re-assert==1.1.0
     # via -r requirements/test-common.in
-regex==2026.1.15
+regex==2026.2.19
     # via re-assert
 rich==14.3.2
     # via pytest-codspeed
