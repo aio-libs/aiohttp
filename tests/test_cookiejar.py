@@ -9,6 +9,7 @@ import sys
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
+from pathlib import Path
 from unittest import mock
 
 import pytest
