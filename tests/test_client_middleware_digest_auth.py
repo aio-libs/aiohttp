@@ -113,6 +113,13 @@ def mock_md5_digest() -> Generator[mock.MagicMock, None, None]:
             True,
             {"realm": "test", "nonce": "abc", "qop": "auth"},
         ),
+        # Valid digest with empty realm (RFC 7616 Section 3.3 allows this)
+        (
+            401,
+            {"www-authenticate": 'Digest realm="", nonce="abc", qop="auth"'},
+            True,
+            {"realm": "", "nonce": "abc", "qop": "auth"},
+        ),
         # Non-401 status
         (200, {}, False, {}),  # No challenge should be set
     ],
