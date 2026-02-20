@@ -6,7 +6,7 @@ import re
 import time as time_mod
 from collections import namedtuple
 from collections.abc import Iterable
-from typing import Any, Callable, ClassVar
+from typing import Callable, ClassVar
 
 from .abc import AbstractAccessLogger
 from .web_request import BaseRequest
