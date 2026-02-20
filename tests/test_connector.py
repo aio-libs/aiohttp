@@ -4365,7 +4365,12 @@ class TestDNSCacheTable:
         table.next_addrs(self.host1)
 
         host3 = ("example.com", 80)
-        table.add(host3, [{"host": "1.2.3.4"}])
+        result3: ResolveResult = {
+            **self.result1,
+            "hostname": "example.com",
+            "host": "1.2.3.4",
+        }
+        table.add(host3, [result3])
 
         assert self.host1 in table._addrs_rr
         assert self.host2 not in table._addrs_rr
