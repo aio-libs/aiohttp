@@ -1,0 +1,3 @@
+Added ``:canonical:`` directives to documentation reference pages, enabling
+intersphinx cross-referencing via fully-qualified module paths (e.g.
+``aiohttp.client.ClientSession``) -- by :user:`danielalanbates`.
