@@ -1626,7 +1626,7 @@ async def test_shared_cookie_with_multiple_domains() -> None:
 # === Security tests for restricted unpickler and JSON save/load ===
 
 
-def test_load_rejects_malicious_pickle(tmp_path: Path) -> None:
+async def test_load_rejects_malicious_pickle(tmp_path: Path) -> None:
     """Verify CookieJar.load() blocks arbitrary code execution via pickle.
 
     A crafted pickle payload using os.system (or any non-cookie class)
@@ -1648,7 +1648,7 @@ def test_load_rejects_malicious_pickle(tmp_path: Path) -> None:
         jar.load(file_path)
 
 
-def test_load_rejects_eval_payload(tmp_path: Path) -> None:
+async def test_load_rejects_eval_payload(tmp_path: Path) -> None:
     """Verify CookieJar.load() blocks eval-based pickle payloads."""
     file_path = tmp_path / "eval_payload.pkl"
 
@@ -1664,7 +1664,7 @@ def test_load_rejects_eval_payload(tmp_path: Path) -> None:
         jar.load(file_path)
 
 
-def test_load_rejects_subprocess_payload(tmp_path: Path) -> None:
+async def test_load_rejects_subprocess_payload(tmp_path: Path) -> None:
     """Verify CookieJar.load() blocks subprocess-based pickle payloads."""
     import subprocess
 
@@ -1682,7 +1682,7 @@ def test_load_rejects_subprocess_payload(tmp_path: Path) -> None:
         jar.load(file_path)
 
 
-def test_load_falls_back_to_pickle(
+async def test_load_falls_back_to_pickle(
     tmp_path: Path,
     cookies_to_receive: SimpleCookie,
 ) -> None:
@@ -1710,7 +1710,7 @@ def test_load_falls_back_to_pickle(
     assert jar_test == cookies_to_receive
 
 
-def test_save_load_json_roundtrip(
+async def test_save_load_json_roundtrip(
     tmp_path: Path,
     cookies_to_receive: SimpleCookie,
 ) -> None:
@@ -1735,7 +1735,7 @@ def test_save_load_json_roundtrip(
     assert saved_cookies == loaded_cookies
 
 
-def test_save_load_json_partitioned_cookies(tmp_path: Path) -> None:
+async def test_save_load_json_partitioned_cookies(tmp_path: Path) -> None:
     """Verify save/load roundtrip works with partitioned cookies."""
     file_path = tmp_path / "partitioned.json"
 
@@ -1759,7 +1759,7 @@ def test_save_load_json_partitioned_cookies(tmp_path: Path) -> None:
         assert s["path"] == lo["path"]
 
 
-def test_json_format_is_safe(tmp_path: Path) -> None:
+async def test_json_format_is_safe(tmp_path: Path) -> None:
     """Verify the JSON file format cannot execute code on load."""
     import json
 
@@ -1787,7 +1787,7 @@ def test_json_format_is_safe(tmp_path: Path) -> None:
     assert cookies[0].value == "__import__('os').system('echo PWNED')"
 
 
-def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
+async def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
     """Verify save/load preserves Secure and HttpOnly flags."""
     file_path = tmp_path / "secure.json"
 
