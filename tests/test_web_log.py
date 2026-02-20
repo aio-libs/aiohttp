@@ -202,7 +202,8 @@ def test_access_logger_dst_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # Verify cached tz works too
     assert access_logger._cached_tz is not None
-    access_logger.log(request, response, 0.0)
+    with mock.patch("aiohttp.web_log.time_mode.time", return_value=access_logger._cached_tz_expires - 1):
+        access_logger.log(request, response, 0.0)
     call3 = mock_logger.info.call_args[0][0]
     assert "-0400" in call3, f"Expected EDT offset in {call3}"
 
