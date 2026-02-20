@@ -141,7 +141,7 @@ class AccessLogger(AbstractAccessLogger):
         return ip if ip is not None else "-"
 
     @classmethod
-    def _get_local_time(cls) -> tuple[datetime.timezone, datetime.datetime]:
+    def _get_local_time(cls) -> datetime.datetime:
         if cls._cached_tz is None or time_mod.time() >= cls._cached_tz_expires:
             gmtoff = time_mod.localtime().tm_gmtoff
             cls._cached_tz = tz = datetime.timezone(datetime.timedelta(seconds=gmtoff))
