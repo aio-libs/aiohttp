@@ -140,18 +140,23 @@ class AccessLogger(AbstractAccessLogger):
     _cached_tz_expires: float = 0.0
 
     @classmethod
-    def _get_local_timezone(cls) -> datetime.timezone:
-        now = time_mod.monotonic()
+    def _get_local_timezone(cls) -> tuple[datetime.timezone, datetime.datetime]:
+        now = time_mod.time()
         if cls._cached_tz is None or now >= cls._cached_tz_expires:
             gmtoff = time_mod.localtime().tm_gmtoff
-            cls._cached_tz = datetime.timezone(datetime.timedelta(seconds=gmtoff))
-            cls._cached_tz_expires = now + 60.0
-        return cls._cached_tz
+            tz = datetime.timezone(datetime.timedelta(seconds=gmtoff))
+            cls._cached_tz = tz
+            d = datetime.datetime.now(tz) + datetime.timedelta(minutes=30)
+            d = d.replace(minute=30 if d.minute >= 30 else 0, second=0, microsecond=0)
+            cls._cached_tz_expires = d.timestamp()
+        
+        # Return both timezone and current datetime for reuse
+        current_datetime = datetime.datetime.now(cls._cached_tz)
+        return cls._cached_tz, current_datetime
 
     @staticmethod
     def _format_t(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        tz = AccessLogger._get_local_timezone()
-        now = datetime.datetime.now(tz)
+        tz, now = AccessLogger._get_local_timezone()
         start_time = now - datetime.timedelta(seconds=time)
         return start_time.strftime("[%d/%b/%Y:%H:%M:%S %z]")
 
