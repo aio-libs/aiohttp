@@ -60,6 +60,7 @@ efficient to implement without a middleware:
 
 .. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: token_refresh_preemptively_example
+   :lines: 2-
 
 Or combine the above approaches to create a more robust solution.
 
