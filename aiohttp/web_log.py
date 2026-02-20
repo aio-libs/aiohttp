@@ -149,7 +149,7 @@ class AccessLogger(AbstractAccessLogger):
             d = datetime.datetime.now(tz) + datetime.timedelta(minutes=30)
             d = d.replace(minute=30 if d.minute >= 30 else 0, second=0, microsecond=0)
             cls._cached_tz_expires = d.timestamp()
-        
+
         # Return both timezone and current datetime for reuse
         current_datetime = datetime.datetime.now(cls._cached_tz)
         return cls._cached_tz, current_datetime
