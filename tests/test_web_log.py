@@ -98,7 +98,7 @@ def test_access_logger_atoms(
             utc = datetime.datetime(1842, 12, 31, 16, 30, tzinfo=datetime.timezone.utc)
             if tz is not None:
                 local = utc.astimezone(tz)
-                return cls(  # type: ignore[return-value]
+                return cls(
                     local.year,
                     local.month,
                     local.day,
@@ -107,7 +107,7 @@ def test_access_logger_atoms(
                     local.second,
                     tzinfo=tz,
                 )
-            return cls(1842, 12, 31, 16, 30, tzinfo=tz)  # type: ignore[return-value]
+            return cls(1842, 12, 31, 16, 30, tzinfo=tz)
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
     # Mock localtime to return CST (+0800 = 28800 seconds)
@@ -157,7 +157,7 @@ def test_access_logger_dst_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
             utc = datetime.datetime(2024, 3, 10, 7, 0, 0, tzinfo=datetime.timezone.utc)
             if tz is not None:
                 local = utc.astimezone(tz)
-                return cls(  # type: ignore[return-value]
+                return cls(
                     local.year,
                     local.month,
                     local.day,
@@ -166,7 +166,7 @@ def test_access_logger_dst_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
                     local.second,
                     tzinfo=tz,
                 )
-            return cls(2024, 3, 10, 7, 0, 0, tzinfo=tz)  # type: ignore[return-value]
+            return cls(2024, 3, 10, 7, 0, 0, tzinfo=tz)
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
     mock_localtime = mock.Mock()
