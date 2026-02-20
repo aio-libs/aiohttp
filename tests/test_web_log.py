@@ -94,20 +94,19 @@ def test_access_logger_atoms(
     class PatchedDatetime(datetime.datetime):
         @classmethod
         def now(cls, tz: datetime.tzinfo | None = None) -> Self:
+            assert tz is not None
             # Simulate: real UTC time is 1842-12-31 16:30, convert to local tz
             utc = datetime.datetime(1842, 12, 31, 16, 30, tzinfo=datetime.timezone.utc)
-            if tz is not None:
-                local = utc.astimezone(tz)
-                return cls(
-                    local.year,
-                    local.month,
-                    local.day,
-                    local.hour,
-                    local.minute,
-                    local.second,
-                    tzinfo=tz,
-                )
-            return cls(1842, 12, 31, 16, 30, tzinfo=tz)
+            local = utc.astimezone(tz)
+            return cls(
+                local.year,
+                local.month,
+                local.day,
+                local.hour,
+                local.minute,
+                local.second,
+                tzinfo=tz,
+            )
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
     # Mock localtime to return CST (+0800 = 28800 seconds)
@@ -153,20 +152,19 @@ def test_access_logger_dst_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
     class PatchedDatetime(datetime.datetime):
         @classmethod
         def now(cls, tz: datetime.tzinfo | None = None) -> Self:
+            assert tz is not None
             # Simulate: real UTC time is 07:00, convert to local tz
             utc = datetime.datetime(2024, 3, 10, 7, 0, 0, tzinfo=datetime.timezone.utc)
-            if tz is not None:
-                local = utc.astimezone(tz)
-                return cls(
-                    local.year,
-                    local.month,
-                    local.day,
-                    local.hour,
-                    local.minute,
-                    local.second,
-                    tzinfo=tz,
-                )
-            return cls(2024, 3, 10, 7, 0, 0, tzinfo=tz)
+            local = utc.astimezone(tz)
+            return cls(
+                local.year,
+                local.month,
+                local.day,
+                local.hour,
+                local.minute,
+                local.second,
+                tzinfo=tz,
+            )
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
     mock_localtime = mock.Mock()
