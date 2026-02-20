@@ -189,12 +189,10 @@ class CookieJar(AbstractCookieJar):
             with file_path.open(mode="r", encoding="utf-8") as f:
                 data = json.load(f)
             self._cookies = self._load_json_data(data)
-            return
         except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
-            pass
-        # Fall back to legacy pickle format with restricted unpickler
-        with file_path.open(mode="rb") as f:
-            self._cookies = _RestrictedCookieUnpickler(f).load()
+            # Fall back to legacy pickle format with restricted unpickler
+            with file_path.open(mode="rb") as f:
+                self._cookies = _RestrictedCookieUnpickler(f).load()
 
     def _load_json_data(
         self, data: dict[str, dict[str, dict[str, str | bool]]]
