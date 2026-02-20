@@ -75,12 +75,11 @@ async def test_formdata_textio_charset(buf: bytearray, writer: StreamWriter) -> 
     assert b"\x93\xfa\x96{" in buf
 
 
-def test_invalid_formdata_content_type() -> None:
+@pytest.mark.parametrize("val", (0, 0.1, {}, [], b"foo", "\r", "\n", "a\ra\n", "a\na\r"))
+def test_invalid_formdata_content_type(val: object) -> None:
     form = FormData()
-    invalid_vals = [0, 0.1, {}, [], b"foo"]
-    for invalid_val in invalid_vals:
-        with pytest.raises(TypeError):
-            form.add_field("foo", "bar", content_type=invalid_val)  # type: ignore[arg-type]
+    with pytest.raises(TypeError):
+        form.add_field("foo", "bar", content_type=val)  # type: ignore[arg-type]
 
 
 def test_invalid_formdata_filename() -> None:
@@ -109,13 +108,6 @@ async def test_formdata_field_name_is_not_quoted(
     payload = form()
     await payload.write(writer)
     assert b'name="email 1"' in buf
-
-
-@pytest.mark.parametrize("val", ("\r", "\n", "a\ra\n", "a\na\r"))
-def test_invalid_formdata_content_type(val: str) -> None:
-    form = FormData()
-    with pytest.raises(ValueError):
-        form.add_field("foo", "bar", content_type=val)
 
 
 async def test_formdata_is_reusable(aiohttp_client: AiohttpClient) -> None:
