@@ -4340,12 +4340,16 @@ class TestDNSCacheTable:
 
     def test_max_size_eviction(self) -> None:
         table = _DNSCacheTable(max_size=2)
-        
+
         table.add(self.host1, [self.result1])
         table.add(self.host2, [self.result2])
-        
+
         host3 = ("example.com", 80)
-        result3: ResolveResult = {**self.result1, "hostname": "example.com", "host": "1.2.3.4"}
+        result3: ResolveResult = {
+            **self.result1,
+            "hostname": "example.com",
+            "host": "1.2.3.4",
+        }
         table.add(host3, [result3])
 
         assert len(table._addrs_rr) == 2
@@ -4354,12 +4358,12 @@ class TestDNSCacheTable:
 
     def test_lru_eviction(self) -> None:
         table = _DNSCacheTable(max_size=2)
-        
+
         table.add(self.host1, [self.result1])
         table.add(self.host2, [self.result2])
-        
+
         table.next_addrs(self.host1)
-        
+
         host3 = ("example.com", 80)
         table.add(host3, [{"host": "1.2.3.4"}])
 

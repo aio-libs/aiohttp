@@ -795,7 +795,9 @@ class BaseConnector:
 
 class _DNSCacheTable:
     def __init__(self, ttl: float | None = None, max_size: int = 1000) -> None:
-        self._addrs_rr: OrderedDict[tuple[str, int], tuple[Iterator[ResolveResult], int]] = OrderedDict()
+        self._addrs_rr: OrderedDict[
+            tuple[str, int], tuple[Iterator[ResolveResult], int]
+        ] = OrderedDict()
         self._timestamps: dict[tuple[str, int], float] = {}
         self._ttl = ttl
         self._max_size = max_size
@@ -806,12 +808,12 @@ class _DNSCacheTable:
     def add(self, key: tuple[str, int], addrs: list[ResolveResult]) -> None:
         if key in self._addrs_rr:
             self._addrs_rr.move_to_end(key)
-        
+
         self._addrs_rr[key] = (cycle(addrs), len(addrs))
 
         if self._ttl is not None:
             self._timestamps[key] = monotonic()
-            
+
         if len(self._addrs_rr) > self._max_size:
             oldest_key, _ = self._addrs_rr.popitem(last=False)
             self._timestamps.pop(oldest_key, None)
