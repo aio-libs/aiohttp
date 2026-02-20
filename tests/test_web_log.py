@@ -203,7 +203,7 @@ def test_access_logger_dst_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
     # Verify cached tz works too
     assert access_logger._cached_tz is not None
     with mock.patch(
-        "aiohttp.web_log.time_mode.time",
+        "aiohttp.web_log.time_mod.time",
         return_value=access_logger._cached_tz_expires - 1,
     ):
         access_logger.log(request, response, 0.0)
