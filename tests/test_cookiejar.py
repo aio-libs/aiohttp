@@ -1620,3 +1620,191 @@ async def test_shared_cookie_with_multiple_domains() -> None:
     # Verify cache is reused efficiently
     assert ("", "") in jar._morsel_cache
     assert "universal" in jar._morsel_cache[("", "")]
+
+
+# === Security tests for restricted unpickler and JSON save/load ===
+
+
+def test_load_rejects_malicious_pickle(tmp_path: Path) -> None:
+    """Verify CookieJar.load() blocks arbitrary code execution via pickle.
+
+    A crafted pickle payload using os.system (or any non-cookie class)
+    must be rejected by the restricted unpickler.
+    """
+    import os
+
+    file_path = tmp_path / "malicious.pkl"
+
+    class RCEPayload:
+        def __reduce__(self) -> tuple[object, ...]:
+            return (os.system, ("echo PWNED",))
+
+    with open(file_path, "wb") as f:
+        pickle.dump(RCEPayload(), f, pickle.HIGHEST_PROTOCOL)
+
+    jar = CookieJar()
+    with pytest.raises(pickle.UnpicklingError, match="Forbidden class"):
+        jar.load(file_path)
+
+
+def test_load_rejects_eval_payload(tmp_path: Path) -> None:
+    """Verify CookieJar.load() blocks eval-based pickle payloads."""
+    file_path = tmp_path / "eval_payload.pkl"
+
+    class EvalPayload:
+        def __reduce__(self) -> tuple[object, ...]:
+            return (eval, ("__import__('os').system('echo PWNED')",))
+
+    with open(file_path, "wb") as f:
+        pickle.dump(EvalPayload(), f, pickle.HIGHEST_PROTOCOL)
+
+    jar = CookieJar()
+    with pytest.raises(pickle.UnpicklingError, match="Forbidden class"):
+        jar.load(file_path)
+
+
+def test_load_rejects_subprocess_payload(tmp_path: Path) -> None:
+    """Verify CookieJar.load() blocks subprocess-based pickle payloads."""
+    import subprocess
+
+    file_path = tmp_path / "subprocess_payload.pkl"
+
+    class SubprocessPayload:
+        def __reduce__(self) -> tuple[object, ...]:
+            return (subprocess.call, (["echo", "PWNED"],))
+
+    with open(file_path, "wb") as f:
+        pickle.dump(SubprocessPayload(), f, pickle.HIGHEST_PROTOCOL)
+
+    jar = CookieJar()
+    with pytest.raises(pickle.UnpicklingError, match="Forbidden class"):
+        jar.load(file_path)
+
+
+def test_load_falls_back_to_pickle(
+    tmp_path: Path,
+    cookies_to_receive: SimpleCookie,
+) -> None:
+    """Verify load() falls back to restricted pickle for legacy cookie files.
+
+    Existing cookie files saved with older versions of aiohttp used pickle.
+    load() should detect that the file is not JSON and fall back to the
+    restricted pickle unpickler for backward compatibility.
+    """
+    file_path = tmp_path / "legit.pkl"
+
+    # Write a legacy pickle file directly (as old aiohttp save() would)
+    jar_save = CookieJar()
+    jar_save.update_cookies(cookies_to_receive)
+    with file_path.open(mode="wb") as f:
+        pickle.dump(jar_save._cookies, f, pickle.HIGHEST_PROTOCOL)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    jar_test = SimpleCookie()
+    for cookie in jar_load:
+        jar_test[cookie.key] = cookie
+
+    assert jar_test == cookies_to_receive
+
+
+def test_save_load_json_roundtrip(
+    tmp_path: Path,
+    cookies_to_receive: SimpleCookie,
+) -> None:
+    """Verify save/load roundtrip preserves cookies via JSON format."""
+    file_path = tmp_path / "cookies.json"
+
+    jar_save = CookieJar()
+    jar_save.update_cookies(cookies_to_receive)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    saved_cookies = SimpleCookie()
+    for cookie in jar_save:
+        saved_cookies[cookie.key] = cookie
+
+    loaded_cookies = SimpleCookie()
+    for cookie in jar_load:
+        loaded_cookies[cookie.key] = cookie
+
+    assert saved_cookies == loaded_cookies
+
+
+def test_save_load_json_partitioned_cookies(tmp_path: Path) -> None:
+    """Verify save/load roundtrip works with partitioned cookies."""
+    file_path = tmp_path / "partitioned.json"
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["session=cookie; Partitioned"], URL("https://example.com/")
+    )
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    # Compare individual cookie values (same approach as test_save_load_partitioned_cookies)
+    saved = list(jar_save)
+    loaded = list(jar_load)
+    assert len(saved) == len(loaded)
+    for s, lo in zip(saved, loaded):
+        assert s.key == lo.key
+        assert s.value == lo.value
+        assert s["domain"] == lo["domain"]
+        assert s["path"] == lo["path"]
+
+
+def test_json_format_is_safe(tmp_path: Path) -> None:
+    """Verify the JSON file format cannot execute code on load."""
+    import json
+
+    file_path = tmp_path / "safe.json"
+
+    # Write something that might look dangerous but is just data
+    malicious_data = {
+        "evil.com|/": {
+            "session": {
+                "key": "session",
+                "value": "__import__('os').system('echo PWNED')",
+                "coded_value": "__import__('os').system('echo PWNED')",
+            }
+        }
+    }
+    with open(file_path, "w") as f:
+        json.dump(malicious_data, f)
+
+    jar = CookieJar()
+    jar.load(file_path=file_path)
+
+    # The "malicious" string is just a cookie value, not executed code
+    cookies = list(jar)
+    assert len(cookies) == 1
+    assert cookies[0].value == "__import__('os').system('echo PWNED')"
+
+
+def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
+    """Verify save/load preserves Secure and HttpOnly flags."""
+    file_path = tmp_path / "secure.json"
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["token=abc123; Secure; HttpOnly; Path=/; Domain=example.com"],
+        URL("https://example.com/"),
+    )
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    loaded_cookies = list(jar_load)
+    assert len(loaded_cookies) == 1
+    cookie = loaded_cookies[0]
+    assert cookie.key == "token"
+    assert cookie.value == "abc123"
+    assert cookie["secure"] is True
+    assert cookie["httponly"] is True
+    assert cookie["domain"] == "example.com"
