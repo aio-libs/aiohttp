@@ -200,6 +200,12 @@ def test_access_logger_dst_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "02:00:00 -0500" in call1
     assert "03:00:00 -0400" in call2
 
+    # Verify cached tz works too
+    assert access_logger._cached_tz is not None
+    access_logger.log(request, response, 0.0)
+    call3 = mock_logger.info.call_args[0][0]
+    assert "-0400" in call3, f"Expected EDT offset in {call3}"
+
 
 def test_access_logger_dicts() -> None:
     log_format = "%{User-Agent}i %{Content-Length}o %{None}i"
