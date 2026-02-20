@@ -1,7 +1,8 @@
 import asyncio
 from contextlib import suppress
-from typing import Any
+from typing import Callable, Protocol
 
+from ._websocket.reader import WebSocketDataQueue
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
     ClientConnectionError,
@@ -14,12 +15,17 @@ from .helpers import (
     _EXC_SENTINEL,
     EMPTY_BODY_STATUS_CODES,
     BaseTimerContext,
+    ErrorableProtocol,
     set_exception,
     set_result,
 )
 from .http import HttpResponseParser, RawResponseMessage, WebSocketReader
 from .http_exceptions import HttpProcessingError
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
+
+
+class _Payload(ErrorableProtocol, Protocol):
+    def is_eof(self) -> bool: ...
 
 
 class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamReader]]):
@@ -31,9 +37,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._should_close = False
 
-        self._payload: StreamReader | None = None
+        self._payload: _Payload | None = None
         self._skip_payload = False
         self._payload_parser: WebSocketReader | None = None
+        self._data_received_cb: Callable[[], None] | None = None
 
         self._timer = None
 
@@ -203,14 +210,15 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._drop_timeout()
         super().set_exception(exc, exc_cause)
 
-    def set_parser(self, parser: Any, payload: Any) -> None:
-        # TODO: actual types are:
-        #   parser: WebSocketReader
-        #   payload: WebSocketDataQueue
-        # but they are not generi enough
-        # Need an ABC for both types
+    def set_parser(
+        self,
+        parser: WebSocketReader,
+        payload: WebSocketDataQueue,
+        data_received_cb: Callable[[], None] | None = None,
+    ) -> None:
         self._payload = payload
         self._payload_parser = parser
+        self._data_received_cb = data_received_cb
 
         self._drop_timeout()
 
@@ -298,6 +306,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         # custom payload parser - currently always WebSocketReader
         if self._payload_parser is not None:
+            if self._data_received_cb is not None:
+                self._data_received_cb()
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
                 self._payload = None
