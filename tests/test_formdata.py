@@ -76,12 +76,21 @@ async def test_formdata_textio_charset(buf: bytearray, writer: StreamWriter) -> 
 
 
 @pytest.mark.parametrize(
-    "val", (0, 0.1, {}, [], b"foo", "\r", "\n", "a\ra\n", "a\na\r")
+    "val", (0, 0.1, {}, [], b"foo")
 )
-def test_invalid_formdata_content_type(val: object) -> None:
+def test_invalid_type_formdata_content_type(val: object) -> None:
     form = FormData()
     with pytest.raises(TypeError):
         form.add_field("foo", "bar", content_type=val)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "val", ("\r", "\n", "a\ra\n", "a\na\r")
+)
+def test_invalid_value_formdata_content_type(val: str) -> None:
+    form = FormData()
+    with pytest.raises(ValueError):
+        form.add_field("foo", "bar", content_type=val)
 
 
 def test_invalid_formdata_filename() -> None:
