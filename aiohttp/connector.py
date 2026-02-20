@@ -829,6 +829,7 @@ class _DNSCacheTable:
     def next_addrs(self, key: tuple[str, int]) -> list[ResolveResult]:
         loop, length = self._addrs_rr[key]
         addrs = list(islice(loop, length))
+        # Consume one more element to shift internal state of `cycle`
         next(loop)
         self._addrs_rr.move_to_end(key)
         return addrs
@@ -836,6 +837,7 @@ class _DNSCacheTable:
     def expired(self, key: tuple[str, int]) -> bool:
         if self._ttl is None:
             return False
+
         return self._timestamps[key] + self._ttl < monotonic()
 
 
@@ -957,7 +959,7 @@ class TCPConnector(BaseConnector):
             self._resolver_owner = False
 
         self._use_dns_cache = use_dns_cache
-        self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
+        self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache, max_size=dns_cache_max_size)
         self._throttle_dns_futures: dict[tuple[str, int], set[asyncio.Future[None]]] = (
             {}
         )
