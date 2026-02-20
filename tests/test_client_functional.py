@@ -5450,30 +5450,30 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
         # Simulate Amazon-like cookies from the issue
         cookies = [
             "session-id=146-7423990-7621939; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; "
             "Secure; HttpOnly",
             "session-id=147-8529641-8642103; Domain=.www.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; HttpOnly",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; HttpOnly",
             "session-id-time=2082758401l; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; Secure",
             "session-id-time=2082758402l; Domain=.www.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/",
             "ubid-acbit=257-7531983-5395266; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; Secure",
             'x-acbit="KdvJzu8W@Fx6Jj3EuNFLuP0N7OtkuCfs"; Version=1; '
             "Domain=.amazon.it; Path=/; Secure; HttpOnly",
             "at-acbit=Atza|IwEBIM-gLr8; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; "
             "Secure; HttpOnly",
             'sess-at-acbit="4+6VzSJPHIFD/OqO264hFxIng8Y="; '
-            "Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; "
+            "Domain=.amazon.it; Expires=Mon, 31-May-3024 10:00:00 GMT; "
             "Path=/; Secure; HttpOnly",
             "lc-acbit=it_IT; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/",
             "i18n-prefs=EUR; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/",
             "av-profile=null; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; Secure",
             'user-pref-token="Am81ywsJ69xObBnuJ2FbilVH0mg="; '
             "Domain=.amazon.it; Path=/; Secure",
         ]

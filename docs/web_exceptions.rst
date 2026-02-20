@@ -119,6 +119,7 @@ Base HTTP Exception
 
 .. exception:: HTTPException(*, headers=None, reason=None, text=None, \
                              content_type=None)
+   :canonical: aiohttp.web_exceptions.HTTPException
 
    The base class for HTTP server exceptions. Inherited from :exc:`Exception`.
 
@@ -239,39 +240,47 @@ classes reflected in exceptions hierarchy. E.g. ``raise web.HTTPNoContent`` may 
 strange a little but the construction is absolutely legal.
 
 .. exception:: HTTPSuccessful
+   :canonical: aiohttp.web_exceptions.HTTPSuccessful
 
    A base class for the category, a subclass of :exc:`HTTPException`.
 
 .. exception:: HTTPOk
+   :canonical: aiohttp.web_exceptions.HTTPOk
 
    An exception for *200 OK*, a subclass of :exc:`HTTPSuccessful`.
 
 .. exception:: HTTPCreated
+   :canonical: aiohttp.web_exceptions.HTTPCreated
 
    An exception for *201 Created*, a subclass of :exc:`HTTPSuccessful`.
 
 .. exception:: HTTPAccepted
+   :canonical: aiohttp.web_exceptions.HTTPAccepted
 
    An exception for *202 Accepted*, a subclass of :exc:`HTTPSuccessful`.
 
 .. exception:: HTTPNonAuthoritativeInformation
+   :canonical: aiohttp.web_exceptions.HTTPNonAuthoritativeInformation
 
    An exception for *203 Non-Authoritative Information*, a subclass of
    :exc:`HTTPSuccessful`.
 
 .. exception:: HTTPNoContent
+   :canonical: aiohttp.web_exceptions.HTTPNoContent
 
    An exception for *204 No Content*, a subclass of :exc:`HTTPSuccessful`.
 
    Has no HTTP body.
 
 .. exception:: HTTPResetContent
+   :canonical: aiohttp.web_exceptions.HTTPResetContent
 
    An exception for *205 Reset Content*, a subclass of :exc:`HTTPSuccessful`.
 
    Has no HTTP body.
 
 .. exception:: HTTPPartialContent
+   :canonical: aiohttp.web_exceptions.HTTPPartialContent
 
    An exception for *206 Partial Content*, a subclass of :exc:`HTTPSuccessful`.
 
@@ -282,11 +291,13 @@ HTTP exceptions for status code in range 300-399, e.g. ``raise
 web.HTTPMovedPermanently(location='/new/path')``.
 
 .. exception:: HTTPRedirection
+   :canonical: aiohttp.web_exceptions.HTTPRedirection
 
    A base class for the category, a subclass of :exc:`HTTPException`.
 
 .. exception:: HTTPMove(location, *, headers=None, reason=None, text=None, \
                         content_type=None)
+   :canonical: aiohttp.web_exceptions.HTTPMove
 
    A base class for redirections with implied *Location* header,
    all redirections except :exc:`HTTPNotModified`.
@@ -301,36 +312,44 @@ web.HTTPMovedPermanently(location='/new/path')``.
       A *Location* HTTP header value, :class:`yarl.URL`.
 
 .. exception:: HTTPMultipleChoices
+   :canonical: aiohttp.web_exceptions.HTTPMultipleChoices
 
    An exception for *300 Multiple Choices*, a subclass of :exc:`HTTPMove`.
 
 .. exception:: HTTPMovedPermanently
+   :canonical: aiohttp.web_exceptions.HTTPMovedPermanently
 
    An exception for *301 Moved Permanently*, a subclass of :exc:`HTTPMove`.
 
 .. exception:: HTTPFound
+   :canonical: aiohttp.web_exceptions.HTTPFound
 
    An exception for *302 Found*, a subclass of :exc:`HTTPMove`.
 
 .. exception:: HTTPSeeOther
+   :canonical: aiohttp.web_exceptions.HTTPSeeOther
 
    An exception for *303 See Other*, a subclass of :exc:`HTTPMove`.
 
 .. exception:: HTTPNotModified
+   :canonical: aiohttp.web_exceptions.HTTPNotModified
 
    An exception for *304 Not Modified*, a subclass of :exc:`HTTPRedirection`.
 
    Has no HTTP body.
 
 .. exception:: HTTPUseProxy
+   :canonical: aiohttp.web_exceptions.HTTPUseProxy
 
    An exception for *305 Use Proxy*, a subclass of :exc:`HTTPMove`.
 
 .. exception:: HTTPTemporaryRedirect
+   :canonical: aiohttp.web_exceptions.HTTPTemporaryRedirect
 
    An exception for *307 Temporary Redirect*, a subclass of :exc:`HTTPMove`.
 
 .. exception:: HTTPPermanentRedirect
+   :canonical: aiohttp.web_exceptions.HTTPPermanentRedirect
 
    An exception for *308 Permanent Redirect*, a subclass of :exc:`HTTPMove`.
 
@@ -341,33 +360,40 @@ Client Errors
 HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound()``.
 
 .. exception:: HTTPClientError
+   :canonical: aiohttp.web_exceptions.HTTPClientError
 
    A base class for the category, a subclass of :exc:`HTTPException`.
 
 .. exception:: HTTPBadRequest
+   :canonical: aiohttp.web_exceptions.HTTPBadRequest
 
    An exception for *400 Bad Request*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPUnauthorized
+   :canonical: aiohttp.web_exceptions.HTTPUnauthorized
 
    An exception for *401 Unauthorized*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPPaymentRequired
+   :canonical: aiohttp.web_exceptions.HTTPPaymentRequired
 
    An exception for *402 Payment Required*, a subclass of
    :exc:`HTTPClientError`.
 
 .. exception:: HTTPForbidden
+   :canonical: aiohttp.web_exceptions.HTTPForbidden
 
    An exception for *403 Forbidden*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPNotFound
+   :canonical: aiohttp.web_exceptions.HTTPNotFound
 
    An exception for *404 Not Found*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPMethodNotAllowed(method, allowed_methods, *, \
                                     headers=None, reason=None, text=None, \
                                     content_type=None)
+   :canonical: aiohttp.web_exceptions.HTTPMethodNotAllowed
 
    An exception for *405 Method Not Allowed*, a subclass of
    :exc:`HTTPClientError`.
@@ -389,36 +415,44 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
       Requested but not allowed HTTP method.
 
 .. exception:: HTTPNotAcceptable
+   :canonical: aiohttp.web_exceptions.HTTPNotAcceptable
 
    An exception for *406 Not Acceptable*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPProxyAuthenticationRequired
+   :canonical: aiohttp.web_exceptions.HTTPProxyAuthenticationRequired
 
    An exception for *407 Proxy Authentication Required*, a subclass of
    :exc:`HTTPClientError`.
 
 .. exception:: HTTPRequestTimeout
+   :canonical: aiohttp.web_exceptions.HTTPRequestTimeout
 
    An exception for *408 Request Timeout*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPConflict
+   :canonical: aiohttp.web_exceptions.HTTPConflict
 
    An exception for *409 Conflict*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPGone
+   :canonical: aiohttp.web_exceptions.HTTPGone
 
    An exception for *410 Gone*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPLengthRequired
+   :canonical: aiohttp.web_exceptions.HTTPLengthRequired
 
    An exception for *411 Length Required*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPPreconditionFailed
+   :canonical: aiohttp.web_exceptions.HTTPPreconditionFailed
 
    An exception for *412 Precondition Failed*, a subclass of
    :exc:`HTTPClientError`.
 
 .. exception:: HTTPRequestEntityTooLarge(max_size, actual_size, **kwargs)
+   :canonical: aiohttp.web_exceptions.HTTPRequestEntityTooLarge
 
    An exception for *413 Entity Too Large*, a subclass of :exc:`HTTPClientError`.
 
@@ -429,49 +463,60 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
    For other acceptable parameters see :exc:`HTTPException` constructor.
 
 .. exception:: HTTPRequestURITooLong
+   :canonical: aiohttp.web_exceptions.HTTPRequestURITooLong
 
    An exception for *414 URI is too long*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPUnsupportedMediaType
+   :canonical: aiohttp.web_exceptions.HTTPUnsupportedMediaType
 
    An exception for *415 Entity body in unsupported format*, a subclass of
    :exc:`HTTPClientError`.
 
 .. exception:: HTTPRequestRangeNotSatisfiable
+   :canonical: aiohttp.web_exceptions.HTTPRequestRangeNotSatisfiable
 
    An exception for *416 Cannot satisfy request range*, a subclass of
    :exc:`HTTPClientError`.
 
 .. exception:: HTTPExpectationFailed
+   :canonical: aiohttp.web_exceptions.HTTPExpectationFailed
 
    An exception for *417 Expect condition could not be satisfied*, a subclass of
    :exc:`HTTPClientError`.
 
 .. exception:: HTTPMisdirectedRequest
+   :canonical: aiohttp.web_exceptions.HTTPMisdirectedRequest
 
    An exception for *421 Misdirected Request*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPUnprocessableEntity
+   :canonical: aiohttp.web_exceptions.HTTPUnprocessableEntity
 
    An exception for *422 Unprocessable Entity*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPFailedDependency
+   :canonical: aiohttp.web_exceptions.HTTPFailedDependency
 
    An exception for *424 Failed Dependency*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPUpgradeRequired
+   :canonical: aiohttp.web_exceptions.HTTPUpgradeRequired
 
    An exception for *426 Upgrade Required*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPPreconditionRequired
+   :canonical: aiohttp.web_exceptions.HTTPPreconditionRequired
 
    An exception for *428 Precondition Required*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPTooManyRequests
+   :canonical: aiohttp.web_exceptions.HTTPTooManyRequests
 
    An exception for *429 Too Many Requests*, a subclass of :exc:`HTTPClientError`.
 
 .. exception:: HTTPRequestHeaderFieldsTooLarge
+   :canonical: aiohttp.web_exceptions.HTTPRequestHeaderFieldsTooLarge
 
    An exception for *431 Requests Header Fields Too Large*, a subclass of
    :exc:`HTTPClientError`.
@@ -481,6 +526,7 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
                                               reason=None, \
                                               text=None, \
                                               content_type=None)
+   :canonical: aiohttp.web_exceptions.HTTPUnavailableForLegalReasons
 
 
    An exception for *451 Unavailable For Legal Reasons*, a subclass of
@@ -505,51 +551,62 @@ HTTP exceptions for status code in range 500-599, e.g. ``raise web.HTTPBadGatewa
 
 
 .. exception:: HTTPServerError
+   :canonical: aiohttp.web_exceptions.HTTPServerError
 
    A base class for the category, a subclass of :exc:`HTTPException`.
 
 .. exception:: HTTPInternalServerError
+   :canonical: aiohttp.web_exceptions.HTTPInternalServerError
 
    An exception for *500 Server got itself in trouble*, a subclass of
    :exc:`HTTPServerError`.
 
 .. exception:: HTTPNotImplemented
+   :canonical: aiohttp.web_exceptions.HTTPNotImplemented
 
    An exception for *501 Server does not support this operation*, a subclass of
    :exc:`HTTPServerError`.
 
 .. exception:: HTTPBadGateway
+   :canonical: aiohttp.web_exceptions.HTTPBadGateway
 
    An exception for *502 Invalid responses from another server/proxy*, a
    subclass of :exc:`HTTPServerError`.
 
 .. exception:: HTTPServiceUnavailable
+   :canonical: aiohttp.web_exceptions.HTTPServiceUnavailable
 
    An exception for *503 The server cannot process the request due to a high
    load*, a subclass of :exc:`HTTPServerError`.
 
 .. exception:: HTTPGatewayTimeout
+   :canonical: aiohttp.web_exceptions.HTTPGatewayTimeout
 
    An exception for *504 The gateway server did not receive a timely response*,
    a subclass of :exc:`HTTPServerError`.
 
 .. exception:: HTTPVersionNotSupported
+   :canonical: aiohttp.web_exceptions.HTTPVersionNotSupported
 
    An exception for *505 Cannot fulfill request*, a subclass of :exc:`HTTPServerError`.
 
 .. exception:: HTTPVariantAlsoNegotiates
+   :canonical: aiohttp.web_exceptions.HTTPVariantAlsoNegotiates
 
    An exception for *506 Variant Also Negotiates*, a subclass of :exc:`HTTPServerError`.
 
 .. exception:: HTTPInsufficientStorage
+   :canonical: aiohttp.web_exceptions.HTTPInsufficientStorage
 
    An exception for *507 Insufficient Storage*, a subclass of :exc:`HTTPServerError`.
 
 .. exception:: HTTPNotExtended
+   :canonical: aiohttp.web_exceptions.HTTPNotExtended
 
    An exception for *510 Not Extended*, a subclass of :exc:`HTTPServerError`.
 
 .. exception:: HTTPNetworkAuthenticationRequired
+   :canonical: aiohttp.web_exceptions.HTTPNetworkAuthenticationRequired
 
    An exception for *511 Network Authentication Required*, a subclass of
    :exc:`HTTPServerError`.

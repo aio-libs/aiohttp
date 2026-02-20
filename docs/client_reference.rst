@@ -60,6 +60,7 @@ The client session supports the context manager protocol for self closing.
                          max_headers=128, \
                          fallback_charset_resolver=lambda r, b: "utf-8", \
                          ssl_shutdown_timeout=0)
+   :canonical: aiohttp.client.ClientSession
 
    The class for creating client sessions and making requests.
 
@@ -912,6 +913,7 @@ certification chaining.
                         max_headers=None, \
                         version=aiohttp.HttpVersion11, \
                         connector=None)
+   :canonical: aiohttp.client.request
    :async:
 
    Asynchronous context manager for performing an asynchronous HTTP
@@ -1093,6 +1095,7 @@ is controlled by *force_close* constructor's parameter).
 .. class:: BaseConnector(*, keepalive_timeout=15, \
                          force_close=False, limit=100, limit_per_host=0, \
                          enable_cleanup_closed=False, loop=None)
+   :canonical: aiohttp.connector.BaseConnector
 
    Base class for all connectors.
 
@@ -1215,6 +1218,7 @@ is controlled by *force_close* constructor's parameter).
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
                  happy_eyeballs_delay=0.25, interleave=None, loop=None, \
                  socket_factory=None, ssl_shutdown_timeout=0)
+   :canonical: aiohttp.connector.TCPConnector
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -1394,6 +1398,7 @@ is controlled by *force_close* constructor's parameter).
 .. class:: UnixConnector(path, *, conn_timeout=None, \
                          keepalive_timeout=30, limit=100, \
                          force_close=False, loop=None)
+   :canonical: aiohttp.connector.UnixConnector
 
    Unix socket connector.
 
@@ -1424,6 +1429,7 @@ is controlled by *force_close* constructor's parameter).
 
 
 .. class:: Connection
+   :canonical: aiohttp.connector.Connection
 
    Encapsulates single connection in connector object.
 
@@ -1462,6 +1468,7 @@ Response object
 ---------------
 
 .. class:: ClientResponse
+   :canonical: aiohttp.client_reqrep.ClientResponse
 
    Client response returned by :meth:`aiohttp.ClientSession.request` and family.
 
@@ -1713,6 +1720,7 @@ not create an instance of class :class:`ClientWebSocketResponse`
 manually.
 
 .. class:: ClientWebSocketResponse()
+   :canonical: aiohttp.client_ws.ClientWebSocketResponse
 
    Class for handling client-side websockets.
 
@@ -1931,6 +1939,7 @@ ClientRequest
 -------------
 
 .. class:: ClientRequest
+   :canonical: aiohttp.client_reqrep.ClientRequest
 
    Represents an HTTP request to be sent by the client.
 
@@ -2149,6 +2158,7 @@ Utilities
 
 .. class:: ClientTimeout(*, total=None, connect=None, \
                          sock_connect=None, sock_read=None)
+   :canonical: aiohttp.client.ClientTimeout
 
    A data class for client timeout settings.
 
@@ -2187,6 +2197,7 @@ Utilities
 
 
 .. class:: ClientWSTimeout(*, ws_receive=None, ws_close=None)
+   :canonical: aiohttp.client_ws.ClientWSTimeout
 
    A data class for websocket client timeout settings.
 
@@ -2228,6 +2239,7 @@ Utilities
 
 
 .. class:: ETag(name, is_weak=False)
+   :canonical: aiohttp.helpers.ETag
 
    Represents `ETag` identifier.
 
@@ -2243,6 +2255,7 @@ Utilities
 
 
 .. class:: ContentDisposition
+   :canonical: aiohttp.client_reqrep.ContentDisposition
 
     A data class to represent the Content-Disposition header,
     available as :attr:`ClientResponse.content_disposition` attribute.
@@ -2263,6 +2276,7 @@ Utilities
 
 
 .. class:: RequestInfo()
+   :canonical: aiohttp.client_reqrep.RequestInfo
 
    A :class:`typing.NamedTuple` with request URL and headers from :class:`~aiohttp.ClientRequest`
    object, available as :attr:`ClientResponse.request_info` attribute.
@@ -2288,6 +2302,7 @@ Utilities
 
 
 .. class:: BasicAuth(login, password='', encoding='latin1')
+   :canonical: aiohttp.helpers.BasicAuth
 
    HTTP basic authentication helper.
 
@@ -2328,6 +2343,7 @@ Utilities
 
 
 .. class:: DigestAuthMiddleware(login, password, *, preemptive=True)
+   :canonical: aiohttp.client_middleware_digest_auth.DigestAuthMiddleware
 
    HTTP digest authentication client middleware.
 
@@ -2387,6 +2403,7 @@ Utilities
 
 
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
+   :canonical: aiohttp.cookiejar.CookieJar
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -2500,6 +2517,7 @@ Utilities
 
 
 .. class:: DummyCookieJar(*, loop=None)
+   :canonical: aiohttp.cookiejar.DummyCookieJar
 
    Dummy cookie jar which does not store cookies but ignores them.
 
@@ -2513,6 +2531,7 @@ Utilities
 
 
 .. class:: Fingerprint(digest)
+   :canonical: aiohttp.client_reqrep.Fingerprint
 
    Fingerprint helper for checking SSL certificates by *SHA256* digest.
 
@@ -2533,6 +2552,7 @@ Utilities
    .. versionadded:: 3.0
 
 .. function:: set_zlib_backend(lib)
+   :canonical: aiohttp.compression_utils.set_zlib_backend
 
    Sets the compression backend for zlib-based operations.
 
@@ -2571,6 +2591,7 @@ Otherwise, ``application/x-www-form-urlencoded`` is used.
 on being called.
 
 .. class:: FormData(fields, quote_fields=True, charset=None)
+   :canonical: aiohttp.formdata.FormData
 
    Helper class for multipart/form-data and application/x-www-form-urlencoded body generation.
 
@@ -2646,6 +2667,7 @@ chunks or not enough data that satisfy the content-length header.
 All exceptions are available as members of *aiohttp* module.
 
 .. exception:: ClientError
+   :canonical: aiohttp.client_exceptions.ClientError
 
    Base class for all client specific exceptions.
 
@@ -2653,6 +2675,7 @@ All exceptions are available as members of *aiohttp* module.
 
 
 .. class:: ClientPayloadError
+   :canonical: aiohttp.client_exceptions.ClientPayloadError
 
    This exception can only be raised while reading the response
    payload if one of these errors occurs:
@@ -2664,6 +2687,7 @@ All exceptions are available as members of *aiohttp* module.
    Derived from :exc:`ClientError`
 
 .. exception:: InvalidURL
+   :canonical: aiohttp.client_exceptions.InvalidURL
 
    URL used for fetching is malformed, e.g. it does not contain host
    part.
@@ -2679,30 +2703,35 @@ All exceptions are available as members of *aiohttp* module.
       Invalid URL description, :class:`str` instance or :data:`None`.
 
 .. exception:: InvalidUrlClientError
+   :canonical: aiohttp.client_exceptions.InvalidUrlClientError
 
    Base class for all errors related to client url.
 
    Derived from :exc:`InvalidURL`
 
 .. exception:: RedirectClientError
+   :canonical: aiohttp.client_exceptions.RedirectClientError
 
    Base class for all errors related to client redirects.
 
    Derived from :exc:`ClientError`
 
 .. exception:: NonHttpUrlClientError
+   :canonical: aiohttp.client_exceptions.NonHttpUrlClientError
 
    Base class for all errors related to non http client urls.
 
    Derived from :exc:`ClientError`
 
 .. exception:: InvalidUrlRedirectClientError
+   :canonical: aiohttp.client_exceptions.InvalidUrlRedirectClientError
 
    Redirect URL is malformed, e.g. it does not contain host part.
 
    Derived from :exc:`InvalidUrlClientError` and :exc:`RedirectClientError`
 
 .. exception:: NonHttpUrlRedirectClientError
+   :canonical: aiohttp.client_exceptions.NonHttpUrlRedirectClientError
 
    Redirect URL does not contain http schema.
 
@@ -2712,6 +2741,7 @@ Response errors
 ^^^^^^^^^^^^^^^
 
 .. exception:: ClientResponseError
+   :canonical: aiohttp.client_exceptions.ClientResponseError
 
    These exceptions could happen after we get response from server.
 
@@ -2749,6 +2779,7 @@ Response errors
 
 
 .. class:: ContentTypeError
+   :canonical: aiohttp.client_exceptions.ContentTypeError
 
    Invalid content type.
 
@@ -2758,6 +2789,7 @@ Response errors
 
 
 .. class:: TooManyRedirects
+   :canonical: aiohttp.client_exceptions.TooManyRedirects
 
    Client was redirected too many times.
 
@@ -2770,12 +2802,14 @@ Response errors
 
 
 .. class:: WSServerHandshakeError
+   :canonical: aiohttp.client_exceptions.WSServerHandshakeError
 
    Web socket server response error.
 
    Derived from :exc:`ClientResponseError`
 
 .. exception:: WSMessageTypeError
+   :canonical: aiohttp.client_exceptions.WSMessageTypeError
 
    Received WebSocket message of unexpected type
 
@@ -2785,16 +2819,19 @@ Connection errors
 ^^^^^^^^^^^^^^^^^
 
 .. class:: ClientConnectionError
+   :canonical: aiohttp.client_exceptions.ClientConnectionError
 
    These exceptions related to low-level connection problems.
 
    Derived from :exc:`ClientError`
 
 .. class:: ClientConnectionResetError
+   :canonical: aiohttp.client_exceptions.ClientConnectionResetError
 
    Derived from :exc:`ClientConnectionError` and :exc:`ConnectionResetError`
 
 .. class:: ClientOSError
+   :canonical: aiohttp.client_exceptions.ClientOSError
 
    Subset of connection errors that are initiated by an :exc:`OSError`
    exception.
@@ -2802,46 +2839,55 @@ Connection errors
    Derived from :exc:`ClientConnectionError` and :exc:`OSError`
 
 .. class:: ClientConnectorError
+   :canonical: aiohttp.client_exceptions.ClientConnectorError
 
    Connector related exceptions.
 
    Derived from :exc:`ClientOSError`
 
 .. class:: ClientConnectorDNSError
+   :canonical: aiohttp.client_exceptions.ClientConnectorDNSError
 
    DNS resolution error.
 
    Derived from :exc:`ClientConnectorError`
 
 .. class:: ClientProxyConnectionError
+   :canonical: aiohttp.client_exceptions.ClientProxyConnectionError
 
    Derived from :exc:`ClientConnectorError`
 
 .. class:: ClientSSLError
+   :canonical: aiohttp.client_exceptions.ClientSSLError
 
    Derived from :exc:`ClientConnectorError`
 
 .. class:: ClientConnectorSSLError
+   :canonical: aiohttp.client_exceptions.ClientConnectorSSLError
 
    Response ssl error.
 
    Derived from :exc:`ClientSSLError` and :exc:`ssl.SSLError`
 
 .. class:: ClientConnectorCertificateError
+   :canonical: aiohttp.client_exceptions.ClientConnectorCertificateError
 
    Response certificate error.
 
    Derived from :exc:`ClientSSLError` and :exc:`ssl.CertificateError`
 
 .. class:: UnixClientConnectorError
+   :canonical: aiohttp.client_exceptions.UnixClientConnectorError
 
    Derived from :exc:`ClientConnectorError`
 
 .. class:: ServerConnectionError
+   :canonical: aiohttp.client_exceptions.ServerConnectionError
 
    Derived from :exc:`ClientConnectionError`
 
 .. class:: ServerDisconnectedError
+   :canonical: aiohttp.client_exceptions.ServerDisconnectedError
 
    Server disconnected.
 
@@ -2853,12 +2899,14 @@ Connection errors
 
 
 .. class:: ServerFingerprintMismatch
+   :canonical: aiohttp.client_exceptions.ServerFingerprintMismatch
 
    Server fingerprint mismatch.
 
    Derived from :exc:`ServerConnectionError`
 
 .. class:: ServerTimeoutError
+   :canonical: aiohttp.client_exceptions.ServerTimeoutError
 
    Server operation timeout: read timeout, etc.
 
@@ -2868,12 +2916,14 @@ Connection errors
    Derived from :exc:`ServerConnectionError` and :exc:`asyncio.TimeoutError`
 
 .. class:: ConnectionTimeoutError
+   :canonical: aiohttp.client_exceptions.ConnectionTimeoutError
 
    Connection timeout on ``connect`` and ``sock_connect`` timeouts.
 
    Derived from :exc:`ServerTimeoutError`
 
 .. class:: SocketTimeoutError
+   :canonical: aiohttp.client_exceptions.SocketTimeoutError
 
    Reading from socket timeout on ``sock_read`` timeout.
 

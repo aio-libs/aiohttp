@@ -1307,7 +1307,7 @@ def test_update_cookies_from_headers_with_attributes() -> None:
         "secure-cookie=value1; Secure; HttpOnly; SameSite=Strict",
         "expiring-cookie=value2; Max-Age=3600; Path=/app",
         "domain-cookie=value3; Domain=.example.com; Path=/",
-        "dated-cookie=value4; Expires=Wed, 09 Jun 2030 10:18:14 GMT",
+        "dated-cookie=value4; Expires=Wed, 09 Jun 3024 10:18:14 GMT",
     ]
 
     jar.update_cookies_from_headers(headers, url)
