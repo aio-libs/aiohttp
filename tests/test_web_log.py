@@ -86,12 +86,30 @@ def test_access_logger_atoms(
     monkeypatch: Any, log_format: Any, expected: Any, extra: Any
 ) -> None:
     class PatchedDatetime(datetime.datetime):
-        @staticmethod
-        def now(tz):
-            return datetime.datetime(1843, 1, 1, 0, 30, tzinfo=tz)
+        @classmethod
+        def now(cls, tz: datetime.tzinfo | None = None) -> "PatchedDatetime":
+            assert tz is not None
+            # Simulate: real UTC time is 1842-12-31 16:30, convert to local tz
+            utc = datetime.datetime(1842, 12, 31, 16, 30, tzinfo=datetime.timezone.utc)
+            local = utc.astimezone(tz)
+            return cls(
+                local.year,
+                local.month,
+                local.day,
+                local.hour,
+                local.minute,
+                local.second,
+                tzinfo=tz,
+            )
 
     monkeypatch.setattr("datetime.datetime", PatchedDatetime)
-    monkeypatch.setattr("time.timezone", -28800)
+    # Mock localtime to return CST (+0800 = 28800 seconds)
+    mock_localtime = mock.Mock()
+    mock_localtime.return_value.tm_gmtoff = 28800
+    monkeypatch.setattr("aiohttp.web_log.time_mod.localtime", mock_localtime)
+    # Clear cached timezone so it gets rebuilt with our mock
+    AccessLogger._cached_tz = None
+    AccessLogger._cached_tz_expires = 0.0
     monkeypatch.setattr("os.getpid", lambda: 42)
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
@@ -107,6 +125,84 @@ def test_access_logger_atoms(
     assert not mock_logger.exception.called, mock_logger.exception.call_args
 
     mock_logger.info.assert_called_with(expected, extra=extra)
+
+
+@pytest.mark.skipif(
+    IS_PYPY,
+    reason="PyPy has issues with patching datetime.datetime",
+)
+def test_access_logger_dst_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that _format_t uses the current local UTC offset, not a cached one.
+
+    This ensures timestamps are correct during DST transitions. The old
+    implementation used time.timezone which is a constant and doesn't
+    reflect DST changes.
+    """
+    # Simulate a timezone that observes DST (e.g., US Eastern)
+    # During EST: UTC-5 (-18000s), during EDT: UTC-4 (-14400s)
+    gmtoff_est = -18000  # UTC-5
+    gmtoff_edt = -14400  # UTC-4
+
+    class PatchedDatetime(datetime.datetime):
+        @classmethod
+        def now(cls, tz: datetime.tzinfo | None = None) -> "PatchedDatetime":
+            assert tz is not None
+            # Simulate: real UTC time is 07:00, convert to local tz
+            utc = datetime.datetime(2024, 3, 10, 7, 0, 0, tzinfo=datetime.timezone.utc)
+            local = utc.astimezone(tz)
+            return cls(
+                local.year,
+                local.month,
+                local.day,
+                local.hour,
+                local.minute,
+                local.second,
+                tzinfo=tz,
+            )
+
+    monkeypatch.setattr("datetime.datetime", PatchedDatetime)
+    mock_localtime = mock.Mock()
+    mock_localtime.return_value.tm_gmtoff = gmtoff_est
+    monkeypatch.setattr("aiohttp.web_log.time_mod.localtime", mock_localtime)
+    # Force cache refresh
+    AccessLogger._cached_tz = None
+    AccessLogger._cached_tz_expires = 0.0
+
+    mock_logger = mock.Mock()
+    access_logger = AccessLogger(mock_logger, "%t")
+    request = mock.Mock(
+        headers={}, method="GET", path_qs="/", version=(1, 1), remote="127.0.0.1"
+    )
+    response = mock.Mock(headers={}, body_length=0, status=200)
+
+    # During EST (UTC-5): time is 07:00-05:00 = 02:00 EST
+    access_logger.log(request, response, 0.0)
+    call1 = mock_logger.info.call_args[0][0]
+    assert "-0500" in call1, f"Expected EST offset in {call1}"
+
+    mock_logger.reset_mock()
+
+    # Switch to EDT (UTC-4): force cache invalidation
+    mock_localtime.return_value.tm_gmtoff = gmtoff_edt
+    AccessLogger._cached_tz = None
+    AccessLogger._cached_tz_expires = 0.0
+    access_logger.log(request, response, 0.0)
+    call2 = mock_logger.info.call_args[0][0]
+    assert "-0400" in call2, f"Expected EDT offset in {call2}"
+
+    # Verify the hour changed too (02:00 -> 03:00)
+    assert "02:00:00 -0500" in call1
+    assert "03:00:00 -0400" in call2
+
+    # Verify cached tz works too
+    assert access_logger._cached_tz is not None
+    with mock.patch(
+        "aiohttp.web_log.time_mod.time",
+        return_value=access_logger._cached_tz_expires - 1,
+    ):
+        access_logger.log(request, response, 0.0)
+    call3 = mock_logger.info.call_args[0][0]
+    assert "-0400" in call3, f"Expected EDT offset in {call3}"
 
 
 def test_access_logger_dicts() -> None:
