@@ -17,6 +17,7 @@ from aiohttp import (
     hdrs,
     web,
 )
+from aiohttp._websocket.models import WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
