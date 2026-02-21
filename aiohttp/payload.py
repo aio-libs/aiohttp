@@ -23,7 +23,7 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import JSONEncoder, _CIMultiDict
+from .typedefs import JSONBytesEncoder, JSONEncoder, _CIMultiDict
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -38,6 +38,7 @@ __all__ = (
     "TextIOPayload",
     "StringIOPayload",
     "JsonPayload",
+    "JsonBytesPayload",
     "AsyncIterablePayload",
 )
 
@@ -938,6 +939,29 @@ class JsonPayload(BytesPayload):
             dumps(value).encode(encoding),
             content_type=content_type,
             encoding=encoding,
+            *args,
+            **kwargs,
+        )
+
+
+class JsonBytesPayload(BytesPayload):
+    """JSON payload for encoders that return bytes directly.
+
+    Use this when your JSON encoder (like orjson) returns bytes
+    instead of str, avoiding the encode/decode overhead.
+    """
+
+    def __init__(
+        self,
+        value: Any,
+        dumps: JSONBytesEncoder,
+        content_type: str = "application/json",
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            dumps(value),
+            content_type=content_type,
             *args,
             **kwargs,
         )

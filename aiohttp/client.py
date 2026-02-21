@@ -104,7 +104,14 @@ from .helpers import (
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
+from .typedefs import (
+    JSONBytesEncoder,
+    JSONEncoder,
+    LooseCookies,
+    LooseHeaders,
+    Query,
+    StrOrURL,
+)
 
 __all__ = (
     # client_exceptions
@@ -271,6 +278,7 @@ class ClientSession:
             "_default_auth",
             "_version",
             "_json_serialize",
+            "_json_serialize_bytes",
             "_requote_redirect_url",
             "_timeout",
             "_raise_for_status",
@@ -311,6 +319,7 @@ class ClientSession:
         skip_auto_headers: Iterable[str] | None = None,
         auth: BasicAuth | None = None,
         json_serialize: JSONEncoder = json.dumps,
+        json_serialize_bytes: JSONBytesEncoder | None = None,
         request_class: type[ClientRequest] = ClientRequest,
         response_class: type[ClientResponse] = ClientResponse,
         ws_response_class: type[ClientWebSocketResponse] = ClientWebSocketResponse,
@@ -421,6 +430,7 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
+        self._json_serialize_bytes = json_serialize_bytes
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -561,7 +571,10 @@ class ClientSession:
                 "data and json parameters can not be used at the same time"
             )
         elif json is not None:
-            data = payload.JsonPayload(json, dumps=self._json_serialize)
+            if self._json_serialize_bytes is not None:
+                data = payload.JsonBytesPayload(json, dumps=self._json_serialize_bytes)
+            else:
+                data = payload.JsonPayload(json, dumps=self._json_serialize)
 
         if not isinstance(chunked, bool) and chunked is not None:
             warnings.warn("Chunk size is deprecated #1615", DeprecationWarning)

@@ -1232,6 +1232,27 @@ and :ref:`aiohttp-web-signals` handlers::
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
+   .. method:: send_json_bytes(data, compress=None, *, dumps)
+      :async:
+
+      Send *data* to peer as a JSON binary frame using a bytes-returning encoder.
+
+      :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
+
+      :param collections.abc.Callable dumps: any :term:`callable` that accepts an object and
+                             returns JSON as :class:`bytes`
+                             (e.g. ``orjson.dumps``).
+
+      :raise RuntimeError: if the connection is not started.
+
+      :raise ValueError: if data is not serializable object
+
+      :raise TypeError: if value returned by ``dumps`` param is not :class:`bytes`
+
    .. method:: send_frame(message, opcode, compress=None)
       :async:
 
@@ -1443,6 +1464,18 @@ the handler.
       HTTP status code for this exception class.  This attribute is usually
       defined at the class level.  ``self.status_code`` is passed to the
       :class:`Response` initializer.
+
+
+.. function:: json_bytes_response([data], *, dumps, body=None, \
+                                  status=200, reason=None, headers=None, \
+                                  content_type='application/json')
+
+Return :class:`Response` with predefined ``'application/json'``
+content type and *data* encoded by ``dumps`` parameter
+which must return :class:`bytes` directly (e.g. ``orjson.dumps``).
+
+Use this when your JSON encoder returns :class:`bytes` instead of :class:`str`,
+avoiding the :class:`str`-to-:class:`bytes` encoding overhead.
 
 
 .. class:: ResponseKey(name, t)
