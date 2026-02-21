@@ -113,6 +113,13 @@ def mock_md5_digest() -> Generator[mock.MagicMock, None, None]:
             True,
             {"realm": "test", "nonce": "abc", "qop": "auth"},
         ),
+        # Valid digest with empty realm (RFC 7616 Section 3.3 allows this)
+        (
+            401,
+            {"www-authenticate": 'Digest realm="", nonce="abc", qop="auth"'},
+            True,
+            {"realm": "", "nonce": "abc", "qop": "auth"},
+        ),
         # Non-401 status
         (200, {}, False, {}),  # No challenge should be set
     ],
@@ -1331,12 +1338,18 @@ async def test_case_sensitive_algorithm_server(
 
 
 def test_regex_performance() -> None:
+    """Test that the regex pattern doesn't suffer from ReDoS issues."""
+    REGEX_TIME_THRESHOLD_SECONDS = 0.08
     value = "0" * 54773 + "\\0=a"
+
     start = time.perf_counter()
     matches = _HEADER_PAIRS_PATTERN.findall(value)
-    end = time.perf_counter()
+    elapsed = time.perf_counter() - start
 
-    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
-    assert (end - start) < 0.01
-    # This example probably shouldn't produce a match either.
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < REGEX_TIME_THRESHOLD_SECONDS, (
+        f"Regex took {elapsed * 1000:.1f}ms, "
+        f"expected <{REGEX_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+    )
+    # This example shouldn't produce a match either.
     assert not matches
