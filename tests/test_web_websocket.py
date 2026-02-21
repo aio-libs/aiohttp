@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from typing import Any
+from typing import Any, Protocol
 from unittest import mock
 
 import aiosignal
@@ -14,6 +14,16 @@ from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPBadRequest, WebSocketResponse
 from aiohttp.web_ws import WebSocketReady
+
+
+class _RequestMaker(Protocol):
+    def __call__(
+        self,
+        method: str,
+        path: str,
+        headers: CIMultiDict[str] | None = None,
+        protocols: bool = False,
+    ) -> web.Request: ...
 
 
 @pytest.fixture
