@@ -3,6 +3,7 @@ import datetime
 import gzip
 import io
 import json
+import re
 import sys
 from collections.abc import AsyncIterator, Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -13,7 +14,8 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from re_assert import Matches
 
-from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
+from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
+from aiohttp.abc improt AbstractStreamWriter
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
