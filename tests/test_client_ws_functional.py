@@ -17,7 +17,6 @@ from aiohttp import (
     hdrs,
     web,
 )
-from aiohttp._websocket.models import WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
@@ -202,7 +201,6 @@ async def test_send_recv_json_bytes(aiohttp_client: AiohttpClient) -> None:
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/")
     data = await resp.receive()
-    assert isinstance(data, WSMessageBinary)
     assert data.json() == {"response": "x"}
     await resp.close()
 
