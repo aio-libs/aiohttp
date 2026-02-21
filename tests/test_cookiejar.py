@@ -15,8 +15,6 @@ from aiohttp import CookieJar, DummyCookieJar
 from aiohttp.typedefs import LooseCookies
 
 
-
-
 def _cookies_to_send() -> SimpleCookie:
     return SimpleCookie(
         "shared-cookie=first; "
