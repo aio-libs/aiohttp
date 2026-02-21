@@ -37,7 +37,7 @@ from .http import (
 from .http_websocket import _INTERNAL_RECEIVE_TYPES, WSMessageError
 from .log import ws_logger
 from .streams import EofStream
-from .typedefs import JSONDecoder, JSONEncoder
+from .typedefs import JSONBytesEncoder, JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
@@ -480,6 +480,20 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         dumps: JSONEncoder = json.dumps,
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
+
+    async def send_json_bytes(
+        self,
+        data: Any,
+        compress: int | None = None,
+        *,
+        dumps: JSONBytesEncoder,
+    ) -> None:
+        """Send JSON data using a bytes-returning encoder as a binary frame.
+
+        Use this when your JSON encoder (like orjson) returns bytes
+        instead of str, avoiding the encode/decode overhead.
+        """
+        await self.send_bytes(dumps(data), compress=compress)
 
     async def write_eof(self) -> None:  # type: ignore[override]
         if self._eof_sent:

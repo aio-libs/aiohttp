@@ -24,6 +24,7 @@ from .streams import EofStream
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
+    JSONBytesEncoder,
     JSONDecoder,
     JSONEncoder,
 )
@@ -301,6 +302,20 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         dumps: JSONEncoder = DEFAULT_JSON_ENCODER,
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
+
+    async def send_json_bytes(
+        self,
+        data: Any,
+        compress: int | None = None,
+        *,
+        dumps: JSONBytesEncoder,
+    ) -> None:
+        """Send JSON data using a bytes-returning encoder as a binary frame.
+
+        Use this when your JSON encoder (like orjson) returns bytes
+        instead of str, avoiding the encode/decode overhead.
+        """
+        await self.send_bytes(dumps(data), compress=compress)
 
     async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,

@@ -207,6 +207,64 @@ async def test_send_recv_json_bytes(aiohttp_client: AiohttpClient) -> None:
     await resp.close()
 
 
+async def test_send_json_bytes_client(aiohttp_client: AiohttpClient) -> None:
+    """Test ClientWebSocketResponse.send_json_bytes sends binary frame."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.BINARY
+        data = json.loads(msg.data)
+        await ws.send_json_bytes(
+            {"response": data["request"]},
+            dumps=lambda x: json.dumps(x).encode("utf-8"),
+        )
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    test_payload = {"request": "test"}
+    await resp.send_json_bytes(
+        test_payload, dumps=lambda x: json.dumps(x).encode("utf-8")
+    )
+
+    msg = await resp.receive()
+    assert msg.type is WSMsgType.BINARY
+    data = json.loads(msg.data)
+    assert data["response"] == test_payload["request"]
+    await resp.close()
+
+
+async def test_send_json_bytes_custom_encoder(aiohttp_client: AiohttpClient) -> None:
+    """Test send_json_bytes with custom bytes-returning encoder."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.BINARY
+        # Custom encoder uses compact separators
+        assert msg.data == b'{"test":"value"}'
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    await resp.send_json_bytes(
+        {"test": "value"},
+        dumps=lambda x: json.dumps(x, separators=(",", ":")).encode("utf-8"),
+    )
+    await resp.close()
+
+
 async def test_send_recv_frame(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
