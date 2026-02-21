@@ -15,7 +15,6 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
-
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import StreamWriter, _serialize_headers
