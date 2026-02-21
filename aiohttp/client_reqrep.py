@@ -107,7 +107,6 @@ class _RequestInfo(NamedTuple):
 
 
 class RequestInfo(_RequestInfo):
-
     def __new__(
         cls,
         url: URL,
@@ -641,7 +640,7 @@ class ClientResponse(HeadersMixin):
         self,
         *,
         encoding: str | None = None,
-        loads: JSONDecoder = DEFAULT_JSON_DECODER,
+        loads: JSONDecoder | None = None,
         content_type: str | None = "application/json",
     ) -> Any:
         """Read and decodes JSON response."""
@@ -662,6 +661,14 @@ class ClientResponse(HeadersMixin):
 
         if encoding is None:
             encoding = self.get_encoding()
+
+        # Use session's deserializer if loads not explicitly provided
+        if loads is None:
+            loads = (
+                self._session.json_deserialize
+                if self._session is not None
+                else DEFAULT_JSON_DECODER
+            )
 
         return loads(self._body.decode(encoding))  # type: ignore[union-attr]
 

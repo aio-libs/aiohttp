@@ -98,6 +98,8 @@ cythonized
 de
 deduplicate
 defs
+deserialization
+deserializer
 Dependabot
 deprecations
 deserialization
