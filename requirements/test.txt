@@ -47,7 +47,7 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==25.0.3
+gunicorn==25.1.0
     # via -r requirements/base.in
 idna==3.10
     # via
@@ -57,7 +57,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.7.2 ; python_version < "3.14"
     # via -r requirements/test-common.in
-librt==0.7.8
+librt==0.8.1
     # via mypy
 markdown-it-py==4.0.0
     # via rich
@@ -122,7 +122,7 @@ python-on-whales==0.80.0
     # via -r requirements/test-common.in
 re-assert==1.1.0
     # via -r requirements/test-common.in
-regex==2026.1.15
+regex==2026.2.19
     # via re-assert
 rich==14.3.2
     # via pytest-codspeed

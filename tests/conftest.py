@@ -41,6 +41,18 @@ except ImportError:
     TRUSTME = False
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    # On Windows with Python 3.10/3.11, proxy.py's threaded mode can leave
+    # sockets not fully released by the time pytest's unraisableexception
+    # plugin collects warnings during teardown. Suppress these warnings
+    # since they are not actionable and only affect older Python versions.
+    if os.name == "nt" and sys.version_info < (3, 12):
+        config.addinivalue_line(
+            "filterwarnings",
+            "ignore:Exception ignored in.*socket.*:pytest.PytestUnraisableExceptionWarning",
+        )
+
+
 try:
     if sys.platform == "win32":
         import winloop as uvloop

@@ -999,7 +999,8 @@ and :ref:`aiohttp-web-signals` handlers::
    :param float heartbeat: Send `ping` message every `heartbeat`
                            seconds and wait `pong` response, close
                            connection if `pong` response is not
-                           received. The timer is reset on any data reception.
+                           received. The timer is reset on any inbound data
+                           reception (coalesced per event loop iteration).
 
    :param float timeout: Timeout value for the ``close``
                          operation. After sending the close websocket message,
@@ -1305,6 +1306,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :raise RuntimeError: if connection is not started
 
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
+
    .. method:: receive_str(*, timeout=None)
       :async:
 
@@ -1322,6 +1325,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :return str: peer's message content.
 
       :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.TEXT`.
+
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
    .. method:: receive_bytes(*, timeout=None)
       :async:
@@ -1341,6 +1346,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :return bytes: peer's message content.
 
       :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.BINARY`.
+
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
    .. method:: receive_json(*, loads=json.loads, timeout=None)
       :async:
@@ -1365,6 +1372,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
