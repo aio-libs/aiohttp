@@ -1,6 +1,0 @@
-Switched :py:meth:`~aiohttp.CookieJar.save` to use JSON format and
-:py:meth:`~aiohttp.CookieJar.load` to try JSON first with a fallback to
-a restricted pickle unpickler that only allows cookie-related types
-(``SimpleCookie``, ``Morsel``, ``defaultdict``, etc.), preventing
-arbitrary code execution via malicious pickle payloads
-(CWE-502) -- by :user:`YuvalElbar6`.

@@ -2476,25 +2476,12 @@ Utilities
       Write a JSON representation of cookies into the file
       at provided path.
 
-      .. versionchanged:: 3.14
-
-         Previously used pickle format. Now uses JSON for safe
-         serialization.
-
       :param file_path: Path to file where cookies will be serialized,
           :class:`str` or :class:`pathlib.Path` instance.
 
    .. method:: load(file_path)
 
-      Load cookies from the file at provided path. Tries JSON format
-      first, then falls back to legacy pickle format (using a restricted
-      unpickler that only allows cookie-related types) for backward
-      compatibility with existing cookie files.
-
-      .. versionchanged:: 3.14
-
-         Now loads JSON format by default. Falls back to restricted
-         pickle for files saved by older versions.
+      Load cookies from a JSON file at the provided path.
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
