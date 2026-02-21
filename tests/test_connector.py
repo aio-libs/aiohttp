@@ -4375,6 +4375,26 @@ class TestDNSCacheTable:
         assert self.host1 in table._addrs_rr
         assert self.host2 not in table._addrs_rr
 
+    def test_lru_eviction_add(self) -> None:
+        table = _DNSCacheTable(max_size=2)
+
+        table.add(self.host1, [self.result1])
+        table.add(self.host2, [self.result2])
+
+        # Re-add, thus making host1 the most recently used.
+        table.add(self.host1, [self.result1])
+
+        host3 = ("example.com", 80)
+        result3: ResolveResult = {
+            **self.result1,
+            "hostname": "example.com",
+            "host": "1.2.3.4",
+        }
+        table.add(host3, [result3])
+
+        assert self.host1 in table._addrs_rr
+        assert self.host2 not in table._addrs_rr
+
 
 async def test_connector_cache_trace_race() -> None:
     class DummyTracer(Trace):
