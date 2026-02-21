@@ -71,7 +71,7 @@ exceptiongroup==1.3.1
     # via pytest
 execnet==2.1.2
     # via pytest-xdist
-filelock==3.24.2
+filelock==3.24.3
     # via virtualenv
 forbiddenfruit==0.1.4
     # via blockbuster
