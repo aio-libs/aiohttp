@@ -96,6 +96,7 @@ from .web_response import (
     ContentCoding as ContentCoding,
     Response as Response,
     StreamResponse as StreamResponse,
+    json_bytes_response as json_bytes_response,
     json_response as json_response,
 )
 from .web_routedef import (
@@ -228,6 +229,7 @@ __all__ = (
     "ContentCoding",
     "Response",
     "StreamResponse",
+    "json_bytes_response",
     "json_response",
     "ResponseKey",
     # web_routedef
