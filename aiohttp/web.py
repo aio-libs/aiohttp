@@ -81,7 +81,13 @@ from .web_log import AccessLogger
 from .web_middlewares import middleware, normalize_path_middleware
 from .web_protocol import PayloadAccessError, RequestHandler, RequestPayloadError
 from .web_request import BaseRequest, FileField, Request
-from .web_response import ContentCoding, Response, StreamResponse, json_response
+from .web_response import (
+    ContentCoding,
+    Response,
+    StreamResponse,
+    json_bytes_response,
+    json_response,
+)
 from .web_routedef import (
     AbstractRouteDef,
     RouteDef,
@@ -208,6 +214,7 @@ __all__ = (
     "ContentCoding",
     "Response",
     "StreamResponse",
+    "json_bytes_response",
     "json_response",
     "ResponseKey",
     # web_routedef
