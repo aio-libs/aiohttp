@@ -16,7 +16,7 @@ from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
 
-from aiohttp.abc improt AbstractStreamWriter
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
