@@ -4036,6 +4036,25 @@ async def test_named_pipe_connector(
 
 
 class TestDNSCacheTable:
+    host1 = ("localhost", 80)
+    host2 = ("foo", 80)
+    result1: ResolveResult = {
+        "hostname": "localhost",
+        "host": "127.0.0.1",
+        "port": 80,
+        "family": socket.AF_INET,
+        "proto": 0,
+        "flags": socket.AI_NUMERICHOST,
+    }
+    result2: ResolveResult = {
+        "hostname": "foo",
+        "host": "127.0.0.2",
+        "port": 80,
+        "family": socket.AF_INET,
+        "proto": 0,
+        "flags": socket.AI_NUMERICHOST,
+    }
+
     @pytest.fixture
     def dns_cache_table(self):
         return _DNSCacheTable()
