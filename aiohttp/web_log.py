@@ -5,7 +5,8 @@ import os
 import re
 import time as time_mod
 from collections import namedtuple
-from typing import Any, Callable, Dict, Iterable, List, Tuple  # noqa
+from collections.abc import Iterable
+from typing import Callable, ClassVar, Dict, List, Optional, Tuple
 
 from .abc import AbstractAccessLogger
 from .web_request import BaseRequest
@@ -59,6 +60,9 @@ class AccessLogger(AbstractAccessLogger):
     FORMAT_RE = re.compile(r"%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)")
     CLEANUP_RE = re.compile(r"(%[^s])")
     _FORMAT_CACHE: Dict[str, Tuple[str, List[KeyMethod]]] = {}
+
+    _cached_tz: ClassVar[Optional[datetime.timezone]] = None
+    _cached_tz_expires: ClassVar[float] = 0.0
 
     def __init__(self, logger: logging.Logger, log_format: str = LOG_FORMAT) -> None:
         """Initialise the logger.
@@ -141,10 +145,24 @@ class AccessLogger(AbstractAccessLogger):
         ip = request.remote
         return ip if ip is not None else "-"
 
+    @classmethod
+    def _get_local_time(cls) -> datetime.datetime:
+        if cls._cached_tz is None or time_mod.time() >= cls._cached_tz_expires:
+            gmtoff = time_mod.localtime().tm_gmtoff
+            cls._cached_tz = tz = datetime.timezone(datetime.timedelta(seconds=gmtoff))
+
+            now = datetime.datetime.now(tz)
+            # Expire at every 30 mins, as any DST change should occur at 0/30 mins past.
+            d = now + datetime.timedelta(minutes=30)
+            d = d.replace(minute=30 if d.minute >= 30 else 0, second=0, microsecond=0)
+            cls._cached_tz_expires = d.timestamp()
+            return now
+
+        return datetime.datetime.now(cls._cached_tz)
+
     @staticmethod
     def _format_t(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        tz = datetime.timezone(datetime.timedelta(seconds=-time_mod.timezone))
-        now = datetime.datetime.now(tz)
+        now = AccessLogger._get_local_time()
         start_time = now - datetime.timedelta(seconds=time)
         return start_time.strftime("[%d/%b/%Y:%H:%M:%S %z]")
 
