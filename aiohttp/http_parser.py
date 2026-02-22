@@ -889,7 +889,7 @@ class HttpPayloadParser:
                     if chunk[: len(SEP)] == SEP:
                         chunk = chunk[len(SEP) :]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
-                    elif len(chunk) >= len(SEP) or chunk != SEP[:len(chunk)]:
+                    elif len(chunk) >= len(SEP) or chunk != SEP[: len(chunk)]:
                         exc = TransferEncodingError(
                             "Chunk size mismatch: expected CRLF after chunk data"
                         )
