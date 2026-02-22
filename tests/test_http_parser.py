@@ -1747,6 +1747,36 @@ class TestParsePayload:
             p.feed_data(b"blah\r\n")
         assert isinstance(out.exception(), http_exceptions.TransferEncodingError)
 
+    async def test_parse_chunked_payload_size_data_mismatch(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Chunk-size does not match actual data: should raise, not hang.
+
+        Regression test for #10596.
+        """
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
+        # Declared chunk-size is 4 but actual data is "Hello" (5 bytes).
+        # After consuming 4 bytes, remaining starts with "o" not "\r\n".
+        with pytest.raises(http_exceptions.TransferEncodingError):
+            p.feed_data(b"4\r\nHello\r\n0\r\n\r\n")
+        assert isinstance(out.exception(), http_exceptions.TransferEncodingError)
+
+    async def test_parse_chunked_payload_size_data_mismatch_too_short(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Chunk-size larger than data: declared 6 but only 5 bytes before CRLF.
+
+        Regression test for #10596.
+        """
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
+        # Declared chunk-size is 6 but actual data before CRLF is "Hello" (5 bytes).
+        # Parser reads 6 bytes: "Hello\r", then expects \r\n but sees "\n0\r\n..."
+        with pytest.raises(http_exceptions.TransferEncodingError):
+            p.feed_data(b"6\r\nHello\r\n0\r\n\r\n")
+        assert isinstance(out.exception(), http_exceptions.TransferEncodingError)
+
     async def test_parse_chunked_payload_split_end(
         self, protocol: BaseProtocol
     ) -> None:
