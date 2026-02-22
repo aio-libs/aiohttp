@@ -14,7 +14,6 @@ from collections.abc import (
     Coroutine,
     Generator,
     Iterable,
-    Mapping,
     Sequence,
 )
 from contextlib import suppress
@@ -187,7 +186,7 @@ class _RequestOptions(TypedDict, total=False):
     ssl: SSLContext | bool | Fingerprint
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
-    trace_request_ctx: Mapping[str, Any] | None
+    trace_request_ctx: object
     read_bufsize: int | None
     auto_decompress: bool | None
     max_line_size: int | None
@@ -538,7 +537,7 @@ class ClientSession:
         ssl: SSLContext | bool | Fingerprint = True,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
-        trace_request_ctx: Mapping[str, Any] | None = None,
+        trace_request_ctx: object = None,
         read_bufsize: int | None = None,
         auto_decompress: bool | None = None,
         max_line_size: int | None = None,
