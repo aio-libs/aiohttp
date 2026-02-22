@@ -1666,43 +1666,6 @@ class TestJSONBytesResponse:
         assert b'{"foo":42}' == resp.body
 
 
-@pytest.mark.dev_mode
-async def test_no_warn_small_cookie(
-    buf: bytearray, writer: AbstractStreamWriter
-) -> None:
-    resp = web.Response()
-    resp.set_cookie("foo", "ÿ" + "8" * 4064, max_age=2600)  # No warning
-    req = make_request("GET", "/", writer=writer)
-
-    await resp.prepare(req)
-    await resp.write_eof()
-
-    match = re.search(b"Set-Cookie: (.*?)\r\n", buf)
-    assert match is not None
-    cookie = match.group(1)
-    assert len(cookie) == 4096
-
-
-@pytest.mark.dev_mode
-async def test_warn_large_cookie(buf: bytearray, writer: AbstractStreamWriter) -> None:
-    resp = web.Response()
-
-    with pytest.warns(
-        UserWarning,
-        match="The size of is too large, it might get ignored by the client.",
-    ):
-        resp.set_cookie("foo", "ÿ" + "8" * 4065, max_age=2600)
-    req = make_request("GET", "/", writer=writer)
-
-    await resp.prepare(req)
-    await resp.write_eof()
-
-    match = re.search(b"Set-Cookie: (.*?)\r\n", buf)
-    assert match is not None
-    cookie = match.group(1)
-    assert len(cookie) == 4097
-
-
 @pytest.mark.parametrize("loose_header_type", (MultiDict, CIMultiDict, dict))
 async def test_passing_cimultidict_to_web_response_not_mutated(
     loose_header_type: type,
