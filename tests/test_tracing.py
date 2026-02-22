@@ -59,6 +59,19 @@ class TestTraceConfig:
         )
         assert trace_config_ctx.trace_request_ctx is trace_request_ctx
 
+    def test_trace_config_ctx_custom_class(self) -> None:
+        """Custom class instances should be accepted as trace_request_ctx (#10753)."""
+
+        class MyContext:
+            def __init__(self, request_id: int) -> None:
+                self.request_id = request_id
+
+        ctx = MyContext(request_id=42)
+        trace_config = TraceConfig()
+        trace_config_ctx = trace_config.trace_config_ctx(trace_request_ctx=ctx)
+        assert trace_config_ctx.trace_request_ctx is ctx
+        assert trace_config_ctx.trace_request_ctx.request_id == 42
+
     def test_freeze(self) -> None:
         trace_config = TraceConfig()
         trace_config.freeze()
