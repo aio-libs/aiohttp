@@ -857,7 +857,9 @@ class BaseConnector:
 
 class _DNSCacheTable:
     def __init__(self, ttl: Optional[float] = None, max_size: int = 1000) -> None:
-        self._addrs_rr: OrderedDict[Tuple[str, int], Tuple[Iterator[ResolveResult], int]] = OrderedDict()
+        self._addrs_rr: OrderedDict[
+            Tuple[str, int], Tuple[Iterator[ResolveResult], int]
+        ] = OrderedDict()
         self._timestamps: Dict[Tuple[str, int], float] = {}
         self._ttl = ttl
         self._max_size = max_size
@@ -1019,7 +1021,9 @@ class TCPConnector(BaseConnector):
             self._resolver_owner = False
 
         self._use_dns_cache = use_dns_cache
-        self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache, max_size=dns_cache_max_size)
+        self._cached_hosts = _DNSCacheTable(
+            ttl=ttl_dns_cache, max_size=dns_cache_max_size
+        )
         self._throttle_dns_futures: Dict[
             Tuple[str, int], Set["asyncio.Future[None]"]
         ] = {}
