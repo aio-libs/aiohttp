@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, TypeVar
 
