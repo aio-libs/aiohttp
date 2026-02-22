@@ -231,7 +231,7 @@ async def test_send_json_bytes_nonjson(make_request: _RequestMaker) -> None:
         await ws.send_json_bytes(set(), dumps=lambda x: json.dumps(x).encode("utf-8"))
 
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
 
@@ -428,7 +428,7 @@ async def test_send_json_bytes_closed(make_request: _RequestMaker) -> None:
     ws = web.WebSocketResponse()
     await ws.prepare(req)
     assert ws._reader is not None
-    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     await ws.close()
 
     with pytest.raises(ConnectionError):
