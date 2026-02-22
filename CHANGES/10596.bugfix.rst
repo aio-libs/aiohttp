@@ -1,0 +1,4 @@
+Fixed server hanging indefinitely when chunked transfer encoding chunk-size
+does not match actual data length. The server now raises
+:py:exc:`TransferEncodingError` instead of waiting forever for data that will
+never arrive -- by :user:`Fridayai700`.
