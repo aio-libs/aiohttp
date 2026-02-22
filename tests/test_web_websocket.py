@@ -1,6 +1,7 @@
 import asyncio
+import json
 import time
-from typing import Any
+from typing import Any, Protocol
 from unittest import mock
 
 import aiosignal
@@ -13,6 +14,16 @@ from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPBadRequest, WebSocketResponse
 from aiohttp.web_ws import WebSocketReady
+
+
+class _RequestMaker(Protocol):
+    def __call__(
+        self,
+        method: str,
+        path: str,
+        headers: CIMultiDict[str] | None = None,
+        protocols: bool = False,
+    ) -> web.Request: ...
 
 
 @pytest.fixture
@@ -204,6 +215,26 @@ async def test_send_json_nonjson(make_request) -> None:
         await ws.send_json(set())
 
 
+async def test_nonstarted_send_json_bytes() -> None:
+    ws = web.WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        await ws.send_json_bytes(
+            {"type": "json"}, dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+
+
+async def test_send_json_bytes_nonjson(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    with pytest.raises(TypeError):
+        await ws.send_json_bytes(set(), dumps=lambda x: json.dumps(x).encode("utf-8"))
+
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    await ws.close()
+
+
 async def test_write_non_prepared() -> None:
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
@@ -392,7 +423,21 @@ async def test_send_json_closed(make_request) -> None:
         await ws.send_json({"type": "json"})
 
 
-async def test_send_frame_closed(make_request) -> None:
+async def test_send_json_bytes_closed(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    await ws.close()
+
+    with pytest.raises(ConnectionError):
+        await ws.send_json_bytes(
+            {"type": "json"}, dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+
+
+async def test_send_frame_closed(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)

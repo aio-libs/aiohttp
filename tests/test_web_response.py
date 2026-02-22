@@ -13,7 +13,7 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from re_assert import Matches
 
-from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
+from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
@@ -1618,6 +1618,50 @@ class TestJSONResponse:
     def test_content_type_is_overrideable(self) -> None:
         resp = json_response({"foo": 42}, content_type="application/vnd.json+api")
         assert "application/vnd.json+api" == resp.content_type
+
+
+class TestJSONBytesResponse:
+    def test_content_type_is_application_json_by_default(self) -> None:
+        resp = web.json_bytes_response(
+            "", dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+        assert "application/json" == resp.content_type
+
+    def test_passing_body_only(self) -> None:
+        resp = web.json_bytes_response(
+            dumps=lambda x: json.dumps(x).encode("utf-8"),
+            body=b'"jaysawn"',
+        )
+        assert resp.body == b'"jaysawn"'
+
+    def test_data_and_body_raises_value_error(self) -> None:
+        with pytest.raises(ValueError) as excinfo:
+            web.json_bytes_response(
+                data="foo", dumps=lambda x: json.dumps(x).encode("utf-8"), body=b"bar"
+            )
+        expected_message = "only one of data or body should be specified"
+        assert expected_message == excinfo.value.args[0]
+
+    def test_body_is_json_encoded_bytes(self) -> None:
+        resp = web.json_bytes_response(
+            {"foo": 42}, dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+        assert json.dumps({"foo": 42}).encode("utf-8") == resp.body
+
+    def test_content_type_is_overrideable(self) -> None:
+        resp = web.json_bytes_response(
+            {"foo": 42},
+            dumps=lambda x: json.dumps(x).encode("utf-8"),
+            content_type="application/vnd.json+api",
+        )
+        assert "application/vnd.json+api" == resp.content_type
+
+    def test_custom_dumps(self) -> None:
+        resp = web.json_bytes_response(
+            {"foo": 42},
+            dumps=lambda x: json.dumps(x, separators=(",", ":")).encode("utf-8"),
+        )
+        assert b'{"foo":42}' == resp.body
 
 
 @pytest.mark.parametrize("loose_header_type", (MultiDict, CIMultiDict, dict))
