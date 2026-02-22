@@ -98,9 +98,8 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
         # save/load is not async, so we must allow this:
         for func in ("io.TextIOWrapper.read", "io.BufferedReader.read"):
             bb.functions[func].can_block_in("aiohttp/cookiejar.py", "load")
-        bb.functions["io.TextIOWrapper.write"].can_block_in(
-            "aiohttp/cookiejar.py", "save"
-        )
+        for func in ("io.TextIOWrapper.write", "io.BufferedWriter.write"):
+            bb.functions[func].can_block_in("aiohttp/cookiejar.py", "save")
         # Note: coverage.py uses locking internally which can cause false positives
         # in blockbuster when it instruments code. This is particularly problematic
         # on Windows where it can lead to flaky test failures.
