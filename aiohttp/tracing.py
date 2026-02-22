@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import attr
 from aiosignal import Signal
@@ -87,7 +87,7 @@ class TraceConfig:
         self._trace_config_ctx_factory = trace_config_ctx_factory
 
     def trace_config_ctx(
-        self, trace_request_ctx: Mapping[str, str] | None = None
+        self, trace_request_ctx: Any = None
     ) -> SimpleNamespace:
         """Return a new trace_config_ctx instance"""
         return self._trace_config_ctx_factory(trace_request_ctx=trace_request_ctx)
