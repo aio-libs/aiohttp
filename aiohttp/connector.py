@@ -839,25 +839,33 @@ class BaseConnector:
 
 
 class _DNSCacheTable:
-    def __init__(self, ttl: float | None = None) -> None:
-        self._addrs_rr: dict[tuple[str, int], tuple[Iterator[ResolveResult], int]] = {}
+    def __init__(self, ttl: float | None = None, max_size: int = 1000) -> None:
+        self._addrs_rr: OrderedDict[
+            tuple[str, int], tuple[Iterator[ResolveResult], int]
+        ] = OrderedDict()
         self._timestamps: dict[tuple[str, int], float] = {}
         self._ttl = ttl
+        self._max_size = max_size
 
     def __contains__(self, host: object) -> bool:
         return host in self._addrs_rr
 
     def add(self, key: tuple[str, int], addrs: list[ResolveResult]) -> None:
+        if key in self._addrs_rr:
+            self._addrs_rr.move_to_end(key)
+
         self._addrs_rr[key] = (cycle(addrs), len(addrs))
 
         if self._ttl is not None:
             self._timestamps[key] = monotonic()
 
+        if len(self._addrs_rr) > self._max_size:
+            oldest_key, _ = self._addrs_rr.popitem(last=False)
+            self._timestamps.pop(oldest_key, None)
+
     def remove(self, key: tuple[str, int]) -> None:
         self._addrs_rr.pop(key, None)
-
-        if self._ttl is not None:
-            self._timestamps.pop(key, None)
+        self._timestamps.pop(key, None)
 
     def clear(self) -> None:
         self._addrs_rr.clear()
@@ -868,6 +876,7 @@ class _DNSCacheTable:
         addrs = list(islice(loop, length))
         # Consume one more element to shift internal state of `cycle`
         next(loop)
+        self._addrs_rr.move_to_end(key)
         return addrs
 
     def expired(self, key: tuple[str, int]) -> bool:
@@ -956,6 +965,7 @@ class TCPConnector(BaseConnector):
         fingerprint: bytes | None = None,
         use_dns_cache: bool = True,
         ttl_dns_cache: int | None = 10,
+        dns_cache_max_size: int = 1000,
         family: socket.AddressFamily = socket.AddressFamily.AF_UNSPEC,
         ssl_context: SSLContext | None = None,
         ssl: bool | Fingerprint | SSLContext = True,
@@ -994,7 +1004,9 @@ class TCPConnector(BaseConnector):
             self._resolver_owner = False
 
         self._use_dns_cache = use_dns_cache
-        self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
+        self._cached_hosts = _DNSCacheTable(
+            ttl=ttl_dns_cache, max_size=dns_cache_max_size
+        )
         self._throttle_dns_futures: dict[tuple[str, int], set[asyncio.Future[None]]] = (
             {}
         )
