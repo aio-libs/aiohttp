@@ -625,7 +625,7 @@ class StaticResource(PrefixResource):
         if Path(filename).is_absolute():
             # filename is an absolute path e.g. //network/share or D:\path
             # which could be a UNC path leading to NTLM credential theft
-            raise HTTPForbidden()
+            raise HTTPNotFound()
         unresolved_path = self._directory.joinpath(filename)
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
