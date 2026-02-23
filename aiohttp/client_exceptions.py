@@ -342,10 +342,18 @@ class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore[misc]
 class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
     """Response certificate error."""
 
+    _conn_key: ConnectionKey
+
     def __init__(
         self, connection_key: ConnectionKey, certificate_error: Exception
     ) -> None:
-        self._conn_key = connection_key
+        if isinstance(certificate_error, cert_errors + (OSError,)):
+            # ssl.CertificateError has errno and strerror, so we should be fine
+            os_error = certificate_error
+        else:
+            os_error = OSError()
+
+        super().__init__(connection_key, os_error)
         self._certificate_error = certificate_error
         self.args = (connection_key, certificate_error)
 
