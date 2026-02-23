@@ -10,12 +10,10 @@ routes = web.RouteTableDef()
 
 @routes.get("/")
 async def intro(request: web.Request) -> web.StreamResponse:
-    txt = textwrap.dedent(
-        """\
+    txt = textwrap.dedent("""\
         Type {url}/hello/John  {url}/simple or {url}/change_body
         in browser url bar
-    """
-    ).format(url="127.0.0.1:8080")
+    """).format(url="127.0.0.1:8080")
     binary = txt.encode("utf8")
     resp = web.StreamResponse()
     resp.content_length = len(binary)
