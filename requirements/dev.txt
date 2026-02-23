@@ -200,7 +200,7 @@ regex==2026.2.19
     # via re-assert
 requests==2.32.5
     # via sphinx
-rich==14.3.2
+rich==14.3.3
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
