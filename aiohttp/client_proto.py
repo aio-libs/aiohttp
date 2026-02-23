@@ -325,7 +325,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         # parse http messages
         try:
             messages, upgraded, tail = self._parser.feed_data(data)
-        except BaseException as underlying_exc:
+        except Exception as underlying_exc:
             if self.transport is not None:
                 # connection.release() could be called BEFORE
                 # data_received(), the transport is already

@@ -122,7 +122,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                     self.log.info("Parent changed, shutting down: %s", self)
                 else:
                     await self._wait_next_notify()
-        except BaseException:
+        except Exception:
             pass
 
         await runner.cleanup()

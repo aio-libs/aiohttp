@@ -446,8 +446,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 assert self._payload_parser is not None
                 try:
                     eof, data = self._payload_parser.feed_data(data[start_pos:], SEP)
-                except BaseException as underlying_exc:
-                    reraised_exc = underlying_exc
+                except Exception as underlying_exc:
+                    reraised_exc: BaseException = underlying_exc
                     if self.payload_exception is not None:
                         reraised_exc = self.payload_exception(str(underlying_exc))
 
