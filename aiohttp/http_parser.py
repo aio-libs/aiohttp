@@ -644,13 +644,9 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         # "A sender MUST NOT apply the chunked transfer coding more
         #  than once to a message body"
         parts = [p.strip(" \t") for p in te.split(",")]
-        chunked_count = sum(
-            1 for p in parts if p.isascii() and p.lower() == "chunked"
-        )
+        chunked_count = sum(1 for p in parts if p.isascii() and p.lower() == "chunked")
         if chunked_count > 1:
-            raise BadHttpMessage(
-                "Request has duplicate `chunked` Transfer-Encoding"
-            )
+            raise BadHttpMessage("Request has duplicate `chunked` Transfer-Encoding")
         last = parts[-1]
         # .lower() transforms some non-ascii chars, so must check first.
         if last.isascii() and last.lower() == "chunked":
