@@ -538,6 +538,17 @@ def test_request_te_first_chunked(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
+def test_request_te_duplicate_chunked(parser: HttpRequestParser) -> None:
+    """Reject duplicate chunked Transfer-Encoding per RFC 9112 section 7.1."""
+    text = b"POST / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked, chunked\r\n\r\n0\r\n\r\n"
+    # https://www.rfc-editor.org/rfc/rfc9112#section-7.1-3
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="duplicate `chunked` Transfer-Encoding|nvalid `Transfer-Encoding`",
+    ):
+        parser.feed_data(text)
+
+
 def test_conn_upgrade(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"

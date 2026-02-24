@@ -640,9 +640,16 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         )
 
     def _is_chunked_te(self, te: str) -> bool:
-        te = te.rsplit(",", maxsplit=1)[-1].strip(" \t")
+        # https://www.rfc-editor.org/rfc/rfc9112#section-7.1-3
+        # "A sender MUST NOT apply the chunked transfer coding more
+        #  than once to a message body"
+        parts = [p.strip(" \t") for p in te.split(",")]
+        chunked_count = sum(1 for p in parts if p.isascii() and p.lower() == "chunked")
+        if chunked_count > 1:
+            raise BadHttpMessage("Request has duplicate `chunked` Transfer-Encoding")
+        last = parts[-1]
         # .lower() transforms some non-ascii chars, so must check first.
-        if te.isascii() and te.lower() == "chunked":
+        if last.isascii() and last.lower() == "chunked":
             return True
         # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.3
         raise BadHttpMessage("Request has invalid `Transfer-Encoding`")
