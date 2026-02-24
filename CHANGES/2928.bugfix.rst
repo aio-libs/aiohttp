@@ -1,0 +1,1 @@
+Fixed ``Response.text`` raising ``AttributeError`` when ``Response.body`` was set to a string -- by :user:`dhruvildarji`.
