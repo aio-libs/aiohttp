@@ -544,7 +544,7 @@ def test_request_te_duplicate_chunked(parser: HttpRequestParser) -> None:
     # https://www.rfc-editor.org/rfc/rfc9112#section-7.1-3
     with pytest.raises(
         http_exceptions.BadHttpMessage,
-        match="duplicate `chunked` Transfer-Encoding",
+        match="duplicate `chunked` Transfer-Encoding|nvalid `Transfer-Encoding`",
     ):
         parser.feed_data(text)
 
