@@ -210,16 +210,20 @@ serialization.  But it is possible to use different
 ``serializer``. :class:`ClientSession` accepts ``json_serialize``
 parameter::
 
-  import ujson
+  import orjson
 
   async with aiohttp.ClientSession(
-          json_serialize=ujson.dumps) as session:
+          json_serialize=orjson.dumps) as session:
       await session.post(url, json={'test': 'object'})
 
 .. note::
 
-   ``ujson`` library is faster than standard :mod:`json` but slightly
-   incompatible.
+   ``orjson`` library is faster than standard :mod:`json`. Note that
+   ``orjson.dumps`` returns bytes, so you may need to decode::
+
+      json_serialize=lambda x: orjson.dumps(x).decode()
+
+   The older ``ujson`` library is deprecated and in maintenance-only mode.
 
 JSON Response Content
 =====================
