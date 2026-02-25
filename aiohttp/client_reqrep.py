@@ -348,7 +348,7 @@ class ClientResponse(HeadersMixin):
         filename = multipart.content_disposition_filename(params)
         return ContentDisposition(disposition_type, params, filename)
 
-    def __del__(self, _warnings: Any = warnings) -> None:
+    def __del__(self, warnings_warn: Any = warnings.warn) -> None:
         if self._closed:
             return
 
@@ -357,7 +357,7 @@ class ClientResponse(HeadersMixin):
             self._cleanup_writer()
 
             if self._loop.get_debug():
-                _warnings.warn(
+                warnings_warn(
                     f"Unclosed response {self!r}", ResourceWarning, source=self
                 )
                 context = {"client_response": self, "message": "Unclosed response"}

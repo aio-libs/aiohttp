@@ -438,9 +438,9 @@ class ClientSession:
             f"Inheritance class {cls.__name__} from ClientSession is forbidden"
         )
 
-    def __del__(self, _warnings: Any = warnings) -> None:
+    def __del__(self, warnings_warn: Any = warnings.warn) -> None:
         if not self.closed:
-            _warnings.warn(
+            warnings_warn(
                 f"Unclosed client session {self!r}",
                 ResourceWarning,
                 source=self,
