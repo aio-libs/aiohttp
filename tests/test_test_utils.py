@@ -305,16 +305,14 @@ async def test_server_make_url_yarl_compatibility(
 def test_testcase_no_app(
     testdir: pytest.Testdir, loop: asyncio.AbstractEventLoop
 ) -> None:
-    testdir.makepyfile(
-        """
+    testdir.makepyfile("""
         from aiohttp.test_utils import AioHTTPTestCase
 
 
         class InvalidTestCase(AioHTTPTestCase):
             def test_noop(self) -> None:
                 pass
-        """
-    )
+        """)
     result = testdir.runpytest()
     result.stdout.fnmatch_lines(["*TypeError*"])
 
