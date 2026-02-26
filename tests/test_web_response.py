@@ -934,6 +934,27 @@ def test_set_status_with_empty_reason() -> None:
     assert resp.reason == ""
 
 
+def test_set_status_reason_with_cr() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\rSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_lf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\nSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_crlf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\r\nSet-Cookie: evil=1")
+
+
 async def test_start_force_close() -> None:
     req = make_request("GET", "/")
     resp = web.StreamResponse()
