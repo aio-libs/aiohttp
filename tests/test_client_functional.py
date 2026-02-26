@@ -3496,6 +3496,8 @@ async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
     async def srv_to(request: web.Request) -> web.Response:
         assert request.host == url_to.host
         assert "Authorization" in request.headers, "Header was dropped"
+        assert "Proxy-Authorization" in request.headers
+        assert "Cookie" in request.headers
         return web.Response()
 
     server_from = await create_server_for_url_and_handler(url_from, srv_from)
@@ -3541,7 +3543,9 @@ async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
     connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
 
     async with aiohttp.ClientSession(
-        connector=connector, auth=aiohttp.BasicAuth("user", "pass")
+        connector=connector,
+        auth=aiohttp.BasicAuth("user", "pass"),
+        headers={"Proxy-Authorization": "abc", "Cookie: a=b"}
     ) as client:
         async with client.get(url_from) as resp:
             assert resp.status == 200
@@ -3561,6 +3565,8 @@ async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url
     async def srv_to(request: web.Request) -> web.Response:
         assert request.host == url_to.host
         assert "Authorization" not in request.headers, "Header was not dropped"
+        assert "Proxy-Authorization" not in request.headers
+        assert "Cookie" not in request.headers
         return web.Response()
 
     server_from = await create_server_for_url_and_handler(url_from, srv_from)
@@ -3609,6 +3615,7 @@ async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url
         connector=connector,
         base_url="http://host1.com",
         auth=aiohttp.BasicAuth("user", "pass"),
+        headers={"Proxy-Authorization": "abc", "Cookie: a=b"}
     ) as client:
         async with client.get("/path1") as resp:
             assert resp.status == 200
