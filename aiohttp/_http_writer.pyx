@@ -131,7 +131,7 @@ def _serialize_headers(str status_line, headers):
     _init_writer(&writer, buf)
 
     try:
-        if _write_str(&writer, status_line) < 0:
+        if _write_str_raise_on_nlcr(&writer, status_line) < 0:
             raise
         if _write_byte(&writer, b'\r') < 0:
             raise

@@ -185,8 +185,16 @@ class TestHTTPOk:
         assert resp.status == 200
 
     def test_multiline_reason(self) -> None:
-        with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
+        with pytest.raises(ValueError, match=r"Reason cannot contain"):
             web.HTTPOk(reason="Bad\r\nInjected-header: foo")
+
+    def test_reason_with_cr(self) -> None:
+        with pytest.raises(ValueError, match=r"Reason cannot contain"):
+            web.HTTPOk(reason="OK\rSet-Cookie: evil=1")
+
+    def test_reason_with_lf(self) -> None:
+        with pytest.raises(ValueError, match=r"Reason cannot contain"):
+            web.HTTPOk(reason="OK\nSet-Cookie: evil=1")
 
     def test_pickle(self) -> None:
         resp = web.HTTPOk(
