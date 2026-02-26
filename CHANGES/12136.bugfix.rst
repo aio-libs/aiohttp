@@ -1,0 +1,2 @@
+``ClientConnectorCertificateError.os_error`` no longer raises :exc:`AttributeError`
+-- by :user:`themylogin`.
