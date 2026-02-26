@@ -210,16 +210,19 @@ serialization.  But it is possible to use different
 ``serializer``. :class:`ClientSession` accepts ``json_serialize``
 parameter::
 
-  import ujson
+  import orjson
+
+  def orjson_dumps(obj):
+      return orjson.dumps(obj).decode()
 
   async with aiohttp.ClientSession(
-          json_serialize=ujson.dumps) as session:
+          json_serialize=orjson_dumps) as session:
       await session.post(url, json={'test': 'object'})
 
 .. note::
 
-   ``ujson`` library is faster than standard :mod:`json` but slightly
-   incompatible.
+   `orjson <https://pypi.org/project/orjson/>`_ is a fast, correct JSON library.
+   Since ``orjson.dumps`` returns bytes, we decode to string for compatibility.
 
 JSON Response Content
 =====================
