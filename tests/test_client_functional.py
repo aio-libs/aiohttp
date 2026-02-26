@@ -3482,7 +3482,11 @@ async def test_drop_auth_on_redirect_to_other_host(
             assert resp.status == 200
         async with client.get(
             url_from,
-            headers={"Authorization": "Basic dXNlcjpwYXNz", "Proxy-Authorization": "Basic dXNlcjpwYXNz", "Cookie": "a=b"},
+            headers={
+                "Authorization": "Basic dXNlcjpwYXNz",
+                "Proxy-Authorization": "Basic dXNlcjpwYXNz",
+                "Cookie": "a=b",
+            },
         ) as resp:
             assert resp.status == 200
 
