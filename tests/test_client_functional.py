@@ -3545,7 +3545,7 @@ async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
     async with aiohttp.ClientSession(
         connector=connector,
         auth=aiohttp.BasicAuth("user", "pass"),
-        headers={"Proxy-Authorization": "abc", "Cookie: a=b"}
+        headers={"Proxy-Authorization": "abc", "Cookie": "a=b"}
     ) as client:
         async with client.get(url_from) as resp:
             assert resp.status == 200
@@ -3615,7 +3615,7 @@ async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url
         connector=connector,
         base_url="http://host1.com",
         auth=aiohttp.BasicAuth("user", "pass"),
-        headers={"Proxy-Authorization": "abc", "Cookie: a=b"}
+        headers={"Proxy-Authorization": "abc", "Cookie": "a=b"}
     ) as client:
         async with client.get("/path1") as resp:
             assert resp.status == 200
