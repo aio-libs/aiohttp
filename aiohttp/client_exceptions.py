@@ -346,7 +346,9 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
 
     def __init__(
         # TODO: If we require ssl in future, this can become ssl.CertificateError
-        self, connection_key: ConnectionKey, certificate_error: Exception
+        self,
+        connection_key: ConnectionKey,
+        certificate_error: Exception,
     ) -> None:
         if isinstance(certificate_error, cert_errors + (OSError,)):
             # ssl.CertificateError has errno and strerror, so we should be fine
