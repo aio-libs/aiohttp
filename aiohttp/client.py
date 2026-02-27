@@ -16,7 +16,6 @@ from collections.abc import (
     Coroutine,
     Generator,
     Iterable,
-    Mapping,
     Sequence,
 )
 from contextlib import suppress
@@ -106,7 +105,13 @@ from .helpers import (
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
+from .typedefs import (
+    JSONBytesEncoder,
+    JSONEncoder,
+    LooseCookies,
+    LooseHeaders,
+    StrOrURL,
+)
 
 __all__ = (
     # client_exceptions
@@ -189,7 +194,7 @@ class _RequestOptions(TypedDict, total=False):
     ssl: SSLContext | bool | Fingerprint
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
-    trace_request_ctx: Mapping[str, Any] | None
+    trace_request_ctx: object
     read_bufsize: int | None
     auto_decompress: bool | None
     max_line_size: int | None
@@ -240,6 +245,14 @@ class ClientTimeout:
     # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
     # to overwrite the defaults
 
+    def __post_init__(self) -> None:
+        if self.total is not None and self.total == 0:
+            raise ValueError(
+                "total timeout must be a positive number or None to disable, "
+                "got 0. Using 0 to disable timeouts is no longer supported, "
+                "use None instead."
+            )
+
 
 # 5 Minute default read timeout
 DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
@@ -270,6 +283,7 @@ class ClientSession:
         "_default_auth",
         "_version",
         "_json_serialize",
+        "_json_serialize_bytes",
         "_requote_redirect_url",
         "_timeout",
         "_raise_for_status",
@@ -304,6 +318,7 @@ class ClientSession:
         skip_auto_headers: Iterable[str] | None = None,
         auth: BasicAuth | None = None,
         json_serialize: JSONEncoder = json.dumps,
+        json_serialize_bytes: JSONBytesEncoder | None = None,
         request_class: type[ClientRequest] = ClientRequest,
         response_class: type[ClientResponse] = ClientResponse,
         ws_response_class: type[ClientWebSocketResponse] = ClientWebSocketResponse,
@@ -382,6 +397,7 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
+        self._json_serialize_bytes = json_serialize_bytes
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -484,7 +500,7 @@ class ClientSession:
         ssl: SSLContext | bool | Fingerprint = True,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
-        trace_request_ctx: Mapping[str, Any] | None = None,
+        trace_request_ctx: object = None,
         read_bufsize: int | None = None,
         auto_decompress: bool | None = None,
         max_line_size: int | None = None,
@@ -510,7 +526,10 @@ class ClientSession:
                 "data and json parameters can not be used at the same time"
             )
         elif json is not None:
-            data = payload.JsonPayload(json, dumps=self._json_serialize)
+            if self._json_serialize_bytes is not None:
+                data = payload.JsonBytesPayload(json, dumps=self._json_serialize_bytes)
+            else:
+                data = payload.JsonPayload(json, dumps=self._json_serialize)
 
         redirects = 0
         history: list[ClientResponse] = []
@@ -861,6 +880,8 @@ class ClientSession:
                         ):
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
+                            headers.pop(hdrs.COOKIE, None)
+                            headers.pop(hdrs.PROXY_AUTHORIZATION, None)
 
                         url = parsed_redirect_url
                         params = {}
@@ -1203,9 +1224,6 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
-            conn_proto.set_parser(
-                WebSocketReader(reader, max_msg_size, decode_text=decode_text), reader
-            )
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
@@ -1217,7 +1235,7 @@ class ClientSession:
             resp.close()
             raise
         else:
-            return self._ws_response_class(
+            ws_resp = self._ws_response_class(
                 reader,
                 writer,
                 protocol,
@@ -1230,6 +1248,10 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
+            parser = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
+            cb = None if heartbeat is None else ws_resp._on_data_received
+            conn_proto.set_parser(parser, reader, data_received_cb=cb)
+            return ws_resp
 
     def _prepare_headers(self, headers: LooseHeaders | None) -> "CIMultiDict[str]":
         """Add default headers and transform it to CIMultiDict"""

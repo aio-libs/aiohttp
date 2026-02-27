@@ -638,13 +638,18 @@ def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
 
 
 def test_cookie_pattern_performance() -> None:
+    """Test that the cookie pattern doesn't suffer from ReDoS issues."""
+    COOKIE_PATTERN_TIME_THRESHOLD_SECONDS = 0.08
     value = "a" + "=" * 21651 + "\x00"
     start = time.perf_counter()
     match = helpers._COOKIE_PATTERN.match(value)
-    end = time.perf_counter()
+    elapsed = time.perf_counter() - start
 
-    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
-    assert (end - start) < 0.01
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < COOKIE_PATTERN_TIME_THRESHOLD_SECONDS, (
+        f"Pattern took {elapsed * 1000:.1f}ms, "
+        f"expected <{COOKIE_PATTERN_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+    )
     # This example shouldn't produce a match either.
     assert match is None
 

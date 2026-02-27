@@ -100,6 +100,7 @@ deduplicate
 defs
 Dependabot
 deprecations
+deserialization
 DER
 dev
 Dev
@@ -213,7 +214,8 @@ Multipart
 musllinux
 mypy
 Nagle
-Nagle’s
+Nagle's
+NFS
 namedtuple
 nameservers
 namespace
@@ -227,6 +229,7 @@ nowait
 OAuth
 Online
 optimizations
+orjson
 os
 outcoming
 Overridable
@@ -235,6 +238,7 @@ param
 params
 parsers
 pathlib
+payloads
 peername
 performant
 pickleable
@@ -262,6 +266,7 @@ pytest
 Pytest
 qop
 Quickstart
+quickstart
 quote’s
 rc
 readline
@@ -355,6 +360,8 @@ unhandled
 unicode
 unittest
 Unittest
+unpickler
+untrusted
 unix
 unobvious
 unsets

@@ -1,0 +1,1 @@
+Removed support for ``ClientTimeout(total=0)`` to disable timeouts. Use ``None`` instead of ``0`` to disable the total timeout. Passing ``0`` now raises :exc:`ValueError` with a clear error message -- by :user:`veeceey`.

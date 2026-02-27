@@ -1,0 +1,1 @@
+Fixed _sendfile_fallback over-reading beyond requested count -- by :user:`bysiber`.

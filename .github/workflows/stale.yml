@@ -14,4 +14,3 @@ jobs:
         with:
           days-before-stale: 30
           any-of-labels: needs-info
-          labels-to-remove-when-unstale: needs-info

@@ -1,0 +1,1 @@
+Refactored tests to use ``create_autospec()`` for more robust mocking -- by :user:`soheil-star01`.

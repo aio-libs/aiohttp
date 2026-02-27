@@ -1,0 +1,3 @@
+Reject HTTP requests with duplicate ``chunked`` Transfer-Encoding
+(e.g. ``Transfer-Encoding: chunked, chunked``) with a
+``BadHttpMessage`` error, per :rfc:`9112` section 7.1 -- by :user:`worksbyfriday`.

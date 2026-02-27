@@ -1262,9 +1262,7 @@ async def test_send_set_cookie_header(
 
 
 async def test_consecutive_write_eof() -> None:
-    writer = mock.Mock()
-    writer.write_eof = mock.AsyncMock()
-    writer.write_headers = mock.AsyncMock()
+    writer = mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True)
     req = make_request("GET", "/", writer=writer)
     data = b"data"
     resp = web.Response(body=data)
@@ -1464,6 +1462,50 @@ class TestJSONResponse:
         assert "application/vnd.json+api" == resp.content_type
 
 
+class TestJSONBytesResponse:
+    def test_content_type_is_application_json_by_default(self) -> None:
+        resp = web.json_bytes_response(
+            "", dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+        assert "application/json" == resp.content_type
+
+    def test_passing_body_only(self) -> None:
+        resp = web.json_bytes_response(
+            dumps=lambda x: json.dumps(x).encode("utf-8"),
+            body=b'"jaysawn"',
+        )
+        assert resp.body == b'"jaysawn"'
+
+    def test_data_and_body_raises_value_error(self) -> None:
+        with pytest.raises(ValueError) as excinfo:
+            web.json_bytes_response(
+                data="foo", dumps=lambda x: json.dumps(x).encode("utf-8"), body=b"bar"
+            )
+        expected_message = "only one of data or body should be specified"
+        assert expected_message == excinfo.value.args[0]
+
+    def test_body_is_json_encoded_bytes(self) -> None:
+        resp = web.json_bytes_response(
+            {"foo": 42}, dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+        assert json.dumps({"foo": 42}).encode("utf-8") == resp.body
+
+    def test_content_type_is_overrideable(self) -> None:
+        resp = web.json_bytes_response(
+            {"foo": 42},
+            dumps=lambda x: json.dumps(x).encode("utf-8"),
+            content_type="application/vnd.json+api",
+        )
+        assert "application/vnd.json+api" == resp.content_type
+
+    def test_custom_dumps(self) -> None:
+        resp = web.json_bytes_response(
+            {"foo": 42},
+            dumps=lambda x: json.dumps(x, separators=(",", ":")).encode("utf-8"),
+        )
+        assert b'{"foo":42}' == resp.body
+
+
 @pytest.mark.dev_mode
 async def test_no_warn_small_cookie(
     buf: bytearray, writer: AbstractStreamWriter
@@ -1515,10 +1557,7 @@ async def test_passing_cimultidict_to_web_response_not_mutated(
 
 async def test_stream_response_sends_headers_immediately() -> None:
     """Test that StreamResponse sends headers immediately."""
-    writer = mock.create_autospec(StreamWriter, spec_set=True)
-    writer.write_headers = mock.AsyncMock()
-    writer.send_headers = mock.Mock()
-    writer.write_eof = mock.AsyncMock()
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
 
     req = make_request("GET", "/", writer=writer)
     resp = web.StreamResponse()
@@ -1535,10 +1574,7 @@ async def test_stream_response_sends_headers_immediately() -> None:
 
 async def test_response_buffers_headers() -> None:
     """Test that Response buffers headers for packet coalescing."""
-    writer = mock.create_autospec(StreamWriter, spec_set=True)
-    writer.write_headers = mock.AsyncMock()
-    writer.send_headers = mock.Mock()
-    writer.write_eof = mock.AsyncMock()
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
 
     req = make_request("GET", "/", writer=writer)
     resp = web.Response(body=b"hello")

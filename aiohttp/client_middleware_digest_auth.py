@@ -414,7 +414,7 @@ class DigestAuthMiddleware:
         # Extract challenge parameters
         self._challenge = {}
         for field in CHALLENGE_FIELDS:
-            if value := header_pairs.get(field):
+            if (value := header_pairs.get(field)) is not None:
                 self._challenge[field] = value
 
         # Update protection space based on domain parameter or default to origin

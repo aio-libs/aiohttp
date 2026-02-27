@@ -446,8 +446,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 assert self._payload_parser is not None
                 try:
                     eof, data = self._payload_parser.feed_data(data[start_pos:], SEP)
-                except BaseException as underlying_exc:
-                    reraised_exc = underlying_exc
+                except Exception as underlying_exc:
+                    reraised_exc: BaseException = underlying_exc
                     if self.payload_exception is not None:
                         reraised_exc = self.payload_exception(str(underlying_exc))
 
@@ -640,9 +640,16 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         )
 
     def _is_chunked_te(self, te: str) -> bool:
-        te = te.rsplit(",", maxsplit=1)[-1].strip(" \t")
+        # https://www.rfc-editor.org/rfc/rfc9112#section-7.1-3
+        # "A sender MUST NOT apply the chunked transfer coding more
+        #  than once to a message body"
+        parts = [p.strip(" \t") for p in te.split(",")]
+        chunked_count = sum(1 for p in parts if p.isascii() and p.lower() == "chunked")
+        if chunked_count > 1:
+            raise BadHttpMessage("Request has duplicate `chunked` Transfer-Encoding")
+        last = parts[-1]
         # .lower() transforms some non-ascii chars, so must check first.
-        if te.isascii() and te.lower() == "chunked":
+        if last.isascii() and last.lower() == "chunked":
             return True
         # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.3
         raise BadHttpMessage("Request has invalid `Transfer-Encoding`")
@@ -889,6 +896,12 @@ class HttpPayloadParser:
                     if chunk[: len(SEP)] == SEP:
                         chunk = chunk[len(SEP) :]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
+                    elif len(chunk) >= len(SEP) or chunk != SEP[: len(chunk)]:
+                        exc = TransferEncodingError(
+                            "Chunk size mismatch: expected CRLF after chunk data"
+                        )
+                        set_exception(self.payload, exc)
+                        raise exc
                     else:
                         self._chunk_tail = chunk
                         return False, b""

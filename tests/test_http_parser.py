@@ -538,6 +538,17 @@ def test_request_te_first_chunked(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
+def test_request_te_duplicate_chunked(parser: HttpRequestParser) -> None:
+    """Reject duplicate chunked Transfer-Encoding per RFC 9112 section 7.1."""
+    text = b"POST / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked, chunked\r\n\r\n0\r\n\r\n"
+    # https://www.rfc-editor.org/rfc/rfc9112#section-7.1-3
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="duplicate `chunked` Transfer-Encoding|nvalid `Transfer-Encoding`",
+    ):
+        parser.feed_data(text)
+
+
 def test_conn_upgrade(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
@@ -1745,6 +1756,36 @@ class TestParsePayload:
         p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
         with pytest.raises(http_exceptions.TransferEncodingError):
             p.feed_data(b"blah\r\n")
+        assert isinstance(out.exception(), http_exceptions.TransferEncodingError)
+
+    async def test_parse_chunked_payload_size_data_mismatch(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Chunk-size does not match actual data: should raise, not hang.
+
+        Regression test for #10596.
+        """
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
+        # Declared chunk-size is 4 but actual data is "Hello" (5 bytes).
+        # After consuming 4 bytes, remaining starts with "o" not "\r\n".
+        with pytest.raises(http_exceptions.TransferEncodingError):
+            p.feed_data(b"4\r\nHello\r\n0\r\n\r\n")
+        assert isinstance(out.exception(), http_exceptions.TransferEncodingError)
+
+    async def test_parse_chunked_payload_size_data_mismatch_too_short(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Chunk-size larger than data: declared 6 but only 5 bytes before CRLF.
+
+        Regression test for #10596.
+        """
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
+        # Declared chunk-size is 6 but actual data before CRLF is "Hello" (5 bytes).
+        # Parser reads 6 bytes: "Hello\r", then expects \r\n but sees "\n0\r\n..."
+        with pytest.raises(http_exceptions.TransferEncodingError):
+            p.feed_data(b"6\r\nHello\r\n0\r\n\r\n")
         assert isinstance(out.exception(), http_exceptions.TransferEncodingError)
 
     async def test_parse_chunked_payload_split_end(

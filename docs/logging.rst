@@ -166,7 +166,7 @@ This also allows access to the results of coroutines on the ``request`` and
 
 Gunicorn access logs
 ^^^^^^^^^^^^^^^^^^^^
-When `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_ is used for
+When `Gunicorn <https://gunicorn.org>`_ is used for
 :ref:`deployment <aiohttp-deployment-gunicorn>`, its default access log format
 will be automatically replaced with the default aiohttp's access log format.
 

@@ -1,0 +1,3 @@
+Fixed access log timestamps ignoring daylight saving time (DST) changes. The
+previous implementation used :py:data:`time.timezone` which is a constant and
+does not reflect DST transitions -- by :user:`nightcityblade`.

@@ -1,0 +1,1 @@
+Fixed flaky performance tests by using appropriate fixed thresholds that account for CI variability -- by :user:`rodrigobnogueira`.

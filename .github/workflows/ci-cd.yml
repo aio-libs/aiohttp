@@ -218,7 +218,7 @@ jobs:
       run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -264,7 +264,7 @@ jobs:
     - name: Upload coverage
       uses: codecov/codecov-action@v5
       with:
-        file: ./coverage.xml
+        files: ./coverage.xml
         flags: >-
           CI-GHA,OS-${{
             runner.os
@@ -308,7 +308,7 @@ jobs:
       run: |
         python -m pip install -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -334,6 +334,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Trigger codecov notification
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
+        run_command: send-notifications
     - name: Decide whether the needed jobs succeeded or failed
       uses: re-actors/alls-green@release/v1
       with:
@@ -373,7 +379,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -466,7 +472,7 @@ jobs:
         python -m
         pip install -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: llhttp
         path: vendor/llhttp/build/
@@ -516,7 +522,7 @@ jobs:
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
     - name: Download distributions
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         path: dist
         pattern: dist-*
