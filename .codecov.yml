@@ -3,6 +3,10 @@ codecov:
   notify:
     after_n_builds: 13
 
+comment:
+  require_head: false
+  require_base: false
+
 coverage:
   range: "95..100"
 
