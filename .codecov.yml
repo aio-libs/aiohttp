@@ -9,6 +9,15 @@ coverage:
   status:
     project: no
 
+component_management:
+  individual_components:
+    - component_id: project
+      paths:
+        - aiohttp/**
+    - component_id: tests
+      paths:
+        - tests/**
+
 flags:
   library:
     paths:
