@@ -259,6 +259,7 @@ pytest
 Pytest
 qop
 Quickstart
+quickstart
 quote’s
 rc
 readonly
