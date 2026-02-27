@@ -334,10 +334,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install codecov-cli
-      run: pip install codecov-cli
     - name: Trigger codecov notification
-      run: codecov-cli send-notifications
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
+        run_command: send-notifications
     - name: Decide whether the needed jobs succeeded or failed
       uses: re-actors/alls-green@release/v1
       with:
