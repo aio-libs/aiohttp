@@ -880,6 +880,8 @@ class ClientSession:
                         ):
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
+                            headers.pop(hdrs.COOKIE, None)
+                            headers.pop(hdrs.PROXY_AUTHORIZATION, None)
 
                         url = parsed_redirect_url
                         params = {}

@@ -3423,8 +3423,12 @@ async def test_drop_auth_on_redirect_to_other_host(
         assert request.host == url_to.host
         if is_drop_header_expected:
             assert "Authorization" not in request.headers, "Header wasn't dropped"
+            assert "Proxy-Authorization" not in request.headers
+            assert "Cookie" not in request.headers
         else:
             assert "Authorization" in request.headers, "Header was dropped"
+            assert "Proxy-Authorization" in request.headers
+            assert "Cookie" in request.headers
         return web.Response()
 
     server_from = await create_server_for_url_and_handler(url_from, srv_from)
@@ -3473,11 +3477,16 @@ async def test_drop_auth_on_redirect_to_other_host(
         async with client.get(
             url_from,
             auth=aiohttp.BasicAuth("user", "pass"),
+            headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz", "Cookie": "a=b"},
         ) as resp:
             assert resp.status == 200
         async with client.get(
             url_from,
-            headers={"Authorization": "Basic dXNlcjpwYXNz"},
+            headers={
+                "Authorization": "Basic dXNlcjpwYXNz",
+                "Proxy-Authorization": "Basic dXNlcjpwYXNz",
+                "Cookie": "a=b",
+            },
         ) as resp:
             assert resp.status == 200
 
