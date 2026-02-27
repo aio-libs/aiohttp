@@ -1,13 +1,26 @@
 codecov:
   branch: master
   notify:
-    after_n_builds: 13
+    manual_trigger: true
+
+comment:
+  require_head: false
+  require_base: false
 
 coverage:
   range: "95..100"
 
   status:
     project: no
+
+component_management:
+  individual_components:
+    - component_id: project
+      paths:
+        - aiohttp/**
+    - component_id: tests
+      paths:
+        - tests/**
 
 flags:
   library:
