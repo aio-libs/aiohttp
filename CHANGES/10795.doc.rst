@@ -1,0 +1,4 @@
+Replaced the deprecated ``ujson`` library with ``orjson`` in the
+client quickstart documentation. ``ujson`` has been put into
+maintenance-only mode; ``orjson`` is the recommended alternative.
+-- by :user:`indoor47`

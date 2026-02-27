@@ -206,20 +206,22 @@ Any of session's request methods like :func:`request`,
 
 
 By default session uses python's standard :mod:`json` module for
-serialization.  But it is possible to use different
-``serializer``. :class:`ClientSession` accepts ``json_serialize``
-parameter::
+serialization.  But it is possible to use a different
+``serializer``. :class:`ClientSession` accepts ``json_serialize`` and
+``json_serialize_bytes`` parameters::
 
-  import ujson
+  import orjson
 
   async with aiohttp.ClientSession(
-          json_serialize=ujson.dumps) as session:
+          json_serialize_bytes=orjson.dumps) as session:
       await session.post(url, json={'test': 'object'})
 
 .. note::
 
-   ``ujson`` library is faster than standard :mod:`json` but slightly
-   incompatible.
+   ``orjson`` library is faster than standard :mod:`json` and is actively
+   maintained. Since ``orjson.dumps`` returns :class:`bytes`, pass it via
+   the ``json_serialize_bytes`` parameter to avoid unnecessary
+   encoding/decoding overhead.
 
 JSON Response Content
 =====================
