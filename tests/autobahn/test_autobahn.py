@@ -35,8 +35,7 @@ def build_autobahn_testsuite() -> Iterator[None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_failed_tests(report_path: str, name: str) -> list[dict[str, Any]]:
-    path = Path(report_path)
+def get_failed_tests(path: Path, name: str) -> list[dict[str, Any]]:
     result_summary = json.loads((path / "index.json").read_text())[name]
     failed_messages = []
     PASS = {"OK", "INFORMATIONAL"}
@@ -59,8 +58,8 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
             publish=[(9001, 9001)],
             remove=True,
             volumes=[
-                (f"{request.path.parent}/client", "/config"),
-                (f"{report_dir}", "/reports"),
+                (request.path.parent / "client", "/config"),
+                (report_dir, "/reports"),
             ],
         )
         print("Running aiohttp test client")
@@ -76,7 +75,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         client.wait()
         autobahn_container.stop()
 
-    failed_messages = get_failed_tests(f"{report_dir}/clients", "aiohttp")
+    failed_messages = get_failed_tests(report_dir / "clients", "aiohttp")
 
     assert not failed_messages, "\n".join(
         "\n\t".join(
@@ -91,7 +90,7 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     try:
         print("Starting aiohttp test server")
         server = subprocess.Popen(
-            [sys.executable] + ["tests/autobahn/server/server.py"]
+            (sys.executable, "tests/autobahn/server/server.py")
         )
         print("Starting autobahn-testsuite client")
         docker.run(
@@ -99,11 +98,11 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
             name="autobahn",
             remove=True,
             volumes=[
-                (f"{request.path.parent}/server", "/config"),
-                (f"{report_dir}", "/reports"),
+                (request.path.parent / "server", "/config"),
+                (report_dir, "/reports"),
             ],
             networks=["host"],
-            command=[
+            command=(
                 "wait-for-it",
                 "-s",
                 "localhost:9001",
@@ -113,14 +112,14 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
                 "fuzzingclient",
                 "--spec",
                 "/config/fuzzingclient.json",
-            ],
+            ),
         )
     finally:
         print("Stopping client and server")
         server.terminate()
         server.wait()
 
-    failed_messages = get_failed_tests(f"{report_dir}/servers", "AutobahnServer")
+    failed_messages = get_failed_tests(report_dir / "servers", "AutobahnServer")
 
     assert not failed_messages, "\n".join(
         "\n\t".join(
