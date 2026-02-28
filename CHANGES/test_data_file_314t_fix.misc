@@ -1,0 +1,1 @@
+Fix race condition in `test_data_file` on Python 3.14 free-threaded.
