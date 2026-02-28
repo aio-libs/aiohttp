@@ -285,7 +285,6 @@ async def test_tcpsite_empty_str_host(make_runner: _RunnerMaker) -> None:
     assert site.name == "http://0.0.0.0:8080"
 
 
-
 async def test_tcpsite_ephemeral_port(make_runner: _RunnerMaker) -> None:
     runner = make_runner()
     await runner.setup()
