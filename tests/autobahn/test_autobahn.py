@@ -1,7 +1,7 @@
 import json
 import subprocess
 import sys
-from collections.abc import Generator
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -22,15 +22,12 @@ def report_dir(tmp_path_factory: TempPathFactory) -> Path:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def build_autobahn_testsuite() -> Generator[None, None, None]:
-    try:
-        docker.build(
-            file="tests/autobahn/Dockerfile.autobahn",
-            tags=["autobahn-testsuite"],
-            context_path=".",
-        )
-    except DockerException:
-        pytest.skip("The docker daemon is not running.")
+def build_autobahn_testsuite() -> Iterator[None]:
+    docker.build(
+        file="tests/autobahn/Dockerfile.autobahn",
+        tags=["autobahn-testsuite"],
+        context_path=".",
+    )
 
     try:
         yield
@@ -52,8 +49,6 @@ def get_failed_tests(report_path: str, name: str) -> list[dict[str, Any]]:
     return failed_messages
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
-@pytest.mark.xfail
 def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     try:
         print("Starting autobahn-testsuite server")
@@ -92,8 +87,6 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     )
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
-@pytest.mark.xfail
 def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     try:
         print("Starting aiohttp test server")
