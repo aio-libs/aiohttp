@@ -79,7 +79,7 @@ class BaseSite(ABC):
 
 
 class TCPSite(BaseSite):
-    __slots__ = ("_host", "_port", "_reuse_address", "_reuse_port")
+    __slots__ = ("_host", "_port", "_bound_port", "_reuse_address", "_reuse_port")
 
     def __init__(
         self,
@@ -101,19 +101,29 @@ class TCPSite(BaseSite):
         if port is None:
             port = 8443 if self._ssl_context else 8080
         self._port = port
+        self._bound_port: Optional[int] = None
         self._reuse_address = reuse_address
         self._reuse_port = reuse_port
+
+    @property
+    def port(self) -> int:
+        """The port the server is listening on.
+
+        If the server hasn't been started yet, this returns the requested port
+        (which might be 0 for a dynamic port).
+        After the server starts, it returns the actual bound port. This is
+        especially useful when port=0 was requested, as it allows retrieving the
+        dynamically assigned port after the site has started.
+        """
+        if self._bound_port is not None:
+            return self._bound_port
+        return self._port
 
     @property
     def name(self) -> str:
         scheme = "https" if self._ssl_context else "http"
         host = "0.0.0.0" if not self._host else self._host
-        return str(URL.build(scheme=scheme, host=host, port=self._port))
-
-    @property
-    def port(self) -> int:
-        """Return the port number the server is bound to, useful for the dynamically allocated port (0)."""
-        return self._port
+        return str(URL.build(scheme=scheme, host=host, port=self.port))
 
     async def start(self) -> None:
         await super().start()
@@ -129,10 +139,10 @@ class TCPSite(BaseSite):
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
         )
-        if self._port == 0:
-            # Port 0 means bind to any port, so we need to set the attribute
-            # to the port the server was actually bound to.
-            self._port = self._server.sockets[0].getsockname()[1]
+        if self._server.sockets:
+            self._bound_port = self._server.sockets[0].getsockname()[1]
+        else:
+            self._bound_port = self._port
 
 
 class UnixSite(BaseSite):

@@ -289,6 +289,7 @@ async def test_tcpsite_ephemeral_port(make_runner: _RunnerMaker) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner, port=0)
+    assert site.port == 0
 
     await site.start()
     assert site.port != 0
