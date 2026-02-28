@@ -101,7 +101,7 @@ class TCPSite(BaseSite):
         if port is None:
             port = 8443 if self._ssl_context else 8080
         self._port = port
-        self._bound_port: Optional[int] = None
+        self._bound_port: int | None = None
         self._reuse_address = reuse_address
         self._reuse_port = reuse_port
 

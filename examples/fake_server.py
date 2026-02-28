@@ -60,7 +60,9 @@ class FakeFacebook:
 
     async def start(self) -> dict[str, int]:
         await self.runner.setup()
-        site = web.TCPSite(self.runner, "127.0.0.1", port=0, ssl_context=self.ssl_context)
+        site = web.TCPSite(
+            self.runner, "127.0.0.1", port=0, ssl_context=self.ssl_context
+        )
         await site.start()
         return {"graph.facebook.com": site.port}
 

@@ -10,12 +10,6 @@
 
 .. towncrier release notes start
 
-Features
---------
-
-- Added a ``port`` property to ``web.TCPSite``, returning the dynamically assigned port when the site is created with ``port=0``.
-
-
 3.13.3 (2026-01-03)
 ===================
 
