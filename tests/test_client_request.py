@@ -1363,7 +1363,7 @@ async def test_data_file(
 
         with mock.patch.object(req, "_write_bytes", _mock_write_bytes):
             resp = await req._send(conn)
-        
+
         assert asyncio.isfuture(req._writer)
         await resp.wait_for_close()
 
