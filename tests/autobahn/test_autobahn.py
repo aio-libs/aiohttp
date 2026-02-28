@@ -89,9 +89,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     try:
         print("Starting aiohttp test server")
-        server = subprocess.Popen(
-            (sys.executable, "tests/autobahn/server/server.py")
-        )
+        server = subprocess.Popen((sys.executable, "tests/autobahn/server/server.py"))
         print("Starting autobahn-testsuite client")
         docker.run(
             image="autobahn-testsuite",
