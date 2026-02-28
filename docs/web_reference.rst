@@ -2902,7 +2902,9 @@ application on specific TCP or Unix socket, e.g.::
 
    :param str host: HOST to listen on, all interfaces if ``None`` (default).
 
-   :param int port: PORT to listed on, ``8080`` if ``None`` (default).
+   :param int port: PORT to listen on, ``8080`` if ``None`` (default).
+                    Use ``0`` to let the OS assign a free ephemeral port
+                    (see :attr:`port`).
 
    :param float shutdown_timeout: a timeout used for both waiting on pending
                                   tasks before application shutdown and for
@@ -2934,20 +2936,6 @@ application on specific TCP or Unix socket, e.g.::
 
       Read-only. The actual port number the server is bound to, only
       guaranteed to be correct after the site has been started.
-
-      To bind to a dynamic port, pass ``0`` as the port number. The OS
-      will assign a free port which can then be retrieved from this
-      attribute::
-
-          app = web.Application()
-          runner = web.AppRunner(app)
-          await runner.setup()
-          site = web.TCPSite(runner, 'localhost', 0)
-          await site.start()
-
-          print(f"Server started on port {site.port}")
-          while True:
-              await asyncio.sleep(3600)  # sleep forever
 
 
 .. class:: UnixSite(runner, path, *, \

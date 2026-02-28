@@ -1,4 +1,5 @@
 import io
+from collections import deque
 from collections.abc import Iterable
 from typing import Any
 from urllib.parse import urlencode
@@ -81,10 +82,10 @@ class FormData:
         self._fields.append((type_options, headers, value))
 
     def add_fields(self, *fields: Any) -> None:
-        to_add = list(fields)
+        to_add: deque[Any] = deque(fields)
 
         while to_add:
-            rec = to_add.pop(0)
+            rec = to_add.popleft()
 
             if isinstance(rec, io.IOBase):
                 k = guess_filename(rec, "unknown")
