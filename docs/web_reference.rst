@@ -2932,13 +2932,22 @@ application on specific TCP or Unix socket, e.g.::
 
    .. attribute:: port
 
-      The port number the server is bound to. This is useful when the port
-      number is not known in advance, such as when constructing with
-      port 0 to request an ephemeral port or when not supplying the port
-      to the constructor.
-      This attribute is read-only and should not be modified.
-      This attribute is only guaranteed to be correct after the server has
-      been started.
+      Read-only. The actual port number the server is bound to, only
+      guaranteed to be correct after the site has been started.
+
+      To bind to a dynamic port, pass ``0`` as the port number. The OS
+      will assign a free port which can then be retrieved from this
+      attribute::
+
+          app = web.Application()
+          runner = web.AppRunner(app)
+          await runner.setup()
+          site = web.TCPSite(runner, 'localhost', 0)
+          await site.start()
+
+          print(f"Server started on port {site.port}")
+          while True:
+              await asyncio.sleep(3600)  # sleep forever
 
 
 .. class:: UnixSite(runner, path, *, \
