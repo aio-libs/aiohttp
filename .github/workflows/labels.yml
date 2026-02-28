@@ -9,16 +9,19 @@ jobs:
   backport:
     runs-on: ubuntu-latest
     name: Backport label added
-    if: ${{ github.event.pull_request.user.type != 'Bot' }}
+    if: >-
+      ${{
+        github.event.pull_request.user.type != 'Bot' &&
+        contains(join(github.event.pull_request.labels.*.name, ','), 'backport-')
+      }}
     steps:
       - uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number
-            });
-            if (!pr.data.labels.find(l => l.name.startsWith("backport")))
-              process.exit(1);
+            const hasBackportLabel = context.payload.pull_request.labels.some(
+              label => label.name.startsWith("backport"),
+            );
+            if (!hasBackportLabel) {
+              core.notice("No backport label present, skipping.");
+            }
