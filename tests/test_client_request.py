@@ -1173,7 +1173,18 @@ async def test_data_file(loop, buf, conn) -> None:
         assert isinstance(req.body, payload.BufferedReaderPayload)
         assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
-        resp = await req.send(conn)
+        original_write_bytes = req.write_bytes
+
+        async def _mock_write_bytes(
+            writer: AbstractStreamWriter, conn: mock.Mock, content_length: int | None
+        ) -> None:
+            # Ensure the task is scheduled so _writer isn't None
+            await asyncio.sleep(0)
+            await original_write_bytes(writer, conn, content_length)
+
+        with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+            resp = await req.send(conn)
+
         assert asyncio.isfuture(req._writer)
         await resp.wait_for_close()
 
