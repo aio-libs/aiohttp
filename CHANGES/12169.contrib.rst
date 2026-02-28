@@ -1,0 +1,1 @@
+Adjusted the GitHub Actions backport-label check so ordinary pull requests without ``backport-*`` labels are skipped instead of reported as failed -- by :user:`1ort`.
