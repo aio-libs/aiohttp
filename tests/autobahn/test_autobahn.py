@@ -47,8 +47,7 @@ def get_err(path: Path, result) -> str | None:
 def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
     results = json.loads((path / "index.json").read_text())[name]
     print(results)
-    tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
-    return result_summary
+    return tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
     failed_messages = []
     PASS = {"OK", "INFORMATIONAL"}
     entry_fields = {"case", "description", "expectation", "expected", "received"}
