@@ -1,7 +1,8 @@
 import json
 import subprocess
 import sys
-from collections.abc import Generator
+import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -15,22 +16,24 @@ else:
     DockerException = python_on_whales.DockerException
     docker = python_on_whales.docker
 
+AUTOBAHN_PATH = Path(__file__).parent
 
-@pytest.fixture(scope="session")
+# Test number, test status, error message
+Result = tuple[str, str, str | None]
+
+
+@pytest.fixture(scope="module")
 def report_dir(tmp_path_factory: TempPathFactory) -> Path:
     return tmp_path_factory.mktemp("reports")
 
 
-@pytest.fixture(scope="session", autouse=True)
-def build_autobahn_testsuite() -> Generator[None, None, None]:
-    try:
-        docker.build(
-            file="tests/autobahn/Dockerfile.autobahn",
-            tags=["autobahn-testsuite"],
-            context_path=".",
-        )
-    except DockerException:
-        pytest.skip("The docker daemon is not running.")
+@pytest.fixture(scope="module", autouse=True)
+def build_autobahn_testsuite() -> Iterator[None]:
+    docker.build(
+        file="tests/autobahn/Dockerfile.autobahn",
+        tags=["autobahn-testsuite"],
+        context_path=".",
+    )
 
     try:
         yield
@@ -38,9 +41,16 @@ def build_autobahn_testsuite() -> Generator[None, None, None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_failed_tests(report_path: str, name: str) -> list[dict[str, Any]]:
-    path = Path(report_path)
-    result_summary = json.loads((path / "index.json").read_text())[name]
+def get_err(path: Path, result) -> str | None:
+    if r["behaviorClose"] == "OK":
+        return None
+    return json.loads((path / result["reportfile"]).read_text())
+
+
+def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
+    results = json.loads((path / "index.json").read_text())[name]
+    print(results)
+    return tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
     failed_messages = []
     PASS = {"OK", "INFORMATIONAL"}
     entry_fields = {"case", "description", "expectation", "expected", "received"}
@@ -52,11 +62,35 @@ def get_failed_tests(report_path: str, name: str) -> list[dict[str, Any]]:
     return failed_messages
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
-@pytest.mark.xfail
-def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
+def pytest_generate_tests(metafunc):
+    if "client_result" in metafunc.fixturenames:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            docker.build(
+                file="tests/autobahn/Dockerfile.autobahn",
+                tags=["autobahn-testsuite"],
+                context_path=".",
+            )
+            try:
+                test_results = run_client_tests(Path(tmp_dir) / "reports")
+            finally:
+                docker.image.remove(x="autobahn-testsuite")
+        metafunc.parametrize("client_result", test_results)
+    if "server_result" in metafunc.fixturenames:
+        with tempfile.TemporaryDirectory("reports") as tmp_dir:
+            docker.build(
+                file="tests/autobahn/Dockerfile.autobahn",
+                tags=["autobahn-testsuite"],
+                context_path=".",
+            )
+            try:
+                test_results = run_server_tests(Path(tmp_dir) / "reports")
+            finally:
+                docker.image.remove(x="autobahn-testsuite")
+        metafunc.parametrize("server_result", test_results)
+
+
+def run_client_tests(report_dir: Path) -> None:
     try:
-        print("Starting autobahn-testsuite server")
         autobahn_container = docker.run(
             detach=True,
             image="autobahn-testsuite",
@@ -64,11 +98,10 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
             publish=[(9001, 9001)],
             remove=True,
             volumes=[
-                (f"{request.path.parent}/client", "/config"),
-                (f"{report_dir}", "/reports"),
+                (AUTOBAHN_PATH / "client", "/config"),
+                (report_dir, "/reports"),
             ],
         )
-        print("Running aiohttp test client")
         client = subprocess.Popen(
             ["wait-for-it", "-s", "localhost:9001", "--"]
             + [sys.executable]
@@ -76,41 +109,26 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         )
         client.wait()
     finally:
-        print("Stopping client and server")
         client.terminate()
         client.wait()
         autobahn_container.stop()
 
-    failed_messages = get_failed_tests(f"{report_dir}/clients", "aiohttp")
-
-    assert not failed_messages, "\n".join(
-        "\n\t".join(
-            f"{field}: {msg[field]}"
-            for field in ("case", "description", "expectation", "expected", "received")
-        )
-        for msg in failed_messages
-    )
+    return get_test_results(report_dir / "clients", "aiohttp")
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
-@pytest.mark.xfail
-def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
+def run_server_tests(report_dir: Path) -> None:
     try:
-        print("Starting aiohttp test server")
-        server = subprocess.Popen(
-            [sys.executable] + ["tests/autobahn/server/server.py"]
-        )
-        print("Starting autobahn-testsuite client")
+        server = subprocess.Popen((sys.executable, "tests/autobahn/server/server.py"))
         docker.run(
             image="autobahn-testsuite",
             name="autobahn",
             remove=True,
             volumes=[
-                (f"{request.path.parent}/server", "/config"),
-                (f"{report_dir}", "/reports"),
+                (AUTOBAHN_PATH / "server", "/config"),
+                (report_dir, "/reports"),
             ],
-            networks=["host"],
-            command=[
+            networks=("host",),
+            command=(
                 "wait-for-it",
                 "-s",
                 "localhost:9001",
@@ -120,19 +138,20 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
                 "fuzzingclient",
                 "--spec",
                 "/config/fuzzingclient.json",
-            ],
+            ),
         )
     finally:
-        print("Stopping client and server")
         server.terminate()
         server.wait()
 
-    failed_messages = get_failed_tests(f"{report_dir}/servers", "AutobahnServer")
+    return get_test_results(report_dir / "servers", "AutobahnServer")
 
-    assert not failed_messages, "\n".join(
-        "\n\t".join(
-            f"{field}: {msg[field]}"
-            for field in ("case", "description", "expectation", "expected", "received")
-        )
-        for msg in failed_messages
-    )
+
+@pytest.mark.autobahn
+def test_client(client_result: Result) -> None:
+    assert client_result[1] == "OK"
+
+
+@pytest.mark.autobahn
+def test_server(server_result: Result) -> None:
+    assert server_result[1] == "OK"
