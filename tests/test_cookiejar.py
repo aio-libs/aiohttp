@@ -790,7 +790,7 @@ async def test_dummy_cookie_jar_cookies_property() -> None:
 async def test_cookie_jar_cookies_property() -> None:
     jar = CookieJar()
     cookie = SimpleCookie(
-        "shared-cookie=first; " "domain-cookie=second; Domain=example.com; Path=/; "
+        "shared-cookie=first; domain-cookie=second; Domain=example.com; Path=/; "
     )
     jar.update_cookies(cookie, URL("http://example.com/"))
 
