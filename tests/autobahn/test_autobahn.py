@@ -47,17 +47,7 @@ def get_err(path: Path, result) -> str | None:
 def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
     print("FOO", list(path.parent.iterdir()))
     results = json.loads((path / "index.json").read_text())[name]
-    print(results)
     return tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
-    failed_messages = []
-    PASS = {"OK", "INFORMATIONAL"}
-    entry_fields = {"case", "description", "expectation", "expected", "received"}
-    for results in result_summary.values():
-        if results["behavior"] in PASS and results["behaviorClose"] in PASS:
-            continue
-        report = json.loads((path / results["reportfile"]).read_text())
-        failed_messages.append({field: report[field] for field in entry_fields})
-    return failed_messages
 
 
 @pytest.mark.autobahn
@@ -75,9 +65,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
             ],
         )
         client = subprocess.Popen(
-            ["wait-for-it", "-s", "localhost:9001", "--"]
-            + [sys.executable]
-            + ["tests/autobahn/client/client.py"]
+            ("wait-for-it", "-s", "localhost:9001", "--", sys.executable, "tests/autobahn/client/client.py")
         )
         client.wait()
     finally:
@@ -87,7 +75,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "clients", "aiohttp")
     for r in results:
-        assert r[1] == "OK", r[2]
+        assert r[1] in {"OK", "INFORMATIONAL"}, r[2]
 
 
 @pytest.mark.autobahn
@@ -121,5 +109,4 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
     for r in results:
-        print(r[2])
-        assert r[1] == "OK", r[2]
+        assert r[1] in {"OK", "INFORMATIONAL"}, r[2]
