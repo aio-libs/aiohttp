@@ -65,7 +65,14 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
             ],
         )
         client = subprocess.Popen(
-            ("wait-for-it", "-s", "localhost:9001", "--", sys.executable, "tests/autobahn/client/client.py")
+            (
+                "wait-for-it",
+                "-s",
+                "localhost:9001",
+                "--",
+                sys.executable,
+                "tests/autobahn/client/client.py",
+            )
         )
         client.wait()
     finally:
