@@ -126,4 +126,4 @@ def run_server_tests(report_dir: Path, request: pytest.FixtureRequest, metafunc)
 
 
 def test_server(server_result) -> None:
-    
+
