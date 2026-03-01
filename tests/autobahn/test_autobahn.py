@@ -19,12 +19,12 @@ else:
 Result = tuple[str, str, str | None]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def report_dir(tmp_path_factory: TempPathFactory) -> Path:
     return tmp_path_factory.mktemp("reports")
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def build_autobahn_testsuite() -> Iterator[None]:
     docker.build(
         file="tests/autobahn/Dockerfile.autobahn",
