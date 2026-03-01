@@ -86,7 +86,8 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         autobahn_container.stop()
 
     results = get_test_results(report_dir / "clients", "aiohttp")
-    assert not tuple(r for r in results if r[1] != "OK")
+    for r in results:
+        assert r[1] == "OK", r[2]
 
 
 @pytest.mark.autobahn
@@ -119,4 +120,5 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
         server.wait()
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
-    assert not tuple(r for r in results if r[1] != "OK")
+    for r in results:
+        assert r[1] == "OK", r[2]
