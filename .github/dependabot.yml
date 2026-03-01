@@ -30,21 +30,6 @@ updates:
       interval: "daily"
     open-pull-requests-limit: 10
 
-  - package-ecosystem: "docker"
-    directory: "/"
-    labels:
-      - dependencies
-    schedule:
-      interval: "monthly"
-
-  - package-ecosystem: "docker"
-    directory: "/"
-    labels:
-      - dependencies
-    target-branch: "3.14"
-    schedule:
-      interval: "monthly"
-
   # Maintain dependencies for Python aiohttp backport
   - package-ecosystem: "pip"
     directory: "/"
@@ -56,3 +41,18 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+
+  - package-ecosystem: "docker"
+    directory: "/tests/autobahn/"
+    labels:
+      - dependencies
+    schedule:
+      interval: "monthly"
+
+  - package-ecosystem: "docker"
+    directory: "/tests/autobahn/"
+    labels:
+      - dependencies
+    target-branch: "3.14"
+    schedule:
+      interval: "monthly"
