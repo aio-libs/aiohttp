@@ -147,8 +147,8 @@ def run_server_tests(report_dir: Path) -> None:
     return get_test_results(report_dir / "servers", "AutobahnServer")
 
 
-#@pytest.mark.autobahn
-#def test_client(client_result: Result) -> None:
+# @pytest.mark.autobahn
+# def test_client(client_result: Result) -> None:
 #    assert client_result[1] == "OK"
 
 
