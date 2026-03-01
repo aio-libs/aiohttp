@@ -808,6 +808,8 @@ async def test_cookie_jar_usage(
     jar = MockCookieJar()
 
     assert jar.quote_cookie is True
+    assert jar.cookies == MappingProxyType({})
+    assert jar.host_only_cookies == frozenset()
     assert len(jar) == 0
     assert list(jar) == []
     jar.clear()
