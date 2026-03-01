@@ -64,14 +64,14 @@ def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
 
 def pytest_generate_tests(metafunc):
     if "client_result" in metafunc.fixturenames:
-        with tempfile.TemporaryDirectory("reports") as tmp_dir:
+        with tempfile.TemporaryDirectory() as tmp_dir:
             docker.build(
                 file="tests/autobahn/Dockerfile.autobahn",
                 tags=["autobahn-testsuite"],
                 context_path=".",
             )
             try:
-                test_results = run_client_tests(Path(tmp_dir))
+                test_results = run_client_tests(Path(tmp_dir) / "reports")
             finally:
                 docker.image.remove(x="autobahn-testsuite")
         metafunc.parametrize("client_result", test_results)
@@ -83,7 +83,7 @@ def pytest_generate_tests(metafunc):
                 context_path=".",
             )
             try:
-                test_results = run_server_tests(Path(tmp_dir))
+                test_results = run_server_tests(Path(tmp_dir) / "reports")
             finally:
                 docker.image.remove(x="autobahn-testsuite")
         metafunc.parametrize("server_result", test_results)
