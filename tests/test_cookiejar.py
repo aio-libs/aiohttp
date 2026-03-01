@@ -7,6 +7,7 @@ import sys
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
+from types import MappingProxyType
 from unittest import mock
 
 import pytest
@@ -778,6 +779,59 @@ async def test_dummy_cookie_jar() -> None:
         next(iter(dummy_jar))
     assert not dummy_jar.filter_cookies(URL("http://example.com/"))
     dummy_jar.clear()
+
+
+async def test_dummy_cookie_jar_cookies_property() -> None:
+    dummy_jar = DummyCookieJar()
+    assert dict(dummy_jar.cookies) == {}
+    assert dummy_jar.host_only_cookies == frozenset()
+
+
+async def test_cookie_jar_cookies_property() -> None:
+    jar = CookieJar()
+    cookie = SimpleCookie(
+        "shared-cookie=first; "
+        "domain-cookie=second; Domain=example.com; Path=/; "
+    )
+    jar.update_cookies(cookie, URL("http://example.com/"))
+
+    cookies = jar.cookies
+    # Should be a read-only view
+    assert isinstance(cookies, MappingProxyType)
+    # Should contain the stored cookies with their full attributes
+    found_names = {
+        name
+        for simple_cookie in cookies.values()
+        for name in simple_cookie
+    }
+    assert "shared-cookie" in found_names
+    assert "domain-cookie" in found_names
+    # Verify that domain attribute is preserved
+    for key, simple_cookie in cookies.items():
+        for name, morsel in simple_cookie.items():
+            if name == "domain-cookie":
+                assert morsel["domain"] == "example.com"
+                assert morsel["path"] == "/"
+
+
+async def test_cookie_jar_host_only_cookies_property() -> None:
+    jar = CookieJar()
+    # Cookies without an explicit Domain attribute are host-only
+    cookie = SimpleCookie("hostonly=value;")
+    jar.update_cookies(cookie, URL("http://example.com/"))
+
+    host_only = jar.host_only_cookies
+    assert isinstance(host_only, frozenset)
+    assert ("example.com", "hostonly") in host_only
+
+
+async def test_cookie_jar_cookies_property_immutable() -> None:
+    jar = CookieJar()
+    cookie = SimpleCookie("foo=bar;")
+    jar.update_cookies(cookie, URL("http://example.com/"))
+    cookies = jar.cookies
+    with pytest.raises(TypeError):
+        cookies[("new", "key")] = SimpleCookie()  # type: ignore[index]
 
 
 async def test_loose_cookies_types() -> None:

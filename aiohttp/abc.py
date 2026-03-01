@@ -2,7 +2,8 @@ import logging
 import socket
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence, Sized
-from http.cookies import BaseCookie, Morsel
+from http.cookies import BaseCookie, Morsel, SimpleCookie
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from multidict import CIMultiDict
@@ -157,6 +158,16 @@ class AbstractCookieJar(Sized, Iterable[Morsel[str]]):
     @abstractmethod
     def quote_cookie(self) -> bool:
         """Return True if cookies should be quoted."""
+
+    @property
+    @abstractmethod
+    def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
+        """Return the cookies stored in this jar."""
+
+    @property
+    @abstractmethod
+    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        """Return the host-only cookies stored in this jar."""
 
     @abstractmethod
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
