@@ -2902,7 +2902,9 @@ application on specific TCP or Unix socket, e.g.::
 
    :param str host: HOST to listen on, all interfaces if ``None`` (default).
 
-   :param int port: PORT to listed on, ``8080`` if ``None`` (default).
+   :param int port: PORT to listen on, ``8080`` if ``None`` (default).
+                    Use ``0`` to let the OS assign a free ephemeral port
+                    (see :attr:`port`).
 
    :param float shutdown_timeout: a timeout used for both waiting on pending
                                   tasks before application shutdown and for
@@ -2929,6 +2931,12 @@ application on specific TCP or Unix socket, e.g.::
                            endpoints are bound to, so long as they all set
                            this flag when being created. This option is not
                            supported on Windows.
+
+   .. attribute:: port
+
+      Read-only. The actual port number the server is bound to, only
+      guaranteed to be correct after the site has been started.
+
 
 .. class:: UnixSite(runner, path, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
