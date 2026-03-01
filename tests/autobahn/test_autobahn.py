@@ -1,7 +1,6 @@
 import json
 import subprocess
 import sys
-import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -15,8 +14,6 @@ else:
     python_on_whales = pytest.importorskip("python_on_whales")
     DockerException = python_on_whales.DockerException
     docker = python_on_whales.docker
-
-AUTOBAHN_PATH = Path(__file__).parent
 
 # Test number, test status, error message
 Result = tuple[str, str, str | None]
@@ -62,34 +59,8 @@ def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
     return failed_messages
 
 
-def pytest_generate_tests(metafunc):
-    if "client_result" in metafunc.fixturenames:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            docker.build(
-                file="tests/autobahn/Dockerfile.autobahn",
-                tags=["autobahn-testsuite"],
-                context_path=".",
-            )
-            try:
-                test_results = run_client_tests(Path(tmp_dir) / "reports")
-            finally:
-                docker.image.remove(x="autobahn-testsuite")
-        metafunc.parametrize("client_result", test_results)
-    if "server_result" in metafunc.fixturenames:
-        with tempfile.TemporaryDirectory("reports") as tmp_dir:
-            docker.build(
-                file="tests/autobahn/Dockerfile.autobahn",
-                tags=["autobahn-testsuite"],
-                context_path=".",
-            )
-            try:
-                test_results = run_server_tests(Path(tmp_dir) / "reports")
-            finally:
-                docker.image.remove(x="autobahn-testsuite")
-        metafunc.parametrize("server_result", test_results)
-
-
-def run_client_tests(report_dir: Path) -> None:
+@pytest.mark.autobahn
+def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     try:
         autobahn_container = docker.run(
             detach=True,
@@ -98,7 +69,7 @@ def run_client_tests(report_dir: Path) -> None:
             publish=[(9001, 9001)],
             remove=True,
             volumes=[
-                (AUTOBAHN_PATH / "client", "/config"),
+                (request.path.parent / "client", "/config"),
                 (report_dir, "/reports"),
             ],
         )
@@ -113,18 +84,21 @@ def run_client_tests(report_dir: Path) -> None:
         client.wait()
         autobahn_container.stop()
 
-    return get_test_results(report_dir / "clients", "aiohttp")
+    results = get_test_results(report_dir / "clients", "aiohttp")
+
+    assert results = {}
 
 
-def run_server_tests(report_dir: Path) -> None:
+@pytest.mark.autobahn
+def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
+    server = subprocess.Popen((sys.executable, "tests/autobahn/server/server.py"))
     try:
-        server = subprocess.Popen((sys.executable, "tests/autobahn/server/server.py"))
         docker.run(
             image="autobahn-testsuite",
             name="autobahn",
             remove=True,
             volumes=[
-                (AUTOBAHN_PATH / "server", "/config"),
+                (request.path.parent / "server", "/config"),
                 (report_dir, "/reports"),
             ],
             networks=("host",),
@@ -144,14 +118,5 @@ def run_server_tests(report_dir: Path) -> None:
         server.terminate()
         server.wait()
 
-    return get_test_results(report_dir / "servers", "AutobahnServer")
-
-
-# @pytest.mark.autobahn
-# def test_client(client_result: Result) -> None:
-#    assert client_result[1] == "OK"
-
-
-@pytest.mark.autobahn
-def test_server(server_result: Result) -> None:
-    assert server_result[1] == "OK"
+    results = get_test_results(report_dir / "servers", "AutobahnServer")
+    assert results == {}
