@@ -790,8 +790,7 @@ async def test_dummy_cookie_jar_cookies_property() -> None:
 async def test_cookie_jar_cookies_property() -> None:
     jar = CookieJar()
     cookie = SimpleCookie(
-        "shared-cookie=first; "
-        "domain-cookie=second; Domain=example.com; Path=/; "
+        "shared-cookie=first; " "domain-cookie=second; Domain=example.com; Path=/; "
     )
     jar.update_cookies(cookie, URL("http://example.com/"))
 
@@ -799,11 +798,7 @@ async def test_cookie_jar_cookies_property() -> None:
     # Should be a read-only view
     assert isinstance(cookies, MappingProxyType)
     # Should contain the stored cookies with their full attributes
-    found_names = {
-        name
-        for simple_cookie in cookies.values()
-        for name in simple_cookie
-    }
+    found_names = {name for simple_cookie in cookies.values() for name in simple_cookie}
     assert "shared-cookie" in found_names
     assert "domain-cookie" in found_names
     # Verify that domain attribute is preserved
