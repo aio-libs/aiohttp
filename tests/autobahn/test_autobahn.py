@@ -132,4 +132,4 @@ def run_server_tests(report_dir: Path, request: pytest.FixtureRequest) -> None:
     not sys.platform.startswith("linux"), reason="Docker not pre-installed"
 )
 def test_server(run_server_tests) -> None:
-    print(run_server_tests)
+    assert run_server_tests == {}
