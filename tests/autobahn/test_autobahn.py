@@ -15,6 +15,9 @@ else:
     DockerException = python_on_whales.DockerException
     docker = python_on_whales.docker
 
+# Test number, test status, error message
+Result = tuple[str, str, str | None]
+
 
 @pytest.fixture(scope="module")
 def report_dir(tmp_path_factory: TempPathFactory) -> Path:
@@ -35,9 +38,16 @@ def build_autobahn_testsuite() -> Iterator[None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_test_results(path: Path, name: str) -> list[dict[str, Any]]:
-    result_summary = json.loads((path / "index.json").read_text())[name]
+def get_err(path: Path, result) -> str | None:
+    if r["behaviorClose"] == "OK":
+        return None
+    return json.loads((path / result["reportfile"]).read_text())
+
+
+def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
+    results = json.loads((path / "index.json").read_text())[name]
     print(result_summary)
+    tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
     return result_summary
     failed_messages = []
     PASS = {"OK", "INFORMATIONAL"}
