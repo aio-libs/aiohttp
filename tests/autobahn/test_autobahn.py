@@ -121,4 +121,4 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
     for r in results:
-        assert r[1] == "OK", r[2]
+        assert r[1] == "OK", list(r[2].keys())
