@@ -16,12 +16,12 @@ else:
     docker = python_on_whales.docker
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def report_dir(tmp_path_factory: TempPathFactory) -> Path:
     return tmp_path_factory.mktemp("reports")
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def build_autobahn_testsuite() -> Iterator[None]:
     docker.build(
         file="tests/autobahn/Dockerfile.autobahn",
@@ -35,8 +35,10 @@ def build_autobahn_testsuite() -> Iterator[None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_failed_tests(path: Path, name: str) -> list[dict[str, Any]]:
+def get_test_results(path: Path, name: str) -> list[dict[str, Any]]:
     result_summary = json.loads((path / "index.json").read_text())[name]
+    print(result_summary)
+    return result_summary
     failed_messages = []
     PASS = {"OK", "INFORMATIONAL"}
     entry_fields = {"case", "description", "expectation", "expected", "received"}
@@ -86,11 +88,15 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     )
 
 
-def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
+def pytest_generate_tests(metafunc):
+    if "server_result" in metafunc.fixturenames:
+        metafunc.parametrize("server_result", ["d1", "d2"], indirect=True)
+
+
+@pytest.fixture
+def run_server_tests(report_dir: Path, request: pytest.FixtureRequest, metafunc) -> None:
     try:
-        print("Starting aiohttp test server")
         server = subprocess.Popen((sys.executable, "tests/autobahn/server/server.py"))
-        print("Starting autobahn-testsuite client")
         docker.run(
             image="autobahn-testsuite",
             name="autobahn",
@@ -99,7 +105,7 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
                 (request.path.parent / "server", "/config"),
                 (report_dir, "/reports"),
             ],
-            networks=["host"],
+            networks=("host",),
             command=(
                 "wait-for-it",
                 "-s",
@@ -113,16 +119,11 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
             ),
         )
     finally:
-        print("Stopping client and server")
         server.terminate()
         server.wait()
 
-    failed_messages = get_failed_tests(report_dir / "servers", "AutobahnServer")
+    return get_test_results(report_dir / "servers", "AutobahnServer")
 
-    assert not failed_messages, "\n".join(
-        "\n\t".join(
-            f"{field}: {msg[field]}"
-            for field in ("case", "description", "expectation", "expected", "received")
-        )
-        for msg in failed_messages
-    )
+
+def test_server(server_result) -> None:
+    
