@@ -115,5 +115,9 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
         server.wait()
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
+    failed = []
     for r in results:
-        assert r[1] in {"OK", "INFORMATIONAL"}, r[2]
+        if r[1] != "OK":
+            print(r[2])
+            failed.append(r)
+    assert not failed
