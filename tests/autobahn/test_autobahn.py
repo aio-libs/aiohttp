@@ -86,7 +86,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "clients", "aiohttp")
 
-    assert results = {}
+    assert results == {}
 
 
 @pytest.mark.autobahn
