@@ -94,7 +94,9 @@ def pytest_generate_tests(metafunc):
 
 
 @pytest.fixture
-def run_server_tests(report_dir: Path, request: pytest.FixtureRequest, metafunc) -> None:
+def run_server_tests(
+    report_dir: Path, request: pytest.FixtureRequest, metafunc
+) -> None:
     try:
         server = subprocess.Popen((sys.executable, "tests/autobahn/server/server.py"))
         docker.run(
