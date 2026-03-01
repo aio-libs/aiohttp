@@ -125,5 +125,5 @@ def run_server_tests(report_dir: Path, request: pytest.FixtureRequest, metafunc)
     return get_test_results(report_dir / "servers", "AutobahnServer")
 
 
-def test_server(server_result) -> None:
-
+def test_server(run_server_tests) -> None:
+    print(run_server_tests)
