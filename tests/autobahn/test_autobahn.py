@@ -45,7 +45,7 @@ def get_err(path: Path, result) -> str | None:
 
 
 def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
-    print("FOO", list(path.iterdir()))
+    print("FOO", list(path.parent.iterdir()))
     results = json.loads((path / "index.json").read_text())[name]
     print(results)
     return tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
