@@ -8,7 +8,7 @@ import warnings
 from collections import deque
 from collections.abc import Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
-from types import SimpleNamespace
+from types import MappingProxyType, SimpleNamespace
 from typing import Any, NoReturn, TypedDict, cast
 from unittest import mock
 from uuid import uuid4
@@ -778,6 +778,14 @@ async def test_cookie_jar_usage(
         @property
         def quote_cookie(self) -> bool:
             return True
+
+        @property
+        def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
+            return MappingProxyType({})
+
+        @property
+        def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+            return frozenset()
 
         def clear(self, predicate: abc.ClearCookiePredicate | None = None) -> None:
             self._clear_mock(predicate)
