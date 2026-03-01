@@ -50,6 +50,7 @@ def get_test_results(path: Path, name: str) -> list[dict[str, Any]]:
     return failed_messages
 
 
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Docker not pre-installed")
 def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     try:
         print("Starting autobahn-testsuite server")
@@ -125,5 +126,6 @@ def run_server_tests(report_dir: Path, request: pytest.FixtureRequest) -> None:
     return get_test_results(report_dir / "servers", "AutobahnServer")
 
 
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Docker not pre-installed")
 def test_server(run_server_tests) -> None:
     print(run_server_tests)
