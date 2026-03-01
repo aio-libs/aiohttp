@@ -3,12 +3,10 @@ import platform
 import signal
 from typing import Any
 from unittest import mock
-from unittest.mock import patch
 
 import pytest
 
 from aiohttp import web
-from aiohttp.abc import AbstractAccessLogger
 from aiohttp.test_utils import get_unused_port_socket
 
 
@@ -240,7 +238,6 @@ async def test_app_handler_args_ceil_threshold(value: Any, expected: Any) -> Non
     assert rh._timeout_ceil_threshold == expected
     await runner.cleanup()
     assert app
-
 
 
 async def test_tcpsite_ephemeral_port(make_runner: Any) -> None:

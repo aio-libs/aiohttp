@@ -5,10 +5,9 @@ import socket
 import ssl
 
 import aiohttp
-from aiohttp import ClientSession, TCPConnector, web
+from aiohttp import web
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.resolver import DefaultResolver
-from aiohttp.test_utils import unused_port
 
 
 class FakeResolver(AbstractResolver):
