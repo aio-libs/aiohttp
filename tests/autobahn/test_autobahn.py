@@ -39,7 +39,7 @@ def build_autobahn_testsuite() -> Iterator[None]:
 
 
 def get_err(path: Path, result) -> str | None:
-    if r["behaviorClose"] == "OK":
+    if result["behaviorClose"] == "OK":
         return None
     return json.loads((path / result["reportfile"]).read_text())
 
