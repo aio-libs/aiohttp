@@ -45,6 +45,7 @@ def get_err(path: Path, result) -> str | None:
 
 
 def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
+    print("FOO", list(path.iterdir()))
     results = json.loads((path / "index.json").read_text())[name]
     print(results)
     return tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
@@ -85,8 +86,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         autobahn_container.stop()
 
     results = get_test_results(report_dir / "clients", "aiohttp")
-
-    assert results == {}
+    assert all(r[1] == "OK" for r in results)
 
 
 @pytest.mark.autobahn
@@ -119,4 +119,4 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
         server.wait()
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
-    assert results == {}
+    assert all(r[1] == "OK" for r in results)
