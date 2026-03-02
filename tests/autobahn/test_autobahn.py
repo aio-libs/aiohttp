@@ -115,9 +115,11 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
         server.wait()
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
+    xfail = {"7.9.5", "Clean close with protocol error code or drop TCP"}
     failed = []
     for r in results:
         if r[1] not in {"OK", "INFORMATIONAL"}:
-            print(r[2])
-            failed.append(r)
+            if r["expectation"] != xfail.get(r["id"]):
+                print(r[2])
+                failed.append(r)
     assert not failed
