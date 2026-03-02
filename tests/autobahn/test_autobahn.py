@@ -115,7 +115,7 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
         server.wait()
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
-    xfail = {"7.9.5", "The close code should have been 1002 or empty"}
+    xfail = {"7.9.5": "The close code should have been 1002 or empty"}
     failed = []
     for r in results:
         if r[1] not in {"OK", "INFORMATIONAL"}:
