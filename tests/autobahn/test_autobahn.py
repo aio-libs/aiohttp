@@ -15,8 +15,8 @@ else:
     DockerException = python_on_whales.DockerException
     docker = python_on_whales.docker
 
-# Test number, test status, error message
-Result = tuple[str, str, str | None]
+# (Test number, test status, test details)
+Result = tuple[str, str, dict[str, object] | None]
 
 
 @pytest.fixture(scope="session")
@@ -38,16 +38,28 @@ def build_autobahn_testsuite() -> Iterator[None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_err(path: Path, result) -> str | None:
+def get_err(path: Path, result: dict[str, str]) -> str | None:
     if result["behaviorClose"] == "OK":
         return None
     return json.loads((path / result["reportfile"]).read_text())
 
 
 def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
-    print("FOO", list(path.parent.iterdir()))
     results = json.loads((path / "index.json").read_text())[name]
     return tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
+
+
+def process_xfail(results: tuple[Result, ...], xfail: dict[str, str]) -> list[dict[str, object]]:
+    failed = []
+    for number, status, details in results:
+        if number in xfail:
+            assert status not in {"OK", "INFORMATIONAL"}  # Strict xfail
+            if details["result"] == xfail.get(number):
+                continue
+        if status not in {"OK", "INFORMATIONAL"}:
+            print(details)
+            failed.append(details)
+    return failed
 
 
 @pytest.mark.autobahn
@@ -81,8 +93,8 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         autobahn_container.stop()
 
     results = get_test_results(report_dir / "clients", "aiohttp")
-    for r in results:
-        assert r[1] in {"OK", "INFORMATIONAL"}, r[2]
+    xfail = {}
+    assert not process_xfail(results, xfail)
 
 
 @pytest.mark.autobahn
@@ -116,10 +128,4 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
     xfail = {"7.9.5": "The close code should have been 1002 or empty"}
-    failed = []
-    for r in results:
-        if r[1] not in {"OK", "INFORMATIONAL"}:
-            if r[2]["result"] != xfail.get(r["id"]):
-                print(r[2])
-                failed.append(r)
-    assert not failed
+    assert not process_xfail(results, xfail)
