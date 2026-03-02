@@ -119,7 +119,7 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     failed = []
     for r in results:
         if r[1] not in {"OK", "INFORMATIONAL"}:
-            if r["result"] != xfail.get(r["id"]):
+            if r[2]["result"] != xfail.get(r["id"]):
                 print(r[2])
                 failed.append(r)
     assert not failed
