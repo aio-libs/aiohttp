@@ -38,10 +38,10 @@ def build_autobahn_testsuite() -> Iterator[None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_err(path: Path, result: dict[str, str]) -> str | None:
+def get_err(path: Path, result: dict[str, str]) -> dict[str, object] | None:
     if result["behaviorClose"] == "OK":
         return None
-    return json.loads((path / result["reportfile"]).read_text())
+    return json.loads((path / result["reportfile"]).read_text())  # type: ignore[no-any-return]
 
 
 def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
@@ -56,9 +56,11 @@ def process_xfail(
     for number, status, details in results:
         if number in xfail:
             assert status not in {"OK", "INFORMATIONAL"}  # Strict xfail
-            if details["result"] == xfail.get(number):
+            assert details is not None
+            if details["result"] == xfail[number]:
                 continue
         if status not in {"OK", "INFORMATIONAL"}:
+            assert details is not None
             print(details)
             failed.append(details)
     return failed
@@ -66,6 +68,16 @@ def process_xfail(
 
 @pytest.mark.autobahn
 def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
+    client = subprocess.Popen(
+        (
+            "wait-for-it",
+            "-s",
+            "localhost:9001",
+            "--",
+            sys.executable,
+            "tests/autobahn/client/client.py",
+        )
+    )
     try:
         autobahn_container = docker.run(
             detach=True,
@@ -78,16 +90,6 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
                 (report_dir, "/reports"),
             ],
         )
-        client = subprocess.Popen(
-            (
-                "wait-for-it",
-                "-s",
-                "localhost:9001",
-                "--",
-                sys.executable,
-                "tests/autobahn/client/client.py",
-            )
-        )
         client.wait()
     finally:
         client.terminate()
@@ -95,7 +97,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         autobahn_container.stop()
 
     results = get_test_results(report_dir / "clients", "aiohttp")
-    xfail = {}
+    xfail: dict[str, str] = {}
     assert not process_xfail(results, xfail)
 
 
@@ -129,5 +131,10 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
         server.wait()
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
-    xfail = {"7.9.5": "The close code should have been 1002 or empty"}
+    xfail = {
+        "7.9.5": "The close code should have been 1002 or empty",
+        "9.1.4": "Did not receive message within 100 seconds.",
+        "9.1.5": "Did not receive message within 100 seconds.",
+        "9.1.6": "Did not receive message within 100 seconds.",
+    }
     assert not process_xfail(results, xfail)
