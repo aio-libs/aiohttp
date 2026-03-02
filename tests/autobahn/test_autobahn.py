@@ -49,7 +49,9 @@ def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
     return tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
 
 
-def process_xfail(results: tuple[Result, ...], xfail: dict[str, str]) -> list[dict[str, object]]:
+def process_xfail(
+    results: tuple[Result, ...], xfail: dict[str, str]
+) -> list[dict[str, object]]:
     failed = []
     for number, status, details in results:
         if number in xfail:
