@@ -1,5 +1,5 @@
 {
-    "options": {"failByDrop": false},
+    "options": {"failByDrop": true},
     "outdir": "./reports/servers",
 
     "servers": [
@@ -14,3 +14,4 @@
     "exclude-cases": [],
     "exclude-agent-cases": {}
 }
+
