@@ -427,16 +427,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Decide whether the needed jobs succeeded or failed
+      uses: re-actors/alls-green@release/v1
+      with:
+        jobs: ${{ toJSON(needs) }}
     - name: Trigger codecov notification
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
         run_command: send-notifications
-    - name: Decide whether the needed jobs succeeded or failed
-      uses: re-actors/alls-green@release/v1
-      with:
-        jobs: ${{ toJSON(needs) }}
 
   pre-deploy:
     name: Pre-Deploy
