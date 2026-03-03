@@ -77,7 +77,9 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
             "-s",
             "localhost:9001",
             "--",
-            sys.executable,
+            "coverage",
+            "run",
+            "-a",
             "tests/autobahn/client/client.py",
         )
     )
@@ -133,7 +135,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
 @pytest.mark.autobahn
 def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
-    server = subprocess.Popen((sys.executable, "tests/autobahn/server/server.py"))
+    server = subprocess.Popen(("coverage", "run", "-a", "tests/autobahn/server/server.py"))
     try:
         docker.run(
             image="autobahn-testsuite",
