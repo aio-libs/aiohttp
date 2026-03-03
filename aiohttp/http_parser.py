@@ -42,7 +42,7 @@ from .http_exceptions import (
     TransferEncodingError,
 )
 from .http_writer import HttpVersion, HttpVersion10
-from .streams import EMPTY_PAYLOAD, StreamReader
+from .streams import EMPTY_PAYLOAD, StreamReader, empty_stream_reader
 from .typedefs import RawHeaders
 
 __all__ = (
@@ -424,7 +424,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
                         else:
-                            payload = EMPTY_PAYLOAD
+                            payload = empty_stream_reader()
 
                         messages.append((msg, payload))
                         should_close = msg.should_close
