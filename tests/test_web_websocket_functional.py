@@ -1710,5 +1710,7 @@ async def test_prepare_after_client_disconnect(aiohttp_client: AiohttpClient) ->
     # Yield so the handler can resume and hit the ConnectionResetError.
     await asyncio.sleep(0)
 
-    with contextlib.suppress(aiohttp.ServerDisconnectedError, aiohttp.ClientConnectionResetError):
+    with contextlib.suppress(
+        aiohttp.ServerDisconnectedError, aiohttp.ClientConnectionResetError
+    ):
         await request_task
