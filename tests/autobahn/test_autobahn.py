@@ -1,4 +1,5 @@
 import json
+import pprint
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -15,7 +16,7 @@ else:
     DockerException = python_on_whales.DockerException
     docker = python_on_whales.docker
 
-# (Test number, test status, test details)
+# (Test number, test status, test report)
 Result = tuple[str, str, dict[str, object] | None]
 
 
@@ -38,7 +39,7 @@ def build_autobahn_testsuite() -> Iterator[None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_err(path: Path, result: dict[str, str]) -> dict[str, object] | None:
+def get_report(path: Path, result: dict[str, str]) -> dict[str, object] | None:
     if result["behaviorClose"] == "OK":
         return None
     return json.loads((path / result["reportfile"]).read_text())  # type: ignore[no-any-return]
@@ -46,7 +47,7 @@ def get_err(path: Path, result: dict[str, str]) -> dict[str, object] | None:
 
 def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
     results = json.loads((path / "index.json").read_text())[name]
-    return tuple((k, r["behaviorClose"], get_err(path, r)) for k, r in results.items())
+    return tuple((k, r["behaviorClose"], get_report(path, r)) for k, r in results.items())
 
 
 def process_xfail(
@@ -61,7 +62,7 @@ def process_xfail(
                 continue
         if status not in {"OK", "INFORMATIONAL"}:
             assert details is not None
-            print(details)
+            pprint.pprint(details)
             failed.append(details)
     return failed
 
