@@ -62,7 +62,7 @@ def process_xfail(
             assert details is not None
             if details["result"] == xfail[number]:
                 continue
-        if status not in {"OK", "INFORMATIONAL"}:
+        if status not in {"OK", "INFORMATIONAL"}:  # pragma: no cover
             assert details is not None
             pprint.pprint(details)
             failed.append(details)
