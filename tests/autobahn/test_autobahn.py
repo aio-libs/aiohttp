@@ -47,7 +47,9 @@ def get_report(path: Path, result: dict[str, str]) -> dict[str, object] | None:
 
 def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
     results = json.loads((path / "index.json").read_text())[name]
-    return tuple((k, r["behaviorClose"], get_report(path, r)) for k, r in results.items())
+    return tuple(
+        (k, r["behaviorClose"], get_report(path, r)) for k, r in results.items()
+    )
 
 
 def process_xfail(
