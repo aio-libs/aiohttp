@@ -28,5 +28,5 @@ async def client(url: str, name: str) -> None:
             pass
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no branch
     asyncio.run(client("http://localhost:9001", "aiohttp"))
