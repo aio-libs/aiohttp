@@ -1,7 +1,6 @@
 import json
 import pprint
 import subprocess
-import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
