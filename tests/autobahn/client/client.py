@@ -2,32 +2,28 @@
 
 import asyncio
 
-import aiohttp
+from aiohttp import ClientSession, WSMsgType
 
 
 async def client(url: str, name: str) -> None:
-    async with aiohttp.ClientSession() as session:
-        async with session.ws_connect(url + "/getCaseCount") as ws:
+    async with ClientSession(base_url=url) as session:
+        async with session.ws_connect("/getCaseCount") as ws:
             msg = await ws.receive()
-            assert msg.type is aiohttp.WSMsgType.TEXT
+            assert msg.type is WSMsgType.TEXT
             num_tests = int(msg.data)
-            print("running %d cases" % num_tests)
 
         for i in range(1, num_tests + 1):
-            print("running test case:", i)
-            text_url = url + "/runCase?case=%d&agent=%s" % (i, name)
-            async with session.ws_connect(text_url) as ws:
+            async with session.ws_connect("/runCase", params={"case": i, "agent": name}) as ws:
                 async for msg in ws:
-                    if msg.type is aiohttp.WSMsgType.TEXT:
+                    if msg.type is WSMsgType.TEXT:
                         await ws.send_str(msg.data)
-                    elif msg.type is aiohttp.WSMsgType.BINARY:
+                    elif msg.type is WSMsgType.BINARY:
                         await ws.send_bytes(msg.data)
                     else:
                         break
 
-        url = url + "/updateReports?agent=%s" % name
-        async with session.ws_connect(url) as ws:
-            print("finally requesting %s" % url)
+        async with session.ws_connect("/updateReports", params={"agent": name}) as ws:
+            pass
 
 
 async def run(url: str, name: str) -> None:
