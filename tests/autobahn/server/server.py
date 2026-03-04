@@ -17,9 +17,7 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
 
     request.app[websockets].append(ws)
 
-    while True:
-        msg = await ws.receive()
-
+    async for msg in ws:
         if msg.type is web.WSMsgType.TEXT:
             await ws.send_str(msg.data)
         elif msg.type is web.WSMsgType.BINARY:
@@ -34,8 +32,7 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse:
 
 
 async def on_shutdown(app: web.Application) -> None:
-    ws_list = app[websockets]
-    for ws in set(ws_list):
+    for ws in app[websockets]:
         await ws.close(code=WSCloseCode.GOING_AWAY, message=b"Server shutdown")
 
 
@@ -45,8 +42,7 @@ if __name__ == "__main__":
     )
 
     app = web.Application()
-    l: list[web.WebSocketResponse] = []
-    app[websockets] = l
+    app[websockets] = []
     app.router.add_route("GET", "/", wshandler)
     app.on_shutdown.append(on_shutdown)
     try:
