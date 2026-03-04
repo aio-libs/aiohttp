@@ -9,9 +9,11 @@ import pytest
 from pytest import TempPathFactory
 
 if TYPE_CHECKING:
-    import python_on_whales
+    from python_on_whales import DockerException, docker
 else:
     python_on_whales = pytest.importorskip("python_on_whales")
+    DockerException = python_on_whales.DockerException
+    docker = python_on_whales.docker
 
 # (Test number, test status, test report)
 Result = tuple[str, str, dict[str, object] | None]
