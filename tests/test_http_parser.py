@@ -165,12 +165,10 @@ def test_invalid_character(
         max_field_size=8190,
     )
     text = b"POST / HTTP/1.1\r\nHost: localhost:8080\r\nSet-Cookie: abc\x01def\r\n\r\n"
-    error_detail = re.escape(
-        r""":
+    error_detail = re.escape(r""":
 
     b'Set-Cookie: abc\x01def'
-                     ^"""
-    )
+                     ^""")
     with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
         parser.feed_data(text)
 
@@ -189,12 +187,10 @@ def test_invalid_linebreak(
         max_field_size=8190,
     )
     text = b"GET /world HTTP/1.1\r\nHost: 127.0.0.1\n\r\n"
-    error_detail = re.escape(
-        r""":
+    error_detail = re.escape(r""":
 
     b'Host: 127.0.0.1\n'
-                     ^"""
-    )
+                     ^""")
     with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
         parser.feed_data(text)
 
