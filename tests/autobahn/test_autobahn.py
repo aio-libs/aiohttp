@@ -1,9 +1,9 @@
 import json
+import pprint
 import subprocess
-import sys
-from collections.abc import Generator
+from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 from pytest import TempPathFactory
@@ -15,6 +15,9 @@ else:
     DockerException = python_on_whales.DockerException
     docker = python_on_whales.docker
 
+# (Test number, test status, test report)
+Result = tuple[str, str, dict[str, object] | None]
+
 
 @pytest.fixture(scope="session")
 def report_dir(tmp_path_factory: TempPathFactory) -> Path:
@@ -22,15 +25,12 @@ def report_dir(tmp_path_factory: TempPathFactory) -> Path:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def build_autobahn_testsuite() -> Generator[None, None, None]:
-    try:
-        docker.build(
-            file="tests/autobahn/Dockerfile.autobahn",
-            tags=["autobahn-testsuite"],
-            context_path=".",
-        )
-    except DockerException:
-        pytest.skip("The docker daemon is not running.")
+def build_autobahn_testsuite() -> Iterator[None]:
+    docker.build(
+        file="tests/autobahn/Dockerfile.autobahn",
+        tags=["autobahn-testsuite"],
+        context_path=".",
+    )
 
     try:
         yield
@@ -38,25 +38,51 @@ def build_autobahn_testsuite() -> Generator[None, None, None]:
         docker.image.remove(x="autobahn-testsuite")
 
 
-def get_failed_tests(report_path: str, name: str) -> list[dict[str, Any]]:
-    path = Path(report_path)
-    result_summary = json.loads((path / "index.json").read_text())[name]
-    failed_messages = []
-    PASS = {"OK", "INFORMATIONAL"}
-    entry_fields = {"case", "description", "expectation", "expected", "received"}
-    for results in result_summary.values():
-        if results["behavior"] in PASS and results["behaviorClose"] in PASS:
-            continue
-        report = json.loads((path / results["reportfile"]).read_text())
-        failed_messages.append({field: report[field] for field in entry_fields})
-    return failed_messages
+def get_report(path: Path, result: dict[str, str]) -> dict[str, object] | None:
+    if result["behaviorClose"] == "OK":
+        return None
+    return json.loads((path / result["reportfile"]).read_text())  # type: ignore[no-any-return]
 
 
-@pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
-@pytest.mark.xfail
+def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
+    results = json.loads((path / "index.json").read_text())[name]
+    return tuple(
+        (k, r["behaviorClose"], get_report(path, r)) for k, r in results.items()
+    )
+
+
+def process_xfail(
+    results: tuple[Result, ...], xfail: dict[str, str]
+) -> list[dict[str, object]]:
+    failed = []
+    for number, status, details in results:
+        if number in xfail:
+            assert status not in {"OK", "INFORMATIONAL"}  # Strict xfail
+            assert details is not None
+            if details["result"] == xfail[number]:
+                continue
+        if status not in {"OK", "INFORMATIONAL"}:  # pragma: no cover
+            assert details is not None
+            pprint.pprint(details)
+            failed.append(details)
+    return failed
+
+
+@pytest.mark.autobahn
 def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
+    client = subprocess.Popen(
+        (
+            "wait-for-it",
+            "-s",
+            "localhost:9001",
+            "--",
+            "coverage",
+            "run",
+            "-a",
+            "tests/autobahn/client/client.py",
+        )
+    )
     try:
-        print("Starting autobahn-testsuite server")
         autobahn_container = docker.run(
             detach=True,
             image="autobahn-testsuite",
@@ -64,53 +90,64 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
             publish=[(9001, 9001)],
             remove=True,
             volumes=[
-                (f"{request.path.parent}/client", "/config"),
-                (f"{report_dir}", "/reports"),
+                (request.path.parent / "client", "/config"),
+                (report_dir, "/reports"),
             ],
-        )
-        print("Running aiohttp test client")
-        client = subprocess.Popen(
-            ["wait-for-it", "-s", "localhost:9001", "--"]
-            + [sys.executable]
-            + ["tests/autobahn/client/client.py"]
         )
         client.wait()
     finally:
-        print("Stopping client and server")
         client.terminate()
         client.wait()
         autobahn_container.stop()
 
-    failed_messages = get_failed_tests(f"{report_dir}/clients", "aiohttp")
+    results = get_test_results(report_dir / "clients", "aiohttp")
+    xfail = {
+        "3.4": "Actual events match at least one expected.",
+        "7.9.5": "The close code should have been 1002 or empty",
+        "9.1.4": "Did not receive message within 100 seconds.",
+        "9.1.5": "Did not receive message within 100 seconds.",
+        "9.1.6": "Did not receive message within 100 seconds.",
+        "9.2.4": "Did not receive message within 10 seconds.",
+        "9.2.5": "Did not receive message within 100 seconds.",
+        "9.2.6": "Did not receive message within 100 seconds.",
+        "9.3.1": "Did not receive message within 100 seconds.",
+        "9.3.2": "Did not receive message within 100 seconds.",
+        "9.3.3": "Did not receive message within 100 seconds.",
+        "9.3.4": "Did not receive message within 100 seconds.",
+        "9.3.5": "Did not receive message within 100 seconds.",
+        "9.3.6": "Did not receive message within 100 seconds.",
+        "9.3.7": "Did not receive message within 100 seconds.",
+        "9.3.8": "Did not receive message within 100 seconds.",
+        "9.3.9": "Did not receive message within 100 seconds.",
+        "9.4.1": "Did not receive message within 100 seconds.",
+        "9.4.2": "Did not receive message within 100 seconds.",
+        "9.4.3": "Did not receive message within 100 seconds.",
+        "9.4.4": "Did not receive message within 100 seconds.",
+        "9.4.5": "Did not receive message within 100 seconds.",
+        "9.4.6": "Did not receive message within 100 seconds.",
+        "9.4.7": "Did not receive message within 100 seconds.",
+        "9.4.8": "Did not receive message within 100 seconds.",
+        "9.4.9": "Did not receive message within 100 seconds.",
+    }
+    assert not process_xfail(results, xfail)
 
-    assert not failed_messages, "\n".join(
-        "\n\t".join(
-            f"{field}: {msg[field]}"
-            for field in ("case", "description", "expectation", "expected", "received")
-        )
-        for msg in failed_messages
-    )
 
-
-@pytest.mark.skipif(sys.platform == "darwin", reason="Don't run on macOS")
-@pytest.mark.xfail
+@pytest.mark.autobahn
 def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
+    server = subprocess.Popen(
+        ("coverage", "run", "-a", "tests/autobahn/server/server.py")
+    )
     try:
-        print("Starting aiohttp test server")
-        server = subprocess.Popen(
-            [sys.executable] + ["tests/autobahn/server/server.py"]
-        )
-        print("Starting autobahn-testsuite client")
         docker.run(
             image="autobahn-testsuite",
             name="autobahn",
             remove=True,
             volumes=[
-                (f"{request.path.parent}/server", "/config"),
-                (f"{report_dir}", "/reports"),
+                (request.path.parent / "server", "/config"),
+                (report_dir, "/reports"),
             ],
-            networks=["host"],
-            command=[
+            networks=("host",),
+            command=(
                 "wait-for-it",
                 "-s",
                 "localhost:9001",
@@ -120,19 +157,38 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
                 "fuzzingclient",
                 "--spec",
                 "/config/fuzzingclient.json",
-            ],
+            ),
         )
     finally:
-        print("Stopping client and server")
         server.terminate()
         server.wait()
 
-    failed_messages = get_failed_tests(f"{report_dir}/servers", "AutobahnServer")
-
-    assert not failed_messages, "\n".join(
-        "\n\t".join(
-            f"{field}: {msg[field]}"
-            for field in ("case", "description", "expectation", "expected", "received")
-        )
-        for msg in failed_messages
-    )
+    results = get_test_results(report_dir / "servers", "AutobahnServer")
+    xfail = {
+        "7.9.5": "The close code should have been 1002 or empty",
+        "9.1.4": "Did not receive message within 100 seconds.",
+        "9.1.5": "Did not receive message within 100 seconds.",
+        "9.1.6": "Did not receive message within 100 seconds.",
+        "9.2.4": "Did not receive message within 10 seconds.",
+        "9.2.5": "Did not receive message within 100 seconds.",
+        "9.2.6": "Did not receive message within 100 seconds.",
+        "9.3.1": "Did not receive message within 100 seconds.",
+        "9.3.2": "Did not receive message within 100 seconds.",
+        "9.3.3": "Did not receive message within 100 seconds.",
+        "9.3.4": "Did not receive message within 100 seconds.",
+        "9.3.5": "Did not receive message within 100 seconds.",
+        "9.3.6": "Did not receive message within 100 seconds.",
+        "9.3.7": "Did not receive message within 100 seconds.",
+        "9.3.8": "Did not receive message within 100 seconds.",
+        "9.3.9": "Did not receive message within 100 seconds.",
+        "9.4.1": "Did not receive message within 100 seconds.",
+        "9.4.2": "Did not receive message within 100 seconds.",
+        "9.4.3": "Did not receive message within 100 seconds.",
+        "9.4.4": "Did not receive message within 100 seconds.",
+        "9.4.5": "Did not receive message within 100 seconds.",
+        "9.4.6": "Did not receive message within 100 seconds.",
+        "9.4.7": "Did not receive message within 100 seconds.",
+        "9.4.8": "Did not receive message within 100 seconds.",
+        "9.4.9": "Did not receive message within 100 seconds.",
+    }
+    assert not process_xfail(results, xfail)

@@ -1,0 +1,1 @@
+Fixed and reworked ``autobahn`` tests -- by :user:`Dreamsorcerer`.
