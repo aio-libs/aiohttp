@@ -1191,6 +1191,48 @@ def test_payload_body_get_text(payload: object, expected: str | None) -> None:
         assert resp.text == expected
 
 
+def test_body_setter_with_str_stores_bytes() -> None:
+    """Setting body to a str should encode it to bytes (issue #2928)."""
+    resp = web.Response()
+    resp.body = "hello"
+    assert resp.body == b"hello"
+    assert isinstance(resp.body, bytes)
+    assert resp.text == "hello"
+
+
+def test_body_setter_with_str_sets_content_type() -> None:
+    """Setting body to a str should set content_type to text/plain."""
+    resp = web.Response()
+    resp.body = "hello"
+    assert resp.content_type == "text/plain"
+    assert resp.charset == "utf-8"
+
+
+def test_body_setter_with_str_preserves_existing_content_type() -> None:
+    """Setting body to str should not override an existing non-default content_type."""
+    resp = web.Response(content_type="text/html")
+    resp.body = "hello"
+    assert resp.content_type == "text/html"
+
+
+def test_body_setter_with_str_uses_existing_charset() -> None:
+    """Setting body to str should use existing charset for encoding."""
+    resp = web.Response(charset="latin-1", content_type="text/plain")
+    resp.body = "caf\u00e9"
+    assert resp.body == "caf\u00e9".encode("latin-1")
+    assert resp.text == "caf\u00e9"
+
+
+def test_body_setter_str_then_text_roundtrip() -> None:
+    """body = str -> text -> body roundtrip should be consistent."""
+    resp = web.Response()
+    resp.body = "test string"
+    text = resp.text
+    assert text == "test string"
+    resp.text = text
+    assert resp.body == b"test string"
+
+
 def test_response_set_content_length() -> None:
     resp = web.Response()
     with pytest.raises(RuntimeError):
