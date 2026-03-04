@@ -13,7 +13,9 @@ async def client(url: str, name: str) -> None:
             num_tests = int(msg.data)
 
         for i in range(1, num_tests + 1):
-            async with session.ws_connect("/runCase", params={"case": i, "agent": name}) as ws:
+            async with session.ws_connect(
+                "/runCase", params={"case": i, "agent": name}
+            ) as ws:
                 async for msg in ws:
                     if msg.type is WSMsgType.TEXT:
                         await ws.send_str(msg.data)
