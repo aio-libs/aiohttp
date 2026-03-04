@@ -28,14 +28,5 @@ async def client(url: str, name: str) -> None:
             pass
 
 
-async def run(url: str, name: str) -> None:
-    try:
-        await client(url, name)
-    except Exception:
-        import traceback
-
-        traceback.print_exc()
-
-
 if __name__ == "__main__":
-    asyncio.run(run("http://localhost:9001", "aiohttp"))
+    asyncio.run(client("http://localhost:9001", "aiohttp"))
