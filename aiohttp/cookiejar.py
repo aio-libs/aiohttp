@@ -13,6 +13,7 @@ import warnings
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from types import MappingProxyType
 from typing import Union
 
 from yarl import URL
@@ -146,6 +147,16 @@ class CookieJar(AbstractCookieJar):
     @property
     def quote_cookie(self) -> bool:
         return self._quote_cookie
+
+    @property
+    def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
+        """Return the cookies stored in this jar."""
+        return MappingProxyType(self._cookies)
+
+    @property
+    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        """Return the host-only cookies stored in this jar."""
+        return frozenset(self._host_only_cookies)
 
     def save(self, file_path: PathLike) -> None:
         """Save cookies to a file using JSON format.
@@ -597,6 +608,16 @@ class DummyCookieJar(AbstractCookieJar):
     @property
     def quote_cookie(self) -> bool:
         return True
+
+    @property
+    def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
+        """Return an empty mapping."""
+        return MappingProxyType({})
+
+    @property
+    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        """Return an empty frozenset."""
+        return frozenset()
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         pass

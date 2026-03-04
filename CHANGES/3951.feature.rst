@@ -1,0 +1,1 @@
+Added :py:attr:`~aiohttp.CookieJar.cookies` and :py:attr:`~aiohttp.CookieJar.host_only_cookies` read-only properties to :py:class:`~aiohttp.CookieJar` exposing the stored cookies with their full attributes -- by :user:`Br1an67`.
