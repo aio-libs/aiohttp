@@ -1302,10 +1302,7 @@ def test_set_options_route(router: web.UrlDispatcher) -> None:
     resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
     assert all(r.method != "OPTIONS" for r in resource)
     resource.set_options_route(make_handler())
-    for route in resource:
-        if route.method == "OPTIONS":
-            options = route
-    assert options is not None
+    assert any(r.method == "OPTIONS" for r in resource)
 
     with pytest.raises(RuntimeError):
         resource.set_options_route(make_handler())
