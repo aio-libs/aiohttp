@@ -60,19 +60,6 @@ def hello_txt(
     return hello[encoding]
 
 
-@pytest.fixture
-def loop_with_mocked_native_sendfile(
-    loop: asyncio.AbstractEventLoop,
-) -> Iterator[asyncio.AbstractEventLoop]:
-    def sendfile(transport: object, fobj: object, offset: int, count: int) -> NoReturn:
-        if count == 0:
-            raise ValueError("count must be a positive integer (got 0)")
-        raise NotImplementedError
-
-    with mock.patch.object(loop, "sendfile", sendfile):
-        yield loop
-
-
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
 def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Sender]:
     sendfile_mock = None
@@ -154,12 +141,10 @@ async def test_zero_bytes_file_ok(
 
 async def test_zero_bytes_file_mocked_native_sendfile(
     aiohttp_client: AiohttpClient,
-    loop_with_mocked_native_sendfile: asyncio.AbstractEventLoop,
 ) -> None:
     filepath = pathlib.Path(__file__).parent / "data.zero_bytes"
 
     async def handler(request: web.Request) -> web.FileResponse:
-        asyncio.set_event_loop(loop_with_mocked_native_sendfile)
         return web.FileResponse(filepath)
 
     app = web.Application()
