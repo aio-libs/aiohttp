@@ -24,8 +24,8 @@ try:
         import brotlicffi as brotli
     except ImportError:
         import brotli
-except ImportError:
-    brotli = None  # pragma: no cover
+except ImportError:  # pragma: no cover
+    brotli = None
 
 try:
     from backports.zstd import ZstdCompressor
