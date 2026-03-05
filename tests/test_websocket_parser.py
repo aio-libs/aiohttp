@@ -595,7 +595,6 @@ def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
 
     with pytest.raises(WebSocketError) as ctx:
         parser.parse_frame(struct.pack("!BB", 0b11000001, 0b00000001))
-        parser.parse_frame(b"1")
 
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
@@ -604,7 +603,6 @@ def test_parse_no_compress_frame_single(out: WebSocketDataQueue) -> None:
     parser_no_compress = PatchableWebSocketReader(out, 0, compress=False)
     with pytest.raises(WebSocketError) as ctx:
         parser_no_compress.parse_frame(struct.pack("!BB", 0b11000001, 0b00000001))
-        parser_no_compress.parse_frame(b"1")
 
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
