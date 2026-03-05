@@ -4,7 +4,7 @@ import gzip
 import pathlib
 import socket
 from collections.abc import Iterable, Iterator
-from typing import NoReturn, Protocol
+from typing import Protocol
 from unittest import mock
 
 import pytest

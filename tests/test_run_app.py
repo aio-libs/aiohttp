@@ -1316,7 +1316,7 @@ class TestShutdown:
             async def test_resp(sess: ClientSession) -> None:
                 t = ClientTimeout(total=0.4)
                 with pytest.raises(asyncio.TimeoutError):
-                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t) as resp:
+                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t):
                         assert False  # Should timeout before this
                 actions.append("CANCELLED")
 

@@ -629,7 +629,7 @@ async def test_close_conn_on_error(
                 session._connector, "_release", autospec=True, spec_set=True
             ):
                 with pytest.raises(UnexpectedException):
-                    async with session.request("get", "http://example.com") as resp:
+                    async with session.request("get", "http://example.com"):
                         pass
 
                 # normally called during garbage collection.  triggers an exception

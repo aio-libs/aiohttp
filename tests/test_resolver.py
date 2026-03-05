@@ -2,7 +2,7 @@ import asyncio
 import gc
 import ipaddress
 import socket
-from collections.abc import Awaitable, Callable, Collection, Generator, Iterable
+from collections.abc import Awaitable, Callable, Collection, Generator
 from ipaddress import ip_address
 from typing import Any, NamedTuple
 from unittest.mock import Mock, create_autospec, patch
