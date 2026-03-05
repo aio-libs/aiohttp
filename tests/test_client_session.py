@@ -630,7 +630,7 @@ async def test_close_conn_on_error(
             ):
                 with pytest.raises(UnexpectedException):
                     async with session.request("get", "http://example.com") as resp:
-                        await resp.text()
+                        pass
 
                 # normally called during garbage collection.  triggers an exception
                 # if the connection wasn't already closed
