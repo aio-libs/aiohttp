@@ -384,6 +384,13 @@ cdef class HttpParser:
             name = find_header(self._raw_name)
             value = self._raw_value.decode('utf-8', 'surrogateescape')
 
+            # reject null bytes in header values - matches the Python parser
+            # check at http_parser.py. llhttp in lenient mode doesn't reject
+            # these itself, so we need to catch them here.
+            # ref: RFC 9110 section 5.5 (CTL chars forbidden in field values)
+            if "\x00" in value:
+                raise InvalidHeader(self._raw_value)
+
             self._headers.append((name, value))
             if len(self._headers) > self._max_headers:
                 raise BadHttpMessage("Too many headers received")
