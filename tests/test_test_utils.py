@@ -41,11 +41,8 @@ def _create_example_app() -> web.Application:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
-        if msg.type == aiohttp.WSMsgType.TEXT:
-            if msg.data == "close":
-                await ws.close()
-            else:
-                await ws.send_str(msg.data + "/answer")
+        assert msg.type == aiohttp.WSMsgType.TEXT
+        await ws.send_str(msg.data + "/answer")
 
         return ws
 
