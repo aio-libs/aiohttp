@@ -946,7 +946,7 @@ async def test_closed_async_for(
         messages = []
         async for msg in ws:
             messages.append(msg)
-            assert "stop" == msg.data:
+            assert "stop" == msg.data
             await ws.send_str("stopping")
             await ws.close()
 
