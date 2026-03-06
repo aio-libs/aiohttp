@@ -695,9 +695,7 @@ def test_sigint() -> None:
         [sys.executable, "-u", "-c", _script_test_signal],
         stdout=subprocess.PIPE,
     ) as proc:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if line.startswith(b"======== Running on"):
-                break
+        assert proc.stdout.readline().startswith(b"======== Running on")
         proc.send_signal(signal.SIGINT)
         assert proc.wait() == 0
 
@@ -709,9 +707,7 @@ def test_sigterm() -> None:
         [sys.executable, "-u", "-c", _script_test_signal],
         stdout=subprocess.PIPE,
     ) as proc:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if line.startswith(b"======== Running on"):
-                break
+        assert proc.stdout.readline().startswith(b"======== Running on")
         proc.terminate()
         assert proc.wait() == 0
 
