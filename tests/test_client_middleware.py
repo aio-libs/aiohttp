@@ -633,10 +633,8 @@ async def test_request_middleware_overrides_session_middleware_with_specific(
     request_middleware_called = False
 
     async def handler(request: web.Request) -> web.Response:
-        auth_header = request.headers.get("Authorization")
-        if auth_header:
-            return web.Response(text=f"Auth: {auth_header}")
-        return web.Response(text="No auth")
+        auth_header = request.headers["Authorization"]
+        return web.Response(text=f"Auth: {auth_header}")
 
     async def session_middleware(
         request: ClientRequest, handler: ClientHandlerType

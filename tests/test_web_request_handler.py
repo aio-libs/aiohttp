@@ -4,7 +4,7 @@ from aiohttp import web
 
 
 async def serve(request: web.BaseRequest) -> web.Response:
-    return web.Response()
+    assert False
 
 
 async def test_repr() -> None:

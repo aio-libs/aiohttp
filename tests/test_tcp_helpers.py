@@ -13,7 +13,7 @@ if has_ipv6:
     try:
         with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
             pass
-    except OSError:
+    except OSError:  # pragma: no cover
         has_ipv6 = False
 
 
