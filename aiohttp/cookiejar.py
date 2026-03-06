@@ -176,10 +176,6 @@ class CookieJar(AbstractCookieJar):
     def load(self, file_path: PathLike) -> None:
         """Load cookies from a file.
 
-        Tries to load JSON format first. Falls back to loading legacy
-        pickle format (using a restricted unpickler) for backward
-        compatibility with existing cookie files.
-
         :param file_path: Path to file from where cookies will be
             imported, :class:`str` or :class:`pathlib.Path` instance.
         """
