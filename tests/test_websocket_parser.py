@@ -68,7 +68,7 @@ def build_frame(
         compressobj = ZLibBackend.compressobj(wbits=-9)
         message = compressobj.compress(message)
         message = message + compressobj.flush(ZLibBackend.Z_SYNC_FLUSH)
-        assert message.endswith(WS_DEFLATE_TRAILING):
+        assert message.endswith(WS_DEFLATE_TRAILING)
         message = message[:-4]
     msg_length = len(message)
 
