@@ -65,7 +65,7 @@ class Payload(payload.Payload):
         assert False
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        pass
+        """Dummy write."""
 
 
 def test_register_type(registry: payload.PayloadRegistry) -> None:
@@ -146,8 +146,7 @@ def test_string_io_payload() -> None:
 
 def test_async_iterable_payload_default_content_type() -> None:
     async def gen() -> AsyncIterator[bytes]:
-        return
-        yield b"abc"  # type: ignore[unreachable]  # pragma: no cover
+        yield b"abc"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen())
     assert p.content_type == "application/octet-stream"
@@ -155,8 +154,7 @@ def test_async_iterable_payload_default_content_type() -> None:
 
 def test_async_iterable_payload_explicit_content_type() -> None:
     async def gen() -> AsyncIterator[bytes]:
-        return
-        yield b"abc"  # type: ignore[unreachable]  # pragma: no cover
+        yield b"abc"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen(), content_type="application/custom")
     assert p.content_type == "application/custom"

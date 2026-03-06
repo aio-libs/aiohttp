@@ -24,8 +24,8 @@ try:
         import brotlicffi as brotli
     except ImportError:
         import brotli
-except ImportError:
-    brotli = None  # pragma: no cover
+except ImportError:  # pragma: no cover
+    brotli = None
 
 try:
     from backports.zstd import ZstdCompressor
@@ -397,7 +397,7 @@ async def test_stream_request_on_server_eof(aiohttp_client: AiohttpClient) -> No
     client = await aiohttp_client(app)
 
     async def data_gen() -> AsyncIterator[bytes]:
-        for _ in range(2):
+        for _ in range(2):  # pragma: no branch
             yield b"just data"
             await asyncio.sleep(0.1)
 
@@ -430,7 +430,7 @@ async def test_stream_request_on_server_eof_nested(
     client = await aiohttp_client(app)
 
     async def data_gen() -> AsyncIterator[bytes]:
-        for _ in range(2):
+        for _ in range(2):  # pragma: no branch
             yield b"just data"
             await asyncio.sleep(0.1)
 

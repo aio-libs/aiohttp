@@ -388,8 +388,7 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
         except asyncio.CancelledError:
             event.set()
             raise
-        else:
-            raise web.HTTPInternalServerError()
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", on_request)

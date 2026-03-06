@@ -242,7 +242,7 @@ class TestPartReader:
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = b""
             with pytest.raises(ValueError):
-                for _ in range(4):
+                for _ in range(4):  # pragma: no branch
                     result += await obj.read_chunk(7)
         assert b"Hello, World!\r\n-" == result
 
