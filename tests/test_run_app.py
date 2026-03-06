@@ -692,10 +692,10 @@ def test_sigint() -> None:
     skip_if_on_windows()
 
     with subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal],
+        (sys.executable, "-u", "-c", _script_test_signal),
         stdout=subprocess.PIPE,
     ) as proc:
-        assert proc.stdout.readline().startswith(b"======== Running on")
+        assert proc.stdout.readline().startswith(b"======== Running on")  # type: ignore[union-attr]
         proc.send_signal(signal.SIGINT)
         assert proc.wait() == 0
 
@@ -704,10 +704,10 @@ def test_sigterm() -> None:
     skip_if_on_windows()
 
     with subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal],
+        (sys.executable, "-u", "-c", _script_test_signal),
         stdout=subprocess.PIPE,
     ) as proc:
-        assert proc.stdout.readline().startswith(b"======== Running on")
+        assert proc.stdout.readline().startswith(b"======== Running on")  # type: ignore[union-attr]
         proc.terminate()
         assert proc.wait() == 0
 
