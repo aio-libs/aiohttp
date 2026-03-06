@@ -45,7 +45,7 @@ cffi==2.0.0
     #   pytest-codspeed
 cfgv==3.5.0
     # via pre-commit
-charset-normalizer==3.4.4
+charset-normalizer==3.4.5
     # via requests
 click==8.3.1
     # via
