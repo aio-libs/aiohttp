@@ -740,7 +740,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         out.add(field.name, ff)
                     else:
                         # deal with ordinary data
-                        data = bytearray()
+                        raw_data = bytearray()
                         # Test the raw size, but only add to the overall size on decode
                         encoded_size = size
                         while chunk := await field.read_chunk():
@@ -749,10 +749,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                                 raise HTTPRequestEntityTooLarge(
                                     max_size=max_size, actual_size=encoded_size
                                 )
-                            data.extend(chunk)
+                            raw_data.extend(chunk)
 
                         value = bytearray()
-                        async for d in field.decode_iter(data):
+                        async for d in field.decode_iter(raw_data):
                             size += len(chunk)
                             if 0 < max_size < size:
                                 raise HTTPRequestEntityTooLarge(
