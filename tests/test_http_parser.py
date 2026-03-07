@@ -35,7 +35,7 @@ try:
         import brotlicffi as brotli
     except ImportError:
         import brotli
-except ImportError:
+except ImportError:  # pragma: no cover
     brotli = None
 
 try:
