@@ -28,7 +28,7 @@ from .hdrs import (
 )
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
-from .http_exceptions import BadHttpMessage, LineTooLong
+from .http_exceptions import BadHttpMessage
 from .log import internal_logger
 from .payload import (
     JsonPayload,
