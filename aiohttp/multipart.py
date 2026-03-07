@@ -647,7 +647,14 @@ class MultipartReader:
     #: Body part reader class for non multipart/* content types.
     part_reader_cls = BodyPartReader
 
-    def __init__(self, headers: Mapping[str, str], content: StreamReader, *, max_field_size: int = 8190, max_headers: int = 128) -> None:
+    def __init__(
+        self,
+        headers: Mapping[str, str],
+        content: StreamReader,
+        *,
+        max_field_size: int = 8190,
+        max_headers: int = 128,
+    ) -> None:
         self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
         if "boundary" not in self._mimetype.parameters:
@@ -762,7 +769,12 @@ class MultipartReader:
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
                 return type(self)(headers, self._content)
-            return self.multipart_reader_cls(headers, self._content, max_field_size=self._max_field_size, max_headers=self._max_headers)
+            return self.multipart_reader_cls(
+                headers,
+                self._content,
+                max_field_size=self._max_field_size,
+                max_headers=self._max_headers,
+            )
         else:
             return self.part_reader_cls(
                 self._boundary,

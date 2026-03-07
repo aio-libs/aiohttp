@@ -363,7 +363,9 @@ class StreamReader(AsyncStreamReaderMixin):
     async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return await self.readuntil(max_size=max_line_length)
 
-    async def readuntil(self, separator: bytes = b"\n", *, max_size: int | None = None) -> bytes:
+    async def readuntil(
+        self, separator: bytes = b"\n", *, max_size: int | None = None
+    ) -> bytes:
         seplen = len(separator)
         if seplen == 0:
             raise ValueError("Separator should be at least one-byte string")

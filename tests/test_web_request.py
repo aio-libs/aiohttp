@@ -967,9 +967,7 @@ async def test_multipart_formdata_headers_too_many(protocol: BaseProtocol) -> No
     many = b"".join(f"X-{i}: a\r\n".encode() for i in range(130))
     body = (
         b"--b\r\n"
-        b'Content-Disposition: form-data; name="a"\r\n'
-        + many
-        + b"\r\n1\r\n"
+        b'Content-Disposition: form-data; name="a"\r\n' + many + b"\r\n1\r\n"
         b"--b--\r\n"
     )
     content_type = "multipart/form-data; boundary=b"
@@ -983,7 +981,9 @@ async def test_multipart_formdata_headers_too_many(protocol: BaseProtocol) -> No
         payload=payload,
     )
 
-    with pytest.raises(http_exceptions.BadHttpMessage, match="Too many headers received"):
+    with pytest.raises(
+        http_exceptions.BadHttpMessage, match="Too many headers received"
+    ):
         await req.post()
 
 
@@ -992,7 +992,10 @@ async def test_multipart_formdata_header_too_long(protocol: BaseProtocol) -> Non
     body = (
         b"--b\r\n"
         b'Content-Disposition: form-data; name="a"\r\n'
-        + k + b":" + k + b"\r\n"
+        + k
+        + b":"
+        + k
+        + b"\r\n"
         + b"\r\n1\r\n"
         b"--b--\r\n"
     )
