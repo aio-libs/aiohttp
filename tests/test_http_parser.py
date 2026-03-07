@@ -1233,6 +1233,13 @@ def test_http_response_parser_strict_headers(response: HttpResponseParser) -> No
         response.feed_data(b"HTTP/1.1 200 test\r\nFoo: abc\x01def\r\n\r\n")
 
 
+def test_http_response_parser_null_byte_in_header_value(
+    response: HttpResponseParser,
+) -> None:
+    with pytest.raises(http_exceptions.InvalidHeader):
+        response.feed_data(b"HTTP/1.1 200 OK\r\nFoo: abc\x00def\r\n\r\n")
+
+
 def test_http_response_parser_bad_crlf(response: HttpResponseParser) -> None:
     """Still a lot of dodgy servers sending bad requests like this."""
     messages, upgrade, tail = response.feed_data(
