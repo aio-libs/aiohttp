@@ -99,8 +99,8 @@ class HTTPException(CookieMixin, Exception):
     ) -> None:
         if reason is None:
             reason = self.default_reason
-        elif "\n" in reason:
-            raise ValueError("Reason cannot contain \\n")
+        elif "\r" in reason or "\n" in reason:
+            raise ValueError("Reason cannot contain \\r or \\n")
 
         if text is None:
             if not self.empty_body:
