@@ -16,6 +16,7 @@ from yarl import URL
 
 from aiohttp import ETag, HttpVersion, web
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.streams import StreamReader
@@ -981,9 +982,7 @@ async def test_multipart_formdata_headers_too_many(protocol: BaseProtocol) -> No
         payload=payload,
     )
 
-    with pytest.raises(
-        http_exceptions.BadHttpMessage, match="Too many headers received"
-    ):
+    with pytest.raises(BadHttpMessage, match="Too many headers received"):
         await req.post()
 
 
@@ -1011,7 +1010,7 @@ async def test_multipart_formdata_header_too_long(protocol: BaseProtocol) -> Non
     )
 
     match = "400, message:\n  Got more than 8190 bytes when reading"
-    with pytest.raises(http_exceptions.LineTooLong, match=match):
+    with pytest.raises(LineTooLong, match=match):
         await req.post()
 
 
