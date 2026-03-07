@@ -740,17 +740,31 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         out.add(field.name, ff)
                     else:
                         # deal with ordinary data
-                        value = await field.read(decode=True)
+                        raw_data = bytearray()
+                        # Test the raw size, but only add to the overall size on decode
+                        encoded_size = size
+                        while chunk := await field.read_chunk():
+                            encoded_size += len(chunk)
+                            if 0 < max_size < encoded_size:
+                                raise HTTPRequestEntityTooLarge(
+                                    max_size=max_size, actual_size=encoded_size
+                                )
+                            raw_data.extend(chunk)
+
+                        value = bytearray()
+                        async for d in field.decode_iter(raw_data):
+                            size += len(chunk)
+                            if 0 < max_size < size:
+                                raise HTTPRequestEntityTooLarge(
+                                    max_size=max_size, actual_size=size
+                                )
+                            value.extend(d)
+
                         if field_ct is None or field_ct.startswith("text/"):
                             charset = field.get_charset(default="utf-8")
                             out.add(field.name, value.decode(charset))
                         else:
                             out.add(field.name, value)
-                        size += len(value)
-                        if 0 < max_size < size:
-                            raise HTTPRequestEntityTooLarge(
-                                max_size=max_size, actual_size=size
-                            )
                 else:
                     raise ValueError(
                         "To decode nested multipart you need to use custom reader",
