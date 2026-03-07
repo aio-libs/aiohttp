@@ -153,6 +153,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     """
 
     __slots__ = (
+        "max_field_size",
+        "max_headers",
+        "max_line_size",
         "_request_count",
         "_keepalive",
         "_manager",
