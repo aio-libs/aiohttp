@@ -76,7 +76,7 @@ async def test_send_recv_bytes_bad_type(aiohttp_client: AiohttpClient) -> None:
 
     with pytest.raises(WSMessageTypeError):
         await resp.receive_bytes()
-        await resp.close()
+    await resp.close()
 
 
 async def test_recv_bytes_after_close(aiohttp_client: AiohttpClient) -> None:
@@ -97,7 +97,7 @@ async def test_recv_bytes_after_close(aiohttp_client: AiohttpClient) -> None:
         match=f"Received message {WSMsgType.CLOSE}:.+ is not WSMsgType.BINARY",
     ):
         await resp.receive_bytes()
-        await resp.close()
+    await resp.close()
 
 
 async def test_send_recv_bytes(aiohttp_client: AiohttpClient) -> None:
@@ -142,8 +142,7 @@ async def test_send_recv_text_bad_type(aiohttp_client: AiohttpClient) -> None:
 
     with pytest.raises(WSMessageTypeError):
         await resp.receive_str()
-
-        await resp.close()
+    await resp.close()
 
 
 async def test_recv_text_after_close(aiohttp_client: AiohttpClient) -> None:
@@ -164,7 +163,7 @@ async def test_recv_text_after_close(aiohttp_client: AiohttpClient) -> None:
         match=f"Received message {WSMsgType.CLOSE}:.+ is not WSMsgType.TEXT",
     ):
         await resp.receive_str()
-        await resp.close()
+    await resp.close()
 
 
 async def test_send_recv_json(aiohttp_client: AiohttpClient) -> None:
@@ -1151,13 +1150,7 @@ async def test_send_recv_compress_wbits(aiohttp_client: AiohttpClient) -> None:
 
 async def test_send_recv_compress_wbit_error(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-
-        msg = await ws.receive_bytes()
-        await ws.send_bytes(msg + b"/answer")
-        await ws.close()
-        return ws
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)

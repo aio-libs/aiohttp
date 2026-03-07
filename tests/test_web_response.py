@@ -1412,9 +1412,7 @@ async def test_response_prepared_after_header_preparation() -> None:
 
     async def _strip_server(req: web.Request, res: web.Response) -> None:
         assert "Server" in res.headers
-
-        if "Server" in res.headers:
-            del res.headers["Server"]
+        del res.headers["Server"]
 
     app = mock.create_autospec(web.Application, spec_set=True)
     app.on_response_prepare = aiosignal.Signal(app)

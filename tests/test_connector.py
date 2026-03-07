@@ -217,8 +217,6 @@ async def test_del(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
         "connections": mock.ANY,
         "message": "Unclosed connector",
     }
-    if loop.get_debug():
-        msg["source_traceback"] = mock.ANY
     exc_handler.assert_called_with(loop, msg)
 
 
@@ -2118,9 +2116,6 @@ async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
 async def test_cleanup_closed(
     loop: asyncio.AbstractEventLoop, mocker: MockerFixture
 ) -> None:
-    if not hasattr(loop, "__dict__"):
-        pytest.skip("can not override loop attributes")
-
     m = mocker.spy(loop, "call_at")
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
 
@@ -4121,10 +4116,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
         first_conn = next(iter(conn._conns.values()))[0][0]
 
         assert first_conn.transport is not None
-        try:
-            _sslcontext = first_conn.transport._ssl_protocol._sslcontext  # type: ignore[attr-defined]
-        except AttributeError:
-            _sslcontext = first_conn.transport._sslcontext  # type: ignore[attr-defined]
+        _sslcontext = first_conn.transport._ssl_protocol._sslcontext  # type: ignore[attr-defined]
 
         assert _sslcontext is client_ssl_ctx
         r.close()
@@ -4531,10 +4523,6 @@ async def test_connector_does_not_remove_needed_waiters(
             connection.close()
 
     async def allow_connection_and_add_dummy_waiter() -> None:
-        # `asyncio.gather` may execute coroutines not in order.
-        # Skip one event loop run cycle in such a case.
-        if connection_key not in connector._waiters:
-            await asyncio.sleep(0)
         list(connector._waiters[connection_key])[0].set_result(None)
         del connector._waiters[connection_key]
         connector._waiters[connection_key][dummy_waiter] = None

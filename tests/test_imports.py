@@ -58,7 +58,7 @@ def test_import_time(pytester: pytest.Pytester) -> None:
     finally:
         if old_path is None:
             os.environ.pop("PYTHONPATH")
-        else:
+        else:  # pragma: no cover
             os.environ["PYTHONPATH"] = old_path
 
     assert best_time_ms < IMPORT_TIME_THRESHOLD_MS
