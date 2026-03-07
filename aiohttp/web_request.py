@@ -751,14 +751,14 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                                 )
                             data.extend(chunk)
 
-                        decoded_data = bytearray()
+                        value = bytearray()
                         async for d in field.decode_iter(data):
                             size += len(chunk)
                             if 0 < max_size < size:
                                 raise HTTPRequestEntityTooLarge(
                                     max_size=max_size, actual_size=size
                                 )
-                            decoded_data.extend(d)
+                            value.extend(d)
 
                         if field_ct is None or field_ct.startswith("text/"):
                             charset = field.get_charset(default="utf-8")
