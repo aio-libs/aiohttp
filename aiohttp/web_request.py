@@ -743,7 +743,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         data = bytearray()
                         # Test the raw size, but only add to the overall size on decode
                         encoded_size = size
-                        while chunk := field.read_chunk():
+                        while chunk := await field.read_chunk():
                             encoded_size += len(chunk)
                             if 0 < max_size < encoded_size:
                                 raise HTTPRequestEntityTooLarge(
