@@ -101,7 +101,7 @@ class HTTPException(Response, Exception):
                 "body argument is deprecated for http web exceptions",
                 DeprecationWarning,
             )
-        if "\r" in reason or "\n" in reason:
+        if reason is not None and ("\r" in reason or "\n" in reason):
             raise ValueError("Reason cannot contain \\r or \\n")
         Response.__init__(
             self,
