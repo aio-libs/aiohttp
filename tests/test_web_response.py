@@ -1257,7 +1257,7 @@ async def test_render_with_body(buf: bytearray, writer: AbstractStreamWriter) ->
 
 
 async def test_multiline_reason(buf: bytearray, writer: AbstractStreamWriter) -> None:
-    with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
+    with pytest.raises(ValueError, match=r"Reason cannot contain \\r or \\n"):
         web.Response(reason="Bad\r\nInjected-header: foo")
 
 
