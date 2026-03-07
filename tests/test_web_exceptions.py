@@ -272,7 +272,6 @@ def test_unicode_text_body_unauthorized() -> None:
     assert resp.status == 401
 
 
-
 def test_multiline_reason() -> None:
     with pytest.raises(ValueError, match=r"Reason cannot contain"):
         web.HTTPOk(reason="Bad\r\nInjected-header: foo")
