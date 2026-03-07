@@ -12,6 +12,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .http_exceptions import LineTooLong
 from .log import internal_logger
 
 __all__ = (
