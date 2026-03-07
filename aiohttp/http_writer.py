@@ -352,9 +352,9 @@ class StreamWriter(AbstractStreamWriter):
 
 
 def _safe_header(string: str) -> str:
-    if "\r" in string or "\n" in string:
+    if "\r" in string or "\n" in string or "\x00" in string:
         raise ValueError(
-            "Newline or carriage return detected in headers. "
+            "Newline, carriage return, or null byte detected in headers. "
             "Potential header injection attack."
         )
     return string

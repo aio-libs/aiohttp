@@ -996,10 +996,22 @@ def test_serialize_headers_raises_on_new_line_or_carriage_return(char: str) -> N
 
     with pytest.raises(
         ValueError,
-        match=(
-            "Newline or carriage return detected in headers. "
-            "Potential header injection attack."
-        ),
+        match="detected in headers",
+    ):
+        _serialize_headers(status_line, headers)
+
+
+def test_serialize_headers_raises_on_null_byte() -> None:
+    status_line = "HTTP/1.1 200 OK"
+    headers = CIMultiDict(
+        {
+            hdrs.CONTENT_TYPE: "text/plain\x00",
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="null byte detected in headers",
     ):
         _serialize_headers(status_line, headers)
 
