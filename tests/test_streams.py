@@ -14,6 +14,7 @@ import pytest
 
 from aiohttp import streams
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.http_exceptions import LineTooLong
 
 DATA: bytes = b"line1\nline2\nline3\n"
 
