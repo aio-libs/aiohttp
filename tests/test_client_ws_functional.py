@@ -888,12 +888,14 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
     which could cause a ping/pong timeout while bytes were still being received.
     """
     payload = b"x" * 2048
-    heartbeat = 0.05
+    heartbeat = 0.1
     chunk_size = 64
     delay = 0.01
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse()
+        # Disable auto-PONG so a heartbeat PING during frame streaming would
+        # surface as a timeout/closure on the client side.
+        ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
 
         assert ws._writer is not None
@@ -920,10 +922,8 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
     client = await aiohttp_client(app)
 
     async with client.ws_connect("/", heartbeat=heartbeat) as resp:
-        # If heartbeat was not reset on any incoming bytes, the client would start
-        # sending PINGs while we're still streaming the message body, and since the
-        # server handler never calls receive(), no PONG would be produced and the
-        # client would close with a ping/pong timeout.
+        # If heartbeat were not reset on incoming bytes, the client would send
+        # a PING while this frame is still being streamed.
         with mock.patch.object(
             resp._writer, "send_frame", wraps=resp._writer.send_frame
         ) as sf:
@@ -933,6 +933,7 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
             ), "Heartbeat PING sent while data was still being received"
         assert msg.type is WSMsgType.BINARY
         assert msg.data == payload
+        assert not resp.closed
 
 
 async def test_heartbeat_no_pong_after_receive_many_messages(
