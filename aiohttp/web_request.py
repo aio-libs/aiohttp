@@ -753,7 +753,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
                         value = bytearray()
                         async for d in field.decode_iter(raw_data):
-                            size += len(chunk)
+                            size += len(d)
                             if 0 < max_size < size:
                                 raise HTTPRequestEntityTooLarge(
                                     max_size=max_size, actual_size=size
