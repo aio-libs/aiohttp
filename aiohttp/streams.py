@@ -603,7 +603,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return b""
 
-    async def read(self, n: int = -1, *, max_size: int | None = None) -> bytes:
+    async def read(self, n: int = -1) -> bytes:
         return b""
 
     # TODO add async def readuntil
