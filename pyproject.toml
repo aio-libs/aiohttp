@@ -163,6 +163,12 @@ test-command = ""
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
 
+[tool.cibuildwheel.ios]
+archs = ["arm64_iphoneos", "arm64_iphonesimulator", "x86_64_iphonesimulator"]
+
+[tool.cibuildwheel.android]
+archs = ["arm64_v8a", "x86_64"]
+
 [tool.codespell]
 skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
 ignore-words-list = 'te,assertIn'
