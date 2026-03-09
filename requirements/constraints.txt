@@ -197,7 +197,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.1.0
+python-discovery==1.1.1
     # via virtualenv
 python-on-whales==0.80.0
     # via
