@@ -1710,7 +1710,7 @@ async def test_app_max_client_size_form_decode(aiohttp_client: AiohttpClient) ->
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    with MultipartWriter("form-data") as mp:
+    with aiohttp.MultipartWriter("form-data") as mp:
         # Verify that entire multipart form can't exceed client size (not just each field).
         for i in range(3):
             part = mp.append(gzip.compress(b"A" * 512000))
