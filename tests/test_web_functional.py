@@ -26,7 +26,7 @@ from aiohttp import (
 )
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
-from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
+from aiohttp.hdrs import CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
@@ -1715,7 +1715,7 @@ async def test_app_max_client_size_form_decode(aiohttp_client: AiohttpClient) ->
         for i in range(3):
             part = mp.append(gzip.compress(b"A" * 512000))
             part.set_content_disposition("form-data", name=f"f{i}")
-            part.headers[hdrs.CONTENT_ENCODING] = "gzip"
+            part.headers[CONTENT_ENCODING] = "gzip"
 
         async with client.post("/", data=mp) as resp:
             assert resp.status == 413
