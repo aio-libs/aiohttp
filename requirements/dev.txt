@@ -133,7 +133,7 @@ pathspec==1.0.4
     # via mypy
 pip-tools==7.5.3
     # via -r requirements/dev.in
-pkgconfig==1.5.5
+pkgconfig==1.6.0
     # via -r requirements/test-common.in
 platformdirs==4.9.4
     # via
