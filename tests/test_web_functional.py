@@ -1700,6 +1700,28 @@ async def test_app_max_client_size_form(aiohttp_client: AiohttpClient) -> None:
     assert "Maximum request body size 1048576 exceeded, actual body size" in resp_text
 
 
+async def test_app_max_client_size_form_decode(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        await request.post()
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    with MultipartWriter("form-data") as mp:
+        # Verify that entire multipart form can't exceed client size (not just each field).
+        for i in range(3):
+            part = mp.append(gzip.compress(b"A" * 512000))
+            part.set_content_disposition("form-data", name=f"f{i}")
+            part.headers[hdrs.CONTENT_ENCODING] = "gzip"
+
+        async with client.post("/", data=mp) as resp:
+            assert resp.status == 413
+            resp_text = await resp.text()
+    assert "Maximum request body size 1048576 exceeded, actual body size" in resp_text
+
+
 async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         await request.post()
