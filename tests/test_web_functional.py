@@ -1,4 +1,5 @@
 import asyncio
+import gzip
 import io
 import json
 import pathlib
