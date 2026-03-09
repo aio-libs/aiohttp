@@ -26,7 +26,12 @@ from aiohttp import (
 )
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
-from aiohttp.hdrs import CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
+from aiohttp.hdrs import (
+    CONTENT_ENCODING,
+    CONTENT_LENGTH,
+    CONTENT_TYPE,
+    TRANSFER_ENCODING,
+)
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
