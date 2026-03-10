@@ -83,7 +83,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.80.0
+python-on-whales==0.81.0
     # via -r requirements/test-common.in
 rich==14.3.3
     # via pytest-codspeed
