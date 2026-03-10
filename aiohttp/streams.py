@@ -21,6 +21,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .http_exceptions import LineTooLong
 from .log import internal_logger
 
 __all__ = (
@@ -372,10 +373,12 @@ class StreamReader(AsyncStreamReaderMixin):
         finally:
             self._waiter = None
 
-    async def readline(self) -> bytes:
-        return await self.readuntil()
+    async def readline(self, *, max_line_length: Optional[int] = None) -> bytes:
+        return await self.readuntil(max_size=max_line_length)
 
-    async def readuntil(self, separator: bytes = b"\n") -> bytes:
+    async def readuntil(
+        self, separator: bytes = b"\n", *, max_size: Optional[int] = None
+    ) -> bytes:
         seplen = len(separator)
         if seplen == 0:
             raise ValueError("Separator should be at least one-byte string")
@@ -386,6 +389,7 @@ class StreamReader(AsyncStreamReaderMixin):
         chunk = b""
         chunk_size = 0
         not_enough = True
+        max_size = max_size or self._high_water
 
         while not_enough:
             while self._buffer and not_enough:
@@ -400,8 +404,8 @@ class StreamReader(AsyncStreamReaderMixin):
                 if ichar:
                     not_enough = False
 
-                if chunk_size > self._high_water:
-                    raise ValueError("Chunk too big")
+                if chunk_size > max_size:
+                    raise LineTooLong(chunk[:100] + b"...", max_size)
 
             if self._eof:
                 break
@@ -622,7 +626,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def feed_data(self, data: bytes, n: int = 0) -> None:
         pass
 
-    async def readline(self) -> bytes:
+    async def readline(self, *, max_line_length: Optional[int] = None) -> bytes:
         return b""
 
     async def read(self, n: int = -1) -> bytes:
