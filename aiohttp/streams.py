@@ -377,7 +377,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return await self.readuntil(max_size=max_line_length)
 
     async def readuntil(
-        self, separator: bytes = b"\n", *, max_size: int | None = None
+        self, separator: bytes = b"\n", *, max_size: Optional[int] = None
     ) -> bytes:
         seplen = len(separator)
         if seplen == 0:
@@ -626,7 +626,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def feed_data(self, data: bytes, n: int = 0) -> None:
         pass
 
-    async def readline(self, *, max_line_length: int | None = None) -> bytes:
+    async def readline(self, *, max_line_length: Optional[int] = None) -> bytes:
         return b""
 
     async def read(self, n: int = -1) -> bytes:
