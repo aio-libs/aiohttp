@@ -789,14 +789,14 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
                         value = bytearray()
                         # form-data doesn't support compression, so don't need to check size again.
-                        async for d in field.decode_iter(raw_data):  # type: ignore[arg-type]
+                        async for d in field.decode_iter(raw_data):
                             value.extend(d)
 
                         if field_ct is None or field_ct.startswith("text/"):
                             charset = field.get_charset(default="utf-8")
                             out.add(field.name, value.decode(charset))
                         else:
-                            out.add(field.name, value)  # type: ignore[arg-type]
+                            out.add(field.name, value)
                 else:
                     raise ValueError(
                         "To decode nested multipart you need to use custom reader",
