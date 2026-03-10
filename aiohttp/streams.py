@@ -373,7 +373,7 @@ class StreamReader(AsyncStreamReaderMixin):
         finally:
             self._waiter = None
 
-    async def readline(self, *, max_line_length: int | None = None) -> bytes:
+    async def readline(self, *, max_line_length: Optional[int] = None) -> bytes:
         return await self.readuntil(max_size=max_line_length)
 
     async def readuntil(
