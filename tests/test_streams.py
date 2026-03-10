@@ -12,6 +12,7 @@ import pytest
 from re_assert import Matches
 
 from aiohttp import streams
+from aiohttp.http_exceptions import LineTooLong
 
 DATA = b"line1\nline2\nline3\n"
 
@@ -325,7 +326,7 @@ class TestStreamReader:
         stream.feed_data(b"li")
         stream.feed_data(b"ne1\nline2\n")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(LineTooLong):
             await stream.readline()
         # The buffer should contain the remaining data after exception
         stream.feed_eof()
@@ -346,7 +347,7 @@ class TestStreamReader:
 
         loop.call_soon(cb)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(LineTooLong):
             await stream.readline()
         data = await stream.read()
         assert b"chunk3\n" == data
@@ -436,7 +437,7 @@ class TestStreamReader:
         stream.feed_data(b"li")
         stream.feed_data(b"ne1" + separator + b"line2" + separator)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(LineTooLong):
             await stream.readuntil(separator)
         # The buffer should contain the remaining data after exception
         stream.feed_eof()
@@ -458,7 +459,7 @@ class TestStreamReader:
 
         loop.call_soon(cb)
 
-        with pytest.raises(ValueError, match="Chunk too big"):
+        with pytest.raises(LineTooLong):
             await stream.readuntil(separator)
         data = await stream.read()
         assert b"chunk3#" == data

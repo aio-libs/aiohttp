@@ -84,7 +84,7 @@ class Stream:
     def at_eof(self):
         return self.content.tell() == len(self.content.getbuffer())
 
-    async def readline(self):
+    async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return self.content.readline()
 
     def unread_data(self, data):
@@ -854,7 +854,7 @@ class TestMultipartReader:
             def at_eof(self) -> bool:
                 return not self.content
 
-            async def readline(self) -> bytes:
+            async def readline(self, *, max_line_length: int | None = None) -> bytes:
                 line = b""
                 while self.content and b"\n" not in line:
                     line += self.content.pop(0)
