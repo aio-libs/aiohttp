@@ -741,23 +741,17 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     else:
                         # deal with ordinary data
                         raw_data = bytearray()
-                        # Test the raw size, but only add to the overall size on decode
-                        encoded_size = size
                         while chunk := await field.read_chunk():
-                            encoded_size += len(chunk)
-                            if 0 < max_size < encoded_size:
-                                raise HTTPRequestEntityTooLarge(
-                                    max_size=max_size, actual_size=encoded_size
-                                )
-                            raw_data.extend(chunk)
-
-                        value = bytearray()
-                        async for d in field.decode_iter(raw_data):
-                            size += len(d)
+                            size += len(chunk)
                             if 0 < max_size < size:
                                 raise HTTPRequestEntityTooLarge(
                                     max_size=max_size, actual_size=size
                                 )
+                            raw_data.extend(chunk)
+
+                        value = bytearray()
+                        # form-data doesn't support compression, so don't need to check size again.
+                        async for d in field.decode_iter(raw_data):
                             value.extend(d)
 
                         if field_ct is None or field_ct.startswith("text/"):
