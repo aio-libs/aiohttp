@@ -583,7 +583,8 @@ class ClientResponse(HeadersMixin):
                     and task.cancelling()
                 ):
                     raise
-        self.release()
+        if not self._released:
+            self.release()
 
     async def read(self) -> bytes:
         """Read response payload."""
