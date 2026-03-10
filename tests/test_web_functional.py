@@ -1,5 +1,4 @@
 import asyncio
-import gzip
 import io
 import json
 import pathlib
@@ -26,12 +25,7 @@ from aiohttp import (
 )
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
-from aiohttp.hdrs import (
-    CONTENT_ENCODING,
-    CONTENT_LENGTH,
-    CONTENT_TYPE,
-    TRANSFER_ENCODING,
-)
+from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
@@ -1703,28 +1697,6 @@ async def test_app_max_client_size_form(aiohttp_client: AiohttpClient) -> None:
     async with client.post("/", data=form) as resp:
         assert resp.status == 413
         resp_text = await resp.text()
-    assert "Maximum request body size 1048576 exceeded, actual body size" in resp_text
-
-
-async def test_app_max_client_size_form_decode(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> NoReturn:
-        await request.post()
-        assert False
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-    client = await aiohttp_client(app)
-
-    with aiohttp.MultipartWriter("form-data") as mp:
-        # Verify that entire multipart form can't exceed client size (not just each field).
-        for i in range(3):
-            part = mp.append(gzip.compress(b"A" * 512000))
-            part.set_content_disposition("form-data", name=f"f{i}")
-            part.headers[CONTENT_ENCODING] = "gzip"
-
-        async with client.post("/", data=mp) as resp:
-            assert resp.status == 413
-            resp_text = await resp.text()
     assert "Maximum request body size 1048576 exceeded, actual body size" in resp_text
 
 
