@@ -67,6 +67,11 @@ ASCIISET: Final[set[str]] = set(string.printable)
 #     token = 1*tchar
 _TCHAR_SPECIALS: Final[str] = re.escape("!#$%&'*+-.^_`|~")
 TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
+# RFC 9110 §5.5: field values must not contain CTL characters
+# (0x00-0x08, 0x0A-0x1F, 0x7F) except HTAB (0x09).
+_FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
+    r"[\x00-\x08\x0a-\x1f\x7f]"
+)
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
@@ -184,7 +189,10 @@ class HeadersParser:
             value = bvalue.decode("utf-8", "surrogateescape")
 
             # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
-            if "\n" in value or "\r" in value or "\x00" in value:
+            if self._lax:
+                if "\n" in value or "\r" in value or "\x00" in value:
+                    raise InvalidHeader(bvalue)
+            elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
             headers.add(name, value)
