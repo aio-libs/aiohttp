@@ -67,8 +67,7 @@ ASCIISET: Final[set[str]] = set(string.printable)
 #     token = 1*tchar
 _TCHAR_SPECIALS: Final[str] = re.escape("!#$%&'*+-.^_`|~")
 TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
-# RFC 9110 §5.5: field values must not contain CTL characters
-# (0x00-0x08, 0x0A-0x1F, 0x7F) except HTAB (0x09).
+# https://www.rfc-editor.org/rfc/rfc9110#section-5.5-5
 _FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
     r"[\x00-\x08\x0a-\x1f\x7f]"
 )
