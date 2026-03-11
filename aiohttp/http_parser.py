@@ -70,6 +70,10 @@ TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
+# https://www.rfc-editor.org/rfc/rfc9110#section-5.5-5
+_FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
+    r"[\x00-\x08\x0a-\x1f\x7f]"
+)
 
 
 class RawRequestMessage(NamedTuple):
@@ -194,7 +198,10 @@ class HeadersParser:
             value = bvalue.decode("utf-8", "surrogateescape")
 
             # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
-            if "\n" in value or "\r" in value or "\x00" in value:
+            if self._lax:
+                if "\n" in value or "\r" in value or "\x00" in value:
+                    raise InvalidHeader(bvalue)
+            elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
             headers.add(name, value)
