@@ -65,12 +65,31 @@ def worker(
 
 def test_init_process(worker: base_worker.GunicornWebWorker) -> None:
     with mock.patch("aiohttp.worker.asyncio") as m_asyncio:
+        m_asyncio.get_event_loop.return_value.is_closed.return_value = False
         try:
             worker.init_process()
         except TypeError:
             pass
 
         assert m_asyncio.get_event_loop.return_value.close.called
+        assert m_asyncio.new_event_loop.called
+        assert m_asyncio.set_event_loop.called
+
+
+def test_init_process_no_event_loop(
+    worker: base_worker.GunicornWebWorker,
+) -> None:
+    """Test that init_process handles missing event loop (Python 3.14+)."""
+    with mock.patch("aiohttp.worker.asyncio") as m_asyncio:
+        m_asyncio.get_event_loop.side_effect = RuntimeError(
+            "There is no current event loop in thread 'MainThread'."
+        )
+        try:
+            worker.init_process()
+        except TypeError:
+            pass
+
+        assert m_asyncio.get_event_loop.called
         assert m_asyncio.new_event_loop.called
         assert m_asyncio.set_event_loop.called
 

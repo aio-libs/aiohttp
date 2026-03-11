@@ -49,7 +49,12 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
 
     def init_process(self) -> None:
         # create new event_loop after fork
-        asyncio.get_event_loop().close()
+        try:
+            loop = asyncio.get_event_loop()
+            if not loop.is_closed():
+                loop.close()
+        except RuntimeError:
+            pass  # No running event loop (Python 3.14+)
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)

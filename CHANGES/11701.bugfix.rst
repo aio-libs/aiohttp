@@ -1,0 +1,1 @@
+Fixed :class:`~aiohttp.GunicornWebWorker` crashing on init with Python 3.14+ due to :func:`asyncio.get_event_loop` raising :exc:`RuntimeError` when no event loop exists -- by :user:`tysoncung`.
