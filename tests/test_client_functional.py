@@ -370,6 +370,28 @@ async def test_release_early(aiohttp_client: AiohttpClient) -> None:
     assert 1 == len(client._session.connector._conns)
 
 
+async def test_release_connection_called_three_times_per_request(
+    aiohttp_client: AiohttpClient, mocker: MockerFixture
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    spy = mocker.spy(aiohttp.client_reqrep.ClientResponse, "_release_connection")
+    for _ in range(3):
+        async with client.get("/") as resp:
+            await resp.read()
+    await asyncio.sleep(0)
+
+    # One request with response body read in a context manager currently hits:
+    # _response_eof(), _wait_released(), and release() from __aexit__().
+    assert spy.call_count == 9
+
+
 async def test_HTTP_304(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()

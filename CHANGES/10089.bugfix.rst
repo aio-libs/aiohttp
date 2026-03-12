@@ -1,0 +1,2 @@
+Reduced redundant ``ClientResponse._release_connection()`` invocations so
+successful requests now trigger a single release-path call per response.
