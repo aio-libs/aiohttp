@@ -612,6 +612,12 @@ class Response(StreamResponse):
             self._body = None
         elif isinstance(body, (bytes, bytearray)):
             self._body = body
+        elif isinstance(body, str):
+            self._body = body.encode(self.charset or "utf-8")
+            if self.content_type == "application/octet-stream":
+                self.content_type = "text/plain"
+            if self.charset is None:
+                self.charset = "utf-8"
         else:
             try:
                 self._body = body = payload.PAYLOAD_REGISTRY.get(body)
