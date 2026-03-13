@@ -11,7 +11,7 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp import WSServerHandshakeError, web
+from aiohttp import WSServerHandshakeError, hdrs, web
 from aiohttp.http import WSCloseCode, WSMsgType
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 
@@ -1661,3 +1661,58 @@ async def test_server_receive_json_with_orjson_style_loads(
     assert msg.type is aiohttp.WSMsgType.TEXT
     assert msg.data == "success"
     await ws.close()
+
+
+async def test_prepare_after_client_disconnect(aiohttp_client: AiohttpClient) -> None:
+    """Test ConnectionResetError when client disconnects before ws.prepare().
+
+    Reproduces the race condition where:
+    - Client connects and sends a WebSocket upgrade request
+    - Handler starts async work (e.g. authentication) before calling ws.prepare()
+    - Client disconnects while the handler is busy
+    - Handler then calls ws.prepare() → ConnectionResetError (not AssertionError)
+    """
+    handler_started = asyncio.Event()
+    captured_protocol = None
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal captured_protocol
+        ws = web.WebSocketResponse()
+        captured_protocol = request._protocol
+        handler_started.set()
+        # Simulate async work (e.g., auth check) during which client disconnects.
+        await asyncio.sleep(0)
+        with pytest.raises(ConnectionResetError, match="Transport is not available"):
+            await ws.prepare(request)
+        return web.Response(status=503)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    request_task = asyncio.create_task(
+        client.session.get(
+            client.make_url("/"),
+            headers={
+                hdrs.UPGRADE: "websocket",
+                hdrs.CONNECTION: "Upgrade",
+                hdrs.SEC_WEBSOCKET_KEY: "dGhlIHNhbXBsZSBub25jZQ==",
+                hdrs.SEC_WEBSOCKET_VERSION: "13",
+            },
+        )
+    )
+
+    # Wait until the handler is running but has not yet called ws.prepare().
+    await handler_started.wait()
+    assert captured_protocol is not None
+
+    # Simulate the client disconnecting abruptly.
+    captured_protocol.force_close()
+
+    # Yield so the handler can resume and hit the ConnectionResetError.
+    await asyncio.sleep(0)
+
+    with contextlib.suppress(
+        aiohttp.ServerDisconnectedError, aiohttp.ClientConnectionResetError
+    ):
+        await request_task
