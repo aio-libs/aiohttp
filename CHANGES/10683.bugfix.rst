@@ -1,0 +1,1 @@
+Fixed misleading TLS-in-TLS warning being emitted when sending HTTPS requests through an HTTP proxy. The warning now only fires when the proxy itself uses HTTPS, which is the only case where TLS-in-TLS actually applies -- by :user:`wavebyrd`.

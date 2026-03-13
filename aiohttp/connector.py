@@ -1275,6 +1275,12 @@ class TCPConnector(BaseConnector):
         if req.url.scheme != "https":
             return
 
+        # TLS-in-TLS only applies when the proxy itself is HTTPS.
+        # When the proxy is HTTP, start_tls upgrades a plain TCP connection,
+        # which is standard TLS and works on all event loops and Python versions.
+        if req.proxy is None or req.proxy.scheme != "https":
+            return
+
         # Check if uvloop is being used, which supports TLS in TLS,
         # otherwise assume that asyncio's native transport is being used.
         if type(underlying_transport).__module__.startswith("uvloop"):
