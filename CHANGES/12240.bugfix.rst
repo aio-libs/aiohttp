@@ -1,0 +1,5 @@
+Rejected duplicate singleton headers (``Host``, ``Content-Type``,
+``Content-Length``, etc.) in the C extension HTTP parser to match
+the pure Python parser behavior, preventing potential host-based
+access control bypasses via parser differentials
+-- by :user:`rodrigobnogueira`.
