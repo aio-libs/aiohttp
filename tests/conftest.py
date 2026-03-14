@@ -19,9 +19,13 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
-import trustme
 from multidict import CIMultiDict
 from yarl import URL
+
+try:
+    import trustme
+except ImportError:  # pragma: no cover
+    pass
 
 try:
     from blockbuster import blockbuster_ctx
@@ -113,7 +117,8 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
 
 @pytest.fixture
 def tls_certificate_authority() -> trustme.CA:
-    return trustme.CA()
+    trustme = pytest.importorskip("trustme")
+    return trustme.CA()  # type: ignore[no-any-return]
 
 
 @pytest.fixture

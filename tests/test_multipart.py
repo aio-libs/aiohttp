@@ -122,7 +122,7 @@ class StreamWithShortenRead(Stream):
 
 
 class TestMultipartResponseWrapper:
-    def test_at_eof(self) -> None:
+    async def test_at_eof(self) -> None:
         m_resp = mock.create_autospec(aiohttp.ClientResponse, spec_set=True)
         m_stream = mock.create_autospec(MultipartReader, spec_set=True)
         wrapper = MultipartResponseWrapper(m_resp, m_stream)

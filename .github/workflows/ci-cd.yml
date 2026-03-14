@@ -280,6 +280,58 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
 
+  test-mobile:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
+    name: Test (${{ matrix.config.platform }}, ${{ matrix.pyver }}, ${{ matrix.config.os }})
+    runs-on: ${{ matrix.config.os }}
+    needs: gen_llhttp
+    strategy:
+      matrix:
+        pyver: ["cp313", "cp314"]
+        config:
+          - os: ubuntu-latest
+            platform: android
+            archs: x86_64
+          - os: macos-14
+            platform: ios
+            archs: arm64_iphonesimulator
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        submodules: true
+    - name: Setup Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: 3.x
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install cython
+      run: >-
+        python -m
+        pip install -r requirements/cython.in -c requirements/cython.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v8
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
+    - name: Cythonize
+      run: |
+        make cythonize
+    - name: Build wheels and test
+      uses: pypa/cibuildwheel@v3.4.0
+      env:
+        CIBW_BUILD: ${{ matrix.pyver }}-*
+        CIBW_PLATFORM: ${{ matrix.config.platform }}
+        CIBW_ARCHS: ${{ matrix.config.archs }}
+        CIBW_TEST_REQUIRES: -r requirements/test.txt
+        CIBW_TEST_SOURCES: setup.cfg tests
+        CIBW_TEST_COMMAND: >-
+          python -m pytest -o 'addopts='-v -ra --showlocals -m 'not dev_mode and not autobahn'
+
   autobahn:
     permissions:
       contents: read # to fetch code (actions/checkout)
@@ -422,6 +474,7 @@ jobs:
     needs:
     - lint
     - test
+    - test-mobile
     - autobahn
 
     runs-on: ubuntu-latest
@@ -533,7 +586,7 @@ jobs:
           musl: musllinux
         - os: ubuntu-latest
           platform: android
-        - os: macos-latest
+        - os: macos-14
           platform: ios
     steps:
     - name: Checkout
@@ -583,6 +636,8 @@ jobs:
         CIBW_PLATFORM: ${{ matrix.platform || 'auto' }}
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+        CIBW_ARCHS_IOS: arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator
+        CIBW_ARCHS_ANDROID: arm64_v8a x86_64
     - name: Upload wheels
       uses: actions/upload-artifact@v6
       with:

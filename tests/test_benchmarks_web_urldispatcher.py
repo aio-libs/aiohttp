@@ -10,6 +10,8 @@ from typing import NoReturn, cast
 from unittest import mock
 
 import pytest
+
+pytest.importorskip("pytest_codspeed")
 from multidict import CIMultiDict, CIMultiDictProxy
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
