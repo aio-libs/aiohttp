@@ -48,10 +48,10 @@ dynamic = [
 
 [project.optional-dependencies]
 speedups = [
-  "aiodns >= 3.3.0",
-  "Brotli >= 1.2; platform_python_implementation == 'CPython'",
+  "aiodns >= 3.3.0; sys_platform != 'android' and sys_platform != 'ios'",
+  "Brotli >= 1.2; platform_python_implementation == 'CPython' and sys_platform != 'android' and sys_platform != 'ios'",
   "brotlicffi >= 1.2; platform_python_implementation != 'CPython'",
-  "backports.zstd; platform_python_implementation == 'CPython' and python_version < '3.14'",
+  "backports.zstd; platform_python_implementation == 'CPython' and python_version < '3.14' and sys_platform != 'android' and sys_platform != 'ios'",
 ]
 
 [[project.maintainers]]

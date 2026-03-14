@@ -2050,6 +2050,9 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
         assert [b"line"] == list(buf._buffer)
 
+    @pytest.mark.skipif(
+        sys.platform in ("android", "ios"), reason="brotli not available"
+    )
     async def test_feed_eof_no_err_brotli(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         dbuf = DeflateBuffer(buf, "br")

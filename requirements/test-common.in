@@ -1,17 +1,24 @@
-blockbuster
-coverage
+blockbuster; sys_platform != 'android' and sys_platform != 'ios'
+cffi; sys_platform != 'android' and sys_platform != 'ios'  # used by cryptography, pycares and pytest-codspeedcoverage
+cryptography; sys_platform != 'android' and sys_platform != 'ios'  # used by trustme
+forbiddenfruit; implementation_name == "cpython" and sys_platform != 'android' and sys_platform != 'ios'  # used by blockbuster
 freezegun
-isal; python_version < "3.14" # no wheel for 3.14
-mypy; implementation_name == "cpython"
+isal; python_version < "3.14" and sys_platform != 'android' and sys_platform != 'ios' # no wheel for 3.14
+librt; platform_python_implementation != 'PyPy' and sys_platform != 'android' and sys_platform != 'ios'  # used by mypy
+mypy; implementation_name == "cpython" and sys_platform != 'android' and sys_platform != 'ios'
+mypy-extensions; sys_platform != 'android' and sys_platform != 'ios'  # used by mypy
 pkgconfig
 proxy.py >= 2.4.4rc5
+pycares; sys_platform != 'android' and sys_platform != 'ios'  # used by aiodns
+pydantic; sys_platform != 'android' and sys_platform != 'ios'  # used by python-on-whales
+pydantic-core; sys_platform != 'android' and sys_platform != 'ios'  # used by pydantic
 pytest
 pytest-cov
 pytest-mock
-pytest-xdist
-pytest_codspeed
-python-on-whales
+pytest-xdist; sys_platform != 'android' and sys_platform != 'ios'
+pytest_codspeed; sys_platform != 'android' and sys_platform != 'ios'
+python-on-whales; sys_platform != 'android' and sys_platform != 'ios'
 setuptools-git
-trustme; platform_machine != "i686"  # no 32-bit wheels
+trustme; platform_machine != "i686" and sys_platform != 'android' and sys_platform != 'ios' # no 32-bit and android and ios wheels
 wait-for-it
-zlib_ng
+zlib_ng; sys_platform != 'android' and sys_platform != 'ios'

@@ -1,5 +1,8 @@
 """codspeed benchmarks for the web responses."""
 
+import pytest
+
+pytest.importorskip("pytest_codspeed")
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web

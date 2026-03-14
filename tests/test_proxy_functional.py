@@ -11,8 +11,10 @@ from typing import TYPE_CHECKING, TypedDict
 from unittest import mock
 from uuid import uuid4
 
-import proxy
 import pytest
+
+pytest.importorskip("proxy")
+import proxy
 from pytest_mock import MockerFixture
 from yarl import URL
 
