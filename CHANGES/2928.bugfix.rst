@@ -1,0 +1,1 @@
+Fixed ``AttributeError`` when accessing ``Response.text`` after setting ``body`` to a value that becomes a ``Payload`` without a ``decode`` method. Now raises a clear ``TypeError`` with guidance on using the ``text`` setter instead.

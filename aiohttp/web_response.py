@@ -636,10 +636,15 @@ class Response(StreamResponse):
     def text(self) -> str | None:
         if self._body is None:
             return None
-        # Note: When _body is a Payload (e.g. FilePayload), this may do blocking I/O
-        # This is generally safe as most common payloads (BytesPayload, StringPayload)
-        # don't do blocking I/O, but be careful with file-based payloads
-        return self._body.decode(self.charset or "utf-8")
+        if isinstance(self._body, (bytes, bytearray)):
+            return self._body.decode(self.charset or "utf-8")
+        # For Payload objects, check if decode method exists (BytesPayload and subclasses)
+        if hasattr(self._body, "decode"):
+            return self._body.decode(self.charset or "utf-8")
+        raise TypeError(
+            f"Unable to get text from body type {type(self._body).__name__}. "
+            f"Use the text setter or pass text= to Response() for string content."
+        )
 
     @text.setter
     def text(self, text: str) -> None:
