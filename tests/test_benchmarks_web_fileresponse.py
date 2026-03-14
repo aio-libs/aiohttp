@@ -2,6 +2,7 @@
 
 import asyncio
 import pathlib
+
 import pytest
 
 pytest.importorskip("pytest_codspeed")

@@ -1140,6 +1140,7 @@ async def test_response_with_precompressed_body_brotli(
     aiohttp_client: AiohttpClient,
 ) -> None:
     assert brotli is not None
+
     async def handler(request: web.Request) -> web.Response:
         headers = {"Content-Encoding": "br"}
         return web.Response(body=brotli.compress(b"mydata"), headers=headers)

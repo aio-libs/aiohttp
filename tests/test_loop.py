@@ -9,7 +9,9 @@ from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, loop_context
 
 
-@pytest.mark.skipif(sys.platform in ("android", "ios"), reason="subprocess not available")
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="subprocess not available"
+)
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
@@ -42,7 +44,9 @@ def test_default_loop(loop: asyncio.AbstractEventLoop) -> None:
     assert asyncio.get_event_loop() is loop
 
 
-@pytest.mark.skipif(sys.platform in ("android", "ios"), reason="subprocess not available")
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="subprocess not available"
+)
 def test_setup_loop_non_main_thread() -> None:
     child_exc = None
 

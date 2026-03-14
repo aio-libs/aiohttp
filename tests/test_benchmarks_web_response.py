@@ -1,4 +1,5 @@
 """codspeed benchmarks for the web responses."""
+
 import pytest
 
 pytest.importorskip("pytest_codspeed")

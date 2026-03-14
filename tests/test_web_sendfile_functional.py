@@ -3,8 +3,8 @@ import bz2
 import gzip
 import pathlib
 import socket
-from collections.abc import Iterable, Iterator
 import sys
+from collections.abc import Iterable, Iterator
 from typing import Protocol
 from unittest import mock
 
@@ -626,7 +626,9 @@ async def test_static_file_ssl(
     await conn.close()
 
 
-@pytest.mark.skipif(sys.platform in ("android", "ios"), reason="README.md not supported")
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="README.md not supported"
+)
 async def test_static_file_directory_traversal_attack(
     aiohttp_client: AiohttpClient,
 ) -> None:
