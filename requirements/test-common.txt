@@ -56,7 +56,7 @@ packaging==26.0
     # via pytest
 pathspec==1.0.4
     # via mypy
-pkgconfig==1.5.5
+pkgconfig==1.6.0
     # via -r requirements/test-common.in
 pluggy==1.6.0
     # via
@@ -97,7 +97,7 @@ pytest-xdist==3.8.0 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.80.0 ; sys_platform != "android" and sys_platform != "ios"
+python-on-whales==0.81.0 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/test-common.in
 rich==14.3.3
     # via pytest-codspeed

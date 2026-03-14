@@ -235,10 +235,20 @@ def test_bad_header_name(
         "Foo : bar",  # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
         "Foo\t: bar",
         "\xffoo: bar",
+        "Foo: abc\x01def",  # CTL bytes forbidden per RFC 9110 §5.5
+        "Foo: abc\x7fdef",  # DEL is also a CTL byte
+        "Foo: abc\x1fdef",
     ),
 )
 def test_bad_headers(parser: HttpRequestParser, hdr: str) -> None:
     text = f"POST / HTTP/1.1\r\n{hdr}\r\n\r\n".encode()
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_ctl_host_header_bad_characters(parser: HttpRequestParser) -> None:
+    """CTL byte in Host header must be rejected."""
+    text = b"GET /test HTTP/1.1\r\nHost: trusted.example\x01@bad.test\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
