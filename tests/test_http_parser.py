@@ -281,6 +281,47 @@ def test_content_length_transfer_encoding(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
+@pytest.mark.parametrize(
+    "hdr",
+    (
+        "Content-Length",
+        "Content-Location",
+        "Content-Range",
+        "Content-Type",
+        "ETag",
+        "Host",
+        "Max-Forwards",
+        "Server",
+        "Transfer-Encoding",
+        "User-Agent",
+    ),
+)
+def test_duplicate_singleton_header_rejected(
+    parser: HttpRequestParser, hdr: str
+) -> None:
+    val1, val2 = ("1", "2") if hdr == "Content-Length" else ("value1", "value2")
+    text = (
+        f"GET /test HTTP/1.1\r\n"
+        f"Host: example.com\r\n"
+        f"{hdr}: {val1}\r\n"
+        f"{hdr}: {val2}\r\n"
+        f"\r\n"
+    ).encode()
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
+        parser.feed_data(text)
+
+
+def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
+    text = (
+        b"GET /admin HTTP/1.1\r\n"
+        b"Host: admin.example\r\n"
+        b"Host: public.example\r\n"
+        b"\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate.*Host"):
+        parser.feed_data(text)
+
+
 def test_bad_chunked(parser: HttpRequestParser) -> None:
     """Test that invalid chunked encoding doesn't allow content-length to be used."""
     text = (
