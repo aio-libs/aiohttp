@@ -146,7 +146,6 @@ def test_release(
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
     conn.release()
-    assert protocol.transport is not None
     assert not protocol.transport.close.called  # type: ignore[attr-defined]
     assert conn._protocol is None
     connector._release.assert_called_with(key, protocol)  # type: ignore[attr-defined]
@@ -163,7 +162,6 @@ def test_release_proto_should_close(
     conn = Connection(connector, key, protocol, loop)
     assert not conn.closed
     conn.release()
-    assert protocol.transport is not None
     assert not protocol.transport.close.called  # type: ignore[attr-defined]
     assert conn._protocol is None
     connector._release.assert_called_with(key, protocol)  # type: ignore[attr-defined]
@@ -180,7 +178,6 @@ def test_release_released(
     conn.release()
     connector._release.reset_mock()  # type: ignore[attr-defined]
     conn.release()
-    assert protocol.transport is not None
     assert not protocol.transport.close.called  # type: ignore[attr-defined]
     assert conn._protocol is None
     assert not connector._release.called  # type: ignore[attr-defined]

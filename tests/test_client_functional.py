@@ -447,7 +447,7 @@ async def test_stream_request_on_server_eof_nested(
     assert len(conns) == 1
 
     assert first_conn is not None
-    assert not first_conn.is_connected()
+    assert not first_conn.connected
     assert first_conn is not conns[0][0]
 
 
@@ -801,7 +801,6 @@ async def test_ssl_client_alpn(
 ) -> None:
 
     async def handler(request: web.Request) -> web.Response:
-        assert request.transport is not None
         sslobj = request.transport.get_extra_info("ssl_object")
         return web.Response(text=sslobj.selected_alpn_protocol())
 
@@ -2226,7 +2225,6 @@ async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
         nonlocal expect_called
         expect = request.headers[hdrs.EXPECT]
         assert expect.lower() == "100-continue"
-        assert request.transport is not None
         request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
         expect_called = True
 
@@ -2268,7 +2266,6 @@ async def test_expect100_continue_with_none_payload(
         nonlocal expect_received
         expect_received = True
         # Send 100 Continue
-        assert request.transport is not None
         request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
     app = web.Application()
@@ -2620,7 +2617,6 @@ async def test_payload_content_length_by_chunks(aiohttp_client: AiohttpClient) -
         await resp.prepare(request)
         await resp.write(b"answer")
         await resp.write(b"two")
-        assert request.transport is not None
         request.transport.close()
         return resp
 
@@ -2940,7 +2936,6 @@ async def test_request_conn_error() -> None:
 @pytest.mark.xfail
 async def test_broken_connection(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        assert request.transport is not None
         request.transport.close()
         return web.Response(text="answer" * 1000)
 
@@ -2957,7 +2952,6 @@ async def test_broken_connection_2(aiohttp_client: AiohttpClient) -> None:
         resp = web.StreamResponse(headers={"content-length": "1000"})
         await resp.prepare(request)
         await resp.write(b"answer")
-        assert request.transport is not None
         request.transport.close()
         return resp
 
@@ -3986,7 +3980,6 @@ async def test_multidict_headers(aiohttp_client: AiohttpClient) -> None:
 
 async def test_request_conn_closed(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        assert request.transport is not None
         request.transport.close()
         return web.Response()
 
@@ -4902,7 +4895,6 @@ async def test_network_error_connection_closed(
         # Send partial data then force close the connection
         await response.write(b"x" * 100)  # Only send 100 bytes
         # Force close the transport to simulate network error
-        assert request.transport is not None
         request.transport.close()
         assert False, "Will not return"
 
@@ -4958,7 +4950,6 @@ async def test_client_side_network_error_connection_closed(
             # This simulates connection reset, network failure, etc.
             assert resp.connection is not None
             assert resp.connection.protocol is not None
-            assert resp.connection.protocol.transport is not None
             resp.connection.protocol.transport.close()
 
             # This should fail with connection error

@@ -14,7 +14,6 @@ async def main() -> None:
     app = web.Application()
 
     async def stream_handler(request: web.Request) -> web.Response:
-        assert request.transport is not None
         request.transport.close()  # Forcefully closing connection
         return web.Response()
 

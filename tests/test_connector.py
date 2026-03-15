@@ -371,7 +371,7 @@ async def test_get_unconnected_proto(loop: asyncio.AbstractEventLoop) -> None:
 
         assert await conn._get(key, []) is None
         conn._conns[key] = deque([(proto, loop.time())])
-        proto.is_connected = lambda *args: False
+        proto.connected = False
         assert await conn._get(key, []) is None
     finally:
         await conn.close()
@@ -392,7 +392,7 @@ async def test_get_unconnected_proto_ssl(loop: asyncio.AbstractEventLoop) -> Non
 
         assert await conn._get(key, []) is None
         conn._conns[key] = deque([(proto, loop.time())])
-        proto.is_connected = lambda *args: False
+        proto.connected = False
         assert await conn._get(key, []) is None
     finally:
         await conn.close()
@@ -1752,7 +1752,7 @@ async def test_connect(
     make_client_request: _RequestMaker,
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://localhost:80"), loop=loop)
 
@@ -1789,7 +1789,7 @@ async def test_connect_tracing(
     traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
 
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
 
@@ -1829,7 +1829,7 @@ async def test_exception_during_connetion_create_tracing(  # type: ignore[misc]
     traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
 
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
     key = req.connection_key
@@ -1863,7 +1863,7 @@ async def test_exception_during_connection_queued_tracing(
     traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
 
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
     key = req.connection_key
@@ -1904,7 +1904,7 @@ async def test_exception_during_connection_reuse_tracing(
     traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
 
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
     key = req.connection_key
@@ -1950,7 +1950,7 @@ async def test_cancellation_during_waiting_for_free_connection(
     traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
 
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
     key = req.connection_key
@@ -1980,7 +1980,7 @@ async def test_close_during_connect(
     loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     fut = loop.create_future()
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
@@ -2020,8 +2020,8 @@ async def test_cleanup(key: ConnectionKey) -> None:
 
     m1 = mock.Mock()
     m2 = mock.Mock()
-    m1.is_connected.return_value = True
-    m2.is_connected.return_value = False
+    m1.connected = True
+    m2.connected = False
     testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
@@ -2072,7 +2072,7 @@ async def test_cleanup_close_ssl_transport(  # type: ignore[misc]
 
 async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn()
-    m.is_connected.return_value = True
+    m.connected = True
     testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
@@ -2093,7 +2093,7 @@ async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
 
 async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
     m = create_mocked_conn(loop)
-    m.is_connected.return_value = True
+    m.connected = True
     testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
     )
@@ -3241,7 +3241,7 @@ async def test_connect_with_limit(
     make_client_request: _RequestMaker,
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
@@ -3300,7 +3300,7 @@ async def test_connect_queued_operation_tracing(
     traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
 
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request(
         "GET", URL("http://localhost1:80"), loop=loop, response_class=mock.Mock()
@@ -3347,7 +3347,7 @@ async def test_connect_reuseconn_tracing(
     traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
 
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request(
         "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
@@ -3381,7 +3381,7 @@ async def test_connect_reuse_proxy_headers(  # type: ignore[misc]
     expect_proxy_auth_header: bool,
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     if test_case != "dont_use_proxy":
         proxy = (
@@ -3457,7 +3457,7 @@ async def test_connect_with_limit_and_limit_per_host(
     make_client_request: _RequestMaker,
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://localhost:80"), loop=loop)
 
@@ -3494,7 +3494,7 @@ async def test_connect_with_no_limit_and_limit_per_host(
     make_client_request: _RequestMaker,
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://localhost1:80"), loop=loop)
 
@@ -3529,7 +3529,7 @@ async def test_connect_with_no_limits(
     make_client_request: _RequestMaker,
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://localhost:80"), loop=loop)
 
@@ -3564,7 +3564,7 @@ async def test_connect_with_limit_cancelled(
     make_client_request: _RequestMaker,
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
 
@@ -3613,7 +3613,7 @@ async def test_connect_with_limit_concurrent(
 ) -> None:
     proto = create_mocked_conn(loop)
     proto.should_close = False
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
 
@@ -3636,7 +3636,7 @@ async def test_connect_with_limit_concurrent(
         # transports are stored in a set. Reusing the same object
         # messes with the count.
         proto = create_mocked_conn(loop, should_close=False)
-        proto.is_connected.return_value = True
+        proto.connected = True
 
         return proto
 
@@ -3674,7 +3674,7 @@ async def test_connect_waiters_cleanup(
     loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
 
@@ -3696,7 +3696,7 @@ async def test_connect_waiters_cleanup_key_error(
     loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
 
@@ -3726,7 +3726,7 @@ async def test_close_with_acquired_connection(
     make_client_request: _RequestMaker,
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("http://host:80"), loop=loop)
 
@@ -4120,7 +4120,6 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
         r.release()
         first_conn = next(iter(conn._conns.values()))[0][0]
 
-        assert first_conn.transport is not None
         try:
             _sslcontext = first_conn.transport._ssl_protocol._sslcontext  # type: ignore[attr-defined]
         except AttributeError:
@@ -4153,7 +4152,6 @@ async def test_tcp_connector_uses_provided_local_addr(
     r.release()
 
     first_conn = next(iter(conn._conns.values()))[0][0]
-    assert first_conn.transport is not None
     assert first_conn.transport.get_extra_info("sockname") == ("127.0.0.1", port)
     r.close()
     await session.close()
@@ -4517,7 +4515,7 @@ async def test_connector_does_not_remove_needed_waiters(
     make_client_request: _RequestMaker,
 ) -> None:
     proto = create_mocked_conn(loop)
-    proto.is_connected.return_value = True
+    proto.connected = True
 
     req = make_client_request("GET", URL("https://localhost:80"), loop=loop)
     connection_key = req.connection_key

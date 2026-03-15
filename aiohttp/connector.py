@@ -183,7 +183,7 @@ class Connection:
 
     @property
     def closed(self) -> bool:
-        return self._protocol is None or not self._protocol.is_connected()
+        return self._protocol is None or not self._protocol.connected
 
 
 class _ConnectTunnelConnection(Connection):
@@ -394,13 +394,12 @@ class BaseConnector:
             for key, conns in self._conns.items():
                 alive: deque[tuple[ResponseHandler, float]] = deque()
                 for proto, use_time in conns:
-                    if proto.is_connected() and use_time - deadline >= 0:
+                    if proto.connected and use_time - deadline >= 0:
                         alive.append((proto, use_time))
                         continue
-                    transport = proto.transport
                     proto.close()
                     if not self._cleanup_closed_disabled and key.is_ssl:
-                        self._cleanup_closed_transports.append(transport)
+                        self._cleanup_closed_transports.append(proto.transport)
 
                 if alive:
                     connections[key] = alive
@@ -425,8 +424,7 @@ class BaseConnector:
             self._cleanup_closed_handle.cancel()
 
         for transport in self._cleanup_closed_transports:
-            if transport is not None:
-                transport.abort()
+            transport.abort()
 
         self._cleanup_closed_transports = []
 
@@ -501,8 +499,7 @@ class BaseConnector:
 
             # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
             for transport in self._cleanup_closed_transports:
-                if transport is not None:
-                    transport.abort()
+                transport.abort()
 
             return waiters
 
@@ -690,7 +687,7 @@ class BaseConnector:
             proto, t0 = conns.popleft()
             # We will we reuse the connection if its connected and
             # the keepalive timeout has not been exceeded
-            if proto.is_connected() and t1 - t0 <= self._keepalive_timeout:
+            if proto.connected and t1 - t0 <= self._keepalive_timeout:
                 if not conns:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
@@ -707,11 +704,10 @@ class BaseConnector:
                 return Connection(self, key, proto, self._loop)
 
             # Connection cannot be reused, close it
-            transport = proto.transport
             proto.close()
             # only for SSL transports
             if not self._cleanup_closed_disabled and key.is_ssl:
-                self._cleanup_closed_transports.append(transport)
+                self._cleanup_closed_transports.append(proto.transport)
 
         # No more connections: drop the key
         del self._conns[key]
@@ -770,10 +766,9 @@ class BaseConnector:
         self._release_acquired(key, protocol)
 
         if self._force_close or should_close or protocol.should_close:
-            transport = protocol.transport
             protocol.close()
             if key.is_ssl and not self._cleanup_closed_disabled:
-                self._cleanup_closed_transports.append(transport)
+                self._cleanup_closed_transports.append(protocol.transport)
             return
 
         self._conns[key].append((protocol, monotonic()))
@@ -1678,8 +1673,7 @@ class NamedPipeConnector(BaseConnector):
                     self._factory, self._path
                 )
                 # the drain is required so that the connection_made is called
-                # and transport is set otherwise it is not set before the
-                # `assert conn.transport is not None`
+                # and transport is set otherwise it is not set before use
                 # in client.py's _request method
                 await asyncio.sleep(0)
                 # other option is to manually set transport like

@@ -9,6 +9,7 @@ from .tcp_helpers import tcp_nodelay
 class BaseProtocol(asyncio.Protocol):
     __slots__ = (
         "_loop",
+        "_connected",
         "_paused",
         "_drain_waiter",
         "_connection_lost",
@@ -16,18 +17,19 @@ class BaseProtocol(asyncio.Protocol):
         "transport",
     )
 
+    transport: asyncio.Transport
+
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop: asyncio.AbstractEventLoop = loop
+        self._connected = False
         self._paused = False
         self._drain_waiter: asyncio.Future[None] | None = None
         self._reading_paused = False
 
-        self.transport: asyncio.Transport | None = None
-
     @property
     def connected(self) -> bool:
         """Return True if the connection is open."""
-        return self.transport is not None
+        return self._connected and not self._transport.is_closing()
 
     @property
     def writing_paused(self) -> bool:
@@ -48,7 +50,7 @@ class BaseProtocol(asyncio.Protocol):
                 waiter.set_result(None)
 
     def pause_reading(self) -> None:
-        if not self._reading_paused and self.transport is not None:
+        if not self._reading_paused:
             try:
                 self.transport.pause_reading()
             except (AttributeError, NotImplementedError, RuntimeError):
@@ -56,7 +58,7 @@ class BaseProtocol(asyncio.Protocol):
             self._reading_paused = True
 
     def resume_reading(self) -> None:
-        if self._reading_paused and self.transport is not None:
+        if self._reading_paused:
             try:
                 self.transport.resume_reading()
             except (AttributeError, NotImplementedError, RuntimeError):
@@ -64,13 +66,14 @@ class BaseProtocol(asyncio.Protocol):
             self._reading_paused = False
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        self._connected = True
         tr = cast(asyncio.Transport, transport)
         tcp_nodelay(tr, True)
         self.transport = tr
 
     def connection_lost(self, exc: BaseException | None) -> None:
+        self._connected = False
         # Wake up the writer if currently paused.
-        self.transport = None
         if not self._paused:
             return
         waiter = self._drain_waiter
@@ -89,7 +92,7 @@ class BaseProtocol(asyncio.Protocol):
             )
 
     async def _drain_helper(self) -> None:
-        if self.transport is None:
+        if not self._connected:
             raise ClientConnectionResetError("Connection lost")
         if not self._paused:
             return

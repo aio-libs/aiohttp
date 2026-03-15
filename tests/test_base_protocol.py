@@ -84,9 +84,9 @@ async def test_connection_made() -> None:
     loop = asyncio.get_event_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
-    assert pr.transport is None
+    assert not pr.connected
     pr.connection_made(tr)
-    assert pr.transport is not None
+    assert pr.connected
 
 
 async def test_connection_lost_not_paused() -> None:
@@ -96,7 +96,6 @@ async def test_connection_lost_not_paused() -> None:
     pr.connection_made(tr)
     assert pr.connected
     pr.connection_lost(None)
-    assert pr.transport is None
     assert not pr.connected
 
 
@@ -108,7 +107,6 @@ async def test_connection_lost_paused_without_waiter() -> None:
     assert pr.connected
     pr.pause_writing()
     pr.connection_lost(None)
-    assert pr.transport is None
     assert not pr.connected
 
 

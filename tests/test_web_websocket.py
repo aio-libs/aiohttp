@@ -222,7 +222,6 @@ async def test_heartbeat_timeout(make_request: _RequestMaker) -> None:
     loop = asyncio.get_running_loop()
     future = loop.create_future()
     req = make_request("GET", "/")
-    assert req.transport is not None
     req.transport.close.side_effect = lambda: future.set_result(None)  # type: ignore[attr-defined]
     lowest_time = time.get_clock_info("monotonic").resolution
     req._protocol._timeout_ceil_threshold = lowest_time
@@ -343,7 +342,6 @@ async def test_send_str_closed(make_request: _RequestMaker) -> None:
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
     await ws.close()
-    assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
     with pytest.raises(ConnectionError):
@@ -463,7 +461,6 @@ async def test_close_idempotent(make_request: _RequestMaker) -> None:
     close_code = await ws.close(code=1, message=b"message1")
     assert close_code == 1
     assert ws.closed
-    assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
     close_code = await ws.close(code=2, message=b"message2")
@@ -500,7 +497,6 @@ async def test_write_eof_idempotent(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
     assert ws._reader is not None
@@ -550,7 +546,6 @@ async def test_receive_exception_in_reader(
     msg = await ws.receive()
     assert msg.type == WSMsgType.ERROR
     assert ws.closed
-    assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
@@ -572,7 +567,6 @@ async def test_receive_close_but_left_open(
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSE
     assert ws.closed
-    assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
@@ -624,7 +618,6 @@ async def test_close_after_closing(
     msg = await ws.receive()
     assert msg.type == WSMsgType.CLOSING
     assert not ws.closed
-    assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
     await ws.close()
@@ -638,7 +631,6 @@ async def test_receive_timeouterror(
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
     ws._reader = mock.Mock()
@@ -684,7 +676,6 @@ async def test_close_exc(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
-    assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
     exc = ValueError()

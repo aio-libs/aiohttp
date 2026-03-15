@@ -1055,7 +1055,6 @@ async def test_get_extra_info() -> None:
 
     assert req is not None
     req_extra_info = req.get_extra_info(valid_key, default_value)
-    assert req._protocol.transport is not None
     transp_extra_info = req._protocol.transport.get_extra_info(valid_key, default_value)
     assert req_extra_info == transp_extra_info
 

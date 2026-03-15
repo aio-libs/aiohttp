@@ -1221,12 +1221,10 @@ class ClientSession:
                     ws_timeout.ws_receive, conn_proto.read_timeout
                 )
 
-            transport = conn.transport
-            assert transport is not None
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
             writer = WebSocketWriter(
                 conn_proto,
-                transport,
+                conn.transport,
                 use_mask=True,
                 compress=compress,
                 notakeover=notakeover,

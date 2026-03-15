@@ -1294,7 +1294,6 @@ async def test_client_session_timeout_zero(
         await asyncio.sleep(0.01)
         conn = create_mocked_conn()
         conn.connected = True  # type: ignore[misc]
-        assert conn.transport is not None
         conn.transport.is_closing.return_value = False  # type: ignore[attr-defined]
         msg = mock.create_autospec(RawResponseMessage, spec_set=True, code=200)
         conn.read.return_value = (msg, mock.Mock())  # type: ignore[attr-defined]

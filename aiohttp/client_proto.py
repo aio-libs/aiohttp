@@ -95,24 +95,15 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
     def close(self) -> None:
         self._exception = None  # Break cyclic references
-        transport = self.transport
-        if transport is not None:
-            transport.close()
-            self.transport = None
-            self._payload = None
-            self._drop_timeout()
+        self.transport.close()
+        self._payload = None
+        self._drop_timeout()
 
     def abort(self) -> None:
         self._exception = None  # Break cyclic references
-        transport = self.transport
-        if transport is not None:
-            transport.abort()
-            self.transport = None
-            self._payload = None
-            self._drop_timeout()
-
-    def is_connected(self) -> bool:
-        return self.transport is not None and not self.transport.is_closing()
+        self.transport.abort()
+        self._payload = None
+        self._drop_timeout()
 
     def connection_lost(self, exc: BaseException | None) -> None:
         self._connection_lost_called = True
@@ -326,11 +317,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         try:
             messages, upgraded, tail = self._parser.feed_data(data)
         except Exception as underlying_exc:
-            if self.transport is not None:
-                # connection.release() could be called BEFORE
-                # data_received(), the transport is already
-                # closed in this case
-                self.transport.close()
+            # connection.release() could be called BEFORE
+            # data_received(), the transport is already
+            # closed in this case
+            self.transport.close()
             # should_close is True after the call
             if isinstance(underlying_exc, HttpProcessingError):
                 exc = HttpProcessingError(

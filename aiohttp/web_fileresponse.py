@@ -127,12 +127,9 @@ class FileResponse(StreamResponse):
             return await self._sendfile_fallback(writer, fobj, offset, count)
 
         loop = request._loop
-        transport = request.transport
-        if transport is None:
-            raise ConnectionResetError("Transport is not available")
 
         try:
-            await loop.sendfile(transport, fobj, offset, count)
+            await loop.sendfile(request.transport, fobj, offset, count)
         except NotImplementedError:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 

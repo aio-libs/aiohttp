@@ -46,9 +46,7 @@ def test_simple_web_file_sendfile_fallback_response(
     filepath = pathlib.Path(__file__).parent / "sample.txt"
 
     async def handler(request: web.Request) -> web.FileResponse:
-        transport = request.transport
-        assert transport is not None
-        transport._sendfile_compatible = False  # type: ignore[attr-defined]
+        request.transport._sendfile_compatible = False  # type: ignore[attr-defined]
         return web.FileResponse(path=filepath)
 
     app = web.Application()

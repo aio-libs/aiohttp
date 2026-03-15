@@ -1308,7 +1308,6 @@ async def test_peer_connection_lost(aiohttp_client: AiohttpClient) -> None:
         msg = await ws.receive_str()
         assert msg == "ask"
         await ws.send_str("answer")
-        assert request.transport is not None
         request.transport.close()
         await asyncio.sleep(10)
         assert False
@@ -1333,7 +1332,6 @@ async def test_peer_connection_lost_iter(aiohttp_client: AiohttpClient) -> None:
         msg = await ws.receive_str()
         assert msg == "ask"
         await ws.send_str("answer")
-        assert request.transport is not None
         request.transport.close()
         await asyncio.sleep(100)
         assert False

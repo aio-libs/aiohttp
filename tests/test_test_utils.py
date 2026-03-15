@@ -185,13 +185,11 @@ def test_make_mocked_request(headers: Mapping[str, str]) -> None:
 
 def test_make_mocked_request_sslcontext() -> None:
     req = make_mocked_request("GET", "/")
-    assert req.transport is not None
     assert req.transport.get_extra_info("sslcontext") is None
 
 
 def test_make_mocked_request_unknown_extra_info() -> None:
     req = make_mocked_request("GET", "/")
-    assert req.transport is not None
     assert req.transport.get_extra_info("unknown_extra_info") is None
 
 

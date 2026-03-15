@@ -8,7 +8,7 @@ from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 import yarl
 from propcache import under_cached_property
@@ -53,10 +53,7 @@ _RequestFactory = Callable[
 ]
 
 _RequestHandler = Callable[[_Request], Awaitable[StreamResponse]]
-_AnyAbstractAccessLogger = Union[
-    type[AbstractAsyncAccessLogger],
-    type[AbstractAccessLogger],
-]
+_AnyAbstractAccessLogger = type[AbstractAsyncAccessLogger] | type[AbstractAccessLogger]
 
 ERROR = RawRequestMessage(
     "UNKNOWN",
@@ -277,29 +274,20 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
     def __repr__(self) -> str:
         return "<{} {}>".format(
-            self.__class__.__name__,
-            "connected" if self.transport is not None else "disconnected",
+            self.__class__.__name__, "connected" if self.connected else "disconnected"
         )
 
     @under_cached_property
-    def ssl_context(self) -> Optional["ssl.SSLContext"]:
+    def ssl_context(self) -> "ssl.SSLContext":
         """Return SSLContext if available."""
-        return (
-            None
-            if self.transport is None
-            else self.transport.get_extra_info("sslcontext")
-        )
+        return self.transport.get_extra_info("sslcontext")
 
     @under_cached_property
     def peername(
         self,
-    ) -> str | tuple[str, int, int, int] | tuple[str, int] | None:
+    ) -> str | tuple[str, int, int, int] | tuple[str, int]:
         """Return peername if available."""
-        return (
-            None
-            if self.transport is None
-            else self.transport.get_extra_info("peername")
-        )
+        return self.transport.get_extra_info("peername")
 
     @property
     def keepalive_timeout(self) -> float:
@@ -486,9 +474,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._force_close = True
         if self._waiter:
             self._waiter.cancel()
-        if self.transport is not None:
-            self.transport.close()
-            self.transport = None
+        self.transport.close()
 
     async def log_access(
         self,
@@ -681,7 +667,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 raise
             finally:
                 request._task = None  # type: ignore[assignment] # Break reference cycle in case of exception
-                if self.transport is None and resp is not None:
+                if not self.connected and resp is not None:
                     self.log_debug("Ignored premature client disconnection.")
 
             if self._keepalive and not self._close and not self._force_close:
@@ -698,8 +684,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # remove handler, close transport if no handlers left
         if not self._force_close:
             self._task_handler = None
-            if self.transport is not None:
-                self.transport.close()
+            self.transport.close()
 
     async def finish_response(
         self, request: BaseRequest, resp: StreamResponse, start_time: float | None

@@ -230,7 +230,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._ping_task = None
 
     def _pong_not_received(self) -> None:
-        if self._req is not None and self._req.transport is not None:
+        if self._req is not None and self._req.protocol.connected:
             self._handle_ping_pong_exception(
                 asyncio.TimeoutError(
                     f"No PONG received after {self._pong_heartbeat} seconds"
@@ -360,12 +360,9 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self.headers.update(headers)
         self.force_close()
         self._compress = compress
-        transport = request._protocol.transport
-        if transport is None:
-            raise ConnectionResetError("Transport is not available")
         writer = WebSocketWriter(
             request._protocol,
-            transport,
+            request.transport,
             compress=compress,
             notakeover=notakeover,
             limit=self._writer_limit,
@@ -573,7 +570,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
     def _close_transport(self) -> None:
         """Close the transport."""
-        if self._req is not None and self._req.transport is not None:
+        if self._req is not None:
             self._req.transport.close()
 
     @overload

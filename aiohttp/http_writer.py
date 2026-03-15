@@ -113,13 +113,12 @@ class StreamWriter(AbstractStreamWriter):
             size += len(chunk)
         self.buffer_size += size
         self.output_size += size
-        transport = self._protocol.transport
-        if transport is None or transport.is_closing():
+        if not self._protocol.connected:
             raise ClientConnectionResetError("Cannot write to closing transport")
         if SKIP_WRITELINES or size < MIN_PAYLOAD_FOR_WRITELINES:
-            transport.write(b"".join(chunks))
+            self._protocol.transport.write(b"".join(chunks))
         else:
-            transport.writelines(chunks)
+            self._protocol.transport.writelines(chunks)
 
     def _write_chunked_payload(
         self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
@@ -358,9 +357,7 @@ class StreamWriter(AbstractStreamWriter):
           await w.write(data)
           await w.drain()
         """
-        protocol = self._protocol
-        if protocol.transport is not None and protocol._paused:
-            await protocol._drain_helper()
+        await self._protocol._drain_helper()
 
 
 def _safe_header(string: str) -> str:
