@@ -931,7 +931,7 @@ async def test_write_to_closed_transport(
     msg = http.StreamWriter(protocol, loop)
 
     await msg.write(b"Before transport close")
-    protocol.transport = None
+    protocol.transport.close()
 
     with pytest.raises(
         ClientConnectionResetError, match="Cannot write to closing transport"
@@ -949,13 +949,13 @@ async def test_drain(
     assert protocol._drain_helper.called  # type: ignore[attr-defined]
 
 
-async def test_drain_no_transport(
+async def test_drain_closed_transport(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
     loop: asyncio.AbstractEventLoop,
 ) -> None:
     msg = http.StreamWriter(protocol, loop)
-    msg._protocol.transport = None
+    msg._protocol.transport.close()
     await msg.drain()
     assert not protocol._drain_helper.called  # type: ignore[attr-defined]
 
