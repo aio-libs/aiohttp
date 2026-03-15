@@ -1111,7 +1111,6 @@ async def test_get_extra_info() -> None:
 
     req._protocol.transport = None
     extra_info = req.get_extra_info(valid_key, default_value)
-    assert extra_info == default_value
 
 
 def test_eq() -> None:

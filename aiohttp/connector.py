@@ -149,7 +149,7 @@ class Connection:
     @property
     def transport(self) -> asyncio.Transport | None:
         if self._protocol is None:
-            return None
+    def transport(self) -> asyncio.Transport:
         return self._protocol.transport
 
     @property
@@ -315,7 +315,7 @@ class BaseConnector:
             enable_cleanup_closed = False
 
         self._cleanup_closed_disabled = not enable_cleanup_closed
-        self._cleanup_closed_transports: list[asyncio.Transport | None] = []
+        self._cleanup_closed_transports: list[asyncio.Transport] = []
 
         self._placeholder_future: asyncio.Future[Exception | None] = (
             loop.create_future()
@@ -476,7 +476,6 @@ class BaseConnector:
                 for proto, _ in data:
                     if (
                         abort_ssl
-                        and proto.transport
                         and proto.transport.get_extra_info("sslcontext") is not None
                     ):
                         proto.abort()
@@ -488,7 +487,6 @@ class BaseConnector:
             for proto in self._acquired:
                 if (
                     abort_ssl
-                    and proto.transport
                     and proto.transport.get_extra_info("sslcontext") is not None
                 ):
                     proto.abort()

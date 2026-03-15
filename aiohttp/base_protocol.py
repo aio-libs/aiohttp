@@ -29,7 +29,7 @@ class BaseProtocol(asyncio.Protocol):
     @property
     def connected(self) -> bool:
         """Return True if the connection is open."""
-        return self._connected and not self._transport.is_closing()
+        return self._connected and not self.transport.is_closing()
 
     @property
     def writing_paused(self) -> bool:
