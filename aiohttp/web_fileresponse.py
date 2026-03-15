@@ -129,7 +129,7 @@ class FileResponse(StreamResponse):
         loop = request._loop
         transport = request.transport
         if transport is None:
-            raise ConnectionResetError("Transport is not available")
+            raise ConnectionResetError("Connection lost")
 
         try:
             await loop.sendfile(transport, fobj, offset, count)

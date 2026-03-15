@@ -1680,7 +1680,7 @@ async def test_prepare_after_client_disconnect(aiohttp_client: AiohttpClient) ->
         handler_started.set()
         # Simulate async work (e.g., auth check) during which client disconnects.
         await asyncio.sleep(0)
-        with pytest.raises(ConnectionResetError, match="Transport is not available"):
+        with pytest.raises(ConnectionResetError, match="Connection lost"):
             await ws.prepare(request)
         return web.Response(status=503)
 

@@ -362,7 +362,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._compress = compress
         transport = request._protocol.transport
         if transport is None:
-            raise ConnectionResetError("Transport is not available")
+            raise ConnectionResetError("Connection lost")
         writer = WebSocketWriter(
             request._protocol,
             transport,
