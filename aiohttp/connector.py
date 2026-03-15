@@ -147,8 +147,6 @@ class Connection:
         return True
 
     @property
-    def transport(self) -> asyncio.Transport | None:
-        if self._protocol is None:
     def transport(self) -> asyncio.Transport:
         return self._protocol.transport
 
