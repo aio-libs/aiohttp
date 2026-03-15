@@ -1233,9 +1233,11 @@ class ClientSession:
                 )
 
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
+            transport = conn.transport
+            assert transport is not None
             writer = WebSocketWriter(
                 conn_proto,
-                conn.transport,
+                transport,
                 use_mask=True,
                 compress=compress,
                 notakeover=notakeover,
