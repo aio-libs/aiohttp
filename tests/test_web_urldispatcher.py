@@ -570,7 +570,7 @@ async def test_access_special_resource(
     unix_sockname: str, aiohttp_client: AiohttpClient
 ) -> None:
     """Test access to non-regular files is forbidden using a UNIX domain socket."""
-    if not getattr(socket, "AF_UNIX", None):
+    if not getattr(socket, "AF_UNIX", None):  # pragma: no cover
         pytest.skip("UNIX domain sockets not supported")
 
     my_special = pathlib.Path(unix_sockname)

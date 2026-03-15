@@ -2,7 +2,7 @@ import asyncio
 import gc
 import ipaddress
 import socket
-from collections.abc import Awaitable, Callable, Collection, Generator, Iterable
+from collections.abc import Awaitable, Callable, Collection, Generator
 from ipaddress import ip_address
 from typing import Any, NamedTuple
 from unittest.mock import Mock, create_autospec, patch
@@ -21,7 +21,7 @@ try:
     import aiodns
 
     getaddrinfo = hasattr(aiodns.DNSResolver, "getaddrinfo")
-except ImportError:
+except ImportError:  # pragma: no cover
     aiodns = None  # type: ignore[assignment]
     getaddrinfo = False
 
@@ -110,11 +110,6 @@ class FakeAIODNSNameInfoIPv6Result:
         self.service = None
 
 
-class FakeQueryResult:
-    def __init__(self, host: str) -> None:
-        self.host = host
-
-
 async def fake_aiodns_getaddrinfo_ipv4_result(
     hosts: Collection[str],
 ) -> FakeAIODNSAddrInfoIPv4Result:
@@ -131,10 +126,6 @@ async def fake_aiodns_getnameinfo_ipv6_result(
     host: str,
 ) -> FakeAIODNSNameInfoIPv6Result:
     return FakeAIODNSNameInfoIPv6Result(host)
-
-
-async def fake_query_result(result: Iterable[str]) -> list[FakeQueryResult]:
-    return [FakeQueryResult(host=h) for h in result]
 
 
 def fake_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[_AddrInfo4]]:
@@ -438,11 +429,6 @@ async def test_async_resolver_aiodns_not_present(
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
 def test_aio_dns_is_default() -> None:
     assert DefaultResolver is AsyncResolver
-
-
-@pytest.mark.skipif(getaddrinfo, reason="aiodns <3.2.0 required")
-def test_threaded_resolver_is_default() -> None:
-    assert DefaultResolver is ThreadedResolver
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")

@@ -305,6 +305,7 @@ sa
 Satisfiable
 scalability
 schemas
+seekable
 sendfile
 serializable
 serializer

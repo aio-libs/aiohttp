@@ -821,7 +821,18 @@ class ClientSession:
                             # For 307/308, always preserve the request body
                             # For 301/302 with non-POST methods, preserve the request body
                             # https://www.rfc-editor.org/rfc/rfc9110#section-15.4.3-3.1
-                            # Use the existing payload to avoid recreating it from a potentially consumed file
+                            # Use the existing payload to avoid recreating it from
+                            # a potentially consumed file.
+                            #
+                            # If the payload is already consumed and cannot be replayed,
+                            # fail fast instead of silently sending an empty body.
+                            if req._body.consumed:
+                                resp.close()
+                                raise ClientPayloadError(
+                                    "Cannot follow redirect with a consumed request "
+                                    "body. Use bytes, a seekable file-like object, "
+                                    "or set allow_redirects=False."
+                                )
                             data = req._body
 
                         r_url = resp.headers.get(hdrs.LOCATION) or resp.headers.get(

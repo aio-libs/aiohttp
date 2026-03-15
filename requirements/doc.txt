@@ -12,7 +12,7 @@ babel==2.18.0
     # via sphinx
 certifi==2026.2.25
     # via requests
-charset-normalizer==3.4.4
+charset-normalizer==3.4.5
     # via requests
 click==8.3.1
     # via towncrier
@@ -20,7 +20,7 @@ docutils==0.21.2
     # via sphinx
 idna==3.11
     # via requests
-imagesize==1.5.0
+imagesize==2.0.0
     # via sphinx
 jinja2==3.1.6
     # via
