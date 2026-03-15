@@ -1232,9 +1232,9 @@ class ClientSession:
                     ws_timeout.ws_receive, conn_proto.read_timeout
                 )
 
-            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
             transport = conn.transport
             assert transport is not None
+            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
