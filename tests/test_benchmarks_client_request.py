@@ -150,6 +150,10 @@ def test_send_client_request_one_hundred(
             self.transport = MockTransport()
 
         @property
+        def connected(self) -> bool:
+            return True
+
+        @property
         def writing_paused(self) -> bool:
             return False
 
