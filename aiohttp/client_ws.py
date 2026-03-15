@@ -262,7 +262,10 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         conn = self._response.connection
         if conn is None:
             return default
-        return conn.transport.get_extra_info(name, default)
+        transport = conn.transport
+        if transport is None:
+            return default
+        return transport.get_extra_info(name, default)
 
     def exception(self) -> BaseException | None:
         return self._exception
