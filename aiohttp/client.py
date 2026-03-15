@@ -881,7 +881,7 @@ class ClientSession:
                             #
                             # If the payload is already consumed and cannot be replayed,
                             # fail fast instead of silently sending an empty body.
-                            if req._body.consumed:
+                            if req._body is not None and req._body.consumed:
                                 resp.close()
                                 raise ClientPayloadError(
                                     "Cannot follow redirect with a consumed request "
