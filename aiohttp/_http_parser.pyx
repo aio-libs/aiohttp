@@ -71,6 +71,20 @@ cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
 cdef bytes EMPTY_BYTES = b""
 
+# https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
+cdef tuple SINGLETON_HEADERS = (
+    hdrs.CONTENT_LENGTH,
+    hdrs.CONTENT_LOCATION,
+    hdrs.CONTENT_RANGE,
+    hdrs.CONTENT_TYPE,
+    hdrs.ETAG,
+    hdrs.HOST,
+    hdrs.MAX_FORWARDS,
+    hdrs.SERVER,
+    hdrs.TRANSFER_ENCODING,
+    hdrs.USER_AGENT,
+)
+
 cdef inline object extend(object buf, const char* at, size_t length):
     cdef Py_ssize_t s
     cdef char* ptr
@@ -429,6 +443,14 @@ cdef class HttpParser:
 
         raw_headers = tuple(self._raw_headers)
         headers = CIMultiDictProxy(CIMultiDict(self._headers))
+
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
+        bad_hdr = next(
+            (h for h in SINGLETON_HEADERS if len(headers.getall(h, ())) > 1),
+            None,
+        )
+        if bad_hdr is not None:
+            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             h_upg = headers.get("upgrade", "")
