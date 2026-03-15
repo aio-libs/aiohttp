@@ -241,7 +241,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         return self._protocol
 
     @property
-    def transport(self) -> asyncio.Transport | None:
+    def transport(self) -> asyncio.Transport:
         return self._protocol.transport
 
     @property
