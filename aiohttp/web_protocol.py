@@ -287,14 +287,14 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     @under_cached_property
     def ssl_context(self) -> "ssl.SSLContext | None":
         """Return SSLContext if available."""
-        return self.transport.get_extra_info("sslcontext")
+        return self.transport.get_extra_info("sslcontext")  # type: ignore[no-any-return]
 
     @under_cached_property
     def peername(
         self,
     ) -> str | tuple[str, int, int, int] | tuple[str, int] | None:
         """Return peername if available."""
-        return self.transport.get_extra_info("peername")
+        return self.transport.get_extra_info("peername")  # type: ignore[no-any-return]
 
     @property
     def keepalive_timeout(self) -> float:

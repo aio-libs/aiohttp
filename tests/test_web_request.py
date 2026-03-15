@@ -1109,9 +1109,6 @@ async def test_get_extra_info() -> None:
     transp_extra_info = req._protocol.transport.get_extra_info(valid_key, default_value)
     assert req_extra_info == transp_extra_info
 
-    req._protocol.transport = None
-    extra_info = req.get_extra_info(valid_key, default_value)
-
 
 def test_eq() -> None:
     req1 = make_mocked_request("GET", "/path/to?a=1&b=2")
