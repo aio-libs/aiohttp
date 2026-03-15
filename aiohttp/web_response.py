@@ -157,8 +157,8 @@ class StreamResponse(
         self._status = status
         if reason is None:
             reason = REASON_PHRASES.get(self._status, "")
-        elif "\n" in reason:
-            raise ValueError("Reason cannot contain \\n")
+        elif "\r" in reason or "\n" in reason:
+            raise ValueError("Reason cannot contain \\r or \\n")
         self._reason = reason
 
     @property

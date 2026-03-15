@@ -45,14 +45,14 @@ skip_if_no_unix_socks = pytest.mark.skipif(
 del _has_unix_domain_socks, _abstract_path_failed
 
 HAS_IPV6: bool = socket.has_ipv6
-if HAS_IPV6:
+if HAS_IPV6:  # pragma: no branch
     # The socket.has_ipv6 flag may be True if Python was built with IPv6
     # support, but the target system still may not have it.
     # So let's ensure that we really have IPv6 support.
     try:
         with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
             pass
-    except OSError:
+    except OSError:  # pragma: no cover
         HAS_IPV6 = False
 
 
@@ -692,12 +692,10 @@ def test_sigint() -> None:
     skip_if_on_windows()
 
     with subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal],
+        (sys.executable, "-u", "-c", _script_test_signal),
         stdout=subprocess.PIPE,
     ) as proc:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if line.startswith(b"======== Running on"):
-                break
+        assert proc.stdout.readline().startswith(b"======== Running on")  # type: ignore[union-attr]
         proc.send_signal(signal.SIGINT)
         assert proc.wait() == 0
 
@@ -706,12 +704,10 @@ def test_sigterm() -> None:
     skip_if_on_windows()
 
     with subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal],
+        (sys.executable, "-u", "-c", _script_test_signal),
         stdout=subprocess.PIPE,
     ) as proc:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if line.startswith(b"======== Running on"):
-                break
+        assert proc.stdout.readline().startswith(b"======== Running on")  # type: ignore[union-attr]
         proc.terminate()
         assert proc.wait() == 0
 
@@ -1110,7 +1106,7 @@ class TestShutdown:
         async def task() -> None:
             nonlocal finished
             await asyncio.sleep(2)
-            finished = True
+            finished = True  # pragma: no cover
 
         t, connection_count = self.run_app(sock, 1, task)
 
@@ -1159,7 +1155,7 @@ class TestShutdown:
                 # Use a new session to try and open a new connection.
                 async with ClientSession() as sess:
                     async with sess.get(f"http://127.0.0.1:{port}/"):
-                        pass
+                        assert False  # Should fail before here
             assert finished is False
 
         t, connection_count = self.run_app(sock, 10, task, test)
@@ -1261,7 +1257,7 @@ class TestShutdown:
             await ws.prepare(request)
             request.app[WS].add(ws)
             async for msg in ws:
-                pass
+                assert False  # No messages actually sent
             nonlocal server_finished
             server_finished = True
             return ws
@@ -1278,7 +1274,7 @@ class TestShutdown:
                         pass
 
                     async for msg in ws:
-                        pass
+                        assert False  # No messages actually sent
                     nonlocal client_finished
                     client_finished = True
 
@@ -1316,8 +1312,8 @@ class TestShutdown:
             async def test_resp(sess: ClientSession) -> None:
                 t = ClientTimeout(total=0.4)
                 with pytest.raises(asyncio.TimeoutError):
-                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t) as resp:
-                        assert await resp.text() == "FOO"
+                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t):
+                        assert False  # Should timeout before this
                 actions.append("CANCELLED")
 
             async with ClientSession() as sess:

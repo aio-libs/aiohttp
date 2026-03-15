@@ -35,7 +35,7 @@ try:
         import brotlicffi as brotli
     except ImportError:
         import brotli
-except ImportError:
+except ImportError:  # pragma: no cover
     brotli = None
 
 try:
@@ -235,10 +235,20 @@ def test_bad_header_name(
         "Foo : bar",  # https://www.rfc-editor.org/rfc/rfc9112.html#section-5.1-2
         "Foo\t: bar",
         "\xffoo: bar",
+        "Foo: abc\x01def",  # CTL bytes forbidden per RFC 9110 §5.5
+        "Foo: abc\x7fdef",  # DEL is also a CTL byte
+        "Foo: abc\x1fdef",
     ),
 )
 def test_bad_headers(parser: HttpRequestParser, hdr: str) -> None:
     text = f"POST / HTTP/1.1\r\n{hdr}\r\n\r\n".encode()
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_ctl_host_header_bad_characters(parser: HttpRequestParser) -> None:
+    """CTL byte in Host header must be rejected."""
+    text = b"GET /test HTTP/1.1\r\nHost: trusted.example\x01@bad.test\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
@@ -268,6 +278,47 @@ def test_content_length_transfer_encoding(parser: HttpRequestParser) -> None:
         + b"apple\r\n"
     )
     with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
+    "hdr",
+    (
+        "Content-Length",
+        "Content-Location",
+        "Content-Range",
+        "Content-Type",
+        "ETag",
+        "Host",
+        "Max-Forwards",
+        "Server",
+        "Transfer-Encoding",
+        "User-Agent",
+    ),
+)
+def test_duplicate_singleton_header_rejected(
+    parser: HttpRequestParser, hdr: str
+) -> None:
+    val1, val2 = ("1", "2") if hdr == "Content-Length" else ("value1", "value2")
+    text = (
+        f"GET /test HTTP/1.1\r\n"
+        f"Host: example.com\r\n"
+        f"{hdr}: {val1}\r\n"
+        f"{hdr}: {val2}\r\n"
+        f"\r\n"
+    ).encode()
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
+        parser.feed_data(text)
+
+
+def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
+    text = (
+        b"GET /admin HTTP/1.1\r\n"
+        b"Host: admin.example\r\n"
+        b"Host: public.example\r\n"
+        b"\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate.*Host"):
         parser.feed_data(text)
 
 
@@ -1231,6 +1282,13 @@ def test_http_response_parser_strict_headers(response: HttpResponseParser) -> No
         pytest.xfail("Py parser is lenient. May update py-parser later.")
     with pytest.raises(http_exceptions.BadHttpMessage):  # type: ignore[unreachable]
         response.feed_data(b"HTTP/1.1 200 test\r\nFoo: abc\x01def\r\n\r\n")
+
+
+def test_http_response_parser_null_byte_in_header_value(
+    response: HttpResponseParser,
+) -> None:
+    with pytest.raises(http_exceptions.InvalidHeader):
+        response.feed_data(b"HTTP/1.1 200 OK\r\nFoo: abc\x00def\r\n\r\n")
 
 
 def test_http_response_parser_bad_crlf(response: HttpResponseParser) -> None:

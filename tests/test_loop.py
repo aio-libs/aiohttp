@@ -48,7 +48,7 @@ def test_setup_loop_non_main_thread() -> None:
             with loop_context() as loop:
                 assert asyncio.get_event_loop() is loop
                 loop.run_until_complete(test_subprocess_co(loop))
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover
             nonlocal child_exc
             child_exc = exc
 

@@ -85,7 +85,7 @@ class Stream(StreamReader):
     def at_eof(self) -> bool:
         return self.content.tell() == len(self.content.getbuffer())
 
-    async def readline(self) -> bytes:
+    async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return self.content.readline()
 
     def unread_data(self, data: bytes) -> None:
@@ -242,7 +242,7 @@ class TestPartReader:
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = b""
             with pytest.raises(ValueError):
-                for _ in range(4):
+                for _ in range(4):  # pragma: no branch
                     result += await obj.read_chunk(7)
         assert b"Hello, World!\r\n-" == result
 
@@ -789,7 +789,7 @@ class TestMultipartReader:
             def at_eof(self) -> bool:
                 return not self.content
 
-            async def readline(self) -> bytes:
+            async def readline(self, *, max_line_length: int | None = None) -> bytes:
                 line = b""
                 while self.content and b"\n" not in line:
                     line += self.content.pop(0)
