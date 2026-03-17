@@ -1,5 +1,8 @@
 """codspeed benchmarks for http writer."""
 
+import pytest
+
+pytest.importorskip("pytest_codspeed")
 from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 

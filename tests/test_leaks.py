@@ -8,6 +8,9 @@ import pytest
 IS_PYPY = platform.python_implementation() == "PyPy"
 
 
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="subprocess not supported"
+)
 @pytest.mark.skipif(IS_PYPY, reason="gc.DEBUG_LEAK not available on PyPy")
 @pytest.mark.parametrize(
     ("script", "message"),

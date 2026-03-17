@@ -1063,7 +1063,7 @@ def test_static_route_user_home(router: web.UrlDispatcher) -> None:
     except ValueError:
         pytest.skip("aiohttp folder is not placed in user's HOME")
     route = router.add_static("/st", str(static_dir))
-    assert here == route.get_info()["directory"]
+    assert here.resolve() == route.get_info()["directory"]
 
 
 def test_static_route_points_to_file(router: web.UrlDispatcher) -> None:
@@ -1087,7 +1087,7 @@ async def test_405_for_resource_adapter(router: web.UrlDispatcher) -> None:
 @pytest.mark.skipif(platform.system() == "Windows", reason="Different path formats")
 async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> None:
     """Test relative path traversing outside root does not resolve."""
-    static_file = pathlib.Path(aiohttp.__file__)
+    static_file = pathlib.Path(aiohttp.__file__).resolve()
     request_path = "/st" + "/.." * (len(static_file.parts) - 2) + str(static_file)
     assert pathlib.Path(request_path).resolve() == static_file
 

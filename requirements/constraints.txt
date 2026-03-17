@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/constraints.txt --strip-extras requirements/constraints.in
 #
-aiodns==4.0.0
+aiodns==4.0.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -28,18 +28,19 @@ backports-zstd==1.3.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-blockbuster==1.5.26
+blockbuster==1.5.26 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-brotli==1.2.0 ; platform_python_implementation == "CPython"
+brotli==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
 build==1.4.0
     # via pip-tools
 certifi==2026.2.25
     # via requests
-cffi==2.0.0
+cffi==2.0.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
+    #   -r requirements/test-common.in
     #   cryptography
     #   pycares
     #   pytest-codspeed
@@ -54,11 +55,11 @@ click==8.3.1
     #   towncrier
     #   wait-for-it
 coverage==7.13.4
+    # via pytest-cov
+cryptography==46.0.5 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-common.in
-    #   pytest-cov
-cryptography==46.0.5
-    # via trustme
+    #   trustme
 cython==3.2.4
     # via -r requirements/cython.in
 distlib==0.4.0
@@ -73,8 +74,10 @@ filelock==3.25.2
     # via
     #   python-discovery
     #   virtualenv
-forbiddenfruit==0.1.4
-    # via blockbuster
+forbiddenfruit==0.1.4 ; implementation_name == "cpython" and sys_platform != "android" and sys_platform != "ios"
+    # via
+    #   -r requirements/test-common.in
+    #   blockbuster
 freezegun==1.5.5
     # via
     #   -r requirements/lint.in
@@ -96,7 +99,7 @@ imagesize==2.0.0
     # via sphinx
 iniconfig==2.3.0
     # via pytest
-isal==1.7.2 ; python_version < "3.14"
+isal==1.7.2 ; python_version < "3.14" and sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -104,8 +107,10 @@ jinja2==3.1.6
     # via
     #   sphinx
     #   towncrier
-librt==0.8.0
-    # via mypy
+librt==0.8.0 ; platform_python_implementation != "PyPy" and sys_platform != "android" and sys_platform != "ios"
+    # via
+    #   -r requirements/test-common.in
+    #   mypy
 markdown-it-py==4.0.0
     # via rich
 markupsafe==3.0.3
@@ -121,8 +126,10 @@ mypy==1.19.1 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-mypy-extensions==1.1.0
-    # via mypy
+mypy-extensions==1.1.0 ; sys_platform != "android" and sys_platform != "ios"
+    # via
+    #   -r requirements/test-common.in
+    #   mypy
 nodeenv==1.10.0
     # via pre-commit
 packaging==26.0
@@ -156,14 +163,20 @@ proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-pycares==5.0.1
-    # via aiodns
+pycares==5.0.1 ; sys_platform != "android" and sys_platform != "ios"
+    # via
+    #   -r requirements/test-common.in
+    #   aiodns
 pycparser==3.0
     # via cffi
-pydantic==2.12.5
-    # via python-on-whales
-pydantic-core==2.41.5
-    # via pydantic
+pydantic==2.12.5 ; sys_platform != "android" and sys_platform != "ios"
+    # via
+    #   -r requirements/test-common.in
+    #   python-on-whales
+pydantic-core==2.41.5 ; sys_platform != "android" and sys_platform != "ios"
+    # via
+    #   -r requirements/test-common.in
+    #   pydantic
 pyenchant==3.3.0
     # via sphinxcontrib-spelling
 pygments==2.19.2
@@ -183,7 +196,7 @@ pytest==9.0.2
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.3.0
+pytest-codspeed==4.3.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -193,13 +206,13 @@ pytest-mock==3.15.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-pytest-xdist==3.8.0
+pytest-xdist==3.8.0 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
 python-discovery==1.1.3
     # via virtualenv
-python-on-whales==0.81.0
+python-on-whales==0.81.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -254,7 +267,7 @@ towncrier==25.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-trustme==1.2.1 ; platform_machine != "i686"
+trustme==1.2.1 ; platform_machine != "i686" and sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -289,7 +302,7 @@ wheel==0.46.3
     # via pip-tools
 yarl==1.22.0
     # via -r requirements/runtime-deps.in
-zlib-ng==1.0.0
+zlib-ng==1.0.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in

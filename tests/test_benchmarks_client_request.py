@@ -2,6 +2,10 @@
 
 import asyncio
 import sys
+
+import pytest
+
+pytest.importorskip("pytest_codspeed")
 from collections.abc import Callable
 from http.cookies import BaseCookie
 from typing import Any

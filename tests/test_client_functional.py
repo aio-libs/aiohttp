@@ -1,4 +1,5 @@
 # HTTP client functional tests against aiohttp.web server
+from __future__ import annotations  # TODO(PY311): Remove
 
 import asyncio
 import datetime
@@ -20,6 +21,11 @@ from typing import Any, NoReturn
 from unittest import mock
 
 try:
+    import trustme
+except ImportError:  # pragma: no cover
+    pass
+
+try:
     try:
         import brotlicffi as brotli
     except ImportError:
@@ -33,7 +39,6 @@ except ImportError:
     ZstdCompressor = None  # type: ignore[assignment,misc]  # pragma: no cover
 
 import pytest
-import trustme
 from multidict import MultiDict
 from pytest_mock import MockerFixture
 from yarl import URL, Query

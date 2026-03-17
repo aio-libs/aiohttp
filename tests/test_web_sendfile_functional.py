@@ -3,6 +3,7 @@ import bz2
 import gzip
 import pathlib
 import socket
+import sys
 from collections.abc import Iterable, Iterator
 from typing import Protocol
 from unittest import mock
@@ -19,7 +20,10 @@ from aiohttp.typedefs import PathLike
 try:
     import brotlicffi as brotli
 except ImportError:
-    import brotli
+    try:
+        import brotli
+    except ImportError:
+        brotli = None
 
 try:
     import ssl
@@ -54,9 +58,12 @@ def hello_txt(
     }
     # Uncompressed file is not actually written to test it is not required.
     hello["gzip"].write_bytes(gzip.compress(HELLO_AIOHTTP))
-    hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
+    if brotli is not None:
+        hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
     hello["bzip2"].write_bytes(bz2.compress(HELLO_AIOHTTP))
     encoding = getattr(request, "param", None)
+    if encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
     return hello[encoding]
 
 
@@ -275,6 +282,9 @@ async def test_static_file_custom_content_type_compress(
 ) -> None:
     """Test that custom type with encoding is returned for unencoded requests."""
 
+    if expect_encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
+
     async def handler(request: web.Request) -> web.FileResponse:
         resp = sender(hello_txt, chunk_size=16)
         resp.content_type = "application/pdf"
@@ -309,6 +319,8 @@ async def test_static_file_with_encoding_and_enable_compression(
     forced_compression: web.ContentCoding | None,
 ) -> None:
     """Test that enable_compression does not double compress when an encoded file is also present."""
+    if expect_encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
 
     async def handler(request: web.Request) -> web.FileResponse:
         resp = sender(hello_txt)
@@ -614,6 +626,9 @@ async def test_static_file_ssl(
     await conn.close()
 
 
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="README.md not supported"
+)
 async def test_static_file_directory_traversal_attack(
     aiohttp_client: AiohttpClient,
 ) -> None:

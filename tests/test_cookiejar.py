@@ -1569,6 +1569,9 @@ async def test_shared_cookie_with_multiple_domains() -> None:
 # === Security tests for restricted unpickler and JSON save/load ===
 
 
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="os.system not supported"
+)
 def test_load_rejects_malicious_pickle(tmp_path: Path) -> None:
     """Verify CookieJar.load() blocks arbitrary code execution via pickle.
 
