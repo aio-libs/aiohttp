@@ -2052,7 +2052,7 @@ second one.
 User should never instantiate resource classes but give it by
 :meth:`UrlDispatcher.add_resource` call.
 
-After that he may add a :term:`route` by calling :meth:`Resource.add_route`.
+After that he may add a :term:`route` by calling :meth:`AbstractResource.add_route`.
 
 :meth:`UrlDispatcher.add_route` is just shortcut for::
 
@@ -2098,6 +2098,26 @@ Resource classes hierarchy::
 
       .. versionadded:: 3.3
 
+   .. method:: add_route(method, handler, *, expect_handler=None)
+
+      Add a :term:`web-handler` to resource.
+
+      :param str method: HTTP method for route. Should be one of
+                         ``'GET'``, ``'POST'``, ``'PUT'``,
+                         ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
+                         ``'OPTIONS'`` or ``'*'`` for any method.
+
+                         The parameter is case-insensitive, e.g. you
+                         can push ``'get'`` as well as ``'GET'``.
+
+                         The method should be unique for resource.
+
+      :param collections.abc.Callable handler: route handler.
+
+      :param collections.abc.Coroutine expect_handler: optional *expect* header handler.
+
+      :returns: new :class:`ResourceRoute` instance.
+
    .. method:: resolve(request)
       :async:
 
@@ -2133,27 +2153,6 @@ Resource classes hierarchy::
    :canonical: aiohttp.web_urldispatcher.Resource
 
    A base class for new-style resources, inherits :class:`AbstractResource`.
-
-
-   .. method:: add_route(method, handler, *, expect_handler=None)
-
-      Add a :term:`web-handler` to resource.
-
-      :param str method: HTTP method for route. Should be one of
-                         ``'GET'``, ``'POST'``, ``'PUT'``,
-                         ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
-                         ``'OPTIONS'`` or ``'*'`` for any method.
-
-                         The parameter is case-insensitive, e.g. you
-                         can push ``'get'`` as well as ``'GET'``.
-
-                         The method should be unique for resource.
-
-      :param collections.abc.Callable handler: route handler.
-
-      :param collections.abc.Coroutine expect_handler: optional *expect* header handler.
-
-      :returns: new :class:`ResourceRoute` instance.
 
 
 .. class:: PlainResource
@@ -2203,10 +2202,21 @@ Resource classes hierarchy::
          be called as ``resource.url_for(to='val1', param='val2')``
 
 
+.. class:: PrefixResource
+   :canonical: aiohttp.web_urldispatcher.PrefixResource
+
+   A resource, inherited from :class:`AbstractResource`.
+
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. Returns the prefix
+      used to create the PrefixResource. For example ``/prefix``
+
+
 .. class:: StaticResource
    :canonical: aiohttp.web_urldispatcher.StaticResource
 
-   A resource, inherited from :class:`Resource`.
+   A resource, inherited from :class:`PrefixResource`.
 
    The class corresponds to resources for :ref:`static file serving
    <aiohttp-web-static-file-handling>`.

@@ -1,0 +1,6 @@
+Fixed :py:class:`~aiohttp.web.StaticResource` not resolving urls when adding them via the internal ``_routes`` property.
+You had to also add the method to the ``_allowed_methods`` property, which is not ideal.
+
+Added :py:meth:`~aiohttp.web.AbstractResource.add_route` and :py:meth:`~aiohttp.web.AbstractResource.register_route`
+to :py:class:`~aiohttp.web.AbstractResource`.
+-- by :user:`BlindChickens`.
