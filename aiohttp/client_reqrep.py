@@ -392,14 +392,8 @@ class ClientResponse(HeadersMixin):
 
     @reify
     def links(self) -> "MultiDictProxy[MultiDictProxy[str | URL]]":
-        links_str = ", ".join(self.headers.getall("link", []))
-
-        if not links_str:
-            return MultiDictProxy(MultiDict())
-
         links: MultiDict[MultiDictProxy[str | URL]] = MultiDict()
-
-        for val in re.split(r",(?=\s*<)", links_str):
+        for val in self.headers.getall("link"):
             match = re.match(r"\s*<(.*)>(.*)", val)
             if match is None:  # Malformed link
                 continue
@@ -468,7 +462,7 @@ class ClientResponse(HeadersMixin):
         self.content = payload
 
         # cookies
-        if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
+        if cookie_hdrs := self.raw_headers.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
             self._raw_cookie_headers = tuple(cookie_hdrs)
         return self
