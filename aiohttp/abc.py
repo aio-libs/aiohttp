@@ -1,33 +1,24 @@
 import logging
+import socket
 from abc import ABC, abstractmethod
-from collections.abc import Sized
+from collections.abc import Awaitable, Callable, Generator, Iterable, Sequence, Sized
 from http.cookies import BaseCookie, Morsel
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from multidict import CIMultiDict
 from yarl import URL
 
+from ._cookie_helpers import parse_set_cookie_headers
 from .typedefs import LooseCookies
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .web_app import Application
     from .web_exceptions import HTTPException
     from .web_request import BaseRequest, Request
     from .web_response import StreamResponse
 else:
-    BaseRequest = Request = Application = StreamResponse = None
-    HTTPException = None
+    BaseRequest = Request = Application = StreamResponse = Any
+    HTTPException = Any
 
 
 class AbstractRouter(ABC):
@@ -56,6 +47,9 @@ class AbstractRouter(ABC):
 
 
 class AbstractMatchInfo(ABC):
+
+    __slots__ = ()
+
     @property  # pragma: no branch
     @abstractmethod
     def handler(self) -> Callable[[Request], Awaitable[StreamResponse]]:
@@ -65,21 +59,21 @@ class AbstractMatchInfo(ABC):
     @abstractmethod
     def expect_handler(
         self,
-    ) -> Callable[[Request], Awaitable[Optional[StreamResponse]]]:
+    ) -> Callable[[Request], Awaitable[StreamResponse | None]]:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def http_exception(self) -> Optional[HTTPException]:
+    def http_exception(self) -> HTTPException | None:
         """HTTPException instance raised on router's resolving, or None"""
 
     @abstractmethod  # pragma: no branch
-    def get_info(self) -> Dict[str, Any]:
+    def get_info(self) -> dict[str, Any]:
         """Return a dict with additional info useful for introspection"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def apps(self) -> Tuple[Application, ...]:
+    def apps(self) -> tuple[Application, ...]:
         """Stack of nested applications.
 
         Top level application is left-most element.
@@ -113,15 +107,39 @@ class AbstractView(ABC):
         return self._request
 
     @abstractmethod
-    def __await__(self) -> Generator[Any, None, StreamResponse]:
+    def __await__(self) -> Generator[None, None, StreamResponse]:
         """Execute the view handler."""
+
+
+class ResolveResult(TypedDict):
+    """Resolve result.
+
+    This is the result returned from an AbstractResolver's
+    resolve method.
+
+    :param hostname: The hostname that was provided.
+    :param host: The IP address that was resolved.
+    :param port: The port that was resolved.
+    :param family: The address family that was resolved.
+    :param proto: The protocol that was resolved.
+    :param flags: The flags that were resolved.
+    """
+
+    hostname: str
+    host: str
+    port: int
+    family: int
+    proto: int
+    flags: int
 
 
 class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, host: str, port: int, family: int) -> List[Dict[str, Any]]:
+    async def resolve(
+        self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
+    ) -> list[ResolveResult]:
         """Return IP address for given hostname"""
 
     @abstractmethod
@@ -129,20 +147,19 @@ class AbstractResolver(ABC):
         """Release resolver"""
 
 
-if TYPE_CHECKING:  # pragma: no cover
-    IterableBase = Iterable[Morsel[str]]
-else:
-    IterableBase = Iterable
+ClearCookiePredicate = Callable[[Morsel[str]], bool]
 
 
-ClearCookiePredicate = Callable[["Morsel[str]"], bool]
-
-
-class AbstractCookieJar(Sized, IterableBase):
+class AbstractCookieJar(Sized, Iterable[Morsel[str]]):
     """Abstract Cookie Jar."""
 
+    @property
     @abstractmethod
-    def clear(self, predicate: Optional[ClearCookiePredicate] = None) -> None:
+    def quote_cookie(self) -> bool:
+        """Return True if cookies should be quoted."""
+
+    @abstractmethod
+    def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         """Clear all cookies if no predicate is passed."""
 
     @abstractmethod
@@ -153,20 +170,29 @@ class AbstractCookieJar(Sized, IterableBase):
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
 
+    def update_cookies_from_headers(
+        self, headers: Sequence[str], response_url: URL
+    ) -> None:
+        """Update cookies from raw Set-Cookie headers."""
+        if headers and (cookies_to_update := parse_set_cookie_headers(headers)):
+            self.update_cookies(cookies_to_update, response_url)
+
     @abstractmethod
-    def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
+    def filter_cookies(self, request_url: URL) -> BaseCookie[str]:
         """Return the jar's cookies filtered by their attributes."""
 
 
 class AbstractStreamWriter(ABC):
     """Abstract stream writer."""
 
-    buffer_size = 0
-    output_size = 0
-    length: Optional[int] = 0
+    buffer_size: int = 0
+    output_size: int = 0
+    length: int | None = 0
 
     @abstractmethod
-    async def write(self, chunk: bytes) -> None:
+    async def write(
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
+    ) -> None:
         """Write chunk into stream."""
 
     @abstractmethod
@@ -178,7 +204,9 @@ class AbstractStreamWriter(ABC):
         """Flush the write buffer."""
 
     @abstractmethod
-    def enable_compression(self, encoding: str = "deflate") -> None:
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int | None = None
+    ) -> None:
         """Enable HTTP body compression"""
 
     @abstractmethod
@@ -186,14 +214,21 @@ class AbstractStreamWriter(ABC):
         """Enable HTTP chunked mode"""
 
     @abstractmethod
-    async def write_headers(
-        self, status_line: str, headers: "CIMultiDict[str]"
-    ) -> None:
+    async def write_headers(self, status_line: str, headers: CIMultiDict[str]) -> None:
         """Write HTTP headers"""
+
+    def send_headers(self) -> None:
+        """Force sending buffered headers if not already sent.
+
+        Required only if write_headers() buffers headers instead of sending immediately.
+        For backwards compatibility, this method does nothing by default.
+        """
 
 
 class AbstractAccessLogger(ABC):
     """Abstract writer to access log."""
+
+    __slots__ = ("logger", "log_format")
 
     def __init__(self, logger: logging.Logger, log_format: str) -> None:
         self.logger = logger
@@ -203,12 +238,24 @@ class AbstractAccessLogger(ABC):
     def log(self, request: BaseRequest, response: StreamResponse, time: float) -> None:
         """Emit log to logger."""
 
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        return True
+
 
 class AbstractAsyncAccessLogger(ABC):
     """Abstract asynchronous writer to access log."""
+
+    __slots__ = ()
 
     @abstractmethod
     async def log(
         self, request: BaseRequest, response: StreamResponse, request_start: float
     ) -> None:
         """Emit log to logger."""
+
+    @property
+    def enabled(self) -> bool:
+        """Check if logger is enabled."""
+        return True

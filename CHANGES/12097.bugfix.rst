@@ -1,0 +1,1 @@
+Fixed digest auth dropping challenge fields with empty string values -- by :user:`bysiber`.

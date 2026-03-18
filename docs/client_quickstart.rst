@@ -75,7 +75,7 @@ endpoints of ``http://httpbin.org`` can be used the following code::
    every request is a **very bad** idea.
 
    A session contains a connection pool inside. Connection reusage and
-   keep-alives (both are on by default) may speed up total performance.
+   keep-alive (both are on by default) may speed up total performance.
 
    You may find more information about creating persistent sessions
    in :ref:`aiohttp-persistent-session`.
@@ -96,7 +96,7 @@ Passing Parameters In URLs
 You often want to send some sort of data in the URL's query string. If
 you were constructing the URL by hand, this data would be given as key/value
 pairs in the URL after a question mark, e.g. ``httpbin.org/get?key=val``.
-Requests allows you to provide these arguments as a :class:`dict`, using the
+aiohttp allows you to provide these arguments as a :class:`dict`, using the
 ``params`` keyword argument. As an example, if you wanted to pass
 ``key1=value1`` and ``key2=value2`` to ``httpbin.org/get``, you would use the
 following code::
@@ -190,6 +190,10 @@ You can enable ``brotli`` transfer-encodings support,
 just install `Brotli <https://pypi.org/project/Brotli/>`_
 or `brotlicffi <https://pypi.org/project/brotlicffi/>`_.
 
+You can enable ``zstd`` transfer-encodings support,
+install `backports.zstd <https://pypi.org/project/backports.zstd/>`_.
+If you are using Python >= 3.14, no dependency should be required.
+
 JSON Request
 ============
 
@@ -202,20 +206,22 @@ Any of session's request methods like :func:`request`,
 
 
 By default session uses python's standard :mod:`json` module for
-serialization.  But it is possible to use different
-``serializer``. :class:`ClientSession` accepts ``json_serialize``
-parameter::
+serialization.  But it is possible to use a different
+``serializer``. :class:`ClientSession` accepts ``json_serialize`` and
+``json_serialize_bytes`` parameters::
 
-  import ujson
+  import orjson
 
   async with aiohttp.ClientSession(
-          json_serialize=ujson.dumps) as session:
+          json_serialize_bytes=orjson.dumps) as session:
       await session.post(url, json={'test': 'object'})
 
 .. note::
 
-   ``ujson`` library is faster than standard :mod:`json` but slightly
-   incompatible.
+   ``orjson`` library is faster than standard :mod:`json` and is actively
+   maintained. Since ``orjson.dumps`` returns :class:`bytes`, pass it via
+   the ``json_serialize_bytes`` parameter to avoid unnecessary
+   encoding/decoding overhead.
 
 JSON Response Content
 =====================
@@ -340,24 +346,33 @@ send large files without reading them into memory.
 
 As a simple case, simply provide a file-like object for your body::
 
-    with open('massive-body', 'rb') as f:
-       await session.post('http://httpbin.org/post', data=f)
+    with open("massive-body", "rb") as f:
+       await session.post("https://httpbin.org/post", data=f)
 
 
-Or you can use *asynchronous generator*::
+Or you can provide an *asynchronous generator*, for example to generate
+data on the fly::
 
-  async def file_sender(file_name=None):
-      async with aiofiles.open(file_name, 'rb') as f:
-          chunk = await f.read(64*1024)
-          while chunk:
-              yield chunk
-              chunk = await f.read(64*1024)
+  async def data_generator():
+      for i in range(10):
+          yield f"line {i}\n".encode()
 
-  # Then you can use file_sender as a data provider:
-
-  async with session.post('http://httpbin.org/post',
-                          data=file_sender(file_name='huge_file')) as resp:
+  async with session.post("https://httpbin.org/post",
+                          data=data_generator()) as resp:
       print(await resp.text())
+
+.. warning::
+
+   Async generators and other non-rewindable data sources
+   (such as :class:`~aiohttp.StreamReader`) cannot be replayed if a
+   redirect occurs (for example, HTTP 307 or 308). If the request body
+   has already been streamed, :mod:`aiohttp` raises
+   :class:`~aiohttp.ClientPayloadError`.
+
+   If your endpoint may redirect, either:
+
+   * Pass a seekable file-like object or :class:`bytes`.
+   * Disable redirects with ``allow_redirects=False`` and handle them manually.
 
 
 Because the :attr:`~aiohttp.ClientResponse.content` attribute is a
@@ -408,7 +423,8 @@ Timeouts
 Timeout settings are stored in :class:`ClientTimeout` data structure.
 
 By default *aiohttp* uses a *total* 300 seconds (5min) timeout, it means that the
-whole operation should finish in 5 minutes.
+whole operation should finish in 5 minutes. In order to allow time for DNS fallback,
+the default ``sock_connect`` timeout is 30 seconds.
 
 The value could be overridden by *timeout* parameter for the session (specified in seconds)::
 

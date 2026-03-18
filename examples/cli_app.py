@@ -14,7 +14,7 @@ arguments to the `cli_app:init` function for processing.
 """
 
 from argparse import ArgumentParser, Namespace
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from aiohttp import web
 
@@ -27,7 +27,7 @@ async def display_message(req: web.Request) -> web.StreamResponse:
     return web.Response(text=text)
 
 
-def init(argv: Optional[Sequence[str]]) -> web.Application:
+def init(argv: Sequence[str] | None) -> web.Application:
     arg_parser = ArgumentParser(
         prog="aiohttp.web ...", description="Application CLI", add_help=False
     )

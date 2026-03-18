@@ -1,0 +1,1 @@
+Started rejecting non string values in `FormData`, to avoid unexpected results -- by :user:`Dreamsorcerer`.

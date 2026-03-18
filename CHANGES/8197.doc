@@ -1,0 +1,1 @@
+Fixed false behavior of base_url param for ClientSession in client documentation -- by :user:`alexis974`.

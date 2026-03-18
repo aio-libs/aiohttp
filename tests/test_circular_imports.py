@@ -8,15 +8,17 @@ This module is based on an idea that pytest uses for self-testing:
 * https://github.com/pytest-dev/pytest/blob/d18c75b/testing/test_meta.py
 * https://twitter.com/codewithanthony/status/1229445110510735361
 """
+
 import os
 import pkgutil
 import socket
 import subprocess
 import sys
+from collections.abc import Generator
 from itertools import chain
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Generator, List, Union
+from typing import TYPE_CHECKING, Union
 
 import pytest
 
@@ -27,22 +29,24 @@ import aiohttp
 
 
 def _mark_aiohttp_worker_for_skipping(
-    importables: List[str],
-) -> List[Union[str, "ParameterSet"]]:
+    importables: list[str],
+) -> list[Union[str, "ParameterSet"]]:
     return [
-        pytest.param(
-            importable,
-            marks=pytest.mark.skipif(
-                not hasattr(socket, "AF_UNIX"), reason="It's a UNIX-only module"
-            ),
+        (
+            pytest.param(
+                importable,
+                marks=pytest.mark.skipif(
+                    not hasattr(socket, "AF_UNIX"), reason="It's a UNIX-only module"
+                ),
+            )
+            if importable == "aiohttp.worker"
+            else importable
         )
-        if importable == "aiohttp.worker"
-        else importable
         for importable in importables
     ]
 
 
-def _find_all_importables(pkg: ModuleType) -> List[str]:
+def _find_all_importables(pkg: ModuleType) -> list[str]:
     """Find all importables in the project.
 
     Return them in order.

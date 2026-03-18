@@ -1,1 +1,0 @@
-Improve test suite handling of paths and temp files to consistently use pathlib and pytest fixtures.

@@ -30,6 +30,10 @@ and located on https://github.com/aio-libs
 aiohttp extensions
 ^^^^^^^^^^^^^^^^^^
 
+- `aiohttp-apischema <https://github.com/aio-libs/aiohttp-apischema>`_
+  provides automatic API schema generation and validation of user input
+  for :mod:`aiohttp.web`.
+
 - `aiohttp-session <https://github.com/aio-libs/aiohttp-session>`_
   provides sessions for :mod:`aiohttp.web`.
 
@@ -144,6 +148,9 @@ ask to raise the status.
 
 - `pytest-aiohttp-client <https://github.com/sivakov512/pytest-aiohttp-client>`_
   Pytest fixture with simpler api, payload decoding and status code assertions.
+
+- `python-proxy-headers <https://github.com/proxymesh/python-proxy-headers>`_
+  provides ``aiohttp_proxy`` extension for receiving custom response headers from a proxy server
 
 - `octomachinery <https://octomachinery.dev>`_ A framework for developing
   GitHub Apps and GitHub Actions.
@@ -296,3 +303,15 @@ ask to raise the status.
 
 - `rsocket <https://github.com/rsocket/rsocket-py>`_
   Python implementation of `RSocket protocol <https://rsocket.io>`_.
+
+- `nacl_middleware <https://github.com/CosmicDNA/nacl_middleware>`_
+  An aiohttp middleware library for asymmetric encryption of data transmitted via http and/or websocket connections.
+
+- `aiohttp-asgi-connector <https://github.com/thearchitector/aiohttp-asgi-connector>`_
+  An aiohttp connector for using a ``ClientSession`` to interface directly with separate ASGI applications.
+
+- `aiohttp-openmetrics <https://github.com/jelmer/aiohttp-openmetrics>`_
+  An aiohttp middleware for exposing Prometheus metrics.
+
+- `wireup <https://github.com/maldoinc/wireup>`_
+  Performant, concise, and easy-to-use dependency injection container.

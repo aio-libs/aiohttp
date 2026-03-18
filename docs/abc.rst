@@ -16,7 +16,7 @@ but few of them are.
 aiohttp.web is built on top of few concepts: *application*, *router*,
 *request* and *response*.
 
-*router* is a *plugable* part: a library user may build a *router*
+*router* is a *pluggable* part: a library user may build a *router*
 from scratch, all other parts should work with new router seamlessly.
 
 :class:`aiohttp.abc.AbstractRouter` has the only mandatory method:
@@ -181,3 +181,66 @@ Abstract Access Logger
       :param response: :class:`aiohttp.web.Response` object.
 
       :param float time: Time taken to serve the request.
+
+   .. attribute:: enabled
+
+        Return True if logger is enabled.
+
+        Override this property if logging is disabled to avoid the
+        overhead of calculating details to feed the logger.
+
+        This property may be omitted if logging is always enabled.
+
+
+Abstract Resolver
+-------------------------------
+
+.. class:: AbstractResolver
+
+   An abstract class, base for all resolver implementations.
+
+   Method ``resolve`` should be overridden.
+
+   .. method:: resolve(host, port, family)
+
+      Resolve host name to IP address.
+
+      :param str host: host name to resolve.
+
+      :param int port: port number.
+
+      :param int family: socket family.
+
+      :return: list of :class:`aiohttp.abc.ResolveResult` instances.
+
+   .. method:: close()
+
+      Release resolver.
+
+.. class:: ResolveResult
+
+   Result of host name resolution.
+
+   .. attribute:: hostname
+
+      The host name that was provided.
+
+   .. attribute:: host
+
+      The IP address that was resolved.
+
+   .. attribute:: port
+
+      The port that was resolved.
+
+   .. attribute:: family
+
+      The address family that was resolved.
+
+   .. attribute:: proto
+
+      The protocol that was resolved.
+
+   .. attribute:: flags
+
+      The flags that were resolved.

@@ -1,1 +1,0 @@
-Avoid raising UnicodeDecodeError in multipart and in HTTP headers parsing.

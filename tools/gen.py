@@ -7,7 +7,7 @@ from collections import defaultdict
 import multidict
 
 ROOT = pathlib.Path.cwd()
-while ROOT.parent != ROOT and not (ROOT / ".git").exists():
+while ROOT.parent != ROOT and not (ROOT / "pyproject.toml").exists():
     ROOT = ROOT.parent
 
 

@@ -1,1 +1,0 @@
-changed ``sock_read`` timeout to start after writing has finished, to avoid read timeouts caused by an unfinished write. -- by :user:`dtrifiro`

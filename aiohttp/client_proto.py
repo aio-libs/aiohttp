@@ -1,20 +1,34 @@
 import asyncio
 from contextlib import suppress
-from typing import Any, Optional, Tuple
+from typing import Callable, Protocol
 
+from ._websocket.reader import WebSocketDataQueue
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
+    ClientConnectionError,
     ClientOSError,
     ClientPayloadError,
     ServerDisconnectedError,
-    ServerTimeoutError,
+    SocketTimeoutError,
 )
-from .helpers import BaseTimerContext, set_exception, set_result
+from .helpers import (
+    _EXC_SENTINEL,
+    EMPTY_BODY_STATUS_CODES,
+    BaseTimerContext,
+    ErrorableProtocol,
+    set_exception,
+    set_result,
+)
 from .http import HttpResponseParser, RawResponseMessage, WebSocketReader
+from .http_exceptions import HttpProcessingError
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
-class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamReader]]):
+class _Payload(ErrorableProtocol, Protocol):
+    def is_eof(self) -> bool: ...
+
+
+class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamReader]]):
     """Helper class to adapt between Protocol and StreamReader."""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
@@ -23,22 +37,42 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._should_close = False
 
-        self._payload: Optional[StreamReader] = None
+        self._payload: _Payload | None = None
         self._skip_payload = False
-        self._payload_parser: Optional[WebSocketReader] = None
+        self._payload_parser: WebSocketReader | None = None
+        self._data_received_cb: Callable[[], None] | None = None
 
         self._timer = None
 
         self._tail = b""
         self._upgraded = False
-        self._parser: Optional[HttpResponseParser] = None
+        self._parser: HttpResponseParser | None = None
 
-        self._read_timeout: Optional[float] = None
-        self._read_timeout_handle: Optional[asyncio.TimerHandle] = None
+        self._read_timeout: float | None = None
+        self._read_timeout_handle: asyncio.TimerHandle | None = None
 
-        self._timeout_ceil_threshold: Optional[float] = 5
+        self._timeout_ceil_threshold: float | None = 5
 
-        self.closed: asyncio.Future[None] = self._loop.create_future()
+        self._closed: None | asyncio.Future[None] = None
+        self._connection_lost_called = False
+
+    @property
+    def closed(self) -> None | asyncio.Future[None]:
+        """Future that is set when the connection is closed.
+
+        This property returns a Future that will be completed when the connection
+        is closed. The Future is created lazily on first access to avoid creating
+        futures that will never be awaited.
+
+        Returns:
+            - A Future[None] if the connection is still open or was closed after
+              this property was accessed
+            - None if connection_lost() was already called before this property
+              was ever accessed (indicating no one is waiting for the closure)
+        """
+        if self._closed is None and not self._connection_lost_called:
+            self._closed = self._loop.create_future()
+        return self._closed
 
     @property
     def upgraded(self) -> bool:
@@ -46,22 +80,21 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
     @property
     def should_close(self) -> bool:
-        if self._payload is not None and not self._payload.is_eof():
-            return True
-
-        return (
+        return bool(
             self._should_close
+            or (self._payload is not None and not self._payload.is_eof())
             or self._upgraded
-            or self.exception() is not None
+            or self._exception is not None
             or self._payload_parser is not None
-            or len(self) > 0
-            or bool(self._tail)
+            or self._buffer
+            or self._tail
         )
 
     def force_close(self) -> None:
         self._should_close = True
 
     def close(self) -> None:
+        self._exception = None  # Break cyclic references
         transport = self.transport
         if transport is not None:
             transport.close()
@@ -69,39 +102,84 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             self._payload = None
             self._drop_timeout()
 
+    def abort(self) -> None:
+        self._exception = None  # Break cyclic references
+        transport = self.transport
+        if transport is not None:
+            transport.abort()
+            self.transport = None
+            self._payload = None
+            self._drop_timeout()
+
     def is_connected(self) -> bool:
         return self.transport is not None and not self.transport.is_closing()
 
-    def connection_lost(self, exc: Optional[BaseException]) -> None:
+    def connection_lost(self, exc: BaseException | None) -> None:
+        self._connection_lost_called = True
         self._drop_timeout()
 
-        if exc is not None:
-            set_exception(self.closed, exc)
-        else:
-            set_result(self.closed, None)
+        original_connection_error = exc
+        reraised_exc = original_connection_error
+
+        connection_closed_cleanly = original_connection_error is None
+
+        if self._closed is not None:
+            # If someone is waiting for the closed future,
+            # we should set it to None or an exception. If
+            # self._closed is None, it means that
+            # connection_lost() was called already
+            # or nobody is waiting for it.
+            if connection_closed_cleanly:
+                set_result(self._closed, None)
+            else:
+                assert original_connection_error is not None
+                set_exception(
+                    self._closed,
+                    ClientConnectionError(
+                        f"Connection lost: {original_connection_error !s}",
+                    ),
+                    original_connection_error,
+                )
 
         if self._payload_parser is not None:
-            with suppress(Exception):
+            with suppress(Exception):  # FIXME: log this somehow?
                 self._payload_parser.feed_eof()
 
         uncompleted = None
         if self._parser is not None:
             try:
                 uncompleted = self._parser.feed_eof()
-            except Exception:
+            except Exception as underlying_exc:
                 if self._payload is not None:
-                    self._payload.set_exception(
-                        ClientPayloadError("Response payload is not completed")
+                    client_payload_exc_msg = (
+                        f"Response payload is not completed: {underlying_exc !r}"
+                    )
+                    if not connection_closed_cleanly:
+                        client_payload_exc_msg = (
+                            f"{client_payload_exc_msg !s}. "
+                            f"{original_connection_error !r}"
+                        )
+                    set_exception(
+                        self._payload,
+                        ClientPayloadError(client_payload_exc_msg),
+                        underlying_exc,
                     )
 
         if not self.is_eof():
-            if isinstance(exc, OSError):
-                exc = ClientOSError(*exc.args)
-            if exc is None:
-                exc = ServerDisconnectedError(uncompleted)
+            if isinstance(original_connection_error, OSError):
+                reraised_exc = ClientOSError(*original_connection_error.args)
+            if connection_closed_cleanly:
+                reraised_exc = ServerDisconnectedError(uncompleted)
             # assigns self._should_close to True as side effect,
             # we do it anyway below
-            self.set_exception(exc)
+            underlying_non_eof_exc = (
+                _EXC_SENTINEL
+                if connection_closed_cleanly
+                else original_connection_error
+            )
+            assert underlying_non_eof_exc is not None
+            assert reraised_exc is not None
+            self.set_exception(reraised_exc, underlying_non_eof_exc)
 
         self._should_close = True
         self._parser = None
@@ -109,7 +187,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         self._payload_parser = None
         self._reading_paused = False
 
-        super().connection_lost(exc)
+        super().connection_lost(reraised_exc)
 
     def eof_received(self) -> None:
         # should call parser.feed_eof() most likely
@@ -123,19 +201,24 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         super().resume_reading()
         self._reschedule_timeout()
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: type[BaseException] | BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         self._should_close = True
         self._drop_timeout()
-        super().set_exception(exc)
+        super().set_exception(exc, exc_cause)
 
-    def set_parser(self, parser: Any, payload: Any) -> None:
-        # TODO: actual types are:
-        #   parser: WebSocketReader
-        #   payload: FlowControlDataQueue
-        # but they are not generi enough
-        # Need an ABC for both types
+    def set_parser(
+        self,
+        parser: WebSocketReader,
+        payload: WebSocketDataQueue,
+        data_received_cb: Callable[[], None] | None = None,
+    ) -> None:
         self._payload = payload
         self._payload_parser = parser
+        self._data_received_cb = data_received_cb
 
         self._drop_timeout()
 
@@ -146,15 +229,16 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
     def set_response_params(
         self,
         *,
-        timer: Optional[BaseTimerContext] = None,
+        timer: BaseTimerContext | None = None,
         skip_payload: bool = False,
         read_until_eof: bool = False,
         auto_decompress: bool = True,
-        read_timeout: Optional[float] = None,
+        read_timeout: float | None = None,
         read_bufsize: int = 2**16,
         timeout_ceil_threshold: float = 5,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
+        max_headers: int = 128,
     ) -> None:
         self._skip_payload = skip_payload
 
@@ -173,6 +257,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             auto_decompress=auto_decompress,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
+            max_headers=max_headers,
         )
 
         if self._tail:
@@ -199,11 +284,19 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
     def start_timeout(self) -> None:
         self._reschedule_timeout()
 
+    @property
+    def read_timeout(self) -> float | None:
+        return self._read_timeout
+
+    @read_timeout.setter
+    def read_timeout(self, read_timeout: float | None) -> None:
+        self._read_timeout = read_timeout
+
     def _on_read_timeout(self) -> None:
-        exc = ServerTimeoutError("Timeout on reading data from socket")
+        exc = SocketTimeoutError("Timeout on reading data from socket")
         self.set_exception(exc)
         if self._payload is not None:
-            self._payload.set_exception(exc)
+            set_exception(self._payload, exc)
 
     def data_received(self, data: bytes) -> None:
         self._reschedule_timeout()
@@ -211,8 +304,10 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         if not data:
             return
 
-        # custom payload parser
+        # custom payload parser - currently always WebSocketReader
         if self._payload_parser is not None:
+            if self._data_received_cb is not None:
+                self._data_received_cb()
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
                 self._payload = None
@@ -221,49 +316,56 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                 if tail:
                     self.data_received(tail)
             return
-        else:
-            if self._upgraded or self._parser is None:
-                # i.e. websocket connection, websocket parser is not set yet
-                self._tail += data
+
+        if self._upgraded or self._parser is None:
+            # i.e. websocket connection, websocket parser is not set yet
+            self._tail += data
+            return
+
+        # parse http messages
+        try:
+            messages, upgraded, tail = self._parser.feed_data(data)
+        except Exception as underlying_exc:
+            if self.transport is not None:
+                # connection.release() could be called BEFORE
+                # data_received(), the transport is already
+                # closed in this case
+                self.transport.close()
+            # should_close is True after the call
+            if isinstance(underlying_exc, HttpProcessingError):
+                exc = HttpProcessingError(
+                    code=underlying_exc.code,
+                    message=underlying_exc.message,
+                    headers=underlying_exc.headers,
+                )
             else:
-                # parse http messages
-                try:
-                    messages, upgraded, tail = self._parser.feed_data(data)
-                except BaseException as exc:
-                    if self.transport is not None:
-                        # connection.release() could be called BEFORE
-                        # data_received(), the transport is already
-                        # closed in this case
-                        self.transport.close()
-                    # should_close is True after the call
-                    self.set_exception(exc)
-                    return
+                exc = HttpProcessingError()
+            self.set_exception(exc, underlying_exc)
+            return
 
-                self._upgraded = upgraded
+        self._upgraded = upgraded
 
-                payload: Optional[StreamReader] = None
-                for message, payload in messages:
-                    if message.should_close:
-                        self._should_close = True
+        payload: StreamReader | None = None
+        for message, payload in messages:
+            if message.should_close:
+                self._should_close = True
 
-                    self._payload = payload
+            self._payload = payload
 
-                    if self._skip_payload or message.code in (204, 304):
-                        self.feed_data((message, EMPTY_PAYLOAD), 0)
-                    else:
-                        self.feed_data((message, payload), 0)
-                if payload is not None:
-                    # new message(s) was processed
-                    # register timeout handler unsubscribing
-                    # either on end-of-stream or immediately for
-                    # EMPTY_PAYLOAD
-                    if payload is not EMPTY_PAYLOAD:
-                        payload.on_eof(self._drop_timeout)
-                    else:
-                        self._drop_timeout()
+            if self._skip_payload or message.code in EMPTY_BODY_STATUS_CODES:
+                self.feed_data((message, EMPTY_PAYLOAD))
+            else:
+                self.feed_data((message, payload))
 
-                if tail:
-                    if upgraded:
-                        self.data_received(tail)
-                    else:
-                        self._tail = tail
+        if payload is not None:
+            # new message(s) was processed
+            # register timeout handler unsubscribing
+            # either on end-of-stream or immediately for
+            # EMPTY_PAYLOAD
+            if payload is not EMPTY_PAYLOAD:
+                payload.on_eof(self._drop_timeout)
+            else:
+                self._drop_timeout()
+
+        if upgraded and tail:
+            self.data_received(tail)

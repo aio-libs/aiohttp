@@ -1,3 +1,0 @@
-Implemented stripping the trailing dots from fully-qualified domain names in ``Host`` headers and TLS context when acting as an HTTP client.
-This allows the client to connect to URLs with FQDN host name like ``https://example.com./``.
--- by :user:`martin-sucha`.

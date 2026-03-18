@@ -1,1 +1,0 @@
-Fixed bug when using ``TCPConnector`` with ``ttl_dns_cache=0``.

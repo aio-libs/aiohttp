@@ -1,0 +1,1 @@
+Widened ``trace_request_ctx`` parameter type from ``Mapping[str, Any] | None`` to ``object`` to allow passing instances of user-defined classes as trace context -- by :user:`nightcityblade`.
