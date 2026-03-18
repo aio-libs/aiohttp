@@ -100,10 +100,10 @@ class HeadersDictProxy(Mapping[str, str]):
     def get(self, key: str, default=None):
         return self._d.get(key.title(), default)
 
-    def getall(self, key: str) -> Tuple[str]:
+    def getall(self, key: str) -> tuple[str]:
         return self._split_on_commas(self._d.get(key, ""))
 
-    def _split_on_commas(self, val: str) -> Tuple[str]:
+    def _split_on_commas(self, val: str) -> tuple[str]:
         values = []
         while val:
             quoted = re.match(QUOTEHDRRE, val)

@@ -394,7 +394,6 @@ cdef class HttpParser:
         self._limit = limit
 
     cdef _process_header(self):
-
         cdef str value
         if self._raw_name is not EMPTY_BYTES:
             name = find_header(self._raw_name)
