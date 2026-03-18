@@ -259,7 +259,7 @@ class HeadersParser:
                     hdrs.MAX_FORWARDS,
                     hdrs.SERVER,
                     hdrs.TRANSFER_ENCODING,
-                    hdrs.USER_AGENT
+                    hdrs.USER_AGENT,
                 }:
                     raise BadHttpMessage(f"Duplicate '{name}' header found.")
                 headers[name] += ", " + value
