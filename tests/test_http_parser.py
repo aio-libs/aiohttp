@@ -134,8 +134,16 @@ test2: data\r
     assert len(messages) == 1
     msg = messages[0][0]
 
-    assert list(msg.headers.items()) == [("Host", "a"), ("test", "a line"), ("test2", "data")]
-    assert msg.raw_headers == ((b"Host", b"a"), (b"test", b"a line"), (b"test2", b"data"))
+    assert list(msg.headers.items()) == [
+        ("Host", "a"),
+        ("test", "a line"),
+        ("test2", "data"),
+    ]
+    assert msg.raw_headers == (
+        (b"Host", b"a"),
+        (b"test", b"a line"),
+        (b"test2", b"data"),
+    )
     assert not msg.should_close
     assert msg.compression is None
     assert not msg.upgrade
@@ -1137,7 +1145,9 @@ def test_http_request_parser_bad_method(
     parser: HttpRequestParser, rfc9110_5_6_2_token_delim: bytes
 ) -> None:
     with pytest.raises(http_exceptions.BadHttpMethod):
-        parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\nHost: a\r\n\r\n')
+        parser.feed_data(
+            rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\nHost: a\r\n\r\n'
+        )
 
 
 def test_http_request_parser_bad_version(parser: HttpRequestParser) -> None:
@@ -1775,7 +1785,8 @@ def test_parse_uri_utf8(parser: HttpRequestParser) -> None:
 
 def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     text = (
-        "GET %s HTTP/1.1\r\nHost: a\r\n\r\n" % quote("/путь?ключ=знач#фраг", safe="/?=#")
+        "GET %s HTTP/1.1\r\nHost: a\r\n\r\n"
+        % quote("/путь?ключ=знач#фраг", safe="/?=#")
     ).encode()
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
