@@ -533,7 +533,7 @@ def test_conn_keep_alive_1_1(parser: HttpRequestParser) -> None:
 
 
 def test_conn_close_comma_list(parser: HttpRequestParser) -> None:
-    text = b"GET /test HTTP/1.1\r\nconnection: close, keep-alive\r\n\r\n"
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\nconnection: close, keep-alive\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
     assert msg.should_close
@@ -542,6 +542,7 @@ def test_conn_close_comma_list(parser: HttpRequestParser) -> None:
 def test_conn_close_multiple_headers(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
+        b"Host: a\r\n"
         b"connection: keep-alive\r\n"
         b"connection: close\r\n\r\n"
     )
@@ -655,6 +656,7 @@ def test_conn_upgrade(parser: HttpRequestParser) -> None:
 def test_conn_upgrade_comma_list(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
+        b"host: a\r\n"
         b"connection: keep-alive, upgrade\r\n"
         b"upgrade: websocket\r\n\r\n"
     )
@@ -668,6 +670,7 @@ def test_conn_upgrade_comma_list(parser: HttpRequestParser) -> None:
 def test_conn_upgrade_multiple_headers(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
+        b"host: a\r\n"
         b"connection: keep-alive\r\n"
         b"connection: upgrade\r\n"
         b"upgrade: websocket\r\n\r\n"
@@ -1056,7 +1059,7 @@ def test_http_request_message_after_close(parser: HttpRequestParser) -> None:
 
 
 def test_http_request_message_after_close_comma_list(parser: HttpRequestParser) -> None:
-    text = b"GET / HTTP/1.1\r\nConnection: close, keep-alive\r\n\r\nInvalid\r\n\r\n"
+    text = b"GET / HTTP/1.1\r\nHost: a\r\nConnection: close, keep-alive\r\n\r\nInvalid\r\n\r\n"
     with pytest.raises(
         http_exceptions.BadHttpMessage, match="Data after `Connection: close`"
     ):
