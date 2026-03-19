@@ -549,16 +549,24 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         if bad_hdr is not None:
             raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
-        # keep-alive
-        conn = headers.get(hdrs.CONNECTION)
-        if conn:
-            v = conn.lower()
-            if v == "close":
+        # keep-alive and protocol switching
+        # RFC 9110 section 7.6.1 defines Connection as a comma-separated list.
+        conn_values = headers.getall(hdrs.CONNECTION, ())
+        if conn_values:
+            conn_tokens = {
+                token.lower()
+                for conn_value in conn_values
+                for token in (part.strip(" \t") for part in conn_value.split(","))
+                if token and token.isascii()
+            }
+
+            if "close" in conn_tokens:
                 close_conn = True
-            elif v == "keep-alive":
+            elif "keep-alive" in conn_tokens:
                 close_conn = False
+
             # https://www.rfc-editor.org/rfc/rfc9110.html#name-101-switching-protocols
-            elif v == "upgrade" and headers.get(hdrs.UPGRADE):
+            if "upgrade" in conn_tokens and headers.get(hdrs.UPGRADE):
                 upgrade = True
 
         # encoding
