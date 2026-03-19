@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 import yarl
 from propcache import under_cached_property
 
+from . import hdrs
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import ceil_timeout, frozen_dataclass_decorator
@@ -25,7 +26,6 @@ from .http import (
     StreamWriter,
 )
 from .http_exceptions import BadHttpMessage, BadHttpMethod
-from . import hdrs
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .tcp_helpers import tcp_keepalive
