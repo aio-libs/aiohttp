@@ -20,10 +20,12 @@ from .http import (
     HttpProcessingError,
     HttpRequestParser,
     HttpVersion10,
+    HttpVersion11,
     RawRequestMessage,
     StreamWriter,
 )
-from .http_exceptions import BadHttpMethod
+from .http_exceptions import BadHttpMessage, BadHttpMethod
+from . import hdrs
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .tcp_helpers import tcp_keepalive
@@ -444,6 +446,14 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 tail = b""
 
             for msg, payload in messages or ():
+                # RFC 9112 Section 3.2: HTTP/1.1 requests must include Host header
+                if isinstance(msg, RawRequestMessage) and msg.version == HttpVersion11:
+                    if hdrs.HOST not in msg.headers:
+                        msg = _ErrInfo(
+                            status=400,
+                            exc=BadHttpMessage("Missing Host header"),
+                            message="Missing Host header",
+                        )
                 self._request_count += 1
                 self._messages.append((msg, payload))
 
