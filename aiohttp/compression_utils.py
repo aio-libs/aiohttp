@@ -342,7 +342,52 @@ class ZSTDDecompressor(DecompressionBaseHandler):
             if max_length == ZLIB_MAX_LENGTH_UNLIMITED
             else max_length
         )
-        return self._obj.decompress(data, zstd_max_length)
+
+        # The zstd streaming API raises EOFError when trying to decompress
+        # data after reaching frame EOF. If there is additional compressed
+        # data, it belongs to a new frame and must be handled by a fresh
+        # decompressor instance.
+        decompressed_chunks: list[bytes] = []
+        total_size = 0
+        pending_data = data
+
+        while True:
+            chunk_max_length = (
+                zstd_max_length
+                if zstd_max_length < 0
+                else max(0, zstd_max_length - total_size)
+            )
+            if chunk_max_length == 0:
+                break
+
+            try:
+                chunk = self._obj.decompress(pending_data, chunk_max_length)
+            except EOFError:
+                if not pending_data:
+                    raise
+                self._obj = ZstdDecompressor()
+                continue
+
+            if chunk:
+                decompressed_chunks.append(chunk)
+                total_size += len(chunk)
+
+            if zstd_max_length >= 0 and total_size >= zstd_max_length:
+                break
+
+            if self._obj.unused_data:
+                if not chunk and self._obj.unused_data == pending_data:
+                    raise EOFError(
+                        "Stalled while decoding zstd frames: "
+                        "unused_data did not shrink"
+                    )
+                pending_data = self._obj.unused_data
+                self._obj = ZstdDecompressor()
+                continue
+
+            break
+
+        return b"".join(decompressed_chunks)
 
     def flush(self) -> bytes:
         return b""

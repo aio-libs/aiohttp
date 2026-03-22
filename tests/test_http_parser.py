@@ -2163,6 +2163,97 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
         assert [b"line"] == list(buf._buffer)
 
+    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+    async def test_feed_data_zstd_multiple_frames(
+        self, protocol: BaseProtocol
+    ) -> None:
+        assert zstandard is not None
+        payload1 = b"A" * 50_000
+        payload2 = b"B" * 50_000
+
+        compressor = zstandard.ZstdCompressor()
+        frame1 = compressor.compress(payload1) + compressor.flush()
+        compressor = zstandard.ZstdCompressor()
+        frame2 = compressor.compress(payload2) + compressor.flush()
+
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, "zstd")
+
+        dbuf.feed_data(frame1)
+        dbuf.feed_data(frame2)
+        dbuf.feed_eof()
+
+        assert b"".join(buf._buffer) == payload1 + payload2
+
+    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+    async def test_feed_data_zstd_partial_frame_across_chunks(
+        self, protocol: BaseProtocol
+    ) -> None:
+        assert zstandard is not None
+        payload = b"partial-frame-data-" * 8192
+
+        compressor = zstandard.ZstdCompressor()
+        frame = compressor.compress(payload) + compressor.flush()
+        split = len(frame) // 2
+
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, "zstd")
+
+        dbuf.feed_data(frame[:split])
+        dbuf.feed_data(frame[split:])
+        dbuf.feed_eof()
+
+        assert b"".join(buf._buffer) == payload
+
+    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+    async def test_feed_data_zstd_multiple_frames_single_chunk(
+        self, protocol: BaseProtocol
+    ) -> None:
+        assert zstandard is not None
+        payload1 = b"frame-1-" * 4096
+        payload2 = b"frame-2-" * 4096
+        payload3 = b"frame-3-" * 4096
+
+        compressor = zstandard.ZstdCompressor()
+        frame1 = compressor.compress(payload1) + compressor.flush()
+        compressor = zstandard.ZstdCompressor()
+        frame2 = compressor.compress(payload2) + compressor.flush()
+        compressor = zstandard.ZstdCompressor()
+        frame3 = compressor.compress(payload3) + compressor.flush()
+
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, "zstd")
+
+        dbuf.feed_data(frame1 + frame2 + frame3)
+        dbuf.feed_eof()
+
+        assert b"".join(buf._buffer) == payload1 + payload2 + payload3
+
+    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+    async def test_feed_data_zstd_mixed_small_large_frames(
+        self, protocol: BaseProtocol
+    ) -> None:
+        assert zstandard is not None
+        small = b"s"
+        medium = b"m" * 2048
+        large = b"L" * (2**20)
+
+        compressor = zstandard.ZstdCompressor()
+        frame_small = compressor.compress(small) + compressor.flush()
+        compressor = zstandard.ZstdCompressor()
+        frame_medium = compressor.compress(medium) + compressor.flush()
+        compressor = zstandard.ZstdCompressor()
+        frame_large = compressor.compress(large) + compressor.flush()
+
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, "zstd")
+
+        dbuf.feed_data(frame_small + frame_medium)
+        dbuf.feed_data(frame_large)
+        dbuf.feed_eof()
+
+        assert b"".join(buf._buffer) == small + medium + large
+
     async def test_empty_body(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         dbuf = DeflateBuffer(buf, "deflate")
