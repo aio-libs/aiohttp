@@ -48,9 +48,7 @@ def test_zstd_decompressor_stalled_unused_data_raises(
             return b""
 
     monkeypatch.setattr(compression_utils, "HAS_ZSTD", True)
-    monkeypatch.setattr(
-        compression_utils, "ZstdDecompressor", StallingZstdDecompressor
-    )
+    monkeypatch.setattr(compression_utils, "ZstdDecompressor", StallingZstdDecompressor)
 
     decompressor = compression_utils.ZSTDDecompressor()
     with pytest.raises(EOFError, match="unused_data did not shrink"):

@@ -2164,9 +2164,7 @@ class TestDeflateBuffer:
         assert [b"line"] == list(buf._buffer)
 
     @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
-    async def test_feed_data_zstd_multiple_frames(
-        self, protocol: BaseProtocol
-    ) -> None:
+    async def test_feed_data_zstd_multiple_frames(self, protocol: BaseProtocol) -> None:
         assert zstandard is not None
         payload1 = b"A" * 50_000
         payload2 = b"B" * 50_000
