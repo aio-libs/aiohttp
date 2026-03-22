@@ -2,8 +2,12 @@
 
 import pytest
 
-import aiohttp.compression_utils as compression_utils
-from aiohttp.compression_utils import ZLibBackend, ZLibCompressor, ZLibDecompressor
+from aiohttp.compression_utils import (
+    ZSTDDecompressor,
+    ZLibBackend,
+    ZLibCompressor,
+    ZLibDecompressor,
+)
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
@@ -47,9 +51,38 @@ def test_zstd_decompressor_stalled_unused_data_raises(
             self.unused_data = data
             return b""
 
-    monkeypatch.setattr(compression_utils, "HAS_ZSTD", True)
-    monkeypatch.setattr(compression_utils, "ZstdDecompressor", StallingZstdDecompressor)
+    monkeypatch.setattr("aiohttp.compression_utils.HAS_ZSTD", True)
+    monkeypatch.setattr(
+        "aiohttp.compression_utils.ZstdDecompressor", StallingZstdDecompressor
+    )
 
-    decompressor = compression_utils.ZSTDDecompressor()
+    decompressor = ZSTDDecompressor()
     with pytest.raises(EOFError, match="unused_data did not shrink"):
         decompressor.decompress_sync(b"malformed")
+
+
+def test_zstd_decompressor_allows_single_unchanged_unused_data_rollover(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class SingleRolloverZstdDecompressor:
+        _calls = 0
+
+        def __init__(self) -> None:
+            self.unused_data = b""
+
+        def decompress(self, data: bytes, max_length: int) -> bytes:
+            type(self)._calls += 1
+            if type(self)._calls == 1:
+                self.unused_data = data
+                return b""
+
+            self.unused_data = b""
+            return b"decoded"
+
+    monkeypatch.setattr("aiohttp.compression_utils.HAS_ZSTD", True)
+    monkeypatch.setattr(
+        "aiohttp.compression_utils.ZstdDecompressor", SingleRolloverZstdDecompressor
+    )
+
+    decompressor = ZSTDDecompressor()
+    assert decompressor.decompress_sync(b"frame") == b"decoded"

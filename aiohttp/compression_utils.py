@@ -350,6 +350,7 @@ class ZSTDDecompressor(DecompressionBaseHandler):
         decompressed_chunks: list[bytes] = []
         total_size = 0
         pending_data = data
+        stalled_pending_data: bytes | None = None
 
         while True:
             chunk_max_length = (
@@ -377,10 +378,14 @@ class ZSTDDecompressor(DecompressionBaseHandler):
 
             if self._obj.unused_data:
                 if not chunk and self._obj.unused_data == pending_data:
-                    raise EOFError(
-                        "Stalled while decoding zstd frames: "
-                        "unused_data did not shrink"
-                    )
+                    if stalled_pending_data == pending_data:
+                        raise EOFError(
+                            "Stalled while decoding zstd frames: "
+                            "unused_data did not shrink"
+                        )
+                    stalled_pending_data = pending_data
+                else:
+                    stalled_pending_data = None
                 pending_data = self._obj.unused_data
                 self._obj = ZstdDecompressor()
                 continue
