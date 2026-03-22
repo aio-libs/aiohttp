@@ -3,10 +3,10 @@
 import pytest
 
 from aiohttp.compression_utils import (
-    ZSTDDecompressor,
     ZLibBackend,
     ZLibCompressor,
     ZLibDecompressor,
+    ZSTDDecompressor,
 )
 
 
