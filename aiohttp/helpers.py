@@ -400,6 +400,54 @@ def parse_content_type(raw: str) -> tuple[str, MappingProxyType[str, str]]:
     return content_type, MappingProxyType(content_dict)
 
 
+def parse_http_list_values(header_values: Iterable[str]) -> tuple[str, ...]:
+    """Parse comma-separated HTTP field values from one or more field lines.
+
+    This normalizes equivalent list-style representations:
+    - ``Foo: 1`` + ``Foo: 2``
+    - ``Foo: 1, 2``
+
+    Quoted substrings are respected, so commas inside quoted values do not
+    split the value.
+    """
+    values: list[str] = []
+    for header_value in header_values:
+        values.extend(_parse_http_list_value(header_value))
+    return tuple(values)
+
+
+def _parse_http_list_value(header_value: str) -> list[str]:
+    values: list[str] = []
+    start = 0
+    in_quotes = False
+    escaped = False
+
+    for idx, ch in enumerate(header_value):
+        if escaped:
+            escaped = False
+            continue
+
+        if ch == "\\" and in_quotes:
+            escaped = True
+            continue
+
+        if ch == '"':
+            in_quotes = not in_quotes
+            continue
+
+        if ch == "," and not in_quotes:
+            value = header_value[start:idx].strip(" \t")
+            if value:
+                values.append(value)
+            start = idx + 1
+
+    value = header_value[start:].strip(" \t")
+    if value:
+        values.append(value)
+
+    return values
+
+
 def guess_filename(obj: Any, default: str | None = None) -> str | None:
     name = getattr(obj, "name", None)
     if name and isinstance(name, str) and name[0] != "<" and name[-1] != ">":
