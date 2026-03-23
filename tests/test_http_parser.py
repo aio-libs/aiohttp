@@ -2081,6 +2081,26 @@ class TestParsePayload:
         assert b"zstd data" == out._buffer[0]
         assert out.is_eof()
 
+    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+    async def test_http_payload_zstandard_multi_frame(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Test that zstd decompression handles multiple compressed frames."""
+        frame1 = zstandard.compress(b"frame1 data")
+        frame2 = zstandard.compress(b"frame2 data")
+        combined = frame1 + frame2
+
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(
+            out,
+            length=len(combined),
+            compression="zstd",
+            headers_parser=HeadersParser(),
+        )
+        p.feed_data(combined)
+        assert b"frame1 dataframe2 data" == out._buffer[0]
+        assert out.is_eof()
+
 
 class TestDeflateBuffer:
     async def test_feed_data(self, protocol: BaseProtocol) -> None:
