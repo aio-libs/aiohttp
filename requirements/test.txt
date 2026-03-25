@@ -119,7 +119,7 @@ pytest==8.4.1
     #   pytest-xdist
 pytest-aiohttp==1.1.0
     # via -r requirements/test.in
-pytest-asyncio==1.0.0
+pytest-asyncio==1.4.0a0
     # via pytest-aiohttp
 pytest-codspeed==3.2.0
     # via -r requirements/test.in
