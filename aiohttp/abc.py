@@ -165,6 +165,11 @@ class AbstractCookieJar(Sized, IterableBase):
 
     @property
     @abstractmethod
+    def unsafe(self) -> bool:
+        """Return True if cookies can be used with IP addresses."""
+
+    @property
+    @abstractmethod
     def quote_cookie(self) -> bool:
         """Return True if cookies should be quoted."""
 
