@@ -868,12 +868,6 @@ class ClientSession:
                         elif not scheme:
                             parsed_redirect_url = url.join(parsed_redirect_url)
 
-                        is_same_host_https_redirect = (
-                            url.host == parsed_redirect_url.host
-                            and parsed_redirect_url.scheme == "https"
-                            and url.scheme == "http"
-                        )
-
                         try:
                             redirect_origin = parsed_redirect_url.origin()
                         except ValueError as origin_val_err:
@@ -885,10 +879,7 @@ class ClientSession:
                                 "Invalid redirect URL origin",
                             ) from origin_val_err
 
-                        if (
-                            not is_same_host_https_redirect
-                            and url.origin() != redirect_origin
-                        ):
+                        if url.origin() != redirect_origin:
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
                             headers.pop(hdrs.COOKIE, None)
