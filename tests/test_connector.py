@@ -217,8 +217,6 @@ async def test_del(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
         "connections": mock.ANY,
         "message": "Unclosed connector",
     }
-    if loop.get_debug():
-        msg["source_traceback"] = mock.ANY
     exc_handler.assert_called_with(loop, msg)
 
 
@@ -2118,9 +2116,6 @@ async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
 async def test_cleanup_closed(
     loop: asyncio.AbstractEventLoop, mocker: MockerFixture
 ) -> None:
-    if not hasattr(loop, "__dict__"):
-        pytest.skip("can not override loop attributes")
-
     m = mocker.spy(loop, "call_at")
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
 
@@ -4121,10 +4116,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
         first_conn = next(iter(conn._conns.values()))[0][0]
 
         assert first_conn.transport is not None
-        try:
-            _sslcontext = first_conn.transport._ssl_protocol._sslcontext  # type: ignore[attr-defined]
-        except AttributeError:
-            _sslcontext = first_conn.transport._sslcontext  # type: ignore[attr-defined]
+        _sslcontext = first_conn.transport._ssl_protocol._sslcontext  # type: ignore[attr-defined]
 
         assert _sslcontext is client_ssl_ctx
         r.close()
@@ -4338,6 +4330,63 @@ class TestDNSCacheTable:
         addrs = dns_cache_table.next_addrs(self.host2)
         assert addrs == [self.result1]
 
+    def test_max_size_eviction(self) -> None:
+        table = _DNSCacheTable(max_size=2)
+
+        table.add(self.host1, [self.result1])
+        table.add(self.host2, [self.result2])
+
+        host3 = ("example.com", 80)
+        result3: ResolveResult = {
+            **self.result1,
+            "hostname": "example.com",
+            "host": "1.2.3.4",
+        }
+        table.add(host3, [result3])
+
+        assert len(table._addrs_rr) == 2
+        assert self.host1 not in table._addrs_rr
+        assert host3 in table._addrs_rr
+
+    def test_lru_eviction(self) -> None:
+        table = _DNSCacheTable(max_size=2)
+
+        table.add(self.host1, [self.result1])
+        table.add(self.host2, [self.result2])
+
+        table.next_addrs(self.host1)
+
+        host3 = ("example.com", 80)
+        result3: ResolveResult = {
+            **self.result1,
+            "hostname": "example.com",
+            "host": "1.2.3.4",
+        }
+        table.add(host3, [result3])
+
+        assert self.host1 in table._addrs_rr
+        assert self.host2 not in table._addrs_rr
+
+    def test_lru_eviction_add(self) -> None:
+        table = _DNSCacheTable(max_size=2)
+
+        table.add(self.host1, [self.result1])
+        table.add(self.host2, [self.result2])
+
+        # Re-add, thus making host1 the most recently used.
+        table.add(self.host1, [self.result1])
+
+        host3 = ("example.com", 80)
+        result3: ResolveResult = {
+            **self.result1,
+            "hostname": "example.com",
+            "host": "1.2.3.4",
+        }
+        table.add(host3, [result3])
+
+        assert self.host1 in table._addrs_rr
+        assert self.host2 not in table._addrs_rr
+
 
 async def test_connector_cache_trace_race() -> None:
     class DummyTracer(Trace):
@@ -4474,10 +4523,6 @@ async def test_connector_does_not_remove_needed_waiters(
             connection.close()
 
     async def allow_connection_and_add_dummy_waiter() -> None:
-        # `asyncio.gather` may execute coroutines not in order.
-        # Skip one event loop run cycle in such a case.
-        if connection_key not in connector._waiters:
-            await asyncio.sleep(0)
         list(connector._waiters[connection_key])[0].set_result(None)
         del connector._waiters[connection_key]
         connector._waiters[connection_key][dummy_waiter] = None

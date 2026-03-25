@@ -62,6 +62,8 @@ async def test_websocket_json(
     resp = await ws.receive()
     assert resp.data == expected_value
 
+    await ws.receive()  # Handle close
+
 
 async def test_websocket_json_invalid_message(
     loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
@@ -69,14 +71,10 @@ async def test_websocket_json_invalid_message(
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-        try:
+        with pytest.raises(ValueError):
             await ws.receive_json()
-        except ValueError:
-            await ws.send_str("ValueError was raised")
-        else:
-            raise Exception("No Exception")
-        finally:
-            await ws.close()
+        await ws.send_str("ValueError was raised")
+        await ws.close()
         return ws
 
     app = web.Application()
@@ -89,6 +87,8 @@ async def test_websocket_json_invalid_message(
 
     data = await ws.receive_str()
     assert "ValueError was raised" in data
+
+    await ws.receive()  # Handle close
 
 
 async def test_websocket_send_json(
@@ -114,6 +114,8 @@ async def test_websocket_send_json(
 
     data = await ws.receive_json()
     assert data["test"] == expected_value
+
+    await ws.receive()  # Handle close
 
 
 async def test_websocket_receive_json(
@@ -141,6 +143,8 @@ async def test_websocket_receive_json(
 
     resp = await ws.receive()
     assert resp.data == expected_value
+
+    await ws.receive()  # Handle close
 
 
 async def test_send_recv_text(
@@ -308,9 +312,6 @@ async def test_concurrent_close(
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSING
 
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSING
-
         await asyncio.sleep(0)
 
         msg = await ws.receive()
@@ -344,9 +345,6 @@ async def test_concurrent_close_multiple_tasks(
         nonlocal srv_ws
         ws = srv_ws = web.WebSocketResponse(autoclose=False, protocols=("foo", "bar"))
         await ws.prepare(request)
-
-        msg = await ws.receive()
-        assert msg.type == WSMsgType.CLOSING
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSING
@@ -948,9 +946,9 @@ async def test_closed_async_for(
         messages = []
         async for msg in ws:
             messages.append(msg)
-            if "stop" == msg.data:
-                await ws.send_str("stopping")
-                await ws.close()
+            assert "stop" == msg.data
+            await ws.send_str("stopping")
+            await ws.close()
 
         assert 1 == len(messages)
         assert messages[0].type == WSMsgType.TEXT
@@ -1001,6 +999,8 @@ async def test_websocket_disable_keepalive(
     data = await ws.receive_str()
     assert data == "OK"
 
+    await ws.receive()  # Handle close
+
 
 async def test_receive_str_nonstring(
     loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
@@ -1021,6 +1021,8 @@ async def test_receive_str_nonstring(
     ws = await client.ws_connect("/")
     with pytest.raises(TypeError):
         await ws.receive_str()
+
+    await ws.receive()  # Handle close
 
 
 async def test_receive_bytes_nonbytes(

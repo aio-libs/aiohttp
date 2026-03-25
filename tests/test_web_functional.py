@@ -1991,7 +1991,7 @@ async def test_context_manager_close_on_release(
         ):
             await resp.drain()
         await asyncio.sleep(10)
-        return resp
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)

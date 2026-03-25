@@ -27,7 +27,7 @@ cffi==2.0.0
     #   pytest-codspeed
 click==8.3.1
     # via wait-for-it
-coverage==7.13.4
+coverage==7.13.5
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -45,7 +45,7 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==25.1.0
+gunicorn==25.2.0
     # via -r requirements/base.in
 idna==3.11
     # via
@@ -75,7 +75,7 @@ packaging==26.0
     #   pytest
 pathspec==1.0.4
     # via mypy
-pkgconfig==1.5.5
+pkgconfig==1.6.0
     # via -r requirements/test-common.in
 pluggy==1.6.0
     # via
@@ -108,7 +108,7 @@ pytest==9.0.2
     #   pytest-xdist
 pytest-codspeed==4.3.0
     # via -r requirements/test-common.in
-pytest-cov==7.0.0
+pytest-cov==7.1.0
     # via -r requirements/test-common.in
 pytest-mock==3.15.1
     # via -r requirements/test-common.in
@@ -116,7 +116,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.80.0
+python-on-whales==0.81.0
     # via -r requirements/test-common.in
 rich==14.3.3
     # via pytest-codspeed

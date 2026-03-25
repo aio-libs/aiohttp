@@ -65,7 +65,7 @@ class Payload(payload.Payload):
         assert False
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        pass
+        """Dummy write."""
 
 
 def test_register_type(registry: payload.PayloadRegistry) -> None:
@@ -146,8 +146,7 @@ def test_string_io_payload() -> None:
 
 def test_async_iterable_payload_default_content_type() -> None:
     async def gen() -> AsyncIterator[bytes]:
-        return
-        yield b"abc"  # type: ignore[unreachable]  # pragma: no cover
+        yield b"abc"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen())
     assert p.content_type == "application/octet-stream"
@@ -155,8 +154,7 @@ def test_async_iterable_payload_default_content_type() -> None:
 
 def test_async_iterable_payload_explicit_content_type() -> None:
     async def gen() -> AsyncIterator[bytes]:
-        return
-        yield b"abc"  # type: ignore[unreachable]  # pragma: no cover
+        yield b"abc"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen(), content_type="application/custom")
     assert p.content_type == "application/custom"
@@ -1219,6 +1217,40 @@ def test_json_payload_size() -> None:
     jp_custom = payload.JsonPayload(data_custom, encoding="utf-16")
     expected_custom = json.dumps(data_custom)
     assert jp_custom.size == len(expected_custom.encode("utf-16"))
+
+
+def test_json_bytes_payload() -> None:
+    """Test JsonBytesPayload with a bytes-returning encoder."""
+    data = {"hello": "world"}
+
+    # Test with standard library encoder
+    jp = payload.JsonBytesPayload(data, dumps=lambda x: json.dumps(x).encode("utf-8"))
+    expected = json.dumps(data).encode("utf-8")
+    assert jp.size == len(expected)
+
+    # Test with custom bytes-returning encoder (compact separators)
+    jp_custom = payload.JsonBytesPayload(
+        data, dumps=lambda x: json.dumps(x, separators=(",", ":")).encode("utf-8")
+    )
+    expected_custom = json.dumps(data, separators=(",", ":")).encode("utf-8")
+    assert jp_custom.size == len(expected_custom)
+
+
+def test_json_bytes_payload_content_type() -> None:
+    """Test JsonBytesPayload content_type."""
+    data = {"test": "data"}
+
+    # Default content type
+    jp = payload.JsonBytesPayload(data, dumps=lambda x: json.dumps(x).encode("utf-8"))
+    assert jp.content_type == "application/json"
+
+    # Custom content type
+    jp_custom = payload.JsonBytesPayload(
+        data,
+        dumps=lambda x: json.dumps(x).encode("utf-8"),
+        content_type="application/vnd.api+json",
+    )
+    assert jp_custom.content_type == "application/vnd.api+json"
 
 
 async def test_text_io_payload_size_matches_file_encoding(tmp_path: Path) -> None:
