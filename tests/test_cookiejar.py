@@ -1761,4 +1761,3 @@ async def test_cookie_jar_unsafe_property() -> None:
 
     jar_unsafe = CookieJar(unsafe=True)
     assert jar_unsafe.unsafe is True
-
