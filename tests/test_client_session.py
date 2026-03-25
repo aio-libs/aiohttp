@@ -804,6 +804,7 @@ async def test_cookie_jar_usage(
     jar = MockCookieJar()
 
     assert jar.quote_cookie is True
+    assert jar.unsafe is False
     assert len(jar) == 0
     assert list(jar) == []
     jar.clear()
@@ -865,7 +866,7 @@ async def test_cookies_with_unsafe_cookie_jar(
     aiohttp_server: AiohttpServer,
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
-        return web.Response(text=request.headers.get("Cookie", ""))
+        return web.Response()
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
@@ -874,10 +875,11 @@ async def test_cookies_with_unsafe_cookie_jar(
     # Use an IP-based URL to verify that ad-hoc cookies are sent
     # when the session cookie jar has unsafe=True.
     ip_url = server.make_url("/")
+    assert str(ip_url).count(".") == 3
     cookies = {"adhoc": "value"}
     async with aiohttp.ClientSession(cookie_jar=jar) as sess:
-        resp = await sess.request("GET", ip_url, cookies=cookies)
-    assert "adhoc=value" in resp.request_info.headers.get("Cookie", "")
+        async with sess.request("GET", ip_url, cookies=cookies) as resp:
+            assert "adhoc=value" in resp.request_info.headers.get("Cookie", "")
 
 
 async def test_session_default_version(loop: asyncio.AbstractEventLoop) -> None:
