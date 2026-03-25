@@ -776,6 +776,10 @@ async def test_cookie_jar_usage(
             self._items: list[Any] = []
 
         @property
+        def unsafe(self) -> bool:
+            return False
+
+        @property
         def quote_cookie(self) -> bool:
             return True
 
@@ -855,6 +859,25 @@ async def test_cookies_with_not_quoted_cookie_jar(
     async with aiohttp.ClientSession(cookie_jar=jar) as sess:
         resp = await sess.request("GET", server.make_url("/"), cookies=cookies)
     assert resp.request_info.headers.get("Cookie", "") == "name=val=foobar"
+
+
+async def test_cookies_with_unsafe_cookie_jar(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text=request.headers.get("Cookie", ""))
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app)
+    jar = CookieJar(unsafe=True)
+    # Use an IP-based URL to verify that ad-hoc cookies are sent
+    # when the session cookie jar has unsafe=True.
+    ip_url = server.make_url("/")
+    cookies = {"adhoc": "value"}
+    async with aiohttp.ClientSession(cookie_jar=jar) as sess:
+        resp = await sess.request("GET", ip_url, cookies=cookies)
+    assert "adhoc=value" in resp.request_info.headers.get("Cookie", "")
 
 
 async def test_session_default_version(loop: asyncio.AbstractEventLoop) -> None:

@@ -144,6 +144,10 @@ class CookieJar(AbstractCookieJar):
         self._expirations: dict[tuple[str, str, str], float] = {}
 
     @property
+    def unsafe(self) -> bool:
+        return self._unsafe
+
+    @property
     def quote_cookie(self) -> bool:
         return self._quote_cookie
 
@@ -593,6 +597,10 @@ class DummyCookieJar(AbstractCookieJar):
 
     def __len__(self) -> int:
         return 0
+
+    @property
+    def unsafe(self) -> bool:
+        return False
 
     @property
     def quote_cookie(self) -> bool:
