@@ -761,6 +761,7 @@ class TestCookieJarSafe:
 async def test_dummy_cookie_jar() -> None:
     cookie = SimpleCookie("foo=bar; Domain=example.com;")
     dummy_jar = DummyCookieJar()
+    assert dummy_jar.unsafe is False
     assert dummy_jar.quote_cookie is True
     assert len(dummy_jar) == 0
     dummy_jar.update_cookies(cookie)
@@ -1621,3 +1622,11 @@ def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
     assert cookie["secure"] is True
     assert cookie["httponly"] is True
     assert cookie["domain"] == "example.com"
+
+
+async def test_cookie_jar_unsafe_property() -> None:
+    jar_safe = CookieJar()
+    assert jar_safe.unsafe is False
+
+    jar_unsafe = CookieJar(unsafe=True)
+    assert jar_unsafe.unsafe is True
