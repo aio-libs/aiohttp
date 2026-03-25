@@ -875,6 +875,7 @@ async def test_cookies_with_unsafe_cookie_jar(
     # Use an IP-based URL to verify that ad-hoc cookies are sent
     # when the session cookie jar has unsafe=True.
     ip_url = server.make_url("/")
+    assert ip_url.host is not None
     assert ip_url.host.count(".") == 3  # Sanity check it looks like an IP address
     cookies = {"adhoc": "value"}
     async with aiohttp.ClientSession(cookie_jar=jar) as sess:
