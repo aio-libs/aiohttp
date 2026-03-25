@@ -34,7 +34,7 @@ blockbuster==1.5.26
     #   -r requirements/test-common.in
 brotli==1.2.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==1.4.0
+build==1.4.1
     # via pip-tools
 certifi==2026.2.25
     # via requests
@@ -83,9 +83,9 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==25.1.0
+gunicorn==25.2.0
     # via -r requirements/base.in
-identify==2.6.17
+identify==2.6.18
     # via pre-commit
 idna==3.11
     # via
