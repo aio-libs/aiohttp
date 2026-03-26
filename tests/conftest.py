@@ -259,9 +259,11 @@ async def event_loop() -> asyncio.AbstractEventLoop:
 
 
 def pytest_asyncio_loop_factories(config, item):
-    factories = {}
+    factories = {"selector": asyncio.SelectorEventLoop}
     if platform.system() == "Windows":
         factories["proactor"] = asyncio.ProactorEventLoop
+    if uvloop is not None:
+        factories["uvloop"] = uvloop.new_event_loop()
     return factories
 
 
