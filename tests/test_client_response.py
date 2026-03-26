@@ -18,6 +18,7 @@ from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.helpers import TimerNoop
 from aiohttp.multipart import BadContentDispositionHeader
+from aiohttp.tracing import Trace
 
 
 class WriterMock(mock.AsyncMock):
@@ -1262,8 +1263,7 @@ def test_redirect_history_in_exception() -> None:
 async def test_response_read_triggers_callback(
     loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
-    trace = mock.Mock()
-    trace.send_response_chunk_received = mock.AsyncMock()
+    trace = mock.create_autospec(Trace, instance=True, spec_set=True)
     response_method = "get"
     response_url = URL("http://def-cl-resp.org")
     response_body = b"This is response"

@@ -4,7 +4,7 @@ import pathlib
 import socket
 import ssl
 
-from aiohttp import ClientSession, TCPConnector, test_utils, web
+from aiohttp import ClientSession, TCPConnector, web
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.resolver import DefaultResolver
 
@@ -59,11 +59,12 @@ class FakeFacebook:
         self.ssl_context.load_cert_chain(str(ssl_cert), str(ssl_key))
 
     async def start(self) -> dict[str, int]:
-        port = test_utils.unused_port()
         await self.runner.setup()
-        site = web.TCPSite(self.runner, "127.0.0.1", port, ssl_context=self.ssl_context)
+        site = web.TCPSite(
+            self.runner, "127.0.0.1", port=0, ssl_context=self.ssl_context
+        )
         await site.start()
-        return {"graph.facebook.com": port}
+        return {"graph.facebook.com": site.port}
 
     async def stop(self) -> None:
         await self.runner.cleanup()
@@ -116,5 +117,4 @@ async def main() -> None:
     await fake_facebook.stop()
 
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.run(main())

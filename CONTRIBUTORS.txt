@@ -120,6 +120,7 @@ Dmitry Trofimov
 Dmytro Bohomiakov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+Earle Lowe
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
@@ -146,6 +147,7 @@ Gabriel Tremblay
 Gang Ji
 Gary Leung
 Gary Wilson Jr.
+Gene Hoffman
 Gennady Andreyev
 Georges Dubus
 Greg Holt
@@ -318,6 +320,7 @@ Raúl Cumplido
 Required Field
 Robert Lu
 Robert Nikolich
+Rodrigo Nogueira
 Roman Markeloff
 Roman Podoliaka
 Roman Postnov
@@ -340,6 +343,7 @@ Serhiy Storchaka
 Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
+Soheil Dolatabadi
 Stanislas Plum
 Stanislav Prokop
 Stefan Tjarks
@@ -362,6 +366,7 @@ Thomas Forbes
 Thomas Grainger
 Tim Menninger
 Tolga Tezel
+Tom Whittock
 Tomasz Trebski
 Toshiaki Tanaka
 Trevor Gamblin
@@ -388,6 +393,7 @@ Vladimir Kamarzin
 Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
+Vladimir Vinogradenko
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar

@@ -1,6 +1,8 @@
 import asyncio
 import json
+import struct
 import sys
+from contextlib import suppress
 from typing import Literal, NoReturn
 from unittest import mock
 
@@ -74,7 +76,7 @@ async def test_send_recv_bytes_bad_type(aiohttp_client: AiohttpClient) -> None:
 
     with pytest.raises(WSMessageTypeError):
         await resp.receive_bytes()
-        await resp.close()
+    await resp.close()
 
 
 async def test_recv_bytes_after_close(aiohttp_client: AiohttpClient) -> None:
@@ -95,7 +97,7 @@ async def test_recv_bytes_after_close(aiohttp_client: AiohttpClient) -> None:
         match=f"Received message {WSMsgType.CLOSE}:.+ is not WSMsgType.BINARY",
     ):
         await resp.receive_bytes()
-        await resp.close()
+    await resp.close()
 
 
 async def test_send_recv_bytes(aiohttp_client: AiohttpClient) -> None:
@@ -140,8 +142,7 @@ async def test_send_recv_text_bad_type(aiohttp_client: AiohttpClient) -> None:
 
     with pytest.raises(WSMessageTypeError):
         await resp.receive_str()
-
-        await resp.close()
+    await resp.close()
 
 
 async def test_recv_text_after_close(aiohttp_client: AiohttpClient) -> None:
@@ -162,7 +163,7 @@ async def test_recv_text_after_close(aiohttp_client: AiohttpClient) -> None:
         match=f"Received message {WSMsgType.CLOSE}:.+ is not WSMsgType.TEXT",
     ):
         await resp.receive_str()
-        await resp.close()
+    await resp.close()
 
 
 async def test_send_recv_json(aiohttp_client: AiohttpClient) -> None:
@@ -202,6 +203,64 @@ async def test_send_recv_json_bytes(aiohttp_client: AiohttpClient) -> None:
     data = await resp.receive()
     assert isinstance(data, WSMessageBinary)
     assert data.json() == {"response": "x"}
+    await resp.close()
+
+
+async def test_send_json_bytes_client(aiohttp_client: AiohttpClient) -> None:
+    """Test ClientWebSocketResponse.send_json_bytes sends binary frame."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.BINARY
+        data = json.loads(msg.data)
+        await ws.send_json_bytes(
+            {"response": data["request"]},
+            dumps=lambda x: json.dumps(x).encode("utf-8"),
+        )
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    test_payload = {"request": "test"}
+    await resp.send_json_bytes(
+        test_payload, dumps=lambda x: json.dumps(x).encode("utf-8")
+    )
+
+    msg = await resp.receive()
+    assert msg.type is WSMsgType.BINARY
+    data = json.loads(msg.data)
+    assert data["response"] == test_payload["request"]
+    await resp.close()
+
+
+async def test_send_json_bytes_custom_encoder(aiohttp_client: AiohttpClient) -> None:
+    """Test send_json_bytes with custom bytes-returning encoder."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.BINARY
+        # Custom encoder uses compact separators
+        assert msg.data == b'{"test":"value"}'
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    await resp.send_json_bytes(
+        {"test": "value"},
+        dumps=lambda x: json.dumps(x, separators=(",", ":")).encode("utf-8"),
+    )
     await resp.close()
 
 
@@ -818,6 +877,65 @@ async def test_heartbeat_no_pong(aiohttp_client: AiohttpClient) -> None:
     assert resp.close_code is WSCloseCode.ABNORMAL_CLOSURE
 
 
+async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Slowly receiving a single large frame should not trip heartbeat.
+
+    Regression test for the behavior described in
+    https://github.com/aio-libs/aiohttp/discussions/12023: on slow connections,
+    the websocket heartbeat used to be reset only after a full message was read,
+    which could cause a ping/pong timeout while bytes were still being received.
+    """
+    payload = b"x" * 2048
+    heartbeat = 0.1
+    chunk_size = 64
+    delay = 0.01
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        # Disable auto-PONG so a heartbeat PING during frame streaming would
+        # surface as a timeout/closure on the client side.
+        ws = web.WebSocketResponse(autoping=False)
+        await ws.prepare(request)
+
+        assert ws._writer is not None
+        transport = ws._writer.transport
+
+        # Server-to-client frames are not masked.
+        length = len(payload)  # payload is fixed length of 2048 bytes
+        header = bytes((0x82, 126)) + struct.pack("!H", length)
+
+        frame = header + payload
+        for i in range(0, len(frame), chunk_size):
+            transport.write(frame[i : i + chunk_size])
+            await asyncio.sleep(delay)
+
+        # Ensure the server side is cleaned up.
+        with suppress(asyncio.TimeoutError):
+            await ws.receive(timeout=1.0)
+        with suppress(Exception):
+            await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/", heartbeat=heartbeat) as resp:
+        # If heartbeat were not reset on incoming bytes, the client would send
+        # a PING while this frame is still being streamed.
+        with mock.patch.object(
+            resp._writer, "send_frame", wraps=resp._writer.send_frame
+        ) as sf:
+            msg = await resp.receive()
+            assert (
+                sf.call_args_list.count(mock.call(b"", WSMsgType.PING)) == 0
+            ), "Heartbeat PING sent while data was still being received"
+        assert msg.type is WSMsgType.BINARY
+        assert msg.data == payload
+        assert not resp.closed
+
+
 async def test_heartbeat_no_pong_after_receive_many_messages(
     aiohttp_client: AiohttpClient,
 ) -> None:
@@ -1033,13 +1151,7 @@ async def test_send_recv_compress_wbits(aiohttp_client: AiohttpClient) -> None:
 
 async def test_send_recv_compress_wbit_error(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-
-        msg = await ws.receive_bytes()
-        await ws.send_bytes(msg + b"/answer")
-        await ws.close()
-        return ws
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)

@@ -24,8 +24,8 @@ try:
         import brotlicffi as brotli
     except ImportError:
         import brotli
-except ImportError:
-    brotli = None  # pragma: no cover
+except ImportError:  # pragma: no cover
+    brotli = None
 
 try:
     from backports.zstd import ZstdCompressor
@@ -396,7 +396,7 @@ async def test_stream_request_on_server_eof(aiohttp_client: AiohttpClient) -> No
     client = await aiohttp_client(app)
 
     async def data_gen() -> AsyncIterator[bytes]:
-        for _ in range(2):
+        for _ in range(2):  # pragma: no branch
             yield b"just data"
             await asyncio.sleep(0.1)
 
@@ -429,7 +429,7 @@ async def test_stream_request_on_server_eof_nested(
     client = await aiohttp_client(app)
 
     async def data_gen() -> AsyncIterator[bytes]:
-        for _ in range(2):
+        for _ in range(2):  # pragma: no branch
             yield b"just data"
             await asyncio.sleep(0.1)
 
@@ -2192,6 +2192,27 @@ async def test_json_custom(aiohttp_client: AiohttpClient) -> None:
         await client.post("/", data="some data", json={"some": "data"})
 
 
+async def test_json_serialize_bytes(aiohttp_client: AiohttpClient) -> None:
+    """Test ClientSession.json_serialize_bytes with bytes-returning encoder."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.content_type == "application/json"
+        data = await request.json()
+        return web.Response(body=aiohttp.JsonPayload(data))
+
+    json_bytes_encoder = mock.Mock(side_effect=lambda x: json.dumps(x).encode("utf-8"))
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app, json_serialize_bytes=json_bytes_encoder)
+
+    async with client.post("/", json={"some": "data"}) as resp:
+        assert resp.status == 200
+        assert json_bytes_encoder.called
+        content = await resp.json()
+    assert content == {"some": "data"}
+
+
 async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
     expect_called = False
 
@@ -3273,7 +3294,7 @@ async def test_request_raise_for_status_coro(aiohttp_client: AiohttpClient) -> N
 async def test_invalid_idna() -> None:
     async with aiohttp.ClientSession() as session:
         with pytest.raises(aiohttp.InvalidURL):
-            await session.get("http://\u2061owhefopw.com")
+            await session.get("http://\u0080owhefopw.com")
 
 
 async def test_creds_in_auth_and_url() -> None:
@@ -3402,8 +3423,12 @@ async def test_drop_auth_on_redirect_to_other_host(
         assert request.host == url_to.host
         if is_drop_header_expected:
             assert "Authorization" not in request.headers, "Header wasn't dropped"
+            assert "Proxy-Authorization" not in request.headers
+            assert "Cookie" not in request.headers
         else:
             assert "Authorization" in request.headers, "Header was dropped"
+            assert "Proxy-Authorization" in request.headers
+            assert "Cookie" in request.headers
         return web.Response()
 
     server_from = await create_server_for_url_and_handler(url_from, srv_from)
@@ -3452,11 +3477,16 @@ async def test_drop_auth_on_redirect_to_other_host(
         async with client.get(
             url_from,
             auth=aiohttp.BasicAuth("user", "pass"),
+            headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz", "Cookie": "a=b"},
         ) as resp:
             assert resp.status == 200
         async with client.get(
             url_from,
-            headers={"Authorization": "Basic dXNlcjpwYXNz"},
+            headers={
+                "Authorization": "Basic dXNlcjpwYXNz",
+                "Proxy-Authorization": "Basic dXNlcjpwYXNz",
+                "Cookie": "a=b",
+            },
         ) as resp:
             assert resp.status == 200
 
@@ -5047,7 +5077,7 @@ async def test_string_payload_redirect(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) -> None:
-    """Test that AsyncIterablePayload cannot be reused across redirects."""
+    """Test redirecting consumed AsyncIterablePayload raises an error."""
     data_received = []
 
     async def redirect_handler(request: web.Request) -> web.Response:
@@ -5075,17 +5105,50 @@ async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) ->
 
     payload = AsyncIterablePayload(async_gen())
 
-    resp = await client.post("/redirect", data=payload)
-    assert resp.status == 200
-    text = await resp.text()
-    # AsyncIterablePayload is consumed after first use, so redirect gets empty body
-    assert text == "Received: "
+    with pytest.raises(
+        aiohttp.ClientPayloadError,
+        match="Cannot follow redirect with a consumed request body",
+    ):
+        await client.post("/redirect", data=payload)
 
-    # Only the first endpoint should have received data
+    # Only the first endpoint should have received data.
     expected_data = b"".join(chunks)
-    assert len(data_received) == 2
-    assert data_received[0] == ("redirect", expected_data)
-    assert data_received[1] == ("final", b"")  # Empty after being consumed
+    assert data_received == [("redirect", expected_data)]
+
+
+@pytest.mark.parametrize("status", (301, 302))
+async def test_async_iterable_payload_redirect_non_post_301_302(
+    aiohttp_client: AiohttpClient, status: int
+) -> None:
+    """Test consumed async iterable body raises on 301/302 for non-POST methods."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        return web.Response(status=status, headers={"Location": "/final_destination"})
+
+    app = web.Application()
+    app.router.add_put("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    chunks = [b"chunk1", b"chunk2", b"chunk3"]
+
+    async def async_gen() -> AsyncIterator[bytes]:
+        for chunk in chunks:
+            yield chunk
+
+    payload = AsyncIterablePayload(async_gen())
+
+    with pytest.raises(
+        aiohttp.ClientPayloadError,
+        match="Cannot follow redirect with a consumed request body",
+    ):
+        await client.put("/redirect", data=payload)
+
+    expected_data = b"".join(chunks)
+    assert data_received == [("redirect", expected_data)]
 
 
 async def test_buffered_reader_payload_redirect(aiohttp_client: AiohttpClient) -> None:
@@ -5450,30 +5513,30 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
         # Simulate Amazon-like cookies from the issue
         cookies = [
             "session-id=146-7423990-7621939; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; "
             "Secure; HttpOnly",
             "session-id=147-8529641-8642103; Domain=.www.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; HttpOnly",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; HttpOnly",
             "session-id-time=2082758401l; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; Secure",
             "session-id-time=2082758402l; Domain=.www.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/",
             "ubid-acbit=257-7531983-5395266; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; Secure",
             'x-acbit="KdvJzu8W@Fx6Jj3EuNFLuP0N7OtkuCfs"; Version=1; '
             "Domain=.amazon.it; Path=/; Secure; HttpOnly",
             "at-acbit=Atza|IwEBIM-gLr8; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; "
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; "
             "Secure; HttpOnly",
             'sess-at-acbit="4+6VzSJPHIFD/OqO264hFxIng8Y="; '
-            "Domain=.amazon.it; Expires=Mon, 31-May-2027 10:00:00 GMT; "
+            "Domain=.amazon.it; Expires=Mon, 31-May-3024 10:00:00 GMT; "
             "Path=/; Secure; HttpOnly",
             "lc-acbit=it_IT; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/",
             "i18n-prefs=EUR; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/",
             "av-profile=null; Domain=.amazon.it; "
-            "Expires=Mon, 31-May-2027 10:00:00 GMT; Path=/; Secure",
+            "Expires=Mon, 31-May-3024 10:00:00 GMT; Path=/; Secure",
             'user-pref-token="Am81ywsJ69xObBnuJ2FbilVH0mg="; '
             "Domain=.amazon.it; Path=/; Secure",
         ]

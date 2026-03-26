@@ -980,8 +980,9 @@ async def test_content_encoding(  # type: ignore[misc]
     req = make_client_request(
         "post", URL("http://python.org/"), data="foo", compress="deflate", loop=loop
     )
-    with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
-        m_writer.return_value.write_headers = mock.AsyncMock()
+    with mock.patch(
+        "aiohttp.client_reqrep.StreamWriter", autospec=True, spec_set=True
+    ) as m_writer:
         resp = await req._send(conn)
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
     assert req.headers["CONTENT-ENCODING"] == "deflate"
@@ -1018,8 +1019,9 @@ async def test_content_encoding_header(  # type: ignore[misc]
         headers=CIMultiDict({"Content-Encoding": "deflate"}),
         loop=loop,
     )
-    with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
-        m_writer.return_value.write_headers = mock.AsyncMock()
+    with mock.patch(
+        "aiohttp.client_reqrep.StreamWriter", autospec=True, spec_set=True
+    ) as m_writer:
         resp = await req._send(conn)
 
     assert not m_writer.return_value.enable_compression.called
@@ -1107,9 +1109,9 @@ async def test_chunked_explicit(
     req = make_client_request(
         "post", URL("http://python.org/"), chunked=True, loop=loop
     )
-    with mock.patch("aiohttp.client_reqrep.StreamWriter") as m_writer:
-        m_writer.return_value.write_headers = mock.AsyncMock()
-        m_writer.return_value.write_eof = mock.AsyncMock()
+    with mock.patch(
+        "aiohttp.client_reqrep.StreamWriter", autospec=True, spec_set=True
+    ) as m_writer:
         resp = await req._send(conn)
 
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
@@ -1350,7 +1352,18 @@ async def test_data_file(
         assert isinstance(req.body, payload.BufferedReaderPayload)
         assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
-        resp = await req._send(conn)
+        original_write_bytes = req._write_bytes
+
+        async def _mock_write_bytes(
+            writer: AbstractStreamWriter, conn: mock.Mock, content_length: int | None
+        ) -> None:
+            # Ensure the task is scheduled so _writer isn't None
+            await asyncio.sleep(0)
+            await original_write_bytes(writer, conn, content_length)
+
+        with mock.patch.object(req, "_write_bytes", _mock_write_bytes):
+            resp = await req._send(conn)
+
         assert asyncio.isfuture(req._writer)
         await resp.wait_for_close()
 
@@ -1977,8 +1990,7 @@ async def test_update_body_closes_previous_payload(
     req = make_client_request("POST", URL("http://python.org/"))
 
     # Create a mock payload that tracks if it was closed
-    mock_payload = mock.Mock(spec=payload.Payload)
-    mock_payload.close = mock.AsyncMock()
+    mock_payload = mock.create_autospec(payload.Payload, spec_set=True, instance=True)
 
     # Set initial payload
     req._body = mock_payload
@@ -2101,7 +2113,7 @@ async def test_expect100_with_body_becomes_empty(
 ) -> None:
     """Test that write_bytes handles body becoming empty after expect100 handling."""
     # Create a mock writer and connection
-    mock_writer = mock.AsyncMock()
+    mock_writer = mock.create_autospec(StreamWriter, instance=True, spec_set=True)
     mock_conn = mock.Mock()
 
     # Create a request

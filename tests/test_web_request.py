@@ -16,6 +16,7 @@ from yarl import URL
 
 from aiohttp import ETag, HttpVersion, web
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.streams import StreamReader
@@ -601,13 +602,17 @@ def test_single_forwarded_header() -> None:
 
 
 def test_forwarded_re_performance() -> None:
+    FORWARDED_RE_TIME_THRESHOLD_SECONDS = 0.08
     value = "{" + "f" * 54773 + "z\x00a=v"
     start = time.perf_counter()
     match = _FORWARDED_PAIR_RE.match(value)
-    end = time.perf_counter()
+    elapsed = time.perf_counter() - start
 
-    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
-    assert (end - start) < 0.01
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < FORWARDED_RE_TIME_THRESHOLD_SECONDS, (
+        f"Regex took {elapsed * 1000:.1f}ms, "
+        f"expected <{FORWARDED_RE_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+    )
     # This example shouldn't produce a match either.
     assert match is None
 
@@ -957,6 +962,56 @@ async def test_multipart_formdata_file(protocol: BaseProtocol) -> None:
     assert content == b"\ff"
 
     req._finish()
+
+
+async def test_multipart_formdata_headers_too_many(protocol: BaseProtocol) -> None:
+    many = b"".join(f"X-{i}: a\r\n".encode() for i in range(130))
+    body = (
+        b"--b\r\n"
+        b'Content-Disposition: form-data; name="a"\r\n' + many + b"\r\n1\r\n"
+        b"--b--\r\n"
+    )
+    content_type = "multipart/form-data; boundary=b"
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+    payload.feed_data(body)
+    payload.feed_eof()
+    req = make_mocked_request(
+        "POST",
+        "/",
+        headers={"CONTENT-TYPE": content_type},
+        payload=payload,
+    )
+
+    with pytest.raises(BadHttpMessage, match="Too many headers received"):
+        await req.post()
+
+
+async def test_multipart_formdata_header_too_long(protocol: BaseProtocol) -> None:
+    k = b"t" * 4100
+    body = (
+        b"--b\r\n"
+        b'Content-Disposition: form-data; name="a"\r\n'
+        + k
+        + b":"
+        + k
+        + b"\r\n"
+        + b"\r\n1\r\n"
+        b"--b--\r\n"
+    )
+    content_type = "multipart/form-data; boundary=b"
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+    payload.feed_data(body)
+    payload.feed_eof()
+    req = make_mocked_request(
+        "POST",
+        "/",
+        headers={"CONTENT-TYPE": content_type},
+        payload=payload,
+    )
+
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(LineTooLong, match=match):
+        await req.post()
 
 
 async def test_make_too_big_request_limit_None(protocol: BaseProtocol) -> None:

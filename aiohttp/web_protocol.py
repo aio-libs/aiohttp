@@ -154,6 +154,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     """
 
     __slots__ = (
+        "max_field_size",
+        "max_headers",
+        "max_line_size",
         "_request_count",
         "_keepalive",
         "_manager",
@@ -170,6 +173,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_waiter",
         "_task_handler",
         "_payload_parser",
+        "_data_received_cb",
         "logger",
         "access_log",
         "access_logger",
@@ -226,6 +230,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             manager.request_factory
         )
 
+        self.max_line_size = max_line_size
+        self.max_headers = max_headers
+        self.max_field_size = max_field_size
+
         self._tcp_keepalive = tcp_keepalive
         # placeholder to be replaced on keepalive timeout setup
         self._next_keepalive_close_time = 0.0
@@ -235,6 +243,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         self._messages: deque[_MsgType] = deque()
         self._message_tail = b""
+        self._data_received_cb: Callable[[], None] | None = None
 
         self._waiter: asyncio.Future[None] | None = None
         self._handler_waiter: asyncio.Future[None] | None = None
@@ -399,10 +408,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._payload_parser.feed_eof()
             self._payload_parser = None
 
-    def set_parser(self, parser: WebSocketReader) -> None:
+    def set_parser(
+        self, parser: WebSocketReader, data_received_cb: Callable[[], None] | None = None
+    ) -> None:
         assert self._payload_parser is None
 
         self._payload_parser = parser
+        self._data_received_cb = data_received_cb
 
         if self._message_tail:
             self._payload_parser.feed_data(self._message_tail)
@@ -446,6 +458,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         # feed payload
         elif data:
+            if self._data_received_cb is not None:
+                self._data_received_cb()
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
                 self.close()

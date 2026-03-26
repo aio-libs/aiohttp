@@ -3,9 +3,8 @@ import contextlib
 import datetime
 import heapq
 import itertools
-import os  # noqa
+import json
 import pathlib
-import pickle
 import re
 import time
 import warnings
@@ -108,18 +107,82 @@ class CookieJar(AbstractCookieJar):
         self._expirations: dict[tuple[str, str, str], float] = {}
 
     @property
+    def unsafe(self) -> bool:
+        return self._unsafe
+
+    @property
     def quote_cookie(self) -> bool:
         return self._quote_cookie
 
     def save(self, file_path: PathLike) -> None:
+        """Save cookies to a file using JSON format.
+
+        :param file_path: Path to file where cookies will be serialized,
+            :class:`str` or :class:`pathlib.Path` instance.
+        """
         file_path = pathlib.Path(file_path)
-        with file_path.open(mode="wb") as f:
-            pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
+        data: dict[str, dict[str, dict[str, str | bool]]] = {}
+        for (domain, path), cookie in self._cookies.items():
+            key = f"{domain}|{path}"
+            data[key] = {}
+            for name, morsel in cookie.items():
+                morsel_data: dict[str, str | bool] = {
+                    "key": morsel.key,
+                    "value": morsel.value,
+                    "coded_value": morsel.coded_value,
+                }
+                # Save all morsel attributes that have values
+                for attr in morsel._reserved:  # type: ignore[attr-defined]
+                    attr_val = morsel[attr]
+                    if attr_val:
+                        morsel_data[attr] = attr_val
+                data[key][name] = morsel_data
+        with file_path.open(mode="w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
 
     def load(self, file_path: PathLike) -> None:
+        """Load cookies from a JSON file.
+
+        :param file_path: Path to file from where cookies will be
+            imported, :class:`str` or :class:`pathlib.Path` instance.
+        """
         file_path = pathlib.Path(file_path)
-        with file_path.open(mode="rb") as f:
-            self._cookies = pickle.load(f)
+        with file_path.open(mode="r", encoding="utf-8") as f:
+            data = json.load(f)
+        self._cookies = self._load_json_data(data)
+
+    def _load_json_data(
+        self, data: dict[str, dict[str, dict[str, str | bool]]]
+    ) -> defaultdict[tuple[str, str], SimpleCookie]:
+        """Load cookies from parsed JSON data."""
+        cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(SimpleCookie)
+        for compound_key, cookie_data in data.items():
+            domain, path = compound_key.split("|", 1)
+            key = (domain, path)
+            for name, morsel_data in cookie_data.items():
+                morsel: Morsel[str] = Morsel()
+                morsel_key = morsel_data["key"]
+                morsel_value = morsel_data["value"]
+                morsel_coded_value = morsel_data["coded_value"]
+                # Use __setstate__ to bypass validation, same pattern
+                # used in _build_morsel and _cookie_helpers.
+                morsel.__setstate__(  # type: ignore[attr-defined]
+                    {
+                        "key": morsel_key,
+                        "value": morsel_value,
+                        "coded_value": morsel_coded_value,
+                    }
+                )
+                # Restore morsel attributes
+                for attr in morsel._reserved:  # type: ignore[attr-defined]
+                    if attr in morsel_data and attr not in (
+                        "key",
+                        "value",
+                        "coded_value",
+                    ):
+                        morsel[attr] = morsel_data[attr]
+                cookies[key][name] = morsel
+        return cookies
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         if predicate is None:
@@ -389,8 +452,7 @@ class CookieJar(AbstractCookieJar):
             coded_value = value = cookie.value
         # We use __setstate__ instead of the public set() API because it allows us to
         # bypass validation and set already validated state. This is more stable than
-        # setting protected attributes directly and unlikely to change since it would
-        # break pickling.
+        # setting protected attributes directly.
         morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})  # type: ignore[attr-defined]
         return morsel
 
@@ -487,6 +549,10 @@ class DummyCookieJar(AbstractCookieJar):
 
     def __len__(self) -> int:
         return 0
+
+    @property
+    def unsafe(self) -> bool:
+        return False
 
     @property
     def quote_cookie(self) -> bool:

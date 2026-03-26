@@ -115,7 +115,7 @@ SEPARATORS = {
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
+json_re = re.compile(r"^(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 
 
 class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):

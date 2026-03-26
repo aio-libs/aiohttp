@@ -29,6 +29,7 @@ from .hdrs import (
 )
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
+from .http_exceptions import BadHttpMessage
 from .log import internal_logger
 from .payload import (
     JsonPayload,
@@ -666,6 +667,8 @@ class MultipartReader:
         content: StreamReader,
         *,
         client_max_size: int = math.inf,
+        max_field_size: int = 8190,
+        max_headers: int = 128,
     ) -> None:
         self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
@@ -680,6 +683,8 @@ class MultipartReader:
         self._content = content
         self._default_charset: str | None = None
         self._last_part: MultipartReader | BodyPartReader | None = None
+        self._max_field_size = max_field_size
+        self._max_headers = max_headers
         self._at_eof = False
         self._at_bof = True
         self._unread: list[bytes] = []
@@ -780,10 +785,18 @@ class MultipartReader:
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
                 return type(self)(
-                    headers, self._content, client_max_size=self._client_max_size
+                    headers,
+                    self._content,
+                    client_max_size=self._client_max_size,
+                    max_field_size=self._max_field_size,
+                    max_headers=self._max_headers,
                 )
             return self.multipart_reader_cls(
-                headers, self._content, client_max_size=self._client_max_size
+                headers,
+                self._content,
+                client_max_size=self._client_max_size,
+                max_field_size=self._max_field_size,
+                max_headers=self._max_headers,
             )
         else:
             return self.part_reader_cls(
@@ -845,12 +858,14 @@ class MultipartReader:
     async def _read_headers(self) -> "CIMultiDictProxy[str]":
         lines = []
         while True:
-            chunk = await self._content.readline()
+            chunk = await self._content.readline(max_line_length=self._max_field_size)
             chunk = chunk.rstrip(b"\r\n")
             lines.append(chunk)
             if not chunk:
                 break
-        parser = HeadersParser()
+            if len(lines) > self._max_headers:
+                raise BadHttpMessage("Too many headers received")
+        parser = HeadersParser(max_field_size=self._max_field_size)
         headers, raw_headers = parser.parse_headers(lines)
         return headers
 

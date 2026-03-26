@@ -66,6 +66,10 @@ ASCIISET: Final[set[str]] = set(string.printable)
 #     token = 1*tchar
 _TCHAR_SPECIALS: Final[str] = re.escape("!#$%&'*+-.^_`|~")
 TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
+# https://www.rfc-editor.org/rfc/rfc9110#section-5.5-5
+_FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
+    r"[\x00-\x08\x0a-\x1f\x7f]"
+)
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
@@ -189,7 +193,10 @@ class HeadersParser:
             value = bvalue.decode("utf-8", "surrogateescape")
 
             # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-5
-            if "\n" in value or "\r" in value or "\x00" in value:
+            if self._lax:
+                if "\n" in value or "\r" in value or "\x00" in value:
+                    raise InvalidHeader(bvalue)
+            elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
             headers.add(name, value)
@@ -455,11 +462,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 assert not self._lines
                 assert self._payload_parser is not None
                 try:
-                    payload_state, data = self._payload_parser.feed_data(
-                        data[start_pos:], SEP
-                    )
-                except BaseException as underlying_exc:
-                    reraised_exc = underlying_exc
+                    payload_state, data = self._payload_parser.feed_data(data[start_pos:], SEP)
+                except Exception as underlying_exc:
+                    reraised_exc: BaseException = underlying_exc
                     if self.payload_exception is not None:
                         reraised_exc = self.payload_exception(str(underlying_exc))
 
@@ -532,16 +537,24 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         if bad_hdr is not None:
             raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
-        # keep-alive
-        conn = headers.get(hdrs.CONNECTION)
-        if conn:
-            v = conn.lower()
-            if v == "close":
+        # keep-alive and protocol switching
+        # RFC 9110 section 7.6.1 defines Connection as a comma-separated list.
+        conn_values = headers.getall(hdrs.CONNECTION, ())
+        if conn_values:
+            conn_tokens = {
+                token.lower()
+                for conn_value in conn_values
+                for token in (part.strip(" \t") for part in conn_value.split(","))
+                if token and token.isascii()
+            }
+
+            if "close" in conn_tokens:
                 close_conn = True
-            elif v == "keep-alive":
+            elif "keep-alive" in conn_tokens:
                 close_conn = False
+
             # https://www.rfc-editor.org/rfc/rfc9110.html#name-101-switching-protocols
-            elif v == "upgrade" and headers.get(hdrs.UPGRADE):
+            if "upgrade" in conn_tokens and headers.get(hdrs.UPGRADE):
                 upgrade = True
 
         # encoding
@@ -659,9 +672,16 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         )
 
     def _is_chunked_te(self, te: str) -> bool:
-        te = te.rsplit(",", maxsplit=1)[-1].strip(" \t")
+        # https://www.rfc-editor.org/rfc/rfc9112#section-7.1-3
+        # "A sender MUST NOT apply the chunked transfer coding more
+        #  than once to a message body"
+        parts = [p.strip(" \t") for p in te.split(",")]
+        chunked_count = sum(1 for p in parts if p.isascii() and p.lower() == "chunked")
+        if chunked_count > 1:
+            raise BadHttpMessage("Request has duplicate `chunked` Transfer-Encoding")
+        last = parts[-1]
         # .lower() transforms some non-ascii chars, so must check first.
-        if te.isascii() and te.lower() == "chunked":
+        if last.isascii() and last.lower() == "chunked":
             return True
         # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.3
         raise BadHttpMessage("Request has invalid `Transfer-Encoding`")
@@ -942,6 +962,12 @@ class HttpPayloadParser:
                     if chunk[: len(SEP)] == SEP:
                         chunk = chunk[len(SEP) :]
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
+                    elif len(chunk) >= len(SEP) or chunk != SEP[: len(chunk)]:
+                        exc = TransferEncodingError(
+                            "Chunk size mismatch: expected CRLF after chunk data"
+                        )
+                        set_exception(self.payload, exc)
+                        raise exc
                     else:
                         self._chunk_tail = chunk
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
