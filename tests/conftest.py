@@ -258,23 +258,10 @@ async def event_loop() -> asyncio.AbstractEventLoop:
     return asyncio.get_running_loop()
 
 
-@pytest.fixture
-def proactor_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    pytest.skip("broken")
-    return
-    policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore[attr-defined]
-    asyncio.set_event_loop_policy(policy)
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    if not loop.is_closed():
-        loop.call_soon(loop.stop)
-        loop.run_forever()
-        loop.close()
-
-    gc.collect()
-    asyncio.set_event_loop(None)
+def pytest_asyncio_loop_factories(config, item):
+    return {
+        "proactor": asyncio.ProactorEventLoop,
+    }
 
 
 @pytest.fixture

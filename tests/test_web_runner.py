@@ -250,8 +250,9 @@ async def test_named_pipe_runner_wrong_loop(
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
+@pytest.mark.asyncio(loop_factories=("proactor",))
 async def test_named_pipe_runner_proactor_loop(
-    proactor_loop: asyncio.AbstractEventLoop, app: web.Application, pipe_name: str
+    app: web.Application, pipe_name: str
 ) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
