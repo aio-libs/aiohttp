@@ -259,9 +259,10 @@ async def event_loop() -> asyncio.AbstractEventLoop:
 
 
 def pytest_asyncio_loop_factories(config, item):
-    return {
-        "proactor": asyncio.ProactorEventLoop,
-    }
+    factories = {}
+    if platform.system() == "Windows":
+        factories["proactor"] = asyncio.ProactorEventLoop
+    return factories
 
 
 @pytest.fixture
