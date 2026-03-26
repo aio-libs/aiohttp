@@ -6,6 +6,7 @@ aiohttp
 aiohttpdemo
 aiohttp’s
 aiopg
+al
 alives
 api
 api’s
@@ -99,6 +100,7 @@ deduplicate
 defs
 Dependabot
 deprecations
+deserialization
 DER
 dev
 Dev
@@ -120,6 +122,7 @@ env
 environ
 eof
 epoll
+et
 etag
 ETag
 expirations
@@ -167,6 +170,7 @@ iterable
 iterables
 javascript
 Jinja
+jitter
 json
 keepalive
 keepalived
@@ -190,6 +194,7 @@ lowercased
 Mako
 manylinux
 metadata
+MiB
 microservice
 middleware
 middlewares
@@ -209,7 +214,8 @@ Multipart
 musllinux
 mypy
 Nagle
-Nagle’s
+Nagle's
+NFS
 namedtuple
 nameservers
 namespace
@@ -223,6 +229,7 @@ nowait
 OAuth
 Online
 optimizations
+orjson
 os
 outcoming
 Overridable
@@ -231,6 +238,7 @@ param
 params
 parsers
 pathlib
+payloads
 peername
 performant
 pickleable
@@ -258,6 +266,7 @@ pytest
 Pytest
 qop
 Quickstart
+quickstart
 quote’s
 rc
 readline
@@ -288,12 +297,15 @@ resolvehost
 resolvers
 reusage
 reuseconn
+riscv64
 Runit
 runtime
 runtimes
 sa
 Satisfiable
+scalability
 schemas
+seekable
 sendfile
 serializable
 serializer
@@ -304,6 +316,8 @@ SocketSocketTransport
 ssl
 SSLContext
 startup
+stateful
+storages
 subapplication
 subclassed
 subclasses
@@ -340,13 +354,17 @@ tuples
 UI
 un
 unawaited
-undercounting
 unclosed
+undercounting
+unescaped
 unhandled
 unicode
 unittest
 Unittest
+unpickler
+untrusted
 unix
+unobvious
 unsets
 unstripped
 untyped

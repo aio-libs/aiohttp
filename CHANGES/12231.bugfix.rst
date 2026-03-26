@@ -1,0 +1,2 @@
+Adjusted pure-Python request header value validation to align with RFC 9110 control-character handling, while preserving lax response parser behavior, and added regression tests for Host/header control-character cases.
+-- by :user:`rodrigobnogueira`.

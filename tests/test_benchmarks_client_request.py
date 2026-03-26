@@ -1,25 +1,35 @@
 """codspeed benchmarks for client requests."""
 
 import asyncio
+import sys
+from collections.abc import Callable
 from http.cookies import BaseCookie
-from typing import Union
+from typing import Any
 
 from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
 from aiohttp.tracing import Trace
 
+if sys.version_info >= (3, 11):
+    from typing import Unpack
 
-def test_client_request_update_cookies(
-    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+else:
+    _RequestMaker = Any
+
+
+async def test_client_request_update_cookies(
+    benchmark: BenchmarkFixture,
+    make_client_request: _RequestMaker,
 ) -> None:
     url = URL("http://python.org")
-    req = ClientRequest("get", url, loop=event_loop)
+    req = make_client_request("get", url)
     cookie_jar = CookieJar()
     cookie_jar.update_cookies({"string": "Another string"})
     cookies = cookie_jar.filter_cookies(url)
@@ -27,11 +37,12 @@ def test_client_request_update_cookies(
 
     @benchmark
     def _run() -> None:
-        req.update_cookies(cookies=cookies)
+        req._update_cookies(cookies=cookies)
 
 
 def test_create_client_request_with_cookies(
-    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
 ) -> None:
     url = URL("http://python.org")
     cookie_jar = CookieJar()
@@ -55,7 +66,7 @@ def test_create_client_request_with_cookies(
             proxy_auth=None,
             proxy_headers=None,
             timer=timer,
-            session=None,
+            session=None,  # type: ignore[arg-type]
             ssl=True,
             traces=traces,
             trust_env=False,
@@ -72,7 +83,8 @@ def test_create_client_request_with_cookies(
 
 
 def test_create_client_request_with_headers(
-    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
 ) -> None:
     url = URL("http://python.org")
     timer = TimerNoop()
@@ -93,7 +105,7 @@ def test_create_client_request_with_headers(
             proxy_auth=None,
             proxy_headers=None,
             timer=timer,
-            session=None,
+            session=None,  # type: ignore[arg-type]
             ssl=True,
             traces=traces,
             trust_env=False,
@@ -110,10 +122,17 @@ def test_create_client_request_with_headers(
 
 
 def test_send_client_request_one_hundred(
-    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    event_loop: asyncio.AbstractEventLoop,
+    benchmark: BenchmarkFixture,
+    make_client_request: _RequestMaker,
 ) -> None:
     url = URL("http://python.org")
-    req = ClientRequest("get", url, loop=event_loop)
+
+    async def make_req() -> ClientRequest:
+        """Need async context."""
+        return make_client_request("get", url)
+
+    req = event_loop.run_until_complete(make_req())
 
     class MockTransport(asyncio.Transport):
         """Mock transport for testing that do no real I/O."""
@@ -122,7 +141,7 @@ def test_send_client_request_one_hundred(
             """Swallow is_closing."""
             return False
 
-        def write(self, data: Union[bytes, bytearray, memoryview]) -> None:
+        def write(self, data: bytes | bytearray | memoryview) -> None:
             """Swallow writes."""
 
     class MockProtocol(asyncio.BaseProtocol):
@@ -155,7 +174,7 @@ def test_send_client_request_one_hundred(
 
     async def send_requests() -> None:
         for _ in range(100):
-            await req.send(conn)  # type: ignore[arg-type]
+            await req._send(conn)  # type: ignore[arg-type]
 
     @benchmark
     def _run() -> None:

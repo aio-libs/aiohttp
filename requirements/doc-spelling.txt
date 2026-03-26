@@ -8,35 +8,33 @@ aiohttp-theme==0.1.7
     # via -r requirements/doc.in
 alabaster==1.0.0
     # via sphinx
-babel==2.17.0
+babel==2.18.0
     # via sphinx
-certifi==2025.6.15
+certifi==2026.2.25
     # via requests
-charset-normalizer==3.4.2
+charset-normalizer==3.4.6
     # via requests
-click==8.1.8
+click==8.3.1
     # via towncrier
 docutils==0.21.2
     # via sphinx
-idna==3.6
+idna==3.11
     # via requests
-imagesize==1.4.1
+imagesize==2.0.0
     # via sphinx
-incremental==24.7.2
-    # via towncrier
 jinja2==3.1.6
     # via
     #   sphinx
     #   towncrier
-markupsafe==3.0.2
+markupsafe==3.0.3
     # via jinja2
-packaging==25.0
+packaging==26.0
     # via sphinx
-pyenchant==3.2.2
+pyenchant==3.3.0
     # via sphinxcontrib-spelling
 pygments==2.19.2
     # via sphinx
-requests==2.32.4
+requests==2.32.5
     # via
     #   sphinx
     #   sphinxcontrib-spelling
@@ -59,22 +57,17 @@ sphinxcontrib-qthelp==2.0.0
     # via sphinx
 sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
-sphinxcontrib-spelling==8.0.1 ; platform_system != "Windows"
+sphinxcontrib-spelling==8.0.2 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
-tomli==2.2.1
+tomli==2.4.0
     # via
-    #   incremental
     #   sphinx
     #   towncrier
-towncrier==23.11.0
+towncrier==25.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-urllib3==2.5.0
+urllib3==2.6.3
     # via requests
-
-# The following packages are considered to be unsafe in a requirements file:
-setuptools==80.9.0
-    # via incremental

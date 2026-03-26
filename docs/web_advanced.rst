@@ -446,10 +446,13 @@ Request's storage
 ^^^^^^^^^^^^^^^^^
 
 Variables that are only needed for the lifetime of a :class:`Request`, can be
-stored in a :class:`Request`::
+stored in a :class:`Request`. Similarly to :class:`Application`, :class:`RequestKey`
+instances or strings can be used as keys::
+
+    my_private_key = web.RequestKey("my_private_key", str)
 
     async def handler(request):
-      request['my_private_key'] = "data"
+      request[my_private_key] = "data"
       ...
 
 This is mostly useful for :ref:`aiohttp-web-middlewares` and
@@ -464,9 +467,11 @@ also support :class:`collections.abc.MutableMapping` interface. This is useful
 when you want to share data with signals and middlewares once all the work in
 the handler is done::
 
+    my_metric_key = web.ResponseKey("my_metric_key", int)
+
     async def handler(request):
       [ do all the work ]
-      response['my_metric'] = 123
+      response[my_metric_key] = 123
       return response
 
 
@@ -722,18 +727,20 @@ In contrast, when accessing the stream directly (not recommended in middleware):
 
 When working with raw stream data that needs to be shared between middleware and handlers::
 
+    raw_body_key = web.RequestKey("raw_body_key", bytes)
+
     async def stream_parsing_middleware(
         request: web.Request,
         handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
     ) -> web.StreamResponse:
         # Read stream once and store the data
         raw_data = await request.content.read()
-        request['raw_body'] = raw_data
+        request[raw_body_key] = raw_data
         return await handler(request)
 
     async def handler(request: web.Request) -> web.Response:
         # Access the stored data instead of reading the stream again
-        raw_data = request.get('raw_body', b'')
+        raw_data = request.get(raw_body_key, b'')
         return web.Response(body=raw_data)
 
 Example
@@ -850,6 +857,7 @@ knowledge about startup/cleanup pairs and their execution state.
 
 The solution is :attr:`Application.cleanup_ctx` usage::
 
+    @contextlib.asynccontextmanager
     async def pg_engine(app: web.Application):
         app[pg_engine] = await create_async_engine(
             "postgresql+asyncpg://postgre:@localhost:5432/postgre"
@@ -1161,6 +1169,7 @@ below::
                       await ws.send_str("{}: {}".format(channel, msg))
 
 
+  @contextlib.asynccontextmanager
   async def background_tasks(app):
       app[redis_listener] = asyncio.create_task(listen_to_redis(app))
 
@@ -1200,6 +1209,7 @@ For example, running a long-lived task alongside the :class:`Application`
 can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
 
 
+  @contextlib.asynccontextmanager
   async def run_other_task(_app):
       task = asyncio.create_task(other_long_task())
 
@@ -1215,6 +1225,7 @@ can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
 Or a separate process can be run with something like::
 
 
+  @contextlib.asynccontextmanager
   async def run_process(_app):
       proc = await asyncio.create_subprocess_exec(path)
 
@@ -1268,20 +1279,13 @@ the middleware might use :meth:`BaseRequest.clone`.
    for modifying *scheme*, *host* and *remote* attributes according
    to ``Forwarded`` and ``X-Forwarded-*`` HTTP headers.
 
-Swagger support
----------------
-
-`aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_ is a
-library that allow to add Swagger documentation and embed the
-Swagger-UI into your :mod:`aiohttp.web` project.
-
 CORS support
 ------------
 
 :mod:`aiohttp.web` itself does not support `Cross-Origin Resource
 Sharing <https://en.wikipedia.org/wiki/Cross-origin_resource_sharing>`_, but
 there is an aiohttp plugin for it:
-`aiohttp_cors <https://github.com/aio-libs/aiohttp_cors>`_.
+`aiohttp-cors <https://github.com/aio-libs/aiohttp-cors>`_.
 
 
 Debug Toolbar
@@ -1324,10 +1328,8 @@ Install with ``pip``:
 
     $ pip install aiohttp-devtools
 
-* ``runserver`` provides a development server with auto-reload,
-  live-reload, static file serving.
-* ``start`` is a `cookiecutter command which does the donkey work
-  of creating new :mod:`aiohttp.web` Applications.
+``adev runserver`` provides a development server with auto-reload,
+live-reload, static file serving.
 
 Documentation and a complete tutorial of creating and running an app
 locally are available at `aiohttp-devtools`_.

@@ -2,7 +2,8 @@
 import array
 import asyncio
 import zlib
-from typing import Any, Generator, Iterable, Union
+from collections.abc import Generator, Iterable
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -66,7 +67,7 @@ def decompress(data: bytes) -> bytes:
     return d.decompress(data)
 
 
-def decode_chunked(chunked: Union[bytes, bytearray]) -> bytes:
+def decode_chunked(chunked: bytes | bytearray) -> bytes:
     i = 0
     out = b""
     while i < len(chunked):
@@ -837,28 +838,34 @@ async def test_write_calls_callback(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
 ) -> None:
-    on_chunk_sent = mock.AsyncMock()
+    async def on_chunk_sent(chunk: bytes) -> None:
+        """Mock signature"""
+
+    on_chunk_sent_mock = mock.create_autospec(on_chunk_sent, spec_set=True)
     msg = http.StreamWriter(
-        protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent
+        protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent_mock
     )
     chunk = b"1"
     await msg.write(chunk)
-    assert on_chunk_sent.called
-    assert on_chunk_sent.call_args == mock.call(chunk)
+    assert on_chunk_sent_mock.called
+    assert on_chunk_sent_mock.call_args == mock.call(chunk)
 
 
 async def test_write_eof_calls_callback(
     protocol: BaseProtocol,
     transport: asyncio.Transport,
 ) -> None:
-    on_chunk_sent = mock.AsyncMock()
+    async def on_chunk_sent(chunk: bytes) -> None:
+        """Mock signature"""
+
+    on_chunk_sent_mock = mock.create_autospec(on_chunk_sent, spec_set=True)
     msg = http.StreamWriter(
-        protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent
+        protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent_mock
     )
     chunk = b"1"
     await msg.write_eof(chunk=chunk)
-    assert on_chunk_sent.called
-    assert on_chunk_sent.call_args == mock.call(chunk)
+    assert on_chunk_sent_mock.called
+    assert on_chunk_sent_mock.call_args == mock.call(chunk)
 
 
 async def test_write_to_closing_transport(
@@ -1010,10 +1017,22 @@ def test_serialize_headers_raises_on_new_line_or_carriage_return(char: str) -> N
 
     with pytest.raises(
         ValueError,
-        match=(
-            "Newline or carriage return detected in headers. "
-            "Potential header injection attack."
-        ),
+        match="detected in headers",
+    ):
+        _serialize_headers(status_line, headers)
+
+
+def test_serialize_headers_raises_on_null_byte() -> None:
+    status_line = "HTTP/1.1 200 OK"
+    headers = CIMultiDict(
+        {
+            hdrs.CONTENT_TYPE: "text/plain\x00",
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="null byte detected in headers",
     ):
         _serialize_headers(status_line, headers)
 

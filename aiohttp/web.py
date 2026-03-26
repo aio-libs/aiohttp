@@ -5,25 +5,13 @@ import socket
 import sys
 import warnings
 from argparse import ArgumentParser
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable, Iterable as TypingIterable
 from contextlib import suppress
 from importlib import import_module
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Iterable as TypingIterable,
-    List,
-    Optional,
-    Set,
-    Type,
-    Union,
-    cast,
-)
+from typing import Any, cast
 
 from .abc import AbstractAccessLogger
-from .helpers import AppKey
+from .helpers import AppKey, RequestKey, ResponseKey
 from .log import access_logger
 from .typedefs import PathLike
 from .web_app import Application, CleanupError
@@ -93,7 +81,13 @@ from .web_log import AccessLogger
 from .web_middlewares import middleware, normalize_path_middleware
 from .web_protocol import PayloadAccessError, RequestHandler, RequestPayloadError
 from .web_request import BaseRequest, FileField, Request
-from .web_response import ContentCoding, Response, StreamResponse, json_response
+from .web_response import (
+    ContentCoding,
+    Response,
+    StreamResponse,
+    json_bytes_response,
+    json_response,
+)
 from .web_routedef import (
     AbstractRouteDef,
     RouteDef,
@@ -215,11 +209,14 @@ __all__ = (
     "BaseRequest",
     "FileField",
     "Request",
+    "RequestKey",
     # web_response
     "ContentCoding",
     "Response",
     "StreamResponse",
+    "json_bytes_response",
     "json_response",
+    "ResponseKey",
     # web_routedef
     "AbstractRouteDef",
     "RouteDef",
@@ -268,13 +265,10 @@ __all__ = (
 )
 
 
-if TYPE_CHECKING:
+try:
     from ssl import SSLContext
-else:
-    try:
-        from ssl import SSLContext
-    except ImportError:  # pragma: no cover
-        SSLContext = object  # type: ignore[misc,assignment]
+except ImportError:  # pragma: no cover
+    SSLContext = object  # type: ignore[misc,assignment]
 
 # Only display warning when using -Wdefault, -We, -X dev or similar.
 warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
@@ -283,24 +277,18 @@ HostSequence = TypingIterable[str]
 
 
 async def _run_app(
-    app: Union[Application, Awaitable[Application]],
+    app: Application | Awaitable[Application],
     *,
-    host: Optional[Union[str, HostSequence]] = None,
-    port: Optional[int] = None,
-    path: Union[PathLike, TypingIterable[PathLike], None] = None,
-    sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
-    shutdown_timeout: float = 60.0,
-    keepalive_timeout: float = 75.0,
-    ssl_context: Optional[SSLContext] = None,
-    print: Optional[Callable[..., None]] = print,
+    host: str | HostSequence | None = None,
+    port: int | None = None,
+    path: PathLike | TypingIterable[PathLike] | None = None,
+    sock: socket.socket | TypingIterable[socket.socket] | None = None,
+    ssl_context: SSLContext | None = None,
+    print: Callable[..., None] | None = print,
     backlog: int = 128,
-    access_log_class: Type[AbstractAccessLogger] = AccessLogger,
-    access_log_format: str = AccessLogger.LOG_FORMAT,
-    access_log: Optional[logging.Logger] = access_logger,
-    handle_signals: bool = True,
-    reuse_address: Optional[bool] = None,
-    reuse_port: Optional[bool] = None,
-    handler_cancellation: bool = False,
+    reuse_address: bool | None = None,
+    reuse_port: bool | None = None,
+    **kwargs: Any,  # TODO(PY311): Use Unpack
 ) -> None:
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
@@ -308,20 +296,11 @@ async def _run_app(
 
     app = cast(Application, app)
 
-    runner = AppRunner(
-        app,
-        handle_signals=handle_signals,
-        access_log_class=access_log_class,
-        access_log_format=access_log_format,
-        access_log=access_log,
-        keepalive_timeout=keepalive_timeout,
-        shutdown_timeout=shutdown_timeout,
-        handler_cancellation=handler_cancellation,
-    )
+    runner = AppRunner(app, **kwargs)
 
     await runner.setup()
 
-    sites: List[BaseSite] = []
+    sites: list[BaseSite] = []
 
     try:
         if host is not None:
@@ -421,7 +400,7 @@ async def _run_app(
 
 
 def _cancel_tasks(
-    to_cancel: Set["asyncio.Task[Any]"], loop: asyncio.AbstractEventLoop
+    to_cancel: set["asyncio.Task[Any]"], loop: asyncio.AbstractEventLoop
 ) -> None:
     if not to_cancel:
         return
@@ -445,26 +424,27 @@ def _cancel_tasks(
 
 
 def run_app(
-    app: Union[Application, Awaitable[Application]],
+    app: Application | Awaitable[Application],
     *,
     debug: bool = False,
-    host: Optional[Union[str, HostSequence]] = None,
-    port: Optional[int] = None,
-    path: Union[PathLike, TypingIterable[PathLike], None] = None,
-    sock: Optional[Union[socket.socket, TypingIterable[socket.socket]]] = None,
+    host: str | HostSequence | None = None,
+    port: int | None = None,
+    path: PathLike | TypingIterable[PathLike] | None = None,
+    sock: socket.socket | TypingIterable[socket.socket] | None = None,
     shutdown_timeout: float = 60.0,
     keepalive_timeout: float = 75.0,
-    ssl_context: Optional[SSLContext] = None,
-    print: Optional[Callable[..., None]] = print,
+    ssl_context: SSLContext | None = None,
+    print: Callable[..., None] | None = print,
     backlog: int = 128,
-    access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+    access_log_class: type[AbstractAccessLogger] = AccessLogger,
     access_log_format: str = AccessLogger.LOG_FORMAT,
-    access_log: Optional[logging.Logger] = access_logger,
+    access_log: logging.Logger | None = access_logger,
     handle_signals: bool = True,
-    reuse_address: Optional[bool] = None,
-    reuse_port: Optional[bool] = None,
+    reuse_address: bool | None = None,
+    reuse_port: bool | None = None,
     handler_cancellation: bool = False,
-    loop: Optional[asyncio.AbstractEventLoop] = None,
+    loop: asyncio.AbstractEventLoop | None = None,
+    **kwargs: Any,
 ) -> None:
     """Run an app locally"""
     if loop is None:
@@ -497,6 +477,7 @@ def run_app(
             reuse_address=reuse_address,
             reuse_port=reuse_port,
             handler_cancellation=handler_cancellation,
+            **kwargs,
         )
     )
 
@@ -517,7 +498,7 @@ def run_app(
             asyncio.set_event_loop(None)
 
 
-def main(argv: List[str]) -> None:
+def main(argv: list[str]) -> None:
     arg_parser = ArgumentParser(
         description="aiohttp.web Application server", prog="aiohttp.web"
     )

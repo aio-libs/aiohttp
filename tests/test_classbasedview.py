@@ -28,7 +28,7 @@ async def test_render_ok() -> None:
 async def test_render_unknown_method() -> None:
     class MyView(View):
         async def get(self) -> web.StreamResponse:
-            return web.Response(text="OK")
+            assert False
 
         options = get
 
@@ -43,7 +43,7 @@ async def test_render_unknown_method() -> None:
 async def test_render_unsupported_method() -> None:
     class MyView(View):
         async def get(self) -> web.StreamResponse:
-            return web.Response(text="OK")
+            assert False
 
         options = delete = get
 

@@ -10,6 +10,455 @@
 
 .. towncrier release notes start
 
+3.13.3 (2026-01-03)
+===================
+
+This release contains fixes for several vulnerabilities. It is advised to
+upgrade as soon as possible.
+
+Bug fixes
+---------
+
+- Fixed proxy authorization headers not being passed when reusing a connection, which caused 407 (Proxy authentication required) errors
+  -- by :user:`GLeurquin`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`2596`.
+
+
+
+- Fixed multipart reading failing when encountering an empty body part -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11857`.
+
+
+
+- Fixed a case where the parser wasn't raising an exception for a websocket continuation frame when there was no initial frame in context.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11862`.
+
+
+
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- ``Brotli`` and ``brotlicffi`` minimum version is now 1.2.
+  Decompression now has a default maximum output size of 32MiB per decompress call -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11898`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Moved dependency metadata from :file:`setup.cfg` to :file:`pyproject.toml` per :pep:`621`
+  -- by :user:`cdce8p`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11643`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Removed unused ``update-pre-commit`` github action workflow -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11689`.
+
+
+
+
+Miscellaneous internal changes
+------------------------------
+
+- Optimized web server performance when access logging is disabled by reducing time syscalls -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10713`.
+
+
+
+- Added regression test for cached logging status -- by :user:`meehand`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11778`.
+
+
+
+
+----
+
+
+3.13.2 (2025-10-28)
+===================
+
+Bug fixes
+---------
+
+- Fixed cookie parser to continue parsing subsequent cookies when encountering a malformed cookie that fails regex validation, such as Google's ``g_state`` cookie with unescaped quotes -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11632`.
+
+
+
+- Fixed loading netrc credentials from the default :file:`~/.netrc` (:file:`~/_netrc` on Windows) location when the :envvar:`NETRC` environment variable is not set -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11713`, :issue:`11714`.
+
+
+
+- Fixed WebSocket compressed sends to be cancellation safe. Tasks are now shielded during compression to prevent compressor state corruption. This ensures that the stateful compressor remains consistent even when send operations are cancelled -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11725`.
+
+
+
+
+----
+
+
+3.13.1 (2025-10-17)
+===================
+
+Features
+--------
+
+- Make configuration options in ``AppRunner`` also available in ``run_app()``
+  -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11633`.
+
+
+
+Bug fixes
+---------
+
+- Switched to `backports.zstd` for Python <3.14 and fixed zstd decompression for chunked zstd streams -- by :user:`ZhaoMJ`.
+
+  Note: Users who installed ``zstandard`` for support on Python <3.14 will now need to install
+  ``backports.zstd`` instead (installing ``aiohttp[speedups]`` will do this automatically).
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11623`.
+
+
+
+- Updated ``Content-Type`` header parsing to return ``application/octet-stream`` when header contains invalid syntax.
+  See :rfc:`9110#section-8.3-5`.
+
+  -- by :user:`sgaist`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10889`.
+
+
+
+- Fixed Python 3.14 support when built without ``zstd`` support -- by :user:`JacobHenner`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11603`.
+
+
+
+- Fixed blocking I/O in the event loop when using netrc authentication by moving netrc file lookup to an executor -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11634`.
+
+
+
+- Fixed routing to a sub-application added via ``.add_domain()`` not working
+  if the same path exists on the parent app. -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11673`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Moved core packaging metadata from :file:`setup.cfg` to :file:`pyproject.toml` per :pep:`621`
+  -- by :user:`cdce8p`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`9951`.
+
+
+
+
+----
+
+
+3.13.0 (2025-10-06)
+===================
+
+Features
+--------
+
+- Added support for Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`, :issue:`10872`.
+
+
+
+- Added support for free-threading in Python 3.14+ -- by :user:`kumaraditya303`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11466`, :issue:`11464`.
+
+
+
+- Added support for Zstandard (aka Zstd) compression
+  -- by :user:`KGuillaume-chaps`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11161`.
+
+
+
+- Added ``StreamReader.total_raw_bytes`` to check the number of bytes downloaded
+  -- by :user:`robpats`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11483`.
+
+
+
+Bug fixes
+---------
+
+- Fixed pytest plugin to not use deprecated :py:mod:`asyncio` policy APIs.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`10851`.
+
+
+
+- Updated `Content-Disposition` header parsing to handle trailing semicolons and empty parts
+  -- by :user:`PLPeeters`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11243`.
+
+
+
+- Fixed saved ``CookieJar`` failing to be loaded if cookies have ``partitioned`` flag when
+  ``http.cookie`` does not have partitioned cookies supports. -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11523`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Added ``Wireup`` to third-party libraries -- by :user:`maldoinc`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11233`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- The `blockbuster` test dependency is now optional; the corresponding test fixture is disabled when it is unavailable
+  -- by :user:`musicinybrain`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11363`.
+
+
+
+- Added ``riscv64`` build to releases -- by :user:`eshattow`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11425`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+
+
+- Fixed ``test_send_compress_text`` failing when alternative zlib implementation
+  is used. (``zlib-ng`` in python 3.14 windows build) -- by :user:`Cycloctane`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11546`.
+
+
+
+
+----
+
+
+3.12.15 (2025-07-28)
+====================
+
+Bug fixes
+---------
+
+- Fixed :class:`~aiohttp.DigestAuthMiddleware` to preserve the algorithm case from the server's challenge in the authorization response. This improves compatibility with servers that perform case-sensitive algorithm matching (e.g., servers expecting ``algorithm=MD5-sess`` instead of ``algorithm=MD5-SESS``)
+  -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11352`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Remove outdated contents of ``aiohttp-devtools`` and ``aiohttp-swagger``
+  from Web_advanced docs.
+  -- by :user:`Cycloctane`
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11347`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Started including the ``llhttp`` :file:`LICENSE` file in wheels by adding ``vendor/llhttp/LICENSE`` to ``license-files`` in :file:`setup.cfg` -- by :user:`threexc`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11226`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Updated a regex in `test_aiohttp_request_coroutine` for Python 3.14.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11271`.
+
+
+
+
+----
+
+
+3.12.14 (2025-07-10)
+====================
+
+Bug fixes
+---------
+
+- Fixed file uploads failing with HTTP 422 errors when encountering 307/308 redirects, and 301/302 redirects for non-POST methods, by preserving the request body when appropriate per :rfc:`9110#section-15.4.3-3.1` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11270`.
+
+
+
+- Fixed :py:meth:`ClientSession.close() <aiohttp.ClientSession.close>` hanging indefinitely when using HTTPS requests through HTTP proxies -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11273`.
+
+
+
+- Bumped minimum version of aiosignal to 1.4+ to resolve typing issues -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11280`.
+
+
+
+
+Features
+--------
+
+- Added initial trailer parsing logic to Python HTTP parser -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11269`.
+
+
+
+
+Improved documentation
+----------------------
+
+- Clarified exceptions raised by ``WebSocketResponse.send_frame`` et al.
+  -- by :user:`DoctorJohn`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11234`.
+
+
+
+
+----
+
+
 3.12.13 (2025-06-14)
 ====================
 
@@ -4309,7 +4758,7 @@ Bugfixes
   `#5853 <https://github.com/aio-libs/aiohttp/issues/5853>`_
 - Added ``params`` keyword argument to ``ClientSession.ws_connect``. --  :user:`hoh`.
   `#5868 <https://github.com/aio-libs/aiohttp/issues/5868>`_
-- Uses :py:class:`~asyncio.ThreadedChildWatcher` under POSIX to allow setting up test loop in non-main thread.
+- Uses ``asyncio.ThreadedChildWatcher`` under POSIX to allow setting up test loop in non-main thread.
   `#5877 <https://github.com/aio-libs/aiohttp/issues/5877>`_
 - Fix the error in handling the return value of `getaddrinfo`.
   `getaddrinfo` will return an `(int, bytes)` tuple, if CPython could not handle the address family.

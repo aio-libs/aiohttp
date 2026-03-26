@@ -1,0 +1,2 @@
+Added win_arm64 to the wheels that gets pushed to PyPI
+-- by :user:`AraHaan`.

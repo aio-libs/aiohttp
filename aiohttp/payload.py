@@ -7,22 +7,9 @@ import os
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import AsyncIterable, AsyncIterator, Iterable
 from itertools import chain
-from typing import (
-    IO,
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Final,
-    List,
-    Optional,
-    Set,
-    TextIO,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import IO, Any, Final, TextIO
 
 from multidict import CIMultiDict
 
@@ -36,7 +23,7 @@ from .helpers import (
     sentinel,
 )
 from .streams import StreamReader
-from .typedefs import JSONEncoder, _CIMultiDict
+from .typedefs import JSONBytesEncoder, JSONEncoder
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -51,12 +38,13 @@ __all__ = (
     "TextIOPayload",
     "StringIOPayload",
     "JsonPayload",
+    "JsonBytesPayload",
     "AsyncIterablePayload",
 )
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
 READ_SIZE: Final[int] = 2**16  # 64 KB
-_CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
+_CLOSE_FUTURES: set[asyncio.Future[None]] = set()
 
 
 class LookupError(Exception):
@@ -74,7 +62,7 @@ def get_payload(data: Any, *args: Any, **kwargs: Any) -> "Payload":
 
 
 def register_payload(
-    factory: Type["Payload"], type: Any, *, order: Order = Order.normal
+    factory: type["Payload"], type: Any, *, order: Order = Order.normal
 ) -> None:
     PAYLOAD_REGISTRY.register(factory, type, order=order)
 
@@ -84,13 +72,13 @@ class payload_type:
         self.type = type
         self.order = order
 
-    def __call__(self, factory: Type["Payload"]) -> Type["Payload"]:
+    def __call__(self, factory: type["Payload"]) -> type["Payload"]:
         register_payload(factory, self.type, order=self.order)
         return factory
 
 
-PayloadType = Type["Payload"]
-_PayloadRegistryItem = Tuple[PayloadType, Any]
+PayloadType = type["Payload"]
+_PayloadRegistryItem = tuple[PayloadType, Any]
 
 
 class PayloadRegistry:
@@ -102,16 +90,16 @@ class PayloadRegistry:
     __slots__ = ("_first", "_normal", "_last", "_normal_lookup")
 
     def __init__(self) -> None:
-        self._first: List[_PayloadRegistryItem] = []
-        self._normal: List[_PayloadRegistryItem] = []
-        self._last: List[_PayloadRegistryItem] = []
-        self._normal_lookup: Dict[Any, PayloadType] = {}
+        self._first: list[_PayloadRegistryItem] = []
+        self._normal: list[_PayloadRegistryItem] = []
+        self._last: list[_PayloadRegistryItem] = []
+        self._normal_lookup: dict[Any, PayloadType] = {}
 
     def get(
         self,
         data: Any,
         *args: Any,
-        _CHAIN: "Type[chain[_PayloadRegistryItem]]" = chain,
+        _CHAIN: "type[chain[_PayloadRegistryItem]]" = chain,
         **kwargs: Any,
     ) -> "Payload":
         if self._first:
@@ -150,24 +138,24 @@ class PayloadRegistry:
 
 class Payload(ABC):
     _default_content_type: str = "application/octet-stream"
-    _size: Optional[int] = None
+    _size: int | None = None
     _consumed: bool = False  # Default: payload has not been consumed yet
     _autoclose: bool = False  # Default: assume resource needs explicit closing
 
     def __init__(
         self,
         value: Any,
-        headers: Optional[
-            Union[_CIMultiDict, Dict[str, str], Iterable[Tuple[str, str]]]
-        ] = None,
-        content_type: Union[None, str, _SENTINEL] = sentinel,
-        filename: Optional[str] = None,
-        encoding: Optional[str] = None,
+        headers: (
+            CIMultiDict[str] | dict[str, str] | Iterable[tuple[str, str]] | None
+        ) = None,
+        content_type: None | str | _SENTINEL = sentinel,
+        filename: str | None = None,
+        encoding: str | None = None,
         **kwargs: Any,
     ) -> None:
         self._encoding = encoding
         self._filename = filename
-        self._headers: _CIMultiDict = CIMultiDict()
+        self._headers = CIMultiDict[str]()
         self._value = value
         if content_type is not sentinel and content_type is not None:
             assert isinstance(content_type, str)
@@ -187,7 +175,7 @@ class Payload(ABC):
             self._headers.update(headers)
 
     @property
-    def size(self) -> Optional[int]:
+    def size(self) -> int | None:
         """Size of the payload in bytes.
 
         Returns the number of bytes that will be transmitted when the payload
@@ -197,12 +185,12 @@ class Payload(ABC):
         return self._size
 
     @property
-    def filename(self) -> Optional[str]:
+    def filename(self) -> str | None:
         """Filename of the payload."""
         return self._filename
 
     @property
-    def headers(self) -> _CIMultiDict:
+    def headers(self) -> CIMultiDict[str]:
         """Custom item headers"""
         return self._headers
 
@@ -216,7 +204,7 @@ class Payload(ABC):
         )
 
     @property
-    def encoding(self) -> Optional[str]:
+    def encoding(self) -> str | None:
         """Payload encoding"""
         return self._encoding
 
@@ -283,7 +271,7 @@ class Payload(ABC):
     # write_with_length is new in aiohttp 3.12
     # it should be overridden by subclasses
     async def write_with_length(
-        self, writer: AbstractStreamWriter, content_length: Optional[int]
+        self, writer: AbstractStreamWriter, content_length: int | None
     ) -> None:
         """
         Write payload with a specific content length constraint.
@@ -353,7 +341,7 @@ class BytesPayload(Payload):
     _autoclose = True  # No file handle, just bytes in memory
 
     def __init__(
-        self, value: Union[bytes, bytearray, memoryview], *args: Any, **kwargs: Any
+        self, value: bytes | bytearray | memoryview, *args: Any, **kwargs: Any
     ) -> None:
         if "content_type" not in kwargs:
             kwargs["content_type"] = "application/octet-stream"
@@ -406,7 +394,7 @@ class BytesPayload(Payload):
         await writer.write(self._value)
 
     async def write_with_length(
-        self, writer: AbstractStreamWriter, content_length: Optional[int]
+        self, writer: AbstractStreamWriter, content_length: int | None
     ) -> None:
         """
         Write bytes payload with a specific content length constraint.
@@ -431,8 +419,8 @@ class StringPayload(BytesPayload):
         self,
         value: str,
         *args: Any,
-        encoding: Optional[str] = None,
-        content_type: Optional[str] = None,
+        encoding: str | None = None,
+        content_type: str | None = None,
         **kwargs: Any,
     ) -> None:
         if encoding is None:
@@ -464,7 +452,7 @@ class StringIOPayload(StringPayload):
 class IOBasePayload(Payload):
     _value: io.IOBase
     # _consumed = False (inherited) - File can be re-read from the same position
-    _start_position: Optional[int] = None
+    _start_position: int | None = None
     # _autoclose = False (inherited) - Has file handle that needs explicit closing
 
     def __init__(
@@ -484,14 +472,18 @@ class IOBasePayload(Payload):
         if self._start_position is None:
             try:
                 self._start_position = self._value.tell()
-            except OSError:
+            except (OSError, AttributeError):
                 self._consumed = True  # Cannot seek, mark as consumed
             return
-        self._value.seek(self._start_position)
+        try:
+            self._value.seek(self._start_position)
+        except (OSError, AttributeError):
+            # Failed to seek back - mark as consumed since we've already read
+            self._consumed = True
 
     def _read_and_available_len(
-        self, remaining_content_len: Optional[int]
-    ) -> Tuple[Optional[int], bytes]:
+        self, remaining_content_len: int | None
+    ) -> tuple[int | None, bytes]:
         """
         Read the file-like object and return both its total size and the first chunk.
 
@@ -515,7 +507,7 @@ class IOBasePayload(Payload):
             min(READ_SIZE, size or READ_SIZE, remaining_content_len or READ_SIZE)
         )
 
-    def _read(self, remaining_content_len: Optional[int]) -> bytes:
+    def _read(self, remaining_content_len: int | None) -> bytes:
         """
         Read a chunk of data from the file-like object.
 
@@ -534,15 +526,30 @@ class IOBasePayload(Payload):
         return self._value.read(remaining_content_len or READ_SIZE)  # type: ignore[no-any-return]
 
     @property
-    def size(self) -> Optional[int]:
+    def size(self) -> int | None:
         """
         Size of the payload in bytes.
 
-        Returns the number of bytes remaining to be read from the file.
+        Returns the total size of the payload content from the initial position.
+        This ensures consistent Content-Length for requests, including 307/308 redirects
+        where the same payload instance is reused.
+
         Returns None if the size cannot be determined (e.g., for unseekable streams).
         """
         try:
-            return os.fstat(self._value.fileno()).st_size - self._value.tell()
+            # Store the start position on first access.
+            # This is critical when the same payload instance is reused (e.g., 307/308
+            # redirects). Without storing the initial position, after the payload is
+            # read once, the file position would be at EOF, which would cause the
+            # size calculation to return 0 (file_size - EOF position).
+            # By storing the start position, we ensure the size calculation always
+            # returns the correct total size for any subsequent use.
+            if self._start_position is None:
+                self._start_position = self._value.tell()
+
+            # Return the total size from the start position
+            # This ensures Content-Length is correct even after reading
+            return os.fstat(self._value.fileno()).st_size - self._start_position
         except (AttributeError, OSError):
             return None
 
@@ -565,7 +572,7 @@ class IOBasePayload(Payload):
         await self.write_with_length(writer, None)
 
     async def write_with_length(
-        self, writer: AbstractStreamWriter, content_length: Optional[int]
+        self, writer: AbstractStreamWriter, content_length: int | None
     ) -> None:
         """
         Write file-like payload with a specific content length constraint.
@@ -627,9 +634,9 @@ class IOBasePayload(Payload):
 
     def _should_stop_writing(
         self,
-        available_len: Optional[int],
+        available_len: int | None,
         total_written_len: int,
-        remaining_content_len: Optional[int],
+        remaining_content_len: int | None,
     ) -> bool:
         """
         Determine if we should stop writing data.
@@ -715,8 +722,8 @@ class TextIOPayload(IOBasePayload):
         self,
         value: TextIO,
         *args: Any,
-        encoding: Optional[str] = None,
-        content_type: Optional[str] = None,
+        encoding: str | None = None,
+        content_type: str | None = None,
         **kwargs: Any,
     ) -> None:
         if encoding is None:
@@ -739,8 +746,8 @@ class TextIOPayload(IOBasePayload):
         )
 
     def _read_and_available_len(
-        self, remaining_content_len: Optional[int]
-    ) -> Tuple[Optional[int], bytes]:
+        self, remaining_content_len: int | None
+    ) -> tuple[int | None, bytes]:
         """
         Read the text file-like object and return both its total size and the first chunk.
 
@@ -769,7 +776,7 @@ class TextIOPayload(IOBasePayload):
         )
         return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
-    def _read(self, remaining_content_len: Optional[int]) -> bytes:
+    def _read(self, remaining_content_len: int | None) -> bytes:
         """
         Read a chunk of data from the text file-like object.
 
@@ -847,7 +854,7 @@ class BytesIOPayload(IOBasePayload):
         return await self.write_with_length(writer, None)
 
     async def write_with_length(
-        self, writer: AbstractStreamWriter, content_length: Optional[int]
+        self, writer: AbstractStreamWriter, content_length: int | None
     ) -> None:
         """
         Write BytesIO payload with a specific content length constraint.
@@ -933,31 +940,42 @@ class JsonPayload(BytesPayload):
         )
 
 
-if TYPE_CHECKING:
-    from typing import AsyncIterable, AsyncIterator
+class JsonBytesPayload(BytesPayload):
+    """JSON payload for encoders that return bytes directly.
 
-    _AsyncIterator = AsyncIterator[bytes]
-    _AsyncIterable = AsyncIterable[bytes]
-else:
-    from collections.abc import AsyncIterable, AsyncIterator
+    Use this when your JSON encoder (like orjson) returns bytes
+    instead of str, avoiding the encode/decode overhead.
+    """
 
-    _AsyncIterator = AsyncIterator
-    _AsyncIterable = AsyncIterable
+    def __init__(
+        self,
+        value: Any,
+        dumps: JSONBytesEncoder,
+        content_type: str = "application/json",
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            dumps(value),
+            content_type=content_type,
+            *args,
+            **kwargs,
+        )
 
 
 class AsyncIterablePayload(Payload):
-    _iter: Optional[_AsyncIterator] = None
-    _value: _AsyncIterable
-    _cached_chunks: Optional[List[bytes]] = None
+    _iter: AsyncIterator[bytes] | None = None
+    _value: AsyncIterable[bytes]
+    _cached_chunks: list[bytes] | None = None
     # _consumed stays False to allow reuse with cached content
     _autoclose = True  # Iterator doesn't need explicit closing
 
-    def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, value: AsyncIterable[bytes], *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "
                 "collections.abc.AsyncIterable interface, "
-                "got {!r}".format(type(value))
+                f"got {type(value)!r}"
             )
 
         if "content_type" not in kwargs:
@@ -985,7 +1003,7 @@ class AsyncIterablePayload(Payload):
         await self.write_with_length(writer, None)
 
     async def write_with_length(
-        self, writer: AbstractStreamWriter, content_length: Optional[int]
+        self, writer: AbstractStreamWriter, content_length: int | None
     ) -> None:
         """
         Write async iterable payload with a specific content length constraint.
@@ -1024,10 +1042,7 @@ class AsyncIterablePayload(Payload):
 
         try:
             while True:
-                if sys.version_info >= (3, 10):
-                    chunk = await anext(self._iter)
-                else:
-                    chunk = await self._iter.__anext__()
+                chunk = await anext(self._iter)
                 if remaining_bytes is None:
                     await writer.write(chunk)
                 # If we have a content length limit
@@ -1065,7 +1080,7 @@ class AsyncIterablePayload(Payload):
             return b""
 
         # Read all chunks and cache them
-        chunks: List[bytes] = []
+        chunks: list[bytes] = []
         async for chunk in self._iter:
             chunks.append(chunk)
 

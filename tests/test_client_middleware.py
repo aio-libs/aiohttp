@@ -2,7 +2,7 @@
 
 import json
 import socket
-from typing import Dict, List, NoReturn, Optional, Union
+from typing import NoReturn
 
 import pytest
 from pytest_aiohttp import AiohttpServer
@@ -243,7 +243,7 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
     async def challenge_auth_middleware(
         request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
-        nonce: Optional[str] = None
+        nonce: str | None = None
         attempted: bool = False
 
         while True:
@@ -285,7 +285,7 @@ async def test_client_middleware_challenge_auth(aiohttp_server: AiohttpServer) -
 async def test_client_middleware_multi_step_auth(aiohttp_server: AiohttpServer) -> None:
     """Test middleware with multi-step authentication flow."""
     auth_state: dict[str, int] = {}
-    middleware_state: Dict[str, Optional[Union[int, str]]] = {
+    middleware_state: dict[str, int | str | None] = {
         "step": 0,
         "session": None,
         "challenge": None,
@@ -372,7 +372,7 @@ async def test_client_middleware_conditional_retry(
 ) -> None:
     """Test middleware with conditional retry based on response content."""
     request_count = 0
-    token_state: Dict[str, Union[str, bool]] = {
+    token_state: dict[str, str | bool] = {
         "token": "old-token",
         "refreshed": False,
     }
@@ -633,10 +633,8 @@ async def test_request_middleware_overrides_session_middleware_with_specific(
     request_middleware_called = False
 
     async def handler(request: web.Request) -> web.Response:
-        auth_header = request.headers.get("Authorization")
-        if auth_header:
-            return web.Response(text=f"Auth: {auth_header}")
-        return web.Response(text="No auth")
+        auth_header = request.headers["Authorization"]
+        return web.Response(text=f"Auth: {auth_header}")
 
     async def session_middleware(
         request: ClientRequest, handler: ClientHandlerType
@@ -735,7 +733,7 @@ async def test_client_middleware_blocks_connection_before_established(
 ) -> None:
     """Test that middleware can block connections before they are established."""
     blocked_hosts = {"blocked.example.com", "evil.com"}
-    connection_attempts: List[str] = []
+    connection_attempts: list[str] = []
 
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="Reached")
@@ -801,7 +799,7 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
 ) -> None:
     """Test that middleware prevents DNS lookups for blocked hosts."""
     blocked_hosts = {"blocked.domain.tld"}
-    dns_lookups_made: List[str] = []
+    dns_lookups_made: list[str] = []
 
     # Create a simple server for the allowed request
     async def handler(request: web.Request) -> web.Response:
@@ -817,7 +815,7 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
             hostname: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             dns_lookups_made.append(hostname)
             return await super().resolve(hostname, port, family)
 
@@ -878,7 +876,7 @@ async def test_client_middleware_retry_reuses_connection(
         connection_attempts = 0
 
         async def _create_connection(
-            self, req: ClientRequest, traces: List["Trace"], timeout: "ClientTimeout"
+            self, req: ClientRequest, traces: list["Trace"], timeout: "ClientTimeout"
         ) -> ResponseHandler:
             self.connection_attempts += 1
             return await super()._create_connection(req, traces, timeout)
@@ -927,11 +925,11 @@ async def test_middleware_uses_session_avoids_recursion_with_path_check(
     aiohttp_server: AiohttpServer,
 ) -> None:
     """Test that middleware can avoid infinite recursion using a path check."""
-    log_collector: List[Dict[str, str]] = []
+    log_collector: list[dict[str, str]] = []
 
     async def log_api_handler(request: web.Request) -> web.Response:
         """Handle log API requests."""
-        data: Dict[str, str] = await request.json()
+        data: dict[str, str] = await request.json()
         log_collector.append(data)
         return web.Response(text="OK")
 
@@ -993,14 +991,14 @@ async def test_middleware_uses_session_avoids_recursion_with_disabled_middleware
     aiohttp_server: AiohttpServer,
 ) -> None:
     """Test that middleware can avoid infinite recursion by disabling middleware."""
-    log_collector: List[Dict[str, str]] = []
+    log_collector: list[dict[str, str]] = []
     request_count = 0
 
     async def log_api_handler(request: web.Request) -> web.Response:
         """Handle log API requests."""
         nonlocal request_count
         request_count += 1
-        data: Dict[str, str] = await request.json()
+        data: dict[str, str] = await request.json()
         log_collector.append(data)
         return web.Response(text="OK")
 
@@ -1061,8 +1059,8 @@ async def test_middleware_can_check_request_body(
     aiohttp_server: AiohttpServer,
 ) -> None:
     """Test that middleware can check request body."""
-    received_bodies: List[str] = []
-    received_headers: List[Dict[str, str]] = []
+    received_bodies: list[str] = []
+    received_headers: list[dict[str, str]] = []
 
     async def handler(request: web.Request) -> web.Response:
         """Server handler that receives requests."""
@@ -1083,10 +1081,7 @@ async def test_middleware_can_check_request_body(
             self.secretkey = secretkey
 
         def get_hash(self, request: ClientRequest) -> str:
-            if request.body:
-                data = request.body.decode("utf-8")
-            else:
-                data = "{}"
+            data = request.body.decode("utf-8") or "{}"
 
             # Simulate authentication hash without using real crypto
             return f"SIGNATURE-{self.secretkey}-{len(data)}-{data[:10]}"

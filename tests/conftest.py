@@ -1,38 +1,56 @@
+from __future__ import annotations  # TODO(PY311): Remove
+
 import asyncio
 import base64
 import gc
 import os
+import platform
 import socket
 import ssl
 import sys
-import zlib
+import time
+from collections.abc import AsyncIterator, Callable, Iterator
+from concurrent.futures import Future, ThreadPoolExecutor
 from hashlib import md5, sha1, sha256
+from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, AsyncIterator, Callable, Iterator
+from typing import Any
 from unittest import mock
 from uuid import uuid4
 
-import isal.isal_zlib
 import pytest
-import zlib_ng.zlib_ng
-from blockbuster import blockbuster_ctx
-
-from aiohttp import payload
-from aiohttp.client_proto import ResponseHandler
-from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
-from aiohttp.http import WS_KEY
-from aiohttp.test_utils import REUSE_ADDRESS
+import trustme
+from multidict import CIMultiDict
+from yarl import URL
 
 try:
-    import trustme
+    from blockbuster import blockbuster_ctx
 
-    # Check if the CA is available in runtime, MacOS on Py3.10 fails somehow
-    trustme.CA()
+    HAS_BLOCKBUSTER = True
+except ImportError:  # For downstreams only  # pragma: no cover
+    HAS_BLOCKBUSTER = False
 
-    TRUSTME: bool = True
-except ImportError:
-    TRUSTME = False
+from aiohttp import payload
+from aiohttp.client import ClientSession
+from aiohttp.client_proto import ResponseHandler
+from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
+from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
+from aiohttp.helpers import TimerNoop
+from aiohttp.http import WS_KEY, HttpVersion11
+from aiohttp.test_utils import REUSE_ADDRESS
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    # On Windows with Python 3.10/3.11, proxy.py's threaded mode can leave
+    # sockets not fully released by the time pytest's unraisableexception
+    # plugin collects warnings during teardown. Suppress these warnings
+    # since they are not actionable and only affect older Python versions.
+    if os.name == "nt" and sys.version_info < (3, 12):
+        config.addinivalue_line(
+            "filterwarnings",
+            "ignore:Exception ignored in.*socket.*:pytest.PytestUnraisableExceptionWarning",
+        )
 
 
 try:
@@ -43,6 +61,11 @@ try:
 except ImportError:
     uvloop = None  # type: ignore[assignment]
 
+if sys.version_info >= (3, 11):
+    from typing import Unpack
+else:
+    from typing import Any as Unpack
+
 
 # We require pytest-aiohttp to avoid confusing debugging if it's not installed.
 pytest_plugins = ("pytest_aiohttp", "pytester")
@@ -52,7 +75,7 @@ IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=HAS_BLOCKBUSTER)
 def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
     # Allow selectively disabling blockbuster for specific tests
     # using the @pytest.mark.skip_blockbuster marker.
@@ -68,10 +91,6 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             return
         node = node.parent
     with blockbuster_ctx("aiohttp") as bb:
-        # TODO: Fix blocking call in ClientRequest's constructor.
-        # https://github.com/aio-libs/aiohttp/issues/10435
-        for func in ["io.TextIOWrapper.read", "os.stat"]:
-            bb.functions[func].can_block_in("aiohttp/client_reqrep.py", "update_auth")
         for func in [
             "os.getcwd",
             "os.readlink",
@@ -95,8 +114,6 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
 
 @pytest.fixture
 def tls_certificate_authority() -> trustme.CA:
-    if not TRUSTME:
-        pytest.xfail("trustme is not supported")
     return trustme.CA()
 
 
@@ -186,8 +203,6 @@ def unix_sockname(
     # Ref: https://unix.stackexchange.com/a/367012/27133
 
     sock_file_name = "unix.sock"
-    unique_prefix = f"{uuid4()!s}-"
-    unique_prefix_len = len(unique_prefix.encode())
 
     root_tmp_dir = Path("/tmp").resolve()
     os_tmp_dir = Path(os.getenv("TMPDIR", "/tmp")).resolve()
@@ -222,7 +237,7 @@ def unix_sockname(
     unique_paths = [p for n, p in enumerate(paths) if p not in paths[:n]]
     paths_num = len(unique_paths)
 
-    for num, tmp_dir_path in enumerate(paths, 1):
+    for num, tmp_dir_path in enumerate(paths, 1):  # pragma: no branch
         with make_tmp_dir(tmp_dir_path) as tmps:
             tmpd = Path(tmps).resolve()
             sock_path = str(tmpd / sock_file_name)
@@ -234,12 +249,6 @@ def unix_sockname(
                 assert_sock_fits(sock_path)
 
             if sock_path_len <= max_sock_len:
-                if max_sock_len - sock_path_len >= unique_prefix_len:
-                    # If we're lucky to have extra space in the path,
-                    # let's also make it more unique
-                    sock_path = str(tmpd / "".join((unique_prefix, sock_file_name)))
-                    # Double-checking it:
-                    assert_sock_fits(sock_path)
                 yield sock_path
                 return
 
@@ -282,6 +291,8 @@ def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
 def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
     pytest.skip("broken")
     return
+    if uvloop is None:
+        pytest.skip("uvloop is not installed")
     factory = uvloop.new_event_loop
     with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
@@ -308,6 +319,51 @@ def netrc_contents(
     monkeypatch.setenv("NETRC", str(netrc_file_path))
 
     return netrc_file_path
+
+
+@pytest.fixture
+def netrc_default_contents(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Create a temporary netrc file with default test credentials and set NETRC env var."""
+    netrc_file = tmp_path / ".netrc"
+    netrc_file.write_text("default login netrc_user password netrc_pass\n")
+
+    monkeypatch.setenv("NETRC", str(netrc_file))
+
+    return netrc_file
+
+
+@pytest.fixture
+def no_netrc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure NETRC environment variable is not set."""
+    monkeypatch.delenv("NETRC", raising=False)
+
+
+@pytest.fixture
+def netrc_other_host(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Create a temporary netrc file with credentials for a different host and set NETRC env var."""
+    netrc_file = tmp_path / ".netrc"
+    netrc_file.write_text("machine other.example.com login user password pass\n")
+
+    monkeypatch.setenv("NETRC", str(netrc_file))
+
+    return netrc_file
+
+
+@pytest.fixture
+def netrc_home_directory(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Create a netrc file in a mocked home directory without setting NETRC env var."""
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    netrc_filename = "_netrc" if platform.system() == "Windows" else ".netrc"
+    netrc_file = home_dir / netrc_filename
+    netrc_file.write_text("default login netrc_user password netrc_pass\n")
+
+    home_env_var = "USERPROFILE" if platform.system() == "Windows" else "HOME"
+    monkeypatch.setenv(home_env_var, str(home_dir))
+    # Ensure NETRC env var is not set
+    monkeypatch.delenv("NETRC", raising=False)
+
+    return netrc_file
 
 
 @pytest.fixture
@@ -359,13 +415,13 @@ def unused_port_socket() -> Iterator[socket.socket]:
         yield s
 
 
-@pytest.fixture(params=[zlib, zlib_ng.zlib_ng, isal.isal_zlib])
+@pytest.fixture(params=["zlib", "zlib_ng.zlib_ng", "isal.isal_zlib"])
 def parametrize_zlib_backend(
     request: pytest.FixtureRequest,
 ) -> Iterator[None]:
     original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
-    set_zlib_backend(request.param)
-
+    backend = pytest.importorskip(request.param)
+    set_zlib_backend(backend)
     yield
 
     set_zlib_backend(original_backend)
@@ -381,3 +437,75 @@ async def cleanup_payload_pending_file_closes() -> AsyncIterator[None]:
         loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
         if loop_futures:
             await asyncio.gather(*loop_futures, return_exceptions=True)
+
+
+@pytest.fixture
+async def make_client_request(
+    loop: asyncio.AbstractEventLoop,
+) -> AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]:
+    """Fixture to help creating test ClientRequest objects with defaults."""
+    requests: list[ClientRequest] = []
+    sessions: list[ClientSession] = []
+
+    def maker(
+        method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+    ) -> ClientRequest:
+        session = ClientSession()
+        sessions.append(session)
+        default_args: ClientRequestArgs = {
+            "loop": loop,
+            "params": {},
+            "headers": CIMultiDict[str](),
+            "skip_auto_headers": None,
+            "data": None,
+            "cookies": BaseCookie[str](),
+            "auth": None,
+            "version": HttpVersion11,
+            "compress": False,
+            "chunked": None,
+            "expect100": False,
+            "response_class": ClientResponse,
+            "proxy": None,
+            "proxy_auth": None,
+            "timer": TimerNoop(),
+            "session": session,
+            "ssl": True,
+            "proxy_headers": None,
+            "traces": [],
+            "trust_env": False,
+            "server_hostname": None,
+        }
+        request = ClientRequest(method, url, **(default_args | kwargs))
+        requests.append(request)
+        return request
+
+    yield maker
+
+    await asyncio.gather(
+        *(request._close() for request in requests),
+        *(session.close() for session in sessions),
+    )
+
+
+@pytest.fixture
+def slow_executor() -> Iterator[ThreadPoolExecutor]:
+    """Executor that adds delay to simulate slow operations.
+
+    Useful for testing cancellation and race conditions in compression tests.
+    """
+
+    class SlowExecutor(ThreadPoolExecutor):
+        """Executor that adds delay to operations."""
+
+        def submit(
+            self, fn: Callable[..., Any], /, *args: Any, **kwargs: Any
+        ) -> Future[Any]:
+            def slow_fn(*args: Any, **kwargs: Any) -> Any:
+                time.sleep(0.05)  # Add delay to simulate slow operation
+                return fn(*args, **kwargs)
+
+            return super().submit(slow_fn, *args, **kwargs)
+
+    executor = SlowExecutor(max_workers=10)
+    yield executor
+    executor.shutdown(wait=True)

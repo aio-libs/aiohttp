@@ -1,7 +1,8 @@
 import asyncio
 from contextlib import suppress
-from typing import Any, Optional, Tuple, Type, Union
+from typing import Callable, Protocol
 
+from ._websocket.reader import WebSocketDataQueue
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
     ClientConnectionError,
@@ -14,6 +15,7 @@ from .helpers import (
     _EXC_SENTINEL,
     EMPTY_BODY_STATUS_CODES,
     BaseTimerContext,
+    ErrorableProtocol,
     set_exception,
     set_result,
 )
@@ -22,7 +24,11 @@ from .http_exceptions import HttpProcessingError
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
-class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamReader]]):
+class _Payload(ErrorableProtocol, Protocol):
+    def is_eof(self) -> bool: ...
+
+
+class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamReader]]):
     """Helper class to adapt between Protocol and StreamReader."""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
@@ -31,26 +37,27 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._should_close = False
 
-        self._payload: Optional[StreamReader] = None
+        self._payload: _Payload | None = None
         self._skip_payload = False
-        self._payload_parser: Optional[WebSocketReader] = None
+        self._payload_parser: WebSocketReader | None = None
+        self._data_received_cb: Callable[[], None] | None = None
 
         self._timer = None
 
         self._tail = b""
         self._upgraded = False
-        self._parser: Optional[HttpResponseParser] = None
+        self._parser: HttpResponseParser | None = None
 
-        self._read_timeout: Optional[float] = None
-        self._read_timeout_handle: Optional[asyncio.TimerHandle] = None
+        self._read_timeout: float | None = None
+        self._read_timeout_handle: asyncio.TimerHandle | None = None
 
-        self._timeout_ceil_threshold: Optional[float] = 5
+        self._timeout_ceil_threshold: float | None = 5
 
-        self._closed: Union[None, asyncio.Future[None]] = None
+        self._closed: None | asyncio.Future[None] = None
         self._connection_lost_called = False
 
     @property
-    def closed(self) -> Union[None, asyncio.Future[None]]:
+    def closed(self) -> None | asyncio.Future[None]:
         """Future that is set when the connection is closed.
 
         This property returns a Future that will be completed when the connection
@@ -107,7 +114,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
     def is_connected(self) -> bool:
         return self.transport is not None and not self.transport.is_closing()
 
-    def connection_lost(self, exc: Optional[BaseException]) -> None:
+    def connection_lost(self, exc: BaseException | None) -> None:
         self._connection_lost_called = True
         self._drop_timeout()
 
@@ -196,21 +203,22 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
     def set_exception(
         self,
-        exc: Union[Type[BaseException], BaseException],
+        exc: type[BaseException] | BaseException,
         exc_cause: BaseException = _EXC_SENTINEL,
     ) -> None:
         self._should_close = True
         self._drop_timeout()
         super().set_exception(exc, exc_cause)
 
-    def set_parser(self, parser: Any, payload: Any) -> None:
-        # TODO: actual types are:
-        #   parser: WebSocketReader
-        #   payload: WebSocketDataQueue
-        # but they are not generi enough
-        # Need an ABC for both types
+    def set_parser(
+        self,
+        parser: WebSocketReader,
+        payload: WebSocketDataQueue,
+        data_received_cb: Callable[[], None] | None = None,
+    ) -> None:
         self._payload = payload
         self._payload_parser = parser
+        self._data_received_cb = data_received_cb
 
         self._drop_timeout()
 
@@ -221,15 +229,16 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
     def set_response_params(
         self,
         *,
-        timer: Optional[BaseTimerContext] = None,
+        timer: BaseTimerContext | None = None,
         skip_payload: bool = False,
         read_until_eof: bool = False,
         auto_decompress: bool = True,
-        read_timeout: Optional[float] = None,
+        read_timeout: float | None = None,
         read_bufsize: int = 2**16,
         timeout_ceil_threshold: float = 5,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
+        max_headers: int = 128,
     ) -> None:
         self._skip_payload = skip_payload
 
@@ -248,6 +257,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
             auto_decompress=auto_decompress,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
+            max_headers=max_headers,
         )
 
         if self._tail:
@@ -275,11 +285,11 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         self._reschedule_timeout()
 
     @property
-    def read_timeout(self) -> Optional[float]:
+    def read_timeout(self) -> float | None:
         return self._read_timeout
 
     @read_timeout.setter
-    def read_timeout(self, read_timeout: Optional[float]) -> None:
+    def read_timeout(self, read_timeout: float | None) -> None:
         self._read_timeout = read_timeout
 
     def _on_read_timeout(self) -> None:
@@ -296,6 +306,8 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         # custom payload parser - currently always WebSocketReader
         if self._payload_parser is not None:
+            if self._data_received_cb is not None:
+                self._data_received_cb()
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
                 self._payload = None
@@ -313,7 +325,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
         # parse http messages
         try:
             messages, upgraded, tail = self._parser.feed_data(data)
-        except BaseException as underlying_exc:
+        except Exception as underlying_exc:
             if self.transport is not None:
                 # connection.release() could be called BEFORE
                 # data_received(), the transport is already
@@ -333,7 +345,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
 
         self._upgraded = upgraded
 
-        payload: Optional[StreamReader] = None
+        payload: StreamReader | None = None
         for message, payload in messages:
             if message.should_close:
                 self._should_close = True

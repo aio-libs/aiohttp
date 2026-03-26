@@ -18,7 +18,7 @@ import binascii
 import logging
 import time
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Set, Union
+from typing import TYPE_CHECKING
 
 from aiohttp import (
     ClientHandlerType,
@@ -92,7 +92,7 @@ class BasicAuthMiddleware:
         return await handler(request)
 
 
-DEFAULT_RETRY_STATUSES: Set[HTTPStatus] = {
+DEFAULT_RETRY_STATUSES: set[HTTPStatus] = {
     HTTPStatus.TOO_MANY_REQUESTS,
     HTTPStatus.INTERNAL_SERVER_ERROR,
     HTTPStatus.BAD_GATEWAY,
@@ -107,7 +107,7 @@ class RetryMiddleware:
     def __init__(
         self,
         max_retries: int = 3,
-        retry_statuses: Union[Set[HTTPStatus], None] = None,
+        retry_statuses: set[HTTPStatus] | None = None,
         initial_delay: float = 1.0,
         backoff_factor: float = 2.0,
     ) -> None:
@@ -122,7 +122,7 @@ class RetryMiddleware:
         handler: ClientHandlerType,
     ) -> ClientResponse:
         """Execute request with retry logic."""
-        last_response: Union[ClientResponse, None] = None
+        last_response: ClientResponse | None = None
         delay = self.initial_delay
 
         for attempt in range(self.max_retries + 1):

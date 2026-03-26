@@ -2,7 +2,8 @@ import asyncio
 import gzip
 import socket
 import sys
-from typing import Iterator, Mapping, NoReturn
+from collections.abc import Iterator, Mapping
+from typing import NoReturn
 from unittest import mock
 
 import pytest
@@ -38,11 +39,8 @@ def _create_example_app() -> web.Application:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
-        if msg.type == aiohttp.WSMsgType.TEXT:
-            if msg.data == "close":
-                await ws.close()
-            else:
-                await ws.send_str(msg.data + "/answer")
+        assert msg.type == aiohttp.WSMsgType.TEXT
+        await ws.send_str(msg.data + "/answer")
 
         return ws
 
@@ -303,16 +301,14 @@ async def test_server_make_url_yarl_compatibility() -> None:
 
 @pytest.mark.xfail(reason="https://github.com/pytest-dev/pytest/issues/13546")
 def test_testcase_no_app(testdir: pytest.Testdir) -> None:
-    testdir.makepyfile(
-        """
+    testdir.makepyfile("""
         from aiohttp.test_utils import AioHTTPTestCase
 
 
         class InvalidTestCase(AioHTTPTestCase):
             def test_noop(self) -> None:
                 pass
-        """
-    )
+        """)
     result = testdir.runpytest()
     result.stdout.fnmatch_lines(["*TypeError*"])
 

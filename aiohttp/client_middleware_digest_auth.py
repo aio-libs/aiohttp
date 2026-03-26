@@ -10,18 +10,10 @@ variants, as well as both 'auth' and 'auth-int' quality of protection (qop) opti
 import hashlib
 import os
 import re
+import sys
 import time
-from typing import (
-    Callable,
-    Dict,
-    Final,
-    FrozenSet,
-    List,
-    Literal,
-    Tuple,
-    TypedDict,
-    Union,
-)
+from collections.abc import Callable
+from typing import Final, Literal, TypedDict
 
 from yarl import URL
 
@@ -42,7 +34,7 @@ class DigestAuthChallenge(TypedDict, total=False):
     stale: str
 
 
-DigestFunctions: Dict[str, Callable[[bytes], "hashlib._Hash"]] = {
+DigestFunctions: dict[str, Callable[[bytes], "hashlib._Hash"]] = {
     "MD5": hashlib.md5,
     "MD5-SESS": hashlib.md5,
     "SHA": hashlib.sha1,
@@ -60,30 +52,33 @@ DigestFunctions: Dict[str, Callable[[bytes], "hashlib._Hash"]] = {
 
 # Compile the regex pattern once at module level for performance
 _HEADER_PAIRS_PATTERN = re.compile(
-    r'(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
-    # |    |  | | |  |    |      |    |  ||     |
-    # +----|--|-|-|--|----|------|----|--||-----|--> alphanumeric key
-    #      +--|-|-|--|----|------|----|--||-----|--> maybe whitespace
-    #         | | |  |    |      |    |  ||     |
-    #         +-|-|--|----|------|----|--||-----|--> = (delimiter)
-    #           +-|--|----|------|----|--||-----|--> maybe whitespace
-    #             |  |    |      |    |  ||     |
-    #             +--|----|------|----|--||-----|--> group quoted or unquoted
-    #                |    |      |    |  ||     |
-    #                +----|------|----|--||-----|--> if quoted...
-    #                     +------|----|--||-----|--> anything but " or \
-    #                            +----|--||-----|--> escaped characters allowed
-    #                                 +--||-----|--> or can be empty string
-    #                                    ||     |
-    #                                    +|-----|--> if unquoted...
-    #                                     +-----|--> anything but , or <space>
-    #                                           +--> at least one char req'd
+    r'(?:^|\s|,\s*)(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
+    if sys.version_info < (3, 11)
+    else r'(?:^|\s|,\s*)((?>\w+))\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
+    # +------------|--------|--|-|-|--|----|------|----|--||-----|-> Match valid start/sep
+    #              +--------|--|-|-|--|----|------|----|--||-----|-> alphanumeric key (atomic
+    #                       |  | | |  |    |      |    |  ||     |   group reduces backtracking)
+    #                       +--|-|-|--|----|------|----|--||-----|-> maybe whitespace
+    #                          | | |  |    |      |    |  ||     |
+    #                          +-|-|--|----|------|----|--||-----|-> = (delimiter)
+    #                            +-|--|----|------|----|--||-----|-> maybe whitespace
+    #                              |  |    |      |    |  ||     |
+    #                              +--|----|------|----|--||-----|-> group quoted or unquoted
+    #                                 |    |      |    |  ||     |
+    #                                 +----|------|----|--||-----|-> if quoted...
+    #                                      +------|----|--||-----|-> anything but " or \
+    #                                             +----|--||-----|-> escaped characters allowed
+    #                                                  +--||-----|-> or can be empty string
+    #                                                     ||     |
+    #                                                     +|-----|-> if unquoted...
+    #                                                      +-----|-> anything but , or <space>
+    #                                                            +-> at least one char req'd
 )
 
 
 # RFC 7616: Challenge parameters to extract
 CHALLENGE_FIELDS: Final[
-    Tuple[
+    tuple[
         Literal["realm", "nonce", "qop", "algorithm", "opaque", "domain", "stale"], ...
     ]
 ] = (
@@ -98,14 +93,14 @@ CHALLENGE_FIELDS: Final[
 
 # Supported digest authentication algorithms
 # Use a tuple of sorted keys for predictable documentation and error messages
-SUPPORTED_ALGORITHMS: Final[Tuple[str, ...]] = tuple(sorted(DigestFunctions.keys()))
+SUPPORTED_ALGORITHMS: Final[tuple[str, ...]] = tuple(sorted(DigestFunctions.keys()))
 
 # RFC 7616: Fields that require quoting in the Digest auth header
 # These fields must be enclosed in double quotes in the Authorization header.
 # Algorithm, qop, and nc are never quoted per RFC specifications.
 # This frozen set is used by the template-based header construction to
 # automatically determine which fields need quotes.
-QUOTED_AUTH_FIELDS: Final[FrozenSet[str]] = frozenset(
+QUOTED_AUTH_FIELDS: Final[frozenset[str]] = frozenset(
     {"username", "realm", "nonce", "uri", "response", "opaque", "cnonce"}
 )
 
@@ -120,7 +115,7 @@ def unescape_quotes(value: str) -> str:
     return value.replace('\\"', '"')
 
 
-def parse_header_pairs(header: str) -> Dict[str, str]:
+def parse_header_pairs(header: str) -> dict[str, str]:
     """
     Parse key-value pairs from WWW-Authenticate or similar HTTP headers.
 
@@ -202,11 +197,9 @@ class DigestAuthMiddleware:
         self._challenge: DigestAuthChallenge = {}
         self._preemptive: bool = preemptive
         # Set of URLs defining the protection space
-        self._protection_space: List[str] = []
+        self._protection_space: list[str] = []
 
-    async def _encode(
-        self, method: str, url: URL, body: Union[Payload, Literal[b""]]
-    ) -> str:
+    async def _encode(self, method: str, url: URL, body: Payload | Literal[b""]) -> str:
         """
         Build digest authorization header for the current challenge.
 
@@ -245,7 +238,9 @@ class DigestAuthMiddleware:
             )
 
         qop_raw = challenge.get("qop", "")
-        algorithm = challenge.get("algorithm", "MD5").upper()
+        # Preserve original algorithm case for response while using uppercase for processing
+        algorithm_original = challenge.get("algorithm", "MD5")
+        algorithm = algorithm_original.upper()
         opaque = challenge.get("opaque", "")
 
         # Convert string values to bytes once
@@ -342,7 +337,7 @@ class DigestAuthMiddleware:
             "nonce": escape_quotes(nonce),
             "uri": path,
             "response": response_digest.decode(),
-            "algorithm": algorithm,
+            "algorithm": algorithm_original,
         }
 
         # Optional fields
@@ -356,7 +351,7 @@ class DigestAuthMiddleware:
             header_fields["cnonce"] = cnonce
 
         # Build header using templates for each field type
-        pairs: List[str] = []
+        pairs: list[str] = []
         for field, value in header_fields.items():
             if field in QUOTED_AUTH_FIELDS:
                 pairs.append(f'{field}="{value}"')
@@ -419,7 +414,7 @@ class DigestAuthMiddleware:
         # Extract challenge parameters
         self._challenge = {}
         for field in CHALLENGE_FIELDS:
-            if value := header_pairs.get(field):
+            if (value := header_pairs.get(field)) is not None:
                 self._challenge[field] = value
 
         # Update protection space based on domain parameter or default to origin

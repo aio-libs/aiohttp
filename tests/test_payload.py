@@ -3,9 +3,10 @@ import asyncio
 import io
 import json
 import unittest.mock
+from collections.abc import AsyncIterator, Iterator
 from io import StringIO
 from pathlib import Path
-from typing import AsyncIterator, Iterator, List, Optional, TextIO, Union
+from typing import TextIO, Union
 
 import pytest
 from multidict import CIMultiDict
@@ -33,7 +34,7 @@ class BufferWriter(AbstractStreamWriter):
         """No-op for test writer."""
 
     def enable_compression(
-        self, encoding: str = "deflate", strategy: Optional[int] = None
+        self, encoding: str = "deflate", strategy: int | None = None
     ) -> None:
         """Compression not implemented for test writer."""
 
@@ -64,7 +65,7 @@ class Payload(payload.Payload):
         assert False
 
     async def write(self, writer: AbstractStreamWriter) -> None:
-        pass
+        """Dummy write."""
 
 
 def test_register_type(registry: payload.PayloadRegistry) -> None:
@@ -145,8 +146,7 @@ def test_string_io_payload() -> None:
 
 def test_async_iterable_payload_default_content_type() -> None:
     async def gen() -> AsyncIterator[bytes]:
-        return
-        yield b"abc"  # type: ignore[unreachable]  # pragma: no cover
+        yield b"abc"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen())
     assert p.content_type == "application/octet-stream"
@@ -154,8 +154,7 @@ def test_async_iterable_payload_default_content_type() -> None:
 
 def test_async_iterable_payload_explicit_content_type() -> None:
     async def gen() -> AsyncIterator[bytes]:
-        return
-        yield b"abc"  # type: ignore[unreachable]  # pragma: no cover
+        yield b"abc"  # pragma: no cover
 
     p = payload.AsyncIterablePayload(gen(), content_type="application/custom")
     assert p.content_type == "application/custom"
@@ -170,7 +169,7 @@ class MockStreamWriter(AbstractStreamWriter):
     """Mock stream writer for testing payload writes."""
 
     def __init__(self) -> None:
-        self.written: List[bytes] = []
+        self.written: list[bytes] = []
 
     async def write(
         self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
@@ -178,14 +177,14 @@ class MockStreamWriter(AbstractStreamWriter):
         """Store the chunk in the written list."""
         self.written.append(bytes(chunk))
 
-    async def write_eof(self, chunk: Optional[bytes] = None) -> None:
+    async def write_eof(self, chunk: bytes | None = None) -> None:
         """write_eof implementation - no-op for tests."""
 
     async def drain(self) -> None:
         """Drain implementation - no-op for tests."""
 
     def enable_compression(
-        self, encoding: str = "deflate", strategy: Optional[int] = None
+        self, encoding: str = "deflate", strategy: int | None = None
     ) -> None:
         """Enable compression - no-op for tests."""
 
@@ -310,7 +309,7 @@ async def test_bytesio_payload_write_with_length_remaining_zero() -> None:
     original_read = bio.read
     read_calls = 0
 
-    def mock_read(size: Optional[int] = None) -> bytes:
+    def mock_read(size: int | None = None) -> bytes:
         nonlocal read_calls
         read_calls += 1
         if read_calls == 1:
@@ -414,9 +413,9 @@ async def test_iobase_payload_large_content_length() -> None:
     class TrackingBytesIO(io.BytesIO):
         def __init__(self, data: bytes) -> None:
             super().__init__(data)
-            self.read_sizes: List[int] = []
+            self.read_sizes: list[int] = []
 
-        def read(self, size: Optional[int] = -1) -> bytes:
+        def read(self, size: int | None = -1) -> bytes:
             self.read_sizes.append(size if size is not None else -1)
             return super().read(size)
 
@@ -489,9 +488,9 @@ async def test_textio_payload_large_content_length() -> None:
     class TrackingStringIO(io.StringIO):
         def __init__(self, data: str) -> None:
             super().__init__(data)
-            self.read_sizes: List[int] = []
+            self.read_sizes: list[int] = []
 
-        def read(self, size: Optional[int] = -1) -> str:
+        def read(self, size: int | None = -1) -> str:
             self.read_sizes.append(size if size is not None else -1)
             return super().read(size)
 
@@ -874,7 +873,7 @@ async def test_string_io_payload_reusability() -> None:
 async def test_buffered_reader_payload_reusability() -> None:
     """Test that BufferedReaderPayload can be written and read multiple times."""
     data = b"test buffered reader payload"
-    buffer = io.BufferedReader(io.BytesIO(data))  # type: ignore[arg-type]
+    buffer = io.BufferedReader(io.BytesIO(data))
     p = payload.BufferedReaderPayload(buffer)
 
     # First write_with_length
@@ -1220,6 +1219,40 @@ def test_json_payload_size() -> None:
     assert jp_custom.size == len(expected_custom.encode("utf-16"))
 
 
+def test_json_bytes_payload() -> None:
+    """Test JsonBytesPayload with a bytes-returning encoder."""
+    data = {"hello": "world"}
+
+    # Test with standard library encoder
+    jp = payload.JsonBytesPayload(data, dumps=lambda x: json.dumps(x).encode("utf-8"))
+    expected = json.dumps(data).encode("utf-8")
+    assert jp.size == len(expected)
+
+    # Test with custom bytes-returning encoder (compact separators)
+    jp_custom = payload.JsonBytesPayload(
+        data, dumps=lambda x: json.dumps(x, separators=(",", ":")).encode("utf-8")
+    )
+    expected_custom = json.dumps(data, separators=(",", ":")).encode("utf-8")
+    assert jp_custom.size == len(expected_custom)
+
+
+def test_json_bytes_payload_content_type() -> None:
+    """Test JsonBytesPayload content_type."""
+    data = {"test": "data"}
+
+    # Default content type
+    jp = payload.JsonBytesPayload(data, dumps=lambda x: json.dumps(x).encode("utf-8"))
+    assert jp.content_type == "application/json"
+
+    # Custom content type
+    jp_custom = payload.JsonBytesPayload(
+        data,
+        dumps=lambda x: json.dumps(x).encode("utf-8"),
+        content_type="application/vnd.api+json",
+    )
+    assert jp_custom.content_type == "application/vnd.api+json"
+
+
 async def test_text_io_payload_size_matches_file_encoding(tmp_path: Path) -> None:
     """Test TextIOPayload.size when file encoding matches payload encoding."""
     # Create UTF-8 file
@@ -1276,3 +1309,103 @@ async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
         assert len(writer.buffer) == utf16_file_size
     finally:
         await loop.run_in_executor(None, f.close)
+
+
+async def test_iobase_payload_size_after_reading(tmp_path: Path) -> None:
+    """Test that IOBasePayload.size returns correct size after file has been read.
+
+    This verifies that size calculation properly accounts for the initial
+    file position, which is critical for 307/308 redirects where the same
+    payload instance is reused.
+    """
+    # Create a test file with known content
+    test_file = tmp_path / "test.txt"
+    content = b"Hello, World! This is test content."
+    await asyncio.to_thread(test_file.write_bytes, content)
+    expected_size = len(content)
+
+    # Open the file and create payload
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        p = payload.BufferedReaderPayload(f)
+
+        # First size check - should return full file size
+        assert p.size == expected_size
+
+        # Read the file (simulating first request)
+        writer = BufferWriter()
+        await p.write(writer)
+        assert len(writer.buffer) == expected_size
+
+        # Second size check - should still return full file size
+        assert p.size == expected_size
+
+        # Attempting to write again should write the full content
+        writer2 = BufferWriter()
+        await p.write(writer2)
+        assert len(writer2.buffer) == expected_size
+    finally:
+        await asyncio.to_thread(f.close)
+
+
+async def test_iobase_payload_size_unseekable() -> None:
+    """Test that IOBasePayload.size returns None for unseekable files."""
+
+    class UnseekableFile:
+        """Mock file object that doesn't support seeking."""
+
+        def __init__(self, content: bytes) -> None:
+            self.content = content
+            self.pos = 0
+
+        def read(self, size: int) -> bytes:
+            result = self.content[self.pos : self.pos + size]
+            self.pos += len(result)
+            return result
+
+        def tell(self) -> int:
+            raise OSError("Unseekable file")
+
+    content = b"Unseekable content"
+    f = UnseekableFile(content)
+    p = payload.IOBasePayload(f)  # type: ignore[arg-type]
+
+    # Size should return None for unseekable files
+    assert p.size is None
+
+    # Payload should not be consumed before writing
+    assert p.consumed is False
+
+    # Writing should still work
+    writer = BufferWriter()
+    await p.write(writer)
+    assert writer.buffer == content
+
+    # For unseekable files that can't tell() or seek(),
+    # they are marked as consumed after the first write
+    assert p.consumed is True
+
+
+async def test_empty_bytes_payload_is_reusable() -> None:
+    """Test that empty BytesPayload can be safely reused across requests."""
+    empty_payload = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
+
+    assert isinstance(empty_payload, payload.BytesPayload)
+    assert empty_payload.size == 0
+    assert empty_payload.consumed is False
+    assert empty_payload.autoclose is True
+
+    initial_headers = dict(empty_payload.headers)
+
+    for i in range(3):
+        writer = BufferWriter()
+        await empty_payload.write_with_length(writer, None)
+
+        assert writer.buffer == b""
+        assert empty_payload.consumed is False, f"consumed flag changed on write {i+1}"
+        assert (
+            dict(empty_payload.headers) == initial_headers
+        ), f"headers mutated on write {i+1}"
+        assert empty_payload.size == 0, f"size changed on write {i+1}"
+
+    assert empty_payload.headers == CIMultiDict(initial_headers)

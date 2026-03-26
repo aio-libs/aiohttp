@@ -9,8 +9,7 @@ graft examples
 graft tests
 graft tools
 graft requirements
-recursive-include vendor *
-global-include aiohttp *.pyi
+graft vendor
 global-exclude *.pyc
 global-exclude *.pyd
 global-exclude *.so

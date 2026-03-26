@@ -5,6 +5,7 @@ WebSocket utilities
 ===================
 
 .. class:: WSCloseCode
+   :canonical: aiohttp._websocket.models.WSCloseCode
 
     An :class:`~enum.IntEnum` for keeping close message code.
 
@@ -94,6 +95,7 @@ WebSocket utilities
 
 
 .. class:: WSMsgType
+   :canonical: aiohttp._websocket.models.WSMsgType
 
    An :class:`~enum.IntEnum` for describing :class:`WSMessage` type.
 

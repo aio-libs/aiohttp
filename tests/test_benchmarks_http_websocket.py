@@ -1,7 +1,6 @@
 """codspeed benchmarks for http websocket."""
 
 import asyncio
-from typing import Union
 
 import pytest
 from pytest_codspeed import BenchmarkFixture
@@ -60,7 +59,7 @@ class MockTransport(asyncio.Transport):
         """Swallow is_closing."""
         return False
 
-    def write(self, data: Union[bytes, bytearray, memoryview]) -> None:
+    def write(self, data: bytes | bytearray | memoryview) -> None:
         """Swallow writes."""
 
 

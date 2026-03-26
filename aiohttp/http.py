@@ -19,6 +19,8 @@ from .http_websocket import (
     WebSocketWriter,
     WSCloseCode,
     WSMessage,
+    WSMessageDecodeText,
+    WSMessageNoDecodeText,
     WSMsgType,
     ws_ext_gen,
     ws_ext_parse,
@@ -49,12 +51,14 @@ __all__ = (
     "ws_ext_gen",
     "ws_ext_parse",
     "WSMessage",
+    "WSMessageDecodeText",
+    "WSMessageNoDecodeText",
     "WebSocketError",
     "WSMsgType",
     "WSCloseCode",
 )
 
 
-SERVER_SOFTWARE: str = "Python/{0[0]}.{0[1]} aiohttp/{1}".format(
-    sys.version_info, __version__
+SERVER_SOFTWARE: str = (
+    f"Python/{sys.version_info[0]}.{sys.version_info[1]} aiohttp/{__version__}"
 )

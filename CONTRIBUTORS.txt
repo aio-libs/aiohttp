@@ -59,6 +59,7 @@ Arthur Darcet
 Austin Scola
 Bai Haoran
 Ben Bader
+Ben Beasley
 Ben Greiner
 Ben Kallus
 Ben Timby
@@ -119,6 +120,7 @@ Dmitry Trofimov
 Dmytro Bohomiakov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+Earle Lowe
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
@@ -145,10 +147,13 @@ Gabriel Tremblay
 Gang Ji
 Gary Leung
 Gary Wilson Jr.
+Gene Hoffman
 Gennady Andreyev
 Georges Dubus
 Greg Holt
 Gregory Haynes
+Grigoriy Soldatov
+Guillaume Leurquin
 Gus Goulart
 Gustavo Carneiro
 Günther Jena
@@ -176,6 +181,7 @@ Ivan Lakovic
 Ivan Larin
 J. Nick Koston
 Jacob Champion
+Jacob Henner
 Jaesung Lee
 Jake Davis
 Jakob Ackermann
@@ -222,6 +228,7 @@ Kilian Guillaume
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Kirill Potapenko
 Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
@@ -246,6 +253,7 @@ Marco Paolini
 Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
+Mark Larah
 Marko Kohtala
 Martijn Pieters
 Martin Melka
@@ -267,6 +275,7 @@ Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov
+Mingjie Zhao
 Misha Behersky
 Mitchell Ferree
 Morgan Delahaye-Prat
@@ -285,6 +294,8 @@ Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
 Parag Jain
+Parman Mohammadalizadeh
+Patrick Lee
 Pau Freixes
 Paul Colomiets
 Paul J. Dorn
@@ -309,12 +320,15 @@ Raúl Cumplido
 Required Field
 Robert Lu
 Robert Nikolich
+Rodrigo Nogueira
 Roman Markeloff
 Roman Podoliaka
 Roman Postnov
 Rong Zhang
+Rouven Bauer
 Samir Akarioh
 Samuel Colvin
+Samuel Gaist
 Sean Hunt
 Sebastian Acuna
 Sebastian Hanula
@@ -329,6 +343,7 @@ Serhiy Storchaka
 Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
+Soheil Dolatabadi
 Stanislas Plum
 Stanislav Prokop
 Stefan Tjarks
@@ -351,8 +366,10 @@ Thomas Forbes
 Thomas Grainger
 Tim Menninger
 Tolga Tezel
+Tom Whittock
 Tomasz Trebski
 Toshiaki Tanaka
+Trevor Gamblin
 Trinh Hoang Nhu
 Tymofii Tsiapa
 Vadim Suharnikov
@@ -376,6 +393,7 @@ Vladimir Kamarzin
 Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
+Vladimir Vinogradenko
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar

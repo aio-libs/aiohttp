@@ -1,6 +1,8 @@
 import asyncio
 import random
-from typing import Callable
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from unittest import mock
 
 import pytest
@@ -8,14 +10,14 @@ import pytest
 from aiohttp import WSMsgType
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.compression_utils import ZLibBackend
 from aiohttp.http import WebSocketReader, WebSocketWriter
 
 
 @pytest.fixture
 def protocol() -> mock.Mock:
-    ret = mock.Mock()
-    ret._drain_helper = mock.AsyncMock()
-    return ret
+    ret = mock.create_autospec(BaseProtocol, spec_set=True, instance=True)
+    return ret  # type: ignore[no-any-return]
 
 
 @pytest.fixture
@@ -86,24 +88,48 @@ async def test_send_text_masked(
     writer.transport.write.assert_called_with(b"\x81\x84\rg\xb3fy\x02\xcb\x12")  # type: ignore[attr-defined]
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_send_compress_text(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
+    compress_obj = ZLibBackend.compressobj(level=ZLibBackend.Z_BEST_SPEED, wbits=-15)
     writer = WebSocketWriter(protocol, transport, compress=15)
+
+    msg = (
+        compress_obj.compress(b"text") + compress_obj.flush(ZLibBackend.Z_SYNC_FLUSH)
+    ).removesuffix(b"\x00\x00\xff\xff")
     await writer.send_frame(b"text", WSMsgType.TEXT)
-    writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\xc1" + len(msg).to_bytes(1, "big") + msg
+    )
+
+    msg = (
+        compress_obj.compress(b"text") + compress_obj.flush(ZLibBackend.Z_SYNC_FLUSH)
+    ).removesuffix(b"\x00\x00\xff\xff")
     await writer.send_frame(b"text", WSMsgType.TEXT)
-    writer.transport.write.assert_called_with(b"\xc1\x05*\x01b\x00\x00")  # type: ignore[attr-defined]
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\xc1" + len(msg).to_bytes(1, "big") + msg
+    )
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_send_compress_text_notakeover(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
+    compress_obj = ZLibBackend.compressobj(level=ZLibBackend.Z_BEST_SPEED, wbits=-15)
     writer = WebSocketWriter(protocol, transport, compress=15, notakeover=True)
+
+    msg = (
+        compress_obj.compress(b"text") + compress_obj.flush(ZLibBackend.Z_FULL_FLUSH)
+    ).removesuffix(b"\x00\x00\xff\xff")
     await writer.send_frame(b"text", WSMsgType.TEXT)
-    writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\xc1" + len(msg).to_bytes(1, "big") + msg
+    )
     await writer.send_frame(b"text", WSMsgType.TEXT)
-    writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\xc1" + len(msg).to_bytes(1, "big") + msg
+    )
 
 
 async def test_send_compress_text_per_message(
@@ -116,6 +142,130 @@ async def test_send_compress_text_per_message(
     writer.transport.write.assert_called_with(b"\x81\x04text")  # type: ignore[attr-defined]
     await writer.send_frame(b"text", WSMsgType.TEXT, compress=15)
     writer.transport.write.assert_called_with(b"\xc1\x06*I\xad(\x01\x00")  # type: ignore[attr-defined]
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_send_compress_cancelled(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    slow_executor: ThreadPoolExecutor,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that cancelled compression doesn't corrupt subsequent sends.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/11725
+    """
+    monkeypatch.setattr("aiohttp._websocket.writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", 1024)
+    writer = WebSocketWriter(protocol, transport, compress=15)
+    loop = asyncio.get_running_loop()
+    queue = WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
+    reader = WebSocketReader(queue, 50000)
+
+    # Replace executor with slow one to make race condition reproducible
+    writer._compressobj = writer._get_compressor(None)
+    writer._compressobj._executor = slow_executor
+
+    # Create large data that will trigger executor-based compression
+    large_data_1 = b"A" * 10000
+    large_data_2 = b"B" * 10000
+
+    # Start first send and cancel it during compression
+    async def send_and_cancel() -> None:
+        await writer.send_frame(large_data_1, WSMsgType.BINARY)
+
+    task = asyncio.create_task(send_and_cancel())
+    # Give it a moment to start compression
+    await asyncio.sleep(0.01)
+    task.cancel()
+
+    # Await task cancellation (expected and intentionally ignored)
+    with suppress(asyncio.CancelledError):
+        await task
+
+    # Send second message - this should NOT be corrupted
+    await writer.send_frame(large_data_2, WSMsgType.BINARY)
+
+    # Verify the second send produced correct data
+    last_call = writer.transport.write.call_args_list[-1]  # type: ignore[attr-defined]
+    call_bytes = last_call[0][0]
+    result, _ = reader.feed_data(call_bytes)
+    assert result is False
+    msg = await queue.read()
+    assert msg.type is WSMsgType.BINARY
+    # The data should be all B's, not mixed with A's from the cancelled send
+    assert msg.data == large_data_2
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_send_compress_multiple_cancelled(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    slow_executor: ThreadPoolExecutor,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that multiple compressed sends all complete despite cancellation.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/11725
+    This verifies that once a send operation enters the shield, it completes
+    even if cancelled. With the lock inside the shield, all tasks that enter
+    the shield will complete their sends, even while waiting for the lock.
+    """
+    monkeypatch.setattr("aiohttp._websocket.writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", 1024)
+    writer = WebSocketWriter(protocol, transport, compress=15)
+    loop = asyncio.get_running_loop()
+    queue = WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
+    reader = WebSocketReader(queue, 50000)
+
+    # Replace executor with slow one
+    writer._compressobj = writer._get_compressor(None)
+    writer._compressobj._executor = slow_executor
+
+    # Create 5 large messages with different content
+    messages = [bytes([ord("A") + i]) * 10000 for i in range(5)]
+
+    # Start sending all 5 messages - they'll queue due to the lock
+    tasks = [
+        asyncio.create_task(writer.send_frame(msg, WSMsgType.BINARY))
+        for msg in messages
+    ]
+
+    # Cancel all tasks during execution
+    # With lock inside shield, all tasks that enter the shield will complete
+    # even while waiting for the lock
+    await asyncio.sleep(0.1)  # Let tasks enter the shield
+    for task in tasks:
+        task.cancel()
+
+    # Collect results
+    cancelled_count = 0
+    for task in tasks:
+        try:
+            await task
+        except asyncio.CancelledError:
+            cancelled_count += 1
+
+    # Wait for all background tasks to complete
+    # (they continue running even after cancellation due to shield)
+    await asyncio.gather(*writer._background_tasks, return_exceptions=True)
+
+    # All tasks that entered the shield should complete, even if cancelled
+    # With lock inside shield, all tasks enter shield immediately then wait for lock
+    sent_count = len(writer.transport.write.call_args_list)  # type: ignore[attr-defined]
+    assert (
+        sent_count == 5
+    ), "All 5 sends should complete due to shield protecting lock acquisition"
+
+    # Verify all sent messages are correct (no corruption)
+    for i in range(sent_count):
+        call = writer.transport.write.call_args_list[i]  # type: ignore[attr-defined]
+        call_bytes = call[0][0]
+        result, _ = reader.feed_data(call_bytes)
+        assert result is False
+        msg = await queue.read()
+        assert msg.type is WSMsgType.BINARY
+        # Verify the data matches the expected message
+        expected_byte = bytes([ord("A") + i])
+        assert msg.data == expected_byte * 10000, f"Message {i} corrupted"
 
 
 @pytest.mark.parametrize(
@@ -181,3 +331,6 @@ async def test_concurrent_messages(
         # we want to validate that all the bytes are
         # the same value
         assert bytes_data == bytes_data[0:1] * char_val
+
+    # Wait for any background tasks to complete
+    await asyncio.gather(*writer._background_tasks, return_exceptions=True)

@@ -1,5 +1,8 @@
 import asyncio
-from typing import AsyncIterator, Callable, Iterator, NoReturn, Type
+import sys
+from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import asynccontextmanager
+from typing import NoReturn
 from unittest import mock
 
 import pytest
@@ -126,20 +129,34 @@ def test_appkey_repr_concrete() -> None:
 
 def test_appkey_repr_nonconcrete() -> None:
     key = web.AppKey("key", Iterator[int])
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
-        "<AppKey(__main__.key, type=typing.Iterator[int])>",
-    )
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
 
 
 def test_appkey_repr_annotated() -> None:
     key = web.AppKey[Iterator[int]]("key")
-    assert repr(key) in (
-        # pytest-xdist:
-        "<AppKey(__channelexec__.key, type=typing.Iterator[int])>",
-        "<AppKey(__main__.key, type=typing.Iterator[int])>",
-    )
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
 
 
 def test_app_str_keys() -> None:
@@ -336,7 +353,7 @@ async def test_cleanup_ctx_cleanup_after_exception() -> None:
 
 @pytest.mark.parametrize("exc_cls", (Exception, asyncio.CancelledError))
 async def test_cleanup_ctx_exception_on_cleanup_multiple(
-    exc_cls: Type[BaseException],
+    exc_cls: type[BaseException],
 ) -> None:
     app = web.Application()
     out = []
@@ -385,10 +402,83 @@ async def test_cleanup_ctx_multiple_yields() -> None:
     app.freeze()
     await app.startup()
     assert out == ["pre_1"]
+    with pytest.raises(RuntimeError):
+        await app.cleanup()
+    assert out == ["pre_1", "post_1"]
+
+
+async def test_cleanup_ctx_with_async_generator_and_asynccontextmanager() -> None:
+    entered = []
+
+    async def gen_ctx(app: web.Application) -> AsyncIterator[None]:
+        entered.append("enter-gen")
+        try:
+            yield
+        finally:
+            entered.append("exit-gen")
+
+    @asynccontextmanager
+    async def cm_ctx(app: web.Application) -> AsyncIterator[None]:
+        entered.append("enter-cm")
+        try:
+            yield
+        finally:
+            entered.append("exit-cm")
+
+    app = web.Application()
+    app.cleanup_ctx.append(gen_ctx)
+    app.cleanup_ctx.append(cm_ctx)
+    app.freeze()
+    await app.startup()
+    assert "enter-gen" in entered and "enter-cm" in entered
+    await app.cleanup()
+    assert "exit-gen" in entered and "exit-cm" in entered
+
+
+async def test_cleanup_ctx_exception_in_cm_exit() -> None:
+    app = web.Application()
+
+    exc = RuntimeError("exit failed")
+
+    @asynccontextmanager
+    async def failing_exit_ctx(app: web.Application) -> AsyncIterator[None]:
+        yield
+        raise exc
+
+    app.cleanup_ctx.append(failing_exit_ctx)
+    app.freeze()
+    await app.startup()
     with pytest.raises(RuntimeError) as ctx:
         await app.cleanup()
-    assert "has more than one 'yield'" in str(ctx.value)
-    assert out == ["pre_1", "post_1"]
+    assert ctx.value is exc
+
+
+async def test_cleanup_ctx_mixed_with_exception_in_cm_exit() -> None:
+    app = web.Application()
+    out = []
+
+    async def working_gen(app: web.Application) -> AsyncIterator[None]:
+        out.append("pre_gen")
+        yield
+        out.append("post_gen")
+
+    exc = RuntimeError("cm exit failed")
+
+    @asynccontextmanager
+    async def failing_exit_cm(app: web.Application) -> AsyncIterator[None]:
+        out.append("pre_cm")
+        yield
+        out.append("post_cm")
+        raise exc
+
+    app.cleanup_ctx.append(working_gen)
+    app.cleanup_ctx.append(failing_exit_cm)
+    app.freeze()
+    await app.startup()
+    with pytest.raises(RuntimeError) as ctx:
+        await app.cleanup()
+    assert ctx.value is exc
+    assert out == ["pre_gen", "pre_cm", "post_cm", "post_gen"]
 
 
 async def test_subapp_chained_config_dict_visibility(

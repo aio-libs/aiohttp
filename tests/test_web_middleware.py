@@ -1,4 +1,5 @@
-from typing import Awaitable, Callable, Iterable, NoReturn
+from collections.abc import Awaitable, Callable, Iterable
+from typing import NoReturn
 
 import pytest
 from pytest_aiohttp import AiohttpClient

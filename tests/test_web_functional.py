@@ -4,17 +4,8 @@ import json
 import pathlib
 import socket
 import sys
-from typing import (
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    NoReturn,
-    Optional,
-    Tuple,
-)
+from collections.abc import AsyncIterator, Awaitable, Callable, Generator
+from typing import NoReturn
 from unittest import mock
 
 import pytest
@@ -650,7 +641,7 @@ async def test_expect_handler_custom_response(aiohttp_client: AiohttpClient) -> 
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="handler")
 
-    async def expect_handler(request: web.Request) -> Optional[web.Response]:
+    async def expect_handler(request: web.Request) -> web.Response | None:
         k = request.headers["X-Key"]
         cached_value = cache.get(k)
         return web.Response(text=cached_value) if cached_value else None
@@ -1103,11 +1094,11 @@ async def test_response_with_payload_stringio(
 def compressor_case(
     request: pytest.FixtureRequest,
     parametrize_zlib_backend: None,
-) -> Generator[Tuple[ZLibCompressObjProtocol, str], None, None]:
+) -> Generator[tuple[ZLibCompressObjProtocol, str], None, None]:
     encoding: str = request.param
     max_wbits: int = ZLibBackend.MAX_WBITS
 
-    encoding_to_wbits: Dict[str, int] = {
+    encoding_to_wbits: dict[str, int] = {
         "deflate": max_wbits,
         "deflate-raw": -max_wbits,
         "gzip": 16 + max_wbits,
@@ -1119,7 +1110,7 @@ def compressor_case(
 
 async def test_response_with_precompressed_body(
     aiohttp_client: AiohttpClient,
-    compressor_case: Tuple[ZLibCompressObjProtocol, str],
+    compressor_case: tuple[ZLibCompressObjProtocol, str],
 ) -> None:
     compressor, encoding = compressor_case
 
@@ -1592,7 +1583,7 @@ async def test_subapp_on_cleanup(aiohttp_server: AiohttpServer) -> None:
     ],
 )
 async def test_subapp_middleware_context(
-    aiohttp_client: AiohttpClient, route: str, expected: List[str], middlewares: str
+    aiohttp_client: AiohttpClient, route: str, expected: list[str], middlewares: str
 ) -> None:
     values = []
 
@@ -1687,6 +1678,26 @@ async def test_app_max_client_size(aiohttp_client: AiohttpClient) -> None:
     assert body_size >= max_size
 
     resp.release()
+
+
+async def test_app_max_client_size_form(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        await request.post()
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    # Verify that entire multipart form can't exceed client size (not just each field).
+    form = aiohttp.FormData()
+    for i in range(3):
+        form.add_field(f"f{i}", b"A" * 512000)
+
+    async with client.post("/", data=form) as resp:
+        assert resp.status == 413
+        resp_text = await resp.text()
+    assert "Maximum request body size 1048576 exceeded, actual body size" in resp_text
 
 
 async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> None:
@@ -1980,7 +1991,7 @@ async def test_context_manager_close_on_release(
         ):
             await resp.drain()
         await asyncio.sleep(10)
-        return resp
+        assert False
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
@@ -2052,7 +2063,7 @@ async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
     class FakeResolver(AbstractResolver):
         _LOCAL_HOST = {0: "127.0.0.1", socket.AF_INET: "127.0.0.1"}
 
-        def __init__(self, fakes: Dict[str, int]):
+        def __init__(self, fakes: dict[str, int]):
             # fakes -- dns -> port dict
             self._fakes = fakes
             self._resolver = aiohttp.DefaultResolver()
@@ -2065,7 +2076,7 @@ async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
             host: str,
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
-        ) -> List[ResolveResult]:
+        ) -> list[ResolveResult]:
             fake_port = self._fakes.get(host)
             assert fake_port is not None
             return [
@@ -2239,7 +2250,7 @@ async def test_response_101_204_no_content_length_http11(
 
     app = web.Application()
     app.router.add_get("/", handler)
-    client = await aiohttp_client(app, version="1.1")
+    client = await aiohttp_client(app, version=HttpVersion11)
     resp = await client.get("/")
     assert CONTENT_LENGTH not in resp.headers
     assert TRANSFER_ENCODING not in resp.headers
@@ -2295,7 +2306,7 @@ async def test_no_body_for_1xx_204_304_responses(
 
 
 async def test_keepalive_race_condition(aiohttp_client: AiohttpClient) -> None:
-    protocol: Optional[RequestHandler[web.Request]] = None
+    protocol: RequestHandler[web.Request] | None = None
     orig_data_received = RequestHandler.data_received
 
     def delay_received(self: RequestHandler[web.Request], data: bytes) -> None:

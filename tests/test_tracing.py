@@ -1,10 +1,13 @@
+import sys
 from types import SimpleNamespace
-from typing import Any, Tuple
+from typing import Any
 from unittest import mock
 from unittest.mock import Mock
 
 import pytest
+from aiosignal import Signal
 
+from aiohttp import ClientSession
 from aiohttp.tracing import (
     Trace,
     TraceConfig,
@@ -25,15 +28,28 @@ from aiohttp.tracing import (
     TraceResponseChunkReceivedParams,
 )
 
+if sys.version_info >= (3, 11):
+    from typing import assert_type
+
 
 class TestTraceConfig:
     def test_trace_config_ctx_default(self) -> None:
         trace_config = TraceConfig()
         assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
+        if sys.version_info >= (3, 11):
+            assert_type(
+                trace_config.on_request_chunk_sent,
+                Signal[ClientSession, SimpleNamespace, TraceRequestChunkSentParams],
+            )
 
     def test_trace_config_ctx_factory(self) -> None:
         trace_config = TraceConfig(trace_config_ctx_factory=dict)
         assert isinstance(trace_config.trace_config_ctx(), dict)
+        if sys.version_info >= (3, 11):
+            assert_type(
+                trace_config.on_request_start,
+                Signal[ClientSession, dict[str, Any], TraceRequestStartParams],
+            )
 
     def test_trace_config_ctx_request_ctx(self) -> None:
         trace_request_ctx = Mock()
@@ -42,6 +58,19 @@ class TestTraceConfig:
             trace_request_ctx=trace_request_ctx
         )
         assert trace_config_ctx.trace_request_ctx is trace_request_ctx
+
+    def test_trace_config_ctx_custom_class(self) -> None:
+        """Custom class instances should be accepted as trace_request_ctx (#10753)."""
+
+        class MyContext:
+            def __init__(self, request_id: int) -> None:
+                self.request_id = request_id
+
+        ctx = MyContext(request_id=42)
+        trace_config = TraceConfig()
+        trace_config_ctx = trace_config.trace_config_ctx(trace_request_ctx=ctx)
+        assert trace_config_ctx.trace_request_ctx is ctx
+        assert trace_config_ctx.trace_request_ctx.request_id == 42
 
     def test_freeze(self) -> None:
         trace_config = TraceConfig()
@@ -103,7 +132,7 @@ class TestTrace:
         ],
     )
     async def test_send(  # type: ignore[misc]
-        self, signal: str, params: Tuple[Mock, ...], param_obj: Any
+        self, signal: str, params: tuple[Mock, ...], param_obj: Any
     ) -> None:
         pytest.skip("broken")
         return

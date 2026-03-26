@@ -2,7 +2,8 @@ import asyncio
 import platform
 import signal
 import socket
-from typing import Any, Iterator, NoReturn, Protocol, Union
+from collections.abc import Iterator
+from typing import Any, NoReturn, Protocol
 from unittest import mock
 
 import pytest
@@ -159,7 +160,7 @@ async def test_app_handler_args_failure() -> None:
     ),
 )
 async def test_app_handler_args_ceil_threshold(
-    value: Union[int, str, None], expected: int
+    value: int | str | None, expected: int
 ) -> None:
     app = web.Application(handler_args={"timeout_ceil_threshold": value})
     runner = web.AppRunner(app)
@@ -281,7 +282,20 @@ async def test_tcpsite_empty_str_host(make_runner: _RunnerMaker) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner, host="")
+    assert site.port == 8080
     assert site.name == "http://0.0.0.0:8080"
+
+
+async def test_tcpsite_ephemeral_port(make_runner: _RunnerMaker) -> None:
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, port=0)
+    assert site.port == 0
+
+    await site.start()
+    assert site.port != 0
+    assert site.name.startswith("http://0.0.0.0:")
+    await site.stop()
 
 
 def test_run_after_asyncio_run() -> None:

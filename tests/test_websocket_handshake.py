@@ -2,7 +2,6 @@
 
 import base64
 import os
-from typing import List, Tuple
 
 import pytest
 
@@ -16,7 +15,7 @@ def gen_ws_headers(
     extension_text: str = "",
     server_notakeover: bool = False,
     client_notakeover: bool = False,
-) -> Tuple[List[Tuple[str, str]], str]:
+) -> tuple[list[tuple[str, str]], str]:
     key = base64.b64encode(os.urandom(16)).decode()
     hdrs = [
         ("Upgrade", "websocket"),

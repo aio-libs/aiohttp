@@ -3,7 +3,8 @@ import bz2
 import gzip
 import pathlib
 import socket
-from typing import Iterable, Iterator, NoReturn, Optional, Protocol, Tuple
+from collections.abc import Iterable, Iterator
+from typing import Protocol
 from unittest import mock
 
 import pytest
@@ -57,19 +58,6 @@ def hello_txt(
     hello["bzip2"].write_bytes(bz2.compress(HELLO_AIOHTTP))
     encoding = getattr(request, "param", None)
     return hello[encoding]
-
-
-@pytest.fixture
-def loop_with_mocked_native_sendfile(
-    event_loop: asyncio.AbstractEventLoop,
-) -> Iterator[asyncio.AbstractEventLoop]:
-    def sendfile(transport: object, fobj: object, offset: int, count: int) -> NoReturn:
-        if count == 0:
-            raise ValueError("count must be a positive integer (got 0)")
-        raise NotImplementedError
-
-    with mock.patch.object(event_loop, "sendfile", sendfile):
-        yield event_loop
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
@@ -155,12 +143,10 @@ async def test_zero_bytes_file_ok(
 
 async def test_zero_bytes_file_mocked_native_sendfile(
     aiohttp_client: AiohttpClient,
-    loop_with_mocked_native_sendfile: asyncio.AbstractEventLoop,
 ) -> None:
     filepath = pathlib.Path(__file__).parent / "data.zero_bytes"
 
     async def handler(request: web.Request) -> web.FileResponse:
-        asyncio.set_event_loop(loop_with_mocked_native_sendfile)
         return web.FileResponse(filepath)
 
     app = web.Application()
@@ -322,7 +308,7 @@ async def test_static_file_with_encoding_and_enable_compression(
     sender: _Sender,
     accept_encoding: str,
     expect_encoding: str,
-    forced_compression: Optional[web.ContentCoding],
+    forced_compression: web.ContentCoding | None,
 ) -> None:
     """Test that enable_compression does not double compress when an encoded file is also present."""
 
@@ -493,7 +479,7 @@ async def test_static_file_if_match_custom_tags(
     aiohttp_client: AiohttpClient,
     app_with_static_route: web.Application,
     if_unmodified_since: str,
-    etags: Tuple[str],
+    etags: tuple[str],
     expected_status: int,
 ) -> None:
     client = await aiohttp_client(app_with_static_route)
@@ -653,7 +639,7 @@ async def test_static_file_directory_traversal_attack(
 
     url_abspath = "/static/" + str(full_path.resolve())
     resp = await client.get(url_abspath)
-    assert 403 == resp.status
+    assert resp.status == 404
     resp.release()
 
     await client.close()
@@ -723,18 +709,18 @@ async def test_static_file_range(
     )
     assert len(responses) == 3
     assert responses[0].status == 206, "failed 'bytes=0-999': %s" % responses[0].reason
-    assert responses[0].headers["Content-Range"] == "bytes 0-999/{}".format(
-        filesize
+    assert (
+        responses[0].headers["Content-Range"] == f"bytes 0-999/{filesize}"
     ), "failed: Content-Range Error"
     assert responses[1].status == 206, (
         "failed 'bytes=1000-1999': %s" % responses[1].reason
     )
-    assert responses[1].headers["Content-Range"] == "bytes 1000-1999/{}".format(
-        filesize
+    assert (
+        responses[1].headers["Content-Range"] == f"bytes 1000-1999/{filesize}"
     ), "failed: Content-Range Error"
     assert responses[2].status == 206, "failed 'bytes=2000-': %s" % responses[2].reason
-    assert responses[2].headers["Content-Range"] == "bytes 2000-{}/{}".format(
-        filesize - 1, filesize
+    assert (
+        responses[2].headers["Content-Range"] == f"bytes 2000-{filesize - 1}/{filesize}"
     ), "failed: Content-Range Error"
 
     body = await asyncio.gather(

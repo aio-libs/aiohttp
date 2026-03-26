@@ -2,7 +2,7 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Generic, List, Optional, Set, Type, TypeVar
+from typing import Any, Generic, TypeVar
 
 from yarl import URL
 
@@ -16,13 +16,10 @@ from .web_protocol import RequestHandler
 from .web_request import BaseRequest, Request
 from .web_server import Server
 
-if TYPE_CHECKING:
+try:
     from ssl import SSLContext
-else:
-    try:
-        from ssl import SSLContext
-    except ImportError:  # pragma: no cover
-        SSLContext = object  # type: ignore[misc,assignment]
+except ImportError:  # pragma: no cover
+    SSLContext = object  # type: ignore[misc,assignment]
 
 __all__ = (
     "BaseSite",
@@ -54,7 +51,7 @@ class BaseSite(ABC):
         self,
         runner: "BaseRunner[Any]",
         *,
-        ssl_context: Optional[SSLContext] = None,
+        ssl_context: SSLContext | None = None,
         backlog: int = 128,
     ) -> None:
         if runner.server is None:
@@ -62,7 +59,7 @@ class BaseSite(ABC):
         self._runner = runner
         self._ssl_context = ssl_context
         self._backlog = backlog
-        self._server: Optional[asyncio.Server] = None
+        self._server: asyncio.Server | None = None
 
     @property
     @abstractmethod
@@ -82,18 +79,18 @@ class BaseSite(ABC):
 
 
 class TCPSite(BaseSite):
-    __slots__ = ("_host", "_port", "_reuse_address", "_reuse_port")
+    __slots__ = ("_host", "_port", "_bound_port", "_reuse_address", "_reuse_port")
 
     def __init__(
         self,
         runner: "BaseRunner[Any]",
-        host: Optional[str] = None,
-        port: Optional[int] = None,
+        host: str | None = None,
+        port: int | None = None,
         *,
-        ssl_context: Optional[SSLContext] = None,
+        ssl_context: SSLContext | None = None,
         backlog: int = 128,
-        reuse_address: Optional[bool] = None,
-        reuse_port: Optional[bool] = None,
+        reuse_address: bool | None = None,
+        reuse_port: bool | None = None,
     ) -> None:
         super().__init__(
             runner,
@@ -104,14 +101,29 @@ class TCPSite(BaseSite):
         if port is None:
             port = 8443 if self._ssl_context else 8080
         self._port = port
+        self._bound_port: int | None = None
         self._reuse_address = reuse_address
         self._reuse_port = reuse_port
+
+    @property
+    def port(self) -> int:
+        """The port the server is listening on.
+
+        If the server hasn't been started yet, this returns the requested port
+        (which might be 0 for a dynamic port).
+        After the server starts, it returns the actual bound port. This is
+        especially useful when port=0 was requested, as it allows retrieving the
+        dynamically assigned port after the site has started.
+        """
+        if self._bound_port is not None:
+            return self._bound_port
+        return self._port
 
     @property
     def name(self) -> str:
         scheme = "https" if self._ssl_context else "http"
         host = "0.0.0.0" if not self._host else self._host
-        return str(URL.build(scheme=scheme, host=host, port=self._port))
+        return str(URL.build(scheme=scheme, host=host, port=self.port))
 
     async def start(self) -> None:
         await super().start()
@@ -127,6 +139,10 @@ class TCPSite(BaseSite):
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
         )
+        if self._server.sockets:
+            self._bound_port = self._server.sockets[0].getsockname()[1]
+        else:
+            self._bound_port = self._port
 
 
 class UnixSite(BaseSite):
@@ -137,7 +153,7 @@ class UnixSite(BaseSite):
         runner: "BaseRunner[Any]",
         path: PathLike,
         *,
-        ssl_context: Optional[SSLContext] = None,
+        ssl_context: SSLContext | None = None,
         backlog: int = 128,
     ) -> None:
         super().__init__(
@@ -202,7 +218,7 @@ class SockSite(BaseSite):
         runner: "BaseRunner[Any]",
         sock: socket.socket,
         *,
-        ssl_context: Optional[SSLContext] = None,
+        ssl_context: SSLContext | None = None,
         backlog: int = 128,
     ) -> None:
         super().__init__(
@@ -245,17 +261,17 @@ class BaseRunner(ABC, Generic[_Request]):
     ) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._server: Optional[Server[_Request]] = None
-        self._sites: List[BaseSite] = []
+        self._server: Server[_Request] | None = None
+        self._sites: list[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
 
     @property
-    def server(self) -> Optional[Server[_Request]]:
+    def server(self) -> Server[_Request] | None:
         return self._server
 
     @property
-    def addresses(self) -> List[Any]:
-        ret: List[Any] = []
+    def addresses(self) -> list[Any]:
+        ret: list[Any] = []
         for site in self._sites:
             server = site._server
             if server is not None:
@@ -266,7 +282,7 @@ class BaseRunner(ABC, Generic[_Request]):
         return ret
 
     @property
-    def sites(self) -> Set[BaseSite]:
+    def sites(self) -> set[BaseSite]:
         return set(self._sites)
 
     async def setup(self) -> None:
@@ -371,13 +387,12 @@ class AppRunner(BaseRunner[Request]):
         app: Application,
         *,
         handle_signals: bool = False,
-        access_log_class: Type[AbstractAccessLogger] = AccessLogger,
+        access_log_class: type[AbstractAccessLogger] = AccessLogger,
         **kwargs: Any,
     ) -> None:
         if not isinstance(app, Application):
             raise TypeError(
-                "The first argument should be web.Application "
-                "instance, got {!r}".format(app)
+                f"The first argument should be web.Application instance, got {app!r}"
             )
         kwargs["access_log_class"] = access_log_class
 
@@ -421,7 +436,7 @@ class AppRunner(BaseRunner[Request]):
         protocol: RequestHandler[Request],
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
-        _cls: Type[Request] = Request,
+        _cls: type[Request] = Request,
     ) -> Request:
         loop = asyncio.get_running_loop()
         return _cls(

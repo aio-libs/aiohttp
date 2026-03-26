@@ -9,35 +9,31 @@ import os
 import sys
 import traceback
 import warnings
+from collections.abc import (
+    Awaitable,
+    Callable,
+    Collection,
+    Coroutine,
+    Generator,
+    Iterable,
+    Sequence,
+)
 from contextlib import suppress
 from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
-    Collection,
-    Coroutine,
     Final,
-    FrozenSet,
-    Generator,
     Generic,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
+    Literal,
     TypedDict,
     TypeVar,
-    Union,
     final,
+    overload,
 )
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
-from yarl import URL
+from yarl import URL, Query
 
 from . import hdrs, http, payload
 from ._websocket.reader import WebSocketDataQueue
@@ -99,15 +95,23 @@ from .helpers import (
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
+    basicauth_from_netrc,
     frozen_dataclass_decorator,
     get_env_proxy_for_url,
+    netrc_from_env,
     sentinel,
     strip_auth_from_url,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
+from .typedefs import (
+    JSONBytesEncoder,
+    JSONEncoder,
+    LooseCookies,
+    LooseHeaders,
+    StrOrURL,
+)
 
 __all__ = (
     # client_exceptions
@@ -173,37 +177,59 @@ class _RequestOptions(TypedDict, total=False):
     params: Query
     data: Any
     json: Any
-    cookies: Union[LooseCookies, None]
-    headers: Union[LooseHeaders, None]
-    skip_auto_headers: Union[Iterable[str], None]
-    auth: Union[BasicAuth, None]
+    cookies: LooseCookies | None
+    headers: LooseHeaders | None
+    skip_auto_headers: Iterable[str] | None
+    auth: BasicAuth | None
     allow_redirects: bool
     max_redirects: int
-    compress: Union[str, bool]
-    chunked: Union[bool, None]
+    compress: str | bool
+    chunked: bool | None
     expect100: bool
-    raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]
+    raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]]
     read_until_eof: bool
-    proxy: Union[StrOrURL, None]
-    proxy_auth: Union[BasicAuth, None]
-    timeout: "Union[ClientTimeout, _SENTINEL, None]"
-    ssl: Union[SSLContext, bool, Fingerprint]
-    server_hostname: Union[str, None]
-    proxy_headers: Union[LooseHeaders, None]
-    trace_request_ctx: Union[Mapping[str, Any], None]
-    read_bufsize: Union[int, None]
-    auto_decompress: Union[bool, None]
-    max_line_size: Union[int, None]
-    max_field_size: Union[int, None]
-    middlewares: Optional[Sequence[ClientMiddlewareType]]
+    proxy: StrOrURL | None
+    proxy_auth: BasicAuth | None
+    timeout: "ClientTimeout | _SENTINEL | None"
+    ssl: SSLContext | bool | Fingerprint
+    server_hostname: str | None
+    proxy_headers: LooseHeaders | None
+    trace_request_ctx: object
+    read_bufsize: int | None
+    auto_decompress: bool | None
+    max_line_size: int | None
+    max_field_size: int | None
+    max_headers: int | None
+    middlewares: Sequence[ClientMiddlewareType] | None
+
+
+class _WSConnectOptions(TypedDict, total=False):
+    method: str
+    protocols: Collection[str]
+    timeout: "ClientWSTimeout | _SENTINEL"
+    receive_timeout: float | None
+    autoclose: bool
+    autoping: bool
+    heartbeat: float | None
+    auth: BasicAuth | None
+    origin: str | None
+    params: Query
+    headers: LooseHeaders | None
+    proxy: StrOrURL | None
+    proxy_auth: BasicAuth | None
+    ssl: SSLContext | bool | Fingerprint
+    server_hostname: str | None
+    proxy_headers: LooseHeaders | None
+    compress: int
+    max_msg_size: int
 
 
 @frozen_dataclass_decorator
 class ClientTimeout:
-    total: Optional[float] = None
-    connect: Optional[float] = None
-    sock_read: Optional[float] = None
-    sock_connect: Optional[float] = None
+    total: float | None = None
+    connect: float | None = None
+    sock_read: float | None = None
+    sock_connect: float | None = None
     ceil_threshold: float = 5
 
     # pool_queue_timeout: Optional[float] = None
@@ -219,6 +245,14 @@ class ClientTimeout:
     # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
     # to overwrite the defaults
 
+    def __post_init__(self) -> None:
+        if self.total is not None and self.total == 0:
+            raise ValueError(
+                "total timeout must be a positive number or None to disable, "
+                "got 0. Using 0 to disable timeouts is no longer supported, "
+                "use None instead."
+            )
+
 
 # 5 Minute default read timeout
 DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
@@ -226,7 +260,11 @@ DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
-_RetType = TypeVar("_RetType", ClientResponse, ClientWebSocketResponse)
+_RetType_co = TypeVar(
+    "_RetType_co",
+    bound="ClientResponse | ClientWebSocketResponse[bool]",
+    covariant=True,
+)
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
@@ -245,6 +283,7 @@ class ClientSession:
         "_default_auth",
         "_version",
         "_json_serialize",
+        "_json_serialize_bytes",
         "_requote_redirect_url",
         "_timeout",
         "_raise_for_status",
@@ -259,6 +298,7 @@ class ClientSession:
         "_read_bufsize",
         "_max_line_size",
         "_max_field_size",
+        "_max_headers",
         "_resolve_charset",
         "_default_proxy",
         "_default_proxy_auth",
@@ -268,42 +308,42 @@ class ClientSession:
 
     def __init__(
         self,
-        base_url: Optional[StrOrURL] = None,
+        base_url: StrOrURL | None = None,
         *,
-        connector: Optional[BaseConnector] = None,
-        cookies: Optional[LooseCookies] = None,
-        headers: Optional[LooseHeaders] = None,
-        proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
-        skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[BasicAuth] = None,
+        connector: BaseConnector | None = None,
+        cookies: LooseCookies | None = None,
+        headers: LooseHeaders | None = None,
+        proxy: StrOrURL | None = None,
+        proxy_auth: BasicAuth | None = None,
+        skip_auto_headers: Iterable[str] | None = None,
+        auth: BasicAuth | None = None,
         json_serialize: JSONEncoder = json.dumps,
-        request_class: Type[ClientRequest] = ClientRequest,
-        response_class: Type[ClientResponse] = ClientResponse,
-        ws_response_class: Type[ClientWebSocketResponse] = ClientWebSocketResponse,
+        json_serialize_bytes: JSONBytesEncoder | None = None,
+        request_class: type[ClientRequest] = ClientRequest,
+        response_class: type[ClientResponse] = ClientResponse,
+        ws_response_class: type[ClientWebSocketResponse] = ClientWebSocketResponse,
         version: HttpVersion = http.HttpVersion11,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         connector_owner: bool = True,
-        raise_for_status: Union[
-            bool, Callable[[ClientResponse], Awaitable[None]]
-        ] = False,
-        timeout: Union[_SENTINEL, ClientTimeout, None] = sentinel,
+        raise_for_status: bool | Callable[[ClientResponse], Awaitable[None]] = False,
+        timeout: _SENTINEL | ClientTimeout | None = sentinel,
         auto_decompress: bool = True,
         trust_env: bool = False,
         requote_redirect_url: bool = True,
-        trace_configs: Optional[List[TraceConfig[object]]] = None,
+        trace_configs: list[TraceConfig[object]] | None = None,
         read_bufsize: int = 2**16,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
+        max_headers: int = 128,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
-        ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
+        ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
-        self._connector: Optional[BaseConnector] = None
+        self._connector: BaseConnector | None = None
         if base_url is None or isinstance(base_url, URL):
-            self._base_url: Optional[URL] = base_url
+            self._base_url: URL | None = base_url
             self._base_url_origin = None if base_url is None else base_url.origin()
         else:
             self._base_url = URL(base_url)
@@ -337,7 +377,7 @@ class ClientSession:
         self._connector = connector
         self._loop = loop
         if loop.get_debug():
-            self._source_traceback: Optional[traceback.StackSummary] = (
+            self._source_traceback: traceback.StackSummary | None = (
                 traceback.extract_stack(sys._getframe(1))
             )
         else:
@@ -357,6 +397,7 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
+        self._json_serialize_bytes = json_serialize_bytes
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -364,6 +405,7 @@ class ClientSession:
         self._read_bufsize = read_bufsize
         self._max_line_size = max_line_size
         self._max_field_size = max_field_size
+        self._max_headers = max_headers
 
         # Convert to list of tuples
         if headers:
@@ -391,10 +433,9 @@ class ClientSession:
         self._retry_connection: bool = True
         self._middlewares = middlewares
 
-    def __init_subclass__(cls: Type["ClientSession"]) -> None:
+    def __init_subclass__(cls: type["ClientSession"]) -> None:
         raise TypeError(
-            "Inheritance class {} from ClientSession "
-            "is forbidden".format(cls.__name__)
+            f"Inheritance class {cls.__name__} from ClientSession is forbidden"
         )
 
     def __del__(self, _warnings: Any = warnings) -> None:
@@ -440,31 +481,32 @@ class ClientSession:
         params: Query = None,
         data: Any = None,
         json: Any = None,
-        cookies: Optional[LooseCookies] = None,
-        headers: Optional[LooseHeaders] = None,
-        skip_auto_headers: Optional[Iterable[str]] = None,
-        auth: Optional[BasicAuth] = None,
+        cookies: LooseCookies | None = None,
+        headers: LooseHeaders | None = None,
+        skip_auto_headers: Iterable[str] | None = None,
+        auth: BasicAuth | None = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
-        compress: Union[str, bool] = False,
-        chunked: Optional[bool] = None,
+        compress: str | bool = False,
+        chunked: bool | None = None,
         expect100: bool = False,
-        raise_for_status: Union[
-            None, bool, Callable[[ClientResponse], Awaitable[None]]
-        ] = None,
+        raise_for_status: (
+            None | bool | Callable[[ClientResponse], Awaitable[None]]
+        ) = None,
         read_until_eof: bool = True,
-        proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
-        timeout: Union[ClientTimeout, _SENTINEL, None] = sentinel,
-        ssl: Union[SSLContext, bool, Fingerprint] = True,
-        server_hostname: Optional[str] = None,
-        proxy_headers: Optional[LooseHeaders] = None,
-        trace_request_ctx: Optional[Mapping[str, Any]] = None,
-        read_bufsize: Optional[int] = None,
-        auto_decompress: Optional[bool] = None,
-        max_line_size: Optional[int] = None,
-        max_field_size: Optional[int] = None,
-        middlewares: Optional[Sequence[ClientMiddlewareType]] = None,
+        proxy: StrOrURL | None = None,
+        proxy_auth: BasicAuth | None = None,
+        timeout: ClientTimeout | _SENTINEL | None = sentinel,
+        ssl: SSLContext | bool | Fingerprint = True,
+        server_hostname: str | None = None,
+        proxy_headers: LooseHeaders | None = None,
+        trace_request_ctx: object = None,
+        read_bufsize: int | None = None,
+        auto_decompress: bool | None = None,
+        max_line_size: int | None = None,
+        max_field_size: int | None = None,
+        max_headers: int | None = None,
+        middlewares: Sequence[ClientMiddlewareType] | None = None,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -476,7 +518,7 @@ class ClientSession:
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
-                "got {!r} instead.".format(ssl)
+                f"got {ssl!r} instead."
             )
 
         if data is not None and json is not None:
@@ -484,10 +526,13 @@ class ClientSession:
                 "data and json parameters can not be used at the same time"
             )
         elif json is not None:
-            data = payload.JsonPayload(json, dumps=self._json_serialize)
+            if self._json_serialize_bytes is not None:
+                data = payload.JsonBytesPayload(json, dumps=self._json_serialize_bytes)
+            else:
+                data = payload.JsonPayload(json, dumps=self._json_serialize)
 
         redirects = 0
-        history: List[ClientResponse] = []
+        history: list[ClientResponse] = []
         version = self._version
         params = params or {}
 
@@ -503,7 +548,7 @@ class ClientSession:
         if url.scheme not in self._connector.allowed_protocol_schema_set:
             raise NonHttpUrlClientError(url)
 
-        skip_headers: Optional[Iterable[istr]]
+        skip_headers: Iterable[istr] | None
         if skip_auto_headers is not None:
             skip_headers = {
                 istr(i) for i in skip_auto_headers
@@ -549,6 +594,9 @@ class ClientSession:
 
         if max_field_size is None:
             max_field_size = self._max_field_size
+
+        if max_headers is None:
+            max_headers = self._max_headers
 
         traces = [
             Trace(
@@ -602,6 +650,13 @@ class ClientSession:
                         )
                     ):
                         auth = self._default_auth
+
+                    # Try netrc if auth is still None and trust_env is enabled.
+                    if auth is None and self._trust_env and url.host is not None:
+                        auth = await self._loop.run_in_executor(
+                            None, self._get_netrc_auth, url.host
+                        )
+
                     # It would be confusing if we support explicit
                     # Authorization header with auth argument
                     if auth is not None and hdrs.AUTHORIZATION in headers:
@@ -615,14 +670,15 @@ class ClientSession:
 
                     if cookies is not None:
                         tmp_cookie_jar = CookieJar(
-                            quote_cookie=self._cookie_jar.quote_cookie
+                            unsafe=self._cookie_jar.unsafe,
+                            quote_cookie=self._cookie_jar.quote_cookie,
                         )
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
                         if req_cookies:
                             all_cookies.load(req_cookies)
 
-                    proxy_: Optional[URL] = None
+                    proxy_: URL | None = None
                     if proxy is not None:
                         proxy_ = URL(proxy)
                     elif self._trust_env:
@@ -682,9 +738,10 @@ class ClientSession:
                             timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
                             max_line_size=max_line_size,
                             max_field_size=max_field_size,
+                            max_headers=max_headers,
                         )
                         try:
-                            resp = await req.send(conn)
+                            resp = await req._send(conn)
                             try:
                                 await resp.start(conn)
                             except BaseException:
@@ -761,6 +818,23 @@ class ClientSession:
                             data = None
                             if headers.get(hdrs.CONTENT_LENGTH):
                                 headers.pop(hdrs.CONTENT_LENGTH)
+                        else:
+                            # For 307/308, always preserve the request body
+                            # For 301/302 with non-POST methods, preserve the request body
+                            # https://www.rfc-editor.org/rfc/rfc9110#section-15.4.3-3.1
+                            # Use the existing payload to avoid recreating it from
+                            # a potentially consumed file.
+                            #
+                            # If the payload is already consumed and cannot be replayed,
+                            # fail fast instead of silently sending an empty body.
+                            if req._body.consumed:
+                                resp.close()
+                                raise ClientPayloadError(
+                                    "Cannot follow redirect with a consumed request "
+                                    "body. Use bytes, a seekable file-like object, "
+                                    "or set allow_redirects=False."
+                                )
+                            data = req._body
 
                         r_url = resp.headers.get(hdrs.LOCATION) or resp.headers.get(
                             hdrs.URI
@@ -818,6 +892,8 @@ class ClientSession:
                         ):
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
+                            headers.pop(hdrs.COOKIE, None)
+                            headers.pop(hdrs.PROXY_AUTHORIZATION, None)
 
                         url = parsed_redirect_url
                         params = {}
@@ -867,29 +943,59 @@ class ClientSession:
                 )
             raise
 
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+
+        @overload
+        def ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[True] = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[True]]]": ...
+
+        @overload
+        def ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[False],
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[False]]]": ...
+
+        @overload
+        def ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: bool = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]": ...
+
     def ws_connect(
         self,
         url: StrOrURL,
         *,
         method: str = hdrs.METH_GET,
         protocols: Collection[str] = (),
-        timeout: Union[ClientWSTimeout, _SENTINEL] = sentinel,
-        receive_timeout: Optional[float] = None,
+        timeout: ClientWSTimeout | _SENTINEL = sentinel,
+        receive_timeout: float | None = None,
         autoclose: bool = True,
         autoping: bool = True,
-        heartbeat: Optional[float] = None,
-        auth: Optional[BasicAuth] = None,
-        origin: Optional[str] = None,
+        heartbeat: float | None = None,
+        auth: BasicAuth | None = None,
+        origin: str | None = None,
         params: Query = None,
-        headers: Optional[LooseHeaders] = None,
-        proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
-        ssl: Union[SSLContext, bool, Fingerprint] = True,
-        server_hostname: Optional[str] = None,
-        proxy_headers: Optional[LooseHeaders] = None,
+        headers: LooseHeaders | None = None,
+        proxy: StrOrURL | None = None,
+        proxy_auth: BasicAuth | None = None,
+        ssl: SSLContext | bool | Fingerprint = True,
+        server_hostname: str | None = None,
+        proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
-    ) -> "_WSRequestContextManager":
+        decode_text: bool = True,
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]":
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(
@@ -912,8 +1018,38 @@ class ClientSession:
                 proxy_headers=proxy_headers,
                 compress=compress,
                 max_msg_size=max_msg_size,
+                decode_text=decode_text,
             )
         )
+
+    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+
+        @overload
+        async def _ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[True] = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "ClientWebSocketResponse[Literal[True]]": ...
+
+        @overload
+        async def _ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: Literal[False],
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "ClientWebSocketResponse[Literal[False]]": ...
+
+        @overload
+        async def _ws_connect(
+            self,
+            url: StrOrURL,
+            *,
+            decode_text: bool = ...,
+            **kwargs: Unpack[_WSConnectOptions],
+        ) -> "ClientWebSocketResponse[bool]": ...
 
     async def _ws_connect(
         self,
@@ -921,23 +1057,24 @@ class ClientSession:
         *,
         method: str = hdrs.METH_GET,
         protocols: Collection[str] = (),
-        timeout: Union[ClientWSTimeout, _SENTINEL] = sentinel,
-        receive_timeout: Optional[float] = None,
+        timeout: ClientWSTimeout | _SENTINEL = sentinel,
+        receive_timeout: float | None = None,
         autoclose: bool = True,
         autoping: bool = True,
-        heartbeat: Optional[float] = None,
-        auth: Optional[BasicAuth] = None,
-        origin: Optional[str] = None,
+        heartbeat: float | None = None,
+        auth: BasicAuth | None = None,
+        origin: str | None = None,
         params: Query = None,
-        headers: Optional[LooseHeaders] = None,
-        proxy: Optional[StrOrURL] = None,
-        proxy_auth: Optional[BasicAuth] = None,
-        ssl: Union[SSLContext, bool, Fingerprint] = True,
-        server_hostname: Optional[str] = None,
-        proxy_headers: Optional[LooseHeaders] = None,
+        headers: LooseHeaders | None = None,
+        proxy: StrOrURL | None = None,
+        proxy_auth: BasicAuth | None = None,
+        ssl: SSLContext | bool | Fingerprint = True,
+        server_hostname: str | None = None,
+        proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
         max_msg_size: int = 4 * 1024 * 1024,
-    ) -> ClientWebSocketResponse:
+        decode_text: bool = True,
+    ) -> "ClientWebSocketResponse[bool]":
         if timeout is not sentinel:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
@@ -990,7 +1127,7 @@ class ClientSession:
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
-                "got {!r} instead.".format(ssl)
+                f"got {ssl!r} instead."
             )
 
         # send request
@@ -1099,7 +1236,6 @@ class ClientSession:
             transport = conn.transport
             assert transport is not None
             reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
-            conn_proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
@@ -1111,7 +1247,7 @@ class ClientSession:
             resp.close()
             raise
         else:
-            return self._ws_response_class(
+            ws_resp = self._ws_response_class(
                 reader,
                 writer,
                 protocol,
@@ -1124,15 +1260,19 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
+            parser = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
+            cb = None if heartbeat is None else ws_resp._on_data_received
+            conn_proto.set_parser(parser, reader, data_received_cb=cb)
+            return ws_resp
 
-    def _prepare_headers(self, headers: Optional[LooseHeaders]) -> "CIMultiDict[str]":
+    def _prepare_headers(self, headers: LooseHeaders | None) -> "CIMultiDict[str]":
         """Add default headers and transform it to CIMultiDict"""
         # Convert headers to MultiDict
         result = CIMultiDict(self._default_headers)
         if headers:
             if not isinstance(headers, (MultiDictProxy, MultiDict)):
                 headers = CIMultiDict(headers)
-            added_names: Set[str] = set()
+            added_names: set[str] = set()
             for key, value in headers.items():
                 if key in added_names:
                     result.add(key, value)
@@ -1140,6 +1280,19 @@ class ClientSession:
                     result[key] = value
                     added_names.add(key)
         return result
+
+    def _get_netrc_auth(self, host: str) -> BasicAuth | None:
+        """
+        Get auth from netrc for the given host.
+
+        This method is designed to be called in an executor to avoid
+        blocking I/O in the event loop.
+        """
+        netrc_obj = netrc_from_env()
+        try:
+            return basicauth_from_netrc(netrc_obj, host)
+        except LookupError:
+            return None
 
     if sys.version_info >= (3, 11) and TYPE_CHECKING:
 
@@ -1266,7 +1419,7 @@ class ClientSession:
         return self._connector is None or self._connector.closed
 
     @property
-    def connector(self) -> Optional[BaseConnector]:
+    def connector(self) -> BaseConnector | None:
         """Connector instance used for the session."""
         return self._connector
 
@@ -1276,7 +1429,7 @@ class ClientSession:
         return self._cookie_jar
 
     @property
-    def version(self) -> Tuple[int, int]:
+    def version(self) -> tuple[int, int]:
         """The session HTTP protocol version."""
         return self._version
 
@@ -1296,12 +1449,12 @@ class ClientSession:
         return self._default_headers
 
     @property
-    def skip_auto_headers(self) -> FrozenSet[istr]:
+    def skip_auto_headers(self) -> frozenset[istr]:
         """Headers for which autogeneration should be skipped"""
         return self._skip_auto_headers
 
     @property
-    def auth(self) -> Optional[BasicAuth]:
+    def auth(self) -> BasicAuth | None:
         """An object that represents HTTP Basic Authorization"""
         return self._default_auth
 
@@ -1318,7 +1471,7 @@ class ClientSession:
     @property
     def raise_for_status(
         self,
-    ) -> Union[bool, Callable[[ClientResponse], Awaitable[None]]]:
+    ) -> bool | Callable[[ClientResponse], Awaitable[None]]:
         """Should `ClientResponse.raise_for_status()` be called for each response."""
         return self._raise_for_status
 
@@ -1338,7 +1491,7 @@ class ClientSession:
         return self._trust_env
 
     @property
-    def trace_configs(self) -> List[TraceConfig[Any]]:
+    def trace_configs(self) -> list[TraceConfig[Any]]:
         """A list of TraceConfig instances used for client tracing"""
         return self._trace_configs
 
@@ -1354,50 +1507,52 @@ class ClientSession:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         await self.close()
 
 
-class _BaseRequestContextManager(Coroutine[Any, Any, _RetType], Generic[_RetType]):
+class _BaseRequestContextManager(
+    Coroutine[Any, Any, _RetType_co], Generic[_RetType_co]
+):
     __slots__ = ("_coro", "_resp")
 
-    def __init__(self, coro: Coroutine["asyncio.Future[Any]", None, _RetType]) -> None:
-        self._coro: Coroutine["asyncio.Future[Any]", None, _RetType] = coro
+    def __init__(self, coro: Coroutine[asyncio.Future[Any], None, _RetType_co]) -> None:
+        self._coro: Coroutine[asyncio.Future[Any], None, _RetType_co] = coro
 
-    def send(self, arg: None) -> "asyncio.Future[Any]":
+    def send(self, arg: None) -> asyncio.Future[Any]:
         return self._coro.send(arg)
 
-    def throw(self, *args: Any, **kwargs: Any) -> "asyncio.Future[Any]":
+    def throw(self, *args: Any, **kwargs: Any) -> asyncio.Future[Any]:
         return self._coro.throw(*args, **kwargs)
 
     def close(self) -> None:
         return self._coro.close()
 
-    def __await__(self) -> Generator[Any, None, _RetType]:
+    def __await__(self) -> Generator[Any, None, _RetType_co]:
         ret = self._coro.__await__()
         return ret
 
-    def __iter__(self) -> Generator[Any, None, _RetType]:
+    def __iter__(self) -> Generator[Any, None, _RetType_co]:
         return self.__await__()
 
-    async def __aenter__(self) -> _RetType:
-        self._resp: _RetType = await self._coro
-        return await self._resp.__aenter__()
+    async def __aenter__(self) -> _RetType_co:
+        self._resp: _RetType_co = await self._coro
+        return await self._resp.__aenter__()  # type: ignore[return-value]
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc: Optional[BaseException],
-        tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
     ) -> None:
         await self._resp.__aexit__(exc_type, exc, tb)
 
 
 _RequestContextManager = _BaseRequestContextManager[ClientResponse]
-_WSRequestContextManager = _BaseRequestContextManager[ClientWebSocketResponse]
+_WSRequestContextManager = _BaseRequestContextManager[ClientWebSocketResponse[bool]]
 
 
 class _SessionRequestContextManager:
@@ -1405,11 +1560,11 @@ class _SessionRequestContextManager:
 
     def __init__(
         self,
-        coro: Coroutine["asyncio.Future[Any]", None, ClientResponse],
+        coro: Coroutine[asyncio.Future[Any], None, ClientResponse],
         session: ClientSession,
     ) -> None:
         self._coro = coro
-        self._resp: Optional[ClientResponse] = None
+        self._resp: ClientResponse | None = None
         self._session = session
 
     async def __aenter__(self) -> ClientResponse:
@@ -1423,9 +1578,9 @@ class _SessionRequestContextManager:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc: Optional[BaseException],
-        tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
     ) -> None:
         assert self._resp is not None
         self._resp.close()
@@ -1439,7 +1594,7 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
         url: StrOrURL,
         *,
         version: HttpVersion = http.HttpVersion11,
-        connector: Optional[BaseConnector] = None,
+        connector: BaseConnector | None = None,
         **kwargs: Unpack[_RequestOptions],
     ) -> _SessionRequestContextManager: ...
 
@@ -1450,7 +1605,7 @@ else:
         url: StrOrURL,
         *,
         version: HttpVersion = http.HttpVersion11,
-        connector: Optional[BaseConnector] = None,
+        connector: BaseConnector | None = None,
         **kwargs: Any,
     ) -> _SessionRequestContextManager:
         """Constructs and sends a request.
