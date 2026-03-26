@@ -1154,7 +1154,7 @@ async def test_precompressed_data_stays_intact(  # type: ignore[misc]
 
 
 async def test_body_with_size_sets_content_length(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that when body has a size and no Content-Length header is set, it gets added."""
     # Create a BytesPayload which has a size property
@@ -1177,7 +1177,7 @@ async def test_body_with_size_sets_content_length(
 
 
 async def test_body_payload_with_size_no_content_length(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that when a body payload is set via update_body, Content-Length is added."""
     # Create a payload with a known size
@@ -1212,9 +1212,7 @@ async def test_body_payload_with_size_no_content_length(
     await req._close()
 
 
-async def test_file_upload_not_chunked_seek(
-    make_client_request: _RequestMaker
-) -> None:
+async def test_file_upload_not_chunked_seek(make_client_request: _RequestMaker) -> None:
     loop = asyncio.get_running_loop()
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
@@ -1224,9 +1222,7 @@ async def test_file_upload_not_chunked_seek(
         await req._close()
 
 
-async def test_file_upload_force_chunked(
-    make_client_request: _RequestMaker
-) -> None:
+async def test_file_upload_force_chunked(make_client_request: _RequestMaker) -> None:
     loop = asyncio.get_running_loop()
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
     with file_path.open("rb") as f:
@@ -1363,7 +1359,8 @@ async def test_data_stream_exc(
 
 
 async def test_data_stream_exc_chain(
-    conn: mock.Mock, make_client_request: _RequestMaker,
+    conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     loop = asyncio.get_running_loop()
     fut = loop.create_future()
@@ -1481,7 +1478,8 @@ async def test_bad_version(conn: mock.Mock, make_client_request: _RequestMaker) 
 
 
 async def test_custom_response_class(
-    conn: mock.Mock, make_client_request: _RequestMaker,
+    conn: mock.Mock,
+    make_client_request: _RequestMaker,
 ) -> None:
     class CustomResponse(ClientResponse):
         async def read(self) -> bytes:
@@ -2121,7 +2119,7 @@ def test_non_get_methods_classification(method: str) -> None:
 
 
 async def test_content_length_with_string_data(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test Content-Length when data is a string."""
     data = "Hello, World!"
@@ -2133,7 +2131,7 @@ async def test_content_length_with_string_data(
 
 
 async def test_content_length_with_async_iterable(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that async iterables use chunked encoding, not Content-Length."""
 
@@ -2151,7 +2149,7 @@ async def test_content_length_with_async_iterable(
 
 
 async def test_content_length_not_overridden(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that explicitly set Content-Length is not overridden."""
     req = make_client_request(
@@ -2166,9 +2164,7 @@ async def test_content_length_not_overridden(
     await req._close()
 
 
-async def test_content_length_with_formdata(
-    make_client_request: _RequestMaker
-) -> None:
+async def test_content_length_with_formdata(make_client_request: _RequestMaker) -> None:
     """Test Content-Length with FormData."""
     form = aiohttp.FormData()
     form.add_field("field", "value")
@@ -2181,7 +2177,7 @@ async def test_content_length_with_formdata(
 
 
 async def test_no_content_length_with_chunked(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that chunked encoding prevents Content-Length header."""
     req = make_client_request(

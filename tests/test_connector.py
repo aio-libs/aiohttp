@@ -717,7 +717,7 @@ async def test_tcp_connector_server_hostname_override(
             "GET",
             URL("https://127.0.0.1:443"),
             loop=asyncio.get_running_loop(),
-            server_hostname="localhost"
+            server_hostname="localhost",
         )
 
         with closing(await conn.connect(req, [], ClientTimeout())):
@@ -727,7 +727,7 @@ async def test_tcp_connector_server_hostname_override(
 
 
 async def test_tcp_connector_multiple_hosts_errors(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     conn = aiohttp.TCPConnector()
 
@@ -1077,7 +1077,7 @@ async def test_tcp_connector_interleave(make_client_request: _RequestMaker) -> N
 
 
 async def test_tcp_connector_family_is_respected(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     conn = aiohttp.TCPConnector(family=socket.AF_INET)
 
@@ -1297,7 +1297,9 @@ async def test_tcp_connector_resolve_host() -> None:
 
 
 @pytest.fixture
-def dns_response(event_loop: asyncio.AbstractEventLoop) -> Callable[[], Awaitable[list[str]]]:
+def dns_response(
+    event_loop: asyncio.AbstractEventLoop,
+) -> Callable[[], Awaitable[list[str]]]:
     async def coro() -> list[str]:
         # simulates a network operation
         await asyncio.sleep(0)
@@ -1307,7 +1309,7 @@ def dns_response(event_loop: asyncio.AbstractEventLoop) -> Callable[[], Awaitabl
 
 
 async def test_tcp_connector_dns_cache_not_expired(
-    dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
 
@@ -1326,7 +1328,7 @@ async def test_tcp_connector_dns_cache_not_expired(
 
 
 async def test_tcp_connector_dns_cache_forever(
-    dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         mock_default_resolver = mock.create_autospec(
@@ -1346,7 +1348,7 @@ async def test_tcp_connector_dns_cache_forever(
 
 
 async def test_tcp_connector_use_dns_cache_disabled(
-    dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
 
@@ -1374,7 +1376,7 @@ async def test_tcp_connector_use_dns_cache_disabled(
 
 
 async def test_tcp_connector_dns_throttle_requests(
-    dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     loop = asyncio.get_running_loop()
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
@@ -1431,7 +1433,7 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread() -> None:
 
 
 async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
-    dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     loop = asyncio.get_running_loop()
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
@@ -1505,7 +1507,7 @@ async def test_tcp_connector_cancel_dns_error_captured(
 
 
 async def test_tcp_connector_dns_tracing(
-    dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
@@ -1553,7 +1555,7 @@ async def test_tcp_connector_dns_tracing(
 
 
 async def test_tcp_connector_dns_tracing_cache_disabled(
-    dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
@@ -1611,7 +1613,7 @@ async def test_tcp_connector_dns_tracing_cache_disabled(
 
 
 async def test_tcp_connector_dns_tracing_throttle_requests(
-    dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     loop = asyncio.get_running_loop()
     session = mock.Mock()
@@ -1842,7 +1844,7 @@ async def test_exception_during_connetion_create_tracing(  # type: ignore[misc]
 
 
 async def test_exception_during_connection_queued_tracing(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     loop = asyncio.get_running_loop()
     session = mock.Mock()
@@ -1884,7 +1886,7 @@ async def test_exception_during_connection_queued_tracing(
 
 
 async def test_exception_during_connection_reuse_tracing(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     loop = asyncio.get_running_loop()
     session = mock.Mock()
@@ -1970,9 +1972,7 @@ async def test_cancellation_during_waiting_for_free_connection(
     assert key not in conn._acquired_per_host
 
 
-async def test_close_during_connect(
-    make_client_request: _RequestMaker
-) -> None:
+async def test_close_during_connect(make_client_request: _RequestMaker) -> None:
     loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
@@ -2829,7 +2829,7 @@ async def test_close_cancels_resolve_host(make_client_request: _RequestMaker) ->
         "GET",
         URL("http://localhost:80"),
         loop=asyncio.get_running_loop(),
-        response_class=mock.Mock()
+        response_class=mock.Mock(),
     )
     with mock.patch.object(conn._resolver, "resolve", delay_resolve):
         t = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
@@ -2849,7 +2849,7 @@ async def test_close_cancels_resolve_host(make_client_request: _RequestMaker) ->
 
 
 async def test_multiple_dns_resolution_requests_success(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that multiple DNS resolution requests are handled correctly."""
 
@@ -2914,7 +2914,7 @@ async def test_multiple_dns_resolution_requests_success(
 
 
 async def test_multiple_dns_resolution_requests_failure(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution failure for multiple requests is handled correctly."""
 
@@ -2929,7 +2929,7 @@ async def test_multiple_dns_resolution_requests_failure(
         "GET",
         URL("http://localhost:80"),
         loop=asyncio.get_running_loop(),
-        response_class=mock.Mock()
+        response_class=mock.Mock(),
     )
     with (
         mock.patch.object(conn._resolver, "resolve", delay_resolve),
@@ -2970,7 +2970,7 @@ async def test_multiple_dns_resolution_requests_failure(
 
 
 async def test_multiple_dns_resolution_requests_cancelled(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution cancellation does not affect other tasks."""
 
@@ -3025,7 +3025,7 @@ async def test_multiple_dns_resolution_requests_cancelled(
 
 
 async def test_multiple_dns_resolution_requests_first_cancelled(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that first DNS resolution cancellation does not make other resolutions fail."""
 
@@ -3049,7 +3049,7 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
         "GET",
         URL("http://localhost:80"),
         loop=asyncio.get_running_loop(),
-        response_class=mock.Mock()
+        response_class=mock.Mock(),
     )
     with (
         mock.patch.object(conn._resolver, "resolve", delay_resolve),
@@ -3091,7 +3091,7 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
 
 
 async def test_multiple_dns_resolution_requests_first_fails_second_successful(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that first DNS resolution fails the first time and is successful the second time."""
     attempt = 0
@@ -3120,7 +3120,7 @@ async def test_multiple_dns_resolution_requests_first_fails_second_successful(
         "GET",
         URL("http://localhost:80"),
         loop=asyncio.get_running_loop(),
-        response_class=mock.Mock()
+        response_class=mock.Mock(),
     )
     with (
         mock.patch.object(conn._resolver, "resolve", delay_resolve),
@@ -3583,7 +3583,7 @@ async def test_connect_with_capacity_release_waiters() -> None:
 
 
 async def test_connect_with_limit_concurrent(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
@@ -3645,9 +3645,7 @@ async def test_connect_with_limit_concurrent(
         assert max_connections == num_connections
 
 
-async def test_connect_waiters_cleanup(
-    make_client_request: _RequestMaker
-) -> None:
+async def test_connect_waiters_cleanup(make_client_request: _RequestMaker) -> None:
     loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
@@ -3669,7 +3667,7 @@ async def test_connect_waiters_cleanup(
 
 
 async def test_connect_waiters_cleanup_key_error(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
@@ -3904,7 +3902,7 @@ async def test_tcp_connector(aiohttp_client: AiohttpClient) -> None:
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_not_found(  # type: ignore[misc]
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
@@ -3917,7 +3915,7 @@ async def test_unix_connector_not_found(  # type: ignore[misc]
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_permission(  # type: ignore[misc]
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     loop = asyncio.get_running_loop()
     m = mock.AsyncMock(side_effect=PermissionError())
