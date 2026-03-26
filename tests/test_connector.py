@@ -729,6 +729,7 @@ async def test_tcp_connector_server_hostname_override(
 async def test_tcp_connector_multiple_hosts_errors(
     make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector()
 
     ip1 = "192.168.1.1"
@@ -985,6 +986,7 @@ async def test_tcp_connector_happy_eyeballs(  # type: ignore[misc]
 
 
 async def test_tcp_connector_interleave(make_client_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector(interleave=2)
 
     ip1 = "192.168.1.1"
@@ -1079,6 +1081,7 @@ async def test_tcp_connector_interleave(make_client_request: _RequestMaker) -> N
 async def test_tcp_connector_family_is_respected(
     make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector(family=socket.AF_INET)
 
     ip1 = "dead::beef::"
@@ -1166,6 +1169,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(  # type: ignore[misc]
     request_url: str,
     make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector()
 
     ip1 = "192.168.1.1"
@@ -1745,6 +1749,7 @@ async def test_connect(
     key: ConnectionKey,
     make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -2112,6 +2117,7 @@ async def test_cleanup3(key: ConnectionKey) -> None:
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_cleanup_closed(mocker: MockerFixture) -> None:
+    loop = asyncio.get_running_loop()
     m = mocker.spy(loop, "call_at")
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
 
@@ -3669,6 +3675,7 @@ async def test_connect_waiters_cleanup(make_client_request: _RequestMaker) -> No
 async def test_connect_waiters_cleanup_key_error(
     make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 

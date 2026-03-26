@@ -440,9 +440,7 @@ async def cleanup_payload_pending_file_closes() -> AsyncIterator[None]:
 
 
 @pytest.fixture
-async def make_client_request(
-    loop: asyncio.AbstractEventLoop,
-) -> AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]:
+async def make_client_request() -> AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]:
     """Fixture to help creating test ClientRequest objects with defaults."""
     requests: list[ClientRequest] = []
     sessions: list[ClientSession] = []
@@ -453,7 +451,7 @@ async def make_client_request(
         session = ClientSession()
         sessions.append(session)
         default_args: ClientRequestArgs = {
-            "loop": loop,
+            "loop": asyncio.get_running_loop(),
             "params": {},
             "headers": CIMultiDict[str](),
             "skip_auto_headers": None,
