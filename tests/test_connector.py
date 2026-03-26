@@ -262,6 +262,7 @@ def test_del_with_closed_loop(  # type: ignore[misc]
 ) -> None:
     pytest.skip("broken")
     return
+
     async def make_conn() -> aiohttp.BaseConnector:
         return aiohttp.BaseConnector()
 
