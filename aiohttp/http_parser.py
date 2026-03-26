@@ -462,7 +462,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 assert not self._lines
                 assert self._payload_parser is not None
                 try:
-                    payload_state, data = self._payload_parser.feed_data(data[start_pos:], SEP)
+                    payload_state, data = self._payload_parser.feed_data(
+                        data[start_pos:], SEP
+                    )
                 except Exception as underlying_exc:
                     reraised_exc: BaseException = underlying_exc
                     if self.payload_exception is not None:

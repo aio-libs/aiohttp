@@ -409,7 +409,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._payload_parser = None
 
     def set_parser(
-        self, parser: WebSocketReader, data_received_cb: Callable[[], None] | None = None
+        self,
+        parser: WebSocketReader,
+        data_received_cb: Callable[[], None] | None = None,
     ) -> None:
         assert self._payload_parser is None
 
