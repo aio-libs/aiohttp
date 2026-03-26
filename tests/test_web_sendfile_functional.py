@@ -1,5 +1,6 @@
 import asyncio
 import bz2
+import contextlib
 import gzip
 import pathlib
 import socket
@@ -15,6 +16,7 @@ from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
+from aiohttp.web_fileresponse import NOSENDFILE, _CLOSE_FUTURES
 
 try:
     import brotlicffi as brotli
@@ -1156,3 +1158,69 @@ async def test_static_file_huge_error(
 
     resp.release()
     await client.close()
+
+
+@pytest.mark.skipif(NOSENDFILE, reason="OS sendfile not available")
+async def test_sendfile_after_client_disconnect(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """Test ConnectionResetError when client disconnects before sendfile.
+
+    Reproduces the race condition where:
+    - Client sends a GET request for a file
+    - Handler does async work (e.g. auth check) before returning a FileResponse
+    - Client disconnects while the handler is busy
+    - Server then calls sendfile() → ConnectionResetError (not AssertionError)
+
+    _send_headers_immediately is set to False so that super().prepare()
+    only buffers the headers without writing to the transport. Otherwise
+    _write() raises ClientConnectionResetError first and _sendfile()'s own
+    transport check is never reached.
+    """
+    filepath = tmp_path / "test.txt"
+    filepath.write_bytes(b"x" * 1024)
+
+    handler_started = asyncio.Event()
+    prepare_done = asyncio.Event()
+    captured_protocol = None
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal captured_protocol
+        resp = web.FileResponse(filepath)
+        resp._send_headers_immediately = False
+        captured_protocol = request._protocol
+        handler_started.set()
+        # Simulate async work (e.g., auth check) during which client disconnects.
+        await asyncio.sleep(0)
+        with pytest.raises(ConnectionResetError, match="Connection lost"):
+            await resp.prepare(request)
+        prepare_done.set()
+        return web.Response(status=503)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    request_task = asyncio.create_task(client.get("/"))
+
+    # Wait until the handler is running but has not yet returned the response.
+    await handler_started.wait()
+    assert captured_protocol is not None
+
+    # Simulate the client disconnecting by setting transport to None directly.
+    # We cannot use force_close() because closing the TCP transport triggers
+    # connection_lost() which cancels the handler task before it can call
+    # prepare() and hit the ConnectionResetError in _sendfile().
+    captured_protocol.transport = None
+
+    # Wait for the handler to resume, call prepare(), and hit ConnectionResetError.
+    await asyncio.wait_for(prepare_done.wait(), timeout=1)
+
+    # Wait for the file close executor scheduled in prepare()'s finally block.
+    if _CLOSE_FUTURES:
+        await asyncio.gather(*_CLOSE_FUTURES, return_exceptions=True)
+
+    # Clean up: cancel the client request (server won't respond).
+    request_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await request_task
