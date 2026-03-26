@@ -640,9 +640,7 @@ async def test_gen_netloc_no_port(make_client_request: _RequestMaker) -> None:
     )
 
 
-async def test_cookie_coded_value_preserved(
-    make_client_request: _RequestMaker
-) -> None:
+async def test_cookie_coded_value_preserved(make_client_request: _RequestMaker) -> None:
     """Verify the coded value of a cookie is preserved."""
     # https://github.com/aio-libs/aiohttp/pull/1453
     loop = asyncio.get_running_loop()
@@ -652,7 +650,7 @@ async def test_cookie_coded_value_preserved(
 
 
 async def test_update_cookies_with_special_chars_in_existing_header(
-    make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Test that update_cookies handles existing cookies with special characters."""
     # Create request with a cookie that has special characters (real-world example)
@@ -939,9 +937,7 @@ async def test_get_with_data(make_client_request: _RequestMaker) -> None:
         await req._close()
 
 
-async def test_bytes_data(
-    conn: mock.Mock, make_client_request: _RequestMaker
-) -> None:
+async def test_bytes_data(conn: mock.Mock, make_client_request: _RequestMaker) -> None:
     loop = asyncio.get_running_loop()
     for meth in ClientRequest.POST_METHODS:
         req = make_client_request(
