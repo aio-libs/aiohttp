@@ -641,19 +641,18 @@ async def test_gen_netloc_no_port(make_client_request: _RequestMaker) -> None:
 
 
 async def test_cookie_coded_value_preserved(
-    event_loop: asyncio.AbstractEventLoop,
-    make_client_request: _RequestMaker,
+    make_client_request: _RequestMaker
 ) -> None:
     """Verify the coded value of a cookie is preserved."""
     # https://github.com/aio-libs/aiohttp/pull/1453
+    loop = asyncio.get_running_loop()
     req = make_client_request("get", URL("http://python.org"), loop=event_loop)
     req._update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
     assert req.headers["COOKIE"] == 'ip-cookie="second"'
 
 
 async def test_update_cookies_with_special_chars_in_existing_header(
-    event_loop: asyncio.AbstractEventLoop,
-    make_client_request: _RequestMaker,
+    make_client_request: _RequestMaker
 ) -> None:
     """Test that update_cookies handles existing cookies with special characters."""
     # Create request with a cookie that has special characters (real-world example)
@@ -663,7 +662,7 @@ async def test_update_cookies_with_special_chars_in_existing_header(
         headers=CIMultiDict(
             {"Cookie": "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}=value1"}
         ),
-        loop=event_loop,
+        loop=asyncio.get_running_loop(),
     )
 
     # Update with another cookie
@@ -782,9 +781,7 @@ async def test_content_type_auto_header_form(
 
 
 async def test_content_type_auto_header_bytes(
-    loop: asyncio.AbstractEventLoop,
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     req = make_client_request(
@@ -943,9 +940,7 @@ async def test_get_with_data(make_client_request: _RequestMaker) -> None:
 
 
 async def test_bytes_data(
-    loop: asyncio.AbstractEventLoop,
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     for meth in ClientRequest.POST_METHODS:
@@ -963,9 +958,7 @@ async def test_bytes_data(
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_content_encoding(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     req = make_client_request(
@@ -983,9 +976,7 @@ async def test_content_encoding(  # type: ignore[misc]
 
 
 async def test_content_encoding_dont_set_headers_if_no_body(
-    loop: asyncio.AbstractEventLoop,
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     req = make_client_request(
@@ -1000,9 +991,7 @@ async def test_content_encoding_dont_set_headers_if_no_body(
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_content_encoding_header(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     req = make_client_request(
         "post",
@@ -1514,9 +1503,7 @@ async def test_oserror_on_write_bytes(
 
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
 async def test_cancel_close(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     req = make_client_request("get", URL("http://python.org"), loop=loop)
@@ -1867,7 +1854,6 @@ async def test_write_bytes_with_content_length_limit(
     ],
 )
 async def test_write_bytes_with_iterable_content_length_limit(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
     buf: bytearray,
     conn: mock.Mock,
     data: list[bytes] | bytes,

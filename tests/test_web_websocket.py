@@ -120,11 +120,9 @@ async def test_nonstarted_receive_str() -> None:
         await ws.receive_str()
 
 
-async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle() -> None:
     ws = web.WebSocketResponse(heartbeat=0.05)
-    ws._loop = loop
+    ws._loop = asyncio.get_running_loop()
     ws._on_data_received()
     handle = ws._heartbeat_reset_handle
     assert handle is not None

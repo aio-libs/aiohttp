@@ -4702,10 +4702,9 @@ async def test_available_connections_no_limits(
     assert conn._available_connections(other_host_key2) == 1
 
 
-async def test_connect_tunnel_connection_release(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_connect_tunnel_connection_release() -> None:
     """Test _ConnectTunnelConnection.release() does not pool the connection."""
+    loop = asyncio.get_running_loop()
     connector = mock.create_autospec(
         aiohttp.BaseConnector, spec_set=True, instance=True
     )
