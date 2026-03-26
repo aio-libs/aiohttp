@@ -23,7 +23,9 @@ class _DummyParser:
 def test_set_parser_does_not_call_data_received_cb_for_tail(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    handler: RequestHandler[Any] = RequestHandler(cast(Any, _DummyManager()), loop=event_loop)
+    handler: RequestHandler[Any] = RequestHandler(
+        cast(Any, _DummyManager()), loop=event_loop
+    )
     handler._message_tail = b"tail"
     cb = mock.Mock()
     parser = _DummyParser()
@@ -37,7 +39,9 @@ def test_set_parser_does_not_call_data_received_cb_for_tail(
 def test_data_received_calls_data_received_cb(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    handler: RequestHandler[Any] = RequestHandler(cast(Any, _DummyManager()), loop=event_loop)
+    handler: RequestHandler[Any] = RequestHandler(
+        cast(Any, _DummyManager()), loop=event_loop
+    )
     cb = mock.Mock()
     parser = _DummyParser()
 
