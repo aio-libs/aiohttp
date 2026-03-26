@@ -644,7 +644,7 @@ async def test_cookie_coded_value_preserved(make_client_request: _RequestMaker) 
     """Verify the coded value of a cookie is preserved."""
     # https://github.com/aio-libs/aiohttp/pull/1453
     loop = asyncio.get_running_loop()
-    req = make_client_request("get", URL("http://python.org"), loop=FVloop)
+    req = make_client_request("get", URL("http://python.org"), loop=loop)
     req._update_cookies(cookies=SimpleCookie('ip-cookie="second"; Domain=127.0.0.1;'))
     assert req.headers["COOKIE"] == 'ip-cookie="second"'
 
