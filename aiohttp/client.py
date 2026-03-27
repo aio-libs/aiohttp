@@ -670,7 +670,8 @@ class ClientSession:
 
                     if cookies is not None:
                         tmp_cookie_jar = CookieJar(
-                            quote_cookie=self._cookie_jar.quote_cookie
+                            unsafe=self._cookie_jar.unsafe,
+                            quote_cookie=self._cookie_jar.quote_cookie,
                         )
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
