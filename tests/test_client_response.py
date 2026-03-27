@@ -286,6 +286,78 @@ async def test_release(loop: asyncio.AbstractEventLoop, session: ClientSession) 
     assert response._connection is None
 
 
+async def test_wait_released_releases_connection(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    url = URL("http://def-cl-resp.org")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=None,
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+    )
+    conn = response._connection = mock.Mock()
+
+    await response._wait_released()
+
+    conn.release.assert_called_once_with()
+    assert response._connection is None
+
+
+async def test_wait_released_calls_release_without_connection(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    url = URL("http://def-cl-resp.org")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=None,
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+    )
+    response._connection = None
+
+    with mock.patch.object(response, "_release_connection") as release_connection:
+        await response._wait_released()
+
+    release_connection.assert_called_once_with()
+
+
+async def test_wait_for_close_skips_release_if_already_released(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    url = URL("http://def-cl-resp.org")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=None,
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+    )
+    response._released = True
+
+    with mock.patch.object(response, "release") as release:
+        await response.wait_for_close()
+
+    release.assert_not_called()
+
+
 @pytest.mark.skipif(
     sys.implementation.name != "cpython",
     reason="Other implementations has different GC strategies",
