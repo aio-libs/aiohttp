@@ -247,7 +247,7 @@ jobs:
       run: |
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         files: ./coverage.xml
         flags: >-
@@ -339,7 +339,7 @@ jobs:
       run: |
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         files: ./coverage.xml
         flags: >-
@@ -417,7 +417,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Trigger codecov notification
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
