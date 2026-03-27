@@ -1,0 +1,5 @@
+Normalized parsing of list-style ``Connection`` and ``Transfer-Encoding``
+headers so repeated field lines and comma-joined values are handled
+consistently in the HTTP parser, without changing ``CIMultiDict``
+storage semantics.
+-- by :user:`rodrigobnogueira`.
