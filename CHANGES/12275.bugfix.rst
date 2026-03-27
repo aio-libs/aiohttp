@@ -1,1 +1,0 @@
-Fixed a security issue where credentials could be leaked during HTTP to HTTPS redirects to the same host with different ports, aligning `aiohttp` behavior with curl 7.83.0 (CVE-2022-27774).
