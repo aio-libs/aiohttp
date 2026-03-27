@@ -16,7 +16,7 @@ from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
-from aiohttp.web_fileresponse import NOSENDFILE, _CLOSE_FUTURES
+from aiohttp.web_fileresponse import _CLOSE_FUTURES, NOSENDFILE
 
 try:
     import brotlicffi as brotli
