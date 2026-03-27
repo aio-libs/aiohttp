@@ -2,7 +2,12 @@
 
 import pytest
 
-from aiohttp.compression_utils import ZLibBackend, ZLibCompressor, ZLibDecompressor
+from aiohttp.compression_utils import (
+    ZLibBackend,
+    ZLibCompressor,
+    ZLibDecompressor,
+    ZSTDDecompressor,
+)
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
@@ -33,3 +38,51 @@ async def test_compression_round_trip_in_event_loop() -> None:
     compressed_data = await compressor.compress(data) + compressor.flush()
     decompressed_data = await decompressor.decompress(compressed_data)
     assert data == decompressed_data
+
+
+def test_zstd_decompressor_stalled_unused_data_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class StallingZstdDecompressor:
+        def __init__(self) -> None:
+            self.unused_data = b""
+
+        def decompress(self, data: bytes, max_length: int) -> bytes:
+            self.unused_data = data
+            return b""
+
+    monkeypatch.setattr("aiohttp.compression_utils.HAS_ZSTD", True)
+    monkeypatch.setattr(
+        "aiohttp.compression_utils.ZstdDecompressor", StallingZstdDecompressor
+    )
+
+    decompressor = ZSTDDecompressor()
+    with pytest.raises(EOFError, match="unused_data did not shrink"):
+        decompressor.decompress_sync(b"malformed")
+
+
+def test_zstd_decompressor_allows_single_unchanged_unused_data_rollover(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class SingleRolloverZstdDecompressor:
+        _calls = 0
+
+        def __init__(self) -> None:
+            self.unused_data = b""
+
+        def decompress(self, data: bytes, max_length: int) -> bytes:
+            type(self)._calls += 1
+            if type(self)._calls == 1:
+                self.unused_data = data
+                return b""
+
+            self.unused_data = b""
+            return b"decoded"
+
+    monkeypatch.setattr("aiohttp.compression_utils.HAS_ZSTD", True)
+    monkeypatch.setattr(
+        "aiohttp.compression_utils.ZstdDecompressor", SingleRolloverZstdDecompressor
+    )
+
+    decompressor = ZSTDDecompressor()
+    assert decompressor.decompress_sync(b"frame") == b"decoded"

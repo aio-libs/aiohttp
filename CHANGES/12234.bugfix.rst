@@ -1,0 +1,2 @@
+Fixed zstd decompression failure for multi-frame responses (e.g. chunked transfer encoding).
+-- by :user:`rootvector2`
