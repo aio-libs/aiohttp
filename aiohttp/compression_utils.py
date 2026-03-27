@@ -342,7 +342,20 @@ class ZSTDDecompressor(DecompressionBaseHandler):
             if max_length == ZLIB_MAX_LENGTH_UNLIMITED
             else max_length
         )
-        return self._obj.decompress(data, zstd_max_length)
+        try:
+            result = self._obj.decompress(data, zstd_max_length)
+        except EOFError:
+            # ZstdDecompressor cannot handle multiple compressed frames.
+            # When a frame ends, create a new decompressor for the next frame.
+            self._obj = ZstdDecompressor()
+            return self._obj.decompress(data, zstd_max_length)
+
+        # Handle multiple frames arriving in a single chunk
+        while self._obj.unused_data:
+            unused = self._obj.unused_data
+            self._obj = ZstdDecompressor()
+            result += self._obj.decompress(unused, zstd_max_length)
+        return result
 
     def flush(self) -> bytes:
         return b""
