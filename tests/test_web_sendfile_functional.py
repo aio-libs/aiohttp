@@ -1216,11 +1216,7 @@ async def test_sendfile_after_client_disconnect(
     # Wait for the handler to resume, call prepare(), and hit ConnectionResetError.
     await asyncio.wait_for(prepare_done.wait(), timeout=1)
 
-    # Wait for the file close executor scheduled in prepare()'s finally block.
-    if _CLOSE_FUTURES:
-        await asyncio.gather(*_CLOSE_FUTURES, return_exceptions=True)
-
-    # Clean up: cancel the client request (server won't respond).
-    request_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
+    with contextlib.suppress(
+        aiohttp.ServerDisconnectedError, aiohttp.ClientConnectionResetError
+    ):
         await request_task
