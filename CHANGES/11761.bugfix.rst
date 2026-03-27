@@ -1,0 +1,4 @@
+Fixed ``AssertionError`` when the transport is ``None`` during WebSocket
+preparation or file response sending (e.g. when a client disconnects
+immediately after connecting). A ``ConnectionResetError`` is now raised
+instead -- by :user:`agners`.
