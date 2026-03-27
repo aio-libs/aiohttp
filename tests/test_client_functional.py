@@ -3390,17 +3390,13 @@ def create_server_for_url_and_handler(
 
 
 @pytest.mark.parametrize(
-    ["url_from_s", "url_to_s", "is_drop_header_expected"],
-    [
-        [
-            "http://host1.com/path1",
-            "http://host2.com/path2",
-            True,
-        ],
-        ["http://host1.com/path1", "https://host1.com/path1", True],
-        ["https://host1.com/path1", "http://host1.com/path2", True],
-        ["http://host1.com/path1", "https://host1.com:9443/path1", True],
-    ],
+    ("url_from_s", "url_to_s"),
+    (
+        ("http://host1.com/path1", "http://host2.com/path2"),
+        ("http://host1.com/path1", "https://host1.com/path1"),
+        ("https://host1.com/path1", "http://host1.com/path2"),
+        ("http://host1.com/path1", "https://host1.com:9443/path1"),
+    ),
     ids=(
         "entirely different hosts",
         "http -> https",
@@ -3412,7 +3408,6 @@ async def test_drop_auth_on_redirect_to_other_host(
     create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
     url_from_s: str,
     url_to_s: str,
-    is_drop_header_expected: bool,
 ) -> None:
     url_from, url_to = URL(url_from_s), URL(url_to_s)
 
@@ -3423,14 +3418,9 @@ async def test_drop_auth_on_redirect_to_other_host(
 
     async def srv_to(request: web.Request) -> web.Response:
         assert request.host.split(":")[0] == url_to.host
-        if is_drop_header_expected:
-            assert "Authorization" not in request.headers, "Header wasn't dropped"
-            assert "Proxy-Authorization" not in request.headers
-            assert "Cookie" not in request.headers
-        else:
-            assert "Authorization" in request.headers, "Header was dropped"
-            assert "Proxy-Authorization" in request.headers
-            assert "Cookie" in request.headers
+        assert "Authorization" not in request.headers, "Header wasn't dropped"
+        assert "Proxy-Authorization" not in request.headers
+        assert "Cookie" not in request.headers
         return web.Response()
 
     server_from = await create_server_for_url_and_handler(url_from, srv_from)
