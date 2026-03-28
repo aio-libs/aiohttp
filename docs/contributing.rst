@@ -1,61 +1,16 @@
 .. _aiohttp-contributing:
 
-Contributing
-============
+.. include:: ../CONTRIBUTING.rst
+   :end-before: export-point-instructions-for-contributors
 
 (:doc:`contributing-admins`)
-
-Instructions for contributors
------------------------------
-
-In order to make a clone of the GitHub_ repo: open the link and press the "Fork" button on the upper-right menu of the web page.
-
-I hope everybody knows how to work with git and github nowadays :)
-
-Workflow is pretty straightforward:
-
-  0. Make sure you are reading the latest version of this document.
-     It can be found in the GitHub_ repo in the ``docs`` subdirectory.
-
-  1. Clone the GitHub_ repo using the ``--recurse-submodules`` argument
-
-  2. Setup your machine with the required development environment
-
-  3. Make a change
-
-  4. Make sure all tests passed
-
-  5. Add a file into the ``CHANGES`` folder (see `Changelog update`_ for how).
-
-  6. Commit changes to your own aiohttp clone
-
-  7. Make a pull request from the github page of your clone against the master branch
-
-  8. Optionally make backport Pull Request(s) for landing a bug fix into released aiohttp versions.
-
-.. note::
-
-   The project uses *Squash-and-Merge* strategy for *GitHub Merge* button.
-
-   Basically it means that there is **no need to rebase** a Pull Request against
-   *master* branch. Just ``git merge`` *master* into your working copy (a fork) if
-   needed. The Pull Request is automatically squashed into the single commit
-   once the PR is accepted.
-
-.. note::
-
-   GitHub issue and pull request threads are automatically locked when there has
-   not been any recent activity for one year.  Please open a `new issue
-   <https://github.com/aio-libs/aiohttp/issues/new>`_ for related bugs.
-
-   If you feel like there are important points in the locked discussions,
-   please include those excerpts into that new issue.
-
 
 Preconditions for running aiohttp test suite
 --------------------------------------------
 
 We expect you to use a python virtual environment to run our tests.
+Also, ensure that you have `npm
+<https://docs.npmjs.com/downloading-and-installing-node-js-and-npm>`_ installed.
 
 There are several ways to make a virtual environment.
 
@@ -224,9 +179,22 @@ Please before making a Pull Request about documentation changes run:
    $ make doc
 
 Once it finishes it will output the index html page
+
 ``open file:///.../aiohttp/docs/_build/html/index.html``.
 
 Go to the link and make sure your doc changes looks good.
+
+Note that this page doesn't automatically refresh itself. So, if you make more changes, build the docs again to see how they look on the page.
+
+.. note::
+   If you are on MacOS, you might need to install `graphviz <https://graphviz.org/>`_ first.
+   Use
+
+   .. code-block:: shell
+
+      $ brew install graphviz
+
+   and then run the command above to build the docs.
 
 Spell checking
 --------------
