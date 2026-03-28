@@ -170,9 +170,7 @@ class HeadersParser:
         self.max_field_size = max_field_size
         self._lax = lax
 
-    def parse_headers(
-        self, lines: list[bytes]
-    ) -> tuple[HeadersDictProxy, RawHeaders]:
+    def parse_headers(self, lines: list[bytes]) -> tuple[HeadersDictProxy, RawHeaders]:
         headers: dict[str, str] = {}
         # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
