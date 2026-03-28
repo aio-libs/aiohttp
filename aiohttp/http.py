@@ -3,6 +3,7 @@ import sys
 from . import __version__
 from .http_exceptions import HttpProcessingError
 from .http_parser import (
+    HeadersDictProxy,
     HeadersParser,
     HttpParser,
     HttpRequestParser,
@@ -36,6 +37,7 @@ __all__ = (
     "HttpVersion10",
     "HttpVersion11",
     # .http_parser
+    "HeadersDictProxy",
     "HeadersParser",
     "HttpParser",
     "HttpRequestParser",

@@ -34,6 +34,7 @@ from .helpers import (
     sentinel,
     set_exception,
 )
+from .http import HeadersDictProxy
 from .http_parser import RawRequestMessage
 from .http_writer import HttpVersion
 from .multipart import BodyPartReader, MultipartReader
@@ -202,10 +203,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             dct["path"] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
-            new_headers = CIMultiDictProxy(CIMultiDict(headers))
-            dct["headers"] = new_headers
+            h = dict(headers)
+            dct["headers"] = HeadersDictProxy(h)
             dct["raw_headers"] = tuple(
-                (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers.items()
+                (k.encode("utf-8"), v.encode("utf-8")) for k, v in h.items()
             )
 
         message = self._message._replace(**dct)
@@ -313,7 +314,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Returns a tuple containing one or more immutable dicts
         """
         elems = []
-        for field_value in self._message.headers.getall(hdrs.FORWARDED, ()):
+        for field_value in self._message.headers.getall(hdrs.FORWARDED):
             length = len(field_value)
             pos = 0
             need_separator = False
@@ -466,7 +467,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> CIMultiDictProxy[str]:
+    def headers(self) -> HeadersDictProxy:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 

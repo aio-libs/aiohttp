@@ -2,6 +2,7 @@ import abc
 import asyncio
 import re
 import string
+from collections.abc import Iterator, Mapping
 from contextlib import suppress
 from enum import IntEnum
 from re import Pattern
@@ -54,6 +55,8 @@ __all__ = (
     "RawResponseMessage",
 )
 
+_T = TypeVar("_T")
+
 _SEP = Literal[b"\r\n", b"\n"]
 
 ASCIISET: Final[set[str]] = set(string.printable)
@@ -73,14 +76,60 @@ _FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
 )
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
+QUOTEHDRRE = re.compile(r'(".*?(?:[^\\]"))[ \t]*(?:,|$)')
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
+
+
+class HeadersDictProxy(Mapping[str, str]):
+    def __init__(self, d: Mapping[str, str]):
+        self._d = d
+
+    def __getitem__(self, key: str) -> str:
+        return self._d.__getitem__(key.title())
+
+    def __contains__(self, key: object) -> bool:
+        if not isinstance(key, str):
+            return False
+        return self._d.__contains__(key.title())
+
+    def __iter__(self) -> Iterator[str]:
+        return self._d.__iter__()
+
+    def __len__(self) -> int:
+        return self._d.__len__()
+
+    def get(self, key: str, default: _T = None) -> str | _T:
+        return self._d.get(key.title(), default)
+
+    def getall(self, key: str) -> tuple[str, ...]:
+        return self._split_on_commas(self._d.get(key.title(), ""))
+
+    def _split_on_commas(self, val: str) -> tuple[str, ...]:
+        values = []
+        while val:
+            quoted = re.match(QUOTEHDRRE, val)
+            if quoted:
+                values.append(quoted.group(1)[1:-1])
+                val = val[len(quoted.group()) :].lstrip()
+            else:
+                try:
+                    h, val = val.split(",", maxsplit=1)
+                except ValueError:
+                    h = val
+                    val = ""
+                val = val.lstrip()
+                h = h.rstrip()
+                if h:
+                    values.append(h)
+
+        return tuple(values)
 
 
 class RawRequestMessage(NamedTuple):
     method: str
     path: str
     version: HttpVersion
-    headers: CIMultiDictProxy[str]
+    headers: HeadersDictProxy
     raw_headers: RawHeaders
     should_close: bool
     compression: str | None
@@ -93,7 +142,7 @@ class RawResponseMessage(NamedTuple):
     version: HttpVersion
     code: int
     reason: str
-    headers: CIMultiDictProxy[str]
+    headers: HeadersDictProxy
     raw_headers: RawHeaders
     should_close: bool
     compression: str | None
@@ -123,10 +172,8 @@ class HeadersParser:
         self.max_field_size = max_field_size
         self._lax = lax
 
-    def parse_headers(
-        self, lines: list[bytes]
-    ) -> tuple["CIMultiDictProxy[str]", RawHeaders]:
-        headers: CIMultiDict[str] = CIMultiDict()
+    def parse_headers(self, lines: list[bytes]) -> tuple[HeadersDictProxy, RawHeaders]:
+        headers: dict[str, str] = {}
         # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
 
@@ -194,13 +241,34 @@ class HeadersParser:
             elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
-            headers.add(name, value)
             raw_headers.append((bname, bvalue))
+            name = name.title()
+            if name in headers:
+                # https://www.rfc-editor.org/rfc/rfc9110.html#name-field-order
+                # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-8
+                # https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2-13.1
+                # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
+                if name in {
+                    hdrs.CONTENT_LENGTH,
+                    hdrs.CONTENT_LOCATION,
+                    hdrs.CONTENT_RANGE,
+                    hdrs.CONTENT_TYPE,
+                    hdrs.ETAG,
+                    hdrs.HOST,
+                    hdrs.MAX_FORWARDS,
+                    hdrs.SERVER,
+                    hdrs.TRANSFER_ENCODING,
+                    hdrs.USER_AGENT,
+                }:
+                    raise BadHttpMessage(f"Duplicate '{name}' header found.")
+                headers[name] += ", " + value
+            else:
+                headers[name] = value
 
-        return (CIMultiDictProxy(headers), tuple(raw_headers))
+        return (HeadersDictProxy(headers), tuple(raw_headers))
 
 
-def _is_supported_upgrade(headers: CIMultiDictProxy[str]) -> bool:
+def _is_supported_upgrade(headers: HeadersDictProxy) -> bool:
     """Check if the upgrade header is supported."""
     u = headers.get(hdrs.UPGRADE, "")
     # .lower() can transform non-ascii characters.
@@ -488,9 +556,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
     def parse_headers(
         self, lines: list[bytes]
-    ) -> tuple[
-        "CIMultiDictProxy[str]", RawHeaders, bool | None, str | None, bool, bool
-    ]:
+    ) -> tuple[HeadersDictProxy, RawHeaders, bool | None, str | None, bool, bool]:
         """Parses RFC 5322 headers from a stream.
 
         Line continuations are supported. Returns list of header name
@@ -502,32 +568,13 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         upgrade = False
         chunked = False
 
-        # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
-        # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
-        singletons = (
-            hdrs.CONTENT_LENGTH,
-            hdrs.CONTENT_LOCATION,
-            hdrs.CONTENT_RANGE,
-            hdrs.CONTENT_TYPE,
-            hdrs.ETAG,
-            hdrs.HOST,
-            hdrs.MAX_FORWARDS,
-            hdrs.SERVER,
-            hdrs.TRANSFER_ENCODING,
-            hdrs.USER_AGENT,
-        )
-        bad_hdr = next((h for h in singletons if len(headers.getall(h, ())) > 1), None)
-        if bad_hdr is not None:
-            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
-
         # keep-alive and protocol switching
         # RFC 9110 section 7.6.1 defines Connection as a comma-separated list.
-        conn_values = headers.getall(hdrs.CONNECTION, ())
+        conn_values = headers.get(hdrs.CONNECTION)
         if conn_values:
             conn_tokens = {
                 token.lower()
-                for conn_value in conn_values
-                for token in (part.strip(" \t") for part in conn_value.split(","))
+                for token in (part.strip(" \t") for part in conn_values.split(","))
                 if token and token.isascii()
             }
 
