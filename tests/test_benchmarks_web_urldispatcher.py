@@ -16,7 +16,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
-from aiohttp.http import HttpVersion, RawRequestMessage
+from aiohttp.http import HeadersDictProxy, HttpVersion, RawRequestMessage
 
 
 @pytest.fixture
@@ -38,7 +38,7 @@ def _mock_request(method: str, path: str) -> web.Request:
         method,
         path,
         HttpVersion(1, 1),
-        CIMultiDictProxy(CIMultiDict()),
+        HeadersDictProxy({}),
         (),
         False,
         None,

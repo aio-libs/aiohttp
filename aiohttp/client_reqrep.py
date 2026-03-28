@@ -50,6 +50,7 @@ from .helpers import (
 )
 from .http import (
     SERVER_SOFTWARE,
+    HeadersDictProxy,
     HttpProcessingError,
     HttpVersion,
     HttpVersion10,
@@ -192,7 +193,7 @@ class ClientResponse(HeadersMixin):
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
     _body: bytes | None = None
-    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _headers: HeadersDictProxy = None  # type: ignore[assignment]
     _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
@@ -323,7 +324,7 @@ class ClientResponse(HeadersMixin):
         return self._url.host
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> HeadersDictProxy:
         return self._headers
 
     @reify
@@ -462,11 +463,11 @@ class ClientResponse(HeadersMixin):
         self.content = payload
 
         # cookies
-        if cookie_hdrs := (
-            v for k, v in self.raw_headers if k.title() == hdrs.SET_COOKIE
+        if cookie_hdrs := tuple(
+            v for k, v in self.raw_headers if k.title() == hdrs.SET_COOKIE.encode()
         ):
             # Store raw cookie headers for CookieJar
-            self._raw_cookie_headers = tuple(cookie_hdrs)
+            self._raw_cookie_headers = cookie_hdrs
         return self
 
     def _response_eof(self) -> None:

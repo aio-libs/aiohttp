@@ -88,6 +88,8 @@ class HeadersDictProxy(Mapping[str, str]):
         return self._d.__getitem__(key.title())
 
     def __contains__(self, key: object) -> bool:
+        if not isinstance(key, str):
+            return False
         return self._d.__contains__(key.title())
 
     def __iter__(self) -> Iterator[str]:
@@ -266,7 +268,7 @@ class HeadersParser:
         return (HeadersDictProxy(headers), tuple(raw_headers))
 
 
-def _is_supported_upgrade(headers: CIMultiDictProxy[str]) -> bool:
+def _is_supported_upgrade(headers: HeadersDictProxy) -> bool:
     """Check if the upgrade header is supported."""
     u = headers.get(hdrs.UPGRADE, "")
     # .lower() can transform non-ascii characters.
@@ -555,7 +557,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def parse_headers(
         self, lines: list[bytes]
     ) -> tuple[
-        "CIMultiDictProxy[str]", RawHeaders, bool | None, str | None, bool, bool
+        HeadersDictProxy, RawHeaders, bool | None, str | None, bool, bool
     ]:
         """Parses RFC 5322 headers from a stream.
 
