@@ -842,7 +842,7 @@ class MultipartReader:
             if len(lines) > self._max_headers:
                 raise BadHttpMessage("Too many headers received")
         parser = HeadersParser(max_field_size=self._max_field_size)
-        headers, raw_headers = parser.parse_headers(lines)
+        headers, _ = parser.parse_headers(lines)
         return headers
 
     async def _maybe_release_last_part(self) -> None:

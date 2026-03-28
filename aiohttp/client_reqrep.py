@@ -455,14 +455,14 @@ class ClientResponse(HeadersMixin):
         self.reason = message.reason
 
         # headers
-        self._headers = message.headers  # type is CIMultiDictProxy
-        self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
+        self._headers = message.headers
+        self._raw_headers = message.raw_headers
 
         # payload
         self.content = payload
 
         # cookies
-        if cookie_hdrs := self.raw_headers.getall(hdrs.SET_COOKIE, ()):
+        if cookie_hdrs := (v for k, v in self.raw_headers if k.title() == hdrs.SET_COOKIE):
             # Store raw cookie headers for CookieJar
             self._raw_cookie_headers = tuple(cookie_hdrs)
         return self

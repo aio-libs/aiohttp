@@ -2,7 +2,7 @@ import abc
 import asyncio
 import re
 import string
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from contextlib import suppress
 from enum import IntEnum
 from re import Pattern
@@ -55,6 +55,8 @@ __all__ = (
     "RawResponseMessage",
 )
 
+_T = TypeVar("_T")
+
 _SEP = Literal[b"\r\n", b"\n"]
 
 ASCIISET: Final[set[str]] = set(string.printable)
@@ -82,28 +84,25 @@ class HeadersDictProxy(Mapping[str, str]):
     def __init__(self, d: Mapping[str, str]):
         self._d = d
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> str:
         return self._d.__getitem__(key.title())
 
-    def __contains__(self, key: str):
+    def __contains__(self, key: object) -> bool:
         return self._d.__contains__(key.title())
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return self._d.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._d.__len__()
 
-    def has_key(self, key: str):
-        return self._d.has_key(key.title())
-
-    def get(self, key: str, default=None):
+    def get(self, key: str, default: _T = None) -> str | _T:
         return self._d.get(key.title(), default)
 
-    def getall(self, key: str) -> tuple[str]:
-        return self._split_on_commas(self._d.get(key, ""))
+    def getall(self, key: str) -> tuple[str, ...]:
+        return self._split_on_commas(self._d.get(key.title(), ""))
 
-    def _split_on_commas(self, val: str) -> tuple[str]:
+    def _split_on_commas(self, val: str) -> tuple[str, ...]:
         values = []
         while val:
             quoted = re.match(QUOTEHDRRE, val)
@@ -128,7 +127,7 @@ class RawRequestMessage(NamedTuple):
     method: str
     path: str
     version: HttpVersion
-    headers: CIMultiDictProxy[str]
+    headers: HeadersDictProxy
     raw_headers: RawHeaders
     should_close: bool
     compression: str | None
@@ -141,7 +140,7 @@ class RawResponseMessage(NamedTuple):
     version: HttpVersion
     code: int
     reason: str
-    headers: CIMultiDictProxy[str]
+    headers: HeadersDictProxy
     raw_headers: RawHeaders
     should_close: bool
     compression: str | None
@@ -173,8 +172,8 @@ class HeadersParser:
 
     def parse_headers(
         self, lines: list[bytes]
-    ) -> tuple["CIMultiDictProxy[str]", RawHeaders]:
-        headers = {}
+    ) -> tuple[HeadersDictProxy, RawHeaders]:
+        headers: dict[str, str] = {}
         # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
 

@@ -202,10 +202,9 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             dct["path"] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
-            new_headers = CIMultiDictProxy(CIMultiDict(headers))
-            dct["headers"] = new_headers
+            dct["headers"] = HeadersDictProxy(dict(headers))
             dct["raw_headers"] = tuple(
-                (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers.items()
+                (k.encode("utf-8"), v.encode("utf-8")) for k, v in headers.items()
             )
 
         message = self._message._replace(**dct)
@@ -466,7 +465,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> CIMultiDictProxy[str]:
+    def headers(self) -> HeadersDictProxy:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
