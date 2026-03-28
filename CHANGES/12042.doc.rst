@@ -1,2 +1,0 @@
-Documented :exc:`asyncio.TimeoutError` for ``WebSocketResponse.receive()``
-and related methods -- by :user:`veeceey`.
