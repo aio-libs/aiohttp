@@ -21,9 +21,9 @@ Features
 
   *Related issues and pull requests on GitHub:*
   :issue:`11955`.
-  
-  
-  
+
+
+
 - Added a ``dns_cache_max_size`` parameter to ``TCPConnector`` to limit the size of the cache -- by :user:`Dreamsorcerer`.
 
 
@@ -43,9 +43,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`10596`.
-  
-  
-  
+
+
+
 - Fixed access log timestamps ignoring daylight saving time (DST) changes. The
   previous implementation used :py:data:`time.timezone` which is a constant and
   does not reflect DST transitions -- by :user:`nightcityblade`.
@@ -53,9 +53,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`11283`.
-  
-  
-  
+
+
+
 - Fixed ``RuntimeError: An event loop is running`` error when using ``aiohttp.GunicornWebWorker``
   or ``aiohttp.GunicornUVLoopWebWorker`` on Python >=3.14.
   -- by :user:`Tasssadar`.
@@ -63,17 +63,17 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`11701`.
-  
-  
-  
+
+
+
 - Fixed :exc:`ValueError` when creating a TLS connection with ``ClientTimeout(total=0)`` by converting ``0`` to ``None`` before passing to ``ssl_handshake_timeout`` in :py:meth:`asyncio.loop.start_tls` -- by :user:`veeceey`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11859`.
-  
-  
-  
+
+
+
 - Restored :py:meth:`~aiohttp.BodyPartReader.decode` as a synchronous method
   for backward compatibility. The method was inadvertently changed to async
   in 3.13.3 as part of the decompression bomb security fix. A new
@@ -88,52 +88,52 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`11898`.
-  
-  
-  
+
+
+
 - Fixed false-positive :py:class:`DeprecationWarning` for passing ``enable_cleanup_closed=True`` to :py:class:`~aiohttp.TCPConnector` specifically on Python 3.12.7.
   -- by :user:`Robsdedude`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11972`.
-  
-  
-  
+
+
+
 - Fixed _sendfile_fallback over-reading beyond requested count -- by :user:`bysiber`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`12096`.
-  
-  
-  
+
+
+
 - Fixed digest auth dropping challenge fields with empty string values -- by :user:`bysiber`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`12097`.
-  
-  
-  
+
+
+
 - ``ClientConnectorCertificateError.os_error`` no longer raises :exc:`AttributeError`
   -- by :user:`themylogin`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`12136`.
-  
-  
-  
+
+
+
 - Adjusted pure-Python request header value validation to align with RFC 9110 control-character handling, while preserving lax response parser behavior, and added regression tests for Host/header control-character cases.
   -- by :user:`rodrigobnogueira`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`12231`.
-  
-  
-  
+
+
+
 - Rejected duplicate singleton headers (``Host``, ``Content-Type``,
   ``Content-Length``, etc.) in the C extension HTTP parser to match
   the pure Python parser behaviour, preventing potential host-based
@@ -143,9 +143,9 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`12240`.
-  
-  
-  
+
+
+
 - Aligned the pure-Python HTTP request parser with the C parser by splitting
   comma-separated and repeated ``Connection`` header values for keep-alive,
   close, and upgrade handling -- by :user:`rodrigobnogueira`.
@@ -153,22 +153,22 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`12249`.
-  
-  
-  
+
+
+
 
 Improved documentation
 ----------------------
-  
+
 - Documented :exc:`asyncio.TimeoutError` for ``WebSocketResponse.receive()``
   and related methods -- by :user:`veeceey`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`12042`.
-  
-  
-  
+
+
+
 
 Packaging updates and notes for downstreams
 -------------------------------------------
@@ -178,9 +178,9 @@ Packaging updates and notes for downstreams
 
   *Related issues and pull requests on GitHub:*
   :issue:`12069`.
-  
-  
-  
+
+
+
 
 Contributor-facing changes
 --------------------------
@@ -192,17 +192,17 @@ Contributor-facing changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`11737`.
-  
-  
-  
+
+
+
 - Fixed flaky performance tests by using appropriate fixed thresholds that account for CI variability -- by :user:`rodrigobnogueira`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`11992`.
-  
-  
-  
+
+
+
 
 Miscellaneous internal changes
 ------------------------------
@@ -212,17 +212,17 @@ Miscellaneous internal changes
 
   *Related issues and pull requests on GitHub:*
   :issue:`12027`.
-  
-  
-  
+
+
+
 - Fixed race condition in ``test_data_file`` on Python 3.14 free-threaded builds -- by :user:`rodrigobnogueira`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`12170`.
-  
-  
-  
+
+
+
 
 ----
 
