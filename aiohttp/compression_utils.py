@@ -342,7 +342,28 @@ class ZSTDDecompressor(DecompressionBaseHandler):
             if max_length == ZLIB_MAX_LENGTH_UNLIMITED
             else max_length
         )
-        return self._obj.decompress(data, zstd_max_length)
+        result = self._obj.decompress(data, zstd_max_length)
+
+        # Handle multi-frame zstd streams (RFC 8878 §3.1.1):
+        # ZstdDecompressor handles one frame only. When a frame ends,
+        # eof becomes True and any trailing data goes to unused_data.
+        # We create a fresh decompressor to continue with the next frame.
+        while self._obj.eof and self._obj.unused_data:
+            unused = self._obj.unused_data
+            self._obj = ZstdDecompressor()
+            if zstd_max_length != ZSTD_MAX_LENGTH_UNLIMITED:
+                zstd_max_length -= len(result)
+                if zstd_max_length <= 0:
+                    break
+            result += self._obj.decompress(unused, zstd_max_length)
+
+        # Frame ended exactly at chunk boundary — no unused_data, but the
+        # next feed_data() call would fail on the spent decompressor.
+        # Prepare a fresh one for the next chunk.
+        if self._obj.eof:
+            self._obj = ZstdDecompressor()
+
+        return result
 
     def flush(self) -> bytes:
         return b""
