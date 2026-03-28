@@ -556,9 +556,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
     def parse_headers(
         self, lines: list[bytes]
-    ) -> tuple[
-        HeadersDictProxy, RawHeaders, bool | None, str | None, bool, bool
-    ]:
+    ) -> tuple[HeadersDictProxy, RawHeaders, bool | None, str | None, bool, bool]:
         """Parses RFC 5322 headers from a stream.
 
         Line continuations are supported. Returns list of header name
