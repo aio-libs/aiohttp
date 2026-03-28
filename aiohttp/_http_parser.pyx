@@ -557,20 +557,23 @@ cdef class HttpParser:
         cdef:
             size_t data_len
             size_t nb
+            char* base
             cdef cparser.llhttp_errno_t errno
 
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
+        # Cache buffer pointer before PyBuffer_Release to avoid use-after-release.
+        base = <char*>self.py_buf.buf
         data_len = <size_t>self.py_buf.len
 
         errno = cparser.llhttp_execute(
             self._cparser,
-            <char*>self.py_buf.buf,
+            base,
             data_len)
 
         if errno is cparser.HPE_PAUSED_UPGRADE:
             cparser.llhttp_resume_after_upgrade(self._cparser)
 
-            nb = cparser.llhttp_get_error_pos(self._cparser) - <char*>self.py_buf.buf
+            nb = cparser.llhttp_get_error_pos(self._cparser) - base
 
         PyBuffer_Release(&self.py_buf)
 
@@ -581,7 +584,7 @@ cdef class HttpParser:
                     self._last_error = None
                 else:
                     after = cparser.llhttp_get_error_pos(self._cparser)
-                    before = data[:after - <char*>self.py_buf.buf]
+                    before = data[:after - base]
                     after_b = after.split(b"\r\n", 1)[0]
                     before = before.rsplit(b"\r\n", 1)[-1]
                     data = before + after_b
