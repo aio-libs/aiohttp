@@ -354,12 +354,17 @@ class TestPartReader:
             result = await obj.read(decode=True)
         assert b"Time to Relax!" == result
 
+    @pytest.mark.skipif(sys.version_info < (3, 11), reason="wbits not available")
     async def test_read_with_content_encoding_deflate(self) -> None:
+        content = b"A" * 1_000_000  # Large enough to exceed max_length.
+        compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
+
         h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
-        with Stream(b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--") as stream:
+        with Stream(compressed + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read(decode=True)
-        assert b"Time to Relax!" == result
+        assert len(result) == len(content)  # Simplifies diff on failure
+        assert result == content
 
     async def test_read_with_content_encoding_identity(self) -> None:
         thing = (
@@ -1719,6 +1724,28 @@ async def test_body_part_reader_payload_as_bytes() -> None:
     # Test that decode also raises TypeError
     with pytest.raises(TypeError, match="Unable to decode"):
         payload.decode()
+
+
+async def test_body_part_reader_payload_write() -> None:
+    content = b"A" * 1_000_000  # Large enough to exceed max_length.
+    compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
+    output = b""
+
+    async def write(inp: bytes) -> None:
+        nonlocal output
+        output += inp
+
+    h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
+    writer = mock.create_autospec(
+        AbstractStreamWriter, write=write, spec_set=True, instance=True
+    )
+    with Stream(compressed + b"\r\n--:--") as stream:
+        body_part = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+        payload = BodyPartReaderPayload(body_part)
+        await payload.write(writer)
+
+    assert len(output) == len(content)  # Simplifies diff on failure
+    assert output == content
 
 
 async def test_multipart_writer_close_with_exceptions() -> None:

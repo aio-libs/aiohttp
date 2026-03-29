@@ -1,6 +1,7 @@
 import base64
 import binascii
 import json
+import math
 import re
 import sys
 import uuid
@@ -40,6 +41,7 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
+from .web_exceptions import HTTPRequestEntityTooLarge
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -268,6 +270,7 @@ class BodyPartReader:
         subtype: str = "mixed",
         default_charset: str | None = None,
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        client_max_size: int = math.inf,
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -285,6 +288,7 @@ class BodyPartReader:
         self._content_eof = 0
         self._cache: dict[str, Any] = {}
         self._max_decompress_size = max_decompress_size
+        self._client_max_size = client_max_size
 
     def __aiter__(self) -> Self:
         return self
@@ -313,11 +317,19 @@ class BodyPartReader:
         data = bytearray()
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
+            if len(data) > self._client_max_size:
+                raise HTTPRequestEntityTooLarge(
+                    max_size=self._client_max_size, actual_size=len(data)
+                )
         # https://github.com/python/mypy/issues/17537
         if decode:  # type: ignore[unreachable]
             decoded_data = bytearray()
             async for d in self.decode_iter(data):
                 decoded_data.extend(d)
+                if len(decoded_data) > self._client_max_size:
+                    raise HTTPRequestEntityTooLarge(
+                        max_size=self._client_max_size, actual_size=len(decoded_data)
+                    )
             return decoded_data
         return data
 
@@ -559,6 +571,8 @@ class BodyPartReader:
                 suppress_deflate_header=True,
             )
             yield await d.decompress(data, max_length=self._max_decompress_size)
+            while d.data_available:
+                yield await d.decompress(b"", max_length=self._max_decompress_size)
         else:
             raise RuntimeError(f"unknown content encoding: {encoding}")
 
@@ -652,6 +666,7 @@ class MultipartReader:
         headers: Mapping[str, str],
         content: StreamReader,
         *,
+        client_max_size: int = math.inf,
         max_field_size: int = 8190,
         max_headers: int = 128,
     ) -> None:
@@ -664,6 +679,7 @@ class MultipartReader:
 
         self.headers = headers
         self._boundary = ("--" + self._get_boundary()).encode()
+        self._client_max_size = client_max_size
         self._content = content
         self._default_charset: str | None = None
         self._last_part: MultipartReader | BodyPartReader | None = None
@@ -768,10 +784,17 @@ class MultipartReader:
 
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
-                return type(self)(headers, self._content)
+                return type(self)(
+                    headers,
+                    self._content,
+                    client_max_size=self._client_max_size,
+                    max_field_size=self._max_field_size,
+                    max_headers=self._max_headers,
+                )
             return self.multipart_reader_cls(
                 headers,
                 self._content,
+                client_max_size=self._client_max_size,
                 max_field_size=self._max_field_size,
                 max_headers=self._max_headers,
             )
@@ -782,6 +805,7 @@ class MultipartReader:
                 self._content,
                 subtype=self._mimetype.subtype,
                 default_charset=self._default_charset,
+                client_max_size=self._client_max_size,
             )
 
     def _get_boundary(self) -> str:

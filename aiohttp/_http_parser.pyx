@@ -305,15 +305,19 @@ cdef class HttpParser:
         bint _response_with_body
         bint _read_until_eof
 
+        bytes   _tail
         bint    _started
         object  _url
         bytearray   _buf
         str     _path
         str     _reason
         list    _headers
+        bint    _last_had_more_data
         list    _raw_headers
         bint    _upgraded
         list    _messages
+        bint    _more_data_available
+        bint    _paused
         object  _payload
         bint    _payload_error
         object  _payload_exception
@@ -359,6 +363,9 @@ cdef class HttpParser:
         self._timer = timer
 
         self._buf = bytearray()
+        self._last_had_more_data = False
+        self._more_data_available = False
+        self._paused = False
         self._payload = None
         self._payload_error = 0
         self._payload_exception = payload_exception
@@ -366,6 +373,7 @@ cdef class HttpParser:
 
         self._raw_name = EMPTY_BYTES
         self._raw_value = EMPTY_BYTES
+        self._tail = b""
         self._has_value = False
         self._header_name_size = 0
 
@@ -532,6 +540,10 @@ cdef class HttpParser:
 
     ### Public API ###
 
+    def pause_reading(self):
+        assert self._payload is not None
+        self._paused = True
+
     def feed_eof(self):
         cdef bytes desc
 
@@ -559,6 +571,23 @@ cdef class HttpParser:
             char* base
             cdef cparser.llhttp_errno_t errno
 
+        if self._tail:
+            data, self._tail = self._tail + data, EMPTY_BYTES
+
+        had_more_data = self._more_data_available
+        if self._more_data_available:
+            result = cb_on_body(self._cparser, EMPTY_BYTES, 0)
+            if result is cparser.HPE_PAUSED:
+                self._last_had_more_data = had_more_data
+                self._tail = data
+                return (), False, EMPTY_BYTES
+            # TODO: Do we need to handle error case (-1)?
+        # If the last pause had more data, then we probably paused at the
+        # end of the body. Therefore we need to continue with empty bytes.
+        if not data and not self._last_had_more_data:
+            return (), False, EMPTY_BYTES
+        self._last_had_more_data = False
+
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
         # Cache buffer pointer before PyBuffer_Release to avoid use-after-release.
         base = <char*>self.py_buf.buf
@@ -571,12 +600,15 @@ cdef class HttpParser:
 
         if errno is cparser.HPE_PAUSED_UPGRADE:
             cparser.llhttp_resume_after_upgrade(self._cparser)
-
             nb = cparser.llhttp_get_error_pos(self._cparser) - base
+        elif errno is cparser.HPE_PAUSED:
+            cparser.llhttp_resume(self._cparser)
+            pos = cparser.llhttp_get_error_pos(self._cparser) - base
+            self._tail = data[pos:]
 
         PyBuffer_Release(&self.py_buf)
 
-        if errno not in (cparser.HPE_OK, cparser.HPE_PAUSED_UPGRADE):
+        if errno not in (cparser.HPE_OK, cparser.HPE_PAUSED, cparser.HPE_PAUSED_UPGRADE):
             if self._payload_error == 0:
                 if self._last_error is not None:
                     ex = self._last_error
@@ -601,7 +633,7 @@ cdef class HttpParser:
         if self._upgraded:
             return messages, True, data[nb:]
         else:
-            return messages, False, b""
+            return messages, False, EMPTY_BYTES
 
     def set_upgraded(self, val):
         self._upgraded = val
@@ -794,19 +826,26 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
                     const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef bytes body = at[:length]
-    try:
-        pyparser._payload.feed_data(body)
-    except BaseException as underlying_exc:
-        reraised_exc = underlying_exc
-        if pyparser._payload_exception is not None:
-            reraised_exc = pyparser._payload_exception(str(underlying_exc))
+    while body or pyparser._more_data_available:
+        try:
+            pyparser._more_data_available = pyparser._payload.feed_data(body)
+        except BaseException as underlying_exc:
+            reraised_exc = underlying_exc
+            if pyparser._payload_exception is not None:
+                reraised_exc = pyparser._payload_exception(str(underlying_exc))
 
-        set_exception(pyparser._payload, reraised_exc, underlying_exc)
+            set_exception(pyparser._payload, reraised_exc, underlying_exc)
 
-        pyparser._payload_error = 1
-        return -1
-    else:
-        return 0
+            pyparser._payload_error = 1
+            pyparser._paused = False
+            return -1
+        body = EMPTY_BYTES
+
+        if pyparser._paused:
+            pyparser._paused = False
+            return cparser.HPE_PAUSED
+    pyparser._paused = False
+    return 0
 
 
 cdef int cb_on_message_complete(cparser.llhttp_t* parser) except -1:
