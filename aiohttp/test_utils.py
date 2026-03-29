@@ -671,7 +671,7 @@ def make_mocked_request(
             (k.encode("utf-8"), v.encode("utf-8")) for k, v in headers.items()
         )
     else:
-        headers = HeadersDictProxy(CIMultiDict)
+        headers = HeadersDictProxy(CIMultiDict())
         raw_hdrs = ()
 
     chunked = "chunked" in headers.get(hdrs.TRANSFER_ENCODING, "").lower()
