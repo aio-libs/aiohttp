@@ -449,7 +449,7 @@ cdef class HttpParser:
 
         # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
         bad_hdr = next(
-            (h for h in SINGLETON_HEADERS if len(headers.getall(h, ())) > 1),
+            (h for h in SINGLETON_HEADERS if len(headers._d.getall(h, ())) > 1),
             None,
         )
         if bad_hdr is not None:
