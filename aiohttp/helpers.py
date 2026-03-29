@@ -13,6 +13,7 @@ import netrc
 import os
 import platform
 import re
+import reprlib
 import sys
 import time
 import warnings
@@ -752,34 +753,7 @@ def ceil_timeout(
 
 class HeadersDictProxy(Mapping[str, str]):
     def __init__(self, md: CIMultiDict[str]):
-        self._d = CIMultiDictProxy(md)
-
-    def __eq__(self, other: object) -> bool:
-        return self._d.__eq__(other)
-
-    def __getitem__(self, key: str) -> str:
-        return ", ".join(self._d.getall(key))
-
-    def __contains__(self, key: object) -> bool:
-        if not isinstance(key, str):
-            return False
-        return self._d.__contains__(key)
-
-    def __iter__(self) -> Iterator[str]:
-        # We need to deduplicate keys from MultiDict
-        return iter(set(self._d.__iter__()))
-
-    def __len__(self) -> int:
-        return self._d.__len__()
-
-    @overload
-    def get(self, key: str, /) -> str | None: ...
-    @overload
-    def get(self, key: str, /, default: _T) -> str | _T: ...
-    def get(self, key: str, default: _T | None = None) -> str | _T | None:
-        if key not in self._d:
-            return default
-        return ", ".join(self._d.getall(key))
+        self._md = CIMultiDictProxy(md)
 
     def getall(self, key: str) -> tuple[str, ...]:
         return self._split_on_commas(self.get(key, ""))
@@ -803,6 +777,21 @@ class HeadersDictProxy(Mapping[str, str]):
                     values.append(h)
 
         return tuple(values)
+
+    def __getitem__(self, key: str) -> str:
+        return ", ".join(self._md.getall(key))
+
+    def __iter__(self) -> Iterator[str]:
+        # We need to deduplicate keys from MultiDict
+        return iter(set(self._md.__iter__()))
+
+    def __len__(self) -> int:
+        return len(set(self._md.keys()))
+
+    @reprlib.recursive_repr()
+    def __repr__(self) -> str:
+        body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
+        return f"<{self.__class__.__name__}({body})>"
 
 
 class HeadersMixin:
