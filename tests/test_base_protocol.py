@@ -283,7 +283,7 @@ async def test_cancelled_drain_no_unhandled_future_warning() -> None:
     assert pr._drain_waiter is None
 
     # Verify the waiter is cancelled, not set with an exception.
-    assert waiter.cancelled()
+    assert waiter.cancelled()  # type: ignore[unreachable]
 
 
 async def test_parallel_drain_race_condition() -> None:
