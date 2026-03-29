@@ -31,7 +31,7 @@ class HttpProcessingError(Exception):
         *,
         code: int | None = None,
         message: str = "",
-        headers: HeadersDictProxy[str] | None = None,
+        headers: HeadersDictProxy | None = None,
     ) -> None:
         if code is not None:
             self.code = code
