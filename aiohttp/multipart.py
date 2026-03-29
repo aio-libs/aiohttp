@@ -262,7 +262,7 @@ class BodyPartReader:
     def __init__(
         self,
         boundary: bytes,
-        headers: "CIMultiDictProxy[str]",
+        headers: HeadersDictProxy,
         content: StreamReader,
         *,
         subtype: str = "mixed",
