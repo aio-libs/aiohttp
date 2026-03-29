@@ -778,6 +778,9 @@ class HeadersDictProxy(Mapping[str, str]):
 
         return tuple(values)
 
+    def __eq__(self, other: object) -> bool:
+        return self._md.__eq__(other)
+
     def __getitem__(self, key: str) -> str:
         return ", ".join(self._md.getall(key))
 
