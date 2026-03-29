@@ -463,11 +463,7 @@ class ClientResponse(HeadersMixin):
         self.content = payload
 
         # cookies
-        if cookie_hdrs := tuple(
-            v.decode()
-            for k, v in self.raw_headers
-            if k.title() == hdrs.SET_COOKIE.encode()
-        ):
+        if cookie_hdrs := self.headers._d.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
             self._raw_cookie_headers = cookie_hdrs
         return self
