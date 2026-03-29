@@ -20,6 +20,7 @@ from aiohttp.hdrs import (
     CONTENT_TYPE,
 )
 from aiohttp.helpers import parse_mimetype
+from aiohttp.http import HeadersDictProxy
 from aiohttp.multipart import (
     BodyPartReader,
     BodyPartReaderPayload,
