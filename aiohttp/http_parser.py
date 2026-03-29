@@ -565,7 +565,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
             hdrs.TRANSFER_ENCODING,
             hdrs.USER_AGENT,
         )
-        bad_hdr = next((h for h in singletons if len(headers._d.getall(h, ())) > 1), None)
+        bad_hdr = next(
+            (h for h in singletons if len(headers._d.getall(h, ())) > 1), None
+        )
         if bad_hdr is not None:
             raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
