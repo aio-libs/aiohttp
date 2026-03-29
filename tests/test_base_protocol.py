@@ -242,6 +242,50 @@ async def test_resume_drain_cancelled() -> None:
     assert pr._drain_waiter is None
 
 
+async def test_cancelled_drain_no_unhandled_future_warning() -> None:
+    """Cancelling a task during backpressure must not leave an orphaned future.
+
+    When the handler task is cancelled while awaiting _drain_helper and
+    connection_lost fires with an exception afterward, the waiter should
+    already be done (cancelled) so set_exception is skipped. No "Future
+    exception was never retrieved" warning should appear.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/12281
+    """
+    loop = asyncio.get_event_loop()
+    pr = BaseProtocol(loop=loop)
+    tr = mock.Mock()
+    pr.connection_made(tr)
+    pr.pause_writing()
+
+    fut = loop.create_future()
+
+    async def wait() -> None:
+        fut.set_result(None)
+        await pr._drain_helper()
+
+    t = loop.create_task(wait())
+    await fut
+    t.cancel()
+    with suppress(asyncio.CancelledError):
+        await t
+
+    # After cancellation the waiter should be done (cancelled), so
+    # connection_lost with an exception must not call set_exception.
+    assert pr._drain_waiter is not None
+    waiter = pr._drain_waiter
+    assert waiter.done(), "waiter must be cancelled when task is cancelled"
+
+    # This previously left an orphaned future with an unhandled exception
+    # because asyncio.shield kept the original waiter alive and uncancelled.
+    exc = RuntimeError("connection died")
+    pr.connection_lost(exc)
+    assert pr._drain_waiter is None
+
+    # Verify the waiter is cancelled, not set with an exception.
+    assert waiter.cancelled()  # type: ignore[unreachable]
+
+
 async def test_parallel_drain_race_condition() -> None:
     loop = asyncio.get_event_loop()
     pr = BaseProtocol(loop=loop)
