@@ -207,7 +207,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
                 (k.encode("utf-8"), v.encode("utf-8"))
-                for k, v in new_headers._d.items()
+                for k, v in new_headers._md.items()
             )
 
         message = self._message._replace(**dct)
@@ -315,44 +315,44 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Returns a tuple containing one or more immutable dicts
         """
         elems = []
-        for field_value in self._message.headers.getall(hdrs.FORWARDED):
-            length = len(field_value)
-            pos = 0
-            need_separator = False
-            elem: dict[str, str] = {}
-            elems.append(types.MappingProxyType(elem))
-            while 0 <= pos < length:
-                match = _FORWARDED_PAIR_RE.match(field_value, pos)
-                if match is not None:  # got a valid forwarded-pair
-                    if need_separator:
-                        # bad syntax here, skip to next comma
-                        pos = field_value.find(",", pos)
-                    else:
-                        name, value, port = match.groups()
-                        if value[0] == '"':
-                            # quoted string: remove quotes and unescape
-                            value = _QUOTED_PAIR_REPLACE_RE.sub(r"\1", value[1:-1])
-                        if port:
-                            value += port
-                        elem[name.lower()] = value
-                        pos += len(match.group(0))
-                        need_separator = True
-                elif field_value[pos] == ",":  # next forwarded-element
-                    need_separator = False
-                    elem = {}
-                    elems.append(types.MappingProxyType(elem))
-                    pos += 1
-                elif field_value[pos] == ";":  # next forwarded-pair
-                    need_separator = False
-                    pos += 1
-                elif field_value[pos] in " \t":
-                    # Allow whitespace even between forwarded-pairs, though
-                    # RFC 7239 doesn't. This simplifies code and is in line
-                    # with Postel's law.
-                    pos += 1
-                else:
+        field_value = self._message.headers.get(hdrs.FORWARDED, "")
+        length = len(field_value)
+        pos = 0
+        need_separator = False
+        elem: dict[str, str] = {}
+        elems.append(types.MappingProxyType(elem))
+        while 0 <= pos < length:
+            match = _FORWARDED_PAIR_RE.match(field_value, pos)
+            if match is not None:  # got a valid forwarded-pair
+                if need_separator:
                     # bad syntax here, skip to next comma
                     pos = field_value.find(",", pos)
+                else:
+                    name, value, port = match.groups()
+                    if value[0] == '"':
+                        # quoted string: remove quotes and unescape
+                        value = _QUOTED_PAIR_REPLACE_RE.sub(r"\1", value[1:-1])
+                    if port:
+                        value += port
+                    elem[name.lower()] = value
+                    pos += len(match.group(0))
+                    need_separator = True
+            elif field_value[pos] == ",":  # next forwarded-element
+                need_separator = False
+                elem = {}
+                elems.append(types.MappingProxyType(elem))
+                pos += 1
+            elif field_value[pos] == ";":  # next forwarded-pair
+                need_separator = False
+                pos += 1
+            elif field_value[pos] in " \t":
+                # Allow whitespace even between forwarded-pairs, though
+                # RFC 7239 doesn't. This simplifies code and is in line
+                # with Postel's law.
+                pos += 1
+            else:
+                # bad syntax here, skip to next comma
+                pos = field_value.find(",", pos)
         return tuple(elems)
 
     @reify
