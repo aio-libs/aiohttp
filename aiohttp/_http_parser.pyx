@@ -13,6 +13,7 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
 
+from multidict import CIMultiDict as _CIMultiDict
 from yarl import URL as _URL
 
 from aiohttp import hdrs
@@ -61,6 +62,7 @@ __all__ = ('HttpRequestParser', 'HttpResponseParser',
 
 cdef object URL = _URL
 cdef object URL_build = URL.build
+cdef object CIMultiDict = _CIMultiDict
 cdef object HeadersDictProxy = _HeadersDictProxy
 cdef object HttpVersion = _HttpVersion
 cdef object HttpVersion10 = _HttpVersion10
@@ -406,6 +408,10 @@ cdef class HttpParser:
             if "\x00" in value:
                 raise InvalidHeader(self._raw_value)
 
+            self._headers.append((name, value))
+            if len(self._headers) > self._max_headers:
+                raise BadHttpMessage("Too many headers received")
+
             if name is CONTENT_ENCODING:
                 self._content_encoding = value
 
@@ -414,18 +420,6 @@ cdef class HttpParser:
             self._raw_headers.append((self._raw_name, self._raw_value))
             self._raw_name = EMPTY_BYTES
             self._raw_value = EMPTY_BYTES
-
-            if len(self._raw_headers) > self._max_headers:
-                raise BadHttpMessage("Too many headers received")
-
-            name = name.title()
-            if name in self._headers:
-                # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
-                if name in SINGLETON_HEADERS:
-                    raise BadHttpMessage(f"Duplicate '{name}' header found.")
-                self._headers[name] += ", " + value
-            else:
-                self._headers[name] = value
 
     cdef _on_header_field(self, char* at, size_t length):
         if self._has_value:
@@ -451,7 +445,15 @@ cdef class HttpParser:
         chunked = self._cparser.flags & cparser.F_CHUNKED
 
         raw_headers = tuple(self._raw_headers)
-        headers = HeadersDictProxy(self._headers)
+        headers = HeadersDictProxy(CIMultiDict(self._headers))
+
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
+        bad_hdr = next(
+            (h for h in SINGLETON_HEADERS if len(headers.getall(h, ())) > 1),
+            None,
+        )
+        if bad_hdr is not None:
+            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             h_upg = headers.get("upgrade", "")
@@ -702,7 +704,7 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
 
     pyparser._started = True
-    pyparser._headers = {}
+    pyparser._headers = []
     pyparser._raw_headers = []
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
