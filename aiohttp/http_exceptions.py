@@ -4,7 +4,10 @@ from textwrap import indent
 
 from multidict import CIMultiDict
 
-from .http_parser import HeadersDictProxy
+if TYPE_CHECKING:
+    from .http_parser import HeadersDictProxy
+else:
+    from typing import Any as HeadersDictProxy
 
 __all__ = ("HttpProcessingError",)
 
