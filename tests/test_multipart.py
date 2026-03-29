@@ -1593,7 +1593,7 @@ async def test_async_for_reader() -> None:
 
 
 async def test_async_for_bodypart() -> None:
-    h = HeadersDictProxy[str](CIMultiDict())
+    h = HeadersDictProxy(CIMultiDict())
     with Stream(b"foobarbaz\r\n--:--") as stream:
         part = aiohttp.BodyPartReader(boundary=b"--:", headers=h, content=stream)
         async for data in part:

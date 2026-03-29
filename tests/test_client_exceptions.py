@@ -6,6 +6,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 from aiohttp import client, client_reqrep
+from aiohttp.helpers import HeadersDictProxy
 
 
 class TestClientResponseError:
