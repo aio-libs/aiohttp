@@ -84,6 +84,9 @@ class HeadersDictProxy(Mapping[str, str]):
     def __init__(self, md: CIMultiDict[str]):
         self._d = CIMultiDictProxy(md)
 
+    def __eq__(self, other: object) -> bool:
+        return self._d.__eq__(other)
+
     def __getitem__(self, key: str) -> str:
         return ", ".join(self._d.getall(key))
 
