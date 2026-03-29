@@ -76,7 +76,7 @@ class FileField:
     filename: str
     file: io.BufferedReader
     content_type: str
-    headers: CIMultiDictProxy[str]
+    headers: HeadersDictProxy
 
 
 _TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
@@ -139,7 +139,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         self._payload_writer = payload_writer
 
         self._payload = payload
-        self._headers: CIMultiDictProxy[str] = message.headers
+        self._headers: HeadersDictProxy = message.headers
         self._method = message.method
         self._version = message.version
         self._cache: dict[str, Any] = {}
@@ -203,10 +203,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             dct["path"] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
-            h = dict(headers)
-            dct["headers"] = HeadersDictProxy(h)
+            new_headers = HeadersDictProxy(CIMultiDict(headers))
+            dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
-                (k.encode("utf-8"), v.encode("utf-8")) for k, v in h.items()
+                (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers._d.items()
             )
 
         message = self._message._replace(**dct)
