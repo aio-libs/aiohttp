@@ -20,6 +20,7 @@ from aiohttp.base_protocol import BaseProtocol
 from aiohttp.helpers import NO_EXTENSIONS
 from aiohttp.http_parser import (
     DeflateBuffer,
+    HeadersDictProxy,
     HeadersParser,
     HttpParser,
     HttpPayloadParser,
