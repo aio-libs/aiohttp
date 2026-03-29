@@ -82,7 +82,7 @@ HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
 class HeadersDictProxy(Mapping[str, str]):
     def __init__(self, d: Mapping[str, str]):
-        self._d = d
+        self._d = {k.title(): v for k, v in d}
 
     def __getitem__(self, key: str) -> str:
         return self._d.__getitem__(key.title())
