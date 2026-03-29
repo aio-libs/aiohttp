@@ -179,7 +179,7 @@ class HeadersParser:
         self._lax = lax
 
     def parse_headers(self, lines: list[bytes]) -> tuple[HeadersDictProxy, RawHeaders]:
-        headers: CIMultiDict[str] = {}
+        headers: CIMultiDict[str] = CIMultiDict()
         # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
 
