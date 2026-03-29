@@ -465,7 +465,7 @@ class ClientResponse(HeadersMixin):
         # cookies
         if cookie_hdrs := self.headers._d.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
-            self._raw_cookie_headers = cookie_hdrs
+            self._raw_cookie_headers = tuple(cookie_hdrs)
         return self
 
     def _response_eof(self) -> None:
