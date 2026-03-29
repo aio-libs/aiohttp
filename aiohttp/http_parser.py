@@ -98,7 +98,11 @@ class HeadersDictProxy(Mapping[str, str]):
     def __len__(self) -> int:
         return self._d.__len__()
 
-    def get(self, key: str, default: _T = None) -> str | _T:
+    @overload
+    def get(self, key: str, /) -> str | None: ...
+    @overload
+    def get(self, key: str, /, default: _T) -> str | _T: ...
+    def get(self, key: str, default: _T | None = None) -> str | _T | None:
         if key not in self._d:
             return default
         return ", ".join(self._d.getall(key))
