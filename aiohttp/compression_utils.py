@@ -344,7 +344,8 @@ class ZSTDDecompressor(DecompressionBaseHandler):
         )
         result = self._obj.decompress(data, zstd_max_length)
 
-        # Handle multi-frame zstd streams (RFC 8878 §3.1.1):
+        # Handle multi-frame zstd streams.
+        # https://datatracker.ietf.org/doc/html/rfc8878#section-3.1.1
         # ZstdDecompressor handles one frame only. When a frame ends,
         # eof becomes True and any trailing data goes to unused_data.
         # We create a fresh decompressor to continue with the next frame.
