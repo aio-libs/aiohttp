@@ -17,10 +17,9 @@ from yarl import URL
 import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
-from aiohttp.helpers import NO_EXTENSIONS
+from aiohttp.helpers import NO_EXTENSIONS, HeadersDictProxy
 from aiohttp.http_parser import (
     DeflateBuffer,
-    HeadersDictProxy,
     HeadersParser,
     HttpParser,
     HttpPayloadParser,

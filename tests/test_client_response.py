@@ -16,8 +16,7 @@ import aiohttp
 from aiohttp import ClientSession, hdrs, http
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
-from aiohttp.helpers import TimerNoop
-from aiohttp.http import HeadersDictProxy
+from aiohttp.helpers import HeadersDictProxy, TimerNoop
 from aiohttp.multipart import BadContentDispositionHeader
 from aiohttp.tracing import Trace
 

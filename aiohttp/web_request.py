@@ -25,6 +25,7 @@ from .helpers import (
     LIST_QUOTED_ETAG_RE,
     ChainMapProxy,
     ETag,
+    HeadersDictProxy,
     HeadersMixin,
     RequestKey,
     frozen_dataclass_decorator,
@@ -34,7 +35,6 @@ from .helpers import (
     sentinel,
     set_exception,
 )
-from .http import HeadersDictProxy
 from .http_parser import RawRequestMessage
 from .http_writer import HttpVersion
 from .multipart import BodyPartReader, MultipartReader

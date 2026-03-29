@@ -5,7 +5,7 @@ import pickle
 from multidict import CIMultiDict
 
 from aiohttp import http_exceptions
-from aiohttp.http import HeadersDictProxy
+from aiohttp.helpers import HeadersDictProxy
 
 
 class TestHttpProcessingError:

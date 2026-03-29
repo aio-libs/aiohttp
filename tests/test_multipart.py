@@ -19,8 +19,7 @@ from aiohttp.hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from aiohttp.helpers import parse_mimetype
-from aiohttp.http import HeadersDictProxy
+from aiohttp.helpers import HeadersDictProxy, parse_mimetype
 from aiohttp.multipart import (
     BodyPartReader,
     BodyPartReaderPayload,

@@ -38,6 +38,7 @@ from .helpers import (
     _SENTINEL,
     BaseTimerContext,
     BasicAuth,
+    HeadersDictProxy,
     HeadersMixin,
     TimerNoop,
     frozen_dataclass_decorator,
@@ -50,7 +51,6 @@ from .helpers import (
 )
 from .http import (
     SERVER_SOFTWARE,
-    HeadersDictProxy,
     HttpProcessingError,
     HttpVersion,
     HttpVersion10,

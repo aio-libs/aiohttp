@@ -28,6 +28,7 @@ from .helpers import (
     EMPTY_BODY_STATUS_CODES,
     NO_EXTENSIONS,
     BaseTimerContext,
+    HeadersDictProxy,
     set_exception,
 )
 from .http_exceptions import (
@@ -78,61 +79,6 @@ VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 QUOTEHDRRE = re.compile(r'(".*?(?:[^\\]"))[ \t]*(?:,|$)')
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
-
-
-class HeadersDictProxy(Mapping[str, str]):
-    def __init__(self, md: CIMultiDict[str]):
-        self._d = CIMultiDictProxy(md)
-
-    def __eq__(self, other: object) -> bool:
-        return self._d.__eq__(other)
-
-    def __getitem__(self, key: str) -> str:
-        return ", ".join(self._d.getall(key))
-
-    def __contains__(self, key: object) -> bool:
-        if not isinstance(key, str):
-            return False
-        return self._d.__contains__(key)
-
-    def __iter__(self) -> Iterator[str]:
-        # We need to deduplicate keys from MultiDict
-        return iter(set(self._d.__iter__()))
-
-    def __len__(self) -> int:
-        return self._d.__len__()
-
-    @overload
-    def get(self, key: str, /) -> str | None: ...
-    @overload
-    def get(self, key: str, /, default: _T) -> str | _T: ...
-    def get(self, key: str, default: _T | None = None) -> str | _T | None:
-        if key not in self._d:
-            return default
-        return ", ".join(self._d.getall(key))
-
-    def getall(self, key: str) -> tuple[str, ...]:
-        return self._split_on_commas(self.get(key, ""))
-
-    def _split_on_commas(self, val: str) -> tuple[str, ...]:
-        values = []
-        while val:
-            quoted = re.match(QUOTEHDRRE, val)
-            if quoted:
-                values.append(quoted.group(1)[1:-1])
-                val = val[len(quoted.group()) :].lstrip()
-            else:
-                try:
-                    h, val = val.split(",", maxsplit=1)
-                except ValueError:
-                    h = val
-                    val = ""
-                val = val.lstrip()
-                h = h.rstrip()
-                if h:
-                    values.append(h)
-
-        return tuple(values)
 
 
 class RawRequestMessage(NamedTuple):

@@ -19,6 +19,7 @@ from yarl import URL as _URL
 from aiohttp import hdrs
 from aiohttp.helpers import DEBUG, set_exception
 
+from .helpers import HeadersDictProxy as _HeadersDictProxy
 from .http_exceptions import (
     BadHttpMessage,
     BadHttpMethod,
@@ -30,10 +31,7 @@ from .http_exceptions import (
     PayloadEncodingError,
     TransferEncodingError,
 )
-from .http_parser import (
-    DeflateBuffer as _DeflateBuffer,
-    HeadersDictProxy as _HeadersDictProxy,
-)
+from .http_parser import DeflateBuffer as _DeflateBuffer
 from .http_writer import (
     HttpVersion as _HttpVersion,
     HttpVersion10 as _HttpVersion10,

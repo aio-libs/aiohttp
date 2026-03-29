@@ -29,7 +29,8 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar, AbstractStreamWriter
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .http import HeadersDictProxy, HttpVersion, RawRequestMessage
+from .helpers import HeadersDictProxy
+from .http import HttpVersion, RawRequestMessage
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import LooseHeaders, StrOrURL
 from .web import (

@@ -26,8 +26,8 @@ from .hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from .helpers import CHAR, TOKEN, parse_mimetype, reify
-from .http import HeadersDictProxy, HeadersParser
+from .helpers import CHAR, TOKEN, HeadersDictProxy, parse_mimetype, reify
+from .http import HeadersParser
 from .http_exceptions import BadHttpMessage
 from .log import internal_logger
 from .payload import (

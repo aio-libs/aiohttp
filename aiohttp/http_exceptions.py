@@ -1,14 +1,10 @@
 """Low-level http related exceptions."""
 
 from textwrap import indent
-from typing import TYPE_CHECKING
 
 from multidict import CIMultiDict
 
-if TYPE_CHECKING:
-    from .http_parser import HeadersDictProxy
-else:
-    from typing import Any as HeadersDictProxy
+from .helpers import HeadersDictProxy
 
 __all__ = ("HttpProcessingError",)
 

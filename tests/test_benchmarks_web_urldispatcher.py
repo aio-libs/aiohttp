@@ -16,7 +16,8 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
-from aiohttp.http import HeadersDictProxy, HttpVersion, RawRequestMessage
+from aiohttp.helpers import HeadersDictProxy
+from aiohttp.http import HttpVersion, RawRequestMessage
 
 
 @pytest.fixture

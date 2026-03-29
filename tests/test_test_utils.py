@@ -12,7 +12,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
-from aiohttp.http import HeadersDictProxy
+from aiohttp.helpers import HeadersDictProxy
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import (
     AioHTTPTestCase,
