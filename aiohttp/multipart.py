@@ -755,7 +755,7 @@ class MultipartReader:
 
     def _get_part_reader(
         self,
-        headers: HeadersDictProxy",
+        headers: HeadersDictProxy,
     ) -> Union["MultipartReader", BodyPartReader]:
         """Dispatches the response by the `Content-Type` header.
 
