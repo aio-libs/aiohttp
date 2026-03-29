@@ -38,7 +38,7 @@ def _mock_request(method: str, path: str) -> web.Request:
         method,
         path,
         HttpVersion(1, 1),
-        HeadersDictProxy({}),
+        HeadersDictProxy(CIMultiDict()),
         (),
         False,
         None,

@@ -35,7 +35,7 @@ def test_base_ctor() -> None:
         "GET",
         "/path/to?a=1&b=2",
         HttpVersion(1, 1),
-        HeadersDictProxy({}),
+        HeadersDictProxy(CIMultiDict()),
         (),
         False,
         None,
