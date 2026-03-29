@@ -19,9 +19,10 @@ if TYPE_CHECKING:
     from .http import HeadersDictProxy
     from .http_parser import RawResponseMessage
 else:
+    from typing import Any
     RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = (
         HeadersDictProxy
-    ) = None
+    ) = Any
 
 __all__ = (
     "ClientError",
