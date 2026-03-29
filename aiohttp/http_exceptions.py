@@ -1,6 +1,7 @@
 """Low-level http related exceptions."""
 
 from textwrap import indent
+from typing import TYPE_CHECKING
 
 from multidict import CIMultiDict
 
