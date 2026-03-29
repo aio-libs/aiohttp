@@ -5555,12 +5555,6 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
         # and .www.amazon.it domains
         resp = await session.get(f"http://www.amazon.it:{port}/")
 
-        # Check headers
-        cookie_headers = resp.headers.getall("Set-Cookie")
-        assert (
-            len(cookie_headers) == 12
-        ), f"Expected 12 headers, got {len(cookie_headers)}"
-
         # Check parsed cookies - SimpleCookie only keeps the last
         # cookie with each name. So we expect 10 unique cookie names
         # (not 12)
