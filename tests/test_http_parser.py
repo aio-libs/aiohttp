@@ -492,10 +492,7 @@ def test_parse_headers_multi(parser: HttpRequestParser) -> None:
     assert len(messages) == 1
     msg = messages[0][0]
 
-    assert list(msg.headers.items()) == [
-        ("Set-Cookie", "c1=cookie1"),
-        ("Set-Cookie", "c2=cookie2"),
-    ]
+    assert list(msg.headers.items()) == [("Set-Cookie", "c1=cookie1, c2=cookie2")]
     assert msg.raw_headers == (
         (b"Set-Cookie", b"c1=cookie1"),
         (b"Set-Cookie", b"c2=cookie2"),
@@ -1629,11 +1626,7 @@ def test_parse_content_length_payload_multiple(response: HttpResponseParser) -> 
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == 200
     assert msg.reason == "OK"
-    assert msg.headers == CIMultiDict(
-        [
-            ("Content-Length", "5"),
-        ]
-    )
+    assert msg.headers == HeadersDictProxy(CIMultiDict([("Content-Length", "5")]))
     assert msg.raw_headers == ((b"content-length", b"5"),)
     assert not msg.should_close
     assert msg.compression is None
@@ -1669,11 +1662,7 @@ def test_parse_content_length_than_chunked_payload(
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == 200
     assert msg.reason == "OK"
-    assert msg.headers == CIMultiDict(
-        [
-            ("Content-Length", "5"),
-        ]
-    )
+    assert msg.headers == HeadersDictProxy(CIMultiDict([("Content-Length", "5")]))
     assert msg.raw_headers == ((b"content-length", b"5"),)
     assert not msg.should_close
     assert msg.compression is None
@@ -1715,11 +1704,7 @@ def test_parse_chunked_payload_empty_body_than_another_chunked(
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == code
     assert msg.reason == "OK"
-    assert msg.headers == CIMultiDict(
-        [
-            ("Transfer-Encoding", "chunked"),
-        ]
-    )
+    assert msg.headers == HeadersDictProxy(CIMultiDict([("Transfer-Encoding", "chunked")]))
     assert msg.raw_headers == ((b"transfer-encoding", b"chunked"),)
     assert not msg.should_close
     assert msg.compression is None
