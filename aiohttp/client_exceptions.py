@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Union
 
 from multidict import MultiMapping
 
-from .http import HeadersDictProxy
 from .typedefs import StrOrURL
 
 try:
@@ -17,9 +16,10 @@ except ImportError:  # pragma: no cover
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
+    from .http import HeadersDictProxy
     from .http_parser import RawResponseMessage
 else:
-    RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = None
+    RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = HeadersDictProxy = None
 
 __all__ = (
     "ClientError",
