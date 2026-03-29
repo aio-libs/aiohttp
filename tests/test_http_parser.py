@@ -1704,7 +1704,9 @@ def test_parse_chunked_payload_empty_body_than_another_chunked(
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == code
     assert msg.reason == "OK"
-    assert msg.headers == HeadersDictProxy(CIMultiDict([("Transfer-Encoding", "chunked")]))
+    assert msg.headers == HeadersDictProxy(
+        CIMultiDict([("Transfer-Encoding", "chunked")])
+    )
     assert msg.raw_headers == ((b"transfer-encoding", b"chunked"),)
     assert not msg.should_close
     assert msg.compression is None
