@@ -81,16 +81,16 @@ HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
 
 class HeadersDictProxy(Mapping[str, str]):
-    def __init__(self, d: Mapping[str, str]):
-        self._d = {k.title(): v for k, v in d.items()}
+    def __init__(self, md: CIMultiDict[str]):
+        self._d = CIMultiDictProxy(md)
 
     def __getitem__(self, key: str) -> str:
-        return self._d.__getitem__(key.title())
+        return ", ".join(self._d.getall(key))
 
     def __contains__(self, key: object) -> bool:
         if not isinstance(key, str):
             return False
-        return self._d.__contains__(key.title())
+        return self._d.__contains__(key)
 
     def __iter__(self) -> Iterator[str]:
         return self._d.__iter__()
@@ -99,10 +99,12 @@ class HeadersDictProxy(Mapping[str, str]):
         return self._d.__len__()
 
     def get(self, key: str, default: _T = None) -> str | _T:
-        return self._d.get(key.title(), default)
+        if key not in self._d:
+            return default
+        return ", ".join(self._d.getall(key))
 
     def getall(self, key: str) -> tuple[str, ...]:
-        return self._split_on_commas(self._d.get(key.title(), ""))
+        return self._split_on_commas(self.get(key, ""))
 
     def _split_on_commas(self, val: str) -> tuple[str, ...]:
         values = []
@@ -173,7 +175,7 @@ class HeadersParser:
         self._lax = lax
 
     def parse_headers(self, lines: list[bytes]) -> tuple[HeadersDictProxy, RawHeaders]:
-        headers: dict[str, str] = {}
+        headers: CIMultiDict[str] = {}
         # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
 
@@ -241,29 +243,8 @@ class HeadersParser:
             elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
+            headers.add(name, value)
             raw_headers.append((bname, bvalue))
-            name = name.title()
-            if name in headers:
-                # https://www.rfc-editor.org/rfc/rfc9110.html#name-field-order
-                # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-8
-                # https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2-13.1
-                # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
-                if name in {
-                    hdrs.CONTENT_LENGTH,
-                    hdrs.CONTENT_LOCATION,
-                    hdrs.CONTENT_RANGE,
-                    hdrs.CONTENT_TYPE,
-                    hdrs.ETAG,
-                    hdrs.HOST,
-                    hdrs.MAX_FORWARDS,
-                    hdrs.SERVER,
-                    hdrs.TRANSFER_ENCODING,
-                    hdrs.USER_AGENT,
-                }:
-                    raise BadHttpMessage(f"Duplicate '{name}' header found.")
-                headers[name] += ", " + value
-            else:
-                headers[name] = value
 
         return (HeadersDictProxy(headers), tuple(raw_headers))
 
@@ -567,6 +548,26 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         encoding = None
         upgrade = False
         chunked = False
+
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-field-order
+        # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-8
+        # https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2-13.1
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
+        singletons = (
+            hdrs.CONTENT_LENGTH,
+            hdrs.CONTENT_LOCATION,
+            hdrs.CONTENT_RANGE,
+            hdrs.CONTENT_TYPE,
+            hdrs.ETAG,
+            hdrs.HOST,
+            hdrs.MAX_FORWARDS,
+            hdrs.SERVER,
+            hdrs.TRANSFER_ENCODING,
+            hdrs.USER_AGENT,
+        )
+        bad_hdr = next((h for h in singletons if len(headers._d.getall(h, ())) > 1), None)
+        if bad_hdr is not None:
+            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
         # keep-alive and protocol switching
         # RFC 9110 section 7.6.1 defines Connection as a comma-separated list.
