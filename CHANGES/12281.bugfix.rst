@@ -1,4 +1,4 @@
 Fixed "Future exception was never retrieved" warning when a request handler
-is cancelled during TCP write backpressure. ``_drain_helper`` now awaits the
+is cancelled during TCP write back-pressure. ``_drain_helper`` now awaits the
 drain waiter directly instead of wrapping it in :func:`asyncio.shield`
 -- by :user:`joaquinhuigomez`.
