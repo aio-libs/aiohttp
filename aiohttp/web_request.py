@@ -206,7 +206,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             new_headers = HeadersDictProxy(CIMultiDict(headers))
             dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
-                (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers._d.items()
+                (k.encode("utf-8"), v.encode("utf-8"))
+                for k, v in new_headers._d.items()
             )
 
         message = self._message._replace(**dct)
