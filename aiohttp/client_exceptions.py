@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Union
 
 from multidict import MultiMapping
 
+from .http import HeadersDictProxy
 from .typedefs import StrOrURL
 
 try:
@@ -73,7 +74,7 @@ class ClientResponseError(ClientError):
         *,
         status: int | None = None,
         message: str = "",
-        headers: MultiMapping[str] | None = None,
+        headers: HeadersDictProxy | None = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
