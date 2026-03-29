@@ -6,7 +6,7 @@ from collections.abc import Iterator, Mapping
 from contextlib import suppress
 from enum import IntEnum
 from re import Pattern
-from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar
+from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar, overload
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
