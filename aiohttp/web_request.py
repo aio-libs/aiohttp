@@ -13,7 +13,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Optional, TypeVar, cast, overload
 from urllib.parse import parse_qsl
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs

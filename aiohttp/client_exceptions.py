@@ -3,8 +3,6 @@
 import asyncio
 from typing import TYPE_CHECKING, Union
 
-from multidict import MultiMapping
-
 from .helpers import HeadersDictProxy
 from .typedefs import StrOrURL
 

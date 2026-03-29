@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast, overload
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp

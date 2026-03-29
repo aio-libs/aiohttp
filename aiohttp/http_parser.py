@@ -2,13 +2,12 @@ import abc
 import asyncio
 import re
 import string
-from collections.abc import Iterator, Mapping
 from contextlib import suppress
 from enum import IntEnum
 from re import Pattern
-from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar, overload
+from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar
 
-from multidict import CIMultiDict, CIMultiDictProxy, istr
+from multidict import CIMultiDict, istr
 from yarl import URL
 
 from . import hdrs
@@ -77,7 +76,6 @@ _FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
 )
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
-QUOTEHDRRE = re.compile(r'(".*?(?:[^\\]"))[ \t]*(?:,|$)')
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
 

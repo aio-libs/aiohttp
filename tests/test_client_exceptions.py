@@ -43,7 +43,7 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers=CIMultiDict(foo="bar"),
+            headers=HeadersDictProxy(CIMultiDict(foo="bar")),
         )
         err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
@@ -66,7 +66,7 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers=CIMultiDict(),
+            headers=HeadersDictProxy(CIMultiDict()),
         )
         assert repr(err) == (
             "ClientResponseError(%r, (), status=400, "
@@ -79,7 +79,7 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers=CIMultiDict(),
+            headers=HeadersDictProxy(CIMultiDict()),
         )
         assert str(err) == ("400, message='Something wrong', url='http://example.com'")
 

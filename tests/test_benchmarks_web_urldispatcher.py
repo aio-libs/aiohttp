@@ -10,7 +10,7 @@ from typing import NoReturn, cast
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 

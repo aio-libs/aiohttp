@@ -8,12 +8,12 @@ from json import JSONDecodeError
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientSession, hdrs, http
+from aiohttp import ClientSession, http
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.helpers import HeadersDictProxy, TimerNoop
@@ -1250,7 +1250,7 @@ def test_redirect_history_in_exception() -> None:
         original_url=hist_url,
     )
 
-    hist_response._headers = HeadersDictProxy(CIMultiDict(h))
+    hist_response._headers = HeadersDictProxy(CIMultiDict(hist_headers))
     hist_response.status = 301
     hist_response.reason = "REDIRECT"
 

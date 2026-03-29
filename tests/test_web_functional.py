@@ -9,7 +9,7 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDictProxy, MultiDict
+from multidict import MultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
 

@@ -44,7 +44,7 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, MultiMapping
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from propcache.api import under_cached_property as reify
 from yarl import URL
 
@@ -66,6 +66,7 @@ else:
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
 
+QUOTEHDRRE = re.compile(r'(".*?(?:[^\\]"))[ \t]*(?:,|$)')
 COOKIE_MAX_LENGTH = 4096
 
 _T = TypeVar("_T")
@@ -807,7 +808,7 @@ class HeadersDictProxy(Mapping[str, str]):
 class HeadersMixin:
     """Mixin for handling headers."""
 
-    _headers: HeadersDictProxy
+    _headers: Mapping[str, str]
     _content_type: str | None = None
     _content_dict: dict[str, str] | None = None
     _stored_content_type: str | None | _SENTINEL = sentinel

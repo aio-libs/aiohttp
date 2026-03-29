@@ -11,7 +11,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Union, cast
 from urllib.parse import parse_qsl, unquote, urlencode
 
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 
 from .abc import AbstractStreamWriter
 from .compression_utils import (

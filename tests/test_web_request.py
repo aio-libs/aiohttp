@@ -11,7 +11,7 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
+from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 from aiohttp import ETag, HttpVersion, web

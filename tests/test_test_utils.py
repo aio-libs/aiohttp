@@ -7,7 +7,7 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp

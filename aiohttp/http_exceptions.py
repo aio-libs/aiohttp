@@ -2,8 +2,6 @@
 
 from textwrap import indent
 
-from multidict import CIMultiDict
-
 from .helpers import HeadersDictProxy
 
 __all__ = ("HttpProcessingError",)
