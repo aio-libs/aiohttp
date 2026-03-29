@@ -17,6 +17,7 @@ from aiohttp import ClientSession, hdrs, http
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.helpers import TimerNoop
+from aiohttp.http import HeadersDictProxy
 from aiohttp.multipart import BadContentDispositionHeader
 from aiohttp.tracing import Trace
 
@@ -967,7 +968,7 @@ def test_content_type_no_header() -> None:
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = HeadersDictProxy(h)
+    response._headers = HeadersDictProxy({})
 
     assert "application/octet-stream" == response.content_type
 
@@ -1006,7 +1007,7 @@ def test_charset_no_header() -> None:
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = HeadersDictProxy(h)
+    response._headers = HeadersDictProxy({})
 
     assert response.charset is None
 
@@ -1123,7 +1124,7 @@ def test_content_disposition_no_header() -> None:
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = HeadersDictProxy(h)
+    response._headers = HeadersDictProxy({})
 
     assert response.content_disposition is None
 
@@ -1142,7 +1143,7 @@ def test_default_encoding_is_utf8() -> None:
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = HeadersDictProxy(h)
+    response._headers = HeadersDictProxy({})
     response._body = b""
 
     assert response.get_encoding() == "utf-8"
@@ -1486,7 +1487,7 @@ def test_response_links_empty(
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = HeadersDictProxy(h)
+    response._headers = HeadersDictProxy({})
     assert response.links == {}
 
 
@@ -1553,7 +1554,7 @@ def test_response_duplicate_cookie_names(
             ("Set-Cookie", "user-pref=light; Domain=api.example.com; Path=/"),
         ]
     )
-    response._headers = HeadersDictProxy(h)
+    response._headers = HeadersDictProxy(headers)
     # Set raw cookie headers as done in ClientResponse.start()
     response._raw_cookie_headers = tuple(headers.getall("Set-Cookie", []))
 
