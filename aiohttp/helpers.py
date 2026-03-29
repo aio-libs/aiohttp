@@ -49,6 +49,7 @@ from propcache.api import under_cached_property as reify
 from yarl import URL
 
 from . import hdrs
+from .http import HeadersDictProxy
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
@@ -752,7 +753,7 @@ def ceil_timeout(
 class HeadersMixin:
     """Mixin for handling headers."""
 
-    _headers: MultiMapping[str]
+    _headers: HeadersDictProxy
     _content_type: str | None = None
     _content_dict: dict[str, str] | None = None
     _stored_content_type: str | None | _SENTINEL = sentinel
