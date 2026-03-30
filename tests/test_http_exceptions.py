@@ -44,9 +44,7 @@ class TestHttpProcessingError:
 
 class TestBadHttpMessage:
     def test_ctor(self) -> None:
-        err = http_exceptions.BadHttpMessage(
-            "Bad HTTP message", headers=CIMultiDict()
-        )
+        err = http_exceptions.BadHttpMessage("Bad HTTP message", headers=CIMultiDict())
         assert err.code == 400
         assert err.message == "Bad HTTP message"
         assert err.headers == CIMultiDict()
