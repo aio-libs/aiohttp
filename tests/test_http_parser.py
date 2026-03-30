@@ -985,6 +985,24 @@ async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
     assert result == b"b" * 50000
 
 
+async def test_compressed_256kb(response: HttpResponseParser) -> None:
+    original = b"x" * 256 * 1024
+    compressed = zlib.compress(original)
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+
+    messages, upgrade, tail = response.feed_data(headers + compressed)
+    assert len(messages) == 1
+    payload = messages[0][-1]
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+
 @pytest.mark.parametrize("size", [40965, 8191])
 def test_max_header_value_size_continuation(
     response: HttpResponseParser, size: int

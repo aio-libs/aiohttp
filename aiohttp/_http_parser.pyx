@@ -312,7 +312,6 @@ cdef class HttpParser:
         str     _path
         str     _reason
         list    _headers
-        bint    _last_had_more_data
         list    _raw_headers
         bint    _upgraded
         list    _messages
@@ -363,7 +362,6 @@ cdef class HttpParser:
         self._timer = timer
 
         self._buf = bytearray()
-        self._last_had_more_data = False
         self._more_data_available = False
         self._paused = False
         self._payload = None
@@ -578,15 +576,9 @@ cdef class HttpParser:
         if self._more_data_available:
             result = cb_on_body(self._cparser, EMPTY_BYTES, 0)
             if result is cparser.HPE_PAUSED:
-                self._last_had_more_data = had_more_data
                 self._tail = data
                 return (), False, EMPTY_BYTES
             # TODO: Do we need to handle error case (-1)?
-        # If the last pause had more data, then we probably paused at the
-        # end of the body. Therefore we need to continue with empty bytes.
-        if not data and not self._last_had_more_data:
-            return (), False, EMPTY_BYTES
-        self._last_had_more_data = False
 
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
         # Cache buffer pointer before PyBuffer_Release to avoid use-after-release.
