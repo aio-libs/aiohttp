@@ -786,7 +786,13 @@ class HeadersDictProxy(Mapping[str, str]):
 
     def __iter__(self) -> Iterator[str]:
         # We need to deduplicate keys from MultiDict
-        return iter(set(self._md.__iter__()))
+        # But, we also need to retain ordering
+        seen = set()
+        for k in self._md.__iter__():
+            if k in seen:
+                continue
+            seen.add(k)
+            yield k
 
     def __len__(self) -> int:
         return len(set(self._md.keys()))
