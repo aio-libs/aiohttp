@@ -2,7 +2,7 @@
 
 from textwrap import indent
 
-from .helpers import HeadersDictProxy
+from multidict import CIMultiDict
 
 __all__ = ("HttpProcessingError",)
 
@@ -26,7 +26,7 @@ class HttpProcessingError(Exception):
         *,
         code: int | None = None,
         message: str = "",
-        headers: HeadersDictProxy | None = None,
+        headers: CIMultiDict[str] | None = None,
     ) -> None:
         if code is not None:
             self.code = code
@@ -46,7 +46,7 @@ class BadHttpMessage(HttpProcessingError):
     message = "Bad Request"
 
     def __init__(
-        self, message: str, *, headers: HeadersDictProxy | None = None
+        self, message: str, *, headers: CIMultiDict[str] | None = None
     ) -> None:
         super().__init__(message=message, headers=headers)
         self.args = (message,)

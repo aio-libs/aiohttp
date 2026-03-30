@@ -5,13 +5,12 @@ import pickle
 from multidict import CIMultiDict
 
 from aiohttp import http_exceptions
-from aiohttp.helpers import HeadersDictProxy
 
 
 class TestHttpProcessingError:
     def test_ctor(self) -> None:
         err = http_exceptions.HttpProcessingError(
-            code=500, message="Internal error", headers=HeadersDictProxy(CIMultiDict())
+            code=500, message="Internal error", headers=CIMultiDict()
         )
         assert err.code == 500
         assert err.message == "Internal error"
@@ -19,7 +18,7 @@ class TestHttpProcessingError:
 
     def test_pickle(self) -> None:
         err = http_exceptions.HttpProcessingError(
-            code=500, message="Internal error", headers=HeadersDictProxy(CIMultiDict())
+            code=500, message="Internal error", headers=CIMultiDict()
         )
         err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
@@ -32,13 +31,13 @@ class TestHttpProcessingError:
 
     def test_str(self) -> None:
         err = http_exceptions.HttpProcessingError(
-            code=500, message="Internal error", headers=HeadersDictProxy(CIMultiDict())
+            code=500, message="Internal error", headers=CIMultiDict()
         )
         assert str(err) == "500, message:\n  Internal error"
 
     def test_repr(self) -> None:
         err = http_exceptions.HttpProcessingError(
-            code=500, message="Internal error", headers=HeadersDictProxy(CIMultiDict())
+            code=500, message="Internal error", headers=CIMultiDict()
         )
         assert repr(err) == ("<HttpProcessingError: 500, message='Internal error'>")
 
@@ -46,7 +45,7 @@ class TestHttpProcessingError:
 class TestBadHttpMessage:
     def test_ctor(self) -> None:
         err = http_exceptions.BadHttpMessage(
-            "Bad HTTP message", headers=HeadersDictProxy(CIMultiDict())
+            "Bad HTTP message", headers=CIMultiDict()
         )
         assert err.code == 400
         assert err.message == "Bad HTTP message"
@@ -54,7 +53,7 @@ class TestBadHttpMessage:
 
     def test_pickle(self) -> None:
         err = http_exceptions.BadHttpMessage(
-            message="Bad HTTP message", headers=HeadersDictProxy(CIMultiDict())
+            message="Bad HTTP message", headers=CIMultiDict()
         )
         err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
@@ -67,13 +66,13 @@ class TestBadHttpMessage:
 
     def test_str(self) -> None:
         err = http_exceptions.BadHttpMessage(
-            message="Bad HTTP message", headers=HeadersDictProxy(CIMultiDict())
+            message="Bad HTTP message", headers=CIMultiDict()
         )
         assert str(err) == "400, message:\n  Bad HTTP message"
 
     def test_repr(self) -> None:
         err = http_exceptions.BadHttpMessage(
-            message="Bad HTTP message", headers=HeadersDictProxy(CIMultiDict())
+            message="Bad HTTP message", headers=CIMultiDict()
         )
         assert repr(err) == "<BadHttpMessage: 400, message='Bad HTTP message'>"
 
