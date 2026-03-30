@@ -75,3 +75,15 @@ def test_zstd_multi_frame_max_length_exhausted() -> None:
     frame2 = zstandard.compress(b"BBBB")
     result = d.decompress_sync(frame1 + frame2, max_length=4)
     assert result == b"AAAA"
+
+
+@pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+def test_zstd_multi_frame_max_length_exhausted_preserves_unused_data() -> None:
+    d = ZSTDDecompressor()
+    frame1 = zstandard.compress(b"AAAA")
+    frame2 = zstandard.compress(b"BBBB")
+    frame3 = zstandard.compress(b"CCCC")
+    result1 = d.decompress_sync(frame1 + frame2, max_length=4)
+    assert result1 == b"AAAA"
+    result2 = d.decompress_sync(frame3)
+    assert result2 == b"BBBBCCCC"

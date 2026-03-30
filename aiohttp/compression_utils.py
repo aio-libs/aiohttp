@@ -330,6 +330,7 @@ class ZSTDDecompressor(DecompressionBaseHandler):
                 "Please install `backports.zstd` module"
             )
         self._obj = ZstdDecompressor()
+        self._pending_unused_data: bytes | None = None
         super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
     def decompress_sync(
@@ -342,6 +343,9 @@ class ZSTDDecompressor(DecompressionBaseHandler):
             if max_length == ZLIB_MAX_LENGTH_UNLIMITED
             else max_length
         )
+        if self._pending_unused_data is not None:
+            data = self._pending_unused_data + data
+            self._pending_unused_data = None
         result = self._obj.decompress(data, zstd_max_length)
 
         # Handle multi-frame zstd streams.
@@ -350,13 +354,14 @@ class ZSTDDecompressor(DecompressionBaseHandler):
         # eof becomes True and any trailing data goes to unused_data.
         # We create a fresh decompressor to continue with the next frame.
         while self._obj.eof and self._obj.unused_data:
-            unused = self._obj.unused_data
+            unused_data = self._obj.unused_data
             self._obj = ZstdDecompressor()
             if zstd_max_length != ZSTD_MAX_LENGTH_UNLIMITED:
                 zstd_max_length -= len(result)
                 if zstd_max_length <= 0:
+                    self._pending_unused_data = unused_data
                     break
-            result += self._obj.decompress(unused, zstd_max_length)
+            result += self._obj.decompress(unused_data, zstd_max_length)
 
         # Frame ended exactly at chunk boundary — no unused_data, but the
         # next feed_data() call would fail on the spent decompressor.
