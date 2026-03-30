@@ -72,7 +72,7 @@ class ClientResponseError(ClientError):
         *,
         status: int | None = None,
         message: str = "",
-        headers: Mapping[str] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
