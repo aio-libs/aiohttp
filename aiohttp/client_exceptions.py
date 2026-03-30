@@ -1,9 +1,9 @@
 """HTTP related errors."""
 
 import asyncio
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Union
 
-from .helpers import HeadersDictProxy
 from .typedefs import StrOrURL
 
 try:
@@ -17,9 +17,7 @@ if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
     from .http_parser import RawResponseMessage
 else:
-    from typing import Any
-
-    RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = Any
+    RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = None
 
 __all__ = (
     "ClientError",
@@ -74,7 +72,7 @@ class ClientResponseError(ClientError):
         *,
         status: int | None = None,
         message: str = "",
-        headers: HeadersDictProxy | None = None,
+        headers: Mapping[str] | None = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
