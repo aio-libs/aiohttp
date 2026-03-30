@@ -526,7 +526,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # keep-alive and protocol switching
         # RFC 9110 section 7.6.1 defines Connection as a comma-separated list.
-        conn_values = parse_http_list_values(headers.getall(hdrs.CONNECTION, ()))
+        conn_values = parse_http_list_values(headers.getall(hdrs.CONNECTION))
         if conn_values:
             conn_tokens = {token.lower() for token in conn_values if token.isascii()}
 
