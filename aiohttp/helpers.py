@@ -45,7 +45,7 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from propcache.api import under_cached_property as reify
 from yarl import URL
 
@@ -753,7 +753,7 @@ def ceil_timeout(
 
 class HeadersDictProxy(Mapping[str, str]):
     def __init__(self, md: CIMultiDict[str]):
-        self._md = CIMultiDictProxy(md)
+        self._md = md
 
     def getall(self, key: str) -> tuple[str, ...]:
         return self._split_on_commas(self.get(key, ""))
