@@ -30,7 +30,7 @@ markupsafe==3.0.3
     # via jinja2
 packaging==26.0
     # via sphinx
-pygments==2.19.2
+pygments==2.20.0
     # via sphinx
 requests==2.33.0
     # via sphinx

@@ -1,0 +1,2 @@
+Fixed zstd decompression failing with ``ClientPayloadError`` when the server
+sends a response as multiple zstd frames -- by :user:`josu-moreno`.

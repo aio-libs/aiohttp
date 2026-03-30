@@ -81,7 +81,7 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==25.2.0
+gunicorn==25.3.0
     # via -r requirements/base.in
 identify==2.6.18
     # via pre-commit
@@ -161,7 +161,7 @@ pydantic==2.12.5
     # via python-on-whales
 pydantic-core==2.41.5
     # via pydantic
-pygments==2.19.2
+pygments==2.20.0
     # via
     #   pytest
     #   rich
@@ -192,7 +192,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.2.0
+python-discovery==1.2.1
     # via virtualenv
 python-on-whales==0.81.0
     # via
