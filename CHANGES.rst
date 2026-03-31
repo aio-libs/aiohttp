@@ -10,6 +10,26 @@
 
 .. towncrier release notes start
 
+3.13.5 (2026-03-31)
+===================
+
+Bug fixes
+---------
+
+- Skipped the duplicate singleton header check in lax mode (the default for response
+  parsing). In strict mode (request parsing, or ``-X dev``), all RFC 9110 singletons
+  are still enforced -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12302`.
+
+
+
+
+----
+
+
 3.13.4 (2026-03-28)
 ===================
 
