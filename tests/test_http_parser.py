@@ -281,15 +281,8 @@ def test_content_length_transfer_encoding(parser: HttpRequestParser) -> None:
     "hdr",
     (
         "Content-Length",
-        "Content-Location",
-        "Content-Range",
-        "Content-Type",
-        "ETag",
         "Host",
-        "Max-Forwards",
-        "Server",
         "Transfer-Encoding",
-        "User-Agent",
     ),
 )
 def test_duplicate_singleton_header_rejected(
@@ -305,6 +298,33 @@ def test_duplicate_singleton_header_rejected(
     ).encode()
     with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
         parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
+    "hdr",
+    (
+        "Content-Location",
+        "Content-Range",
+        "Content-Type",
+        "ETag",
+        "Max-Forwards",
+        "Server",
+        "User-Agent",
+    ),
+)
+def test_duplicate_non_security_singleton_header_accepted(
+    parser: HttpRequestParser, hdr: str
+) -> None:
+    """Non-security singletons are accepted because real servers send them."""
+    text = (
+        f"GET /test HTTP/1.1\r\n"
+        f"Host: example.com\r\n"
+        f"{hdr}: value1\r\n"
+        f"{hdr}: value2\r\n"
+        f"\r\n"
+    ).encode()
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
 
 
 def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
