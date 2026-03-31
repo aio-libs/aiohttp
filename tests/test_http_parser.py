@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover
 
 try:
     if sys.version_info >= (3, 14):
-        import compression.zstd as zstandard
+        import compression.zstd as zstandard  # noqa: I900
     else:
         import backports.zstd as zstandard
 except ImportError:
