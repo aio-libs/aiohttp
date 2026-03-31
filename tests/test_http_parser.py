@@ -344,10 +344,7 @@ def test_duplicate_non_security_singleton_header_accepted_response(
 ) -> None:
     """Non-security singletons in responses are accepted because real servers send them."""
     text = (
-        f"HTTP/1.1 200 OK\r\n"
-        f"{hdr}: value1\r\n"
-        f"{hdr}: value2\r\n"
-        f"\r\n"
+        f"HTTP/1.1 200 OK\r\n" f"{hdr}: value1\r\n" f"{hdr}: value2\r\n" f"\r\n"
     ).encode()
     messages, upgrade, tail = response.feed_data(text)
     assert len(messages) == 1
