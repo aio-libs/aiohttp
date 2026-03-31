@@ -350,6 +350,28 @@ def test_duplicate_non_security_singleton_header_accepted_response(
     assert len(messages) == 1
 
 
+@pytest.mark.parametrize(
+    "hdr",
+    (
+        "Content-Length",
+        "Transfer-Encoding",
+    ),
+)
+def test_duplicate_security_singleton_header_rejected_response(
+    response: HttpResponseParser, hdr: str
+) -> None:
+    """Security singletons are rejected even in lax mode (responses)."""
+    val1, val2 = ("1", "2") if hdr == "Content-Length" else ("chunked", "gzip")
+    text = (
+        f"HTTP/1.1 200 OK\r\n"
+        f"{hdr}: {val1}\r\n"
+        f"{hdr}: {val2}\r\n"
+        f"\r\n"
+    ).encode()
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
+        response.feed_data(text)
+
+
 def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
     text = (
         b"GET /admin HTTP/1.1\r\n"
