@@ -346,9 +346,7 @@ def test_duplicate_singleton_header_accepted_in_lax_mode(
 ) -> None:
     """All singleton duplicates are accepted in lax mode (response parser default)."""
     val1, val2 = ("1", "2") if hdr == "Content-Length" else ("value1", "value2")
-    text = (
-        f"HTTP/1.1 200 OK\r\n{hdr}: {val1}\r\n{hdr}: {val2}\r\n\r\n"
-    ).encode()
+    text = (f"HTTP/1.1 200 OK\r\n{hdr}: {val1}\r\n{hdr}: {val2}\r\n\r\n").encode()
     messages, upgrade, tail = response.feed_data(text)
     assert len(messages) == 1
 
