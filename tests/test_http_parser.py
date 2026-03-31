@@ -341,11 +341,10 @@ def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
 @pytest.mark.parametrize(
     ("hdr1", "hdr2"),
     (
-        ("host", "host"),
-        ("host", "Host"),
-        ("Host", "host"),
         ("content-length", "Content-Length"),
+        ("Content-Length", "content-length"),
         ("transfer-encoding", "Transfer-Encoding"),
+        ("Transfer-Encoding", "transfer-encoding"),
     ),
 )
 def test_duplicate_singleton_header_different_casing_rejected(
@@ -360,6 +359,20 @@ def test_duplicate_singleton_header_different_casing_rejected(
         f"{hdr2}: {val2}\r\n"
         f"\r\n"
     ).encode()
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
+        parser.feed_data(text)
+
+
+def test_duplicate_host_header_different_casing_rejected(
+    parser: HttpRequestParser,
+) -> None:
+    """Duplicate Host with different casing must also be rejected."""
+    text = (
+        b"GET /test HTTP/1.1\r\n"
+        b"host: evil.example\r\n"
+        b"Host: good.example\r\n"
+        b"\r\n"
+    )
     with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
         parser.feed_data(text)
 

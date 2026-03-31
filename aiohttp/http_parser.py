@@ -80,7 +80,7 @@ HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 #   attacks via parser differentials between proxies and backends.
 # - Content-Length: RFC 9110 §8.6; duplicates enable request smuggling
 #   via CL/CL desync between proxies and backends.
-# - Transfer-Encoding: RFC 9110 §6.1; duplicates enable request smuggling
+# - Transfer-Encoding: RFC 9112 §6; duplicates enable request smuggling
 #   via TE/CL or TE/TE desync.
 #
 # Other RFC 9110 singletons (Content-Type, Server, User-Agent, ETag, etc.)
