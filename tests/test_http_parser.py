@@ -363,10 +363,7 @@ def test_duplicate_security_singleton_header_rejected_response(
     """Security singletons are rejected even in lax mode (responses)."""
     val1, val2 = ("1", "2") if hdr == "Content-Length" else ("chunked", "gzip")
     text = (
-        f"HTTP/1.1 200 OK\r\n"
-        f"{hdr}: {val1}\r\n"
-        f"{hdr}: {val2}\r\n"
-        f"\r\n"
+        f"HTTP/1.1 200 OK\r\n" f"{hdr}: {val1}\r\n" f"{hdr}: {val2}\r\n" f"\r\n"
     ).encode()
     with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
         response.feed_data(text)
