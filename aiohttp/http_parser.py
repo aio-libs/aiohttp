@@ -81,7 +81,7 @@ HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 # - Host: RFC 9112 §3.2; duplicates enable host header attacks.
 # - Content-Length: RFC 9110 §8.6; duplicates enable CL/CL request smuggling.
 # - Transfer-Encoding: RFC 9112 §6; duplicates enable TE/CL request smuggling.
-SINGLETON_HEADERS: Final[frozenset[str]] = frozenset(
+SINGLETON_HEADERS_SECURITY: Final[frozenset[str]] = frozenset(
     {
         "content-length",
         "host",
@@ -92,7 +92,7 @@ SINGLETON_HEADERS: Final[frozenset[str]] = frozenset(
 # Full RFC 9110 singleton set used in strict mode (includes security headers).
 # The non-security singletons are only enforced in strict mode since real-world
 # servers (e.g. Google APIs, Werkzeug) commonly send duplicates.
-SINGLETON_HEADERS_STRICT: Final[frozenset[str]] = SINGLETON_HEADERS | frozenset(
+SINGLETON_HEADERS_STRICT: Final[frozenset[str]] = SINGLETON_HEADERS_SECURITY | frozenset(
     {
         "content-location",
         "content-range",
@@ -151,7 +151,9 @@ class HeadersParser:
     def __init__(self, max_field_size: int = 8190, lax: bool = False) -> None:
         self.max_field_size = max_field_size
         self._lax = lax
-        self._singletons = SINGLETON_HEADERS if lax else SINGLETON_HEADERS_STRICT
+        self._singletons = (
+            SINGLETON_HEADERS_SECURITY if lax else SINGLETON_HEADERS_STRICT
+        )
 
     def parse_headers(
         self, lines: list[bytes]

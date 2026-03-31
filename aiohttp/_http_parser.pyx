@@ -75,7 +75,7 @@ cdef bytes EMPTY_BYTES = b""
 # - Host: RFC 9112 §3.2; duplicates enable host header attacks.
 # - Content-Length: RFC 9110 §8.6; duplicates enable CL/CL request smuggling.
 # - Transfer-Encoding: RFC 9112 §6; duplicates enable TE/CL request smuggling.
-cdef frozenset SINGLETON_HEADERS = frozenset({
+cdef frozenset SINGLETON_HEADERS_SECURITY = frozenset({
     hdrs.CONTENT_LENGTH,
     hdrs.HOST,
     hdrs.TRANSFER_ENCODING,
@@ -84,7 +84,7 @@ cdef frozenset SINGLETON_HEADERS = frozenset({
 # Full RFC 9110 singleton set used in strict mode (includes security headers).
 # The non-security singletons are only enforced in strict mode since real-world
 # servers (e.g. Google APIs, Werkzeug) commonly send duplicates.
-cdef frozenset SINGLETON_HEADERS_STRICT = SINGLETON_HEADERS | frozenset({
+cdef frozenset SINGLETON_HEADERS_STRICT = SINGLETON_HEADERS_SECURITY | frozenset({
     hdrs.CONTENT_LOCATION,
     hdrs.CONTENT_RANGE,
     hdrs.CONTENT_TYPE,
@@ -697,7 +697,7 @@ cdef class HttpResponseParser(HttpParser):
             cparser.llhttp_set_lenient_headers(self._cparser, 1)
             cparser.llhttp_set_lenient_optional_cr_before_lf(self._cparser, 1)
             cparser.llhttp_set_lenient_spaces_after_chunk_size(self._cparser, 1)
-            self._singleton_headers = SINGLETON_HEADERS
+            self._singleton_headers = SINGLETON_HEADERS_SECURITY
 
     cdef object _on_status_complete(self):
         if self._buf:
