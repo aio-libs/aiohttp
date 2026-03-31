@@ -383,6 +383,7 @@ cdef class HttpParser:
         self._auto_decompress = auto_decompress
         self._content_encoding = None
         self._lax = False
+        self._seen_singletons = set()
 
         self._csettings.on_url = cb_on_url
         self._csettings.on_status = cb_on_status
