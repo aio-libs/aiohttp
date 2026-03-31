@@ -327,6 +327,32 @@ def test_duplicate_non_security_singleton_header_accepted(
     assert len(messages) == 1
 
 
+@pytest.mark.parametrize(
+    "hdr",
+    (
+        "Content-Location",
+        "Content-Range",
+        "Content-Type",
+        "ETag",
+        "Max-Forwards",
+        "Server",
+        "User-Agent",
+    ),
+)
+def test_duplicate_non_security_singleton_header_accepted_response(
+    response: HttpResponseParser, hdr: str
+) -> None:
+    """Non-security singletons in responses are accepted because real servers send them."""
+    text = (
+        f"HTTP/1.1 200 OK\r\n"
+        f"{hdr}: value1\r\n"
+        f"{hdr}: value2\r\n"
+        f"\r\n"
+    ).encode()
+    messages, upgrade, tail = response.feed_data(text)
+    assert len(messages) == 1
+
+
 def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
     text = (
         b"GET /admin HTTP/1.1\r\n"
