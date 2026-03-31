@@ -214,7 +214,11 @@ class HeadersParser:
             elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
-            if not self._lax and name.lower() in SINGLETON_HEADERS and name in headers:
+            if (
+                not self._lax
+                and name in headers
+                and name.lower() in SINGLETON_HEADERS
+            ):
                 raise BadHttpMessage(f"Duplicate '{name}' header found.")
             headers.add(name, value)
             raw_headers.append((bname, bvalue))

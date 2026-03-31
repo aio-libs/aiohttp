@@ -294,7 +294,7 @@ def test_duplicate_singleton_header_rejected(
         f"Host: example.com\r\n"
         f"{hdr}: {val1}\r\n"
         f"{hdr}: {val2}\r\n"
-        f"\r\n"
+        "\r\n"
     ).encode()
     with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
         parser.feed_data(text)
@@ -321,7 +321,7 @@ def test_duplicate_non_security_singleton_header_rejected_strict(
         f"Host: example.com\r\n"
         f"{hdr}: value1\r\n"
         f"{hdr}: value2\r\n"
-        f"\r\n"
+        "\r\n"
     ).encode()
     with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
         parser.feed_data(text)
@@ -347,7 +347,7 @@ def test_duplicate_singleton_header_accepted_in_lax_mode(
     """All singleton duplicates are accepted in lax mode (response parser default)."""
     val1, val2 = ("1", "2") if hdr == "Content-Length" else ("value1", "value2")
     text = (
-        f"HTTP/1.1 200 OK\r\n" f"{hdr}: {val1}\r\n" f"{hdr}: {val2}\r\n" f"\r\n"
+        f"HTTP/1.1 200 OK\r\n{hdr}: {val1}\r\n{hdr}: {val2}\r\n\r\n"
     ).encode()
     messages, upgrade, tail = response.feed_data(text)
     assert len(messages) == 1
@@ -383,7 +383,7 @@ def test_duplicate_singleton_header_different_casing_rejected(
         f"Host: example.com\r\n"
         f"{hdr1}: {val1}\r\n"
         f"{hdr2}: {val2}\r\n"
-        f"\r\n"
+        "\r\n"
     ).encode()
     with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
         parser.feed_data(text)
