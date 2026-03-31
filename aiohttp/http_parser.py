@@ -87,11 +87,12 @@ HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 # are not included because duplicates are not exploitable — they carry no
 # routing, framing, or auth semantics — and real-world servers (e.g. Google
 # APIs, Werkzeug) commonly send them.
-SINGLETON_HEADERS: Final[frozenset[istr]] = frozenset(
+# Lowercased for case-insensitive matching against wire names.
+SINGLETON_HEADERS: Final[frozenset[str]] = frozenset(
     {
-        hdrs.CONTENT_LENGTH,
-        hdrs.HOST,
-        hdrs.TRANSFER_ENCODING,
+        "content-length",
+        "host",
+        "transfer-encoding",
     }
 )
 
@@ -214,7 +215,7 @@ class HeadersParser:
             elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
-            if name in SINGLETON_HEADERS and name in headers:
+            if name.lower() in SINGLETON_HEADERS and name in headers:
                 raise BadHttpMessage(f"Duplicate '{name}' header found.")
             headers.add(name, value)
             raw_headers.append((bname, bvalue))

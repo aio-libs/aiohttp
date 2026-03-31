@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover
 
 try:
     if sys.version_info >= (3, 14):
-        import compression.zstd as zstandard  # noqa: I900
+        import compression.zstd as zstandard
     else:
         import backports.zstd as zstandard
 except ImportError:
@@ -335,6 +335,32 @@ def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
         b"\r\n"
     )
     with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate.*Host"):
+        parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
+    ("hdr1", "hdr2"),
+    (
+        ("host", "host"),
+        ("host", "Host"),
+        ("Host", "host"),
+        ("content-length", "Content-Length"),
+        ("transfer-encoding", "Transfer-Encoding"),
+    ),
+)
+def test_duplicate_singleton_header_different_casing_rejected(
+    parser: HttpRequestParser, hdr1: str, hdr2: str
+) -> None:
+    """Singleton check must be case-insensitive per RFC 9110."""
+    val1, val2 = ("1", "2") if "content-length" in hdr1.lower() else ("v1", "v2")
+    text = (
+        f"GET /test HTTP/1.1\r\n"
+        f"Host: example.com\r\n"
+        f"{hdr1}: {val1}\r\n"
+        f"{hdr2}: {val2}\r\n"
+        f"\r\n"
+    ).encode()
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
         parser.feed_data(text)
 
 
