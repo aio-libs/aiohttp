@@ -346,9 +346,7 @@ def test_duplicate_singleton_header_accepted_in_lax_mode(
     response: HttpResponseParser, hdr: str
 ) -> None:
     """All singleton duplicates are accepted in lax mode (response parser default)."""
-    text = (
-        f"HTTP/1.1 200 OK\r\n{hdr}: value1\r\n{hdr}: value2\r\n\r\n"
-    ).encode()
+    text = (f"HTTP/1.1 200 OK\r\n{hdr}: value1\r\n{hdr}: value2\r\n\r\n").encode()
     messages, upgrade, tail = response.feed_data(text)
     assert len(messages) == 1
 
