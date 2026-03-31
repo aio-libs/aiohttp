@@ -1,5 +1,3 @@
-Non-security singleton headers (``Content-Type``, ``Server``, ``User-Agent``, etc.)
-are no longer rejected in lax mode (the default for response parsing). Security-critical
-singletons (``Host``, ``Content-Length``, ``Transfer-Encoding``) are always rejected
-when duplicated. In strict mode (request parsing, or ``-X dev``), all RFC 9110 singletons
+Skipped the duplicate singleton header check in lax mode (the default for response
+parsing). In strict mode (request parsing, or ``-X dev``), all RFC 9110 singletons
 are still enforced -- by :user:`bdraco`.
