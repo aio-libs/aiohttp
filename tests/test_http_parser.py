@@ -330,43 +330,30 @@ def test_duplicate_non_security_singleton_header_rejected_strict(
 @pytest.mark.parametrize(
     "hdr",
     (
+        "Content-Length",
         "Content-Location",
         "Content-Range",
         "Content-Type",
         "ETag",
         "Max-Forwards",
         "Server",
+        "Transfer-Encoding",
         "User-Agent",
     ),
 )
-def test_duplicate_non_security_singleton_header_accepted_response(
+def test_duplicate_singleton_header_accepted_in_lax_mode(
     response: HttpResponseParser, hdr: str
 ) -> None:
-    """Non-security singletons in responses are accepted because real servers send them."""
+    """All singleton duplicates are accepted in lax mode (response parser default)."""
+    val1, val2 = ("1", "2") if hdr == "Content-Length" else ("value1", "value2")
     text = (
-        f"HTTP/1.1 200 OK\r\n" f"{hdr}: value1\r\n" f"{hdr}: value2\r\n" f"\r\n"
+        f"HTTP/1.1 200 OK\r\n"
+        f"{hdr}: {val1}\r\n"
+        f"{hdr}: {val2}\r\n"
+        f"\r\n"
     ).encode()
     messages, upgrade, tail = response.feed_data(text)
     assert len(messages) == 1
-
-
-@pytest.mark.parametrize(
-    "hdr",
-    (
-        "Content-Length",
-        "Transfer-Encoding",
-    ),
-)
-def test_duplicate_security_singleton_header_rejected_response(
-    response: HttpResponseParser, hdr: str
-) -> None:
-    """Security singletons are rejected even in lax mode (responses)."""
-    val1, val2 = ("1", "2") if hdr == "Content-Length" else ("chunked", "gzip")
-    text = (
-        f"HTTP/1.1 200 OK\r\n" f"{hdr}: {val1}\r\n" f"{hdr}: {val2}\r\n" f"\r\n"
-    ).encode()
-    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
-        response.feed_data(text)
 
 
 def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:

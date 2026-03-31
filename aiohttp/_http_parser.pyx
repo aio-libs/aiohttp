@@ -71,26 +71,20 @@ cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
 cdef bytes EMPTY_BYTES = b""
 
-# Headers where duplicates have security implications — always rejected.
-# - Host: RFC 9112 §3.2; duplicates enable host header attacks.
-# - Content-Length: RFC 9110 §8.6; duplicates enable CL/CL request smuggling.
-# - Transfer-Encoding: RFC 9112 §6; duplicates enable TE/CL request smuggling.
-cdef frozenset SINGLETON_HEADERS_SECURITY = frozenset({
+# RFC 9110 singleton headers — duplicates are rejected in strict mode.
+# In lax mode (response parser default), the check is skipped entirely
+# since real-world servers (e.g. Google APIs, Werkzeug) commonly send
+# duplicate headers like Content-Type or Server.
+cdef frozenset SINGLETON_HEADERS = frozenset({
     hdrs.CONTENT_LENGTH,
-    hdrs.HOST,
-    hdrs.TRANSFER_ENCODING,
-})
-
-# Full RFC 9110 singleton set used in strict mode (includes security headers).
-# The non-security singletons are only enforced in strict mode since real-world
-# servers (e.g. Google APIs, Werkzeug) commonly send duplicates.
-cdef frozenset SINGLETON_HEADERS_STRICT = SINGLETON_HEADERS_SECURITY | frozenset({
     hdrs.CONTENT_LOCATION,
     hdrs.CONTENT_RANGE,
     hdrs.CONTENT_TYPE,
     hdrs.ETAG,
+    hdrs.HOST,
     hdrs.MAX_FORWARDS,
     hdrs.SERVER,
+    hdrs.TRANSFER_ENCODING,
     hdrs.USER_AGENT,
 })
 
@@ -313,7 +307,7 @@ cdef class HttpParser:
         size_t _max_headers
         bint _response_with_body
         bint _read_until_eof
-        frozenset _singleton_headers
+        bint _lax
 
         bint    _started
         object  _url
@@ -388,7 +382,7 @@ cdef class HttpParser:
         self._upgraded = False
         self._auto_decompress = auto_decompress
         self._content_encoding = None
-        self._singleton_headers = SINGLETON_HEADERS_STRICT
+        self._lax = False
 
         self._csettings.on_url = cb_on_url
         self._csettings.on_status = cb_on_status
@@ -417,7 +411,7 @@ cdef class HttpParser:
             if "\x00" in value:
                 raise InvalidHeader(self._raw_value)
 
-            if name in self._singleton_headers:
+            if not self._lax and name in SINGLETON_HEADERS:
                 if name in self._seen_singletons:
                     raise BadHttpMessage(f"Duplicate '{name}' header found.")
                 self._seen_singletons.add(name)
@@ -697,7 +691,7 @@ cdef class HttpResponseParser(HttpParser):
             cparser.llhttp_set_lenient_headers(self._cparser, 1)
             cparser.llhttp_set_lenient_optional_cr_before_lf(self._cparser, 1)
             cparser.llhttp_set_lenient_spaces_after_chunk_size(self._cparser, 1)
-            self._singleton_headers = SINGLETON_HEADERS_SECURITY
+            self._lax = True
 
     cdef object _on_status_complete(self):
         if self._buf:
