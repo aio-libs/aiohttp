@@ -92,16 +92,19 @@ SINGLETON_HEADERS_SECURITY: Final[frozenset[str]] = frozenset(
 # Full RFC 9110 singleton set used in strict mode (includes security headers).
 # The non-security singletons are only enforced in strict mode since real-world
 # servers (e.g. Google APIs, Werkzeug) commonly send duplicates.
-SINGLETON_HEADERS_STRICT: Final[frozenset[str]] = SINGLETON_HEADERS_SECURITY | frozenset(
-    {
-        "content-location",
-        "content-range",
-        "content-type",
-        "etag",
-        "max-forwards",
-        "server",
-        "user-agent",
-    }
+SINGLETON_HEADERS_STRICT: Final[frozenset[str]] = (
+    SINGLETON_HEADERS_SECURITY
+    | frozenset(
+        {
+            "content-location",
+            "content-range",
+            "content-type",
+            "etag",
+            "max-forwards",
+            "server",
+            "user-agent",
+        }
+    )
 )
 
 
