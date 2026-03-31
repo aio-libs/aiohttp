@@ -1,5 +1,5 @@
-Narrowed duplicate singleton header rejection to only ``Host``, ``Content-Length``,
-and ``Transfer-Encoding`` -- the headers where duplicates have real security
-implications (request smuggling, host header attacks). Other RFC 9110 singletons
-like ``Content-Type``, ``Server``, and ``User-Agent`` are no longer rejected, as
-real-world servers commonly send them -- by :user:`bdraco`.
+Non-security singleton headers (``Content-Type``, ``Server``, ``User-Agent``, etc.)
+are no longer rejected in lax mode (the default for response parsing). Security-critical
+singletons (``Host``, ``Content-Length``, ``Transfer-Encoding``) are always rejected
+when duplicated. In strict mode (request parsing, or ``-X dev``), all RFC 9110 singletons
+are still enforced -- by :user:`bdraco`.

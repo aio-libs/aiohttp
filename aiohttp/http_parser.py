@@ -75,24 +75,32 @@ VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
-# Headers where duplicates have security implications and MUST be rejected.
-# - Host: RFC 9112 §3.2 requires exactly one; duplicates enable host header
-#   attacks via parser differentials between proxies and backends.
-# - Content-Length: RFC 9110 §8.6; duplicates enable request smuggling
-#   via CL/CL desync between proxies and backends.
-# - Transfer-Encoding: RFC 9112 §6; duplicates enable request smuggling
-#   via TE/CL or TE/TE desync.
+# All lowercased for case-insensitive matching against wire names.
 #
-# Other RFC 9110 singletons (Content-Type, Server, User-Agent, ETag, etc.)
-# are not included because duplicates are not exploitable — they carry no
-# routing, framing, or auth semantics — and real-world servers (e.g. Google
-# APIs, Werkzeug) commonly send them.
-# Lowercased for case-insensitive matching against wire names.
+# Headers where duplicates have security implications — always rejected.
+# - Host: RFC 9112 §3.2; duplicates enable host header attacks.
+# - Content-Length: RFC 9110 §8.6; duplicates enable CL/CL request smuggling.
+# - Transfer-Encoding: RFC 9112 §6; duplicates enable TE/CL request smuggling.
 SINGLETON_HEADERS: Final[frozenset[str]] = frozenset(
     {
         "content-length",
         "host",
         "transfer-encoding",
+    }
+)
+
+# Full RFC 9110 singleton set used in strict mode (includes security headers).
+# The non-security singletons are only enforced in strict mode since real-world
+# servers (e.g. Google APIs, Werkzeug) commonly send duplicates.
+SINGLETON_HEADERS_STRICT: Final[frozenset[str]] = SINGLETON_HEADERS | frozenset(
+    {
+        "content-location",
+        "content-range",
+        "content-type",
+        "etag",
+        "max-forwards",
+        "server",
+        "user-agent",
     }
 )
 
@@ -143,6 +151,7 @@ class HeadersParser:
     def __init__(self, max_field_size: int = 8190, lax: bool = False) -> None:
         self.max_field_size = max_field_size
         self._lax = lax
+        self._singletons = SINGLETON_HEADERS if lax else SINGLETON_HEADERS_STRICT
 
     def parse_headers(
         self, lines: list[bytes]
@@ -215,7 +224,7 @@ class HeadersParser:
             elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
-            if name.lower() in SINGLETON_HEADERS and name in headers:
+            if name.lower() in self._singletons and name in headers:
                 raise BadHttpMessage(f"Duplicate '{name}' header found.")
             headers.add(name, value)
             raw_headers.append((bname, bvalue))

@@ -312,10 +312,10 @@ def test_duplicate_singleton_header_rejected(
         "User-Agent",
     ),
 )
-def test_duplicate_non_security_singleton_header_accepted(
+def test_duplicate_non_security_singleton_header_rejected_strict(
     parser: HttpRequestParser, hdr: str
 ) -> None:
-    """Non-security singletons are accepted because real servers send them."""
+    """Non-security singletons are rejected in strict mode (requests)."""
     text = (
         f"GET /test HTTP/1.1\r\n"
         f"Host: example.com\r\n"
@@ -323,8 +323,8 @@ def test_duplicate_non_security_singleton_header_accepted(
         f"{hdr}: value2\r\n"
         f"\r\n"
     ).encode()
-    messages, upgrade, tail = parser.feed_data(text)
-    assert len(messages) == 1
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
+        parser.feed_data(text)
 
 
 @pytest.mark.parametrize(
