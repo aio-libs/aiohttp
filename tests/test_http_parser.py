@@ -240,8 +240,28 @@ def test_bad_header_name(
         (('fooo", "bar"',), ('fooo"', "bar")),
         ((" spam , eggs ",), ("spam", "eggs")),
         ((" spam ", " eggs "), ("spam", "eggs")),
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-recipient-requirements
+        (("foo, ,bar,",), ("foo", "bar")),
         ((",   , ",), ()),
         (("",), ()),
+        # Escaped characters in quoted strings
+        # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.4-3
+        ((r'"foo\"bar"',), ('foo"bar',)),
+        ((r'"foo\\\"bar"',), (r'foo\"bar',)),
+        ((r'"foo\\", bar',), ("foo\\", "bar")),
+        # Comments: https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.5
+        ((r'foo (bar\"spam\)eggs,\\baz)',), (r'foo (bar"spam)eggs,\baz)',)),
+        # Not a comment (requires whitespace)
+        (("foo(bar,spam)",), ("foo(bar", "spam)")),
+        # Parameters: https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.6
+        (("text/html;charset=utf-8",), ("text/html;charset=utf-8",)),
+        (('Text/HTML; Charset="utf-8"',), ('Text/HTML; Charset="utf-8"',)),
+        (("text/plain; q=0.5, text/html, text/x-dvi; q=0.8; format=flowed, */*",), ("text/plain; q=0.5", "text/html", "text/x-dvi; q=0.8; format=flowed", "*/*")),
+        ((r'foo; bar="spam,\"eggs", baz',), ('foo; bar="spam,"eggs"', "baz")),
+        ((r'foo;bar="spam\\\",eggs",baz',), ('foo;bar="spam\\",eggs"', "baz")),
+        # Not valid parameters
+        (('foo; bar ="spam,eggs"',), ('foo; bar ="spam', 'eggs"')),
+        (('foo;bar= "spam,eggs"',), ('foo;bar= "spam', 'eggs"'))
     ),
 )
 def test_list_headers(
