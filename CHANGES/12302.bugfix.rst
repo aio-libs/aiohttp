@@ -1,3 +1,0 @@
-Skipped the duplicate singleton header check in lax mode (the default for response
-parsing). In strict mode (request parsing, or ``-X dev``), all RFC 9110 singletons
-are still enforced -- by :user:`bdraco`.
