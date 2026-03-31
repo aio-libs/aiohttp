@@ -1,9 +1,8 @@
 """HTTP related errors."""
 
 import asyncio
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Union
-
-from multidict import MultiMapping
 
 from .typedefs import StrOrURL
 
@@ -73,7 +72,7 @@ class ClientResponseError(ClientError):
         *,
         status: int | None = None,
         message: str = "",
-        headers: MultiMapping[str] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:

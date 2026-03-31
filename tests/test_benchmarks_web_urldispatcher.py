@@ -10,12 +10,13 @@ from typing import NoReturn, cast
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
 import aiohttp
 from aiohttp import web
+from aiohttp.helpers import HeadersDictProxy
 from aiohttp.http import HttpVersion, RawRequestMessage
 
 
@@ -38,7 +39,7 @@ def _mock_request(method: str, path: str) -> web.Request:
         method,
         path,
         HttpVersion(1, 1),
-        CIMultiDictProxy(CIMultiDict()),
+        HeadersDictProxy(CIMultiDict()),
         (),
         False,
         None,

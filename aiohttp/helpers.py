@@ -13,6 +13,7 @@ import netrc
 import os
 import platform
 import re
+import reprlib
 import sys
 import time
 import warnings
@@ -44,7 +45,7 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
+from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from propcache.api import under_cached_property as reify
 from yarl import URL
 
@@ -66,6 +67,7 @@ else:
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
 
+QUOTEHDRRE = re.compile(r'(".*?(?:[^\\]"))[ \t]*(?:,|$)')
 COOKIE_MAX_LENGTH = 4096
 
 _T = TypeVar("_T")
@@ -749,10 +751,62 @@ def ceil_timeout(
     return async_timeout.timeout_at(when)
 
 
+class HeadersDictProxy(Mapping[str, str]):
+    def __init__(self, md: CIMultiDict[str]):
+        self._md = md
+
+    def getall(self, key: str) -> tuple[str, ...]:
+        return self._split_on_commas(self.get(key, ""))
+
+    def _split_on_commas(self, val: str) -> tuple[str, ...]:
+        values = []
+        while val:
+            quoted = re.match(QUOTEHDRRE, val)
+            if quoted:
+                values.append(quoted.group(1)[1:-1])
+                val = val[len(quoted.group()) :].lstrip()
+            else:
+                try:
+                    h, val = val.split(",", maxsplit=1)
+                except ValueError:
+                    h = val
+                    val = ""
+                val = val.lstrip()
+                h = h.rstrip()
+                if h:
+                    values.append(h)
+
+        return tuple(values)
+
+    def __eq__(self, other: object) -> bool:
+        return self._md.__eq__(other)
+
+    def __getitem__(self, key: str) -> str:
+        return ", ".join(self._md.getall(key))
+
+    def __iter__(self) -> Iterator[str]:
+        # We need to deduplicate keys from MultiDict
+        # But, we also need to retain ordering
+        seen = set()
+        for k in self._md.__iter__():
+            if k in seen:
+                continue
+            seen.add(k)
+            yield k
+
+    def __len__(self) -> int:
+        return len(set(self._md.keys()))
+
+    @reprlib.recursive_repr()
+    def __repr__(self) -> str:
+        body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
+        return f"<{self.__class__.__name__}({body})>"
+
+
 class HeadersMixin:
     """Mixin for handling headers."""
 
-    _headers: MultiMapping[str]
+    _headers: Mapping[str, str]
     _content_type: str | None = None
     _content_dict: dict[str, str] | None = None
     _stored_content_type: str | None | _SENTINEL = sentinel

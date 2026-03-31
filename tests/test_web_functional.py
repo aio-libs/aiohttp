@@ -9,7 +9,7 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDictProxy, MultiDict
+from multidict import MultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -26,6 +26,7 @@ from aiohttp import (
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
+from aiohttp.helpers import HeadersDictProxy
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
@@ -2154,7 +2155,7 @@ async def test_app_add_routes(aiohttp_client: AiohttpClient) -> None:
 
 async def test_request_headers_type(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
-        assert isinstance(request.headers, CIMultiDictProxy)
+        assert isinstance(request.headers, HeadersDictProxy)
         return web.Response()
 
     app = web.Application()

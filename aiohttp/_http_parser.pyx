@@ -13,12 +13,13 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
 
-from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiDictProxy
+from multidict import CIMultiDict as _CIMultiDict
 from yarl import URL as _URL
 
 from aiohttp import hdrs
 from aiohttp.helpers import DEBUG, set_exception
 
+from .helpers import HeadersDictProxy as _HeadersDictProxy
 from .http_exceptions import (
     BadHttpMessage,
     BadHttpMethod,
@@ -60,7 +61,7 @@ __all__ = ('HttpRequestParser', 'HttpResponseParser',
 cdef object URL = _URL
 cdef object URL_build = URL.build
 cdef object CIMultiDict = _CIMultiDict
-cdef object CIMultiDictProxy = _CIMultiDictProxy
+cdef object HeadersDictProxy = _HeadersDictProxy
 cdef object HttpVersion = _HttpVersion
 cdef object HttpVersion10 = _HttpVersion10
 cdef object HttpVersion11 = _HttpVersion11
@@ -72,7 +73,7 @@ cdef object DeflateBuffer = _DeflateBuffer
 cdef bytes EMPTY_BYTES = b""
 
 # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
-cdef tuple SINGLETON_HEADERS = (
+cdef frozenset SINGLETON_HEADERS = frozenset({
     hdrs.CONTENT_LENGTH,
     hdrs.CONTENT_LOCATION,
     hdrs.CONTENT_RANGE,
@@ -83,7 +84,7 @@ cdef tuple SINGLETON_HEADERS = (
     hdrs.SERVER,
     hdrs.TRANSFER_ENCODING,
     hdrs.USER_AGENT,
-)
+})
 
 cdef inline object extend(object buf, const char* at, size_t length):
     cdef Py_ssize_t s
@@ -125,7 +126,7 @@ cdef class RawRequestMessage:
     cdef readonly str method
     cdef readonly str path
     cdef readonly object version  # HttpVersion
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly object headers  # HeadersDictProxy
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -225,7 +226,7 @@ cdef class RawResponseMessage:
     cdef readonly object version  # HttpVersion
     cdef readonly int code
     cdef readonly str reason
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly object headers  # HeadersDictProxy
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -310,7 +311,7 @@ cdef class HttpParser:
         bytearray   _buf
         str     _path
         str     _reason
-        list    _headers
+        object  _headers
         list    _raw_headers
         bint    _upgraded
         list    _messages
@@ -442,11 +443,11 @@ cdef class HttpParser:
         chunked = self._cparser.flags & cparser.F_CHUNKED
 
         raw_headers = tuple(self._raw_headers)
-        headers = CIMultiDictProxy(CIMultiDict(self._headers))
+        headers = HeadersDictProxy(CIMultiDict(self._headers))
 
         # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
         bad_hdr = next(
-            (h for h in SINGLETON_HEADERS if len(headers.getall(h, ())) > 1),
+            (h for h in SINGLETON_HEADERS if len(headers._md.getall(h, ())) > 1),
             None,
         )
         if bad_hdr is not None:

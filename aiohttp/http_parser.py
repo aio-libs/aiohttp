@@ -7,7 +7,7 @@ from enum import IntEnum
 from re import Pattern
 from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar
 
-from multidict import CIMultiDict, CIMultiDictProxy, istr
+from multidict import CIMultiDict, istr
 from yarl import URL
 
 from . import hdrs
@@ -27,6 +27,7 @@ from .helpers import (
     EMPTY_BODY_STATUS_CODES,
     NO_EXTENSIONS,
     BaseTimerContext,
+    HeadersDictProxy,
     set_exception,
 )
 from .http_exceptions import (
@@ -54,6 +55,8 @@ __all__ = (
     "RawResponseMessage",
 )
 
+_T = TypeVar("_T")
+
 _SEP = Literal[b"\r\n", b"\n"]
 
 ASCIISET: Final[set[str]] = set(string.printable)
@@ -80,7 +83,7 @@ class RawRequestMessage(NamedTuple):
     method: str
     path: str
     version: HttpVersion
-    headers: CIMultiDictProxy[str]
+    headers: HeadersDictProxy
     raw_headers: RawHeaders
     should_close: bool
     compression: str | None
@@ -93,7 +96,7 @@ class RawResponseMessage(NamedTuple):
     version: HttpVersion
     code: int
     reason: str
-    headers: CIMultiDictProxy[str]
+    headers: HeadersDictProxy
     raw_headers: RawHeaders
     should_close: bool
     compression: str | None
@@ -123,9 +126,7 @@ class HeadersParser:
         self.max_field_size = max_field_size
         self._lax = lax
 
-    def parse_headers(
-        self, lines: list[bytes]
-    ) -> tuple["CIMultiDictProxy[str]", RawHeaders]:
+    def parse_headers(self, lines: list[bytes]) -> tuple[HeadersDictProxy, RawHeaders]:
         headers: CIMultiDict[str] = CIMultiDict()
         # note: "raw" does not mean inclusion of OWS before/after the field value
         raw_headers = []
@@ -197,10 +198,10 @@ class HeadersParser:
             headers.add(name, value)
             raw_headers.append((bname, bvalue))
 
-        return (CIMultiDictProxy(headers), tuple(raw_headers))
+        return (HeadersDictProxy(headers), tuple(raw_headers))
 
 
-def _is_supported_upgrade(headers: CIMultiDictProxy[str]) -> bool:
+def _is_supported_upgrade(headers: HeadersDictProxy) -> bool:
     """Check if the upgrade header is supported."""
     u = headers.get(hdrs.UPGRADE, "")
     # .lower() can transform non-ascii characters.
@@ -488,9 +489,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
     def parse_headers(
         self, lines: list[bytes]
-    ) -> tuple[
-        "CIMultiDictProxy[str]", RawHeaders, bool | None, str | None, bool, bool
-    ]:
+    ) -> tuple[HeadersDictProxy, RawHeaders, bool | None, str | None, bool, bool]:
         """Parses RFC 5322 headers from a stream.
 
         Line continuations are supported. Returns list of header name
@@ -502,7 +501,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         upgrade = False
         chunked = False
 
-        # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-field-order
+        # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-8
+        # https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2-13.1
         # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
         singletons = (
             hdrs.CONTENT_LENGTH,
@@ -516,18 +517,19 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
             hdrs.TRANSFER_ENCODING,
             hdrs.USER_AGENT,
         )
-        bad_hdr = next((h for h in singletons if len(headers.getall(h, ())) > 1), None)
+        bad_hdr = next(
+            (h for h in singletons if len(headers._md.getall(h, ())) > 1), None
+        )
         if bad_hdr is not None:
             raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
         # keep-alive and protocol switching
         # RFC 9110 section 7.6.1 defines Connection as a comma-separated list.
-        conn_values = headers.getall(hdrs.CONNECTION, ())
+        conn_values = headers.get(hdrs.CONNECTION)
         if conn_values:
             conn_tokens = {
                 token.lower()
-                for conn_value in conn_values
-                for token in (part.strip(" \t") for part in conn_value.split(","))
+                for token in (part.strip(" \t") for part in conn_values.split(","))
                 if token and token.isascii()
             }
 

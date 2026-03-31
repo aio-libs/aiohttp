@@ -13,7 +13,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Optional, TypeVar, cast, overload
 from urllib.parse import parse_qsl
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs
@@ -25,6 +25,7 @@ from .helpers import (
     LIST_QUOTED_ETAG_RE,
     ChainMapProxy,
     ETag,
+    HeadersDictProxy,
     HeadersMixin,
     RequestKey,
     frozen_dataclass_decorator,
@@ -75,7 +76,7 @@ class FileField:
     filename: str
     file: io.BufferedReader
     content_type: str
-    headers: CIMultiDictProxy[str]
+    headers: HeadersDictProxy
 
 
 _TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
@@ -138,7 +139,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         self._payload_writer = payload_writer
 
         self._payload = payload
-        self._headers: CIMultiDictProxy[str] = message.headers
+        self._headers: HeadersDictProxy = message.headers
         self._method = message.method
         self._version = message.version
         self._cache: dict[str, Any] = {}
@@ -202,10 +203,11 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             dct["path"] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
-            new_headers = CIMultiDictProxy(CIMultiDict(headers))
+            new_headers = HeadersDictProxy(CIMultiDict(headers))
             dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
-                (k.encode("utf-8"), v.encode("utf-8")) for k, v in new_headers.items()
+                (k.encode("utf-8"), v.encode("utf-8"))
+                for k, v in new_headers._md.items()
             )
 
         message = self._message._replace(**dct)
@@ -313,44 +315,44 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Returns a tuple containing one or more immutable dicts
         """
         elems = []
-        for field_value in self._message.headers.getall(hdrs.FORWARDED, ()):
-            length = len(field_value)
-            pos = 0
-            need_separator = False
-            elem: dict[str, str] = {}
-            elems.append(types.MappingProxyType(elem))
-            while 0 <= pos < length:
-                match = _FORWARDED_PAIR_RE.match(field_value, pos)
-                if match is not None:  # got a valid forwarded-pair
-                    if need_separator:
-                        # bad syntax here, skip to next comma
-                        pos = field_value.find(",", pos)
-                    else:
-                        name, value, port = match.groups()
-                        if value[0] == '"':
-                            # quoted string: remove quotes and unescape
-                            value = _QUOTED_PAIR_REPLACE_RE.sub(r"\1", value[1:-1])
-                        if port:
-                            value += port
-                        elem[name.lower()] = value
-                        pos += len(match.group(0))
-                        need_separator = True
-                elif field_value[pos] == ",":  # next forwarded-element
-                    need_separator = False
-                    elem = {}
-                    elems.append(types.MappingProxyType(elem))
-                    pos += 1
-                elif field_value[pos] == ";":  # next forwarded-pair
-                    need_separator = False
-                    pos += 1
-                elif field_value[pos] in " \t":
-                    # Allow whitespace even between forwarded-pairs, though
-                    # RFC 7239 doesn't. This simplifies code and is in line
-                    # with Postel's law.
-                    pos += 1
-                else:
+        field_value = self._message.headers.get(hdrs.FORWARDED, "")
+        length = len(field_value)
+        pos = 0
+        need_separator = False
+        elem: dict[str, str] = {}
+        elems.append(types.MappingProxyType(elem))
+        while 0 <= pos < length:
+            match = _FORWARDED_PAIR_RE.match(field_value, pos)
+            if match is not None:  # got a valid forwarded-pair
+                if need_separator:
                     # bad syntax here, skip to next comma
                     pos = field_value.find(",", pos)
+                else:
+                    name, value, port = match.groups()
+                    if value[0] == '"':
+                        # quoted string: remove quotes and unescape
+                        value = _QUOTED_PAIR_REPLACE_RE.sub(r"\1", value[1:-1])
+                    if port:
+                        value += port
+                    elem[name.lower()] = value
+                    pos += len(match.group(0))
+                    need_separator = True
+            elif field_value[pos] == ",":  # next forwarded-element
+                need_separator = False
+                elem = {}
+                elems.append(types.MappingProxyType(elem))
+                pos += 1
+            elif field_value[pos] == ";":  # next forwarded-pair
+                need_separator = False
+                pos += 1
+            elif field_value[pos] in " \t":
+                # Allow whitespace even between forwarded-pairs, though
+                # RFC 7239 doesn't. This simplifies code and is in line
+                # with Postel's law.
+                pos += 1
+            else:
+                # bad syntax here, skip to next comma
+                pos = field_value.find(",", pos)
         return tuple(elems)
 
     @reify
@@ -466,7 +468,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> CIMultiDictProxy[str]:
+    def headers(self) -> HeadersDictProxy:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 

@@ -11,7 +11,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Union, cast
 from urllib.parse import parse_qsl, unquote, urlencode
 
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 
 from .abc import AbstractStreamWriter
 from .compression_utils import (
@@ -26,7 +26,7 @@ from .hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from .helpers import CHAR, TOKEN, parse_mimetype, reify
+from .helpers import CHAR, TOKEN, HeadersDictProxy, parse_mimetype, reify
 from .http import HeadersParser
 from .http_exceptions import BadHttpMessage
 from .log import internal_logger
@@ -262,7 +262,7 @@ class BodyPartReader:
     def __init__(
         self,
         boundary: bytes,
-        headers: "CIMultiDictProxy[str]",
+        headers: HeadersDictProxy,
         content: StreamReader,
         *,
         subtype: str = "mixed",
@@ -755,7 +755,7 @@ class MultipartReader:
 
     def _get_part_reader(
         self,
-        headers: "CIMultiDictProxy[str]",
+        headers: HeadersDictProxy,
     ) -> Union["MultipartReader", BodyPartReader]:
         """Dispatches the response by the `Content-Type` header.
 
@@ -831,7 +831,7 @@ class MultipartReader:
         else:
             raise ValueError(f"Invalid boundary {chunk!r}, expected {self._boundary!r}")
 
-    async def _read_headers(self) -> "CIMultiDictProxy[str]":
+    async def _read_headers(self) -> HeadersDictProxy:
         lines = []
         while True:
             chunk = await self._content.readline(max_line_length=self._max_field_size)
@@ -842,7 +842,7 @@ class MultipartReader:
             if len(lines) > self._max_headers:
                 raise BadHttpMessage("Too many headers received")
         parser = HeadersParser(max_field_size=self._max_field_size)
-        headers, raw_headers = parser.parse_headers(lines)
+        headers, _ = parser.parse_headers(lines)
         return headers
 
     async def _maybe_release_last_part(self) -> None:

@@ -11,11 +11,12 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
+from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 from aiohttp import ETag, HttpVersion, web
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.helpers import HeadersDictProxy
 from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.pytest_plugin import AiohttpClient
@@ -34,7 +35,7 @@ def test_base_ctor() -> None:
         "GET",
         "/path/to?a=1&b=2",
         HttpVersion(1, 1),
-        CIMultiDictProxy(CIMultiDict()),
+        HeadersDictProxy(CIMultiDict()),
         (),
         False,
         None,

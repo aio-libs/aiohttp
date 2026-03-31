@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast, overload
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
@@ -29,6 +29,7 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar, AbstractStreamWriter
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
+from .helpers import HeadersDictProxy
 from .http import HttpVersion, RawRequestMessage
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import LooseHeaders, StrOrURL
@@ -666,12 +667,12 @@ def make_mocked_request(
         closing = True
 
     if headers:
-        headers = CIMultiDictProxy(CIMultiDict(headers))
+        headers = HeadersDictProxy(CIMultiDict(headers))
         raw_hdrs = tuple(
             (k.encode("utf-8"), v.encode("utf-8")) for k, v in headers.items()
         )
     else:
-        headers = CIMultiDictProxy(CIMultiDict())
+        headers = HeadersDictProxy(CIMultiDict())
         raw_hdrs = ()
 
     chunked = "chunked" in headers.get(hdrs.TRANSFER_ENCODING, "").lower()

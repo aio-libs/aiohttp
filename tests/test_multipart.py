@@ -19,7 +19,7 @@ from aiohttp.hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from aiohttp.helpers import parse_mimetype
+from aiohttp.helpers import HeadersDictProxy, parse_mimetype
 from aiohttp.multipart import (
     BodyPartReader,
     BodyPartReaderPayload,
@@ -159,7 +159,7 @@ class TestMultipartResponseWrapper:
 class TestPartReader:
     async def test_next(self) -> None:
         with Stream(b"Hello, world!\r\n--:") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.next()
             assert b"Hello, world!" == result
@@ -167,7 +167,7 @@ class TestPartReader:
 
     async def test_next_next(self) -> None:
         with Stream(b"Hello, world!\r\n--:") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.next()
             assert b"Hello, world!" == result
@@ -177,7 +177,7 @@ class TestPartReader:
 
     async def test_read(self) -> None:
         with Stream(b"Hello, world!\r\n--:") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read()
             assert b"Hello, world!" == result
@@ -185,7 +185,7 @@ class TestPartReader:
 
     async def test_read_chunk_at_eof(self) -> None:
         with Stream(b"--:") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             obj._at_eof = True
             result = await obj.read_chunk()
@@ -193,7 +193,7 @@ class TestPartReader:
 
     async def test_read_chunk_without_content_length(self) -> None:
         with Stream(b"Hello, world!\r\n--:") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             c1 = await obj.read_chunk(8)
             c2 = await obj.read_chunk(8)
@@ -217,7 +217,7 @@ class TestPartReader:
                     prepare(b""),
                 ],
             ):
-                d = CIMultiDictProxy[str](CIMultiDict())
+                d = HeadersDictProxy(CIMultiDict())
                 obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
                 c1 = await obj.read_chunk(8)
                 assert c1 == b"Hello, "
@@ -228,7 +228,7 @@ class TestPartReader:
 
     async def test_read_all_at_once(self) -> None:
         with Stream(b"Hello, World!\r\n--:--\r\n") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read_chunk()
             assert b"Hello, World!" == result
@@ -238,7 +238,7 @@ class TestPartReader:
 
     async def test_read_incomplete_body_chunked(self) -> None:
         with Stream(b"Hello, World!\r\n-") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = b""
             with pytest.raises(ValueError):
@@ -249,7 +249,7 @@ class TestPartReader:
     async def test_read_with_content_length_malformed_crlf(self) -> None:
         # Content-Length is correct but data after content is not \r\n
         content = b"Hello"
-        h = CIMultiDictProxy(CIMultiDict({"CONTENT-LENGTH": str(len(content))}))
+        h = HeadersDictProxy(CIMultiDict({"CONTENT-LENGTH": str(len(content))}))
         # Malformed: "XX" instead of "\r\n" after content
         with Stream(content + b"XX--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -272,7 +272,7 @@ class TestPartReader:
                     prepare(b""),
                 ],
             ):
-                d = CIMultiDictProxy[str](CIMultiDict())
+                d = HeadersDictProxy(CIMultiDict())
                 obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
                 c1 = await obj.read_chunk(12)
                 assert c1 == b"Hello, World"
@@ -283,7 +283,7 @@ class TestPartReader:
 
     async def test_multi_read_chunk(self) -> None:
         with Stream(b"Hello,\r\n--:\r\n\r\nworld!\r\n--:--") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read_chunk(8)
             assert b"Hello," == result
@@ -294,7 +294,7 @@ class TestPartReader:
     async def test_read_chunk_properly_counts_read_bytes(self) -> None:
         expected = b"." * 10
         size = len(expected)
-        h = CIMultiDictProxy(CIMultiDict({"CONTENT-LENGTH": str(size)}))
+        h = HeadersDictProxy(CIMultiDict({"CONTENT-LENGTH": str(size)}))
         with StreamWithShortenRead(expected + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = bytearray()
@@ -309,7 +309,7 @@ class TestPartReader:
 
     async def test_read_does_not_read_boundary(self) -> None:
         with Stream(b"Hello, world!\r\n--:") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read()
             assert b"Hello, world!" == result
@@ -317,7 +317,7 @@ class TestPartReader:
 
     async def test_multiread(self) -> None:
         with Stream(b"Hello,\r\n--:\r\n\r\nworld!\r\n--:--") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read()
             assert b"Hello," == result
@@ -327,7 +327,7 @@ class TestPartReader:
 
     async def test_read_multiline(self) -> None:
         with Stream(b"Hello\n,\r\nworld!\r\n--:--") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read()
             assert b"Hello\n,\r\nworld!" == result
@@ -336,7 +336,7 @@ class TestPartReader:
             assert obj.at_eof()
 
     async def test_read_respects_content_length(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({"CONTENT-LENGTH": "100500"}))
+        h = HeadersDictProxy(CIMultiDict({"CONTENT-LENGTH": "100500"}))
         with Stream(b"." * 100500 + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read()
@@ -344,7 +344,7 @@ class TestPartReader:
             assert obj.at_eof()
 
     async def test_read_with_content_encoding_gzip(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
         with Stream(
             b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU"
             b"(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00"
@@ -355,7 +355,7 @@ class TestPartReader:
         assert b"Time to Relax!" == result
 
     async def test_read_with_content_encoding_deflate(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
         with Stream(b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read(decode=True)
@@ -367,28 +367,28 @@ class TestPartReader:
             b"(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00"
             b"\r\n"
         )
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "identity"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "identity"}))
         with Stream(thing + b"--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read(decode=True)
         assert thing[:-2] == result
 
     async def test_read_with_content_encoding_unknown(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "snappy"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "snappy"}))
         with Stream(b"\x0e4Time to Relax!\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             with pytest.raises(RuntimeError):
                 await obj.read(decode=True)
 
     async def test_read_with_content_transfer_encoding_base64(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
         with Stream(b"VGltZSB0byBSZWxheCE=\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read(decode=True)
         assert b"Time to Relax!" == result
 
     async def test_decode_with_content_transfer_encoding_base64(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
         with Stream(b"VG\r\r\nltZSB0byBSZ\r\nWxheCE=\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = b""
@@ -398,7 +398,7 @@ class TestPartReader:
         assert b"Time to Relax!" == result
 
     async def test_decode_iter_with_content_transfer_encoding_base64(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
         with Stream(b"VG\r\r\nltZSB0byBSZ\r\nWxheCE=\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = b""
@@ -409,7 +409,7 @@ class TestPartReader:
         assert b"Time to Relax!" == result
 
     async def test_decode_with_content_encoding_deflate(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
         data = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00"
         with Stream(data + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -418,7 +418,7 @@ class TestPartReader:
         assert b"Time to Relax!" == result
 
     async def test_decode_with_content_encoding_identity(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "identity"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "identity"}))
         data = b"Time to Relax!"
         with Stream(data + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -427,7 +427,7 @@ class TestPartReader:
         assert data == result
 
     async def test_decode_with_content_encoding_unknown(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "snappy"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "snappy"}))
         data = b"Time to Relax!"
         with Stream(data + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -436,7 +436,7 @@ class TestPartReader:
                 obj.decode(chunk)
 
     async def test_read_with_content_transfer_encoding_quoted_printable(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TRANSFER_ENCODING: "quoted-printable"})
         )
         with Stream(
@@ -458,14 +458,14 @@ class TestPartReader:
             b"\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,"
             b" \xd0\xbc\xd0\xb8\xd1\x80!"
         )
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: encoding}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: encoding}))
         with Stream(data + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read(decode=True)
         assert data == result
 
     async def test_read_with_content_transfer_encoding_unknown(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "unknown"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "unknown"}))
         with Stream(b"\x0e4Time to Relax!\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             with pytest.raises(RuntimeError):
@@ -473,34 +473,34 @@ class TestPartReader:
 
     async def test_read_text(self) -> None:
         with Stream(b"Hello, world!\r\n--:--") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.text()
         assert "Hello, world!" == result
 
     async def test_read_text_default_encoding(self) -> None:
         with Stream("Привет, Мир!\r\n--:--".encode()) as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.text()
         assert "Привет, Мир!" == result
 
     async def test_read_text_encoding(self) -> None:
         with Stream("Привет, Мир!\r\n--:--".encode("cp1251")) as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.text(encoding="cp1251")
         assert "Привет, Мир!" == result
 
     async def test_read_text_guess_encoding(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain;charset=cp1251"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain;charset=cp1251"}))
         with Stream("Привет, Мир!\r\n--:--".encode("cp1251")) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.text()
         assert "Привет, Мир!" == result
 
     async def test_read_text_compressed(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_ENCODING: "deflate", CONTENT_TYPE: "text/plain"})
         )
         with Stream(b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--") as stream:
@@ -509,7 +509,7 @@ class TestPartReader:
         assert "Time to Relax!" == result
 
     async def test_read_text_while_closed(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
         with Stream(b"") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             obj._at_eof = True
@@ -517,21 +517,21 @@ class TestPartReader:
         assert "" == result
 
     async def test_read_json(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "application/json"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "application/json"}))
         with Stream(b'{"test": "passed"}\r\n--:--') as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.json()
         assert {"test": "passed"} == result
 
     async def test_read_json_encoding(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "application/json"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "application/json"}))
         with Stream('{"тест": "пассед"}\r\n--:--'.encode("cp1251")) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.json(encoding="cp1251")
         assert {"тест": "пассед"} == result
 
     async def test_read_json_guess_encoding(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: "application/json; charset=cp1251"})
         )
         with Stream('{"тест": "пассед"}\r\n--:--'.encode("cp1251")) as stream:
@@ -540,7 +540,7 @@ class TestPartReader:
         assert {"тест": "пассед"} == result
 
     async def test_read_json_compressed(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_ENCODING: "deflate", CONTENT_TYPE: "application/json"})
         )
         with Stream(b"\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00\r\n--:--") as stream:
@@ -549,7 +549,7 @@ class TestPartReader:
         assert {"test": "passed"} == result
 
     async def test_read_json_while_closed(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "application/json"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "application/json"}))
         with Stream(b"") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             obj._at_eof = True
@@ -557,7 +557,7 @@ class TestPartReader:
         assert result is None
 
     async def test_read_form(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"})
         )
         with Stream(b"foo=bar&foo=baz&boo=\r\n--:--") as stream:
@@ -566,7 +566,7 @@ class TestPartReader:
         assert [("foo", "bar"), ("foo", "baz"), ("boo", "")] == result
 
     async def test_read_form_invalid_utf8(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"})
         )
         with Stream(b"\xff\r\n--:--") as stream:
@@ -577,7 +577,7 @@ class TestPartReader:
                 await obj.form()
 
     async def test_read_form_encoding(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"})
         )
         with Stream("foo=bar&foo=baz&boo=\r\n--:--".encode("cp1251")) as stream:
@@ -586,7 +586,7 @@ class TestPartReader:
         assert [("foo", "bar"), ("foo", "baz"), ("boo", "")] == result
 
     async def test_read_form_guess_encoding(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict(
                 {CONTENT_TYPE: "application/x-www-form-urlencoded; charset=utf-8"}
             )
@@ -597,7 +597,7 @@ class TestPartReader:
         assert [("foo", "bar"), ("foo", "baz"), ("boo", "")] == result
 
     async def test_read_form_while_closed(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: "application/x-www-form-urlencoded"})
         )
         with Stream(b"") as stream:
@@ -608,7 +608,7 @@ class TestPartReader:
 
     async def test_readline(self) -> None:
         with Stream(b"Hello\n,\r\nworld!\r\n--:--") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.readline()
             assert b"Hello\n" == result
@@ -622,14 +622,14 @@ class TestPartReader:
 
     async def test_release(self) -> None:
         with Stream(b"Hello,\r\n--:\r\n\r\nworld!\r\n--:--") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             await obj.release()
             assert obj.at_eof()
             assert b"--:\r\n\r\nworld!\r\n--:--" == stream.content.read()
 
     async def test_release_respects_content_length(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({"CONTENT-LENGTH": "100500"}))
+        h = HeadersDictProxy(CIMultiDict({"CONTENT-LENGTH": "100500"}))
         with Stream(b"." * 100500 + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             await obj.release()
@@ -637,14 +637,14 @@ class TestPartReader:
 
     async def test_release_release(self) -> None:
         with Stream(b"Hello,\r\n--:\r\n\r\nworld!\r\n--:--") as stream:
-            d = CIMultiDictProxy[str](CIMultiDict())
+            d = HeadersDictProxy(CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             await obj.release()
             await obj.release()
             assert b"--:\r\n\r\nworld!\r\n--:--" == stream.content.read()
 
     async def test_filename(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_DISPOSITION: "attachment; filename=foo.html"})
         )
         part = aiohttp.BodyPartReader(BOUNDARY, h, mock.Mock())
@@ -656,7 +656,7 @@ class TestPartReader:
         stream = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
         stream.feed_data(b"0" * size + b"\r\n--:--")
         stream.feed_eof()
-        d = CIMultiDictProxy[str](CIMultiDict())
+        d = HeadersDictProxy(CIMultiDict())
         obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
         data = await obj.read()
         assert len(data) == size
@@ -683,7 +683,7 @@ class TestMultipartReader:
                 aiohttp.MultipartReader.from_response(resp)  # type: ignore[arg-type]
 
     def test_dispatch(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
         with Stream(b"--:\r\n\r\necho\r\n--:--") as stream:
             reader = aiohttp.MultipartReader(
                 {CONTENT_TYPE: 'multipart/related;boundary=":"'},
@@ -693,7 +693,7 @@ class TestMultipartReader:
         assert isinstance(res, reader.part_reader_cls)
 
     def test_dispatch_bodypart(self) -> None:
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
         with Stream(b"--:\r\n\r\necho\r\n--:--") as stream:
             reader = aiohttp.MultipartReader(
                 {CONTENT_TYPE: 'multipart/related;boundary=":"'},
@@ -703,7 +703,7 @@ class TestMultipartReader:
         assert isinstance(res, reader.part_reader_cls)
 
     def test_dispatch_multipart(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: "multipart/related;boundary=--:--"})
         )
         with Stream(
@@ -727,7 +727,7 @@ class TestMultipartReader:
         class CustomReader(aiohttp.MultipartReader):
             pass
 
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: "multipart/related;boundary=--:--"})
         )
         with Stream(
@@ -1593,7 +1593,7 @@ async def test_async_for_reader() -> None:
 
 
 async def test_async_for_bodypart() -> None:
-    h = CIMultiDictProxy[str](CIMultiDict())
+    h = HeadersDictProxy(CIMultiDict())
     with Stream(b"foobarbaz\r\n--:--") as stream:
         part = aiohttp.BodyPartReader(boundary=b"--:", headers=h, content=stream)
         async for data in part:
@@ -1704,7 +1704,7 @@ async def test_multipart_writer_reusability_with_io_payloads(
 async def test_body_part_reader_payload_as_bytes() -> None:
     """Test that BodyPartReaderPayload.as_bytes raises TypeError."""
     # Create a mock BodyPartReader
-    headers = CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
+    headers = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
     protocol = mock.Mock(_reading_paused=False)
     stream = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     body_part = BodyPartReader(BOUNDARY, headers, stream)
