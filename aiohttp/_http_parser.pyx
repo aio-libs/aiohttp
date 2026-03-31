@@ -71,8 +71,11 @@ cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
 cdef bytes EMPTY_BYTES = b""
 
-# https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
-cdef tuple SINGLETON_HEADERS = (
+# RFC 9110 singleton headers — duplicates are rejected in strict mode.
+# In lax mode (response parser default), the check is skipped entirely
+# since real-world servers (e.g. Google APIs, Werkzeug) commonly send
+# duplicate headers like Content-Type or Server.
+cdef frozenset SINGLETON_HEADERS = frozenset({
     hdrs.CONTENT_LENGTH,
     hdrs.CONTENT_LOCATION,
     hdrs.CONTENT_RANGE,
@@ -83,7 +86,7 @@ cdef tuple SINGLETON_HEADERS = (
     hdrs.SERVER,
     hdrs.TRANSFER_ENCODING,
     hdrs.USER_AGENT,
-)
+})
 
 cdef inline object extend(object buf, const char* at, size_t length):
     cdef Py_ssize_t s
@@ -304,6 +307,7 @@ cdef class HttpParser:
         size_t _max_headers
         bint _response_with_body
         bint _read_until_eof
+        bint _lax
 
         bint    _started
         object  _url
@@ -311,6 +315,7 @@ cdef class HttpParser:
         str     _path
         str     _reason
         list    _headers
+        set     _seen_singletons
         list    _raw_headers
         bint    _upgraded
         list    _messages
@@ -377,6 +382,8 @@ cdef class HttpParser:
         self._upgraded = False
         self._auto_decompress = auto_decompress
         self._content_encoding = None
+        self._lax = False
+        self._seen_singletons = set()
 
         self._csettings.on_url = cb_on_url
         self._csettings.on_status = cb_on_status
@@ -405,6 +412,10 @@ cdef class HttpParser:
             if "\x00" in value:
                 raise InvalidHeader(self._raw_value)
 
+            if not self._lax and name in SINGLETON_HEADERS:
+                if name in self._seen_singletons:
+                    raise BadHttpMessage(f"Duplicate '{name}' header found.")
+                self._seen_singletons.add(name)
             self._headers.append((name, value))
             if len(self._headers) > self._max_headers:
                 raise BadHttpMessage("Too many headers received")
@@ -443,14 +454,6 @@ cdef class HttpParser:
 
         raw_headers = tuple(self._raw_headers)
         headers = CIMultiDictProxy(CIMultiDict(self._headers))
-
-        # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
-        bad_hdr = next(
-            (h for h in SINGLETON_HEADERS if len(headers.getall(h, ())) > 1),
-            None,
-        )
-        if bad_hdr is not None:
-            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             h_upg = headers.get("upgrade", "")
@@ -689,6 +692,7 @@ cdef class HttpResponseParser(HttpParser):
             cparser.llhttp_set_lenient_headers(self._cparser, 1)
             cparser.llhttp_set_lenient_optional_cr_before_lf(self._cparser, 1)
             cparser.llhttp_set_lenient_spaces_after_chunk_size(self._cparser, 1)
+            self._lax = True
 
     cdef object _on_status_complete(self):
         if self._buf:
@@ -702,6 +706,7 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except -1:
 
     pyparser._started = True
     pyparser._headers = []
+    pyparser._seen_singletons = set()
     pyparser._raw_headers = []
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None

@@ -89,6 +89,26 @@ VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
+# RFC 9110 singleton headers — duplicates are rejected in strict mode.
+# In lax mode (response parser default), the check is skipped entirely
+# since real-world servers (e.g. Google APIs, Werkzeug) commonly send
+# duplicate headers like Content-Type or Server.
+# Lowercased for case-insensitive matching against wire names.
+SINGLETON_HEADERS: Final[frozenset[str]] = frozenset(
+    {
+        "content-length",
+        "content-location",
+        "content-range",
+        "content-type",
+        "etag",
+        "host",
+        "max-forwards",
+        "server",
+        "transfer-encoding",
+        "user-agent",
+    }
+)
+
 
 class RawRequestMessage(NamedTuple):
     method: str
@@ -218,6 +238,8 @@ class HeadersParser:
             elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
+            if not self._lax and name in headers and name.lower() in SINGLETON_HEADERS:
+                raise BadHttpMessage(f"Duplicate '{name}' header found.")
             headers.add(name, value)
             raw_headers.append((bname, bvalue))
 
@@ -530,24 +552,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         encoding = None
         upgrade = False
         chunked = False
-
-        # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
-        # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
-        singletons = (
-            hdrs.CONTENT_LENGTH,
-            hdrs.CONTENT_LOCATION,
-            hdrs.CONTENT_RANGE,
-            hdrs.CONTENT_TYPE,
-            hdrs.ETAG,
-            hdrs.HOST,
-            hdrs.MAX_FORWARDS,
-            hdrs.SERVER,
-            hdrs.TRANSFER_ENCODING,
-            hdrs.USER_AGENT,
-        )
-        bad_hdr = next((h for h in singletons if len(headers.getall(h, ())) > 1), None)
-        if bad_hdr is not None:
-            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
         # keep-alive and protocol switching
         # RFC 9110 section 7.6.1 defines Connection as a comma-separated list.
