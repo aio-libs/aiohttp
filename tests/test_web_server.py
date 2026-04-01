@@ -8,7 +8,7 @@ import pytest
 
 from aiohttp import client, web
 from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer, AiohttpServer
 
 
 async def test_simple_server(
@@ -454,3 +454,58 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
         assert done_event.is_set()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_no_future_warning_on_disconnect_during_backpressure(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    import gc
+
+    loop = asyncio.get_event_loop()
+    exc_handler_calls: list[dict] = []
+    original_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, ctx: exc_handler_calls.append(ctx))
+
+    protocol_holder: list[web.RequestHandler] = []
+
+    async def handler(request: web.Request) -> NoReturn:
+        protocol_holder.append(request.protocol)  # type: ignore[arg-type]
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        while True:
+            await resp.write(b"x" * 65536)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    # aiohttp_server enables handler_cancellation by default so the handler
+    # task is cancelled when connection_lost() fires.
+    server = await aiohttp_server(app)
+
+    # Open a raw asyncio connection so we control exactly when the client
+    # side closes.
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    writer.write(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    await writer.drain()
+
+    try:
+        # Poll until the server protocol reports that writing is paused.
+        async def wait_for_backpressure() -> None:
+            while not protocol_holder or not protocol_holder[0].writing_paused:
+                await asyncio.sleep(0.01)
+
+        await asyncio.wait_for(wait_for_backpressure(), timeout=5.0)
+
+        writer.close()
+        await asyncio.sleep(0.1)
+
+        gc.collect()
+        await asyncio.sleep(0)
+    finally:
+        loop.set_exception_handler(original_handler)
+
+    orphan_warnings = [
+        ctx
+        for ctx in exc_handler_calls
+        if "exception was never retrieved" in ctx.get("message", "").lower()
+    ]
+    assert not orphan_warnings, f"Unexpected asyncio warnings: {orphan_warnings}"
