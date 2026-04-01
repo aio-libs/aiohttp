@@ -538,6 +538,13 @@ cdef class HttpParser:
 
     ### Public API ###
 
+    @property
+    def has_pending_data(self):
+        """True if the parser has pending body data to decompress."""
+        return self._payload is not None and bool(
+            self._tail or self._more_data_available
+        )
+
     def pause_reading(self):
         assert self._payload is not None
         self._paused = True
