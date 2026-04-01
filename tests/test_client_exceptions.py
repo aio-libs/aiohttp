@@ -201,6 +201,15 @@ class TestClientConnectorCertificateError:
             " [Exception: ('Bad certificate',)]"
         )
 
+    def test_oserror(self) -> None:
+        certificate_error = OSError(1, "Bad certificate")
+        err = client.ClientConnectorCertificateError(
+            connection_key=self.connection_key, certificate_error=certificate_error
+        )
+        assert err.os_error == certificate_error
+        assert err.errno == 1
+        assert err.strerror == "Bad certificate"
+
 
 class TestServerDisconnectedError:
     def test_ctor(self) -> None:

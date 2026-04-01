@@ -214,6 +214,7 @@ Jordan Borean
 Josep Cugat
 Josh Junon
 Joshu Coats
+Josu Moreno
 Julia Tsemusheva
 Julien Duponchelle
 Jungkook Park
@@ -366,6 +367,7 @@ Thomas Forbes
 Thomas Grainger
 Tim Menninger
 Tolga Tezel
+Tom Whittock
 Tomasz Trebski
 Toshiaki Tanaka
 Trevor Gamblin
@@ -392,6 +394,7 @@ Vladimir Kamarzin
 Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
+Vladimir Vinogradenko
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar

@@ -24,8 +24,8 @@ try:
         import brotlicffi as brotli
     except ImportError:
         import brotli
-except ImportError:
-    brotli = None  # pragma: no cover
+except ImportError:  # pragma: no cover
+    brotli = None
 
 try:
     from backports.zstd import ZstdCompressor
@@ -397,7 +397,7 @@ async def test_stream_request_on_server_eof(aiohttp_client: AiohttpClient) -> No
     client = await aiohttp_client(app)
 
     async def data_gen() -> AsyncIterator[bytes]:
-        for _ in range(2):
+        for _ in range(2):  # pragma: no branch
             yield b"just data"
             await asyncio.sleep(0.1)
 
@@ -430,7 +430,7 @@ async def test_stream_request_on_server_eof_nested(
     client = await aiohttp_client(app)
 
     async def data_gen() -> AsyncIterator[bytes]:
-        for _ in range(2):
+        for _ in range(2):  # pragma: no branch
             yield b"just data"
             await asyncio.sleep(0.1)
 
@@ -2193,6 +2193,27 @@ async def test_json_custom(aiohttp_client: AiohttpClient) -> None:
         await client.post("/", data="some data", json={"some": "data"})
 
 
+async def test_json_serialize_bytes(aiohttp_client: AiohttpClient) -> None:
+    """Test ClientSession.json_serialize_bytes with bytes-returning encoder."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.content_type == "application/json"
+        data = await request.json()
+        return web.Response(body=aiohttp.JsonPayload(data))
+
+    json_bytes_encoder = mock.Mock(side_effect=lambda x: json.dumps(x).encode("utf-8"))
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app, json_serialize_bytes=json_bytes_encoder)
+
+    async with client.post("/", json={"some": "data"}) as resp:
+        assert resp.status == 200
+        assert json_bytes_encoder.called
+        content = await resp.json()
+    assert content == {"some": "data"}
+
+
 async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
     expect_called = False
 
@@ -3369,57 +3390,51 @@ def create_server_for_url_and_handler(
 
 
 @pytest.mark.parametrize(
-    ["url_from_s", "url_to_s", "is_drop_header_expected"],
-    [
-        [
-            "http://host1.com/path1",
-            "http://host2.com/path2",
-            True,
-        ],
-        ["http://host1.com/path1", "https://host1.com/path1", False],
-        ["https://host1.com/path1", "http://host1.com/path2", True],
-    ],
+    ("url_from_s", "url_to_s"),
+    (
+        ("http://host1.com/path1", "http://host2.com/path2"),
+        ("http://host1.com/path1", "https://host1.com/path1"),
+        ("https://host1.com/path1", "http://host1.com/path2"),
+        ("http://host1.com/path1", "https://host1.com:9443/path1"),
+    ),
     ids=(
         "entirely different hosts",
         "http -> https",
         "https -> http",
+        "http -> https different port",
     ),
 )
 async def test_drop_auth_on_redirect_to_other_host(
     create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
     url_from_s: str,
     url_to_s: str,
-    is_drop_header_expected: bool,
 ) -> None:
     url_from, url_to = URL(url_from_s), URL(url_to_s)
 
     async def srv_from(request: web.Request) -> NoReturn:
-        assert request.host == url_from.host
+        assert request.host.split(":")[0] == url_from.host
         assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
         raise web.HTTPFound(url_to)
 
     async def srv_to(request: web.Request) -> web.Response:
-        assert request.host == url_to.host
-        if is_drop_header_expected:
-            assert "Authorization" not in request.headers, "Header wasn't dropped"
-        else:
-            assert "Authorization" in request.headers, "Header was dropped"
+        assert request.host.split(":")[0] == url_to.host
+        assert "Authorization" not in request.headers, "Header wasn't dropped"
+        assert "Proxy-Authorization" not in request.headers
+        assert "Cookie" not in request.headers
         return web.Response()
 
     server_from = await create_server_for_url_and_handler(url_from, srv_from)
     server_to = await create_server_for_url_and_handler(url_to, srv_to)
 
     assert (
-        url_from.host != url_to.host or server_from.scheme != server_to.scheme
-    ), "Invalid test case, host or scheme must differ"
+        url_from.host != url_to.host
+        or server_from.scheme != server_to.scheme
+        or url_from.port != url_to.port
+    ), "Invalid test case, host, scheme, or port must differ"
 
-    protocol_port_map = {
-        "http": 80,
-        "https": 443,
-    }
     etc_hosts = {
-        (url_from.host, protocol_port_map[server_from.scheme]): server_from,
-        (url_to.host, protocol_port_map[server_to.scheme]): server_to,
+        (url_from.host, url_from.port): server_from,
+        (url_to.host, url_to.port): server_to,
     }
 
     class FakeResolver(AbstractResolver):
@@ -3452,11 +3467,16 @@ async def test_drop_auth_on_redirect_to_other_host(
         async with client.get(
             url_from,
             auth=aiohttp.BasicAuth("user", "pass"),
+            headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz", "Cookie": "a=b"},
         ) as resp:
             assert resp.status == 200
         async with client.get(
             url_from,
-            headers={"Authorization": "Basic dXNlcjpwYXNz"},
+            headers={
+                "Authorization": "Basic dXNlcjpwYXNz",
+                "Proxy-Authorization": "Basic dXNlcjpwYXNz",
+                "Cookie": "a=b",
+            },
         ) as resp:
             assert resp.status == 200
 
@@ -5047,7 +5067,7 @@ async def test_string_payload_redirect(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) -> None:
-    """Test that AsyncIterablePayload cannot be reused across redirects."""
+    """Test redirecting consumed AsyncIterablePayload raises an error."""
     data_received = []
 
     async def redirect_handler(request: web.Request) -> web.Response:
@@ -5075,17 +5095,50 @@ async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) ->
 
     payload = AsyncIterablePayload(async_gen())
 
-    resp = await client.post("/redirect", data=payload)
-    assert resp.status == 200
-    text = await resp.text()
-    # AsyncIterablePayload is consumed after first use, so redirect gets empty body
-    assert text == "Received: "
+    with pytest.raises(
+        aiohttp.ClientPayloadError,
+        match="Cannot follow redirect with a consumed request body",
+    ):
+        await client.post("/redirect", data=payload)
 
-    # Only the first endpoint should have received data
+    # Only the first endpoint should have received data.
     expected_data = b"".join(chunks)
-    assert len(data_received) == 2
-    assert data_received[0] == ("redirect", expected_data)
-    assert data_received[1] == ("final", b"")  # Empty after being consumed
+    assert data_received == [("redirect", expected_data)]
+
+
+@pytest.mark.parametrize("status", (301, 302))
+async def test_async_iterable_payload_redirect_non_post_301_302(
+    aiohttp_client: AiohttpClient, status: int
+) -> None:
+    """Test consumed async iterable body raises on 301/302 for non-POST methods."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        return web.Response(status=status, headers={"Location": "/final_destination"})
+
+    app = web.Application()
+    app.router.add_put("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    chunks = [b"chunk1", b"chunk2", b"chunk3"]
+
+    async def async_gen() -> AsyncIterator[bytes]:
+        for chunk in chunks:
+            yield chunk
+
+    payload = AsyncIterablePayload(async_gen())
+
+    with pytest.raises(
+        aiohttp.ClientPayloadError,
+        match="Cannot follow redirect with a consumed request body",
+    ):
+        await client.put("/redirect", data=payload)
+
+    expected_data = b"".join(chunks)
+    assert data_received == [("redirect", expected_data)]
 
 
 async def test_buffered_reader_payload_redirect(aiohttp_client: AiohttpClient) -> None:

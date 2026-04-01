@@ -1208,6 +1208,27 @@ and :ref:`aiohttp-web-signals` handlers::
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
+   .. method:: send_json_bytes(data, compress=None, *, dumps)
+      :async:
+
+      Send *data* to peer as a JSON binary frame using a bytes-returning encoder.
+
+      :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
+
+      :param collections.abc.Callable dumps: any :term:`callable` that accepts an object and
+                             returns JSON as :class:`bytes`
+                             (e.g. ``orjson.dumps``).
+
+      :raise RuntimeError: if the connection is not started.
+
+      :raise ValueError: if data is not serializable object
+
+      :raise TypeError: if value returned by ``dumps`` param is not :class:`bytes`
+
    .. method:: send_frame(message, opcode, compress=None)
       :async:
 
@@ -1387,6 +1408,18 @@ and :ref:`aiohttp-web-signals` handlers::
 Return :class:`Response` with predefined ``'application/json'``
 content type and *data* encoded by ``dumps`` parameter
 (:func:`json.dumps` by default).
+
+
+.. function:: json_bytes_response([data], *, dumps, body=None, \
+                                  status=200, reason=None, headers=None, \
+                                  content_type='application/json')
+
+Return :class:`Response` with predefined ``'application/json'``
+content type and *data* encoded by ``dumps`` parameter
+which must return :class:`bytes` directly (e.g. ``orjson.dumps``).
+
+Use this when your JSON encoder returns :class:`bytes` instead of :class:`str`,
+avoiding the :class:`str`-to-:class:`bytes` encoding overhead.
 
 
 .. class:: ResponseKey(name, t)
@@ -2869,7 +2902,9 @@ application on specific TCP or Unix socket, e.g.::
 
    :param str host: HOST to listen on, all interfaces if ``None`` (default).
 
-   :param int port: PORT to listed on, ``8080`` if ``None`` (default).
+   :param int port: PORT to listen on, ``8080`` if ``None`` (default).
+                    Use ``0`` to let the OS assign a free ephemeral port
+                    (see :attr:`port`).
 
    :param float shutdown_timeout: a timeout used for both waiting on pending
                                   tasks before application shutdown and for
@@ -2896,6 +2931,12 @@ application on specific TCP or Unix socket, e.g.::
                            endpoints are bound to, so long as they all set
                            this flag when being created. This option is not
                            supported on Windows.
+
+   .. attribute:: port
+
+      Read-only. The actual port number the server is bound to, only
+      guaranteed to be correct after the site has been started.
+
 
 .. class:: UnixSite(runner, path, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
