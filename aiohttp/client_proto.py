@@ -52,7 +52,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._closed: None | asyncio.Future[None] = None
         self._connection_lost_called = False
-        self._connection_lost_deferred = False
 
     @property
     def closed(self) -> None | asyncio.Future[None]:
@@ -143,23 +142,25 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             with suppress(Exception):  # FIXME: log this somehow?
                 self._payload_parser.feed_eof()
 
-        # If the connection closed cleanly but the parser is still
-        # decompressing data (reading is paused), keep the parser alive.
-        # The resume_reading/data_received drain cycle will continue
-        # feeding decompressed chunks to the reader incrementally.
-        # Once the parser runs out of buffered data, _close_parser
-        # will be called from data_received to complete the cleanup.
-        if (
-            connection_closed_cleanly
-            and self._reading_paused
-            and self._parser is not None
-        ):
-            self._connection_lost_deferred = True
-            self._should_close = True
-            super().connection_lost(exc)
-            return
-
-        uncompleted = self._close_parser(original_connection_error)
+        uncompleted = None
+        if self._parser is not None:
+            try:
+                uncompleted = self._parser.feed_eof()
+            except Exception as underlying_exc:
+                if self._payload is not None:
+                    client_payload_exc_msg = (
+                        f"Response payload is not completed: {underlying_exc !r}"
+                    )
+                    if not connection_closed_cleanly:
+                        client_payload_exc_msg = (
+                            f"{client_payload_exc_msg !s}. "
+                            f"{original_connection_error !r}"
+                        )
+                    set_exception(
+                        self._payload,
+                        ClientPayloadError(client_payload_exc_msg),
+                        underlying_exc,
+                    )
 
         if not self.is_eof():
             if isinstance(original_connection_error, OSError):
@@ -178,39 +179,12 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             self.set_exception(reraised_exc, underlying_non_eof_exc)
 
         self._should_close = True
-
-        super().connection_lost(reraised_exc)
-
-    def _close_parser(
-        self, original_exc: BaseException | None = None
-    ) -> RawResponseMessage | None:
-        """Feed EOF to the parser and clean up.
-
-        Returns any uncompleted message from the parser.
-        """
-        uncompleted = None
-        if self._parser is not None:
-            try:
-                uncompleted = self._parser.feed_eof()
-            except Exception as underlying_exc:
-                if self._payload is not None:
-                    client_payload_exc_msg = (
-                        f"Response payload is not completed: {underlying_exc !r}"
-                    )
-                    if original_exc is not None:
-                        client_payload_exc_msg = (
-                            f"{client_payload_exc_msg !s}. {original_exc !r}"
-                        )
-                    set_exception(
-                        self._payload,
-                        ClientPayloadError(client_payload_exc_msg),
-                        underlying_exc,
-                    )
         self._parser = None
         self._payload = None
         self._payload_parser = None
         self._reading_paused = False
-        return uncompleted
+
+        super().connection_lost(reraised_exc)
 
     def eof_received(self) -> None:
         # should call parser.feed_eof() most likely
@@ -389,11 +363,3 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         if upgraded and tail:
             self.data_received(tail)
-
-        # If connection_lost was deferred because the parser had pending
-        # decompression data, check if the parser is done draining.
-        # If reading is no longer paused, the parser has processed all
-        # buffered data -- finish the connection_lost cleanup now.
-        if self._connection_lost_deferred and not self._reading_paused:
-            self._connection_lost_deferred = False
-            self._close_parser()
