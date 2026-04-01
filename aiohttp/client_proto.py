@@ -142,24 +142,25 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             with suppress(Exception):  # FIXME: log this somehow?
                 self._payload_parser.feed_eof()
 
-        # If the connection closed cleanly but the parser has pending
-        # decompression data, keep it alive and schedule a drain.
-        # The reader consuming data will drive resume_reading/data_received
-        # cycles to incrementally decompress the remaining data.
-        if (
-            connection_closed_cleanly
-            and self._parser is not None
-            and self._parser.has_pending_data
-        ):
-            self._should_close = True
-            self._reschedule_timeout()
-            super().connection_lost(exc)
-            # Schedule a drain kick on the next event loop iteration.
-            # The reader will then drive further draining via resume_reading.
-            self._loop.call_soon(self.data_received, b"")
-            return
-
-        uncompleted = self._close_parser(original_connection_error)
+        uncompleted = None
+        if self._parser is not None:
+            try:
+                uncompleted = self._parser.feed_eof()
+            except Exception as underlying_exc:
+                if self._payload is not None:
+                    client_payload_exc_msg = (
+                        f"Response payload is not completed: {underlying_exc !r}"
+                    )
+                    if not connection_closed_cleanly:
+                        client_payload_exc_msg = (
+                            f"{client_payload_exc_msg !s}. "
+                            f"{original_connection_error !r}"
+                        )
+                    set_exception(
+                        self._payload,
+                        ClientPayloadError(client_payload_exc_msg),
+                        underlying_exc,
+                    )
 
         if not self.is_eof():
             if isinstance(original_connection_error, OSError):
@@ -178,39 +179,12 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             self.set_exception(reraised_exc, underlying_non_eof_exc)
 
         self._should_close = True
-
-        super().connection_lost(reraised_exc)
-
-    def _close_parser(
-        self, original_exc: BaseException | None = None
-    ) -> RawResponseMessage | None:
-        """Feed EOF to the parser and clean up.
-
-        Returns any uncompleted message from the parser.
-        """
-        uncompleted = None
-        if self._parser is not None:
-            try:
-                uncompleted = self._parser.feed_eof()
-            except Exception as underlying_exc:
-                if self._payload is not None:
-                    client_payload_exc_msg = (
-                        f"Response payload is not completed: {underlying_exc !r}"
-                    )
-                    if original_exc is not None:
-                        client_payload_exc_msg = (
-                            f"{client_payload_exc_msg !s}. {original_exc !r}"
-                        )
-                    set_exception(
-                        self._payload,
-                        ClientPayloadError(client_payload_exc_msg),
-                        underlying_exc,
-                    )
         self._parser = None
         self._payload = None
         self._payload_parser = None
         self._reading_paused = False
-        return uncompleted
+
+        super().connection_lost(reraised_exc)
 
     def eof_received(self) -> None:
         # should call parser.feed_eof() most likely
@@ -389,13 +363,3 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         if upgraded and tail:
             self.data_received(tail)
-
-        # If connection_lost was deferred and the parser no longer has
-        # pending data, clean up. Either the message completed
-        # successfully or the parser drained all buffered data.
-        if (
-            self._connection_lost_called
-            and self._parser is not None
-            and not self._parser.has_pending_data
-        ):
-            self._close_parser()
