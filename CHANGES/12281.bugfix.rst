@@ -1,3 +1,1 @@
-Fixed spurious ``Future exception was never retrieved`` warnings logged by
-the asyncio event loop when a client disconnected while the server write
-buffer was paused due to TCP back-pressure -- by :user:`availov`.
+Fixed spurious ``Future exception was never retrieved`` warning on disconnect during backpressure -- by :user:`availov`.
