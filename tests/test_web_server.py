@@ -1,7 +1,7 @@
 import asyncio
 import socket
 from contextlib import suppress
-from typing import NoReturn
+from typing import Any, NoReturn
 from unittest import mock
 
 import pytest
@@ -462,14 +462,14 @@ async def test_no_future_warning_on_disconnect_during_backpressure(
     import gc
 
     loop = asyncio.get_event_loop()
-    exc_handler_calls: list[dict] = []
+    exc_handler_calls: list[dict[str, Any]] = []
     original_handler = loop.get_exception_handler()
     loop.set_exception_handler(lambda _loop, ctx: exc_handler_calls.append(ctx))
 
-    protocol_holder: list[web.RequestHandler] = []
+    protocol_holder: list[web.RequestHandler[web.Request]] = []
 
     async def handler(request: web.Request) -> NoReturn:
-        protocol_holder.append(request.protocol)  # type: ignore[arg-type]
+        protocol_holder.append(request.protocol)
         resp = web.StreamResponse()
         await resp.prepare(request)
         while True:
