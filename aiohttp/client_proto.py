@@ -156,6 +156,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         ):
             self._connection_lost_deferred = True
             self._should_close = True
+            self._reschedule_timeout()
             super().connection_lost(exc)
             return
 
@@ -391,9 +392,14 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             self.data_received(tail)
 
         # If connection_lost was deferred because the parser had pending
-        # decompression data, check if the parser is done draining.
-        # If reading is no longer paused, the parser has processed all
-        # buffered data -- finish the connection_lost cleanup now.
-        if self._connection_lost_deferred and not self._reading_paused:
+        # decompression data, check if the payload has reached EOF.
+        # EOF means _on_message_complete fired and all decompressed data
+        # was delivered to the reader. Clean up the parser now.
+        # If the data is incomplete, the read timeout will fire instead.
+        if (
+            self._connection_lost_deferred
+            and self._payload is not None
+            and self._payload.is_eof()
+        ):
             self._connection_lost_deferred = False
             self._close_parser()
