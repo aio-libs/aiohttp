@@ -1,0 +1,3 @@
+Added docstrings to all public methods of :class:`~aiohttp.StreamReader`
+and :class:`~aiohttp.DataQueue` in ``aiohttp/streams.py``
+-- by :user:`mastash3ff`.
