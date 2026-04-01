@@ -151,8 +151,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         # will be called from data_received to complete the cleanup.
         if (
             connection_closed_cleanly
+            and self._reading_paused
             and self._parser is not None
-            and self._parser.has_pending_data
         ):
             self._connection_lost_deferred = True
             self._should_close = True

@@ -259,10 +259,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     @abc.abstractmethod
     def _is_chunked_te(self, te: str) -> bool: ...
 
-    @property
-    def has_pending_data(self) -> bool:
-        return bool(self._tail or self._payload_has_more_data)
-
     def pause_reading(self) -> None:
         assert self._payload_parser is not None
         self._payload_parser.pause_reading()

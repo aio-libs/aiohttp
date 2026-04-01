@@ -538,10 +538,6 @@ cdef class HttpParser:
 
     ### Public API ###
 
-    @property
-    def has_pending_data(self):
-        return bool(self._tail or self._more_data_available)
-
     def pause_reading(self):
         assert self._payload is not None
         self._paused = True
