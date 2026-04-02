@@ -455,6 +455,7 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
 
+
 async def test_no_future_warning_on_disconnect_during_backpressure(
     aiohttp_server: AiohttpServer,
 ) -> None:
