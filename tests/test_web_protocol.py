@@ -46,5 +46,5 @@ def test_data_received_calls_data_received_cb(
     handler.set_parser(dummy_reader[0], data_received_cb=cb)
     handler.data_received(b"x")
 
-    assert cb.assert_called_once()
+    cb.assert_called_once()
     dummy_reader[1].received.assert_called_once_with(b"x")
