@@ -296,7 +296,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             set_exception(self._payload, exc)
 
     def data_received(self, data: bytes) -> None:
-        self._reschedule_timeout()
+        # If no data, then we are resuming decompression. We haven't received
+        # data from the socket, so we can avoid the reschedule overhead.
+        if data:
+            self._reschedule_timeout()
 
         # custom payload parser - currently always WebSocketReader
         if self._payload_parser is not None:
