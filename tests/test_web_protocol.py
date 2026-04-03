@@ -17,6 +17,7 @@ def dummy_manager() -> Server[BaseRequest]:
 @pytest.fixture
 def dummy_reader() -> tuple[WebSocketReader, mock.Mock]:
     m = mock.create_autospec(WebSocketReader, spec_set=True, instance=True)
+    m.feed_data.return_value = False, b""
     return m, m
 
 
