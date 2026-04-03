@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import socket
 from contextlib import suppress
 from typing import Any, NoReturn
@@ -459,17 +460,15 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
 async def test_no_future_warning_on_disconnect_during_backpressure(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    import gc
-
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     exc_handler_calls: list[dict[str, Any]] = []
     original_handler = loop.get_exception_handler()
     loop.set_exception_handler(lambda _loop, ctx: exc_handler_calls.append(ctx))
-
-    protocol_holder: list[web.RequestHandler[web.Request]] = []
+    protocol = None
 
     async def handler(request: web.Request) -> NoReturn:
-        protocol_holder.append(request.protocol)
+        nonlocal protocol
+        protocol = request.protocol
         resp = web.StreamResponse()
         await resp.prepare(request)
         while True:
@@ -503,9 +502,4 @@ async def test_no_future_warning_on_disconnect_during_backpressure(
     finally:
         loop.set_exception_handler(original_handler)
 
-    orphan_warnings = [
-        ctx
-        for ctx in exc_handler_calls
-        if "exception was never retrieved" in ctx.get("message", "").lower()
-    ]
-    assert not orphan_warnings, f"Unexpected asyncio warnings: {orphan_warnings}"
+    assert not exc_handler_calls
