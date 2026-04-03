@@ -1,6 +1,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
+import platform
 import re
 import sys
 import zlib
