@@ -1726,6 +1726,7 @@ async def test_body_part_reader_payload_as_bytes() -> None:
         payload.decode()
 
 
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="No wbits parameter")
 async def test_body_part_reader_payload_write() -> None:
     content = b"A" * 1_000_000  # Large enough to exceed max_length.
     compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
