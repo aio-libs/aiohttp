@@ -1645,7 +1645,7 @@ def test_save_creates_private_cookie_file(tmp_path: Path) -> None:
 @pytest.mark.skipif(
     os.name != "posix", reason="POSIX permission bits are required for this test"
 )
-def test_save_tightens_existing_cookie_file_permissions(tmp_path: Path) -> None:
+def test_save_preserves_existing_cookie_file_permissions(tmp_path: Path) -> None:
     file_path = tmp_path / "existing-cookies.json"
     file_path.write_text("{}", encoding="utf-8")
     file_path.chmod(0o644)
@@ -1657,7 +1657,7 @@ def test_save_tightens_existing_cookie_file_permissions(tmp_path: Path) -> None:
 
     jar.save(file_path=file_path)
 
-    assert stat.S_IMODE(file_path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(file_path.stat().st_mode) == 0o644
 
 
 async def test_cookie_jar_unsafe_property() -> None:

@@ -144,21 +144,12 @@ class CookieJar(AbstractCookieJar):
         # and enforce least-privilege access to sensitive credential data.
         create_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         overwrite_flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-        tighten_permissions = False
         try:
             fd = os.open(file_path, create_flags, 0o600)
         except FileExistsError:
             fd = os.open(file_path, overwrite_flags, 0o600)
-            tighten_permissions = True
 
         with os.fdopen(fd, mode="w", encoding="utf-8") as f:
-            if os.name == "posix" and tighten_permissions:
-                if hasattr(os, "fchmod"):
-                    with contextlib.suppress(OSError):
-                        os.fchmod(f.fileno(), 0o600)
-                else:
-                    with contextlib.suppress(OSError):
-                        file_path.chmod(0o600)
             json.dump(data, f, indent=2)
 
     def load(self, file_path: PathLike) -> None:
