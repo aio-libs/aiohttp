@@ -46,6 +46,7 @@ include "_headers.pxi"
 
 from aiohttp cimport _find_header
 
+
 cdef frozenset ALLOWED_UPGRADES = frozenset({"websocket"})
 DEF DEFAULT_FREELIST_SIZE = 250
 
