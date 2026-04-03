@@ -489,7 +489,7 @@ async def test_no_future_warning_on_disconnect_during_backpressure(
     try:
         # Poll until the server protocol reports that writing is paused.
         async def wait_for_backpressure() -> None:
-            while not protocol_holder or not protocol_holder[0].writing_paused:
+            while protocol is None or not protocol.writing_paused:
                 await asyncio.sleep(0.01)
 
         await asyncio.wait_for(wait_for_backpressure(), timeout=5.0)
