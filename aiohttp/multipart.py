@@ -270,7 +270,7 @@ class BodyPartReader:
         subtype: str = "mixed",
         default_charset: str | None = None,
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
-        client_max_size: int = math.inf,
+        client_max_size: int = math.inf,  # type: ignore[assignment]
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -666,7 +666,7 @@ class MultipartReader:
         headers: Mapping[str, str],
         content: StreamReader,
         *,
-        client_max_size: int = math.inf,
+        client_max_size: int = math.inf,  # type: ignore[assignment]
         max_field_size: int = 8190,
         max_headers: int = 128,
     ) -> None:

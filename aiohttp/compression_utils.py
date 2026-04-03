@@ -403,4 +403,4 @@ class ZSTDDecompressor(DecompressionBaseHandler):
     def data_available(self) -> bool:
         return (
             not self._obj.needs_input and not self._obj.eof
-        ) or self._pending_unused_data
+        ) or self._pending_unused_data is not None
