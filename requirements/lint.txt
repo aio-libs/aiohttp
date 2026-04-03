@@ -6,6 +6,12 @@
 #
 aiodns==4.0.0
     # via -r requirements/lint.in
+aiohappyeyeballs==2.6.1
+    # via aiohttp
+aiohttp==3.11.18
+    # via pytest-aiohttp
+aiosignal==1.3.2
+    # via aiohttp
 annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
@@ -69,6 +75,10 @@ pluggy==1.6.0
     # via pytest
 pre-commit==4.5.1
     # via -r requirements/lint.in
+propcache==0.3.1
+    # via
+    #   aiohttp
+    #   yarl
 proxy-py==2.4.10
     # via -r requirements/lint.in
 pycares==5.0.1
@@ -86,8 +96,14 @@ pygments==2.20.0
 pytest==9.0.2
     # via
     #   -r requirements/lint.in
+    #   pytest-aiohttp
+    #   pytest-asyncio
     #   pytest-codspeed
     #   pytest-mock
+pytest-aiohttp==1.1.0
+    # via -r requirements/lint.in
+pytest-asyncio==1.4.0a0
+    # via pytest-aiohttp
 pytest-codspeed==4.3.0
     # via -r requirements/lint.in
 pytest-mock==3.15.1
@@ -117,6 +133,7 @@ typing-extensions==4.15.0
     # via
     #   cryptography
     #   exceptiongroup
+    #   multidict
     #   mypy
     #   pydantic
     #   pydantic-core

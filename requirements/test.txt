@@ -44,6 +44,7 @@ freezegun==1.5.5
 frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   aiosignal
 gunicorn==25.3.0
     # via -r requirements/base.in
@@ -64,6 +65,7 @@ mdurl==0.1.2
 multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   yarl
 mypy==1.19.1 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
@@ -84,6 +86,7 @@ pluggy==1.6.0
 propcache==0.4.1
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test-common.in
@@ -102,10 +105,16 @@ pygments==2.20.0
 pytest==9.0.2
     # via
     #   -r requirements/test-common.in
+    #   pytest-aiohttp
+    #   pytest-asyncio
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
+pytest-aiohttp==1.1.0
+    # via -r requirements/test.in
+pytest-asyncio==1.4.0a0
+    # via pytest-aiohttp
 pytest-codspeed==4.3.0
     # via -r requirements/test-common.in
 pytest-cov==7.1.0
