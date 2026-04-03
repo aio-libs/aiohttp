@@ -48,4 +48,4 @@ def test_data_received_calls_data_received_cb(
     handler.data_received(b"x")
 
     cb.assert_called_once()
-    dummy_reader[1].received.assert_called_once_with(b"x")
+    dummy_reader[1].feed_data.assert_called_once_with(b"x")
