@@ -1736,9 +1736,15 @@ async def test_body_part_reader_payload_write() -> None:
         output += inp
 
     h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
-    writer = mock.create_autospec(
-        AbstractStreamWriter, write=write, spec_set=True, instance=True
-    )
+    if sys.version_info >= (3, 12):
+        writer = mock.create_autospec(
+            AbstractStreamWriter, write=write, spec_set=True, instance=True
+        )
+    else:
+        writer = mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        )
+        writer.write.side_effect = write
     with Stream(compressed + b"\r\n--:--") as stream:
         body_part = aiohttp.BodyPartReader(BOUNDARY, h, stream)
         payload = BodyPartReaderPayload(body_part)
