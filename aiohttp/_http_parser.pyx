@@ -569,6 +569,10 @@ cdef class HttpParser:
             char* base
             cdef cparser.llhttp_errno_t errno
 
+        # Proactor loop sends bytearray.
+        if type(data) is not bytes:
+            data = bytes(data)
+
         if self._tail:
             data, self._tail = self._tail + data, EMPTY_BYTES
 
