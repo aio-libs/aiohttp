@@ -46,7 +46,7 @@ include "_headers.pxi"
 
 from aiohttp cimport _find_header
 
-ALLOWED_UPGRADES = frozenset({"websocket"})
+cdef frozenset ALLOWED_UPGRADES = frozenset({"websocket"})
 DEF DEFAULT_FREELIST_SIZE = 250
 
 cdef extern from "Python.h":
@@ -69,7 +69,6 @@ cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
-cdef bytes EMPTY_BYTES = b""
 
 # RFC 9110 singleton headers — duplicates are rejected in strict mode.
 # In lax mode (response parser default), the check is skipped entirely
@@ -374,8 +373,8 @@ cdef class HttpParser:
         self._payload_exception = payload_exception
         self._messages = []
 
-        self._raw_name = EMPTY_BYTES
-        self._raw_value = EMPTY_BYTES
+        self._raw_name = b""
+        self._raw_value = b""
         self._tail = b""
         self._has_value = False
         self._header_name_size = 0
@@ -407,7 +406,7 @@ cdef class HttpParser:
 
     cdef _process_header(self):
         cdef str value
-        if self._raw_name is not EMPTY_BYTES:
+        if self._raw_name is not b"":
             name = find_header(self._raw_name)
             value = self._raw_value.decode('utf-8', 'surrogateescape')
 
@@ -432,20 +431,20 @@ cdef class HttpParser:
             self._has_value = False
             self._header_name_size = 0
             self._raw_headers.append((self._raw_name, self._raw_value))
-            self._raw_name = EMPTY_BYTES
-            self._raw_value = EMPTY_BYTES
+            self._raw_name = b""
+            self._raw_value = b""
 
     cdef _on_header_field(self, char* at, size_t length):
         if self._has_value:
             self._process_header()
 
-        if self._raw_name is EMPTY_BYTES:
+        if self._raw_name is b"":
             self._raw_name = at[:length]
         else:
             self._raw_name += at[:length]
 
     cdef _on_header_value(self, char* at, size_t length):
-        if self._raw_value is EMPTY_BYTES:
+        if self._raw_value is b"":
             self._raw_value = at[:length]
         else:
             self._raw_value += at[:length]
@@ -577,14 +576,14 @@ cdef class HttpParser:
             data = bytes(data)
 
         if self._tail:
-            data, self._tail = self._tail + data, EMPTY_BYTES
+            data, self._tail = self._tail + data, b""
 
         had_more_data = self._more_data_available
         if self._more_data_available:
-            result = cb_on_body(self._cparser, EMPTY_BYTES, 0)
+            result = cb_on_body(self._cparser, b"", 0)
             if result is cparser.HPE_PAUSED:
                 self._tail = data
-                return (), False, EMPTY_BYTES
+                return (), False, b""
             # TODO: Do we need to handle error case (-1)?
 
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
@@ -632,7 +631,7 @@ cdef class HttpParser:
         if self._upgraded:
             return messages, True, data[nb:]
         else:
-            return messages, False, EMPTY_BYTES
+            return messages, False, b""
 
     def set_upgraded(self, val):
         self._upgraded = val
@@ -840,7 +839,7 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
             pyparser._payload_error = 1
             pyparser._paused = False
             return -1
-        body = EMPTY_BYTES
+        body = b""
 
         if pyparser._paused:
             pyparser._paused = False
