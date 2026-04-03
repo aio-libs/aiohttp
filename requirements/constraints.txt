@@ -45,7 +45,7 @@ cffi==2.0.0
     #   pytest-codspeed
 cfgv==3.5.0
     # via pre-commit
-charset-normalizer==3.4.6
+charset-normalizer==3.4.7
     # via requests
 click==8.3.1
     # via
@@ -205,7 +205,7 @@ python-on-whales==0.81.0
     #   -r requirements/test-common.in
 pyyaml==6.0.3
     # via pre-commit
-requests==2.33.0
+requests==2.33.1
     # via
     #   sphinx
     #   sphinxcontrib-spelling

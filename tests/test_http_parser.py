@@ -319,15 +319,8 @@ def test_content_length_transfer_encoding(parser: HttpRequestParser) -> None:
     "hdr",
     (
         "Content-Length",
-        "Content-Location",
-        "Content-Range",
-        "Content-Type",
-        "ETag",
         "Host",
-        "Max-Forwards",
-        "Server",
         "Transfer-Encoding",
-        "User-Agent",
     ),
 )
 def test_duplicate_singleton_header_rejected(
@@ -339,10 +332,61 @@ def test_duplicate_singleton_header_rejected(
         f"Host: example.com\r\n"
         f"{hdr}: {val1}\r\n"
         f"{hdr}: {val2}\r\n"
-        f"\r\n"
+        "\r\n"
     ).encode()
     with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
         parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
+    "hdr",
+    (
+        "Content-Location",
+        "Content-Range",
+        "Content-Type",
+        "ETag",
+        "Max-Forwards",
+        "Server",
+        "User-Agent",
+    ),
+)
+def test_duplicate_non_security_singleton_header_rejected_strict(
+    parser: HttpRequestParser, hdr: str
+) -> None:
+    """Non-security singletons are rejected in strict mode (requests)."""
+    text = (
+        f"GET /test HTTP/1.1\r\n"
+        f"Host: example.com\r\n"
+        f"{hdr}: value1\r\n"
+        f"{hdr}: value2\r\n"
+        "\r\n"
+    ).encode()
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
+        parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
+    "hdr",
+    (
+        # Content-Length is excluded because llhttp rejects duplicates
+        # at the C level before our singleton check runs.
+        "Content-Location",
+        "Content-Range",
+        "Content-Type",
+        "ETag",
+        "Max-Forwards",
+        "Server",
+        "Transfer-Encoding",
+        "User-Agent",
+    ),
+)
+def test_duplicate_singleton_header_accepted_in_lax_mode(
+    response: HttpResponseParser, hdr: str
+) -> None:
+    """All singleton duplicates are accepted in lax mode (response parser default)."""
+    text = (f"HTTP/1.1 200 OK\r\n{hdr}: value1\r\n{hdr}: value2\r\n\r\n").encode()
+    messages, upgrade, tail = response.feed_data(text)
+    assert len(messages) == 1
 
 
 def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
@@ -353,6 +397,45 @@ def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
         b"\r\n"
     )
     with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate.*Host"):
+        parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
+    ("hdr1", "hdr2"),
+    (
+        ("content-length", "Content-Length"),
+        ("Content-Length", "content-length"),
+        ("transfer-encoding", "Transfer-Encoding"),
+        ("Transfer-Encoding", "transfer-encoding"),
+    ),
+)
+def test_duplicate_singleton_header_different_casing_rejected(
+    parser: HttpRequestParser, hdr1: str, hdr2: str
+) -> None:
+    """Singleton check must be case-insensitive per RFC 9110."""
+    val1, val2 = ("1", "2") if "content-length" in hdr1.lower() else ("v1", "v2")
+    text = (
+        f"GET /test HTTP/1.1\r\n"
+        f"Host: example.com\r\n"
+        f"{hdr1}: {val1}\r\n"
+        f"{hdr2}: {val2}\r\n"
+        "\r\n"
+    ).encode()
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
+        parser.feed_data(text)
+
+
+def test_duplicate_host_header_different_casing_rejected(
+    parser: HttpRequestParser,
+) -> None:
+    """Duplicate Host with different casing must also be rejected."""
+    text = (
+        b"GET /test HTTP/1.1\r\n"
+        b"host: evil.example\r\n"
+        b"Host: good.example\r\n"
+        b"\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Duplicate"):
         parser.feed_data(text)
 
 
