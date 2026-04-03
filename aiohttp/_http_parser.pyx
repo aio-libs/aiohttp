@@ -70,6 +70,7 @@ cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
+cdef tuple EMPTY_FEED_DATA_RESULT = ((), False, b"")
 
 # RFC 9110 singleton headers — duplicates are rejected in strict mode.
 # In lax mode (response parser default), the check is skipped entirely
@@ -584,7 +585,7 @@ cdef class HttpParser:
             result = cb_on_body(self._cparser, b"", 0)
             if result is cparser.HPE_PAUSED:
                 self._tail = data
-                return (), False, b""
+                return EMPTY_FEED_DATA_RESULT
             # TODO: Do we need to handle error case (-1)?
 
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
@@ -631,8 +632,9 @@ cdef class HttpParser:
 
         if self._upgraded:
             return messages, True, data[nb:]
-        else:
-            return messages, False, b""
+        if not messages:  # Shortcut to reduce Python overhead
+            return EMPTY_FEED_DATA_RESULT
+        return messages, False, b""
 
     def set_upgraded(self, val):
         self._upgraded = val
