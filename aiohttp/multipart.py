@@ -41,7 +41,6 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
-from .web_exceptions import HTTPRequestEntityTooLarge
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -271,6 +270,7 @@ class BodyPartReader:
         default_charset: str | None = None,
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
         client_max_size: int = math.inf,  # type: ignore[assignment]
+        max_size_error_cls: type[Exception] = ValueError
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -289,6 +289,7 @@ class BodyPartReader:
         self._cache: dict[str, Any] = {}
         self._max_decompress_size = max_decompress_size
         self._client_max_size = client_max_size
+        self._max_size_error_cls = max_size_error_cls
 
     def __aiter__(self) -> Self:
         return self
@@ -318,7 +319,7 @@ class BodyPartReader:
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
             if len(data) > self._client_max_size:
-                raise HTTPRequestEntityTooLarge(
+                raise self._max_size_error_cls(
                     max_size=self._client_max_size, actual_size=len(data)
                 )
         # https://github.com/python/mypy/issues/17537
@@ -327,7 +328,7 @@ class BodyPartReader:
             async for d in self.decode_iter(data):
                 decoded_data.extend(d)
                 if len(decoded_data) > self._client_max_size:
-                    raise HTTPRequestEntityTooLarge(
+                    raise self._max_size_error_cls(
                         max_size=self._client_max_size, actual_size=len(decoded_data)
                     )
             return decoded_data
@@ -669,6 +670,7 @@ class MultipartReader:
         client_max_size: int = math.inf,  # type: ignore[assignment]
         max_field_size: int = 8190,
         max_headers: int = 128,
+        max_size_error_cls: type[Exception] = ValueError,
     ) -> None:
         self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
@@ -685,6 +687,7 @@ class MultipartReader:
         self._last_part: MultipartReader | BodyPartReader | None = None
         self._max_field_size = max_field_size
         self._max_headers = max_headers
+        self._max_size_error_cls = max_size_error_cls
         self._at_eof = False
         self._at_bof = True
         self._unread: list[bytes] = []
@@ -790,6 +793,7 @@ class MultipartReader:
                     client_max_size=self._client_max_size,
                     max_field_size=self._max_field_size,
                     max_headers=self._max_headers,
+                    max_size_error_cls=self._max_size_error_cls,
                 )
             return self.multipart_reader_cls(
                 headers,
@@ -797,6 +801,7 @@ class MultipartReader:
                 client_max_size=self._client_max_size,
                 max_field_size=self._max_field_size,
                 max_headers=self._max_headers,
+                max_size_error_cls=self._max_size_error_cls,
             )
         else:
             return self.part_reader_cls(
@@ -806,6 +811,7 @@ class MultipartReader:
                 subtype=self._mimetype.subtype,
                 default_charset=self._default_charset,
                 client_max_size=self._client_max_size,
+                max_size_error_cls=self._max_size_error_cls,
             )
 
     def _get_boundary(self) -> str:
