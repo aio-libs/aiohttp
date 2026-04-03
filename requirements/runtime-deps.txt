@@ -41,5 +41,5 @@ typing-extensions==4.15.0 ; python_version < "3.13"
     #   -r requirements/runtime-deps.in
     #   aiosignal
     #   multidict
-yarl==1.22.0
+yarl==1.23.0
     # via -r requirements/runtime-deps.in
