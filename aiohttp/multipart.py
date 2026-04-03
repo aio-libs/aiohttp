@@ -270,7 +270,7 @@ class BodyPartReader:
         default_charset: str | None = None,
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
         client_max_size: int = math.inf,  # type: ignore[assignment]
-        max_size_error_cls: type[Exception] = ValueError
+        max_size_error_cls: type[Exception] = ValueError,
     ) -> None:
         self.headers = headers
         self._boundary = boundary
