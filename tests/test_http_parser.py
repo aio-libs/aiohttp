@@ -2329,7 +2329,7 @@ class TestDeflateBuffer:
 
         assert buf.at_eof()
 
-    @pytest.mark.xfail(platform.python_implementation() == "PyPy", reason="Broken")
+    @pytest.mark.skipif(platform.python_implementation() == "PyPy", reason="Broken")
     @pytest.mark.parametrize(
         "chunk_size",
         [1024, 2**14, 2**16],  # 1KB, 16KB, 64KB
