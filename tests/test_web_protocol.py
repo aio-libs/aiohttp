@@ -11,7 +11,7 @@ from aiohttp.web_server import Server
 
 @pytest.fixture
 def dummy_manager() -> Server[BaseRequest]:
-    return mock.create_autospec(Server[BaseRequest], request_handler=mock.Mock(), instance=True)  # type: ignore[no-any-return]
+    return mock.create_autospec(Server[BaseRequest], request_handler=mock.Mock(), request_factory=mock.Mock(), instance=True)  # type: ignore[no-any-return]
 
 
 @pytest.fixture
