@@ -11,7 +11,7 @@ from aiohttp.web_server import Server
 
 @pytest.fixture
 def dummy_manager() -> Server[BaseRequest]:
-    return mock.create_autospec(Server[BaseRequest], spec_set=True, instance=True)
+    return mock.create_autospec(Server[BaseRequest], spec_set=True, instance=True)  # type: ignore[no-any-return]
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def test_set_parser_does_not_call_data_received_cb_for_tail(
     handler.set_parser(dummy_reader[0], data_received_cb=cb)
 
     cb.assert_not_called()
-    assert dummy_reader[1].feed_data.assert_called_once_with(b"tail")
+    dummy_reader[1].feed_data.assert_called_once_with(b"tail")
 
 
 def test_data_received_calls_data_received_cb(
@@ -47,4 +47,4 @@ def test_data_received_calls_data_received_cb(
     handler.data_received(b"x")
 
     assert cb.assert_called_once()
-    assert dummy_reader[1].received.assert_called_once_with(b"x")
+    dummy_reader[1].received.assert_called_once_with(b"x")
