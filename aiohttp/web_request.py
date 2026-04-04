@@ -675,8 +675,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         return MultipartReader(
             self._headers,
             self._payload,
+            client_max_size=self._client_max_size,
             max_field_size=self._protocol.max_field_size,
             max_headers=self._protocol.max_headers,
+            max_size_error_cls=HTTPRequestEntityTooLarge,
         )
 
     async def post(self) -> "MultiDictProxy[str | bytes | FileField]":

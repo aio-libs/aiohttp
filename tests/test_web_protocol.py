@@ -1,48 +1,51 @@
 import asyncio
-from typing import Any, cast
 from unittest import mock
 
+import pytest
+
+from aiohttp.http import WebSocketReader
 from aiohttp.web_protocol import RequestHandler
+from aiohttp.web_request import BaseRequest
+from aiohttp.web_server import Server
 
 
-class _DummyManager:
-    def __init__(self) -> None:
-        self.request_handler = mock.Mock()
-        self.request_factory = mock.Mock()
+@pytest.fixture
+def dummy_manager() -> Server[BaseRequest]:
+    return mock.create_autospec(Server[BaseRequest], request_handler=mock.Mock(), request_factory=mock.Mock(), instance=True)  # type: ignore[no-any-return]
 
 
-class _DummyParser:
-    def __init__(self) -> None:
-        self.received: list[bytes] = []
-
-    def feed_data(self, data: bytes) -> tuple[bool, bytes]:
-        self.received.append(data)
-        return False, b""
+@pytest.fixture
+def dummy_reader() -> tuple[WebSocketReader, mock.Mock]:
+    m = mock.create_autospec(WebSocketReader, spec_set=True, instance=True)
+    m.feed_data.return_value = False, b""
+    return m, m
 
 
 def test_set_parser_does_not_call_data_received_cb_for_tail(
     loop: asyncio.AbstractEventLoop,
+    dummy_manager: Server[BaseRequest],
+    dummy_reader: tuple[WebSocketReader, mock.Mock],
 ) -> None:
-    handler: RequestHandler[Any] = RequestHandler(cast(Any, _DummyManager()), loop=loop)
+    handler = RequestHandler(dummy_manager, loop=loop)
     handler._message_tail = b"tail"
     cb = mock.Mock()
-    parser = _DummyParser()
 
-    handler.set_parser(parser, data_received_cb=cb)
+    handler.set_parser(dummy_reader[0], data_received_cb=cb)
 
     cb.assert_not_called()
-    assert parser.received == [b"tail"]
+    dummy_reader[1].feed_data.assert_called_once_with(b"tail")
 
 
 def test_data_received_calls_data_received_cb(
     loop: asyncio.AbstractEventLoop,
+    dummy_manager: Server[BaseRequest],
+    dummy_reader: tuple[WebSocketReader, mock.Mock],
 ) -> None:
-    handler: RequestHandler[Any] = RequestHandler(cast(Any, _DummyManager()), loop=loop)
+    handler = RequestHandler(dummy_manager, loop=loop)
     cb = mock.Mock()
-    parser = _DummyParser()
 
-    handler.set_parser(parser, data_received_cb=cb)
+    handler.set_parser(dummy_reader[0], data_received_cb=cb)
     handler.data_received(b"x")
 
-    assert cb.call_count == 1
-    assert parser.received == [b"x"]
+    cb.assert_called_once()
+    dummy_reader[1].feed_data.assert_called_once_with(b"x")

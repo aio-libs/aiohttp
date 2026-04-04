@@ -1,10 +1,11 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
+import platform
 import re
 import sys
 import zlib
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from contextlib import suppress
 from typing import Any
 from unittest import mock
@@ -17,6 +18,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.helpers import NO_EXTENSIONS
 from aiohttp.http_parser import (
     DeflateBuffer,
@@ -27,8 +29,12 @@ from aiohttp.http_parser import (
     HttpRequestParserPy,
     HttpResponseParser,
     HttpResponseParserPy,
+    PayloadState,
 )
 from aiohttp.http_writer import HttpVersion
+from aiohttp.web_protocol import RequestHandler
+from aiohttp.web_request import Request
+from aiohttp.web_server import Server
 
 try:
     try:
@@ -57,8 +63,22 @@ with suppress(ImportError):
 
 
 @pytest.fixture
+def server() -> Any:
+    return mock.create_autospec(
+        Server,
+        request_factory=mock.Mock(),
+        request_handler=mock.AsyncMock(),
+        instance=True,
+    )
+
+
+@pytest.fixture
 def protocol() -> Any:
-    return mock.create_autospec(BaseProtocol, spec_set=True, instance=True)
+    return mock.create_autospec(
+        BaseProtocol,
+        spec_set=True,
+        instance=True,
+    )
 
 
 def _gen_ids(parsers: Iterable[type[HttpParser[Any]]]) -> list[str]:
@@ -71,11 +91,13 @@ def _gen_ids(parsers: Iterable[type[HttpParser[Any]]]) -> list[str]:
 @pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
 def parser(
     loop: asyncio.AbstractEventLoop,
-    protocol: BaseProtocol,
+    server: Server[Request],
     request: pytest.FixtureRequest,
-) -> HttpRequestParser:
+) -> Iterator[HttpRequestParser]:
+    protocol = RequestHandler(server, loop=loop)
+
     # Parser implementations
-    return request.param(  # type: ignore[no-any-return]
+    parser = request.param(
         protocol,
         loop,
         2**16,
@@ -83,6 +105,10 @@ def parser(
         max_headers=128,
         max_field_size=8190,
     )
+    protocol._force_close = False
+    protocol._parser = parser
+    with mock.patch.object(protocol, "transport", True):
+        yield parser
 
 
 @pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
@@ -94,11 +120,12 @@ def request_cls(request: pytest.FixtureRequest) -> type[HttpRequestParser]:
 @pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
 def response(
     loop: asyncio.AbstractEventLoop,
-    protocol: BaseProtocol,
     request: pytest.FixtureRequest,
 ) -> HttpResponseParser:
+    protocol = ResponseHandler(loop)
+
     # Parser implementations
-    return request.param(  # type: ignore[no-any-return]
+    parser = request.param(
         protocol,
         loop,
         2**16,
@@ -107,6 +134,8 @@ def response(
         max_field_size=8190,
         read_until_eof=True,
     )
+    protocol._parser = parser
+    return parser  # type: ignore[no-any-return]
 
 
 @pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
@@ -154,9 +183,11 @@ test2: data\r
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_character(
     loop: asyncio.AbstractEventLoop,
-    protocol: BaseProtocol,
+    server: Server[Request],
     request: pytest.FixtureRequest,
 ) -> None:
+    protocol = RequestHandler(server, loop=loop)
+
     parser = HttpRequestParserC(
         protocol,
         loop,
@@ -164,6 +195,7 @@ def test_invalid_character(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = parser
     text = b"POST / HTTP/1.1\r\nHost: localhost:8080\r\nSet-Cookie: abc\x01def\r\n\r\n"
     error_detail = re.escape(r""":
 
@@ -176,9 +208,11 @@ def test_invalid_character(
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_linebreak(
     loop: asyncio.AbstractEventLoop,
-    protocol: BaseProtocol,
+    server: Server[Request],
     request: pytest.FixtureRequest,
 ) -> None:
+    protocol = RequestHandler(server, loop=loop)
+
     parser = HttpRequestParserC(
         protocol,
         loop,
@@ -186,6 +220,7 @@ def test_invalid_linebreak(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = parser
     text = b"GET /world HTTP/1.1\r\nHost: 127.0.0.1\n\r\n"
     error_detail = re.escape(r""":
 
@@ -250,8 +285,10 @@ def test_ctl_host_header_bad_characters(parser: HttpRequestParser) -> None:
 
 
 def test_unpaired_surrogate_in_header_py(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    loop: asyncio.AbstractEventLoop, server: Server[Request]
 ) -> None:
+    protocol = RequestHandler(server, loop=loop)
+
     parser = HttpRequestParserPy(
         protocol,
         loop,
@@ -259,6 +296,7 @@ def test_unpaired_surrogate_in_header_py(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = parser
     text = b"POST / HTTP/1.1\r\n\xff\r\n\r\n"
     message = None
     try:
@@ -1013,6 +1051,113 @@ def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
     assert msg.url == URL("/test")
 
 
+async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
+    text = (
+        b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
+        + b"1\r\nb\r\n" * 50000
+        + b"0\r\n\r\n"
+    )
+
+    messages, upgrade, tail = parser.feed_data(text)
+    payload = messages[0][-1]
+    # Payload should have paused reading and stopped receiving new chunks after 16k.
+    assert payload._http_chunk_splits is not None
+    assert len(payload._http_chunk_splits) == 16385
+    # We should still get the full result after read(), as it will continue processing.
+    result = await payload.read()
+    assert len(result) == 50000  # Compare len first, as it's easier to debug in diff.
+    assert result == b"b" * 50000
+
+
+async def test_compressed_with_tail(response: HttpResponseParser) -> None:
+    """Test compressed content-length body followed by a second response.
+
+    With 2 responses arriving in one call and the first compressed, this should
+    trigger decompression pausing with the second response being saved as the tail.
+    Verify that the second response is resumed from the tail.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"x" * 1024 * 1024
+    compressed = zlib.compress(original)
+    resp1 = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    ) + compressed
+    resp2 = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"
+
+    msgs, upgrade, tail = response.feed_data(resp1 + resp2)
+    payload = msgs[0][-1]
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+    payload = response.protocol._buffer[0][-1]
+    result = await payload.read()
+    assert result == b"ok"
+
+
+async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> None:
+    """Test chunked + compressed where the decompressor needs to resume from pause.
+
+    We need to verify that chunked messages continue parsing correctly after
+    a pause and resume in the decompression.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"A" * 1024 * 1024
+    compressed = zlib.compress(original)
+    chunk_data = hex(len(compressed))[2:].encode() + b"\r\n" + compressed + b"\r\n"
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+    data = headers + chunk_data + b"0\r\n\r\n"
+
+    msgs, upgrade, tail = response.feed_data(data)
+    payload = msgs[0][-1]
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+
+async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -> None:
+    """Test read-until-eof + compressed with pause."""
+
+    # Must be large enough to exceed high water mark.
+    original = b"B" * 1024 * 1024
+    compressed = zlib.compress(original)
+    # No Content-Length or Transfer-Encoding means the parser must parse until EOF.
+    headers = b"HTTP/1.1 200 OK\r\n" b"Content-Encoding: deflate\r\n" b"\r\n"
+
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    response.feed_eof()
+    payload = msgs[0][-1]
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+
+async def test_compressed_256kb(response: HttpResponseParser) -> None:
+    original = b"x" * 256 * 1024
+    compressed = zlib.compress(original)
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+
+    messages, upgrade, tail = response.feed_data(headers + compressed)
+    assert len(messages) == 1
+    payload = messages[0][-1]
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+
 @pytest.mark.parametrize("size", [40965, 8191])
 def test_max_header_value_size_continuation(
     response: HttpResponseParser, size: int
@@ -1447,8 +1592,10 @@ async def test_http_response_parser_bad_chunked_lax(
 
 @pytest.mark.dev_mode
 async def test_http_response_parser_bad_chunked_strict_py(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
+    protocol = ResponseHandler(loop)
+
     response = HttpResponseParserPy(
         protocol,
         loop,
@@ -1456,6 +1603,7 @@ async def test_http_response_parser_bad_chunked_strict_py(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = response
     text = (
         b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
     )
@@ -1469,8 +1617,10 @@ async def test_http_response_parser_bad_chunked_strict_py(
     reason="C based HTTP parser not available",
 )
 async def test_http_response_parser_bad_chunked_strict_c(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    loop: asyncio.AbstractEventLoop,
 ) -> None:
+    protocol = ResponseHandler(loop)
+
     response = HttpResponseParserC(
         protocol,
         loop,
@@ -1478,6 +1628,7 @@ async def test_http_response_parser_bad_chunked_strict_c(
         max_line_size=8190,
         max_field_size=8190,
     )
+    protocol._parser = response
     text = (
         b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5 \r\nabcde\r\n0\r\n\r\n"
     )
@@ -1628,10 +1779,12 @@ async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> 
 
 def test_parse_no_length_or_te_on_post(
     loop: asyncio.AbstractEventLoop,
-    protocol: BaseProtocol,
+    server: Server[Request],
     request_cls: type[HttpRequestParser],
 ) -> None:
+    protocol = RequestHandler(server, loop=loop)
     parser = request_cls(protocol, loop, limit=2**16)
+    protocol._parser = parser
     text = b"POST /test HTTP/1.1\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
@@ -1640,10 +1793,11 @@ def test_parse_no_length_or_te_on_post(
 
 def test_parse_payload_response_without_body(
     loop: asyncio.AbstractEventLoop,
-    protocol: BaseProtocol,
     response_cls: type[HttpResponseParser],
 ) -> None:
+    protocol = ResponseHandler(loop)
     parser = response_cls(protocol, loop, 2**16, response_with_body=False)
+    protocol._parser = parser
     text = b"HTTP/1.1 200 Ok\r\ncontent-length: 10\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
@@ -1904,8 +2058,10 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     reason="C based HTTP parser not available",
 )
 def test_parse_bad_method_for_c_parser_raises(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    loop: asyncio.AbstractEventLoop, server: Server[Request]
 ) -> None:
+    protocol = RequestHandler(server, loop=loop)
+
     payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(
         protocol,
@@ -1915,6 +2071,7 @@ def test_parse_bad_method_for_c_parser_raises(
         max_headers=128,
         max_field_size=8190,
     )
+    protocol._parser = parser
 
     with pytest.raises(aiohttp.http_exceptions.BadStatusLine):
         messages, upgrade, tail = parser.feed_data(payload)
@@ -2049,8 +2206,8 @@ class TestParsePayload:
     async def test_http_payload_parser_length(self, protocol: BaseProtocol) -> None:
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         p = HttpPayloadParser(out, length=2, headers_parser=HeadersParser())
-        eof, tail = p.feed_data(b"1245")
-        assert eof
+        state, tail = p.feed_data(b"1245")
+        assert state is PayloadState.PAYLOAD_COMPLETE
 
         assert b"12" == out._buffer[0]
         assert b"45" == tail
@@ -2326,6 +2483,7 @@ class TestDeflateBuffer:
 
         assert buf.at_eof()
 
+    @pytest.mark.skipif(platform.python_implementation() == "PyPy", reason="Broken")
     @pytest.mark.parametrize(
         "chunk_size",
         [1024, 2**14, 2**16],  # 1KB, 16KB, 64KB

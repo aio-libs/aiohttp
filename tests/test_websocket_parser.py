@@ -19,7 +19,7 @@ from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendWrapper
-from aiohttp.http import WebSocketError, WSCloseCode, WSMsgType
+from aiohttp.http import HttpParser, WebSocketError, WSCloseCode, WSMsgType
 from aiohttp.http_websocket import (
     WebSocketReader,
     WSMessageBinary,
@@ -113,8 +113,9 @@ def build_close_frame(
 
 @pytest.fixture()
 def protocol(loop: asyncio.AbstractEventLoop) -> BaseProtocol:
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
     transport = mock.Mock(spec_set=asyncio.Transport)
-    protocol = BaseProtocol(loop)
+    protocol = BaseProtocol(loop, parser=parser)
     protocol.connection_made(transport)
     return protocol
 

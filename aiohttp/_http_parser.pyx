@@ -46,7 +46,8 @@ include "_headers.pxi"
 
 from aiohttp cimport _find_header
 
-ALLOWED_UPGRADES = frozenset({"websocket"})
+
+cdef frozenset ALLOWED_UPGRADES = frozenset({"websocket"})
 DEF DEFAULT_FREELIST_SIZE = 250
 
 cdef extern from "Python.h":
@@ -69,7 +70,7 @@ cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
-cdef bytes EMPTY_BYTES = b""
+cdef tuple EMPTY_FEED_DATA_RESULT = ((), False, b"")
 
 # RFC 9110 singleton headers — duplicates are rejected in strict mode.
 # In lax mode (response parser default), the check is skipped entirely
@@ -298,7 +299,7 @@ cdef class HttpParser:
         bint      _has_value
         int _header_name_size
 
-        object _protocol
+        readonly object protocol
         object _loop
         object _timer
 
@@ -309,6 +310,7 @@ cdef class HttpParser:
         bint _read_until_eof
         bint _lax
 
+        bytes   _tail
         bint    _started
         object  _url
         bytearray   _buf
@@ -319,6 +321,8 @@ cdef class HttpParser:
         list    _raw_headers
         bint    _upgraded
         list    _messages
+        bint    _more_data_available
+        bint    _paused
         object  _payload
         bint    _payload_error
         object  _payload_exception
@@ -359,18 +363,21 @@ cdef class HttpParser:
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
 
-        self._protocol = protocol
+        self.protocol = protocol
         self._loop = loop
         self._timer = timer
 
         self._buf = bytearray()
+        self._more_data_available = False
+        self._paused = False
         self._payload = None
         self._payload_error = 0
         self._payload_exception = payload_exception
         self._messages = []
 
-        self._raw_name = EMPTY_BYTES
-        self._raw_value = EMPTY_BYTES
+        self._raw_name = b""
+        self._raw_value = b""
+        self._tail = b""
         self._has_value = False
         self._header_name_size = 0
 
@@ -401,7 +408,7 @@ cdef class HttpParser:
 
     cdef _process_header(self):
         cdef str value
-        if self._raw_name is not EMPTY_BYTES:
+        if self._raw_name is not b"":
             name = find_header(self._raw_name)
             value = self._raw_value.decode('utf-8', 'surrogateescape')
 
@@ -426,20 +433,20 @@ cdef class HttpParser:
             self._has_value = False
             self._header_name_size = 0
             self._raw_headers.append((self._raw_name, self._raw_value))
-            self._raw_name = EMPTY_BYTES
-            self._raw_value = EMPTY_BYTES
+            self._raw_name = b""
+            self._raw_value = b""
 
     cdef _on_header_field(self, char* at, size_t length):
         if self._has_value:
             self._process_header()
 
-        if self._raw_name is EMPTY_BYTES:
+        if self._raw_name is b"":
             self._raw_name = at[:length]
         else:
             self._raw_name += at[:length]
 
     cdef _on_header_value(self, char* at, size_t length):
-        if self._raw_value is EMPTY_BYTES:
+        if self._raw_value is b"":
             self._raw_value = at[:length]
         else:
             self._raw_value += at[:length]
@@ -495,7 +502,7 @@ cdef class HttpParser:
              self._read_until_eof)
         ):
             payload = StreamReader(
-                self._protocol, timer=self._timer, loop=self._loop,
+                self.protocol, timer=self._timer, loop=self._loop,
                 limit=self._limit)
         else:
             payload = EMPTY_PAYLOAD
@@ -535,6 +542,10 @@ cdef class HttpParser:
 
     ### Public API ###
 
+    def pause_reading(self):
+        assert self._payload is not None
+        self._paused = True
+
     def feed_eof(self):
         cdef bytes desc
 
@@ -562,6 +573,21 @@ cdef class HttpParser:
             char* base
             cdef cparser.llhttp_errno_t errno
 
+        # Proactor loop sends bytearray.
+        if type(data) is not bytes:
+            data = bytes(data)
+
+        if self._tail:
+            data, self._tail = self._tail + data, b""
+
+        had_more_data = self._more_data_available
+        if self._more_data_available:
+            result = cb_on_body(self._cparser, b"", 0)
+            if result is cparser.HPE_PAUSED:
+                self._tail = data
+                return EMPTY_FEED_DATA_RESULT
+            # TODO: Do we need to handle error case (-1)?
+
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
         # Cache buffer pointer before PyBuffer_Release to avoid use-after-release.
         base = <char*>self.py_buf.buf
@@ -574,12 +600,15 @@ cdef class HttpParser:
 
         if errno is cparser.HPE_PAUSED_UPGRADE:
             cparser.llhttp_resume_after_upgrade(self._cparser)
-
             nb = cparser.llhttp_get_error_pos(self._cparser) - base
+        elif errno is cparser.HPE_PAUSED:
+            cparser.llhttp_resume(self._cparser)
+            pos = cparser.llhttp_get_error_pos(self._cparser) - base
+            self._tail = data[pos:]
 
         PyBuffer_Release(&self.py_buf)
 
-        if errno not in (cparser.HPE_OK, cparser.HPE_PAUSED_UPGRADE):
+        if errno not in (cparser.HPE_OK, cparser.HPE_PAUSED, cparser.HPE_PAUSED_UPGRADE):
             if self._payload_error == 0:
                 if self._last_error is not None:
                     ex = self._last_error
@@ -603,8 +632,9 @@ cdef class HttpParser:
 
         if self._upgraded:
             return messages, True, data[nb:]
-        else:
-            return messages, False, b""
+        if not messages:  # Shortcut to reduce Python overhead
+            return EMPTY_FEED_DATA_RESULT
+        return messages, False, b""
 
     def set_upgraded(self, val):
         self._upgraded = val
@@ -799,19 +829,26 @@ cdef int cb_on_body(cparser.llhttp_t* parser,
                     const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     cdef bytes body = at[:length]
-    try:
-        pyparser._payload.feed_data(body)
-    except BaseException as underlying_exc:
-        reraised_exc = underlying_exc
-        if pyparser._payload_exception is not None:
-            reraised_exc = pyparser._payload_exception(str(underlying_exc))
+    while body or pyparser._more_data_available:
+        try:
+            pyparser._more_data_available = pyparser._payload.feed_data(body)
+        except BaseException as underlying_exc:
+            reraised_exc = underlying_exc
+            if pyparser._payload_exception is not None:
+                reraised_exc = pyparser._payload_exception(str(underlying_exc))
 
-        set_exception(pyparser._payload, reraised_exc, underlying_exc)
+            set_exception(pyparser._payload, reraised_exc, underlying_exc)
 
-        pyparser._payload_error = 1
-        return -1
-    else:
-        return 0
+            pyparser._payload_error = 1
+            pyparser._paused = False
+            return -1
+        body = b""
+
+        if pyparser._paused:
+            pyparser._paused = False
+            return cparser.HPE_PAUSED
+    pyparser._paused = False
+    return 0
 
 
 cdef int cb_on_message_complete(cparser.llhttp_t* parser) except -1:
