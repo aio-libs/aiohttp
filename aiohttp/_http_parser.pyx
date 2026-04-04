@@ -299,7 +299,7 @@ cdef class HttpParser:
         bint      _has_value
         int _header_name_size
 
-        object _protocol
+        readonly object protocol
         object _loop
         object _timer
 
@@ -363,7 +363,7 @@ cdef class HttpParser:
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
 
-        self._protocol = protocol
+        self.protocol = protocol
         self._loop = loop
         self._timer = timer
 
@@ -502,7 +502,7 @@ cdef class HttpParser:
              self._read_until_eof)
         ):
             payload = StreamReader(
-                self._protocol, timer=self._timer, loop=self._loop,
+                self.protocol, timer=self._timer, loop=self._loop,
                 limit=self._limit)
         else:
             payload = EMPTY_PAYLOAD
