@@ -142,14 +142,12 @@ class CookieJar(AbstractCookieJar):
         # Cookie persistence may include authentication/session tokens.
         # Use 0o600 at creation time to avoid umask-dependent overexposure
         # and enforce least-privilege access to sensitive credential data.
-        create_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        overwrite_flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-        try:
-            fd = os.open(file_path, create_flags, 0o600)
-        except FileExistsError:
-            fd = os.open(file_path, overwrite_flags, 0o600)
-
-        with os.fdopen(fd, mode="w", encoding="utf-8") as f:
+        with open(
+            file_path,
+            mode="w",
+            encoding="utf-8",
+            opener=lambda path, flags: os.open(path, flags, 0o600),
+        ) as f:
             json.dump(data, f, indent=2)
 
     def load(self, file_path: PathLike) -> None:
