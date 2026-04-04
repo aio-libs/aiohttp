@@ -1069,6 +1069,35 @@ async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
     assert result == b"b" * 50000
 
 
+async def test_compressed_with_tail(response: HttpResponseParser) -> None:
+    """Test compressed content-length body followed by a second response.
+    
+    With 2 responses arriving in one call and the first compressed, this should
+    trigger decompression pausing with the second response being saved as the tail.
+    Verify that the second response is resumed from the tail.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"x" * 1024 * 1024
+    compressed = zlib.compress(original)
+    resp1 = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    ) + compressed
+    resp2 = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"
+
+    msgs, upgrade, tail = response.feed_data(resp1 + resp2)
+    payload = msgs[0][-1]
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+    payload = response.protocol._buffer[0][-1]
+    result = await payload.read()
+    assert result == b"ok"
+
+
 async def test_compressed_256kb(response: HttpResponseParser) -> None:
     original = b"x" * 256 * 1024
     compressed = zlib.compress(original)
