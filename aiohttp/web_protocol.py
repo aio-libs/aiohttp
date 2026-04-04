@@ -503,9 +503,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         response: StreamResponse,
         request_start: float | None,
     ) -> None:
-        if self._logging_enabled and self.access_logger is not None:
-            if TYPE_CHECKING:
-                assert request_start is not None
+        if (
+            self.access_logger is not None
+            and self.access_logger.enabled
+            and request_start is not None
+        ):
             await self.access_logger.log(request, response, request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
