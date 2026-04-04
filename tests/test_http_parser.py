@@ -1098,6 +1098,33 @@ async def test_compressed_with_tail(response: HttpResponseParser) -> None:
     assert result == b"ok"
 
 
+async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> None:
+    """Test chunked + compressed where the decompressor needs to resume from pause.
+
+    We need to verify that chunked messages continue parsing correctly after
+    a pause and resume in the decompression.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"A" * 1024 * 1024
+    compressed = zlib.compress(original)
+    chunk_data = (
+        hex(len(compressed))[2:].encode() + b"\r\n" + compressed + b"\r\n"
+    )
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+    data = headers + chunk_data + b"0\r\n\r\n"
+
+    msgs, upgrade, tail = response.feed_data(data)
+    payload = msgs[0][-1]
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+
 async def test_compressed_256kb(response: HttpResponseParser) -> None:
     original = b"x" * 256 * 1024
     compressed = zlib.compress(original)
