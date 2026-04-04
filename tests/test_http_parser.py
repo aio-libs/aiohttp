@@ -1107,9 +1107,7 @@ async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> 
     # Must be large enough to exceed high water mark.
     original = b"A" * 1024 * 1024
     compressed = zlib.compress(original)
-    chunk_data = (
-        hex(len(compressed))[2:].encode() + b"\r\n" + compressed + b"\r\n"
-    )
+    chunk_data = hex(len(compressed))[2:].encode() + b"\r\n" + compressed + b"\r\n"
     headers = (
         b"HTTP/1.1 200 OK\r\n"
         b"Transfer-Encoding: chunked\r\n"
