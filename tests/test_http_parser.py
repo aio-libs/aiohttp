@@ -1071,7 +1071,7 @@ async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
 
 async def test_compressed_with_tail(response: HttpResponseParser) -> None:
     """Test compressed content-length body followed by a second response.
-    
+
     With 2 responses arriving in one call and the first compressed, this should
     trigger decompression pausing with the second response being saved as the tail.
     Verify that the second response is resumed from the tail.
