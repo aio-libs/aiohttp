@@ -1143,6 +1143,42 @@ async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -
     assert result == original
 
 
+async def test_compressed_until_eof_high_water(
+    response_cls: type[HttpResponseParser]
+) -> None:
+    """Test read-until-eof + compressed with higher limit."""
+    loop = asyncio.get_running_loop()
+    protocol = ResponseHandler(loop)
+    response = response_cls(
+        protocol,
+        loop,
+        # 512 KB limit: two 256 KB chunks fit, third triggers pause.
+        2**19,
+        max_line_size=8190,
+        max_headers=128,
+        max_field_size=8190,
+        read_until_eof=True,
+    )
+    protocol._parser = response
+
+    # Must be large enough to exceed high water mark.
+    original = b"B" * 1024 * 1024 * 5
+    compressed = zlib.compress(original)
+    # No Content-Length or Transfer-Encoding means the parser must parse until EOF.
+    headers = b"HTTP/1.1 200 OK\r\nContent-Encoding: deflate\r\n\r\n"
+
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    response.feed_eof()
+    payload = msgs[0][-1]
+
+    # Check that .feed_eof() hasn't decompressed entire payload into memory.
+    assert sum(len(b) for b in payload._buffer) < (2 * 1024 * 1024)
+
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+
 async def test_compressed_256kb(response: HttpResponseParser) -> None:
     original = b"x" * 256 * 1024
     compressed = zlib.compress(original)
