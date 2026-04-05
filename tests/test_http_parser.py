@@ -1144,7 +1144,7 @@ async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -
 
 
 async def test_compressed_until_eof_high_water(
-    response_cls: type[HttpResponseParser]
+    response_cls: type[HttpResponseParser],
 ) -> None:
     """Test read-until-eof + compressed with higher limit."""
     loop = asyncio.get_running_loop()
