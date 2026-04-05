@@ -288,7 +288,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def feed_eof(self) -> _MsgT | None:
         if self._payload_parser is not None:
             self._payload_parser.feed_eof()
-            self._payload_parser = None
+            if self._payload_parser.done:
+                self._payload_parser = None
         else:
             # try to extract partial message
             if self._tail:
@@ -810,6 +811,7 @@ class HttpPayloadParser:
         self._more_data_available = False
         self._trailer_lines: list[bytes] = []
         self.done = False
+        self._eof_pending = False
 
         # payload decompression wrapper
         if response_with_body and compression and self._auto_decompress:
@@ -841,7 +843,15 @@ class HttpPayloadParser:
 
     def feed_eof(self) -> None:
         if self._type == ParseState.PARSE_UNTIL_EOF:
+            self._eof_pending = True
+            while self._more_data_available:
+                if self._paused:
+                    self._paused = False
+                    return  # Will resume via feed_data(b"") later
+                self._more_data_available = self.payload.feed_data(b"")
             self.payload.feed_eof()
+            self.done = True
+            self._eof_pending = False
         elif self._type == ParseState.PARSE_LENGTH:
             raise ContentLengthError(
                 "Not enough data to satisfy content length header."
@@ -1019,6 +1029,12 @@ class HttpPayloadParser:
                     return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
                 self._more_data_available = self.payload.feed_data(b"")
 
+            if self._eof_pending:
+                self.payload.feed_eof()
+                self.done = True
+                self._eof_pending = False
+                return PayloadState.PAYLOAD_COMPLETE, b""
+
         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
 
@@ -1100,9 +1116,12 @@ class DeflateBuffer:
 
     def feed_eof(self) -> None:
         chunk = self.decompressor.flush()
+        # This should never contain data as we defer the call until exhausting
+        # the decompression. If .flush() is returning data, this may indicate a
+        # zip bomb vulnerability as it will decompress all remaining data at once.
+        assert not chunk
 
-        if chunk or self.size > 0:
-            self.out.feed_data(chunk)
+        if self.size > 0:
             # decompressor is not brotli unless encoding is "br"
             if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore[union-attr]
                 raise ContentEncodingError("deflate")

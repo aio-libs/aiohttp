@@ -1139,6 +1139,10 @@ async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -
     msgs, upgrade, tail = response.feed_data(headers + compressed)
     response.feed_eof()
     payload = msgs[0][-1]
+
+    # Check that .feed_eof() hasn't decompressed entire payload into memory.
+    assert sum(len(b) for b in payload._buffer) <= (512 * 1024)
+
     result = await payload.read()
     assert len(result) == len(original)
     assert result == original
@@ -2428,10 +2432,10 @@ class TestDeflateBuffer:
         dbuf = DeflateBuffer(buf, "deflate")
 
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.flush.return_value = b"line"
+        dbuf.decompressor.data_available = False
+        dbuf.decompressor.flush.return_value = b""
 
         dbuf.feed_eof()
-        assert [b"line"] == list(buf._buffer)
         assert buf._eof
 
     async def test_feed_eof_err_deflate(self, protocol: BaseProtocol) -> None:
@@ -2439,8 +2443,10 @@ class TestDeflateBuffer:
         dbuf = DeflateBuffer(buf, "deflate")
 
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.flush.return_value = b"line"
+        dbuf.decompressor.data_available = False
+        dbuf.decompressor.flush.return_value = b""
         dbuf.decompressor.eof = False
+        dbuf.size = 1  # Simulate that data was previously fed
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             dbuf.feed_eof()
@@ -2450,22 +2456,24 @@ class TestDeflateBuffer:
         dbuf = DeflateBuffer(buf, "gzip")
 
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.flush.return_value = b"line"
+        dbuf.decompressor.data_available = False
+        dbuf.decompressor.flush.return_value = b""
         dbuf.decompressor.eof = False
 
         dbuf.feed_eof()
-        assert [b"line"] == list(buf._buffer)
+        assert buf._eof
 
     async def test_feed_eof_no_err_brotli(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         dbuf = DeflateBuffer(buf, "br")
 
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.flush.return_value = b"line"
+        dbuf.decompressor.data_available = False
+        dbuf.decompressor.flush.return_value = b""
         dbuf.decompressor.eof = False
 
         dbuf.feed_eof()
-        assert [b"line"] == list(buf._buffer)
+        assert buf._eof
 
     @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
     async def test_feed_eof_no_err_zstandard(self, protocol: BaseProtocol) -> None:
@@ -2473,11 +2481,12 @@ class TestDeflateBuffer:
         dbuf = DeflateBuffer(buf, "zstd")
 
         dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.flush.return_value = b"line"
+        dbuf.decompressor.data_available = False
+        dbuf.decompressor.flush.return_value = b""
         dbuf.decompressor.eof = False
 
         dbuf.feed_eof()
-        assert [b"line"] == list(buf._buffer)
+        assert buf._eof
 
     async def test_empty_body(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
@@ -2511,7 +2520,8 @@ class TestDeflateBuffer:
         # Feed compressed data in chunks (simulating network streaming)
         for i in range(0, len(compressed), chunk_size):  # pragma: no branch
             chunk = compressed[i : i + chunk_size]
-            dbuf.feed_data(chunk)
+            while dbuf.feed_data(chunk):
+                chunk = b""
 
         dbuf.feed_eof()
 

@@ -323,6 +323,7 @@ cdef class HttpParser:
         list    _messages
         bint    _more_data_available
         bint    _paused
+        bint    _eof_pending
         object  _payload
         bint    _payload_error
         object  _payload_exception
@@ -370,6 +371,7 @@ cdef class HttpParser:
         self._buf = bytearray()
         self._more_data_available = False
         self._paused = False
+        self._eof_pending = False
         self._payload = None
         self._payload_error = 0
         self._payload_exception = payload_exception
@@ -560,7 +562,16 @@ cdef class HttpParser:
                 desc = cparser.llhttp_get_error_reason(self._cparser)
                 raise PayloadEncodingError(desc.decode('latin-1'))
             else:
+                self._eof_pending = True
+                while self._more_data_available:
+                    if self._paused:
+                        self._paused = False
+                        return  # Will resume via feed_data(b"") later
+                    self._more_data_available = self._payload.feed_data(b"")
                 self._payload.feed_eof()
+                self._payload = None
+                self._more_data_available = False
+                self._eof_pending = False
         elif self._started:
             self._on_headers_complete()
             if self._messages:
@@ -587,6 +598,17 @@ cdef class HttpParser:
                 self._tail = data
                 return EMPTY_FEED_DATA_RESULT
             # TODO: Do we need to handle error case (-1)?
+
+        if self._eof_pending and not self._more_data_available:
+            self._payload.feed_eof()
+            self._payload = None
+            self._more_data_available = False
+            self._eof_pending = False
+            if self._messages:
+                messages = self._messages
+                self._messages = []
+                return messages, False, b""
+            return EMPTY_FEED_DATA_RESULT
 
         PyObject_GetBuffer(data, &self.py_buf, PyBUF_SIMPLE)
         # Cache buffer pointer before PyBuffer_Release to avoid use-after-release.
