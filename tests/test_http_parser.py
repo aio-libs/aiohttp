@@ -1098,6 +1098,23 @@ async def test_compressed_with_tail(response: HttpResponseParser) -> None:
     assert result == b"ok"
 
 
+async def test_two_content_length_responses_in_one_call(
+    response: HttpResponseParser,
+) -> None:
+    """Two complete responses in a single feed_data call.
+
+    The first payload completes with tail data for the second, hitting the
+    PAYLOAD_COMPLETE branch that resets the parser for the next message.
+    """
+    resp1 = b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello"
+    resp2 = b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nworld"
+
+    msgs, upgrade, tail = response.feed_data(resp1 + resp2)
+    assert len(msgs) == 2
+    assert await msgs[0][-1].read() == b"hello"
+    assert await msgs[1][-1].read() == b"world"
+
+
 async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> None:
     """Test chunked + compressed where the decompressor needs to resume from pause.
 
