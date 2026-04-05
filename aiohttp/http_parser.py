@@ -428,6 +428,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 max_line_size=self.max_line_size,
                                 max_field_size=self.max_field_size,
                                 max_trailers=max_trailers,
+                                limit=self._limit,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -450,6 +451,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 max_line_size=self.max_line_size,
                                 max_field_size=self.max_field_size,
                                 max_trailers=max_trailers,
+                                limit=self._limit,
                             )
                         elif not empty_body and length is None and self.read_until_eof:
                             payload = StreamReader(
@@ -472,6 +474,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 max_line_size=self.max_line_size,
                                 max_field_size=self.max_field_size,
                                 max_trailers=max_trailers,
+                                limit=self._limit,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -809,6 +812,7 @@ class HttpPayloadParser:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_trailers: int = 128,
+        limit: int = DEFAULT_MAX_DECOMPRESS_SIZE,
     ) -> None:
         self._length = 0
         self._paused = False
@@ -830,7 +834,7 @@ class HttpPayloadParser:
         # payload decompression wrapper
         if response_with_body and compression and self._auto_decompress:
             real_payload: StreamReader | DeflateBuffer = DeflateBuffer(
-                payload, compression
+                payload, compression, max_decompress_size=limit
             )
         else:
             real_payload = payload

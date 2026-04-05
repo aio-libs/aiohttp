@@ -1152,8 +1152,7 @@ async def test_compressed_until_eof_high_water(
     response = response_cls(
         protocol,
         loop,
-        # 512 KB limit: two 256 KB chunks fit, third triggers pause.
-        2**19,
+        2**19, # 512 KiB limit
         max_line_size=8190,
         max_headers=128,
         max_field_size=8190,
@@ -1162,7 +1161,7 @@ async def test_compressed_until_eof_high_water(
     protocol._parser = response
 
     # Must be large enough to exceed high water mark.
-    original = b"B" * 1024 * 1024 * 5
+    original = b"B" * 5 * 1024 * 1024
     compressed = zlib.compress(original)
     # No Content-Length or Transfer-Encoding means the parser must parse until EOF.
     headers = b"HTTP/1.1 200 OK\r\nContent-Encoding: deflate\r\n\r\n"
@@ -1172,7 +1171,9 @@ async def test_compressed_until_eof_high_water(
     payload = msgs[0][-1]
 
     # Check that .feed_eof() hasn't decompressed entire payload into memory.
-    assert sum(len(b) for b in payload._buffer) < (2 * 1024 * 1024)
+    assert sum(len(b) for b in payload._buffer) <= (2 * 1024 * 1024)
+    # Individual chunks should have been decompressed at limit amount.
+    assert all(len(b) == 512 * 1024 for b in payload._buffer)
 
     result = await payload.read()
     assert len(result) == len(original)

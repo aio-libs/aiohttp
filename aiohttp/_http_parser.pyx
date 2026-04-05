@@ -511,7 +511,7 @@ cdef class HttpParser:
 
         self._payload = payload
         if encoding is not None and self._auto_decompress:
-            self._payload = DeflateBuffer(payload, encoding)
+            self._payload = DeflateBuffer(payload, encoding, max_decompress_size=self._limit)
 
         if not self._response_with_body:
             payload = EMPTY_PAYLOAD
