@@ -5,14 +5,13 @@ import string
 from contextlib import suppress
 from enum import IntEnum
 from re import Pattern
-from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 from . import hdrs
 from .base_protocol import BaseProtocol
-from .client_proto import ResponseHandler
 from .compression_utils import (
     DEFAULT_MAX_DECOMPRESS_SIZE,
     HAS_BROTLI,
@@ -44,6 +43,9 @@ from .http_exceptions import (
 from .http_writer import HttpVersion, HttpVersion10
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
+
+if TYPE_CHECKING:
+    from .client_proto import ResponseHandler
 
 __all__ = (
     "HeadersParser",
