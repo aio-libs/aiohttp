@@ -5,7 +5,16 @@ import string
 from contextlib import suppress
 from enum import IntEnum
 from re import Pattern
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Final,
+    Generic,
+    Literal,
+    NamedTuple,
+    TypeVar,
+)
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
@@ -704,7 +713,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     Returns RawResponseMessage.
     """
 
-    protocol: ResponseHandler
+    protocol: "ResponseHandler"
 
     # Lax mode should only be enabled on response parser.
     lax = not DEBUG
