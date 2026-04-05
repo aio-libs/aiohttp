@@ -1152,7 +1152,7 @@ async def test_compressed_until_eof_high_water(
     response = response_cls(
         protocol,
         loop,
-        2**19, # 512 KiB limit
+        2**19,  # 512 KiB limit
         max_line_size=8190,
         max_headers=128,
         max_field_size=8190,
