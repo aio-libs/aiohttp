@@ -12,6 +12,7 @@ from yarl import URL
 
 from . import hdrs
 from .base_protocol import BaseProtocol
+from .client_proto import ResponseHandler
 from .compression_utils import (
     DEFAULT_MAX_DECOMPRESS_SIZE,
     HAS_BROTLI,
@@ -700,6 +701,8 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     BadStatusLine could be raised in case of any errors in status line.
     Returns RawResponseMessage.
     """
+
+    protocol: ResponseHandler
 
     # Lax mode should only be enabled on response parser.
     lax = not DEBUG
