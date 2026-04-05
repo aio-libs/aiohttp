@@ -1130,11 +1130,7 @@ async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -
     original = b"B" * 1024 * 1024
     compressed = zlib.compress(original)
     # No Content-Length or Transfer-Encoding means the parser must parse until EOF.
-    headers = (
-        b"HTTP/1.1 200 OK\r\n"
-        b"Content-Encoding: deflate\r\n"
-        b"\r\n"
-    )
+    headers = b"HTTP/1.1 200 OK\r\n" b"Content-Encoding: deflate\r\n" b"\r\n"
 
     msgs, upgrade, tail = response.feed_data(headers + compressed)
     response.feed_eof()
@@ -2401,6 +2397,7 @@ class TestParsePayload:
         p.feed_data(payload)
         assert b"".join(parts) == b"".join(out._buffer)
         assert out.is_eof()
+
 
 class TestDeflateBuffer:
     async def test_feed_data(self, protocol: BaseProtocol) -> None:
