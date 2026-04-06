@@ -1,14 +1,15 @@
 import asyncio
+import gc
 import socket
 from contextlib import suppress
-from typing import NoReturn
+from typing import Any, NoReturn
 from unittest import mock
 
 import pytest
 
 from aiohttp import client, web
 from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer, AiohttpServer
 
 
 async def test_simple_server(aiohttp_raw_server, aiohttp_client) -> None:
@@ -417,3 +418,51 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
         assert done_event.is_set()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_no_future_warning_on_disconnect_during_backpressure(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    loop = asyncio.get_running_loop()
+    exc_handler_calls: list[dict[str, Any]] = []
+    original_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, ctx: exc_handler_calls.append(ctx))
+    protocol = None
+
+    async def handler(request: web.Request) -> NoReturn:
+        nonlocal protocol
+        protocol = request.protocol
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        while True:
+            await resp.write(b"x" * 65536)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    # aiohttp_server enables handler_cancellation by default so the handler
+    # task is cancelled when connection_lost() fires.
+    server = await aiohttp_server(app)
+
+    # Open a raw asyncio connection so we control exactly when the client
+    # side closes.
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    writer.write(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    await writer.drain()
+
+    try:
+        # Poll until the server protocol reports that writing is paused.
+        async def wait_for_backpressure() -> None:
+            while protocol is None or not protocol.writing_paused:
+                await asyncio.sleep(0.01)
+
+        await asyncio.wait_for(wait_for_backpressure(), timeout=5.0)
+
+        writer.close()
+        await asyncio.sleep(0.1)
+
+        gc.collect()
+        await asyncio.sleep(0)
+    finally:
+        loop.set_exception_handler(original_handler)
+
+    assert not exc_handler_calls
