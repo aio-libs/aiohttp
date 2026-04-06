@@ -1131,9 +1131,7 @@ async def test_compressed_zlib_64kb(response_cls: type[HttpResponseParser]) -> N
     protocol._parser = response
 
     original = b"".join(
-        bytes((*range(0, i), *range(i, 0, -1)))
-        for _ in range(255)
-        for i in range(255)
+        bytes((*range(0, i), *range(i, 0, -1))) for _ in range(255) for i in range(255)
     )
     compressed = zlib.compress(original)
     headers = (
