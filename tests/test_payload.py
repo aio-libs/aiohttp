@@ -328,7 +328,7 @@ async def test_bytesio_payload_write_with_length_remaining_zero() -> None:
 
 async def test_bytesio_payload_large_data_multiple_chunks() -> None:
     """Test BytesIOPayload with large data requiring multiple read chunks."""
-    chunk_size = 2**16  # 64KB (READ_SIZE)
+    chunk_size = 2**18  # 256KiB (READ_SIZE)
     data = b"x" * (chunk_size + 1000)  # Slightly larger than READ_SIZE
     payload_bytesio = payload.BytesIOPayload(io.BytesIO(data))
     writer = MockStreamWriter()
@@ -352,7 +352,7 @@ async def test_bytesio_payload_remaining_bytes_exhausted() -> None:
 
 async def test_iobase_payload_exact_chunk_size_limit() -> None:
     """Test IOBasePayload with content length matching exactly one read chunk."""
-    chunk_size = 2**16  # 65536 bytes (READ_SIZE)
+    chunk_size = 2**18  # 256KiB (READ_SIZE)
     data = b"x" * chunk_size + b"extra"  # Slightly larger than one read chunk
     p = payload.IOBasePayload(io.BytesIO(data))
     writer = MockStreamWriter()

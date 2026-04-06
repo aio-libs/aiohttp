@@ -43,7 +43,7 @@ __all__ = (
 )
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
-READ_SIZE: Final[int] = 2**16  # 64 KB
+READ_SIZE: Final[int] = 2**18  # 256 KiB
 _CLOSE_FUTURES: set[asyncio.Future[None]] = set()
 
 

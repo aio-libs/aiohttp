@@ -202,7 +202,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         max_headers: int = 128,
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
-        read_bufsize: int = 2**16,
+        read_bufsize: int = 2**18,
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):

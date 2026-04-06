@@ -21,7 +21,7 @@ from .helpers import (
 )
 from .models import WS_DEFLATE_TRAILING, WSMsgType
 
-DEFAULT_LIMIT: Final[int] = 2**16
+DEFAULT_LIMIT: Final[int] = 2**18
 
 # WebSocket opcode boundary: opcodes 0-7 are data frames, 8-15 are control frames
 # Control frames (ping, pong, close) are never compressed

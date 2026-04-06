@@ -158,7 +158,7 @@ async def test_send_compress_cancelled(
     monkeypatch.setattr("aiohttp._websocket.writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", 1024)
     writer = WebSocketWriter(protocol, transport, compress=15)
     loop = asyncio.get_running_loop()
-    queue = WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
+    queue = WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**18, loop=loop)
     reader = WebSocketReader(queue, 50000)
 
     # Replace executor with slow one to make race condition reproducible
@@ -305,7 +305,7 @@ async def test_concurrent_messages(
     ):
         writer = WebSocketWriter(protocol, transport, compress=15)
         loop = asyncio.get_running_loop()
-        queue = WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
+        queue = WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**18, loop=loop)
         reader = WebSocketReader(queue, 50000)
         writers = []
         payloads = []

@@ -277,13 +277,17 @@ class ZLibDecompressor(DecompressionBaseHandler):
         self._mode = encoding_to_mode(encoding, suppress_deflate_header)
         self._zlib_backend: Final = ZLibBackendWrapper(ZLibBackend._zlib_backend)
         self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
+        self._last_empty = False
 
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
-        return self._decompressor.decompress(
+        result = self._decompressor.decompress(
             self._decompressor.unconsumed_tail + data, max_length
         )
+        # Only way to know that isal has no further data is checking we get no output
+        self._last_empty = result == b""
+        return result
 
     def flush(self, length: int = 0) -> bytes:
         return (
@@ -294,7 +298,7 @@ class ZLibDecompressor(DecompressionBaseHandler):
 
     @property
     def data_available(self) -> bool:
-        return bool(self._decompressor.unconsumed_tail)
+        return bool(self._decompressor.unconsumed_tail) or not self._last_empty
 
     @property
     def eof(self) -> bool:
