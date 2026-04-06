@@ -496,7 +496,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 break
 
             # feed payload
-            elif self._payload_has_more_data or (data and start_pos < data_len):
+            else:
                 assert not self._lines
                 assert self._payload_parser is not None
                 try:
@@ -533,8 +533,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 start_pos = 0
                 data_len = len(data)
                 self._payload_parser = None
-            else:
-                break
 
         if data and start_pos < data_len:
             data = data[start_pos:]
