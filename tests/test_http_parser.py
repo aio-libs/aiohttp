@@ -1178,7 +1178,7 @@ async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> 
 async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -> None:
     """Test read-until-eof + compressed with pause."""
     # Must be large enough to exceed high water mark.
-    original = b"B" * 1024 * 1024
+    original = b"B" * 5 * 1024 * 1024
     compressed = zlib.compress(original)
     # No Content-Length or Transfer-Encoding means the parser must parse until EOF.
     headers = b"HTTP/1.1 200 OK\r\nContent-Encoding: deflate\r\n\r\n"
@@ -1188,7 +1188,7 @@ async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -
     payload = msgs[0][-1]
 
     # Check that .feed_eof() hasn't decompressed entire payload into memory.
-    assert sum(len(b) for b in payload._buffer) <= (512 * 1024)
+    assert sum(len(b) for b in payload._buffer) <= (1024 * 1024)
 
     result = await payload.read()
     assert len(result) == len(original)
