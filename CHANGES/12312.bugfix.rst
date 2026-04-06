@@ -1,0 +1,1 @@
+Newly saved cookiejars now use ``0x600`` permissions to better protect them from being read by other users -- by :user:`digiscrypt`.
