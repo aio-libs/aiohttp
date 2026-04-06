@@ -3,8 +3,10 @@ import datetime
 import heapq
 import itertools
 import logging
+import os
 import pathlib
 import pickle
+import stat
 import sys
 import unittest
 from http.cookies import BaseCookie, Morsel, SimpleCookie
@@ -1810,6 +1812,40 @@ async def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
     assert cookie["secure"] is True
     assert cookie["httponly"] is True
     assert cookie["domain"] == "example.com"
+
+
+@pytest.mark.skipif(
+    os.name != "posix", reason="POSIX permission bits are required for this test"
+)
+def test_save_creates_private_cookie_file(tmp_path: Path) -> None:
+    file_path = tmp_path / "private-cookies.json"
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["token=abc123; Path=/"], URL("https://example.com/")
+    )
+
+    jar.save(file_path=file_path)
+
+    assert file_path.exists()
+    assert stat.S_IMODE(file_path.stat().st_mode) == 0o600
+
+
+@pytest.mark.skipif(
+    os.name != "posix", reason="POSIX permission bits are required for this test"
+)
+def test_save_preserves_existing_cookie_file_permissions(tmp_path: Path) -> None:
+    file_path = tmp_path / "existing-cookies.json"
+    file_path.write_text("{}", encoding="utf-8")
+    file_path.chmod(0o644)
+
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["token=abc123; Path=/"], URL("https://example.com/")
+    )
+
+    jar.save(file_path=file_path)
+
+    assert stat.S_IMODE(file_path.stat().st_mode) == 0o644
 
 
 async def test_cookie_jar_unsafe_property() -> None:
