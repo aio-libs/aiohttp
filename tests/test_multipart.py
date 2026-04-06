@@ -1,4 +1,5 @@
 import asyncio
+import gzip
 import io
 import json
 import pathlib
@@ -27,6 +28,7 @@ from aiohttp.multipart import (
     MultipartResponseWrapper,
 )
 from aiohttp.streams import StreamReader
+from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -383,6 +385,22 @@ class TestPartReader:
         with Stream(b"\x0e4Time to Relax!\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             with pytest.raises(RuntimeError):
+                await obj.read(decode=True)
+
+    async def test_read_decode_compressed_exceeds_max_size(self) -> None:
+        # Compressed data is small, but decompresses beyond client_max_size.
+        original = b"A" * 1024
+        compressed = gzip.compress(original)
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
+        with Stream(compressed + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(
+                BOUNDARY,
+                h,
+                stream,
+                client_max_size=256,
+                max_size_error_cls=HTTPRequestEntityTooLarge,
+            )
+            with pytest.raises(HTTPRequestEntityTooLarge):
                 await obj.read(decode=True)
 
     async def test_read_with_content_transfer_encoding_base64(self) -> None:
