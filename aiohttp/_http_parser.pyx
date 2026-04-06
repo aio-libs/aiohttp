@@ -601,7 +601,6 @@ cdef class HttpParser:
             if result is cparser.HPE_PAUSED:
                 self._tail = data
                 return EMPTY_FEED_DATA_RESULT
-            # TODO: Do we need to handle error case (-1)?
 
         if self._eof_pending and not self._more_data_available:
             self._payload.feed_eof()
