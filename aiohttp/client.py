@@ -847,6 +847,21 @@ class ClientSession:
                             # response is forbidden
                             resp.release()
 
+                        # Some servers send Location headers with raw
+                        # latin-1 bytes (e.g. \xf8 for ø).  The HTTP
+                        # parser decodes them via utf-8/surrogateescape,
+                        # producing lone surrogates (\udcf8) that break
+                        # URL parsing.  Recover by round-tripping back
+                        # to bytes and decoding as latin-1.  (See #10047)
+                        try:
+                            r_url.encode("utf-8")
+                        except (UnicodeEncodeError, UnicodeDecodeError):
+                            try:
+                                raw = r_url.encode("utf-8", "surrogateescape")
+                                r_url = raw.decode("latin-1")
+                            except (UnicodeDecodeError, UnicodeEncodeError):
+                                pass
+
                         try:
                             parsed_redirect_url = URL(
                                 r_url, encoded=not self._requote_redirect_url

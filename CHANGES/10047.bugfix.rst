@@ -1,0 +1,1 @@
+Fixed redirect following when the server sends a ``Location`` header containing raw latin-1 encoded bytes (e.g. ``\xf8`` for ``ø``). Previously, these were decoded via UTF-8 surrogateescape, producing lone surrogates that broke URL parsing and caused 404 errors. The redirect URL is now recovered by round-tripping through latin-1 -- by :user:`lichuang9890-star`.
