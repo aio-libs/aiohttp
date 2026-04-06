@@ -191,8 +191,12 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         # by interrupting system calls
         signal.siginterrupt(signal.SIGTERM, False)
         signal.siginterrupt(signal.SIGUSR1, False)
-        # Reset signals so Gunicorn doesn't swallow subprocess return codes
-        # See: https://github.com/aio-libs/aiohttp/issues/6130
+
+        # Reset SIGCHLD to default so Gunicorn doesn't swallow subprocess
+        # return codes. Without this, workers inherit the master arbiter's
+        # SIGCHLD handler, causing spurious "Worker exited" errors when
+        # application code spawns subprocesses.
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
     def handle_quit(self, sig: int, frame: FrameType | None) -> None:
         self.alive = False
