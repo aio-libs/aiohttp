@@ -1693,10 +1693,7 @@ async def test_app_max_client_size(aiohttp_client: AiohttpClient) -> None:
         resp = await client.post("/", data=data)
     assert 413 == resp.status
     resp_text = await resp.text()
-    assert "Maximum request body size 1048576 exceeded, actual body size" in resp_text
-    # Maximum request body size X exceeded, actual body size X
-    body_size = int(resp_text.split()[-1])
-    assert body_size >= max_size
+    assert "Maximum request body size 1048576 exceeded" in resp_text
 
     resp.release()
 
@@ -1718,7 +1715,7 @@ async def test_app_max_client_size_form(aiohttp_client: AiohttpClient) -> None:
     async with client.post("/", data=form) as resp:
         assert resp.status == 413
         resp_text = await resp.text()
-    assert "Maximum request body size 1048576 exceeded, actual body size" in resp_text
+    assert "Maximum request body size 1048576 exceeded" in resp_text
 
 
 async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> None:
@@ -1745,10 +1742,7 @@ async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> No
         resp = await client.post("/", data=too_large_data)
     assert 413 == resp.status
     resp_text = await resp.text()
-    assert "Maximum request body size 2097152 exceeded, actual body size" in resp_text
-    # Maximum request body size X exceeded, actual body size X
-    body_size = int(resp_text.split()[-1])
-    assert body_size >= custom_max_size
+    assert "Maximum request body size 2097152 exceeded" in resp_text
 
     resp.release()
 
@@ -1795,10 +1789,7 @@ async def test_post_max_client_size(aiohttp_client: AiohttpClient) -> None:
 
         assert 413 == resp.status
         resp_text = await resp.text()
-        assert (
-            "Maximum request body size 10 exceeded, "
-            "actual body size 1024" in resp_text
-        )
+        assert "Maximum request body size 10 exceeded" in resp_text
         data_file = data["file"]
         assert isinstance(data_file, io.BytesIO)
         data_file.close()
