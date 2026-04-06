@@ -319,18 +319,14 @@ class BodyPartReader:
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
             if len(data) > self._client_max_size:
-                raise self._max_size_error_cls(
-                    max_size=self._client_max_size, actual_size=len(data)
-                )
+                raise self._max_size_error_cls(self._client_max_size)
         # https://github.com/python/mypy/issues/17537
         if decode:  # type: ignore[unreachable]
             decoded_data = bytearray()
             async for d in self.decode_iter(data):
                 decoded_data.extend(d)
                 if len(decoded_data) > self._client_max_size:
-                    raise self._max_size_error_cls(
-                        max_size=self._client_max_size, actual_size=len(decoded_data)
-                    )
+                    raise self._max_size_error_cls(self._client_max_size)
             return decoded_data
         return data
 
