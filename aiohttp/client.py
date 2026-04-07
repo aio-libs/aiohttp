@@ -268,6 +268,16 @@ _RetType_co = TypeVar(
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
+def _recover_redirect_location(r_url: str) -> str:
+    if not any("\udc80" <= ch <= "\udcff" for ch in r_url):
+        return r_url
+    raw = r_url.encode("utf-8", "surrogateescape")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1")
+
+
 @final
 class ClientSession:
     """First-class interface for making HTTP requests."""
@@ -847,20 +857,7 @@ class ClientSession:
                             # response is forbidden
                             resp.release()
 
-                        # Some servers send Location headers with raw
-                        # latin-1 bytes (e.g. \xf8 for ø).  The HTTP
-                        # parser decodes them via utf-8/surrogateescape,
-                        # producing lone surrogates (\udcf8) that break
-                        # URL parsing.  Recover by round-tripping back
-                        # to bytes and decoding as latin-1.  (See #10047)
-                        try:
-                            r_url.encode("utf-8")
-                        except (UnicodeEncodeError, UnicodeDecodeError):
-                            try:
-                                raw = r_url.encode("utf-8", "surrogateescape")
-                                r_url = raw.decode("latin-1")
-                            except (UnicodeDecodeError, UnicodeEncodeError):
-                                pass
+                        r_url = _recover_redirect_location(r_url)
 
                         try:
                             parsed_redirect_url = URL(

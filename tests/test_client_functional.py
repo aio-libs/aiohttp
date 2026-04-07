@@ -51,6 +51,7 @@ from aiohttp.client_exceptions import (
     SocketTimeoutError,
     TooManyRedirects,
 )
+from aiohttp.client import _recover_redirect_location
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
 from aiohttp.http_exceptions import DecompressSizeError
@@ -3014,6 +3015,18 @@ async def test_redirect_without_location_header(aiohttp_client: AiohttpClient) -
     async with client.get("/redirect") as resp:
         data = await resp.read()
     assert data == body
+
+
+@pytest.mark.parametrize(
+    ("raw_location", "expected"),
+    (
+        ("https://cornelius-k.dk/synspr\udcf8ve", "https://cornelius-k.dk/synsprøve"),
+        ("https://cornelius-k.dk/synspr\udcc3\udcb8ve", "https://cornelius-k.dk/synsprøve"),
+        ("https://cornelius-k.dk/synspr%C3%B8ve", "https://cornelius-k.dk/synspr%C3%B8ve"),
+    ),
+)
+def test_recover_redirect_location(raw_location: str, expected: str) -> None:
+    assert _recover_redirect_location(raw_location) == expected
 
 
 INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW = (
