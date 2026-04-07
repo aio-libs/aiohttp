@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import ast
 import io
 import pathlib
 from collections import defaultdict
@@ -13,10 +14,20 @@ while ROOT.parent != ROOT and not (ROOT / "pyproject.toml").exists():
 
 def calc_headers(root):
     hdrs_file = root / "aiohttp/hdrs.py"
-    code = compile(hdrs_file.read_text(), str(hdrs_file), "exec")
-    globs = {}
-    exec(code, globs)
-    headers = [val for val in globs.values() if isinstance(val, multidict.istr)]
+    tree = ast.parse(hdrs_file.read_text(), str(hdrs_file))
+    headers = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            value = node.value
+            if (
+                isinstance(value, ast.Call)
+                and isinstance(value.func, ast.Name)
+                and value.func.id == "istr"
+                and len(value.args) == 1
+                and isinstance(value.args[0], ast.Constant)
+                and isinstance(value.args[0].value, str)
+            ):
+                headers.append(multidict.istr(value.args[0].value))
     return sorted(headers)
 
 
