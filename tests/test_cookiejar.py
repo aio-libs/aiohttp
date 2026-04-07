@@ -1817,9 +1817,9 @@ async def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
 @pytest.mark.skipif(
     os.name != "posix", reason="POSIX permission bits are required for this test"
 )
-def test_save_creates_private_cookie_file(tmp_path: Path) -> None:
+def test_save_creates_private_cookie_file(tmp_path: Path, loop) -> None:
     file_path = tmp_path / "private-cookies.json"
-    jar = CookieJar()
+    jar = CookieJar(loop=loop)
     jar.update_cookies_from_headers(
         ["token=abc123; Path=/"], URL("https://example.com/")
     )
@@ -1833,12 +1833,12 @@ def test_save_creates_private_cookie_file(tmp_path: Path) -> None:
 @pytest.mark.skipif(
     os.name != "posix", reason="POSIX permission bits are required for this test"
 )
-def test_save_preserves_existing_cookie_file_permissions(tmp_path: Path) -> None:
+def test_save_preserves_existing_cookie_file_permissions(tmp_path: Path, loop) -> None:
     file_path = tmp_path / "existing-cookies.json"
     file_path.write_text("{}", encoding="utf-8")
     file_path.chmod(0o644)
 
-    jar = CookieJar()
+    jar = CookieJar(loop=loop)
     jar.update_cookies_from_headers(
         ["token=abc123; Path=/"], URL("https://example.com/")
     )
