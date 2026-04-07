@@ -1,6 +1,7 @@
 """Low level HTTP server."""
 
 import asyncio
+import logging
 import warnings
 from collections.abc import Awaitable, Callable
 from typing import Any, Generic, TypeVar, overload
@@ -13,6 +14,8 @@ from .web_request import BaseRequest
 from .web_response import StreamResponse
 
 __all__ = ("Server",)
+
+logger = logging.getLogger(__name__)
 
 _Request = TypeVar("_Request", bound=BaseRequest)
 _RequestFactory = Callable[
@@ -117,7 +120,12 @@ class Server(Generic[_Request]):
         try:
             return RequestHandler(self, loop=self._loop, **self._kwargs)
         except TypeError:
-            # Failsafe creation: remove all custom handler_args
+            logger.warning(
+                "Failed to create request handler with custom kwargs %r, "
+                "falling back to filtered kwargs. This may indicate a "
+                "misconfiguration.",
+                self._kwargs,
+            )
             kwargs = {
                 k: v
                 for k, v in self._kwargs.items()
