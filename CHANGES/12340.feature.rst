@@ -1,0 +1,3 @@
+Added the possibility to provide a callback to the ``Payload``,
+which is used by their writer methods to report back the already written bytes.
+-- by :user:`mib1185`.
