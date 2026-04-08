@@ -1071,7 +1071,7 @@ class AsyncIterablePayload(Payload):
                 elif remaining_bytes > 0:
                     await writer.write(chunk[:remaining_bytes])
                     remaining_bytes -= chunk_len
-                    total_written_len += chunk_len
+                    total_written_len += remaining_bytes
                     self._report_progress(total_written_len)
                 else:
                     break
@@ -1096,7 +1096,7 @@ class AsyncIterablePayload(Payload):
                 elif remaining_bytes > 0:
                     await writer.write(chunk[:remaining_bytes])
                     remaining_bytes -= chunk_len
-                    total_written_len += chunk_len
+                    total_written_len += remaining_bytes
                     self._report_progress(total_written_len)
                 # We still want to exhaust the iterator even
                 # if we have reached the content length limit
