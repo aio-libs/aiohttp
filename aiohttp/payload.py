@@ -918,15 +918,15 @@ class BytesIOPayload(IOBasePayload):
                 await asyncio.sleep(0)
             if remaining_bytes is None:
                 await writer.write(chunk)
+                total_written_len += chunk_len
+                self._report_progress(total_written_len)
             else:
                 await writer.write(chunk[:remaining_bytes])
+                total_written_len += remaining_bytes
                 remaining_bytes -= chunk_len
-
-            total_written_len += chunk_len
-            self._report_progress(total_written_len)
-
-            if remaining_bytes is not None and remaining_bytes <= 0:
-                return
+                self._report_progress(total_written_len)
+                if remaining_bytes <= 0:
+                    return
 
             loop_count += 1
 
