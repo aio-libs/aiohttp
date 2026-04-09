@@ -65,8 +65,6 @@ else:
         websocket_mask = _websocket_mask_python
 
 
-# On 3.11+ use an atomic outer group to avoid backtracking over already-matched
-# iterations when the tail of the string doesn't match.
 _WS_EXT_RE: Final[Pattern[str]] = re.compile(
     r"^(?:;\s*(?:"
     r"(server_no_context_takeover)|"
