@@ -53,9 +53,7 @@ class TestWsExtParse:
 
     def test_window_bits_out_of_range_client(self) -> None:
         with pytest.raises(WSHandshakeError):
-            ws_ext_parse(
-                "permessage-deflate; client_max_window_bits=8", isserver=False
-            )
+            ws_ext_parse("permessage-deflate; client_max_window_bits=8", isserver=False)
 
     def test_invalid_extension_client_raises(self) -> None:
         with pytest.raises(WSHandshakeError):
