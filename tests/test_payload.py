@@ -330,7 +330,7 @@ async def test_iobase_payload_write_progress_callback() -> None:
     ],
 )
 async def test_iobase_payload_write_chunked_progress_callback(
-    content_length, expected_calls
+    content_length: int, expected_calls: list[unittest.mock._Call]
 ) -> None:
     """Test IOBasePayload writing in chunks with progress callback."""
 
@@ -704,7 +704,7 @@ async def test_async_iterable_payload_write_with_length_truncated_at_chunk() -> 
     ],
 )
 async def test_async_iterable_payload_write_chunked_progress_callback(
-    content_length, expected_calls
+    content_length: int | None, expected_calls: list[unittest.mock._Call]
 ) -> None:
     """Test AsyncIterablePayload writing with content length truncating mid-chunk."""
 
