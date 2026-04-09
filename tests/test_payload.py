@@ -232,6 +232,27 @@ async def test_bytes_payload_write_with_length_truncated() -> None:
     assert len(writer.get_written_bytes()) == 5
 
 
+async def test_bytes_payload_write_progress_callback() -> None:
+    """Test BytesPayload writing with progress callback."""
+    progress_callback = unittest.mock.Mock()
+    p = payload.BytesPayload(b"0123456789")
+    p.set_progress_callback(progress_callback)
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 5)
+    assert progress_callback.call_args_list == [
+        unittest.mock.call(0),
+        unittest.mock.call(5),
+    ]
+    progress_callback.call_args_list.clear()
+
+    await p.write_with_length(writer, None)
+    assert progress_callback.call_args_list == [
+        unittest.mock.call(0),
+        unittest.mock.call(10),
+    ]
+
+
 async def test_iobase_payload_write_with_length_no_limit() -> None:
     """Test IOBasePayload writing with no content length limit."""
     data = b"0123456789"
@@ -263,6 +284,69 @@ async def test_iobase_payload_write_with_length_truncated() -> None:
     await p.write_with_length(writer, 5)
     assert writer.get_written_bytes() == b"01234"
     assert len(writer.get_written_bytes()) == 5
+
+
+async def test_iobase_payload_write_progress_callback() -> None:
+    """Test IOBasePayload writing with progress callback."""
+    progress_callback = unittest.mock.Mock()
+    p = payload.IOBasePayload(io.BytesIO(b"0123456789"))
+    p.set_progress_callback(progress_callback)
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 5)
+    assert progress_callback.call_args_list == [
+        unittest.mock.call(0),
+        unittest.mock.call(5),
+    ]
+    progress_callback.call_args_list.clear()
+
+    await p.write_with_length(writer, None)
+    assert progress_callback.call_args_list == [
+        unittest.mock.call(0),
+        unittest.mock.call(10),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("content_length", "expected_calls"),
+    [
+        (
+            6,
+            [
+                unittest.mock.call(0),
+                unittest.mock.call(4),
+                unittest.mock.call(6),
+            ],
+        ),
+        (
+            10,
+            [
+                unittest.mock.call(0),
+                unittest.mock.call(4),
+                unittest.mock.call(8),
+                unittest.mock.call(10),
+            ],
+        ),
+    ],
+)
+async def test_iobase_payload_write_chunked_progress_callback(
+    content_length, expected_calls
+) -> None:
+    """Test IOBasePayload writing in chunks with progress callback."""
+
+    # Mock the file-like object to track read calls
+    mock_file = unittest.mock.Mock(spec=io.BytesIO)
+    mock_file.tell.return_value = 0
+    mock_file.fileno.side_effect = AttributeError  # Make size return None
+    mock_file.read.side_effect = [b"0123", b"4567", b"89"]
+
+    progress_callback = unittest.mock.Mock()
+    p = payload.IOBasePayload(mock_file)
+    writer = MockStreamWriter()
+    p.set_progress_callback(progress_callback)
+
+    await p.write_with_length(writer, content_length)
+    assert progress_callback.call_args_list == expected_calls
 
 
 async def test_bytesio_payload_write_with_length_no_limit() -> None:
@@ -348,6 +432,27 @@ async def test_bytesio_payload_remaining_bytes_exhausted() -> None:
     written = writer.get_written_bytes()
     assert len(written) == 8000
     assert written == data[:8000]
+
+
+async def test_bytesio_payload_write_progress_callback() -> None:
+    """Test BytesIOPayload writing with progress callback."""
+    progress_callback = unittest.mock.Mock()
+    p = payload.BytesIOPayload(io.BytesIO(b"0123456789abcdef" * 1000))
+    p.set_progress_callback(progress_callback)
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, 5)
+    assert progress_callback.call_args_list == [
+        unittest.mock.call(0),
+        unittest.mock.call(5),
+    ]
+    progress_callback.call_args_list.clear()
+
+    await p.write_with_length(writer, None)
+    assert progress_callback.call_args_list == [
+        unittest.mock.call(0),
+        unittest.mock.call(16000),
+    ]
 
 
 async def test_iobase_payload_exact_chunk_size_limit() -> None:
@@ -574,6 +679,47 @@ async def test_async_iterable_payload_write_with_length_truncated_at_chunk() -> 
     await p.write_with_length(writer, 4)
     assert writer.get_written_bytes() == b"0123"
     assert len(writer.get_written_bytes()) == 4
+
+
+@pytest.mark.parametrize(
+    ("content_length", "expected_calls"),
+    [
+        (
+            6,
+            [
+                unittest.mock.call(0),
+                unittest.mock.call(4),
+                unittest.mock.call(6),
+            ],
+        ),
+        (
+            None,
+            [
+                unittest.mock.call(0),
+                unittest.mock.call(4),
+                unittest.mock.call(8),
+                unittest.mock.call(10),
+            ],
+        ),
+    ],
+)
+async def test_async_iterable_payload_write_chunked_progress_callback(
+    content_length, expected_calls
+) -> None:
+    """Test AsyncIterablePayload writing with content length truncating mid-chunk."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"0123"
+        yield b"4567"
+        yield b"89"
+
+    progress_callback = unittest.mock.Mock()
+    p = payload.AsyncIterablePayload(gen())
+    p.set_progress_callback(progress_callback)
+    writer = MockStreamWriter()
+
+    await p.write_with_length(writer, content_length)
+    assert progress_callback.call_args_list == expected_calls
 
 
 async def test_bytes_payload_backwards_compatibility() -> None:
