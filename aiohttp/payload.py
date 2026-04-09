@@ -634,13 +634,13 @@ class IOBasePayload(Payload):
             # Write data with or without length constraint
             if remaining_content_len is None:
                 await writer.write(chunk)
+                total_written_len += chunk_len
             else:
                 await writer.write(chunk[:remaining_content_len])
+                total_written_len += min(remaining_content_len, chunk_len)
                 remaining_content_len -= chunk_len
 
-            total_written_len += chunk_len
             self._report_progress(total_written_len)
-
             # Check if we're done writing
             if self._should_stop_writing(
                 available_len, total_written_len, remaining_content_len
@@ -922,9 +922,9 @@ class BytesIOPayload(IOBasePayload):
                 self._report_progress(total_written_len)
             else:
                 await writer.write(chunk[:remaining_bytes])
-                total_written_len += remaining_bytes
-                remaining_bytes -= chunk_len
+                total_written_len += min(remaining_bytes, chunk_len)
                 self._report_progress(total_written_len)
+                remaining_bytes -= chunk_len
                 if remaining_bytes <= 0:
                     return
 
@@ -1070,9 +1070,9 @@ class AsyncIterablePayload(Payload):
                     self._report_progress(total_written_len)
                 elif remaining_bytes > 0:
                     await writer.write(chunk[:remaining_bytes])
-                    remaining_bytes -= chunk_len
-                    total_written_len += remaining_bytes
+                    total_written_len += min(remaining_bytes, chunk_len)
                     self._report_progress(total_written_len)
+                    remaining_bytes -= chunk_len
                 else:
                     break
             return
@@ -1095,9 +1095,9 @@ class AsyncIterablePayload(Payload):
                 # If we have a content length limit
                 elif remaining_bytes > 0:
                     await writer.write(chunk[:remaining_bytes])
-                    remaining_bytes -= chunk_len
-                    total_written_len += remaining_bytes
+                    total_written_len += min(remaining_bytes, chunk_len)
                     self._report_progress(total_written_len)
+                    remaining_bytes -= chunk_len
                 # We still want to exhaust the iterator even
                 # if we have reached the content length limit
                 # since the file handle may not get closed by
