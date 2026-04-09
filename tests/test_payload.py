@@ -333,7 +333,6 @@ async def test_iobase_payload_write_chunked_progress_callback(
     content_length: int, expected_calls: list[unittest.mock._Call]
 ) -> None:
     """Test IOBasePayload writing in chunks with progress callback."""
-
     # Mock the file-like object to track read calls
     mock_file = unittest.mock.Mock(spec=io.BytesIO)
     mock_file.tell.return_value = 0
