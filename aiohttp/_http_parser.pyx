@@ -595,7 +595,6 @@ cdef class HttpParser:
         if self._tail:
             data, self._tail = self._tail + data, b""
 
-        had_more_data = self._more_data_available
         if self._more_data_available:
             result = cb_on_body(self._cparser, b"", 0)
             if result is cparser.HPE_PAUSED:
