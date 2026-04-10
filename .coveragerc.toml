@@ -10,7 +10,7 @@ source = [
   'tests',
 ]
 plugins = [
-  'tools.coverage_plugin',
+  'aiohttp._coverage_plugin',
 ]
 omit = [
   'site-packages',
