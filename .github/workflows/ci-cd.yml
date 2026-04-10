@@ -229,6 +229,7 @@ jobs:
     - name: Install self
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        AIOHTTP_CYTHON_TRACE: 1
       run: python -m pip install -e .
     - name: Run unittests
       env:
@@ -337,6 +338,7 @@ jobs:
     - name: Install self
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
+        AIOHTTP_CYTHON_TRACE: 1
       run: python -m pip install -e .
     - name: Run unittests
       env:

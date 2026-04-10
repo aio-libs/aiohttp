@@ -9,6 +9,9 @@ source = [
   'aiohttp',
   'tests',
 ]
+plugins = [
+  'Cython.Coverage',
+]
 omit = [
   'site-packages',
 ]
