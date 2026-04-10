@@ -5,6 +5,7 @@ try:
 
     def coverage_init(reg, options):
         _cython_init(reg, options)
+
 except ImportError:
 
     def coverage_init(reg, options):
