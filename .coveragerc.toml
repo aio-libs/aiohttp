@@ -10,7 +10,7 @@ source = [
   'tests',
 ]
 plugins = [
-  'Cython.Coverage',
+  'tools.coverage_plugin',
 ]
 omit = [
   'site-packages',
