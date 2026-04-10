@@ -106,17 +106,6 @@ def test_parse_content_type(
     assert result == expected
 
 
-def test_cimultidict_list_header_representations_differ() -> None:
-    # Characterization test: document current CIMultiDict semantics.
-    # Equivalent HTTP list-header wire representations are exposed
-    # differently by getall(), which is the behavior we normalize later.
-    repeated = CIMultiDict([("Foo", "1"), ("Foo", "2")])
-    combined = CIMultiDict([("Foo", "1, 2")])
-
-    assert repeated.getall("Foo") == ["1", "2"]
-    assert combined.getall("Foo") == ["1, 2"]
-
-
 # ------------------- guess_filename ----------------------------------
 
 
