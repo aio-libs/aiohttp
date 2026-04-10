@@ -117,34 +117,6 @@ def test_cimultidict_list_header_representations_differ() -> None:
     assert combined.getall("Foo") == ["1, 2"]
 
 
-@pytest.mark.parametrize(
-    ("header_values", "expected"),
-    [
-        (("1", "2"), ("1", "2")),
-        (("1, 2",), ("1", "2")),
-        (
-            ('"http://example.com/a.html,foo", apples',),
-            ('"http://example.com/a.html,foo"', "apples"),
-        ),
-        (('"foo\\"bar", baz',), ('"foo\\"bar"', "baz")),
-        ((" spam , eggs ",), ("spam", "eggs")),
-        ((",   , ",), ()),
-    ],
-)
-def test_parse_http_list_values(
-    header_values: tuple[str, ...], expected: tuple[str, ...]
-) -> None:
-    assert helpers.parse_http_list_values(header_values) == expected
-
-
-def test_parse_http_list_values_normalizes_equivalent_field_representations() -> None:
-    repeated = CIMultiDict([("Foo", "1"), ("Foo", "2")])
-    combined = CIMultiDict([("Foo", "1, 2")])
-
-    assert helpers.parse_http_list_values(repeated.getall("Foo")) == ("1", "2")
-    assert helpers.parse_http_list_values(combined.getall("Foo")) == ("1", "2")
-
-
 # ------------------- guess_filename ----------------------------------
 
 

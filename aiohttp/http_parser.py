@@ -28,7 +28,6 @@ from .helpers import (
     NO_EXTENSIONS,
     BaseTimerContext,
     HeadersDictProxy,
-    parse_http_list_values,
     set_exception,
 )
 from .http_exceptions import (
@@ -526,9 +525,16 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # keep-alive and protocol switching
         # RFC 9110 section 7.6.1 defines Connection as a comma-separated list.
-        conn_values = parse_http_list_values(headers.getall(hdrs.CONNECTION))
+        # We use a simple comma split here rather than getall() for performance,
+        # as the target tokens (close, keep-alive, upgrade) are simple ASCII
+        # values that never contain commas.
+        conn_values = headers.get(hdrs.CONNECTION)
         if conn_values:
-            conn_tokens = {token.lower() for token in conn_values if token.isascii()}
+            conn_tokens = {
+                token.lower()
+                for token in (part.strip(" \t") for part in conn_values.split(","))
+                if token and token.isascii()
+            }
 
             if "close" in conn_tokens:
                 close_conn = True
@@ -657,9 +663,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         # https://www.rfc-editor.org/rfc/rfc9112#section-7.1-3
         # "A sender MUST NOT apply the chunked transfer coding more
         #  than once to a message body"
-        parts = list(parse_http_list_values((te,)))
-        if not parts:
-            raise BadHttpMessage("Request has invalid `Transfer-Encoding`")
+        parts = [p.strip(" \t") for p in te.split(",")]
         chunked_count = sum(1 for p in parts if p.isascii() and p.lower() == "chunked")
         if chunked_count > 1:
             raise BadHttpMessage("Request has duplicate `chunked` Transfer-Encoding")
@@ -752,11 +756,7 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
 
     def _is_chunked_te(self, te: str) -> bool:
         # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.2
-        parts = parse_http_list_values((te,))
-        if not parts:
-            return False
-        last = parts[-1]
-        return last.isascii() and last.lower() == "chunked"
+        return te.rsplit(",", maxsplit=1)[-1].strip(" \t").lower() == "chunked"
 
 
 class HttpPayloadParser:
