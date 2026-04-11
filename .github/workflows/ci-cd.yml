@@ -469,7 +469,15 @@ jobs:
       env:
         COVERAGE_RCFILE: .coveragerc-cython.toml
       run: |
+        echo "=== pwd ==="
+        pwd
+        echo "=== .coverage exists? ==="
+        ls -la .coverage* || echo "NO .coverage FILES"
         python -m coverage xml
+        echo "=== coverage.xml exists? ==="
+        ls -la coverage.xml || echo "NO coverage.xml"
+        echo "=== find coverage.xml ==="
+        find / -name coverage.xml -maxdepth 5 2>/dev/null || true
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
