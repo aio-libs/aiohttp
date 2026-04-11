@@ -447,10 +447,29 @@ jobs:
     - name: Cythonize with linetrace
       run: |
         make cythonize CYTHON_EXTRA="-X linetrace=True"
+    - name: Debug - verify linetrace in .c files
+      run: |
+        echo "=== CYTHON_TRACE guards in .c files ==="
+        grep -c '#if CYTHON_TRACE' aiohttp/_http_parser.c aiohttp/_http_writer.c aiohttp/_websocket/mask.c || echo "NO GUARDS FOUND"
     - name: Install self
       env:
         AIOHTTP_CYTHON_TRACE: 1
       run: python -m pip install -e .
+    - name: Debug - verify CYTHON_TRACE compiled in
+      run: |
+        python -c "
+        import aiohttp._http_parser as p
+        print('Module file:', p.__file__)
+        print('Has __pyx_cython_runtime:', hasattr(p, '__pyx_cython_runtime'))
+        "
+    - name: Debug - verify coverage config
+      env:
+        COVERAGE_RCFILE: .coveragerc-cython.toml
+      run: |
+        echo "=== coverage debug config ==="
+        python -m coverage debug config
+        echo "=== .coveragerc-cython.toml contents ==="
+        cat .coveragerc-cython.toml
     - name: Run tests with Cython tracing
       env:
         COLOR: yes
@@ -465,6 +484,14 @@ jobs:
         --numprocesses=0
         -m 'not dev_mode and not autobahn'
       shell: bash
+    - name: Debug - verify .pyx in coverage data
+      env:
+        COVERAGE_RCFILE: .coveragerc-cython.toml
+      run: |
+        echo "=== coverage debug data ==="
+        python -m coverage debug data
+        echo "=== coverage report (grep pyx) ==="
+        python -m coverage report 2>&1 | grep -E '\.pyx|\.pxd|TOTAL' || echo "NO PYX IN REPORT"
     - name: Turn coverage into xml
       env:
         COLOR: 'yes'
@@ -472,6 +499,14 @@ jobs:
         COVERAGE_RCFILE: .coveragerc-cython.toml
       run: |
         python -m coverage xml
+    - name: Debug - verify .pyx in XML
+      run: |
+        echo "=== sources in XML ==="
+        grep '<sources>' -A5 coverage.xml
+        echo "=== pyx entries in XML ==="
+        grep 'filename.*\.pyx' coverage.xml || echo "NO PYX IN XML"
+        echo "=== line count ==="
+        grep -c '<class ' coverage.xml
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
