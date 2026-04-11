@@ -454,14 +454,7 @@ jobs:
     - name: Install self
       env:
         AIOHTTP_CYTHON_TRACE: 1
-      run: python -m pip install -e .
-    - name: Debug - verify CYTHON_TRACE compiled in
-      run: |
-        python -c "
-        import aiohttp._http_parser as p
-        print('Module file:', p.__file__)
-        print('Has __pyx_cython_runtime:', hasattr(p, '__pyx_cython_runtime'))
-        "
+      run: python -m pip install -e . -v 2>&1 | grep -E 'CYTHON_TRACE|define_macros|clang|gcc|cc.*-D'
     - name: Debug - verify coverage config
       env:
         COVERAGE_RCFILE: .coveragerc-cython.toml
