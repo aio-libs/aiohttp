@@ -108,8 +108,9 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
         # synchronization in async code.
         # Allow lock.acquire calls to prevent these false positives
         bb.functions["threading.Lock.acquire"].deactivate()
-        # Cython.Coverage plugin reads .pyx source files from disk during tracing
+        # Cython.Coverage plugin reads .pyx source files and resolves paths during tracing
         bb.functions["io.BufferedReader.read"].deactivate()
+        bb.functions["os.path.abspath"].deactivate()
         yield
 
 
