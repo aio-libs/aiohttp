@@ -440,7 +440,7 @@ jobs:
       run: |
         python -Im pip install -r requirements/test.in -c requirements/test.txt
     - name: Uninstall blocbuster
-      run: python -m pip uninstall blockbuster
+      run: python -m pip uninstall blockbuster -y
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v8
       with:
