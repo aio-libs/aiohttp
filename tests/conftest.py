@@ -74,6 +74,10 @@ IS_LINUX = sys.platform.startswith("linux")
 
 @pytest.fixture(autouse=HAS_BLOCKBUSTER)
 def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
+    if os.environ.get("AIOHTTP_NO_BLOCKBUSTER"):
+        yield
+        return
+
     # Allow selectively disabling blockbuster for specific tests
     # using the @pytest.mark.skip_blockbuster marker.
     if "skip_blockbuster" in request.node.keywords:
@@ -108,10 +112,6 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
         # synchronization in async code.
         # Allow lock.acquire calls to prevent these false positives
         bb.functions["threading.Lock.acquire"].deactivate()
-        # Cython.Coverage plugin reads .pyx source files and resolves paths during tracing
-        bb.functions["io.BufferedReader.read"].deactivate()
-        bb.functions["os.path.abspath"].deactivate()
-        bb.functions["os.getcwd"].deactivate()
         yield
 
 

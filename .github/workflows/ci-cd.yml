@@ -229,7 +229,6 @@ jobs:
     - name: Install self
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
-        AIOHTTP_CYTHON_TRACE: 1
       run: python -m pip install -e .
     - name: Run unittests
       env:
@@ -338,7 +337,6 @@ jobs:
     - name: Install self
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
-        AIOHTTP_CYTHON_TRACE: 1
       run: python -m pip install -e .
     - name: Run unittests
       env:
@@ -417,6 +415,70 @@ jobs:
         mode: instrumentation
         run: python -Im pytest --no-cov --numprocesses=0 -vvvvv --codspeed
 
+
+  cython-coverage:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
+    name: Cython coverage
+    needs: gen_llhttp
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        submodules: true
+    - name: Setup Python 3.13
+      id: python-install
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install dependencies
+      run: |
+        python -Im pip install -r requirements/test.in -c requirements/test.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v8
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
+    - name: Cythonize
+      run: |
+        make cythonize
+    - name: Install self
+      env:
+        AIOHTTP_CYTHON_TRACE: 1
+      run: python -m pip install -e .
+    - name: Run tests with Cython tracing
+      env:
+        COLOR: yes
+        PIP_USER: 1
+        AIOHTTP_NO_BLOCKBUSTER: 1
+      run: >-
+        pytest tests/test_http_parser.py
+        --junitxml=junit.xml
+        --numprocesses=0
+        -m 'not dev_mode and not autobahn'
+      shell: bash
+    - name: Turn coverage into xml
+      env:
+        COLOR: 'yes'
+        PIP_USER: 1
+      run: |
+        python -m coverage xml
+    - name: Upload coverage
+      uses: codecov/codecov-action@v6
+      with:
+        files: ./coverage.xml
+        flags: >-
+          CI-GHA,OS-${{
+            runner.os
+          }},Py-${{
+            steps.python-install.outputs.python-version
+          }},cython-coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
