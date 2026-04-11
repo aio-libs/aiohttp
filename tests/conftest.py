@@ -111,6 +111,7 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
         # Cython.Coverage plugin reads .pyx source files and resolves paths during tracing
         bb.functions["io.BufferedReader.read"].deactivate()
         bb.functions["os.path.abspath"].deactivate()
+        bb.functions["os.getcwd"].deactivate()
         yield
 
 
