@@ -444,9 +444,9 @@ jobs:
       with:
         name: llhttp
         path: vendor/llhttp/build/
-    - name: Cythonize
+    - name: Cythonize with linetrace
       run: |
-        make cythonize
+        make cythonize CYTHON_EXTRA="-X linetrace=True"
     - name: Install self
       env:
         AIOHTTP_CYTHON_TRACE: 1
