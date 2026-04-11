@@ -456,11 +456,11 @@ jobs:
         COLOR: yes
         PIP_USER: 1
         AIOHTTP_NO_BLOCKBUSTER: 1
+        COVERAGE_RCFILE: .coveragerc-cython.toml
       run: >-
         python -m coverage run
-        --rcfile=.coveragerc-cython.toml
         -m pytest tests/test_http_parser.py
-        --no-cov
+        -p no:pytest_cov
         --junitxml=junit.xml
         --numprocesses=0
         -m 'not dev_mode and not autobahn'
@@ -469,8 +469,9 @@ jobs:
       env:
         COLOR: 'yes'
         PIP_USER: 1
+        COVERAGE_RCFILE: .coveragerc-cython.toml
       run: |
-        python -m coverage xml --rcfile=.coveragerc-cython.toml
+        python -m coverage xml
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
