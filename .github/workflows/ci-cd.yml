@@ -459,11 +459,12 @@ jobs:
         PIP_USER: 1
       run: >-
         pytest tests/test_client_functional.py tests/test_http_parser.py tests/test_http_writer.py tests/test_web_functional.py tests/test_web_response.py tests/test_websocket_parser.py
+        --cov-config=.coveragerc-cython.toml
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Turn coverage into xml
       run: |
-        python -m coverage xml -o cython-coverage.xml
+        python -m coverage xml -o cython-coverage.xml --rcfile=.coveragerc-cython.toml
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
