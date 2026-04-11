@@ -457,10 +457,12 @@ jobs:
         PIP_USER: 1
         AIOHTTP_NO_BLOCKBUSTER: 1
       run: >-
-        pytest tests/test_http_parser.py
+        python -m coverage run
+        --rcfile=.coveragerc-cython.toml
+        -m pytest tests/test_http_parser.py
+        --no-cov
         --junitxml=junit.xml
         --numprocesses=0
-        --cov-config=.coveragerc-cython.toml
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Turn coverage into xml
@@ -468,7 +470,7 @@ jobs:
         COLOR: 'yes'
         PIP_USER: 1
       run: |
-        python -m coverage xml
+        python -m coverage xml --rcfile=.coveragerc-cython.toml
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
