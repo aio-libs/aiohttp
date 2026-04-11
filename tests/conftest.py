@@ -74,10 +74,6 @@ IS_LINUX = sys.platform.startswith("linux")
 
 @pytest.fixture(autouse=HAS_BLOCKBUSTER)
 def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
-    if os.environ.get("AIOHTTP_NO_BLOCKBUSTER"):
-        yield
-        return
-
     # Allow selectively disabling blockbuster for specific tests
     # using the @pytest.mark.skip_blockbuster marker.
     if "skip_blockbuster" in request.node.keywords:

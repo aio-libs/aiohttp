@@ -12,7 +12,6 @@ USE_SYSTEM_DEPS = bool(
     os.environ.get("AIOHTTP_USE_SYSTEM_DEPS", os.environ.get("USE_SYSTEM_DEPS"))
 )
 NO_EXTENSIONS: bool = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
-CYTHON_TRACING: bool = bool(os.environ.get("AIOHTTP_CYTHON_TRACE"))
 HERE = pathlib.Path(__file__).parent
 IS_GIT_REPO = (HERE / ".git").exists()
 
@@ -55,9 +54,8 @@ else:
         "include_dirs": ["vendor/llhttp/build"],
     }
 
-cython_trace_macros = [("CYTHON_TRACE", 1)] if CYTHON_TRACING else []
-if cython_trace_macros:
-    llhttp_kwargs.setdefault("define_macros", []).extend(cython_trace_macros)
+cython_trace_macros = [("CYTHON_TRACE", 1)]
+llhttp_kwargs.setdefault("define_macros", []).extend(cython_trace_macros)
 
 extensions = [
     Extension(
