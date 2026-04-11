@@ -467,8 +467,6 @@ jobs:
       shell: bash
     - name: Turn coverage into xml
       env:
-        COLOR: 'yes'
-        PIP_USER: 1
         COVERAGE_RCFILE: .coveragerc-cython.toml
       run: |
         python -m coverage xml
@@ -483,6 +481,7 @@ jobs:
             steps.python-install.outputs.python-version
           }},cython-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
