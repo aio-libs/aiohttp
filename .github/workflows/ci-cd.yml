@@ -428,7 +428,7 @@ jobs:
       uses: actions/checkout@v6
       with:
         submodules: true
-    - name: Setup Python 3.12
+    - name: Setup Python
       id: python-install
       uses: actions/setup-python@v6
       with:
@@ -455,32 +455,20 @@ jobs:
       env:
         COLOR: yes
         PIP_USER: 1
-        AIOHTTP_NO_BLOCKBUSTER: 1
-        COVERAGE_RCFILE: .coveragerc-cython.toml
       run: >-
-        python -m coverage run
-        -m pytest tests/test_client_functional.py tests/test_http_parser.py tests/test_http_writer.py tests/test_web_functional.py tests/test_web_response.py tests/test_websocket_parser.py
-        -p no:pytest_cov
-        --junitxml=junit.xml
-        --numprocesses=0
+        pytest tests/test_client_functional.py tests/test_http_parser.py tests/test_http_writer.py tests/test_web_functional.py tests/test_web_response.py tests/test_websocket_parser.py
+        --cov-config=.coveragerc-cython.toml
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Turn coverage into xml
-      env:
-        COVERAGE_RCFILE: .coveragerc-cython.toml
       run: |
-        python -m coverage xml -o cython-coverage.xml
+        python -m coverage xml -o cython-coverage.xml --rcfile=.coveragerc-cython.toml
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
-        files: ${{ github.workspace }}/cython-coverage.xml
+        files: ./cython-coverage.xml
         disable_search: true
-        flags: >-
-          CI-GHA,OS-${{
-            runner.os
-          }},Py-${{
-            steps.python-install.outputs.python-version
-          }},cython-coverage
+        flags: cython-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
 
