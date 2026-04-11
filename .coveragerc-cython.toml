@@ -1,6 +1,5 @@
 [run]
 branch = true
-core = 'ctrace'
 plugins = [
   'Cython.Coverage',
 ]
