@@ -9,9 +9,6 @@ source = [
   'aiohttp',
   'tests',
 ]
-plugins = [
-  'aiohttp._coverage_plugin',
-]
 omit = [
   'site-packages',
 ]

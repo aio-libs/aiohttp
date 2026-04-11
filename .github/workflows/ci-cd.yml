@@ -460,6 +460,7 @@ jobs:
         pytest tests/test_http_parser.py
         --junitxml=junit.xml
         --numprocesses=0
+        --cov-config=.coveragerc-cython.toml
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Turn coverage into xml

@@ -1,0 +1,18 @@
+[run]
+branch = true
+core = 'ctrace'
+plugins = [
+  'Cython.Coverage',
+]
+omit = [
+  'site-packages',
+]
+
+[report]
+exclude_also = [
+  'if TYPE_CHECKING',
+  'assert False',
+  ': \.\.\.(\s*#.*)?$',
+  '^ +\.\.\.$',
+  'pytest.fail\('
+]
