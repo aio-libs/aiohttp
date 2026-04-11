@@ -14,8 +14,6 @@ plugins = [
 ]
 omit = [
   'site-packages',
-  '*.pyx',
-  '*.pxd',
 ]
 
 [report]
