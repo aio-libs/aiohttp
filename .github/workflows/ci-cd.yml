@@ -455,6 +455,24 @@ jobs:
       env:
         AIOHTTP_CYTHON_TRACE: 1
       run: python -m pip install -e . -v 2>&1 | grep -E 'CYTHON_TRACE|define_macros|clang|gcc|cc.*-D'
+    - name: Debug - test if Cython trace events fire
+      run: |
+        python -c "
+        import sys
+        events = []
+        def tracer(frame, event, arg):
+            if '_http_parser' in (frame.f_code.co_filename or ''):
+                events.append((event, frame.f_code.co_filename, frame.f_lineno))
+            return tracer
+        sys.settrace(tracer)
+        from aiohttp._http_parser import HttpRequestParser
+        sys.settrace(None)
+        print(f'Trace events from _http_parser: {len(events)}')
+        for e in events[:10]:
+            print(f'  {e}')
+        if not events:
+            print('NO TRACE EVENTS - Cython tracing not working on this Python')
+        "
     - name: Debug - verify coverage config
       env:
         COVERAGE_RCFILE: .coveragerc-cython.toml
