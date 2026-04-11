@@ -459,7 +459,7 @@ jobs:
         COVERAGE_RCFILE: .coveragerc-cython.toml
       run: >-
         python -m coverage run
-        -m pytest tests/test_http_parser.py tests/test_http_writer.py tests/test_websocket_parser.py
+        -m pytest tests/test_client_functional.py tests/test_http_parser.py tests/test_http_writer.py tests/test_websocket_parser.py
         -p no:pytest_cov
         --junitxml=junit.xml
         --numprocesses=0
