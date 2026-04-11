@@ -469,11 +469,11 @@ jobs:
       env:
         COVERAGE_RCFILE: .coveragerc-cython.toml
       run: |
-        python -m coverage xml
+        python -m coverage xml -o cython-coverage.xml
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
-        files: ${{ github.workspace }}/coverage.xml
+        files: ${{ github.workspace }}/cython-coverage.xml
         disable_search: true
         flags: >-
           CI-GHA,OS-${{
