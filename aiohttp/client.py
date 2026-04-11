@@ -268,14 +268,29 @@ _RetType_co = TypeVar(
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
-def _recover_redirect_location(r_url: str) -> str:
+def _recover_redirect_location(r_url: str, charset: str = "latin-1") -> str:
+    """Recover a redirect Location URL that contains surrogates.
+
+    When servers send non-ASCII bytes in Location headers, Python's HTTP
+    parser decodes them as UTF-8 with ``surrogateescape``, producing lone
+    surrogates (``\\udc80``–``\\udcff``).  This helper recovers the
+    original URL by first attempting a lossless UTF-8 round-trip, then
+    falling back to *charset* (which defaults to ``latin-1``, the
+    historical HTTP/1.1 header encoding per :rfc:`7230`).
+
+    *charset* is typically obtained from
+    :paramref:`ClientSession.fallback_charset_resolver`.
+    """
     if not any("\udc80" <= ch <= "\udcff" for ch in r_url):
         return r_url
     raw = r_url.encode("utf-8", "surrogateescape")
     try:
         return raw.decode("utf-8")
     except UnicodeDecodeError:
-        return raw.decode("latin-1")
+        try:
+            return raw.decode(charset)
+        except (UnicodeDecodeError, LookupError):
+            return raw.decode("latin-1")
 
 
 @final
@@ -857,7 +872,9 @@ class ClientSession:
                             # response is forbidden
                             resp.release()
 
-                        r_url = _recover_redirect_location(r_url)
+                        _raw = r_url.encode("utf-8", "surrogateescape")
+                        _charset = self._resolve_charset(resp, _raw)
+                        r_url = _recover_redirect_location(r_url, _charset)
 
                         try:
                             parsed_redirect_url = URL(

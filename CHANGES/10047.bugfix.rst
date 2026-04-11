@@ -1,1 +1,7 @@
-Fixed redirect following when the server sends a ``Location`` header containing raw latin-1 encoded bytes (e.g. ``\xf8`` for ``ø``). Previously, these were decoded via UTF-8 surrogateescape, producing lone surrogates that broke URL parsing and caused 404 errors. The redirect URL is now recovered by round-tripping through latin-1 -- by :user:`lichuang9890-star`.
+Fixed redirect following when the server sends a ``Location`` header containing
+raw non-ASCII bytes (e.g. ``\xf8`` for ``ø``). Previously, these were decoded
+via UTF-8 surrogateescape, producing lone surrogates that broke URL parsing and
+caused 404 errors. The redirect URL is now recovered by first consulting
+:paramref:`ClientSession.fallback_charset_resolver` for the correct charset,
+then falling back to ``latin-1`` (the historical HTTP/1.1 header encoding per
+:rfc:`7230`) -- by :user:`lichuang9890-star`.
