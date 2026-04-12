@@ -1109,7 +1109,7 @@ class DeflateBuffer:
     ) -> None:
         set_exception(self.out, exc, exc_cause)
 
-    def feed_data(self, chunk: bytes, size: int) -> None:
+    def feed_data(self, chunk: bytes, size: int) -> bool:
         self.size += size
         self.out.total_compressed_bytes = self.size
 
