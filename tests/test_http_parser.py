@@ -5,8 +5,8 @@ import platform
 import re
 import sys
 import zlib
-from collections.abc import Iterable, Iterator
-from contextlib import nullcontext, suppress
+from collections.abc import Iterator
+from contextlib import nullcontext
 from typing import Any
 from unittest import mock
 from urllib.parse import quote
@@ -28,12 +28,10 @@ from aiohttp.http_parser import (
     HttpRequestParserPy,
     HttpResponseParser,
     HttpResponseParserPy,
-    HttpVersion,
     PayloadState,
 )
 from aiohttp.http_writer import HttpVersion
 from aiohttp.web_protocol import RequestHandler
-from aiohttp.web_request import Request
 from aiohttp.web_server import Server
 
 try:
