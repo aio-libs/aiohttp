@@ -676,7 +676,9 @@ class TestPartReader:
     async def test_reading_long_part(self) -> None:
         size = 2 * DEFAULT_CHUNK_SIZE
         protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop())
+        stream = StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop()
+        )
         stream.feed_data(b"0" * size + b"\r\n--:--")
         stream.feed_eof()
         d = CIMultiDictProxy[str](CIMultiDict())

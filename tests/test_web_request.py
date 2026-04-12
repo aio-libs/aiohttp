@@ -973,7 +973,9 @@ async def test_multipart_formdata_headers_too_many(protocol: BaseProtocol) -> No
         b"--b--\r\n"
     )
     content_type = "multipart/form-data; boundary=b"
-    payload = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop())
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
     payload.feed_data(body)
     payload.feed_eof()
     req = make_mocked_request(
@@ -1000,7 +1002,9 @@ async def test_multipart_formdata_header_too_long(protocol: BaseProtocol) -> Non
         b"--b--\r\n"
     )
     content_type = "multipart/form-data; boundary=b"
-    payload = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop())
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
     payload.feed_data(body)
     payload.feed_eof()
     req = make_mocked_request(

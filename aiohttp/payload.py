@@ -507,7 +507,7 @@ class IOBasePayload(Payload):
             min(
                 DEFAULT_CHUNK_SIZE,
                 size or DEFAULT_CHUNK_SIZE,
-                remaining_content_len or DEFAULT_CHUNK_SIZE
+                remaining_content_len or DEFAULT_CHUNK_SIZE,
             )
         )
 
@@ -779,7 +779,7 @@ class TextIOPayload(IOBasePayload):
             min(
                 DEFAULT_CHUNK_SIZE,
                 size or DEFAULT_CHUNK_SIZE,
-                remaining_content_len or DEFAULT_CHUNK_SIZE
+                remaining_content_len or DEFAULT_CHUNK_SIZE,
             )
         )
         return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
