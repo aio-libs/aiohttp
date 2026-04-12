@@ -9,8 +9,8 @@ from typing import Final
 from ..base_protocol import BaseProtocol
 from ..client_exceptions import ClientConnectionResetError
 from ..compression_utils import ZLibBackend, ZLibCompressor
+from ..helpers import DEFAULT_CHUNK_SIZE
 from .helpers import (
-    DEFAULT_CHUNK_SIZE,
     MASK_LEN,
     MSG_SIZE,
     PACK_CLOSE_CODE,
