@@ -1214,6 +1214,34 @@ async def test_stream_response_multiple_chunks(aiohttp_client: AiohttpClient) ->
     resp.release()
 
 
+async def test_stream_response_empty_write_between_chunks(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that empty writes between real chunks are harmless.
+
+    Simulates a streaming handler that writes empty bytes between data,
+    as can happen when piping from a source that produces empty reads.
+    """
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        resp.enable_chunked_encoding()
+        await resp.prepare(request)
+        await resp.write(b"hello")
+        await resp.write(b"")
+        await resp.write(b"world")
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert resp.status == 200
+    data = await resp.read()
+    assert data == b"helloworld"
+
+
 async def test_start_without_routes(aiohttp_client: AiohttpClient) -> None:
     app = web.Application()
     client = await aiohttp_client(app)
