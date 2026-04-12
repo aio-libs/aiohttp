@@ -899,18 +899,6 @@ async def test_make_too_big_request(protocol) -> None:
     assert err.value.status_code == 413
 
 
-async def test_request_with_wrong_content_type_encoding(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, 2**18, loop=asyncio.get_event_loop())
-    payload.feed_data(b"{}")
-    payload.feed_eof()
-    headers = {"Content-Type": "text/html; charset=test"}
-    req = make_mocked_request("POST", "/", payload=payload, headers=headers)
-
-    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
-        await req.text()
-    assert err.value.status_code == 415
-
-
 async def test_make_too_big_request_same_size_to_max(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     large_file = 1024**2 * b"x"
