@@ -1115,10 +1115,9 @@ class DeflateBuffer:
                 encoding=self.encoding, suppress_deflate_header=True
             )
 
+        max_length = max(self._max_decompress_size, self.out._low_water)
         try:
-            chunk = self.decompressor.decompress_sync(
-                chunk, max_length=self._max_decompress_size
-            )
+            chunk = self.decompressor.decompress_sync(chunk, max_length=max_length)
         except Exception:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding

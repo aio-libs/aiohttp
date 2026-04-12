@@ -66,31 +66,7 @@ class ChunkTupleAsyncStreamIterator:
         return rv
 
 
-class AsyncStreamReaderMixin:
-
-    __slots__ = ()
-
-    def __aiter__(self) -> AsyncStreamIterator[bytes]:
-        return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
-
-    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields chunks of size n."""
-        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore[attr-defined]
-
-    def iter_any(self) -> AsyncStreamIterator[bytes]:
-        """Yield all available data as soon as it is received."""
-        return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
-
-    def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
-        """Yield chunks of data as they are received by the server.
-
-        The yielded objects are tuples
-        of (bytes, bool) as returned by the StreamReader.readchunk method.
-        """
-        return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
-
-
-class StreamReader(AsyncStreamReaderMixin):
+class StreamReader:
     """An enhancement of asyncio.StreamReader.
 
     Supports asynchronous iteration by line, chunk or as available::
@@ -173,8 +149,34 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("e=%r" % self._exception)
         return "<%s>" % " ".join(info)
 
+    def __aiter__(self) -> AsyncStreamIterator[bytes]:
+        return AsyncStreamIterator(self.readline)
+
+    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
+        """Returns an asynchronous iterator that yields chunks of size n."""
+        self.set_read_chunk_size(n)
+        return AsyncStreamIterator(lambda: self.read(n))
+
+    def iter_any(self) -> AsyncStreamIterator[bytes]:
+        """Yield all available data as soon as it is received."""
+        return AsyncStreamIterator(self.readany)
+
+    def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
+        """Yield chunks of data as they are received by the server.
+
+        The yielded objects are tuples
+        of (bytes, bool) as returned by the StreamReader.readchunk method.
+        """
+        return ChunkTupleAsyncStreamIterator(self)
+
     def get_read_buffer_limits(self) -> tuple[int, int]:
         return (self._low_water, self._high_water)
+
+    def set_read_chunk_size(self, n: int) -> None:
+        """Raise buffer limits to match the consumer's chunk size."""
+        if n > self._low_water:
+            self._low_water = n
+            self._high_water = n * 2
 
     def exception(self) -> type[BaseException] | BaseException | None:
         return self._exception
