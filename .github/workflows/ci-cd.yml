@@ -432,7 +432,7 @@ jobs:
       id: python-install
       uses: actions/setup-python@v6
       with:
-        python-version: '3.12'
+        python-version: '3.14'
     - name: Update pip, wheel, setuptools, build, twine
       run: |
         python -m pip install -U pip wheel setuptools build twine
