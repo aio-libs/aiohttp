@@ -93,7 +93,7 @@ def _gen_ids(parsers: list[Any]) -> list[str]:
 @pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
 def parser(
     loop: asyncio.AbstractEventLoop,
-    server: Server[Request],
+    server: Server,
     request: pytest.FixtureRequest,
 ) -> Iterator[HttpRequestParser]:
     protocol = RequestHandler(server, loop=loop)
@@ -190,7 +190,7 @@ test2: data\r
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_character(
     loop: asyncio.AbstractEventLoop,
-    server: Server[Request],
+    server: Server,
     request: pytest.FixtureRequest,
 ) -> None:
     protocol = RequestHandler(server, loop=loop)
@@ -217,7 +217,7 @@ def test_invalid_character(
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_linebreak(
     loop: asyncio.AbstractEventLoop,
-    server: Server[Request],
+    server: Server,
     request: pytest.FixtureRequest,
 ) -> None:
     protocol = RequestHandler(server, loop=loop)
@@ -293,7 +293,7 @@ def test_ctl_host_header_bad_characters(parser: HttpRequestParser) -> None:
 
 
 def test_unpaired_surrogate_in_header_py(
-    loop: asyncio.AbstractEventLoop, server: Server[Request]
+    loop: asyncio.AbstractEventLoop, server: Server
 ) -> None:
     protocol = RequestHandler(server, loop=loop)
 
@@ -1847,7 +1847,7 @@ async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> 
 
 def test_parse_no_length_or_te_on_post(
     loop: asyncio.AbstractEventLoop,
-    server: Server[Request],
+    server: Server,
     request_cls: type[HttpRequestParser],
 ) -> None:
     protocol = RequestHandler(server, loop=loop)
@@ -2122,7 +2122,7 @@ def test_parse_uri_utf8_percent_encoded(parser) -> None:
     reason="C based HTTP parser not available",
 )
 def test_parse_bad_method_for_c_parser_raises(
-    loop: asyncio.AbstractEventLoop, server: Server[Request]
+    loop: asyncio.AbstractEventLoop, server: Server
 ) -> None:
     protocol = RequestHandler(server, loop=loop)
 
