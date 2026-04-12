@@ -11,7 +11,6 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from ._websocket.reader import WebSocketDataQueue
-from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
 from .client_exceptions import WSMessageTypeError
 from .helpers import (
@@ -108,7 +107,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         protocols: Iterable[str] = (),
         compress: bool = True,
         max_msg_size: int = 4 * 1024 * 1024,
-        writer_limit: int = DEFAULT_LIMIT,
+        writer_limit: int = DEFAULT_CHUNK_SIZE,
         decode_text: bool = True,
     ) -> None:
         super().__init__(status=101)
