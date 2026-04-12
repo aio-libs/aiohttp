@@ -1140,7 +1140,7 @@ class DeflateBuffer:
 
         if chunk:
             self.out.feed_data(chunk, len(chunk))
-        return self.decompressor.data_available
+        return self.decompressor.data_available  # type: ignore[no-any-return]
 
     def feed_eof(self) -> None:
         chunk = self.decompressor.flush()
