@@ -567,7 +567,7 @@ cdef class HttpParser:
                     if self._paused:
                         self._paused = False
                         return  # Will resume via feed_data(b"") later
-                    self._more_data_available = self._payload.feed_data(b"")
+                    self._more_data_available = self._payload.feed_data(b"", 0)
                 self._payload.feed_eof()
                 self._payload = None
                 self._more_data_available = False
