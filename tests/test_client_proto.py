@@ -8,6 +8,7 @@ from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.helpers import TimerNoop
+from aiohttp.http_parser import HttpParser, RawResponseMessage
 
 
 async def test_force_close(loop: asyncio.AbstractEventLoop) -> None:
@@ -31,8 +32,10 @@ async def test_oserror(loop: asyncio.AbstractEventLoop) -> None:
     assert isinstance(proto.exception(), ClientOSError)
 
 
-async def test_pause_resume_on_error(loop) -> None:
+async def test_pause_resume_on_error(loop: asyncio.AbstractEventLoop) -> None:
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
     proto = ResponseHandler(loop=loop)
+    proto._parser = parser
     transport = mock.Mock()
     proto.connection_made(transport)
 

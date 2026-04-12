@@ -268,6 +268,8 @@ class BodyPartReader:
         subtype: str = "mixed",
         default_charset: str | None = None,
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        client_max_size: int = sys.maxsize,
+        max_size_error_cls: type[Exception] = ValueError,
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -285,6 +287,8 @@ class BodyPartReader:
         self._content_eof = 0
         self._cache: dict[str, Any] = {}
         self._max_decompress_size = max_decompress_size
+        self._client_max_size = client_max_size
+        self._max_size_error_cls = max_size_error_cls
 
     def __aiter__(self: Self) -> Self:
         return self
@@ -313,10 +317,14 @@ class BodyPartReader:
         data = bytearray()
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
+            if len(data) > self._client_max_size:
+                raise self._max_size_error_cls(self._client_max_size)
         if decode:
             decoded_data = bytearray()
             async for d in self.decode_iter(data):
                 decoded_data.extend(d)
+                if len(decoded_data) > self._client_max_size:
+                    raise self._max_size_error_cls(self._client_max_size)
             return decoded_data
         return data
 
@@ -558,6 +566,8 @@ class BodyPartReader:
                 suppress_deflate_header=True,
             )
             yield await d.decompress(data, max_length=self._max_decompress_size)
+            while d.data_available:
+                yield await d.decompress(b"", max_length=self._max_decompress_size)
         else:
             raise RuntimeError(f"unknown content encoding: {encoding}")
 
@@ -651,8 +661,10 @@ class MultipartReader:
         headers: Mapping[str, str],
         content: StreamReader,
         *,
+        client_max_size: int = sys.maxsize,
         max_field_size: int = 8190,
         max_headers: int = 128,
+        max_size_error_cls: type[Exception] = ValueError,
     ) -> None:
         self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
@@ -663,11 +675,13 @@ class MultipartReader:
 
         self.headers = headers
         self._boundary = ("--" + self._get_boundary()).encode()
+        self._client_max_size = client_max_size
         self._content = content
         self._default_charset: str | None = None
         self._last_part: MultipartReader | BodyPartReader | None = None
         self._max_field_size = max_field_size
         self._max_headers = max_headers
+        self._max_size_error_cls = max_size_error_cls
         self._at_eof = False
         self._at_bof = True
         self._unread: list[bytes] = []
@@ -766,12 +780,21 @@ class MultipartReader:
 
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
-                return type(self)(headers, self._content)
+                return type(self)(
+                    headers,
+                    self._content,
+                    client_max_size=self._client_max_size,
+                    max_field_size=self._max_field_size,
+                    max_headers=self._max_headers,
+                    max_size_error_cls=self._max_size_error_cls,
+                )
             return self.multipart_reader_cls(
                 headers,
                 self._content,
+                client_max_size=self._client_max_size,
                 max_field_size=self._max_field_size,
                 max_headers=self._max_headers,
+                max_size_error_cls=self._max_size_error_cls,
             )
         else:
             return self.part_reader_cls(
@@ -780,6 +803,8 @@ class MultipartReader:
                 self._content,
                 subtype=self._mimetype.subtype,
                 default_charset=self._default_charset,
+                client_max_size=self._client_max_size,
+                max_size_error_cls=self._max_size_error_cls,
             )
 
     def _get_boundary(self) -> str:

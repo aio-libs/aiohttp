@@ -238,54 +238,251 @@ def test_HTTPException_retains_cause() -> None:
     assert "direct cause" in tb
 
 
-@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
-async def test_HTTPException_retains_cookie(aiohttp_client: AiohttpClient) -> None:
-    @web.middleware
-    async def middleware(request, handler):
-        try:
-            return await handler(request)
-        except web.HTTPException as exc:
-            exc.set_cookie("foo", request["foo"])
-            raise exc
+class TestHTTPOk:
+    def test_ctor_all(self) -> None:
+        resp = web.HTTPOk(
+            headers={"X-Custom": "value"},
+            reason="Done",
+            text="text",
+            content_type="custom",
+        )
+        assert resp.text == "text"
+        compare: Mapping[str, str] = {"X-Custom": "value", "Content-Type": "custom"}
+        assert resp.headers == compare
+        assert resp.reason == "Done"
+        assert resp.status == 200
 
-    async def save(request):
-        request["foo"] = "works"
-        raise web.HTTPFound("/show")
+    def test_multiline_reason(self) -> None:
+        with pytest.raises(ValueError, match=r"Reason cannot contain"):
+            web.HTTPOk(reason="Bad\r\nInjected-header: foo")
 
-    async def show(request):
-        return web.Response(text=request.cookies["foo"])
+    def test_reason_with_cr(self) -> None:
+        with pytest.raises(ValueError, match=r"Reason cannot contain"):
+            web.HTTPOk(reason="OK\rSet-Cookie: evil=1")
 
-    app = web.Application(middlewares=[middleware])
-    app.router.add_route("GET", "/save", save)
-    app.router.add_route("GET", "/show", show)
-    client = await aiohttp_client(app)
+    def test_reason_with_lf(self) -> None:
+        with pytest.raises(ValueError, match=r"Reason cannot contain"):
+            web.HTTPOk(reason="OK\nSet-Cookie: evil=1")
 
-    resp = await client.get("/save")
-    assert resp.status == 200
-    assert str(resp.url)[-5:] == "/show"
-    text = await resp.text()
-    assert text == "works"
+    def test_pickle(self) -> None:
+        resp = web.HTTPOk(
+            headers={"X-Custom": "value"},
+            reason="Done",
+            text="text",
+            content_type="custom",
+        )
+        resp.foo = "bar"  # type: ignore[attr-defined]
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.text == "text"
+            assert resp2.headers == resp.headers
+            assert resp2.reason == "Done"
+            assert resp2.status == 200
+            assert resp2.foo == "bar"
+
+    async def test_app(self, aiohttp_client: AiohttpClient) -> None:
+        async def handler(request: web.Request) -> NoReturn:
+            raise web.HTTPOk()
+
+        app = web.Application()
+        app.router.add_get("/", handler)
+        cli = await aiohttp_client(app)
+
+        resp = await cli.get("/")
+        assert 200 == resp.status
+        txt = await resp.text()
+        assert "200: OK" == txt
 
 
-def test_unicode_text_body_unauthorized() -> None:
-    """Test that HTTPUnauthorized can be initialized with a string."""
-    with pytest.warns(
-        DeprecationWarning, match="body argument is deprecated for http web exceptions"
-    ):
-        resp = web.HTTPUnauthorized(body="text")
-    assert resp.status == 401
+class TestHTTPFound:
+    def test_location_str(self) -> None:
+        exc = web.HTTPFound(location="/redirect")
+        assert exc.location == URL("/redirect")
+        assert exc.headers["Location"] == "/redirect"
+
+    def test_location_url(self) -> None:
+        exc = web.HTTPFound(location=URL("/redirect"))
+        assert exc.location == URL("/redirect")
+        assert exc.headers["Location"] == "/redirect"
+
+    def test_empty_location(self) -> None:
+        with pytest.raises(ValueError):
+            web.HTTPFound(location="")
+        with pytest.raises(ValueError):
+            web.HTTPFound(location=None)  # type: ignore[arg-type]
+
+    def test_location_CRLF(self) -> None:
+        exc = web.HTTPFound(location="/redirect\r\n")
+        assert "\r\n" not in exc.headers["Location"]
+
+    def test_pickle(self) -> None:
+        resp = web.HTTPFound(
+            location="http://example.com",
+            headers={"X-Custom": "value"},
+            reason="Wow",
+            text="text",
+            content_type="custom",
+        )
+        resp.foo = "bar"  # type: ignore[attr-defined]
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.location == URL("http://example.com")
+            assert resp2.text == "text"
+            assert resp2.headers == resp.headers
+            assert resp2.reason == "Wow"
+            assert resp2.status == 302
+            assert resp2.foo == "bar"
+
+    async def test_app(self, aiohttp_client: AiohttpClient) -> None:
+        async def handler(request: web.Request) -> NoReturn:
+            raise web.HTTPFound(location="/redirect")
+
+        app = web.Application()
+        app.router.add_get("/", handler)
+        cli = await aiohttp_client(app)
+
+        resp = await cli.get("/", allow_redirects=False)
+        assert 302 == resp.status
+        txt = await resp.text()
+        assert "302: Found" == txt
+        assert "/redirect" == resp.headers["location"]
 
 
-def test_multiline_reason() -> None:
-    with pytest.raises(ValueError, match=r"Reason cannot contain"):
-        web.HTTPOk(reason="Bad\r\nInjected-header: foo")
+class TestHTTPMethodNotAllowed:
+    async def test_ctor(self) -> None:
+        resp = web.HTTPMethodNotAllowed(
+            "GET",
+            ["POST", "PUT"],
+            headers={"X-Custom": "value"},
+            reason="Unsupported",
+            text="text",
+            content_type="custom",
+        )
+        assert resp.method == "GET"
+        assert resp.allowed_methods == {"POST", "PUT"}
+        assert resp.text == "text"
+        compare: Mapping[str, str] = {
+            "X-Custom": "value",
+            "Content-Type": "custom",
+            "Allow": "POST,PUT",
+        }
+        assert resp.headers == compare
+        assert resp.reason == "Unsupported"
+        assert resp.status == 405
+
+    def test_pickle(self) -> None:
+        resp = web.HTTPMethodNotAllowed(
+            method="GET",
+            allowed_methods=("POST", "PUT"),
+            headers={"X-Custom": "value"},
+            reason="Unsupported",
+            text="text",
+            content_type="custom",
+        )
+        resp.foo = "bar"  # type: ignore[attr-defined]
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.method == "GET"
+            assert resp2.allowed_methods == {"POST", "PUT"}
+            assert resp2.text == "text"
+            assert resp2.headers == resp.headers
+            assert resp2.reason == "Unsupported"
+            assert resp2.status == 405
+            assert resp2.foo == "bar"
 
 
-def test_reason_with_cr() -> None:
-    with pytest.raises(ValueError, match=r"Reason cannot contain"):
-        web.HTTPOk(reason="OK\rSet-Cookie: evil=1")
+class TestHTTPRequestEntityTooLarge:
+    def test_ctor(self) -> None:
+        resp = web.HTTPRequestEntityTooLarge(
+            max_size=100, headers={"X-Custom": "value"}, reason="Too large"
+        )
+        assert resp.text == "Maximum request body size 100 exceeded."
+        compare: Mapping[str, str] = {"X-Custom": "value", "Content-Type": "text/plain"}
+        assert resp.headers == compare
+        assert resp.reason == "Too large"
+        assert resp.status == 413
+
+    def test_pickle(self) -> None:
+        resp = web.HTTPRequestEntityTooLarge(
+            100, headers={"X-Custom": "value"}, reason="Too large"
+        )
+        resp.foo = "bar"  # type: ignore[attr-defined]
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.text == resp.text
+            assert resp2.headers == resp.headers
+            assert resp2.reason == "Too large"
+            assert resp2.status == 413
+            assert resp2.foo == "bar"
 
 
-def test_reason_with_lf() -> None:
-    with pytest.raises(ValueError, match=r"Reason cannot contain"):
-        web.HTTPOk(reason="OK\nSet-Cookie: evil=1")
+class TestHTTPUnavailableForLegalReasons:
+    def test_ctor(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(
+            link="http://warning.or.kr/",
+            headers={"X-Custom": "value"},
+            reason="Zaprescheno",
+            text="text",
+            content_type="custom",
+        )
+        assert exc.link == URL("http://warning.or.kr/")
+        assert exc.text == "text"
+        compare: Mapping[str, str] = {
+            "X-Custom": "value",
+            "Content-Type": "custom",
+            "Link": '<http://warning.or.kr/>; rel="blocked-by"',
+        }
+        assert exc.headers == compare
+        assert exc.reason == "Zaprescheno"
+        assert exc.status == 451
+
+    def test_no_link(self) -> None:
+        with pytest.raises(TypeError):
+            web.HTTPUnavailableForLegalReasons()  # type: ignore[call-arg]
+
+    def test_none_link(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link=None)
+        assert exc.link is None
+        assert "Link" not in exc.headers
+
+    def test_empty_link(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link="")
+        assert exc.link is None
+        assert "Link" not in exc.headers
+
+    def test_link_str(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/")
+        assert exc.link == URL("http://warning.or.kr/")
+        assert exc.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+    def test_link_url(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link=URL("http://warning.or.kr/"))
+        assert exc.link == URL("http://warning.or.kr/")
+        assert exc.headers["Link"] == '<http://warning.or.kr/>; rel="blocked-by"'
+
+    def test_link_CRLF(self) -> None:
+        exc = web.HTTPUnavailableForLegalReasons(link="http://warning.or.kr/\r\n")
+        assert "\r\n" not in exc.headers["Link"]
+
+    def test_pickle(self) -> None:
+        resp = web.HTTPUnavailableForLegalReasons(
+            link="http://warning.or.kr/",
+            headers={"X-Custom": "value"},
+            reason="Zaprescheno",
+            text="text",
+            content_type="custom",
+        )
+        resp.foo = "bar"  # type: ignore[attr-defined]
+        for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(resp, proto)
+            resp2 = pickle.loads(pickled)
+            assert resp2.link == URL("http://warning.or.kr/")
+            assert resp2.text == "text"
+            assert resp2.headers == resp.headers
+            assert resp2.reason == "Zaprescheno"
+            assert resp2.status == 451
+            assert resp2.foo == "bar"
