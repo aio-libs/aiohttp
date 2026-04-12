@@ -601,7 +601,7 @@ cdef class HttpParser:
                 self._tail = data
                 return EMPTY_FEED_DATA_RESULT
 
-        if self._eof_pendinge:
+        if self._eof_pending:
             self._payload.feed_eof()
             self._payload = None
             self._eof_pending = False
