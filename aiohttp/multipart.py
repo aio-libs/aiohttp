@@ -1,7 +1,6 @@
 import base64
 import binascii
 import json
-import math
 import re
 import sys
 import uuid
@@ -269,7 +268,7 @@ class BodyPartReader:
         subtype: str = "mixed",
         default_charset: str | None = None,
         max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
-        client_max_size: int = math.inf,  # type: ignore[assignment]
+        client_max_size: int = sys.maxsize,
         max_size_error_cls: type[Exception] = ValueError,
     ) -> None:
         self.headers = headers
