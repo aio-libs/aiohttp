@@ -13,6 +13,7 @@ from multidict import CIMultiDict
 
 from aiohttp import payload
 from aiohttp.abc import AbstractStreamWriter
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.payload import READ_SIZE
 
 
@@ -328,14 +329,13 @@ async def test_bytesio_payload_write_with_length_remaining_zero() -> None:
 
 async def test_bytesio_payload_large_data_multiple_chunks() -> None:
     """Test BytesIOPayload with large data requiring multiple read chunks."""
-    chunk_size = 2**18  # 256KiB (READ_SIZE)
-    data = b"x" * (chunk_size + 1000)  # Slightly larger than READ_SIZE
+    data = b"x" * (DEFAULT_CHUNK_SIZE + 1000)  # Slightly larger than READ_SIZE
     payload_bytesio = payload.BytesIOPayload(io.BytesIO(data))
     writer = MockStreamWriter()
 
     await payload_bytesio.write_with_length(writer, None)
     assert writer.get_written_bytes() == data
-    assert len(writer.get_written_bytes()) == chunk_size + 1000
+    assert len(writer.get_written_bytes()) == DEFAULT_CHUNK_SIZE + 1000
 
 
 async def test_bytesio_payload_remaining_bytes_exhausted() -> None:
@@ -352,15 +352,14 @@ async def test_bytesio_payload_remaining_bytes_exhausted() -> None:
 
 async def test_iobase_payload_exact_chunk_size_limit() -> None:
     """Test IOBasePayload with content length matching exactly one read chunk."""
-    chunk_size = 2**18  # 256KiB (READ_SIZE)
-    data = b"x" * chunk_size + b"extra"  # Slightly larger than one read chunk
+    data = b"x" * DEFAULT_CHUNK_SIZE + b"extra"  # Slightly larger than one read chunk
     p = payload.IOBasePayload(io.BytesIO(data))
     writer = MockStreamWriter()
 
-    await p.write_with_length(writer, chunk_size)
+    await p.write_with_length(writer, DEFAULT_CHUNK_SIZE)
     written = writer.get_written_bytes()
-    assert len(written) == chunk_size
-    assert written == data[:chunk_size]
+    assert len(written) == DEFAULT_CHUNK_SIZE
+    assert written == data[:DEFAULT_CHUNK_SIZE]
 
 
 async def test_iobase_payload_reads_in_chunks() -> None:

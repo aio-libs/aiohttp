@@ -17,6 +17,7 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     content_disposition_header,
     guess_filename,
     parse_mimetype,
@@ -43,7 +44,6 @@ __all__ = (
 )
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
-READ_SIZE: Final[int] = 2**18  # 256 KiB
 _CLOSE_FUTURES: set[asyncio.Future[None]] = set()
 
 
@@ -489,7 +489,7 @@ class IOBasePayload(Payload):
 
         Args:
             remaining_content_len: Optional limit on how many bytes to read in this operation.
-                If None, READ_SIZE will be used as the default chunk size.
+                If None, DEFAULT_CHUNK_SIZE will be used as the default chunk size.
 
         Returns:
             A tuple containing:
@@ -504,7 +504,11 @@ class IOBasePayload(Payload):
         self._set_or_restore_start_position()
         size = self.size  # Call size only once since it does I/O
         return size, self._value.read(
-            min(READ_SIZE, size or READ_SIZE, remaining_content_len or READ_SIZE)
+            min(
+                DEFAULT_CHUNK_SIZE,
+                size or DEFAULT_CHUNK_SIZE,
+                remaining_content_len or DEFAULT_CHUNK_SIZE
+            )
         )
 
     def _read(self, remaining_content_len: int | None) -> bytes:
@@ -513,7 +517,7 @@ class IOBasePayload(Payload):
 
         Args:
             remaining_content_len: Optional maximum number of bytes to read.
-                If None, READ_SIZE will be used as the default chunk size.
+                If None, DEFAULT_CHUNK_SIZE will be used as the default chunk size.
 
         Returns:
             A chunk of bytes read from the file object, respecting the
@@ -523,7 +527,7 @@ class IOBasePayload(Payload):
         the initial _read_and_available_len call has been made.
 
         """
-        return self._value.read(remaining_content_len or READ_SIZE)  # type: ignore[no-any-return]
+        return self._value.read(remaining_content_len or DEFAULT_CHUNK_SIZE)  # type: ignore[no-any-return]
 
     @property
     def size(self) -> int | None:
@@ -626,9 +630,9 @@ class IOBasePayload(Payload):
                 None,
                 self._read,
                 (
-                    min(READ_SIZE, remaining_content_len)
+                    min(DEFAULT_CHUNK_SIZE, remaining_content_len)
                     if remaining_content_len is not None
-                    else READ_SIZE
+                    else DEFAULT_CHUNK_SIZE
                 ),
             )
 
@@ -753,7 +757,7 @@ class TextIOPayload(IOBasePayload):
 
         Args:
             remaining_content_len: Optional limit on how many bytes to read in this operation.
-                If None, READ_SIZE will be used as the default chunk size.
+                If None, DEFAULT_CHUNK_SIZE will be used as the default chunk size.
 
         Returns:
             A tuple containing:
@@ -772,7 +776,11 @@ class TextIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         size = self.size
         chunk = self._value.read(
-            min(READ_SIZE, size or READ_SIZE, remaining_content_len or READ_SIZE)
+            min(
+                DEFAULT_CHUNK_SIZE,
+                size or DEFAULT_CHUNK_SIZE,
+                remaining_content_len or DEFAULT_CHUNK_SIZE
+            )
         )
         return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
@@ -782,7 +790,7 @@ class TextIOPayload(IOBasePayload):
 
         Args:
             remaining_content_len: Optional maximum number of bytes to read.
-                If None, READ_SIZE will be used as the default chunk size.
+                If None, DEFAULT_CHUNK_SIZE will be used as the default chunk size.
 
         Returns:
             A chunk of bytes read from the file object and encoded using the payload's
@@ -794,7 +802,7 @@ class TextIOPayload(IOBasePayload):
         the specified encoding (or UTF-8 if none was provided).
 
         """
-        chunk = self._value.read(remaining_content_len or READ_SIZE)
+        chunk = self._value.read(remaining_content_len or DEFAULT_CHUNK_SIZE)
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
@@ -878,7 +886,7 @@ class BytesIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         loop_count = 0
         remaining_bytes = content_length
-        while chunk := self._value.read(READ_SIZE):
+        while chunk := self._value.read(DEFAULT_CHUNK_SIZE):
             if loop_count > 0:
                 # Avoid blocking the event loop
                 # if they pass a large BytesIO object

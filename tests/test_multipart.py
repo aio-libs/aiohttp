@@ -20,7 +20,7 @@ from aiohttp.hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from aiohttp.helpers import parse_mimetype
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, parse_mimetype
 from aiohttp.multipart import (
     BodyPartReader,
     BodyPartReaderPayload,
@@ -674,9 +674,9 @@ class TestPartReader:
         assert "foo.html" == part.filename
 
     async def test_reading_long_part(self) -> None:
-        size = 2 * 2**18
+        size = 2 * DEFAULT_CHUNK_SIZE
         protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(protocol, 2**18, loop=asyncio.get_event_loop())
+        stream = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop())
         stream.feed_data(b"0" * size + b"\r\n--:--")
         stream.feed_eof()
         d = CIMultiDictProxy[str](CIMultiDict())

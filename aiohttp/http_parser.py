@@ -22,7 +22,6 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import (
-    DEFAULT_MAX_DECOMPRESS_SIZE,
     HAS_BROTLI,
     HAS_ZSTD,
     BrotliDecompressor,
@@ -32,6 +31,7 @@ from .compression_utils import (
 from .helpers import (
     _EXC_SENTINEL,
     DEBUG,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     EMPTY_BODY_STATUS_CODES,
     NO_EXTENSIONS,
@@ -810,7 +810,7 @@ class HttpPayloadParser:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_trailers: int = 128,
-        limit: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        limit: int = DEFAULT_CHUNK_SIZE,
     ) -> None:
         self._length = 0
         self._paused = False
@@ -1061,7 +1061,7 @@ class DeflateBuffer:
         self,
         out: StreamReader,
         encoding: str | None,
-        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        max_decompress_size: int = DEFAULT_CHUNK_SIZE,
     ) -> None:
         self.out = out
         self.size = 0

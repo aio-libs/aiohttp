@@ -17,11 +17,10 @@ from .helpers import (
     PACK_LEN2,
     PACK_LEN3,
     PACK_RANDBITS,
+    READ_CHUNK_SIZE,
     websocket_mask,
 )
 from .models import WS_DEFLATE_TRAILING, WSMsgType
-
-DEFAULT_LIMIT: Final[int] = 2**18
 
 # WebSocket opcode boundary: opcodes 0-7 are data frames, 8-15 are control frames
 # Control frames (ping, pong, close) are never compressed
@@ -52,7 +51,7 @@ class WebSocketWriter:
         transport: asyncio.Transport,
         *,
         use_mask: bool = False,
-        limit: int = DEFAULT_LIMIT,
+        limit: int = READ_CHUNK_SIZE,
         random: random.Random = random.Random(),
         compress: int = 0,
         notakeover: bool = False,

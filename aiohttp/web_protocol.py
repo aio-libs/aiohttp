@@ -17,6 +17,7 @@ from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStream
 from .base_protocol import BaseProtocol
 from .helpers import ceil_timeout, frozen_dataclass_decorator
 from .http import (
+    DEFAULT_CHUNK_SIZE,
     HttpProcessingError,
     HttpRequestParser,
     HttpVersion10,
@@ -202,7 +203,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         max_headers: int = 128,
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
-        read_bufsize: int = 2**18,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):
