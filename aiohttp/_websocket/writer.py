@@ -17,7 +17,7 @@ from .helpers import (
     PACK_LEN2,
     PACK_LEN3,
     PACK_RANDBITS,
-    READ_CHUNK_SIZE,
+    DEFAULT_CHUNK_SIZE,
     websocket_mask,
 )
 from .models import WS_DEFLATE_TRAILING, WSMsgType
@@ -51,7 +51,7 @@ class WebSocketWriter:
         transport: asyncio.Transport,
         *,
         use_mask: bool = False,
-        limit: int = READ_CHUNK_SIZE,
+        limit: int = DEFAULT_CHUNK_SIZE,
         random: random.Random = random.Random(),
         compress: int = 0,
         notakeover: bool = False,
