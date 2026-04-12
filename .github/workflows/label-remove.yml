@@ -11,12 +11,14 @@ jobs:
   clear-pr-unfinished:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       pull-requests: write
 
     steps:
       - name: Remove label
         uses: actions-ecosystem/action-remove-labels@v1
         with:
+          fail_on_error: true
           labels: |
             needs-info
             pr-unfinished
