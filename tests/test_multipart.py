@@ -3,6 +3,7 @@ import gzip
 import io
 import json
 import pathlib
+import sys
 from unittest import mock
 
 import pytest
