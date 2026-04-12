@@ -12,7 +12,7 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
-from aiohttp import HttpVersion, web
+from aiohttp import HttpVersion
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
