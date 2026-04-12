@@ -10,8 +10,8 @@ from aiohttp.web_server import Server
 
 
 @pytest.fixture
-def dummy_manager() -> Server[BaseRequest]:
-    return mock.create_autospec(Server[BaseRequest], request_handler=mock.Mock(), request_factory=mock.Mock(), instance=True)  # type: ignore[no-any-return]
+def dummy_manager() -> Server:
+    return mock.create_autospec(Server, request_handler=mock.Mock(), request_factory=mock.Mock(), instance=True)  # type: ignore[no-any-return]
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def dummy_reader() -> tuple[WebSocketReader, mock.Mock]:
 
 def test_set_parser_does_not_call_data_received_cb_for_tail(
     loop: asyncio.AbstractEventLoop,
-    dummy_manager: Server[BaseRequest],
+    dummy_manager: Server,
     dummy_reader: tuple[WebSocketReader, mock.Mock],
 ) -> None:
     handler = RequestHandler(dummy_manager, loop=loop)
@@ -38,7 +38,7 @@ def test_set_parser_does_not_call_data_received_cb_for_tail(
 
 def test_data_received_calls_data_received_cb(
     loop: asyncio.AbstractEventLoop,
-    dummy_manager: Server[BaseRequest],
+    dummy_manager: Server,
     dummy_reader: tuple[WebSocketReader, mock.Mock],
 ) -> None:
     handler = RequestHandler(dummy_manager, loop=loop)
