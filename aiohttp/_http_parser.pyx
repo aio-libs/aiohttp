@@ -607,6 +607,7 @@ cdef class HttpParser:
             self._more_data_available = False
             self._eof_pending = False
             if self._messages:
+                assert False
                 messages = self._messages
                 self._messages = []
                 return messages, False, b""
