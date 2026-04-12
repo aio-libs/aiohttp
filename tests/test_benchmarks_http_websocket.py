@@ -5,9 +5,10 @@ import asyncio
 import pytest
 from pytest_codspeed import BenchmarkFixture
 
-from aiohttp._websocket.helpers import DEFAULT_CHUNK_SIZE, MSG_SIZE, PACK_LEN3
+from aiohttp._websocket.helpers import MSG_SIZE, PACK_LEN3
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_websocket import WebSocketReader, WebSocketWriter, WSMsgType
 
 
