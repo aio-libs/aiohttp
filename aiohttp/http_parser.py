@@ -2,6 +2,7 @@ import abc
 import asyncio
 import re
 import string
+import sys
 from contextlib import suppress
 from enum import IntEnum
 from re import Pattern
@@ -1115,7 +1116,8 @@ class DeflateBuffer:
                 encoding=self.encoding, suppress_deflate_header=True
             )
 
-        max_length = max(self._max_decompress_size, self.out._low_water)
+        low_water = self.out._low_water
+        max_length = 0 if low_water >= sys.maxsize else max(self._max_decompress_size, low_water)
         try:
             chunk = self.decompressor.decompress_sync(chunk, max_length=max_length)
         except Exception:
