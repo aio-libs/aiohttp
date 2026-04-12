@@ -15,9 +15,8 @@ from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout, frozen_dataclass_decorator
+from .helpers import DEFAULT_CHUNK_SIZE, ceil_timeout, frozen_dataclass_decorator
 from .http import (
-    DEFAULT_CHUNK_SIZE,
     HttpProcessingError,
     HttpRequestParser,
     HttpVersion10,
