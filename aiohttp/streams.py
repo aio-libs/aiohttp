@@ -596,6 +596,9 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def feed_data(self, data: bytes) -> bool:
         return False
 
+    def set_read_chunk_size(self, n: int) -> None:
+        return
+
     async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return b""
 
