@@ -515,7 +515,7 @@ def test_ten_compressed_responses_iter_chunked_1mb(
     data = b"x" * 10 * MB
 
     async def handler(request: web.Request) -> web.Response:
-        resp = web.Response(body=payload)
+        resp = web.Response(body=data)
         resp.enable_compression()
         return resp
 
