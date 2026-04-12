@@ -10,6 +10,7 @@ from ..base_protocol import BaseProtocol
 from ..client_exceptions import ClientConnectionResetError
 from ..compression_utils import ZLibBackend, ZLibCompressor
 from .helpers import (
+    DEFAULT_CHUNK_SIZE,
     MASK_LEN,
     MSG_SIZE,
     PACK_CLOSE_CODE,
@@ -17,7 +18,6 @@ from .helpers import (
     PACK_LEN2,
     PACK_LEN3,
     PACK_RANDBITS,
-    DEFAULT_CHUNK_SIZE,
     websocket_mask,
 )
 from .models import WS_DEFLATE_TRAILING, WSMsgType
