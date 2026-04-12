@@ -1117,7 +1117,9 @@ class DeflateBuffer:
             )
 
         low_water = self.out._low_water
-        max_length = 0 if low_water >= sys.maxsize else max(self._max_decompress_size, low_water)
+        max_length = (
+            0 if low_water >= sys.maxsize else max(self._max_decompress_size, low_water)
+        )
         try:
             chunk = self.decompressor.decompress_sync(chunk, max_length=max_length)
         except Exception:
