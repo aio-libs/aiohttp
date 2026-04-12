@@ -410,7 +410,7 @@ cdef class HttpParser:
 
     cdef _process_header(self):
         cdef str value
-        if self._raw_name is not b"":
+        if self._raw_name != b"":
             name = find_header(self._raw_name)
             value = self._raw_value.decode('utf-8', 'surrogateescape')
 
@@ -442,13 +442,13 @@ cdef class HttpParser:
         if self._has_value:
             self._process_header()
 
-        if self._raw_name is b"":
+        if self._raw_name == b"":
             self._raw_name = at[:length]
         else:
             self._raw_name += at[:length]
 
     cdef _on_header_value(self, char* at, size_t length):
-        if self._raw_value is b"":
+        if self._raw_value == b"":
             self._raw_value = at[:length]
         else:
             self._raw_value += at[:length]
