@@ -585,7 +585,12 @@ cdef class HttpParser:
             cdef cparser.llhttp_errno_t errno
             cdef bytes data
 
-        data = incoming_data
+        # Proactor loop sends bytearray.
+        # Ensure cython sees `data` as bytes
+        if type(incoming_data) is not bytes:
+            data = bytes(incoming_data)
+        else:
+            data = incoming_data
 
         if self._tail:
             data, self._tail = self._tail + data, b""
