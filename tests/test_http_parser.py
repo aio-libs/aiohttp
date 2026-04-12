@@ -2575,7 +2575,7 @@ class TestDeflateBuffer:
         # Feed compressed data in chunks (simulating network streaming)
         for i in range(0, len(compressed), chunk_size):  # pragma: no branch
             chunk = compressed[i : i + chunk_size]
-            while dbuf.feed_data(chunk):
+            while dbuf.feed_data(chunk, len(chunk)):
                 chunk = b""
 
         dbuf.feed_eof()
