@@ -1394,7 +1394,7 @@ async def test_write_drain_condition_with_small_buffer(
     protocol._drain_helper.reset_mock()  # type: ignore[attr-defined]
 
     # Write small amount of data with drain=True but buffer under limit
-    small_data = b"x" * 100  # Much less than LIMIT (2**16)
+    small_data = b"x" * 100  # Much less than LIMIT (2**18)
     await msg.write(small_data, drain=True)
 
     # Drain should NOT be called because buffer_size <= LIMIT
@@ -1423,7 +1423,7 @@ async def test_write_drain_condition_with_large_buffer(
     protocol._drain_helper.reset_mock()  # type: ignore[attr-defined]
 
     # Write large amount of data with drain=True
-    large_data = b"x" * (2**16 + 1)  # Just over LIMIT
+    large_data = b"x" * (2**18 + 1)  # Just over LIMIT
     await msg.write(large_data, drain=True)
 
     # Drain should be called because drain=True AND buffer_size > LIMIT
@@ -1452,12 +1452,12 @@ async def test_write_no_drain_with_large_buffer(
     protocol._drain_helper.reset_mock()  # type: ignore[attr-defined]
 
     # Write large amount of data with drain=False
-    large_data = b"x" * (2**16 + 1)  # Just over LIMIT
+    large_data = b"x" * (2**18 + 1)  # Just over LIMIT
     await msg.write(large_data, drain=False)
 
     # Drain should NOT be called because drain=False
     assert not protocol._drain_helper.called  # type: ignore[attr-defined]
-    assert msg.buffer_size == (2**16 + 1)  # Buffer not reset
+    assert msg.buffer_size == (2**18 + 1)  # Buffer not reset
     assert large_data in buf
 
 

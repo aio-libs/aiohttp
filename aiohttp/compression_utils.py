@@ -34,7 +34,9 @@ except ImportError:
 
 
 MAX_SYNC_CHUNK_SIZE = 4096
-DEFAULT_MAX_DECOMPRESS_SIZE = 2**25  # 32MiB
+# Matches the max size we receive from sockets:
+# https://github.com/python/cpython/blob/1857a40807daeae3a1bf5efb682de9c9ae6df845/Lib/asyncio/selector_events.py#L766
+DEFAULT_MAX_DECOMPRESS_SIZE = 256 * 1024
 
 # Unlimited decompression constants - different libraries use different conventions
 ZLIB_MAX_LENGTH_UNLIMITED = 0  # zlib uses 0 to mean unlimited
@@ -52,6 +54,9 @@ class ZLibDecompressObjProtocol(Protocol):
 
     @property
     def eof(self) -> bool: ...
+
+    @property
+    def unconsumed_tail(self) -> bytes: ...
 
 
 class ZLibBackendProtocol(Protocol):
@@ -179,6 +184,11 @@ class DecompressionBaseHandler(ABC):
             )
         return self.decompress_sync(data, max_length)
 
+    @property
+    @abstractmethod
+    def data_available(self) -> bool:
+        """Return True if more output is available by passing b""."""
+
 
 class ZLibCompressor:
     def __init__(
@@ -267,11 +277,17 @@ class ZLibDecompressor(DecompressionBaseHandler):
         self._mode = encoding_to_mode(encoding, suppress_deflate_header)
         self._zlib_backend: Final = ZLibBackendWrapper(ZLibBackend._zlib_backend)
         self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
+        self._last_empty = False
 
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
-        return self._decompressor.decompress(data, max_length)
+        result = self._decompressor.decompress(
+            self._decompressor.unconsumed_tail + data, max_length
+        )
+        # Only way to know that isal has no further data is checking we get no output
+        self._last_empty = result == b""
+        return result
 
     def flush(self, length: int = 0) -> bytes:
         return (
@@ -279,6 +295,10 @@ class ZLibDecompressor(DecompressionBaseHandler):
             if length > 0
             else self._decompressor.flush()
         )
+
+    @property
+    def data_available(self) -> bool:
+        return bool(self._decompressor.unconsumed_tail) or not self._last_empty
 
     @property
     def eof(self) -> bool:
@@ -301,6 +321,7 @@ class BrotliDecompressor(DecompressionBaseHandler):
                 "Please install `Brotli` module"
             )
         self._obj = brotli.Decompressor()
+        self._last_empty = False
         super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
     def decompress_sync(
@@ -308,14 +329,22 @@ class BrotliDecompressor(DecompressionBaseHandler):
     ) -> bytes:
         """Decompress the given data."""
         if hasattr(self._obj, "decompress"):
-            return cast(bytes, self._obj.decompress(data, max_length))
-        return cast(bytes, self._obj.process(data, max_length))
+            result = cast(bytes, self._obj.decompress(data, max_length))
+        else:
+            result = cast(bytes, self._obj.process(data, max_length))
+        # Only way to know that brotli has no further data is checking we get no output
+        self._last_empty = result == b""
+        return result
 
     def flush(self) -> bytes:
         """Flush the decompressor."""
         if hasattr(self._obj, "flush"):
             return cast(bytes, self._obj.flush())
         return b""
+
+    @property
+    def data_available(self) -> bool:
+        return not self._obj.is_finished() and not self._last_empty
 
 
 class ZSTDDecompressor(DecompressionBaseHandler):
@@ -373,3 +402,9 @@ class ZSTDDecompressor(DecompressionBaseHandler):
 
     def flush(self) -> bytes:
         return b""
+
+    @property
+    def data_available(self) -> bool:
+        return (
+            not self._obj.needs_input and not self._obj.eof
+        ) or self._pending_unused_data is not None

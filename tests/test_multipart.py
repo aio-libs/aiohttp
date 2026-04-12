@@ -1,7 +1,9 @@
 import asyncio
+import gzip
 import io
 import json
 import pathlib
+import sys
 from unittest import mock
 
 import pytest
@@ -24,6 +26,7 @@ from aiohttp.multipart import (
     MultipartResponseWrapper,
 )
 from aiohttp.streams import StreamReader
+from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
 
 BOUNDARY = b"--:"
 
@@ -345,17 +348,17 @@ class TestPartReader:
             result = await obj.read(decode=True)
         assert b"Time to Relax!" == result
 
+    @pytest.mark.skipif(sys.version_info < (3, 11), reason="wbits not available")
     async def test_read_with_content_encoding_deflate(self) -> None:
-        data = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00"
-        tail = b"%s--:--" % newline
-        with Stream(data + tail) as stream:
-            obj = aiohttp.BodyPartReader(
-                BOUNDARY,
-                {CONTENT_ENCODING: "deflate"},
-                stream,
-            )
+        content = b"A" * 1_000_000  # Large enough to exceed max_length.
+        compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
+
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
+        with Stream(compressed + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read(decode=True)
-        assert b"Time to Relax!" == result
+        assert len(result) == len(content)  # Simplifies diff on failure
+        assert result == content
 
     async def test_read_with_content_encoding_identity(self) -> None:
         thing = (
@@ -379,6 +382,22 @@ class TestPartReader:
                 stream,
             )
             with pytest.raises(RuntimeError):
+                await obj.read(decode=True)
+
+    async def test_read_decode_compressed_exceeds_max_size(self) -> None:
+        # Compressed data is small, but decompresses beyond client_max_size.
+        original = b"A" * 1024
+        compressed = gzip.compress(original)
+        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
+        with Stream(compressed + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(
+                BOUNDARY,
+                h,
+                stream,
+                client_max_size=256,
+                max_size_error_cls=HTTPRequestEntityTooLarge,
+            )
+            with pytest.raises(HTTPRequestEntityTooLarge):
                 await obj.read(decode=True)
 
     async def test_read_with_content_transfer_encoding_base64(self) -> None:
@@ -720,9 +739,9 @@ class TestPartReader:
         assert "foo.html" == part.filename
 
     async def test_reading_long_part(self) -> None:
-        size = 2 * 2**16
+        size = 2 * 2**18
         protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+        stream = StreamReader(protocol, 2**18, loop=asyncio.get_event_loop())
         stream.feed_data(b"0" * size + b"\r\n--:--")
         stream.feed_eof()
         obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
@@ -1803,6 +1822,35 @@ async def test_body_part_reader_payload_as_bytes() -> None:
     # Test that decode also raises TypeError
     with pytest.raises(TypeError, match="Unable to decode"):
         payload.decode()
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="No wbits parameter")
+async def test_body_part_reader_payload_write() -> None:
+    content = b"A" * 1_000_000  # Large enough to exceed max_length.
+    compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
+    output = b""
+
+    async def write(inp: bytes) -> None:
+        nonlocal output
+        output += inp
+
+    h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
+    if sys.version_info >= (3, 12):
+        writer = mock.create_autospec(
+            AbstractStreamWriter, write=write, spec_set=True, instance=True
+        )
+    else:
+        writer = mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        )
+        writer.write.side_effect = write
+    with Stream(compressed + b"\r\n--:--") as stream:
+        body_part = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+        payload = BodyPartReaderPayload(body_part)
+        await payload.write(writer)
+
+    assert len(output) == len(content)  # Simplifies diff on failure
+    assert output == content
 
 
 async def test_multipart_writer_close_with_exceptions() -> None:

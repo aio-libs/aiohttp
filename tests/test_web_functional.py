@@ -322,7 +322,28 @@ async def test_multipart(aiohttp_client) -> None:
     await resp.release()
 
 
-async def test_multipart_empty(aiohttp_client) -> None:
+async def test_multipart_client_max_size(aiohttp_client: AiohttpClient) -> None:
+    with multipart.MultipartWriter() as writer:
+        writer.append("A" * 1020)
+
+    async def handler(request: web.Request) -> web.Response:
+        reader = await request.multipart()
+        assert isinstance(reader, multipart.MultipartReader)
+
+        part = await reader.next()
+        assert isinstance(part, multipart.BodyPartReader)
+        await part.text()  # Should raise HttpRequestEntityTooLarge
+        assert False
+
+    app = web.Application(client_max_size=1000)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", data=writer) as resp:
+        assert resp.status == 413
+
+
+async def test_multipart_empty(aiohttp_client: AiohttpClient) -> None:
     with multipart.MultipartWriter() as writer:
         pass
 
@@ -1698,12 +1719,9 @@ async def test_app_max_client_size(aiohttp_client) -> None:
         resp = await client.post("/", data=data)
     assert 413 == resp.status
     resp_text = await resp.text()
-    assert "Maximum request body size 1048576 exceeded, actual body size" in resp_text
-    # Maximum request body size X exceeded, actual body size X
-    body_size = int(resp_text.split()[-1])
-    assert body_size >= max_size
+    assert "Maximum request body size 1048576 exceeded" in resp_text
 
-    await resp.release()
+    resp.release()
 
 
 async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> None:
@@ -1730,10 +1748,7 @@ async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> No
         resp = await client.post("/", data=too_large_data)
     assert 413 == resp.status
     resp_text = await resp.text()
-    assert "Maximum request body size 2097152 exceeded, actual body size" in resp_text
-    # Maximum request body size X exceeded, actual body size X
-    body_size = int(resp_text.split()[-1])
-    assert body_size >= custom_max_size
+    assert "Maximum request body size 2097152 exceeded" in resp_text
 
     await resp.release()
 
@@ -1781,11 +1796,10 @@ async def test_post_max_client_size(aiohttp_client) -> None:
 
         assert 413 == resp.status
         resp_text = await resp.text()
-        assert (
-            "Maximum request body size 10 exceeded, "
-            "actual body size 1024" in resp_text
-        )
-        data["file"].close()
+        assert "Maximum request body size 10 exceeded" in resp_text
+        data_file = data["file"]
+        assert isinstance(data_file, io.BytesIO)
+        data_file.close()
 
         await resp.release()
 

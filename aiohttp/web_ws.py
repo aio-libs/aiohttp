@@ -380,7 +380,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
         loop = self._loop
         assert loop is not None
-        self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
+        self._reader = WebSocketDataQueue(request._protocol, 2**18, loop=loop)
         parser = WebSocketReader(
             self._reader,
             self._max_msg_size,

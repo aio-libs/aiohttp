@@ -407,7 +407,10 @@ jobs:
 
     name: Cython coverage
     needs: gen_llhttp
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu, windows]
+    runs-on: ${{ matrix.os }}-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v6
