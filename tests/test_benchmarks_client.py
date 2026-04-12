@@ -504,6 +504,36 @@ def test_ten_streamed_responses_iter_chunked_1mb(
         loop.run_until_complete(run_client_benchmark())
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_ten_compressed_responses_iter_chunked_1mb(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark compressed GET request read via large iter_chunked."""
+    MB = 2**20
+    data = b"x" * 10 * MB
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=payload)
+        resp.enable_compression()
+        return resp
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        resp = await client.get("/")
+        async for _ in resp.content.iter_chunked(MB):
+            pass
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
 def test_ten_streamed_responses_iter_chunks(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
