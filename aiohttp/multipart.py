@@ -662,7 +662,7 @@ class MultipartReader:
         headers: Mapping[str, str],
         content: StreamReader,
         *,
-        client_max_size: int = math.inf,  # type: ignore[assignment]
+        client_max_size: int = sys.maxsize,
         max_field_size: int = 8190,
         max_headers: int = 128,
         max_size_error_cls: type[Exception] = ValueError,
