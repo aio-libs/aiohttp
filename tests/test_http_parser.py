@@ -1085,7 +1085,7 @@ async def test_compressed_with_tail(response: HttpResponseParser) -> None:
     assert len(result) == len(original)
     assert result == original
 
-    payload = response.protocol._buffer[0][-1]
+    payload = response.protocol._buffer[0][0]
     result = await payload.read()
     assert result == b"ok"
 
