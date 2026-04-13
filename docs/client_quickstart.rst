@@ -122,12 +122,18 @@ that case you can specify multiple values for each key::
         expect = 'http://httpbin.org/get?key=value2&key=value1'
         assert str(r.url) == expect
 
-You can also pass :class:`str` content as param, but beware -- content
-is not encoded by library. Note that ``+`` is not encoded::
+You can also pass :class:`str` content as ``params``. The string is used as
+raw query data, so characters like ``+`` are not percent-encoded again by
+``aiohttp`` itself::
 
     async with session.get('http://httpbin.org/get',
                            params='key=value+1') as r:
             assert str(r.url) == 'http://httpbin.org/get?key=value+1'
+
+However, URL canonicalization still applies to the final URL. If you need to
+preserve an already-encoded query string exactly as-is, build the full
+:class:`yarl.URL` with ``encoded=True`` and pass it directly, without using
+``params``.
 
 If the URL already contains query string parameters, ``params`` will be
 appended to (not replace) the existing parameters::
