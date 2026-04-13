@@ -428,8 +428,10 @@ The client session supports the context manager protocol for self closing.
 
       :param params: Mapping, iterable of tuple of *key*/*value* pairs or
                      string to be sent as parameters in the query
-                     string of the new request. Ignored for subsequent
-                     redirected requests (optional)
+                     string of the new request. If the *url* already
+                     contains query string parameters, *params* are
+                     appended to them (not replaced). Ignored for
+                     subsequent redirected requests (optional)
 
                      Allowed values are:
 
@@ -769,8 +771,10 @@ The client session supports the context manager protocol for self closing.
 
       :param params: Mapping, iterable of tuple of *key*/*value* pairs or
                      string to be sent as parameters in the query
-                     string of the new request. Ignored for subsequent
-                     redirected requests (optional)
+                     string of the new request. If the *url* already
+                     contains query string parameters, *params* are
+                     appended to them (not replaced). Ignored for
+                     subsequent redirected requests (optional)
 
                      Allowed values are:
 
@@ -926,8 +930,10 @@ certification chaining.
 
    :param params: Mapping, iterable of tuple of *key*/*value* pairs or
                   string to be sent as parameters in the query
-                  string of the new request. Ignored for subsequent
-                  redirected requests (optional)
+                  string of the new request. If the *url* already
+                  contains query string parameters, *params* are
+                  appended to them (not replaced). Ignored for
+                  subsequent redirected requests (optional)
 
                   Allowed values are:
 

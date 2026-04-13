@@ -129,6 +129,15 @@ is not encoded by library. Note that ``+`` is not encoded::
                            params='key=value+1') as r:
             assert str(r.url) == 'http://httpbin.org/get?key=value+1'
 
+If the URL already contains query string parameters, ``params`` will be
+appended to (not replace) the existing parameters::
+
+    params = {'d': 'dog'}
+    async with session.get('http://httpbin.org/get?q=abc',
+                           params=params) as resp:
+        expect = 'http://httpbin.org/get?q=abc&d=dog'
+        assert str(resp.url) == expect
+
 .. note::
 
    *aiohttp* internally performs URL canonicalization before sending request.
