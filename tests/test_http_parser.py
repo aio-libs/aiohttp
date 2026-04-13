@@ -414,7 +414,7 @@ def test_missing_host_header_rejected(parser: HttpRequestParser) -> None:
     text = b"GET /admin HTTP/1.1\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage, match="Missing 'Host' header"):
         parser.feed_data(text)
- 
+
 
 @pytest.mark.parametrize(
     ("hdr1", "hdr2"),
