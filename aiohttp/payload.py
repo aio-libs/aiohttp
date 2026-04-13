@@ -7,7 +7,7 @@ import os
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterable, AsyncIterator, Iterable
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable
 from itertools import chain
 from typing import IO, Any, Final, TextIO
 
@@ -151,11 +151,13 @@ class Payload(ABC):
         content_type: None | str | _SENTINEL = sentinel,
         filename: str | None = None,
         encoding: str | None = None,
+        progress: Callable[[int], None] | None = None,
         **kwargs: Any,
     ) -> None:
         self._encoding = encoding
         self._filename = filename
         self._headers = CIMultiDict[str]()
+        self._progress = progress
         self._value = value
         if content_type is not sentinel and content_type is not None:
             assert isinstance(content_type, str)
@@ -239,6 +241,19 @@ class Payload(ABC):
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
             disptype, quote_fields=quote_fields, _charset=_charset, params=params
         )
+
+    def set_progress_callback(
+        self, callback: Callable[[int], None] | None = None
+    ) -> None:
+        """
+        Set a callback function to be called with the total number of bytes written so far.
+
+        Args:
+            callback: A callable that takes an integer representing the total number of bytes written so far.
+                When set to `None`, it will clear any existing progress callback.
+
+        """
+        self._progress = callback
 
     @abstractmethod
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
@@ -334,6 +349,11 @@ class Payload(ABC):
         """
         self._close()
 
+    def _report_progress(self, total_written_len: int) -> None:
+        """Call the progress callback if it is set, with the total number of bytes written so far."""
+        if self._progress:
+            self._progress(total_written_len)
+
 
 class BytesPayload(Payload):
     _value: bytes
@@ -408,10 +428,13 @@ class BytesPayload(Payload):
         is performed efficiently using array slicing.
 
         """
+        self._report_progress(0)
         if content_length is not None:
             await writer.write(self._value[:content_length])
+            self._report_progress(content_length)
         else:
             await writer.write(self._value)
+            self._report_progress(len(self._value))
 
 
 class StringPayload(BytesPayload):
@@ -598,6 +621,8 @@ class IOBasePayload(Payload):
         total_written_len = 0
         remaining_content_len = content_length
 
+        self._report_progress(total_written_len)
+
         # Get initial data and available length
         available_len, chunk = await loop.run_in_executor(
             None, self._read_and_available_len, remaining_content_len
@@ -609,12 +634,13 @@ class IOBasePayload(Payload):
             # Write data with or without length constraint
             if remaining_content_len is None:
                 await writer.write(chunk)
+                total_written_len += chunk_len
             else:
                 await writer.write(chunk[:remaining_content_len])
+                total_written_len += min(remaining_content_len, chunk_len)
                 remaining_content_len -= chunk_len
 
-            total_written_len += chunk_len
-
+            self._report_progress(total_written_len)
             # Check if we're done writing
             if self._should_stop_writing(
                 available_len, total_written_len, remaining_content_len
@@ -877,8 +903,13 @@ class BytesIOPayload(IOBasePayload):
         """
         self._set_or_restore_start_position()
         loop_count = 0
+        total_written_len = 0
         remaining_bytes = content_length
+
+        self._report_progress(total_written_len)
+
         while chunk := self._value.read(READ_SIZE):
+            chunk_len = len(chunk)
             if loop_count > 0:
                 # Avoid blocking the event loop
                 # if they pass a large BytesIO object
@@ -887,11 +918,16 @@ class BytesIOPayload(IOBasePayload):
                 await asyncio.sleep(0)
             if remaining_bytes is None:
                 await writer.write(chunk)
+                total_written_len += chunk_len
+                self._report_progress(total_written_len)
             else:
                 await writer.write(chunk[:remaining_bytes])
-                remaining_bytes -= len(chunk)
+                total_written_len += min(remaining_bytes, chunk_len)
+                self._report_progress(total_written_len)
+                remaining_bytes -= chunk_len
                 if remaining_bytes <= 0:
                     return
+
             loop_count += 1
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
@@ -1020,15 +1056,23 @@ class AsyncIterablePayload(Payload):
         4. Does NOT generate cache - that's done by as_bytes()
 
         """
+        total_written_len = 0
+        self._report_progress(total_written_len)
+
         # If we have cached chunks, use them
         if self._cached_chunks is not None:
             remaining_bytes = content_length
             for chunk in self._cached_chunks:
+                chunk_len = len(chunk)
                 if remaining_bytes is None:
                     await writer.write(chunk)
+                    total_written_len += chunk_len
+                    self._report_progress(total_written_len)
                 elif remaining_bytes > 0:
                     await writer.write(chunk[:remaining_bytes])
-                    remaining_bytes -= len(chunk)
+                    total_written_len += min(remaining_bytes, chunk_len)
+                    self._report_progress(total_written_len)
+                    remaining_bytes -= chunk_len
                 else:
                     break
             return
@@ -1043,12 +1087,17 @@ class AsyncIterablePayload(Payload):
         try:
             while True:
                 chunk = await anext(self._iter)
+                chunk_len = len(chunk)
                 if remaining_bytes is None:
                     await writer.write(chunk)
+                    total_written_len += chunk_len
+                    self._report_progress(total_written_len)
                 # If we have a content length limit
                 elif remaining_bytes > 0:
                     await writer.write(chunk[:remaining_bytes])
-                    remaining_bytes -= len(chunk)
+                    total_written_len += min(remaining_bytes, chunk_len)
+                    self._report_progress(total_written_len)
+                    remaining_bytes -= chunk_len
                 # We still want to exhaust the iterator even
                 # if we have reached the content length limit
                 # since the file handle may not get closed by
