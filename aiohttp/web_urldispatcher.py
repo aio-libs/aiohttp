@@ -31,7 +31,7 @@ from yarl import URL, __version__ as yarl_version
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
-from .helpers import DEBUG
+from .helpers import DEBUG, DEFAULT_CHUNK_SIZE
 from .http import HttpVersion11
 from .typedefs import Handler, PathLike
 from .web_exceptions import (
@@ -536,7 +536,7 @@ class StaticResource(PrefixResource):
         *,
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,
@@ -1166,7 +1166,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         *,
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,

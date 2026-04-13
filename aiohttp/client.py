@@ -91,6 +91,7 @@ from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     DEBUG,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
@@ -333,7 +334,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: list[TraceConfig] | None = None,
-        read_bufsize: int = 2**18,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_headers: int = 128,
@@ -1294,7 +1295,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader = WebSocketDataQueue(conn_proto, 2**18, loop=self._loop)
+            reader = WebSocketDataQueue(conn_proto, DEFAULT_CHUNK_SIZE, loop=self._loop)
             writer = WebSocketWriter(
                 conn_proto,
                 transport,

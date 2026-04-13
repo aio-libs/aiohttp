@@ -19,6 +19,7 @@ import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_proto import ResponseHandler
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_parser import (
     NO_EXTENSIONS,
     DeflateBuffer,
@@ -100,7 +101,7 @@ def parser(
     parser = request.param(
         protocol,
         loop,
-        2**18,
+        DEFAULT_CHUNK_SIZE,
         max_line_size=8190,
         max_headers=128,
         max_field_size=8190,
@@ -128,7 +129,7 @@ def response(
     parser = request.param(
         protocol,
         loop,
-        2**18,
+        DEFAULT_CHUNK_SIZE,
         max_line_size=8190,
         max_headers=128,
         max_field_size=8190,
@@ -1673,7 +1674,7 @@ async def test_http_response_parser_bad_chunked_strict_py(
     response = HttpResponseParserPy(
         protocol,
         loop,
-        2**18,
+        DEFAULT_CHUNK_SIZE,
         max_line_size=8190,
         max_field_size=8190,
     )
@@ -1849,7 +1850,7 @@ def test_parse_no_length_or_te_on_post(
     request_cls: type[HttpRequestParser],
 ) -> None:
     protocol = RequestHandler(server, loop=loop)
-    parser = request_cls(protocol, loop, limit=2**18)
+    parser = request_cls(protocol, loop, limit=DEFAULT_CHUNK_SIZE)
     protocol._parser = parser
     text = b"POST /test HTTP/1.1\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
@@ -2128,7 +2129,7 @@ def test_parse_bad_method_for_c_parser_raises(
     parser = HttpRequestParserC(
         protocol,
         loop,
-        2**18,
+        DEFAULT_CHUNK_SIZE,
         max_line_size=8190,
         max_headers=128,
         max_field_size=8190,
@@ -2150,7 +2151,9 @@ class TestParsePayload:
         assert [(bytearray(b"data"))] == list(out._buffer)
 
     async def test_parse_length_payload_eof(self, protocol: BaseProtocol) -> None:
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
 
         p = HttpPayloadParser(out, length=4, headers_parser=HeadersParser())
         p.feed_data(b"da")
@@ -2174,7 +2177,9 @@ class TestParsePayload:
 
         Regression test for #10596.
         """
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
         # Declared chunk-size is 4 but actual data is "Hello" (5 bytes).
         # After consuming 4 bytes, remaining starts with "o" not "\r\n".
@@ -2189,7 +2194,9 @@ class TestParsePayload:
 
         Regression test for #10596.
         """
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
         # Declared chunk-size is 6 but actual data before CRLF is "Hello" (5 bytes).
         # Parser reads 6 bytes: "Hello\r", then expects \r\n but sees "\n0\r\n..."
@@ -2211,7 +2218,9 @@ class TestParsePayload:
     async def test_parse_chunked_payload_split_end2(
         self, protocol: BaseProtocol
     ) -> None:
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
         p.feed_data(b"4\r\nasdf\r\n0\r\n\r")
         p.feed_data(b"\n")
@@ -2222,7 +2231,9 @@ class TestParsePayload:
     async def test_parse_chunked_payload_split_end_trailers(
         self, protocol: BaseProtocol
     ) -> None:
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
         p.feed_data(b"4\r\nasdf\r\n0\r\n")
         p.feed_data(b"Content-MD5: 912ec803b2ce49e4a541068d495ab570\r\n")
@@ -2234,7 +2245,9 @@ class TestParsePayload:
     async def test_parse_chunked_payload_split_end_trailers2(
         self, protocol: BaseProtocol
     ) -> None:
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
         p.feed_data(b"4\r\nasdf\r\n0\r\n")
         p.feed_data(b"Content-MD5: 912ec803b2ce49e4a541068d495ab570\r\n\r")
@@ -2266,7 +2279,9 @@ class TestParsePayload:
         assert b"asdf" == b"".join(out._buffer)
 
     async def test_http_payload_parser_length(self, protocol: BaseProtocol) -> None:
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(out, length=2, headers_parser=HeadersParser())
         state, tail = p.feed_data(b"1245")
         assert state is PayloadState.PAYLOAD_COMPLETE
@@ -2279,7 +2294,9 @@ class TestParsePayload:
         COMPRESSED = b"x\x9cKI,I\x04\x00\x04\x00\x01\x9b"
 
         length = len(COMPRESSED)
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(
             out, length=length, compression="deflate", headers_parser=HeadersParser()
         )
@@ -2350,7 +2367,9 @@ class TestParsePayload:
     async def test_http_payload_parser_length_zero(
         self, protocol: BaseProtocol
     ) -> None:
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(out, length=0, headers_parser=HeadersParser())
         assert p.done
         assert out.is_eof()
@@ -2358,7 +2377,9 @@ class TestParsePayload:
     @pytest.mark.skipif(brotli is None, reason="brotli is not installed")
     async def test_http_payload_brotli(self, protocol: BaseProtocol) -> None:
         compressed = brotli.compress(b"brotli data")
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(
             out,
             length=len(compressed),
@@ -2372,7 +2393,9 @@ class TestParsePayload:
     @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
     async def test_http_payload_zstandard(self, protocol: BaseProtocol) -> None:
         compressed = zstandard.compress(b"zstd data")
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(
             out,
             length=len(compressed),
@@ -2390,7 +2413,9 @@ class TestParsePayload:
         frame1 = zstandard.compress(b"first")
         frame2 = zstandard.compress(b"second")
         payload = frame1 + frame2
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(
             out,
             length=len(payload),
@@ -2407,7 +2432,9 @@ class TestParsePayload:
     ) -> None:
         frame1 = zstandard.compress(b"chunk1")
         frame2 = zstandard.compress(b"chunk2")
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(
             out,
             length=len(frame1) + len(frame2),
@@ -2427,7 +2454,9 @@ class TestParsePayload:
         frame2 = zstandard.compress(b"BBBB")
         combined = frame1 + frame2
         split_point = len(frame1) + 3  # 3 bytes into frame2
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(
             out,
             length=len(combined),
@@ -2445,7 +2474,9 @@ class TestParsePayload:
     ) -> None:
         parts = [f"part{i}".encode() for i in range(10)]
         payload = b"".join(zstandard.compress(p) for p in parts)
-        out = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         p = HttpPayloadParser(
             out,
             length=len(payload),
@@ -2459,7 +2490,9 @@ class TestParsePayload:
 
 class TestDeflateBuffer:
     async def test_feed_data(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        buf = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         dbuf = DeflateBuffer(buf, "deflate")
 
         dbuf.decompressor = mock.Mock()
@@ -2544,7 +2577,9 @@ class TestDeflateBuffer:
         assert buf._eof
 
     async def test_empty_body(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        buf = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         dbuf = DeflateBuffer(buf, "deflate")
         dbuf.feed_eof()
 
@@ -2569,7 +2604,9 @@ class TestDeflateBuffer:
         original = b"A" * (3 * 2**20)
         compressed = zlib.compress(original)
 
-        buf = aiohttp.StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+        buf = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
         dbuf = DeflateBuffer(buf, "deflate")
 
         # Feed compressed data in chunks (simulating network streaming)
