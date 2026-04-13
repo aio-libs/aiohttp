@@ -117,6 +117,7 @@ class Server(Generic[_Request]):
         try:
             return RequestHandler(self, loop=self._loop, **self._kwargs)
         except TypeError:
+            # Failsafe creation: remove all custom handler_arg
             kwargs = {
                 k: v
                 for k, v in self._kwargs.items()
