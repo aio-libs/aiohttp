@@ -26,7 +26,7 @@ from typing import (  # noqa
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import ETAG_ANY, ETag, must_be_empty_body
+from .helpers import DEFAULT_CHUNK_SIZE, ETAG_ANY, ETag, must_be_empty_body
 from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
     HTTPForbidden,
@@ -95,7 +95,7 @@ class FileResponse(StreamResponse):
     def __init__(
         self,
         path: PathLike,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         status: int = 200,
         reason: str | None = None,
         headers: LooseHeaders | None = None,

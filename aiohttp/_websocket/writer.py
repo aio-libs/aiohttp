@@ -9,6 +9,7 @@ from typing import Final, Optional, Set
 from ..base_protocol import BaseProtocol
 from ..client_exceptions import ClientConnectionResetError
 from ..compression_utils import ZLibBackend, ZLibCompressor
+from ..helpers import DEFAULT_CHUNK_SIZE
 from .helpers import (
     MASK_LEN,
     MSG_SIZE,
@@ -20,8 +21,6 @@ from .helpers import (
     websocket_mask,
 )
 from .models import WS_DEFLATE_TRAILING, WSMsgType
-
-DEFAULT_LIMIT: Final[int] = 2**18
 
 # WebSocket opcode boundary: opcodes 0-7 are data frames, 8-15 are control frames
 # Control frames (ping, pong, close) are never compressed
@@ -52,7 +51,7 @@ class WebSocketWriter:
         transport: asyncio.Transport,
         *,
         use_mask: bool = False,
-        limit: int = DEFAULT_LIMIT,
+        limit: int = DEFAULT_CHUNK_SIZE,
         random: random.Random = random.Random(),
         compress: int = 0,
         notakeover: bool = False,
