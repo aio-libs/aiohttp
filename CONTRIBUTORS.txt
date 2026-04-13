@@ -340,8 +340,8 @@ Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
-Shubh Agarwal
 Shensheng Shen
+Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
 Soheil Dolatabadi
