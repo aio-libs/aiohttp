@@ -49,7 +49,7 @@ from .http_exceptions import (
     LineTooLong,
     TransferEncodingError,
 )
-from .http_writer import HttpVersion, HttpVersion10
+from .http_writer import HttpVersion, HttpVersion10, HttpVersion11
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
 
@@ -671,6 +671,9 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             upgrade,
             chunked,
         ) = self.parse_headers(lines[1:])
+
+        if version_o == HttpVersion11 and hdrs.HOST not in headers:
+            raise BadHttpMessage("Missing 'Host' header in request.")
 
         if close is None:  # then the headers weren't set in the request
             if version_o <= HttpVersion10:  # HTTP 1.0 must asks to not close
