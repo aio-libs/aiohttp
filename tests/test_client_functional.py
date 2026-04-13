@@ -51,7 +51,6 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
 from aiohttp.connector import Connection
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_writer import StreamWriter
