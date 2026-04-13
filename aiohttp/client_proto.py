@@ -13,6 +13,7 @@ from .client_exceptions import (
 )
 from .helpers import (
     _EXC_SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_STATUS_CODES,
     BaseTimerContext,
     ErrorableProtocol,
@@ -231,7 +232,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         read_until_eof: bool = False,
         auto_decompress: bool = True,
         read_timeout: float | None = None,
-        read_bufsize: int = 2**18,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         timeout_ceil_threshold: float = 5,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
