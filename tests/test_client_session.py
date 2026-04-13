@@ -9,7 +9,7 @@ from collections import deque
 from collections.abc import Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
 from types import SimpleNamespace
-from typing import Any, NoReturn, TypedDict, cast
+from typing import Any, Literal, NoReturn, TypedDict, cast
 from unittest import mock
 from uuid import uuid4
 
@@ -44,7 +44,7 @@ from aiohttp.tracing import (
 class _Params(TypedDict):
     headers: dict[str, str]
     max_redirects: int
-    compress: str
+    compress: Literal["deflate", "gzip"]
     chunked: bool
     expect100: bool
     read_until_eof: bool

@@ -184,7 +184,7 @@ class _RequestOptions(TypedDict, total=False):
     auth: BasicAuth | None
     allow_redirects: bool
     max_redirects: int
-    compress: str | bool
+    compress: Literal["deflate", "gzip"] | bool
     chunked: bool | None
     expect100: bool
     raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]]
@@ -488,7 +488,7 @@ class ClientSession:
         auth: BasicAuth | None = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
-        compress: str | bool = False,
+        compress: Literal["deflate", "gzip"] | bool = False,
         chunked: bool | None = None,
         expect100: bool = False,
         raise_for_status: (
