@@ -1007,7 +1007,6 @@ async def test_content_encoding_dont_set_headers_if_no_body(
 
 
 async def test_content_encoding_rejects_unknown_string(
-    loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
     with pytest.raises(
@@ -1019,7 +1018,7 @@ async def test_content_encoding_rejects_unknown_string(
             URL("http://python.org/"),
             data="foo",
             compress="br",
-            loop=loop,
+            loop=asyncio.get_running_loop(),
         )
 
 
