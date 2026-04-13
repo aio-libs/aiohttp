@@ -1,0 +1,1 @@
+Changed ``zlib_executor_size`` default so compressed payloads are async by default -- by :user:`Dreamsorcerer`.
