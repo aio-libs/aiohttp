@@ -165,9 +165,7 @@ else:
     SSLContext = None
 
 if sys.version_info >= (3, 11) and TYPE_CHECKING:
-    from typing import Literal, Unpack
-else:
-    from typing import Literal
+    from typing import Unpack
 
 
 class _RequestOptions(TypedDict, total=False):
