@@ -341,6 +341,7 @@ Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
 Shubh Agarwal
+Shensheng Shen
 Simon Kennedy
 Sin-Woo Bang
 Soheil Dolatabadi

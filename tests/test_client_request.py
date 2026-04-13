@@ -1006,6 +1006,23 @@ async def test_content_encoding_dont_set_headers_if_no_body(
     resp.close()
 
 
+async def test_content_encoding_rejects_unknown_string(
+    loop: asyncio.AbstractEventLoop,
+    make_client_request: _RequestMaker,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="compress must be one of True, False, 'deflate', or 'gzip'",
+    ):
+        make_client_request(
+            "post",
+            URL("http://python.org/"),
+            data="foo",
+            compress="br",
+            loop=loop,
+        )
+
+
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_content_encoding_header(  # type: ignore[misc]
     loop: asyncio.AbstractEventLoop,
