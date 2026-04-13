@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import sys
 import warnings
 from collections.abc import Awaitable, Callable
 from typing import Final, Generic, TypeVar
@@ -411,10 +412,8 @@ class StreamReader:
             return b""
 
         if n < 0:
-            # This used to just loop creating a new waiter hoping to
-            # collect everything in self._buffer, but that would
-            # deadlock if the subprocess sends more than self.limit
-            # bytes.  So just call self.readany() until EOF.
+            # Reading everything — remove decompression chunk limit.
+            self.set_read_chunk_size(sys.maxsize)
             blocks = []
             while True:
                 block = await self.readany()
@@ -423,6 +422,7 @@ class StreamReader:
                 blocks.append(block)
             return b"".join(blocks)
 
+        self.set_read_chunk_size(n)
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
         # without feeding any data

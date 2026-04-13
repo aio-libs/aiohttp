@@ -589,9 +589,6 @@ class ClientResponse(HeadersMixin):
         """Read response payload."""
         if self._body is None:
             try:
-                # Remove the decompression size limit since we are reading
-                # the entire body into memory anyway.
-                self.content.set_read_chunk_size(sys.maxsize)
                 self._body = await self.content.read()
                 for trace in self._traces:
                     await trace.send_response_chunk_received(
