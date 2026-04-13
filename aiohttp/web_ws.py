@@ -11,10 +11,10 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from ._websocket.reader import WebSocketDataQueue
-from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
 from .client_exceptions import WSMessageTypeError
 from .helpers import (
+    DEFAULT_CHUNK_SIZE,
     calculate_timeout_when,
     frozen_dataclass_decorator,
     set_exception,
@@ -107,7 +107,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         protocols: Iterable[str] = (),
         compress: bool = True,
         max_msg_size: int = 4 * 1024 * 1024,
-        writer_limit: int = DEFAULT_LIMIT,
+        writer_limit: int = DEFAULT_CHUNK_SIZE,
         decode_text: bool = True,
     ) -> None:
         super().__init__(status=101)
@@ -361,7 +361,8 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self.force_close()
         self._compress = compress
         transport = request._protocol.transport
-        assert transport is not None
+        if transport is None:
+            raise ConnectionResetError("Connection lost")
         writer = WebSocketWriter(
             request._protocol,
             transport,
@@ -382,7 +383,9 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
         loop = self._loop
         assert loop is not None
-        self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
+        self._reader = WebSocketDataQueue(
+            request._protocol, DEFAULT_CHUNK_SIZE, loop=loop
+        )
         parser = WebSocketReader(
             self._reader,
             self._max_msg_size,

@@ -214,6 +214,7 @@ Jordan Borean
 Josep Cugat
 Josh Junon
 Joshu Coats
+Josu Moreno
 Julia Tsemusheva
 Julien Duponchelle
 Jungkook Park
@@ -419,6 +420,7 @@ Yegor Roganov
 Yifei Kong
 Young-Ho Cha
 Yuriy Shatrov
+Yury Novikov
 Yury Pliner
 Yury Selivanov
 Yusuke Tsutsumi

@@ -21,6 +21,7 @@ from ._cookie_helpers import parse_cookie_header
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     ETAG_ANY,
     LIST_QUOTED_ETAG_RE,
     ChainMapProxy,
@@ -634,9 +635,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 if self._client_max_size:
                     body_size = len(body)
                     if body_size > self._client_max_size:
-                        raise HTTPRequestEntityTooLarge(
-                            max_size=self._client_max_size, actual_size=body_size
-                        )
+                        raise HTTPRequestEntityTooLarge(self._client_max_size)
                 if not chunk:
                     break
             self._read_bytes = bytes(body)
@@ -675,8 +674,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         return MultipartReader(
             self._headers,
             self._payload,
+            client_max_size=self._client_max_size,
             max_field_size=self._protocol.max_field_size,
             max_headers=self._protocol.max_headers,
+            max_size_error_cls=HTTPRequestEntityTooLarge,
         )
 
     async def post(self) -> "MultiDictProxy[str | bytes | FileField]":
@@ -719,7 +720,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         tmp = await self._loop.run_in_executor(
                             None, tempfile.TemporaryFile
                         )
-                        while chunk := await field.read_chunk(size=2**18):
+                        while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
                             async for decoded_chunk in field.decode_iter(chunk):
                                 await self._loop.run_in_executor(
                                     None, tmp.write, decoded_chunk
@@ -727,9 +728,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                                 size += len(decoded_chunk)
                                 if 0 < max_size < size:
                                     await self._loop.run_in_executor(None, tmp.close)
-                                    raise HTTPRequestEntityTooLarge(
-                                        max_size=max_size, actual_size=size
-                                    )
+                                    raise HTTPRequestEntityTooLarge(max_size)
                         await self._loop.run_in_executor(None, tmp.seek, 0)
 
                         if field_ct is None:
@@ -749,9 +748,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         while chunk := await field.read_chunk():
                             size += len(chunk)
                             if 0 < max_size < size:
-                                raise HTTPRequestEntityTooLarge(
-                                    max_size=max_size, actual_size=size
-                                )
+                                raise HTTPRequestEntityTooLarge(max_size)
                             raw_data.extend(chunk)
 
                         value = bytearray()

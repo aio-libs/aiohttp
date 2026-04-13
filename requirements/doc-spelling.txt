@@ -12,9 +12,9 @@ babel==2.18.0
     # via sphinx
 certifi==2026.2.25
     # via requests
-charset-normalizer==3.4.6
+charset-normalizer==3.4.7
     # via requests
-click==8.3.1
+click==8.3.2
     # via towncrier
 docutils==0.21.2
     # via sphinx
@@ -32,9 +32,9 @@ packaging==26.0
     # via sphinx
 pyenchant==3.3.0
     # via sphinxcontrib-spelling
-pygments==2.19.2
+pygments==2.20.0
     # via sphinx
-requests==2.32.5
+requests==2.33.1
     # via
     #   sphinx
     #   sphinxcontrib-spelling
@@ -61,7 +61,7 @@ sphinxcontrib-spelling==8.0.2 ; platform_system != "Windows"
     # via -r requirements/doc-spelling.in
 sphinxcontrib-towncrier==0.5.0a0
     # via -r requirements/doc.in
-tomli==2.4.0
+tomli==2.4.1
     # via
     #   sphinx
     #   towncrier
