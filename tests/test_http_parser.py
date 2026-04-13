@@ -1082,7 +1082,7 @@ def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
 
 async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
     text = (
-        b"GET /test HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b"GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n"
         + b"1\r\nb\r\n" * 50000
         + b"0\r\n\r\n"
     )
