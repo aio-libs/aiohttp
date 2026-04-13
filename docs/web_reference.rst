@@ -369,8 +369,8 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :param rel_url: url to use, :class:`str` or :class:`~yarl.URL`
 
-      :param headers: :class:`~multidict.CIMultiDict` or compatible
-                      headers container.
+      :param headers: :class:`~multidict.CIMultiDict` or compatible headers
+         container.
 
       :return: a cloned :class:`Request` instance.
 
@@ -384,7 +384,7 @@ and :ref:`aiohttp-web-signals` handlers.
       :param str name: The key to look up in the transport extra information.
 
       :param default: Default value to be used when no value for ``name`` is
-                      found (default is ``None``).
+         found (default is ``None``).
 
       .. versionadded:: 3.7
 
@@ -419,12 +419,11 @@ and :ref:`aiohttp-web-signals` handlers.
       match `content_type` parameter, :exc:`aiohttp.web.HTTPBadRequest` get raised.
       To disable content type check pass ``None`` value.
 
-      :param collections.abc.Callable loads: any :term:`callable` that accepts
-                              :class:`str` and returns :class:`dict`
-                              with parsed JSON (:func:`json.loads` by
-                              default).
-      :param str content_type: expected value of Content-Type header or ``None``
-                              ('application/json' by default)
+      :param collections.abc.Callable loads: any :term:`callable` that
+         accepts :class:`str` and returns :class:`dict` with parsed JSON
+         (:func:`json.loads` by default).
+      :param str content_type: expected value of Content-Type header or
+         ``None`` ('application/json' by default)
 
       .. note::
 
@@ -605,9 +604,8 @@ and :ref:`aiohttp-web-signals` handlers::
    :param int status: HTTP status code, ``200`` by default.
 
    :param str reason: HTTP reason. If param is ``None`` reason will be
-                      calculated basing on *status*
-                      parameter. Otherwise pass :class:`str` with
-                      arbitrary *status* explanation..
+      calculated basing on *status* parameter. Otherwise pass :class:`str` with
+      arbitrary *status* explanation..
 
    .. attribute:: prepared
 
@@ -723,36 +721,30 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param str name: cookie name
 
-      :param str value: cookie value (will be converted to
-                        :class:`str` if value has another type).
+      :param str value: cookie value (will be converted to :class:`str` if
+         value has another type).
 
       :param expires: expiration date (optional)
 
       :param str domain: cookie domain (optional)
 
-      :param int max_age: defines the lifetime of the cookie, in
-                          seconds.  The delta-seconds value is a
-                          decimal non- negative integer.  After
-                          delta-seconds seconds elapse, the client
-                          should discard the cookie.  A value of zero
-                          means the cookie should be discarded
-                          immediately.  (optional)
+      :param int max_age: defines the lifetime of the cookie, in seconds. The
+         delta-seconds value is a decimal non- negative integer. After
+         delta-seconds seconds elapse, the client should discard the cookie. A
+         value of zero means the cookie should be discarded immediately.
+         (optional)
 
-      :param str path: specifies the subset of URLs to
-                       which this cookie applies. (optional, ``'/'`` by default)
+      :param str path: specifies the subset of URLs to which this cookie
+         applies. (optional, ``'/'`` by default)
 
-      :param bool secure: attribute (with no value) directs
-                          the user agent to use only (unspecified)
-                          secure means to contact the origin server
-                          whenever it sends back this cookie.
-                          The user agent (possibly under the user's
-                          control) may determine what level of
-                          security it considers appropriate for
-                          "secure" cookies.  The *secure* should be
-                          considered security advice from the server
-                          to the user agent, indicating that it is in
-                          the session's interest to protect the cookie
-                          contents. (optional)
+      :param bool secure: attribute (with no value) directs the user agent to
+         use only (unspecified) secure means to contact the origin server
+         whenever it sends back this cookie. The user agent (possibly under the
+         user's control) may determine what level of security it considers
+         appropriate for "secure" cookies. The *secure* should be considered
+         security advice from the server to the user agent, indicating that it
+         is in the session's interest to protect the cookie contents.
+         (optional)
 
       :param bool httponly: ``True`` if the cookie HTTP only (optional)
 
@@ -820,7 +812,7 @@ and :ref:`aiohttp-web-signals` handlers::
       :async:
 
       :param aiohttp.web.Request request: HTTP request object, that the
-                                          response answers.
+         response answers.
 
       Send *HTTP header*. You should not change any header data after
       calling this method.
@@ -873,20 +865,19 @@ and :ref:`aiohttp-web-signals` handlers::
 
    :param int status: HTTP status code, 200 OK by default.
 
-   :param collections.abc.Mapping headers: HTTP headers that should be added to
-                           response's ones.
+   :param collections.abc.Mapping headers: HTTP headers that should be
+      added to response's ones.
 
    :param str text: response's BODY
 
    :param str content_type: response's content type. ``'text/plain'``
-                       if *text* is passed also,
-                       ``'application/octet-stream'`` otherwise.
+      if *text* is passed also, ``'application/octet-stream'`` otherwise.
 
-   :param str charset: response's charset. ``'utf-8'`` if *text* is
-                       passed also, ``None`` otherwise.
+   :param str charset: response's charset. ``'utf-8'`` if *text* is passed
+      also, ``None`` otherwise.
 
-   :param int zlib_executor_size: length in bytes which will trigger zlib compression
-                            of body to happen in an executor
+   :param int zlib_executor_size: length in bytes which will trigger zlib
+      compression of body to happen in an executor
 
       .. versionadded:: 3.5
 
@@ -921,19 +912,18 @@ and :ref:`aiohttp-web-signals` handlers::
 
    :param path: Path to file. Accepts both :class:`str` and :class:`pathlib.Path`.
    :param int chunk_size: Chunk size in bytes which will be passed into
-                          :meth:`io.RawIOBase.read` in the event that the
-                          ``sendfile`` system call is not supported.
+      :meth:`io.RawIOBase.read` in the event that the ``sendfile`` system call
+      is not supported.
 
    :param int status: HTTP status code, ``200`` by default.
 
    :param str reason: HTTP reason. If param is ``None`` reason will be
-                      calculated basing on *status*
-                      parameter. Otherwise pass :class:`str` with
-                      arbitrary *status* explanation..
+      calculated basing on *status* parameter. Otherwise pass :class:`str` with
+      arbitrary *status* explanation..
 
-   :param collections.abc.Mapping headers: HTTP headers that should be added to
-                           response's ones. The ``Content-Type`` response header
-                           will be overridden if provided.
+   :param collections.abc.Mapping headers: HTTP headers that should be
+      added to response's ones. The ``Content-Type`` response header will
+      be overridden if provided.
 
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
@@ -954,60 +944,47 @@ and :ref:`aiohttp-web-signals` handlers::
    :meth:`send_bytes`, :meth:`send_json`, :meth:`send_frame` as coroutines.
    By default write buffer size is set to 64k.
 
-   :param bool autoping: Automatically send
-                         :const:`~aiohttp.WSMsgType.PONG` on
-                         :const:`~aiohttp.WSMsgType.PING`
-                         message from client, and handle
-                         :const:`~aiohttp.WSMsgType.PONG`
-                         responses from client.
-                         Note that server does not send
-                         :const:`~aiohttp.WSMsgType.PING`
-                         requests, you need to do this explicitly
-                         using :meth:`ping` method.
+   :param bool autoping: Automatically send :const:`~aiohttp.WSMsgType.PONG` on
+      :const:`~aiohttp.WSMsgType.PING` message from client, and handle
+      :const:`~aiohttp.WSMsgType.PONG` responses from client. Note that server
+      does not send :const:`~aiohttp.WSMsgType.PING` requests, you need to do
+      this explicitly using :meth:`ping` method.
 
-   :param float heartbeat: Send `ping` message every `heartbeat`
-                           seconds and wait `pong` response, close
-                           connection if `pong` response is not
-                           received. The timer is reset on any inbound data
-                           reception (coalesced per event loop iteration).
+   :param float heartbeat: Send `ping` message every `heartbeat` seconds and
+      wait `pong` response, close connection if `pong` response is not
+      received. The timer is reset on any inbound data reception (coalesced per
+      event loop iteration).
 
-   :param float timeout: Timeout value for the ``close``
-                         operation. After sending the close websocket message,
-                         ``close`` waits for ``timeout`` seconds for a response.
-                         Default value is ``10.0`` (10 seconds for ``close``
-                         operation)
+   :param float timeout: Timeout value for the ``close`` operation. After
+      sending the close websocket message, ``close`` waits for ``timeout``
+      seconds for a response. Default value is ``10.0`` (10 seconds for
+      ``close`` operation)
 
-   :param float receive_timeout: Timeout value for `receive`
-                                 operations.  Default value is :data:`None`
-                                 (no timeout for receive operation)
+   :param float receive_timeout: Timeout value for `receive` operations.
+      Default value is :data:`None` (no timeout for receive operation)
 
    :param bool compress: Enable per-message deflate extension support.
-                          :data:`False` for disabled, default value is :data:`True`.
+      :data:`False` for disabled, default value is :data:`True`.
 
-   :param int max_msg_size: maximum size of read websocket message, 4
-                            MB by default. To disable the size limit use ``0``.
+   :param int max_msg_size: maximum size of read websocket message, 4 MB by
+      default. To disable the size limit use ``0``.
 
       .. versionadded:: 3.3
 
-   :param bool autoclose: Close connection when the client sends
-                           a :const:`~aiohttp.WSMsgType.CLOSE` message,
-                           ``True`` by default. If set to ``False``,
-                           the connection is not closed and the
-                           caller is responsible for calling
-                           ``request.transport.close()`` to avoid
-                           leaking resources.
+   :param bool autoclose: Close connection when the client sends a
+      :const:`~aiohttp.WSMsgType.CLOSE` message, ``True`` by default. If set to
+      ``False``, the connection is not closed and the caller is responsible for
+      calling ``request.transport.close()`` to avoid leaking resources.
 
    :param int writer_limit: maximum size of write buffer, 64 KB by default.
-                            Once the buffer is full, the websocket will pause
-                            to drain the buffer.
+      Once the buffer is full, the websocket will pause to drain the buffer.
 
       .. versionadded:: 3.11
 
-   :param bool decode_text: If ``True`` (default), TEXT messages are
-                            decoded to strings. If ``False``, TEXT messages
-                            are returned as raw bytes, which can improve
-                            performance when using JSON parsers like
-                            ``orjson`` that accept bytes directly.
+   :param bool decode_text: If ``True`` (default), TEXT messages are decoded to
+      strings. If ``False``, TEXT messages are returned as raw bytes, which can
+      improve performance when using JSON parsers like ``orjson`` that accept
+      bytes directly.
 
       .. versionadded:: 3.14
 
@@ -1027,7 +1004,7 @@ and :ref:`aiohttp-web-signals` handlers::
       Starts websocket. After the call you can use websocket methods.
 
       :param aiohttp.web.Request request: HTTP request object, that the
-                                          response answers.
+         response answers.
 
 
       :raises HTTPException: if websocket handshake has failed.
@@ -1041,7 +1018,7 @@ and :ref:`aiohttp-web-signals` handlers::
       success too.
 
       :param aiohttp.web.Request request: HTTP request object, that the
-                                          response answers.
+         response answers.
 
       :return: :class:`WebSocketReady` instance.
 
@@ -1088,7 +1065,7 @@ and :ref:`aiohttp-web-signals` handlers::
       :param str name: The key to look up in the transport extra information.
 
       :param default: Default value to be used when no value for ``name`` is
-                      found (default is ``None``).
+         found (default is ``None``).
 
    .. method:: exception()
 
@@ -1099,9 +1076,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
-      :param message: optional payload of *ping* message,
-                      :class:`str` (converted to *UTF-8* encoded bytes)
-                      or :class:`bytes`.
+      :param message: optional payload of *ping* message, :class:`str`
+         (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
       :raise RuntimeError: if the connections is not started.
 
@@ -1116,9 +1092,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       Send *unsolicited* :const:`~aiohttp.WSMsgType.PONG` to peer.
 
-      :param message: optional payload of *pong* message,
-                      :class:`str` (converted to *UTF-8* encoded bytes)
-                      or :class:`bytes`.
+      :param message: optional payload of *pong* message, :class:`str`
+         (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
       :raise RuntimeError: if the connections is not started.
 
@@ -1135,9 +1110,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param str data: data to send.
 
-      :param int compress: sets specific level of compression for
-                           single message,
-                           ``None`` for not overriding per-socket setting.
+      :param int compress: sets specific level of compression for single
+         message, ``None`` for not overriding per-socket setting.
 
       :raise RuntimeError: if the connection is not started.
 
@@ -1157,9 +1131,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param data: data to send.
 
-      :param int compress: sets specific level of compression for
-                           single message,
-                           ``None`` for not overriding per-socket setting.
+      :param int compress: sets specific level of compression for single
+         message, ``None`` for not overriding per-socket setting.
 
       :raise RuntimeError: if the connection is not started.
 
@@ -1180,13 +1153,12 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param data: data to send.
 
-      :param int compress: sets specific level of compression for
-                           single message,
-                           ``None`` for not overriding per-socket setting.
+      :param int compress: sets specific level of compression for single
+         message, ``None`` for not overriding per-socket setting.
 
-      :param collections.abc.Callable dumps: any :term:`callable` that accepts an object and
-                             returns a JSON string
-                             (:func:`json.dumps` by default).
+      :param collections.abc.Callable dumps: any :term:`callable` that
+         accepts an object and returns a JSON string
+         (:func:`json.dumps` by default).
 
       :raise RuntimeError: if the connection is not started.
 
@@ -1221,9 +1193,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param ~aiohttp.WSMsgType opcode: opcode of the message.
 
-      :param int compress: sets specific level of compression for
-                           single message,
-                           ``None`` for not overriding per-socket setting.
+      :param int compress: sets specific level of compression for single
+         message, ``None`` for not overriding per-socket setting.
 
       :raise RuntimeError: if the connection is not started.
 
@@ -1241,9 +1212,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :param int code: closing code. See also :class:`~aiohttp.WSCloseCode`.
 
-      :param message: optional payload of *close* message,
-                      :class:`str` (converted to *UTF-8* encoded bytes)
-                      or :class:`bytes`.
+      :param message: optional payload of *close* message, :class:`str`
+         (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
       :param bool drain: drain outgoing buffer before closing connection.
 
@@ -1322,10 +1292,9 @@ and :ref:`aiohttp-web-signals` handlers::
 
          Can only be called by the request handling task.
 
-      :param collections.abc.Callable loads: any :term:`callable` that accepts
-                              :class:`str` and returns :class:`dict`
-                              with parsed JSON (:func:`json.loads` by
-                              default).
+      :param collections.abc.Callable loads: any :term:`callable` that
+         accepts :class:`str` and returns :class:`dict` with parsed JSON
+         (:func:`json.loads` by default).
 
       :param timeout: timeout for `receive` operation.
 
@@ -1419,20 +1388,20 @@ Application and Router
 
    The class inherits :class:`dict`.
 
-   :param logger: :class:`logging.Logger` instance for storing application logs.
+   :param logger: :class:`logging.Logger` instance for storing application
+      logs.
 
-                  By default the value is ``logging.getLogger("aiohttp.web")``
+      By default the value is ``logging.getLogger("aiohttp.web")``
 
    :param middlewares: :class:`list` of middleware factories, see
-                       :ref:`aiohttp-web-middlewares` for details.
+      :ref:`aiohttp-web-middlewares` for details.
 
    :param handler_args: dict-like object that overrides keyword arguments of
-                        :class:`AppRunner` constructor.
+      :class:`AppRunner` constructor.
 
-   :param client_max_size: client's maximum size in a request, in
-                           bytes.  If a POST request exceeds this
-                           value, it raises an
-                           `HTTPRequestEntityTooLarge` exception.
+   :param client_max_size: client's maximum size in a request, in bytes. If a
+      POST request exceeds this value, it raises an `HTTPRequestEntityTooLarge`
+      exception.
 
    :param debug: Switches debug mode.
 
@@ -1650,12 +1619,11 @@ Application and Router
    with a type checker (e.g. mypy). They also avoid name clashes with keys
    from different libraries etc.
 
-   :param name: A name to help with debugging. This should be the same as
-                the variable name (much like how :class:`typing.TypeVar`
-                is used).
+   :param name: A name to help with debugging. This should be the same as the
+      variable name (much like how :class:`typing.TypeVar` is used).
 
    :param t: The type that should be used for the value in the dict (e.g.
-             `str`, `Iterator[int]` etc.)
+      `str`, `Iterator[int]` etc.)
 
 
 .. class:: Server
@@ -1734,13 +1702,12 @@ Application and Router
 
       Pay attention please: *handler* must be a coroutine.
 
-      :param str method: HTTP method for route. Should be one of
-                         ``'GET'``, ``'POST'``, ``'PUT'``,
-                         ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
-                         ``'OPTIONS'`` or ``'*'`` for any method.
+      :param str method: HTTP method for route. Should be one of ``'GET'``,
+         ``'POST'``, ``'PUT'``, ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
+         ``'OPTIONS'`` or ``'*'`` for any method.
 
-                         The parameter is case-insensitive, e.g. you
-                         can push ``'get'`` as well as ``'GET'``.
+         The parameter is case-insensitive, e.g. you can push ``'get'`` as well
+         as ``'GET'``.
 
       :param str path: route path. Should be started with slash (``'/'``).
 
@@ -1848,23 +1815,22 @@ Application and Router
 
       :param str prefix: URL path prefix for handled static files
 
-      :param path: path to the folder in file system that contains
-                   handled static files, :class:`str` or :class:`pathlib.Path`.
+      :param path: path to the folder in file system that contains handled
+         static files, :class:`str` or :class:`pathlib.Path`.
 
       :param str name: optional route name.
 
       :param collections.abc.Coroutine expect_handler: optional *expect* header handler.
 
-      :param int chunk_size: size of single chunk for file
-                             downloading, 256Kb by default.
+      :param int chunk_size: size of single chunk for file downloading, 256Kb
+         by default.
 
-                             Increasing *chunk_size* parameter to,
-                             say, 1Mb may increase file downloading
-                             speed but consumes more memory.
+         Increasing *chunk_size* parameter to, say, 1Mb may increase file
+         downloading speed but consumes more memory.
 
       :param bool show_index: flag for allowing to show indexes of a directory,
-                              by default it's not allowed and HTTP/403 will
-                              be returned on directory access.
+         by default it's not allowed and HTTP/403 will be returned on directory
+         access.
 
       :param bool follow_symlinks: flag for allowing to follow symlinks that lead
                               outside the static root directory, by default it's not allowed and
@@ -2083,15 +2049,14 @@ Resource classes hierarchy::
 
       Add a :term:`web-handler` to resource.
 
-      :param str method: HTTP method for route. Should be one of
-                         ``'GET'``, ``'POST'``, ``'PUT'``,
-                         ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
-                         ``'OPTIONS'`` or ``'*'`` for any method.
+      :param str method: HTTP method for route. Should be one of ``'GET'``,
+         ``'POST'``, ``'PUT'``, ``'DELETE'``, ``'PATCH'``, ``'HEAD'``,
+         ``'OPTIONS'`` or ``'*'`` for any method.
 
-                         The parameter is case-insensitive, e.g. you
-                         can push ``'get'`` as well as ``'GET'``.
+         The parameter is case-insensitive, e.g. you can push ``'get'`` as well
+         as ``'GET'``.
 
-                         The method should be unique for resource.
+         The method should be unique for resource.
 
       :param collections.abc.Callable handler: route handler.
 
@@ -2170,12 +2135,11 @@ Resource classes hierarchy::
          E.g. an URL for ``'/prefix/dir/file.txt'`` should
          be generated as ``resource.url_for(filename='dir/file.txt')``
 
-      :param bool append_version: -- a flag for adding file version
-                                  (hash) to the url query string for
-                                  cache boosting
+      :param bool append_version: -- a flag for adding file version (hash) to
+         the url query string for cache boosting
 
-         By default has value from a constructor (``False`` by default)
-         When set to ``True`` - ``v=FILE_HASH`` query string param will be added
+         By default has value from a constructor (``False`` by default) When
+         set to ``True`` - ``v=FILE_HASH`` query string param will be added
          When set to ``False`` has no impact
 
          if file not found has no impact
@@ -2614,7 +2578,7 @@ View
    supported.
 
    :param request: instance of :class:`Request` that has initiated a view
-                   processing.
+      processing.
 
 
    .. attribute:: request
@@ -2697,14 +2661,11 @@ application on specific TCP or Unix socket, e.g.::
 
    :param Application app: web application instance to serve.
 
-   :param bool handle_signals: add signal handlers for
-                               :data:`signal.SIGINT` and
-                               :data:`signal.SIGTERM` (``False`` by
-                               default). These handlers will raise
-                               :exc:`GracefulExit`.
+   :param bool handle_signals: add signal handlers for :data:`signal.SIGINT`
+      and :data:`signal.SIGTERM` (``False`` by default). These handlers will
+      raise :exc:`GracefulExit`.
 
-   :param kwargs: named parameters to pass into
-                  web protocol.
+   :param kwargs: named parameters to pass into web protocol.
 
    Supported *kwargs*:
 
@@ -2733,9 +2694,9 @@ application on specific TCP or Unix socket, e.g.::
         reads and ignores additional data coming from the client when
         lingering close is on.  Use ``0`` to disable lingering on
         server channel closing.
-   :param int read_bufsize: Size of the read buffer (:attr:`BaseRequest.content`).
-                            ``None`` by default,
-                            it means that the session global value is used.
+   :param int read_bufsize: Size of the read buffer
+      (:attr:`BaseRequest.content`). ``None`` by default, it means that the
+      session global value is used.
 
       .. versionadded:: 3.7
    :param bool auto_decompress: Automatically decompress request body,
@@ -2775,14 +2736,11 @@ application on specific TCP or Unix socket, e.g.::
 
    :param Server web_server: low-level web server instance to serve.
 
-   :param bool handle_signals: add signal handlers for
-                               :data:`signal.SIGINT` and
-                               :data:`signal.SIGTERM` (``False`` by
-                               default). These handlers will raise
-                               :exc:`GracefulExit`.
+   :param bool handle_signals: add signal handlers for :data:`signal.SIGINT`
+      and :data:`signal.SIGTERM` (``False`` by default). These handlers will
+      raise :exc:`GracefulExit`.
 
-   :param kwargs: named parameters to pass into
-                  web protocol.
+   :param kwargs: named parameters to pass into web protocol.
 
    .. seealso::
 
@@ -2822,30 +2780,26 @@ application on specific TCP or Unix socket, e.g.::
    :param int port: PORT to listed on, ``8080`` if ``None`` (default).
 
    :param float shutdown_timeout: a timeout used for both waiting on pending
-                                  tasks before application shutdown and for
-                                  closing opened connections on
-                                  :meth:`BaseSite.stop` call.
+      tasks before application shutdown and for closing opened connections on
+      :meth:`BaseSite.stop` call.
 
-   :param ssl_context: a :class:`ssl.SSLContext` instance for serving
-                       SSL/TLS secure server, ``None`` for plain HTTP
-                       server (default).
+   :param ssl_context: a :class:`ssl.SSLContext` instance for serving SSL/TLS
+      secure server, ``None`` for plain HTTP server (default).
 
-   :param int backlog: a number of unaccepted connections that the
-                       system will allow before refusing new
-                       connections, see :meth:`socket.socket.listen` for details.
+   :param int backlog: a number of unaccepted connections that the system will
+      allow before refusing new connections, see :meth:`socket.socket.listen`
+      for details.
 
-                       ``128`` by default.
+      ``128`` by default.
 
    :param bool reuse_address: tells the kernel to reuse a local socket in
-                              TIME_WAIT state, without waiting for its
-                              natural timeout to expire. If not specified
-                              will automatically be set to True on UNIX.
+      TIME_WAIT state, without waiting for its natural timeout to expire. If
+      not specified will automatically be set to True on UNIX.
 
-   :param bool reuse_port: tells the kernel to allow this endpoint to be
-                           bound to the same port as other existing
-                           endpoints are bound to, so long as they all set
-                           this flag when being created. This option is not
-                           supported on Windows.
+   :param bool reuse_port: tells the kernel to allow this endpoint to be bound
+      to the same port as other existing endpoints are bound to, so long as
+      they all set this flag when being created. This option is not supported
+      on Windows.
 
 .. class:: UnixSite(runner, path, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
@@ -2858,19 +2812,17 @@ application on specific TCP or Unix socket, e.g.::
    :param str path: PATH to UNIX socket to listen.
 
    :param float shutdown_timeout: a timeout used for both waiting on pending
-                                  tasks before application shutdown and for
-                                  closing opened connections on
-                                  :meth:`BaseSite.stop` call.
+      tasks before application shutdown and for closing opened connections on
+      :meth:`BaseSite.stop` call.
 
-   :param ssl_context: a :class:`ssl.SSLContext` instance for serving
-                       SSL/TLS secure server, ``None`` for plain HTTP
-                       server (default).
+   :param ssl_context: a :class:`ssl.SSLContext` instance for serving SSL/TLS
+      secure server, ``None`` for plain HTTP server (default).
 
-   :param int backlog: a number of unaccepted connections that the
-                       system will allow before refusing new
-                       connections, see :meth:`socket.socket.listen` for details.
+   :param int backlog: a number of unaccepted connections that the system will
+      allow before refusing new connections, see :meth:`socket.socket.listen`
+      for details.
 
-                       ``128`` by default.
+      ``128`` by default.
 
 .. class:: NamedPipeSite(runner, path, *, shutdown_timeout=60.0)
 
@@ -2881,9 +2833,8 @@ application on specific TCP or Unix socket, e.g.::
    :param str path: PATH of named pipe to listen.
 
    :param float shutdown_timeout: a timeout used for both waiting on pending
-                                  tasks before application shutdown and for
-                                  closing opened connections on
-                                  :meth:`BaseSite.stop` call.
+      tasks before application shutdown and for closing opened connections on
+      :meth:`BaseSite.stop` call.
 
 .. class:: SockSite(runner, sock, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
@@ -2896,19 +2847,17 @@ application on specific TCP or Unix socket, e.g.::
    :param sock: A :ref:`socket instance <socket-objects>` to listen to.
 
    :param float shutdown_timeout: a timeout used for both waiting on pending
-                                  tasks before application shutdown and for
-                                  closing opened connections on
-                                  :meth:`BaseSite.stop` call.
+      tasks before application shutdown and for closing opened connections on
+      :meth:`BaseSite.stop` call.
 
-   :param ssl_context: a :class:`ssl.SSLContext` instance for serving
-                       SSL/TLS secure server, ``None`` for plain HTTP
-                       server (default).
+   :param ssl_context: a :class:`ssl.SSLContext` instance for serving SSL/TLS
+      secure server, ``None`` for plain HTTP server (default).
 
-   :param int backlog: a number of unaccepted connections that the
-                       system will allow before refusing new
-                       connections, see :meth:`socket.socket.listen` for details.
+   :param int backlog: a number of unaccepted connections that the system will
+      allow before refusing new connections, see :meth:`socket.socket.listen`
+      for details.
 
-                       ``128`` by default.
+      ``128`` by default.
 
 .. exception:: GracefulExit
 
@@ -2979,99 +2928,84 @@ Utilities
    handled on the same event loop. See :doc:`deployment` for ways of
    distributing work for increased performance.
 
-   :param app: :class:`Application` instance to run or a *coroutine*
-               that returns an application.
+   :param app: :class:`Application` instance to run or a *coroutine* that
+      returns an application.
 
    :param bool debug: enable :ref:`asyncio debug mode <asyncio-debug-mode>` if ``True``.
 
-   :param str host: TCP/IP host or a sequence of hosts for HTTP server.
-                    Default is ``'0.0.0.0'`` if *port* has been specified
-                    or if *path* is not supplied.
+   :param str host: TCP/IP host or a sequence of hosts for HTTP server. Default
+      is ``'0.0.0.0'`` if *port* has been specified or if *path* is not
+      supplied.
 
    :param int port: TCP/IP port for HTTP server. Default is ``8080`` for plain
-                    text HTTP and ``8443`` for HTTP via SSL (when
-                    *ssl_context* parameter is specified).
+      text HTTP and ``8443`` for HTTP via SSL (when *ssl_context* parameter is
+      specified).
 
-   :param path: file system path for HTTP server Unix domain socket.
-                    A sequence of file system paths can be used to bind
-                    multiple domain sockets. Listening on Unix domain
-                    sockets is not supported by all operating systems,
-                    :class:`str`, :class:`pathlib.Path` or an iterable of these.
+   :param path: file system path for HTTP server Unix domain socket. A sequence
+      of file system paths can be used to bind multiple domain sockets.
+      Listening on Unix domain sockets is not supported by all operating
+      systems, :class:`str`, :class:`pathlib.Path` or an iterable of these.
 
    :param socket.socket sock: a preexisting socket object to accept connections on.
                        A sequence of socket objects can be passed.
 
-   :param int shutdown_timeout: a delay to wait for graceful server
-                                shutdown before disconnecting all
-                                open client sockets hard way.
+   :param int shutdown_timeout: a delay to wait for graceful server shutdown
+      before disconnecting all open client sockets hard way.
 
-                                This is used as a delay to wait for
-                                pending tasks to complete and then
-                                again to close any pending connections.
+      This is used as a delay to wait for pending tasks to complete and then
+      again to close any pending connections.
 
-                                A system with properly
-                                :ref:`aiohttp-web-graceful-shutdown`
-                                implemented never waits for the second
-                                timeout but closes a server in a few
-                                milliseconds.
+      A system with properly :ref:`aiohttp-web-graceful-shutdown` implemented
+      never waits for the second timeout but closes a server in a few
+      milliseconds.
 
-   :param float keepalive_timeout: a delay before a TCP connection is
-                                   closed after a HTTP request. The delay
-                                   allows for reuse of a TCP connection.
+   :param float keepalive_timeout: a delay before a TCP connection is closed
+      after a HTTP request. The delay allows for reuse of a TCP connection.
 
-                                   When deployed behind a reverse proxy
-                                   it's important for this value to be
-                                   higher than the proxy's timeout. To avoid
-                                   race conditions, we always want the proxy
-                                   to handle connection closing.
+      When deployed behind a reverse proxy it's important for this value to be
+      higher than the proxy's timeout. To avoid race conditions, we always want
+      the proxy to handle connection closing.
 
       .. versionadded:: 3.8
 
-   :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
-                       ``None`` for HTTP connection.
+   :param ssl_context: :class:`ssl.SSLContext` for HTTPS server, ``None`` for
+      HTTP connection.
 
-   :param print: a callable compatible with :func:`print`. May be used
-                 to override STDOUT output or suppress it. Passing `None`
-                 disables output.
+   :param print: a callable compatible with :func:`print`. May be used to
+      override STDOUT output or suppress it. Passing `None` disables output.
 
-   :param int backlog: the number of unaccepted connections that the
-                       system will allow before refusing new
-                       connections (``128`` by default).
+   :param int backlog: the number of unaccepted connections that the system
+      will allow before refusing new connections (``128`` by default).
 
    :param access_log_class: class for `access_logger`. Default:
-                            :data:`aiohttp.helpers.AccessLogger`.
-                            Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
+      :data:`aiohttp.helpers.AccessLogger`. Must to be a subclass of
+      :class:`aiohttp.abc.AbstractAccessLogger`.
 
-   :param access_log: :class:`logging.Logger` instance used for saving
-                      access logs. Use ``None`` for disabling logs for
-                      sake of speedup.
+   :param access_log: :class:`logging.Logger` instance used for saving access
+      logs. Use ``None`` for disabling logs for sake of speedup.
 
    :param access_log_format: access log format, see
-                             :ref:`aiohttp-logging-access-log-format-spec`
-                             for details.
+      :ref:`aiohttp-logging-access-log-format-spec` for details.
 
-   :param bool handle_signals: override signal TERM handling to gracefully
-                               exit the application.
+   :param bool handle_signals: override signal TERM handling to gracefully exit
+      the application.
 
    :param bool reuse_address: tells the kernel to reuse a local socket in
-                              TIME_WAIT state, without waiting for its
-                              natural timeout to expire. If not specified
-                              will automatically be set to True on UNIX.
+      TIME_WAIT state, without waiting for its natural timeout to expire. If
+      not specified will automatically be set to True on UNIX.
 
-   :param bool reuse_port: tells the kernel to allow this endpoint to be
-                           bound to the same port as other existing
-                           endpoints are bound to, so long as they all set
-                           this flag when being created. This option is not
-                           supported on Windows.
+   :param bool reuse_port: tells the kernel to allow this endpoint to be bound
+      to the same port as other existing endpoints are bound to, so long as
+      they all set this flag when being created. This option is not supported
+      on Windows.
 
    :param bool handler_cancellation: cancels the web handler task if the client
-                                     drops the connection. This is recommended
-                                     if familiar with asyncio behavior or
-                                     scalability is a concern.
-                                     :ref:`aiohttp-web-peer-disconnection`
+      drops the connection. This is recommended if familiar with asyncio
+      behavior or scalability is a concern.
+      :ref:`aiohttp-web-peer-disconnection`
 
-   :param kwargs: additional named parameters to pass into
-                  :class:`AppRunner` constructor.
+   :param kwargs: additional named parameters to pass into :class:`AppRunner`
+      constructor.
 
    .. versionadded:: 3.0
 

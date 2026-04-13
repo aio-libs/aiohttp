@@ -93,10 +93,9 @@ The client session supports the context manager protocol for self closing.
 
    :param headers: HTTP Headers to send with every request (optional).
 
-                   May be either *iterable of key-value pairs* or
-                   :class:`~collections.abc.Mapping`
-                   (e.g. :class:`dict`,
-                   :class:`~multidict.CIMultiDict`).
+      May be either *iterable of key-value pairs* or
+      :class:`~collections.abc.Mapping` (e.g. :class:`dict`,
+      :class:`~multidict.CIMultiDict`).
 
    :param skip_auto_headers: set of headers for which autogeneration
       should be skipped.
@@ -110,12 +109,10 @@ The client session supports the context manager protocol for self closing.
       Iterable of :class:`str` or :class:`~multidict.istr` (optional)
 
    :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional). It will be included
-                                  with any request. However, if the
-                                  ``_base_url`` parameter is set, the request
-                                  URL's origin must match the base URL's origin;
-                                  otherwise, the default auth will not be
-                                  included.
+      Authorization (optional). It will be included with any request. However,
+      if the ``_base_url`` parameter is set, the request URL's origin must
+      match the base URL's origin; otherwise, the default auth will not be
+      included.
 
    :param collections.abc.Callable json_serialize: Json *serializer* callable.
 
@@ -205,26 +202,25 @@ The client session supports the context manager protocol for self closing.
 
          Added support for reading HTTP Basic Auth credentials from :file:`~/.netrc` file.
 
-   :param bool requote_redirect_url: Apply *URL requoting* for redirection URLs if
-                                     automatic redirection is enabled (``True`` by
-                                     default).
+   :param bool requote_redirect_url: Apply *URL requoting* for redirection URLs
+      if automatic redirection is enabled (``True`` by default).
 
       .. versionadded:: 3.5
 
-   :param trace_configs: A list of :class:`TraceConfig` instances used for client
-                         tracing.  ``None`` (default) is used for request tracing
-                         disabling.  See :ref:`aiohttp-client-tracing-reference` for
-                         more information.
+   :param trace_configs: A list of :class:`TraceConfig` instances used for
+      client tracing. ``None`` (default) is used for request tracing disabling.
+      See :ref:`aiohttp-client-tracing-reference` for more information.
 
-   :param middlewares: A sequence of middleware instances to apply to all session requests.
-                      Each middleware must match the :type:`ClientMiddlewareType` signature.
-                      ``()`` (empty tuple, default) is used when no middleware is needed.
-                      See :ref:`aiohttp-client-middleware` for more information.
+   :param middlewares: A sequence of middleware instances to apply to all
+      session requests. Each middleware must match the
+      :type:`ClientMiddlewareType` signature. ``()`` (empty tuple, default) is
+      used when no middleware is needed. See :ref:`aiohttp-client-middleware`
+      for more information.
 
       .. versionadded:: 3.12
 
-   :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
-                            64 KiB by default.
+   :param int read_bufsize: Size of the read buffer
+      (:attr:`ClientResponse.content`). 64 KiB by default.
 
       .. versionadded:: 3.7
 
@@ -422,44 +418,38 @@ The client session supports the context manager protocol for self closing.
 
       :param str method: HTTP method
 
-      :param url: Request URL, :class:`~yarl.URL` or :class:`str` that will
-                  be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
-                  to skip encoding).
+      :param url: Request URL, :class:`~yarl.URL` or :class:`str` that will be
+         encoded with :class:`~yarl.URL` (see :class:`~yarl.URL` to skip
+         encoding).
 
       :param params: Mapping, iterable of tuple of *key*/*value* pairs or
-                     string to be sent as parameters in the query
-                     string of the new request. Ignored for subsequent
-                     redirected requests (optional)
+         string to be sent as parameters in the query string of the new
+         request. Ignored for subsequent redirected requests (optional)
 
-                     Allowed values are:
+         Allowed values are:
 
-                     - :class:`collections.abc.Mapping` e.g. :class:`dict`,
-                       :class:`multidict.MultiDict` or
-                       :class:`multidict.MultiDictProxy`
-                     - :class:`collections.abc.Iterable` e.g. :class:`tuple` or
-                       :class:`list`
-                     - :class:`str` with preferably url-encoded content
-                       (**Warning:** content will not be encoded by *aiohttp*)
+         - :class:`collections.abc.Mapping` e.g. :class:`dict`,
+         :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy` -
+         :class:`collections.abc.Iterable` e.g. :class:`tuple` or :class:`list`
+         - :class:`str` with preferably url-encoded content (**Warning:**
+         content will not be encoded by *aiohttp*)
 
       :param data: The data to send in the body of the request. This can be a
-                   :class:`FormData` object or anything that can be passed into
-                   :class:`FormData`, e.g. a dictionary, bytes, or file-like object.
-                   (optional)
+         :class:`FormData` object or anything that can be passed into
+         :class:`FormData`, e.g. a dictionary, bytes, or file-like object.
+         (optional)
 
-      :param json: Any json compatible python object
-                   (optional). *json* and *data* parameters could not
-                   be used at the same time.
+      :param json: Any json compatible python object (optional). *json* and
+         *data* parameters could not be used at the same time.
 
-      :param dict cookies: HTTP Cookies to send with
-                           the request (optional)
+      :param dict cookies: HTTP Cookies to send with the request (optional)
 
          Global session cookies and the explicitly set cookies will be merged
          when sending the request.
 
          .. versionadded:: 3.5
 
-      :param dict headers: HTTP Headers to send with
-                           the request (optional)
+      :param dict headers: HTTP Headers to send with the request (optional)
 
       :param skip_auto_headers: set of headers for which autogeneration
          should be skipped.
@@ -472,8 +462,8 @@ The client session supports the context manager protocol for self closing.
          Iterable of :class:`str` or :class:`~multidict.istr`
          (optional)
 
-      :param aiohttp.BasicAuth auth: an object that represents HTTP
-                                     Basic Authorization (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+         Authorization (optional)
 
       :param bool allow_redirects: Whether to process redirects or not.
          When ``True``, redirects are followed (up to ``max_redirects`` times)
@@ -499,23 +489,22 @@ The client session supports the context manager protocol for self closing.
          headers are disallowed. ``None`` by default (optional).
 
       :param bool expect100: Expect 100-continue response from server.
-                             ``False`` by default (optional).
+         ``False`` by default (optional).
 
-      :param bool raise_for_status: Automatically call :meth:`ClientResponse.raise_for_status` for
-                                    response if set to ``True``.
-                                    If set to ``None`` value from ``ClientSession`` will be used.
-                                    ``None`` by default (optional).
+      :param bool raise_for_status: Automatically call
+         :meth:`ClientResponse.raise_for_status` for response if set to
+         ``True``. If set to ``None`` value from ``ClientSession`` will be
+         used. ``None`` by default (optional).
 
-          .. versionadded:: 3.4
+         .. versionadded:: 3.4
 
-      :param bool read_until_eof: Read response until EOF if response
-                                  does not have Content-Length header.
-                                  ``True`` by default (optional).
+      :param bool read_until_eof: Read response until EOF if response does not
+         have Content-Length header. ``True`` by default (optional).
 
       :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
+         Basic Authorization (optional)
 
       :param int timeout: override the session's timeout.
 
@@ -528,14 +517,12 @@ The client session supports the context manager protocol for self closing.
             If :class:`float` is passed it is a *total* timeout (in seconds).
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
-                  (:func:`ssl.create_default_context` is used),
-                  ``False`` for skip SSL certificate validation,
-                  :class:`aiohttp.Fingerprint` for fingerprint
-                  validation, :class:`ssl.SSLContext` for custom SSL
-                  certificate validation.
+         (:func:`ssl.create_default_context` is used), ``False`` for skip SSL
+         certificate validation, :class:`aiohttp.Fingerprint` for fingerprint
+         validation, :class:`ssl.SSLContext` for custom SSL certificate
+         validation.
 
-                  Supersedes *verify_ssl*, *ssl_context* and
-                  *fingerprint* parameters.
+         Supersedes *verify_ssl*, *ssl_context* and *fingerprint* parameters.
 
          .. versionadded:: 3.0
 
@@ -558,16 +545,17 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 3.0
 
-      :param middlewares: A sequence of middleware instances to apply to this request only.
-                         Each middleware must match the :type:`ClientMiddlewareType` signature.
-                         ``None`` by default which uses session middlewares.
-                         See :ref:`aiohttp-client-middleware` for more information.
+      :param middlewares: A sequence of middleware instances to apply to this
+         request only. Each middleware must match the
+         :type:`ClientMiddlewareType` signature. ``None`` by default, which
+         uses session middlewares. See :ref:`aiohttp-client-middleware` for
+         more information.
 
          .. versionadded:: 3.12
 
-      :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
-                              ``None`` by default,
-                              it means that the session global value is used.
+      :param int read_bufsize: Size of the read buffer
+         (:attr:`ClientResponse.content`). ``None`` by default, which means
+         that the session global value is used.
 
           .. versionadded:: 3.7
 
@@ -617,8 +605,7 @@ The client session supports the context manager protocol for self closing.
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :param data: Data to send in the body of the request; see
-                   :meth:`request<aiohttp.ClientSession.request>`
-                   for details (optional)
+         :meth:`request<aiohttp.ClientSession.request>` for details (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -636,8 +623,7 @@ The client session supports the context manager protocol for self closing.
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :param data: Data to send in the body of the request; see
-                   :meth:`request<aiohttp.ClientSession.request>`
-                   for details (optional)
+         :meth:`request<aiohttp.ClientSession.request>` for details (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -709,8 +695,7 @@ The client session supports the context manager protocol for self closing.
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
       :param data: Data to send in the body of the request; see
-                   :meth:`request<aiohttp.ClientSession.request>`
-                   for details (optional)
+         :meth:`request<aiohttp.ClientSession.request>` for details (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -736,69 +721,59 @@ The client session supports the context manager protocol for self closing.
       :class:`ClientWebSocketResponse` async context manager object.
 
       :param url: Websocket server url, :class:`~yarl.URL` or :class:`str` that
-                  will be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
-                  to skip encoding).
+         will be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL` to
+         skip encoding).
 
       :param tuple protocols: Websocket protocols
 
-      :param timeout: a :class:`ClientWSTimeout` timeout for websocket.
-                      By default, the value
-                      `ClientWSTimeout(ws_receive=None, ws_close=10.0)` is used
-                      (``10.0`` seconds for the websocket to close).
-                      ``None`` means no timeout will be used.
+      :param timeout: a :class:`ClientWSTimeout` timeout for websocket. By
+         default, the value `ClientWSTimeout(ws_receive=None, ws_close=10.0)`
+         is used (``10.0`` seconds for the websocket to close). ``None`` means
+         no timeout will be used.
 
-      :param aiohttp.BasicAuth auth: an object that represents HTTP
-                                     Basic Authorization (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+         Authorization (optional)
 
       :param bool autoclose: Automatically close websocket connection on close
-                             message from server. If *autoclose* is False
-                             then close procedure has to be handled manually.
-                             ``True`` by default
+         message from server. If *autoclose* is False then close procedure has
+         to be handled manually. ``True`` by default
 
-      :param bool autoping: automatically send *pong* on *ping*
-                            message from server. ``True`` by default
+      :param bool autoping: automatically send *pong* on *ping* message from
+         server. ``True`` by default
 
-      :param float heartbeat: Send *ping* message every *heartbeat*
-                              seconds and wait *pong* response, if
-                              *pong* response is not received then
-                              close connection. The timer is reset on any
-                              inbound data reception (coalesced per event loop
-                              iteration). (optional)
+      :param float heartbeat: Send *ping* message every *heartbeat* seconds and
+         wait *pong* response, if *pong* response is not received then close
+         connection. The timer is reset on any inbound data reception
+         (coalesced per event loop iteration). (optional)
 
       :param str origin: Origin header to send to server(optional)
 
       :param params: Mapping, iterable of tuple of *key*/*value* pairs or
-                     string to be sent as parameters in the query
-                     string of the new request. Ignored for subsequent
-                     redirected requests (optional)
+         string to be sent as parameters in the query string of the new
+         request. Ignored for subsequent redirected requests (optional)
 
-                     Allowed values are:
+         Allowed values are:
 
-                     - :class:`collections.abc.Mapping` e.g. :class:`dict`,
-                       :class:`multidict.MultiDict` or
-                       :class:`multidict.MultiDictProxy`
-                     - :class:`collections.abc.Iterable` e.g. :class:`tuple` or
-                       :class:`list`
-                     - :class:`str` with preferably url-encoded content
-                       (**Warning:** content will not be encoded by *aiohttp*)
+         - :class:`collections.abc.Mapping` e.g. :class:`dict`,
+         :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy` -
+         :class:`collections.abc.Iterable` e.g. :class:`tuple` or :class:`list`
+         - :class:`str` with preferably url-encoded content (**Warning:**
+         content will not be encoded by *aiohttp*)
 
-      :param dict headers: HTTP Headers to send with
-                           the request (optional)
+      :param dict headers: HTTP Headers to send with the request (optional)
 
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
+         Basic Authorization (optional)
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
-                  (:func:`ssl.create_default_context` is used),
-                  ``False`` for skip SSL certificate validation,
-                  :class:`aiohttp.Fingerprint` for fingerprint
-                  validation, :class:`ssl.SSLContext` for custom SSL
-                  certificate validation.
+         (:func:`ssl.create_default_context` is used), ``False`` for skip SSL
+         certificate validation, :class:`aiohttp.Fingerprint` for fingerprint
+         validation, :class:`ssl.SSLContext` for custom SSL certificate
+         validation.
 
-                  Supersedes *verify_ssl*, *ssl_context* and
-                  *fingerprint* parameters.
+         Supersedes *verify_ssl*, *ssl_context* and *fingerprint* parameters.
 
          .. versionadded:: 3.0
 
@@ -842,28 +817,25 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
-      :param int compress: Enable Per-Message Compress Extension support.
-                           0 for disable, 9 to 15 for window bit support.
-                           Default value is 0.
+      :param int compress: Enable Per-Message Compress Extension support. 0 for
+         disable, 9 to 15 for window bit support. Default value is 0.
 
          .. versionadded:: 2.3
 
-      :param int max_msg_size: maximum size of read websocket message,
-                               4 MB by default. To disable the size
-                               limit use ``0``.
+      :param int max_msg_size: maximum size of read websocket message, 4 MB by
+         default. To disable the size limit use ``0``.
 
          .. versionadded:: 3.3
 
       :param str method: HTTP method to establish WebSocket connection,
-                         ``'GET'`` by default.
+         ``'GET'`` by default.
 
          .. versionadded:: 3.5
 
-      :param bool decode_text: If ``True`` (default), TEXT messages are
-                               decoded to strings. If ``False``, TEXT messages
-                               are returned as raw bytes, which can improve
-                               performance when using JSON parsers like
-                               ``orjson`` that accept bytes directly.
+      :param bool decode_text: If ``True`` (default), TEXT messages are decoded
+         to strings. If ``False``, TEXT messages are returned as raw bytes,
+         which can improve performance when using JSON parsers like ``orjson``
+         that accept bytes directly.
 
          .. versionadded:: 3.14
 
@@ -920,32 +892,29 @@ certification chaining.
 
    :param str method: HTTP method
 
-   :param url: Request URL, :class:`~yarl.URL` or :class:`str` that will
-               be encoded with :class:`~yarl.URL` (see :class:`~yarl.URL`
-               to skip encoding).
+   :param url: Request URL, :class:`~yarl.URL` or :class:`str` that will be
+      encoded with :class:`~yarl.URL` (see :class:`~yarl.URL` to skip
+      encoding).
 
-   :param params: Mapping, iterable of tuple of *key*/*value* pairs or
-                  string to be sent as parameters in the query
-                  string of the new request. Ignored for subsequent
-                  redirected requests (optional)
+   :param params: Mapping, iterable of tuple of *key*/*value* pairs or string
+      to be sent as parameters in the query string of the new request. Ignored
+      for subsequent redirected requests (optional)
 
-                  Allowed values are:
+      Allowed values are:
 
-                  - :class:`collections.abc.Mapping` e.g. :class:`dict`,
-                     :class:`multidict.MultiDict` or
-                     :class:`multidict.MultiDictProxy`
-                  - :class:`collections.abc.Iterable` e.g. :class:`tuple` or
-                     :class:`list`
-                  - :class:`str` with preferably url-encoded content
-                     (**Warning:** content will not be encoded by *aiohttp*)
+      - :class:`collections.abc.Mapping` e.g. :class:`dict`,
+      :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy` -
+      :class:`collections.abc.Iterable` e.g. :class:`tuple` or :class:`list` -
+      :class:`str` with preferably url-encoded content (**Warning:** content
+      will not be encoded by *aiohttp*)
 
    :param data: The data to send in the body of the request. This can be a
-                :class:`FormData` object or anything that can be passed into
-                :class:`FormData`, e.g. a dictionary, bytes, or file-like object.
-                (optional)
+      :class:`FormData` object or anything that can be passed into
+      :class:`FormData`, e.g. a dictionary, bytes, or file-like object.
+      (optional)
 
    :param json: Any json compatible python object (optional). *json* and *data*
-                parameters could not be used at the same time.
+      parameters could not be used at the same time.
 
    :param dict cookies: HTTP Cookies to send with the request (optional)
 
@@ -963,7 +932,7 @@ certification chaining.
       (optional)
 
    :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional)
+      Authorization (optional)
 
    :param bool allow_redirects: Whether to process redirects or not.
       When ``True``, redirects are followed (up to ``max_redirects`` times)
@@ -976,10 +945,10 @@ certification chaining.
       Ignored when ``allow_redirects=False``.
       ``10`` by default.
 
-   :param bool compress: Set to ``True`` if request has to be compressed
-                         with deflate encoding. If `compress` can not be combined
-                         with a *Content-Encoding* and *Content-Length* headers.
-                         ``None`` by default (optional).
+   :param bool compress: Set to ``True`` if request has to be compressed with
+      deflate encoding. If `compress` can not be combined with a
+      *Content-Encoding* and *Content-Length* headers. ``None`` by default
+      (optional).
 
    :param int chunked: Enables chunked transfer encoding.
       It is up to the developer
@@ -988,39 +957,34 @@ certification chaining.
       If *chunked* is set, then the *Transfer-encoding* and *content-length*
       headers are disallowed. ``None`` by default (optional).
 
-   :param bool expect100: Expect 100-continue response from server.
-                          ``False`` by default (optional).
+   :param bool expect100: Expect 100-continue response from server. ``False``
+      by default (optional).
 
    :param bool raise_for_status: Automatically call
-                                 :meth:`ClientResponse.raise_for_status`
-                                 for response if set to ``True``.  If
-                                 set to ``None`` value from
-                                 ``ClientSession`` will be used.
-                                 ``None`` by default (optional).
+      :meth:`ClientResponse.raise_for_status` for response if set to ``True``.
+      If set to ``None`` value from ``ClientSession`` will be used. ``None`` by
+      default (optional).
 
       .. versionadded:: 3.4
 
-   :param bool read_until_eof: Read response until EOF if response
-                               does not have Content-Length header.
-                               ``True`` by default (optional).
+   :param bool read_until_eof: Read response until EOF if response does not
+      have Content-Length header. ``True`` by default (optional).
 
    :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
    :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                        Basic Authorization (optional)
+      Basic Authorization (optional)
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout, 30 seconds socket connect timeout by default.
 
    :param ssl: SSL validation mode. ``True`` for default SSL check
-               (:func:`ssl.create_default_context` is used),
-               ``False`` for skip SSL certificate validation,
-               :class:`aiohttp.Fingerprint` for fingerprint
-               validation, :class:`ssl.SSLContext` for custom SSL
-               certificate validation.
+      (:func:`ssl.create_default_context` is used), ``False`` for skip SSL
+      certificate validation, :class:`aiohttp.Fingerprint` for fingerprint
+      validation, :class:`ssl.SSLContext` for custom SSL certificate
+      validation.
 
-               Supersedes *verify_ssl*, *ssl_context* and
-               *fingerprint* parameters.
+      Supersedes *verify_ssl*, *ssl_context* and *fingerprint* parameters.
 
    :param str server_hostname: Sets or overrides the host name that the
       target server's certificate will be matched against.
@@ -1036,9 +1000,9 @@ certification chaining.
       used to give information to the
       tracers that is only available at request time.
 
-   :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
-                            ``None`` by default,
-                            it means that the session global value is used.
+   :param int read_bufsize: Size of the read buffer
+      (:attr:`ClientResponse.content`). ``None`` by default, it means that the
+      session global value is used.
 
       .. versionadded:: 3.7
 
@@ -1096,22 +1060,20 @@ is controlled by *force_close* constructor's parameter).
 
    Base class for all connectors.
 
-   :param float keepalive_timeout: timeout for connection reusing
-                                   after releasing (optional). Values
-                                   ``0``. For disabling *keep-alive*
-                                   feature use ``force_close=True``
-                                   flag.
+   :param float keepalive_timeout: timeout for connection reusing after
+      releasing (optional). Values ``0``. For disabling *keep-alive* feature
+      use ``force_close=True`` flag.
 
-   :param int limit: total number simultaneous connections. If *limit* is
-                     ``0`` the connector has no limit (default: 100).
+   :param int limit: total number simultaneous connections. If *limit* is ``0``
+      the connector has no limit (default: 100).
 
    :param int limit_per_host: limit simultaneous connections to the same
       endpoint.  Endpoints are the same if they are
       have equal ``(host, port, is_ssl)`` triple.
       If *limit* is ``0`` the connector has no limit (default: 0).
 
-   :param bool force_close: close underlying sockets after
-                            connection releasing (optional).
+   :param bool force_close: close underlying sockets after connection releasing
+      (optional).
 
    :param bool enable_cleanup_closed: some SSL servers do not properly complete
       SSL shutdown process, in that case asyncio leaks SSL connections.
@@ -1170,9 +1132,8 @@ is controlled by *force_close* constructor's parameter).
       The call may be paused if :attr:`limit` is exhausted until used
       connections returns to pool.
 
-      :param aiohttp.ClientRequest request: request object
-                                                   which is connection
-                                                   initiator.
+      :param aiohttp.ClientRequest request: request object which is connection
+         initiator.
 
       :return: :class:`Connection` object.
 
@@ -1227,14 +1188,12 @@ is controlled by *force_close* constructor's parameter).
    :class:`BaseConnector` plus several TCP-specific ones:
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
-                  (:func:`ssl.create_default_context` is used),
-                  ``False`` for skip SSL certificate validation,
-                  :class:`aiohttp.Fingerprint` for fingerprint
-                  validation, :class:`ssl.SSLContext` for custom SSL
-                  certificate validation.
+         (:func:`ssl.create_default_context` is used), ``False`` for skip SSL
+         certificate validation, :class:`aiohttp.Fingerprint` for fingerprint
+         validation, :class:`ssl.SSLContext` for custom SSL certificate
+         validation.
 
-                  Supersedes *verify_ssl*, *ssl_context* and
-                  *fingerprint* parameters.
+         Supersedes *verify_ssl*, *ssl_context* and *fingerprint* parameters.
 
          .. versionadded:: 3.0
 
@@ -1271,8 +1230,8 @@ is controlled by *force_close* constructor's parameter).
       change after a specific time. Use this option to keep the DNS cache
       updated refreshing each entry after N seconds.
 
-   :param int limit: total number simultaneous connections. If *limit* is
-                     ``0`` the connector has no limit (default: 100).
+   :param int limit: total number simultaneous connections. If *limit* is ``0``
+      the connector has no limit (default: 100).
 
    :param int limit_per_host: limit simultaneous connections to the same
       endpoint.  Endpoints are the same if they are
@@ -1290,15 +1249,13 @@ is controlled by *force_close* constructor's parameter).
       asynchronous version is pretty robust but might fail in
       very rare cases.
 
-   :param int family: TCP socket family, both IPv4 and IPv6 by default.
-                      For *IPv4* only use :data:`socket.AF_INET`,
-                      for  *IPv6* only -- :data:`socket.AF_INET6`.
+   :param int family: TCP socket family, both IPv4 and IPv6 by default. For
+      *IPv4* only use :data:`socket.AF_INET`, for *IPv6* only --
+      :data:`socket.AF_INET6`.
 
-                      *family* is ``0`` by default, that means both
-                      IPv4 and IPv6 are accepted. To specify only
-                      concrete version please pass
-                      :data:`socket.AF_INET` or
-                      :data:`socket.AF_INET6` explicitly.
+      *family* is ``0`` by default, that means both IPv4 and IPv6 are accepted.
+      To specify only concrete version please pass :data:`socket.AF_INET` or
+      :data:`socket.AF_INET6` explicitly.
 
    :param ssl.SSLContext ssl_context: SSL context used for processing
       *HTTPS* requests (optional).
@@ -1309,8 +1266,8 @@ is controlled by *force_close* constructor's parameter).
    :param tuple local_addr: tuple of ``(local_host, local_port)`` used to bind
       socket locally if specified.
 
-   :param bool force_close: close underlying sockets after
-                            connection releasing (optional).
+   :param bool force_close: close underlying sockets after connection releasing
+      (optional).
 
    :param bool enable_cleanup_closed: Some ssl servers do not properly complete
       SSL shutdown process, in that case asyncio leaks SSL connections.
@@ -1647,9 +1604,8 @@ Response object
       Close underlying connection if data reading gets an error,
       release connection otherwise.
 
-      :param str encoding: text encoding used for *BODY* decoding, or
-                           ``None`` for encoding autodetection
-                           (default).
+      :param str encoding: text encoding used for *BODY* decoding, or ``None``
+         for encoding autodetection (default).
 
 
       :raises: :exc:`UnicodeDecodeError` if decoding fails. See also
@@ -1669,18 +1625,15 @@ Response object
       :exc:`aiohttp.ContentTypeError` get raised.
       To disable content type check pass ``None`` value.
 
-      :param str encoding: text encoding used for *BODY* decoding, or
-                           ``None`` for encoding autodetection
-                           (default).
+      :param str encoding: text encoding used for *BODY* decoding, or ``None``
+         for encoding autodetection (default).
 
-                           By the standard JSON encoding should be
-                           ``UTF-8`` but practice beats purity: some
-                           servers return non-UTF
-                           responses. Autodetection works pretty fine
-                           anyway.
+         By the standard JSON encoding should be ``UTF-8`` but practice beats
+         purity: some servers return non-UTF responses. Autodetection works
+         pretty fine anyway.
 
-      :param collections.abc.Callable loads: :term:`callable` used for loading *JSON*
-                             data, :func:`json.loads` by default.
+      :param collections.abc.Callable loads: :term:`callable` used for
+         loading *JSON* data, :func:`json.loads` by default.
 
       :param str content_type: specify response's content-type, if content type
          does not match raise :exc:`aiohttp.ClientResponseError`.
@@ -1738,7 +1691,7 @@ manually.
       :param str name: The key to look up in the transport extra information.
 
       :param default: Default value to be used when no value for ``name`` is
-                      found (default is ``None``).
+         found (default is ``None``).
 
    .. method:: exception()
 
@@ -1749,9 +1702,8 @@ manually.
 
       Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
-      :param message: optional payload of *ping* message,
-                      :class:`str` (converted to *UTF-8* encoded bytes)
-                      or :class:`bytes`.
+      :param message: optional payload of *ping* message, :class:`str`
+         (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
       .. versionchanged:: 3.0
 
@@ -1762,9 +1714,8 @@ manually.
 
       Send :const:`~aiohttp.WSMsgType.PONG` to peer.
 
-      :param message: optional payload of *pong* message,
-                      :class:`str` (converted to *UTF-8* encoded bytes)
-                      or :class:`bytes`.
+      :param message: optional payload of *pong* message, :class:`str`
+         (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
       .. versionchanged:: 3.0
 
@@ -1777,9 +1728,8 @@ manually.
 
       :param str data: data to send.
 
-      :param int compress: sets specific level of compression for
-                           single message,
-                           ``None`` for not overriding per-socket setting.
+      :param int compress: sets specific level of compression for single
+         message, ``None`` for not overriding per-socket setting.
 
       :raise TypeError: if data is not :class:`str`
 
@@ -1795,9 +1745,8 @@ manually.
 
       :param data: data to send.
 
-      :param int compress: sets specific level of compression for
-                           single message,
-                           ``None`` for not overriding per-socket setting.
+      :param int compress: sets specific level of compression for single
+         message, ``None`` for not overriding per-socket setting.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
@@ -1814,13 +1763,12 @@ manually.
 
       :param data: data to send.
 
-      :param int compress: sets specific level of compression for
-                           single message,
-                           ``None`` for not overriding per-socket setting.
+      :param int compress: sets specific level of compression for single
+         message, ``None`` for not overriding per-socket setting.
 
-      :param collections.abc.Callable dumps: any :term:`callable` that accepts an object and
-                             returns a JSON string
-                             (:func:`json.dumps` by default).
+      :param collections.abc.Callable dumps: any :term:`callable` that
+         accepts an object and returns a JSON string
+         (:func:`json.dumps` by default).
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1854,9 +1802,8 @@ manually.
 
       :param ~aiohttp.WSMsgType opcode: opcode of the message.
 
-      :param int compress: sets specific level of compression for
-                           single message,
-                           ``None`` for not overriding per-socket setting.
+      :param int compress: sets specific level of compression for single
+         message, ``None`` for not overriding per-socket setting.
 
       .. versionadded:: 3.11
 
@@ -1917,10 +1864,9 @@ manually.
       A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads
       the JSON string to a Python dict.
 
-      :param collections.abc.Callable loads: any :term:`callable` that accepts
-                              :class:`str` and returns :class:`dict`
-                              with parsed JSON (:func:`json.loads` by
-                              default).
+      :param collections.abc.Callable loads: any :term:`callable` that
+         accepts :class:`str` and returns :class:`dict` with parsed JSON
+         (:func:`json.loads` by default).
 
       :return dict: loaded JSON content
 
@@ -2082,13 +2028,12 @@ ClientRequest
 
       :param body: The new body content. Can be:
 
-                   - ``bytes``/``bytearray``: Raw binary data
-                   - ``str``: Text data (encoded using charset from Content-Type)
-                   - :class:`FormData`: Form data encoded as multipart/form-data
-                   - :class:`Payload`: A pre-configured payload object
-                   - ``AsyncIterable[bytes]``: Async iterable of bytes chunks
-                   - File-like object: Will be read and sent as binary data
-                   - ``None``: Clears the body
+         - ``bytes``/``bytearray``: Raw binary data - ``str``: Text data
+         (encoded using charset from Content-Type) - :class:`FormData`: Form
+         data encoded as multipart/form-data - :class:`Payload`: A
+         pre-configured payload object - ``AsyncIterable[bytes]``: Async
+         iterable of bytes chunks - File-like object: Will be read and sent as
+         binary data - ``None``: Clears the body
 
       .. code-block:: python
 
@@ -2412,21 +2357,18 @@ Utilities
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
 
    :param bool quote_cookie: (optional) Whether to quote cookies according to
-                             :rfc:`2109`.  Some backend systems
-                             (not compatible with RFC mentioned above)
-                             does not support quoted cookies.
+      :rfc:`2109`. Some backend systems (not compatible with RFC mentioned
+      above) does not support quoted cookies.
 
       .. versionadded:: 3.7
 
-   :param treat_as_secure_origin: (optional) Mark origins as secure
-                                  for cookies marked as Secured. Possible types are
+   :param treat_as_secure_origin: (optional) Mark origins as secure for cookies
+      marked as Secured. Possible types are
 
-                                  Possible types are:
+      Possible types are:
 
-                                  - :class:`tuple` or :class:`list` of
-                                    :class:`str` or :class:`yarl.URL`
-                                  - :class:`str`
-                                  - :class:`yarl.URL`
+      - :class:`tuple` or :class:`list` of :class:`str` or :class:`yarl.URL` -
+      :class:`str` - :class:`yarl.URL`
 
       .. versionadded:: 3.8
 
@@ -2504,9 +2446,8 @@ Utilities
 
    Fingerprint helper for checking SSL certificates by *SHA256* digest.
 
-   :param bytes digest: *SHA256* digest for certificate in DER-encoded
-                        binary form (see
-                        :meth:`ssl.SSLSocket.getpeercert`).
+   :param bytes digest: *SHA256* digest for certificate in DER-encoded binary
+      form (see :meth:`ssl.SSLSocket.getpeercert`).
 
    To check fingerprint pass the object into :meth:`ClientSession.get`
    call, e.g.::
@@ -2564,19 +2505,20 @@ on being called.
 
    :param fields: A container for the key/value pairs of this form.
 
-                  Possible types are:
+      Possible types are:
 
-                  - :class:`dict`
-                  - :class:`tuple` or :class:`list`
-                  - :class:`io.IOBase`, e.g. a file-like object
-                  - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
+      - :class:`dict`
+      - :class:`tuple` or :class:`list`
+      - :class:`io.IOBase`, e.g. a file-like object
+      - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
 
-                  If it is a :class:`tuple` or :class:`list`, it must be a valid argument
-                  for :meth:`add_fields<aiohttp.FormData.add_fields>`.
+      If it is a :class:`tuple` or :class:`list`, it must be a valid argument
+      for :meth:`add_fields<aiohttp.FormData.add_fields>`.
 
-                  For :class:`dict`, :class:`multidict.MultiDict`, and :class:`multidict.MultiDictProxy`,
-                  the keys and values must be valid `name` and `value` arguments to
-                  :meth:`add_field<aiohttp.FormData.add_field>`, respectively.
+      For :class:`dict`, :class:`multidict.MultiDict`, and
+      :class:`multidict.MultiDictProxy`, the keys and values must be valid
+      `name` and `value` arguments to
+      :meth:`add_field<aiohttp.FormData.add_field>`, respectively.
 
    .. method:: add_field(name, value, content_type=None, filename=None,\
                          content_transfer_encoding=None)
@@ -2587,25 +2529,25 @@ on being called.
 
       :param value: Value of the field
 
-                    Possible types are:
+         Possible types are:
 
-                    - :class:`str`
-                    - :class:`bytes`, :class:`bytearray`, or :class:`memoryview`
-                    - :class:`io.IOBase`, e.g. a file-like object
+         - :class:`str` - :class:`bytes`, :class:`bytearray`, or
+         :class:`memoryview` - :class:`io.IOBase`, e.g. a file-like object
 
       :param str content_type: The field's content-type header (optional)
 
       :param str filename: The field's filename (optional)
 
-                           If this is not set and ``value`` is a :class:`bytes`, :class:`bytearray`,
-                           or :class:`memoryview` object, the `name` argument is used as the filename
-                           unless ``content_transfer_encoding`` is specified.
+         If this is not set and ``value`` is a :class:`bytes`,
+         :class:`bytearray`, or :class:`memoryview` object, the `name` argument
+         is used as the filename unless ``content_transfer_encoding`` is
+         specified.
 
-                           If ``filename`` is not set and ``value`` is an :class:`io.IOBase`
-                           object, the filename is extracted from the object if possible.
+         If ``filename`` is not set and ``value`` is an :class:`io.IOBase`
+         object, the filename is extracted from the object if possible.
 
-      :param str content_transfer_encoding: The field's content-transfer-encoding
-                                            header (optional)
+      :param str content_transfer_encoding: The field's
+         content-transfer-encoding header (optional)
 
    .. method:: add_fields(fields)
 
@@ -2613,9 +2555,10 @@ on being called.
 
       :param fields: An iterable containing:
 
-                     - :class:`io.IOBase`, e.g. a file-like object
-                     - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
-                     - :class:`tuple` or :class:`list` of length two, containing a name-value pair
+         - :class:`io.IOBase`, e.g. a file-like object -
+         :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy` -
+         :class:`tuple` or :class:`list` of length two, containing a name-value
+         pair
 
 Client exceptions
 -----------------
