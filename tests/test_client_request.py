@@ -1017,7 +1017,7 @@ async def test_content_encoding_rejects_unknown_string(
             "post",
             URL("http://python.org/"),
             data="foo",
-            compress="br",
+            compress="br",  # type: ignore[arg-type]
             loop=asyncio.get_running_loop(),
         )
 
