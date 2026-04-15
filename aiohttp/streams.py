@@ -8,6 +8,7 @@ from typing import Final, Generic, TypeVar
 from .base_protocol import BaseProtocol
 from .helpers import (
     _EXC_SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     BaseTimerContext,
     TimerNoop,
     set_exception,
@@ -142,7 +143,7 @@ class StreamReader:
             info.append("%d bytes" % self._size)
         if self._eof:
             info.append("eof")
-        if self._low_water != 2**18:  # default limit
+        if self._low_water != DEFAULT_CHUNK_SIZE:
             info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
             info.append("w=%r" % self._waiter)

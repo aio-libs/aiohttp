@@ -92,6 +92,7 @@ from .connector import (
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
@@ -183,7 +184,7 @@ class _RequestOptions(TypedDict, total=False):
     auth: BasicAuth | None
     allow_redirects: bool
     max_redirects: int
-    compress: str | bool
+    compress: Literal["deflate", "gzip"] | bool
     chunked: bool | None
     expect100: bool
     raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]]
@@ -331,7 +332,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: list[TraceConfig[object]] | None = None,
-        read_bufsize: int = 2**18,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_headers: int = 128,
@@ -487,7 +488,7 @@ class ClientSession:
         auth: BasicAuth | None = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
-        compress: str | bool = False,
+        compress: Literal["deflate", "gzip"] | bool = False,
         chunked: bool | None = None,
         expect100: bool = False,
         raise_for_status: (
@@ -1226,7 +1227,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader = WebSocketDataQueue(conn_proto, 2**18, loop=self._loop)
+            reader = WebSocketDataQueue(conn_proto, DEFAULT_CHUNK_SIZE, loop=self._loop)
             writer = WebSocketWriter(
                 conn_proto,
                 transport,

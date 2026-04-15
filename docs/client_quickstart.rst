@@ -122,8 +122,9 @@ that case you can specify multiple values for each key::
         expect = 'http://httpbin.org/get?key=value2&key=value1'
         assert str(r.url) == expect
 
-You can also pass :class:`str` content as param, but beware -- content
-is not encoded by library. Note that ``+`` is not encoded::
+You can also pass :class:`str` content as param. The value is used as a
+query string, but passing ``params`` does not disable URL
+canonicalization. Note that ``+`` is not encoded::
 
     async with session.get('http://httpbin.org/get',
                            params='key=value+1') as r:
@@ -149,7 +150,9 @@ is not encoded by library. Note that ``+`` is not encoded::
 
 .. warning::
 
-   Passing *params* overrides ``encoded=True``, never use both options.
+   Passing *params* overrides ``encoded=True``. Never use both options
+   if you need to preserve exact query-string bytes.
+   Build the full URL (including query) instead.
 
 Response Content and Status Code
 ================================

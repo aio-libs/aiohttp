@@ -21,6 +21,7 @@ from ._cookie_helpers import parse_cookie_header
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     ETAG_ANY,
     LIST_QUOTED_ETAG_RE,
     ChainMapProxy,
@@ -723,7 +724,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         tmp = await self._loop.run_in_executor(
                             None, tempfile.TemporaryFile
                         )
-                        while chunk := await field.read_chunk(size=2**18):
+                        while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
                             async for decoded_chunk in field.decode_iter(chunk):
                                 await self._loop.run_in_executor(
                                     None, tmp.write, decoded_chunk

@@ -14,11 +14,7 @@ from urllib.parse import parse_qsl, unquote, urlencode
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from .abc import AbstractStreamWriter
-from .compression_utils import (
-    DEFAULT_MAX_DECOMPRESS_SIZE,
-    ZLibCompressor,
-    ZLibDecompressor,
-)
+from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
@@ -26,7 +22,7 @@ from .hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from .helpers import CHAR, TOKEN, parse_mimetype, reify
+from .helpers import CHAR, DEFAULT_CHUNK_SIZE, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
 from .http_exceptions import BadHttpMessage
 from .log import internal_logger
@@ -267,7 +263,7 @@ class BodyPartReader:
         *,
         subtype: str = "mixed",
         default_charset: str | None = None,
-        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        max_decompress_size: int = DEFAULT_CHUNK_SIZE,
         client_max_size: int = sys.maxsize,
         max_size_error_cls: type[Exception] = ValueError,
     ) -> None:
@@ -641,7 +637,7 @@ class BodyPartReaderPayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         field = self._value
-        while chunk := await field.read_chunk(size=2**18):
+        while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
             async for d in field.decode_iter(chunk):
                 await writer.write(d)
 

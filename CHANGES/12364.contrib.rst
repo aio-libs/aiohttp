@@ -1,0 +1,1 @@
+Disabled ``coverage`` and ``xdist`` by default to ease local development -- by :user:`Dreamsorcerer`.

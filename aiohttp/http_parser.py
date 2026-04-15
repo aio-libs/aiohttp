@@ -23,7 +23,6 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import (
-    DEFAULT_MAX_DECOMPRESS_SIZE,
     HAS_BROTLI,
     HAS_ZSTD,
     BrotliDecompressor,
@@ -33,6 +32,7 @@ from .compression_utils import (
 from .helpers import (
     _EXC_SENTINEL,
     DEBUG,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     EMPTY_BODY_STATUS_CODES,
     NO_EXTENSIONS,
@@ -50,7 +50,7 @@ from .http_exceptions import (
     LineTooLong,
     TransferEncodingError,
 )
-from .http_writer import HttpVersion, HttpVersion10
+from .http_writer import HttpVersion, HttpVersion10, HttpVersion11
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
 
@@ -673,6 +673,9 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             chunked,
         ) = self.parse_headers(lines[1:])
 
+        if version_o == HttpVersion11 and hdrs.HOST not in headers:
+            raise BadHttpMessage("Missing 'Host' header in request.")
+
         if close is None:  # then the headers weren't set in the request
             if version_o <= HttpVersion10:  # HTTP 1.0 must asks to not close
                 close = True
@@ -811,7 +814,7 @@ class HttpPayloadParser:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_trailers: int = 128,
-        limit: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        limit: int = DEFAULT_CHUNK_SIZE,
     ) -> None:
         self._length = 0
         self._paused = False
@@ -1062,7 +1065,7 @@ class DeflateBuffer:
         self,
         out: StreamReader,
         encoding: str | None,
-        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        max_decompress_size: int = DEFAULT_CHUNK_SIZE,
     ) -> None:
         self.out = out
         self.size = 0
