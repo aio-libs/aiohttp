@@ -41,6 +41,7 @@ from yarl import URL, Query
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, payload, web
 from aiohttp.abc import AbstractResolver, ResolveResult
+from aiohttp.client import _recover_redirect_location
 from aiohttp.client_exceptions import (
     ClientResponseError,
     InvalidURL,
@@ -3014,6 +3015,80 @@ async def test_redirect_without_location_header(aiohttp_client: AiohttpClient) -
     async with client.get("/redirect") as resp:
         data = await resp.read()
     assert data == body
+
+
+@pytest.mark.parametrize(
+    ("raw_location", "expected"),
+    (
+        ("https://cornelius-k.dk/synspr\udcf8ve", "https://cornelius-k.dk/synsprøve"),
+        (
+            "https://cornelius-k.dk/synspr\udcc3\udcb8ve",
+            "https://cornelius-k.dk/synsprøve",
+        ),
+        (
+            "https://cornelius-k.dk/synspr%C3%B8ve",
+            "https://cornelius-k.dk/synspr%C3%B8ve",
+        ),
+    ),
+)
+def test_recover_redirect_location(raw_location: str, expected: str) -> None:
+    assert _recover_redirect_location(raw_location) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw_location", "charset", "expected"),
+    (
+        # charset resolver returns a non-latin-1 encoding
+        (
+            "https://example.com/\udce4\udcbd\udca0\udce5\udca5\udcbd",
+            "utf-8",
+            "https://example.com/你好",
+        ),
+        # charset resolver provides the correct charset directly
+        (
+            "https://cornelius-k.dk/synspr\udcf8ve",
+            "latin-1",
+            "https://cornelius-k.dk/synsprøve",
+        ),
+        # charset resolver returns an unknown charset; falls back to latin-1
+        (
+            "https://cornelius-k.dk/synspr\udcf8ve",
+            "no-such-codec",
+            "https://cornelius-k.dk/synsprøve",
+        ),
+    ),
+)
+def test_recover_redirect_location_with_charset(
+    raw_location: str, charset: str, expected: str
+) -> None:
+    assert _recover_redirect_location(raw_location, charset) == expected
+
+
+async def test_redirect_recover_with_fallback_charset_resolver(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Test that fallback_charset_resolver is used to recover non-ASCII Location."""
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        # Return a Location header with raw UTF-8 bytes that will
+        # be decoded as surrogates by Python's HTTP parser.
+        return web.Response(
+            status=301,
+            headers={"Location": "/ok"},
+        )
+
+    async def ok_handler(request: web.Request) -> web.Response:
+        return web.Response(text="OK")
+
+    app = web.Application()
+    app.router.add_get("/redirect", redirect_handler)
+    app.router.add_get("/ok", ok_handler)
+
+    client = await aiohttp_client(
+        app, fallback_charset_resolver=lambda r, b: "latin-1"
+    )
+    async with client.get("/redirect") as resp:
+        assert resp.status == 200
 
 
 INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW = (
