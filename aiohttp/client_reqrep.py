@@ -755,9 +755,7 @@ class ClientRequestBase:
 
         content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
         if not _DIGITS_RE.fullmatch(content_length_hdr):
-            raise ValueError(
-                f"Invalid Content-Length header: {content_length_hdr!r}"
-            )
+            raise ValueError(f"Invalid Content-Length header: {content_length_hdr!r}")
         return int(content_length_hdr)
 
     @property
