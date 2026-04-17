@@ -760,6 +760,20 @@ def test_request_te_duplicate_chunked(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
+def test_request_te_mixed_non_ascii_and_chunked(parser: HttpRequestParser) -> None:
+    text = (
+        "GET /test HTTP/1.1\r\n"
+        "Host: a\r\n"
+        "Transfer-Encoding: a\N{KELVIN SIGN}, chunked\r\n"
+        "\r\n"
+    )
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="Invalid `Transfer-Encoding`|nvalid `Transfer-Encoding`",
+    ):
+        parser.feed_data(text.encode())
+
+
 def test_conn_upgrade(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
@@ -1773,6 +1787,22 @@ async def test_http_response_parser_notchunked(
     assert await messages[0][1].read() == b"1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
 
 
+async def test_http_response_te_header_non_ascii(
+    response: HttpResponseParser,
+) -> None:
+    # Kelvin sign is not ASCII and must not be treated as 'k'.
+    text = (
+        "HTTP/1.1 200 OK\r\n"
+        "Transfer-Encoding: chun\N{KELVIN SIGN}ed\r\n"
+        "\r\n1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
+    )
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="Invalid `Transfer-Encoding`|invalid transfer encoding",
+    ):
+        response.feed_data(text.encode())
+
+
 async def test_http_response_parser_last_chunked(
     response: HttpResponseParser,
 ) -> None:
@@ -1781,6 +1811,51 @@ async def test_http_response_parser_last_chunked(
 
     # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.2
     assert await messages[0][1].read() == b"Test"
+
+
+def test_http_response_parser_te_chunked_not_last(
+    response: HttpResponseParser,
+) -> None:
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: chunked, gzip\r\n"
+        b"\r\n"
+    )
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="Response has invalid `Transfer-Encoding`|invalid transfer encoding",
+    ):
+        response.feed_data(text)
+
+
+def test_http_response_parser_te_duplicate_chunked(
+    response: HttpResponseParser,
+) -> None:
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: gzip, chunked, chunked\r\n"
+        b"\r\n"
+    )
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="duplicate `chunked` Transfer-Encoding|invalid transfer encoding",
+    ):
+        response.feed_data(text)
+
+
+def test_http_response_parser_te_non_ascii_with_chunked(
+    response: HttpResponseParser,
+) -> None:
+    text = (
+        "HTTP/1.1 200 OK\r\n"
+        "Transfer-Encoding: a\N{KELVIN SIGN}, chunked\r\n"
+        "\r\n"
+    )
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="Invalid `Transfer-Encoding`|invalid transfer encoding",
+    ):
+        response.feed_data(text.encode())
 
 
 def test_http_response_parser_bad(response: HttpResponseParser) -> None:

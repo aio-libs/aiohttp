@@ -291,7 +291,28 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def parse_message(self, lines: list[bytes]) -> _MsgT: ...
 
     @abc.abstractmethod
-    def _is_chunked_te(self, te: str) -> bool: ...
+    def _is_chunked_te(self, codings: tuple[str, ...]) -> bool: ...
+
+    def _parse_transfer_encoding(self, te: str) -> tuple[str, ...]:
+        codings = []
+        for item in te.split(","):
+            item = item.strip(" \t")
+            # Reject empty, non-ASCII, or invalid coding tokens.
+            if not item or not item.isascii():
+                raise BadHttpMessage("Invalid `Transfer-Encoding` header value")
+
+            coding, has_params, _params = item.partition(";")
+            coding = coding.strip(" \t")
+            if not coding or not TOKENRE.fullmatch(coding):
+                raise BadHttpMessage("Invalid `Transfer-Encoding` header value")
+
+            coding = coding.lower()
+            # RFC 9112 section 7.1 does not define chunk-ext for TE.
+            if has_params and coding == "chunked":
+                raise BadHttpMessage("Invalid `Transfer-Encoding` header value")
+            codings.append(coding)
+
+        return tuple(codings)
 
     def pause_reading(self) -> None:
         assert self._payload_parser is not None
@@ -585,7 +606,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
         if te is not None:
-            if self._is_chunked_te(te):
+            codings = self._parse_transfer_encoding(te)
+            if self._is_chunked_te(codings):
                 chunked = True
 
             if hdrs.CONTENT_LENGTH in headers:
@@ -694,17 +716,14 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             url,
         )
 
-    def _is_chunked_te(self, te: str) -> bool:
+    def _is_chunked_te(self, codings: tuple[str, ...]) -> bool:
         # https://www.rfc-editor.org/rfc/rfc9112#section-7.1-3
         # "A sender MUST NOT apply the chunked transfer coding more
         #  than once to a message body"
-        parts = [p.strip(" \t") for p in te.split(",")]
-        chunked_count = sum(1 for p in parts if p.isascii() and p.lower() == "chunked")
+        chunked_count = sum(1 for p in codings if p == "chunked")
         if chunked_count > 1:
             raise BadHttpMessage("Request has duplicate `chunked` Transfer-Encoding")
-        last = parts[-1]
-        # .lower() transforms some non-ascii chars, so must check first.
-        if last.isascii() and last.lower() == "chunked":
+        if codings[-1] == "chunked":
             return True
         # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.3
         raise BadHttpMessage("Request has invalid `Transfer-Encoding`")
@@ -791,9 +810,14 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
             chunked,
         )
 
-    def _is_chunked_te(self, te: str) -> bool:
+    def _is_chunked_te(self, codings: tuple[str, ...]) -> bool:
         # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.2
-        return te.rsplit(",", maxsplit=1)[-1].strip(" \t").lower() == "chunked"
+        chunked_count = sum(1 for p in codings if p == "chunked")
+        if chunked_count > 1:
+            raise BadHttpMessage("Response has duplicate `chunked` Transfer-Encoding")
+        if chunked_count and codings[-1] != "chunked":
+            raise BadHttpMessage("Response has invalid `Transfer-Encoding`")
+        return codings[-1] == "chunked"
 
 
 class HttpPayloadParser:
