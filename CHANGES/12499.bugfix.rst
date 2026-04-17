@@ -1,0 +1,1 @@
+Hardened HTTP parser ``Transfer-Encoding`` handling by validating coding tokens as ASCII/token syntax and applying strict ``chunked`` ordering/duplication checks consistently for both request and response parsers.
