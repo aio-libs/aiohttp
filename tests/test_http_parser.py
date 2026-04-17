@@ -1816,11 +1816,7 @@ async def test_http_response_parser_last_chunked(
 def test_http_response_parser_te_chunked_not_last(
     response: HttpResponseParser,
 ) -> None:
-    text = (
-        b"HTTP/1.1 200 OK\r\n"
-        b"Transfer-Encoding: chunked, gzip\r\n"
-        b"\r\n"
-    )
+    text = b"HTTP/1.1 200 OK\r\n" b"Transfer-Encoding: chunked, gzip\r\n" b"\r\n"
     with pytest.raises(
         http_exceptions.BadHttpMessage,
         match="Response has invalid `Transfer-Encoding`|invalid transfer encoding",
@@ -1832,9 +1828,7 @@ def test_http_response_parser_te_duplicate_chunked(
     response: HttpResponseParser,
 ) -> None:
     text = (
-        b"HTTP/1.1 200 OK\r\n"
-        b"Transfer-Encoding: gzip, chunked, chunked\r\n"
-        b"\r\n"
+        b"HTTP/1.1 200 OK\r\n" b"Transfer-Encoding: gzip, chunked, chunked\r\n" b"\r\n"
     )
     with pytest.raises(
         http_exceptions.BadHttpMessage,
@@ -1847,9 +1841,7 @@ def test_http_response_parser_te_non_ascii_with_chunked(
     response: HttpResponseParser,
 ) -> None:
     text = (
-        "HTTP/1.1 200 OK\r\n"
-        "Transfer-Encoding: a\N{KELVIN SIGN}, chunked\r\n"
-        "\r\n"
+        "HTTP/1.1 200 OK\r\n" "Transfer-Encoding: a\N{KELVIN SIGN}, chunked\r\n" "\r\n"
     )
     with pytest.raises(
         http_exceptions.BadHttpMessage,
