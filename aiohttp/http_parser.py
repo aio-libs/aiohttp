@@ -374,9 +374,15 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                         def get_content_length() -> int | None:
                             # payload length
-                            length_hdr = msg.headers.get(CONTENT_LENGTH)
-                            if length_hdr is None:
+                            length_values = msg.headers.getall(CONTENT_LENGTH, [])
+
+                            if len(length_values) > 1:
+                                raise BadHttpMessage("Duplicate Content-Length headers")
+
+                            if not length_values:
                                 return None
+
+                            length_hdr = length_values[0]
 
                             # Shouldn't allow +/- or other number formats.
                             # https://www.rfc-editor.org/rfc/rfc9110#section-8.6-2
