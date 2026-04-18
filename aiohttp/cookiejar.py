@@ -4,6 +4,7 @@ import datetime
 import heapq
 import itertools
 import json
+import os
 import pathlib
 import re
 import time
@@ -137,7 +138,16 @@ class CookieJar(AbstractCookieJar):
                     if attr_val:
                         morsel_data[attr] = attr_val
                 data[key][name] = morsel_data
-        with file_path.open(mode="w", encoding="utf-8") as f:
+
+        # Cookie persistence may include authentication/session tokens.
+        # Use 0o600 at creation time to avoid umask-dependent overexposure
+        # and enforce least-privilege access to sensitive credential data.
+        with open(
+            file_path,
+            mode="w",
+            encoding="utf-8",
+            opener=lambda path, flags: os.open(path, flags, 0o600),
+        ) as f:
             json.dump(data, f, indent=2)
 
     def load(self, file_path: PathLike) -> None:

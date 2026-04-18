@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
@@ -930,7 +930,7 @@ class ClientRequestArgs(TypedDict, total=False):
     cookies: BaseCookie[str]
     auth: BasicAuth | None
     version: HttpVersion
-    compress: str | bool
+    compress: Literal["deflate", "gzip"] | bool
     chunked: bool | None
     expect100: bool
     loop: asyncio.AbstractEventLoop
@@ -974,7 +974,7 @@ class ClientRequest(ClientRequestBase):
         cookies: BaseCookie[str],
         auth: BasicAuth | None,
         version: HttpVersion,
-        compress: str | bool,
+        compress: Literal["deflate", "gzip"] | bool,
         chunked: bool | None,
         expect100: bool,
         loop: asyncio.AbstractEventLoop,
@@ -1094,7 +1094,9 @@ class ClientRequest(ClientRequestBase):
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
-    def _update_content_encoding(self, data: Any, compress: bool | str) -> None:
+    def _update_content_encoding(
+        self, data: Any, compress: bool | Literal["deflate", "gzip"]
+    ) -> None:
         """Set request content encoding."""
         self.compress = None
         if not data:
@@ -1106,6 +1108,10 @@ class ClientRequest(ClientRequestBase):
                     "compress can not be set if Content-Encoding header is set"
                 )
         elif compress:
+            if isinstance(compress, str) and compress not in {"deflate", "gzip"}:
+                raise ValueError(
+                    "compress must be one of True, False, 'deflate', or 'gzip'"
+                )
             self.compress = compress if isinstance(compress, str) else "deflate"
             self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
