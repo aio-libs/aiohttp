@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import sys
 import warnings
 from collections.abc import Awaitable, Callable
 from typing import Final, Generic, TypeVar
@@ -67,31 +68,7 @@ class ChunkTupleAsyncStreamIterator:
         return rv
 
 
-class AsyncStreamReaderMixin:
-
-    __slots__ = ()
-
-    def __aiter__(self) -> AsyncStreamIterator[bytes]:
-        return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
-
-    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields chunks of size n."""
-        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore[attr-defined]
-
-    def iter_any(self) -> AsyncStreamIterator[bytes]:
-        """Yield all available data as soon as it is received."""
-        return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
-
-    def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
-        """Yield chunks of data as they are received by the server.
-
-        The yielded objects are tuples
-        of (bytes, bool) as returned by the StreamReader.readchunk method.
-        """
-        return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
-
-
-class StreamReader(AsyncStreamReaderMixin):
+class StreamReader:
     """An enhancement of asyncio.StreamReader.
 
     Supports asynchronous iteration by line, chunk or as available::
@@ -176,8 +153,34 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("e=%r" % self._exception)
         return "<%s>" % " ".join(info)
 
+    def __aiter__(self) -> AsyncStreamIterator[bytes]:
+        return AsyncStreamIterator(self.readline)
+
+    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
+        """Returns an asynchronous iterator that yields chunks of size n."""
+        self.set_read_chunk_size(n)
+        return AsyncStreamIterator(lambda: self.read(n))
+
+    def iter_any(self) -> AsyncStreamIterator[bytes]:
+        """Yield all available data as soon as it is received."""
+        return AsyncStreamIterator(self.readany)
+
+    def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
+        """Yield chunks of data as they are received by the server.
+
+        The yielded objects are tuples
+        of (bytes, bool) as returned by the StreamReader.readchunk method.
+        """
+        return ChunkTupleAsyncStreamIterator(self)
+
     def get_read_buffer_limits(self) -> tuple[int, int]:
         return (self._low_water, self._high_water)
+
+    def set_read_chunk_size(self, n: int) -> None:
+        """Raise buffer limits to match the consumer's chunk size."""
+        if n > self._low_water:
+            self._low_water = n
+            self._high_water = n * 2
 
     def exception(self) -> BaseException | None:
         return self._exception
@@ -427,10 +430,8 @@ class StreamReader(AsyncStreamReaderMixin):
             return b""
 
         if n < 0:
-            # This used to just loop creating a new waiter hoping to
-            # collect everything in self._buffer, but that would
-            # deadlock if the subprocess sends more than self.limit
-            # bytes.  So just call self.readany() until EOF.
+            # Reading everything — remove decompression chunk limit.
+            self.set_read_chunk_size(sys.maxsize)
             blocks = []
             while True:
                 block = await self.readany()
@@ -439,6 +440,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 blocks.append(block)
             return b"".join(blocks)
 
+        self.set_read_chunk_size(n)
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
         # without feeding any data
@@ -611,6 +613,9 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 
     def feed_data(self, data: bytes, n: int = 0) -> bool:
         return False
+
+    def set_read_chunk_size(self, n: int) -> None:
+        return
 
     async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return b""
