@@ -101,6 +101,9 @@ class _InfoDict(TypedDict, total=False):
 class AbstractResource(Sized, Iterable["AbstractRoute"]):
     def __init__(self, *, name: str | None = None) -> None:
         self._name = name
+        self._routes: dict[str, ResourceRoute] = {}
+        self._any_route: ResourceRoute | None = None
+        self._allowed_methods: set[str] = set()
 
     @property
     def name(self) -> str | None:
@@ -118,6 +121,33 @@ class AbstractResource(Sized, Iterable["AbstractRoute"]):
     @abc.abstractmethod  # pragma: no branch
     def url_for(self, **kwargs: str) -> URL:
         """Construct url for resource with additional params."""
+
+    def add_route(
+        self,
+        method: str,
+        handler: type[AbstractView] | Handler,
+        *,
+        expect_handler: _ExpectHandler | None = None,
+    ) -> "ResourceRoute":
+        if route := self._routes.get(method, self._any_route):
+            raise RuntimeError(
+                "Added route will never be executed, "
+                f"method {route.method} is already "
+                "registered"
+            )
+
+        route_obj = ResourceRoute(method, handler, self, expect_handler=expect_handler)
+        self.register_route(route_obj)
+        return route_obj
+
+    def register_route(self, route: "ResourceRoute") -> None:
+        assert isinstance(
+            route, ResourceRoute
+        ), f"Instance of Route class is required, got {route!r}"
+        if route.method == hdrs.METH_ANY:
+            self._any_route = route
+        self._allowed_methods.add(route.method)
+        self._routes[route.method] = route
 
     @abc.abstractmethod  # pragma: no branch
     async def resolve(self, request: Request) -> _Resolve:
@@ -308,36 +338,6 @@ async def _default_expect_handler(request: Request) -> None:
 class Resource(AbstractResource):
     def __init__(self, *, name: str | None = None) -> None:
         super().__init__(name=name)
-        self._routes: dict[str, ResourceRoute] = {}
-        self._any_route: ResourceRoute | None = None
-        self._allowed_methods: set[str] = set()
-
-    def add_route(
-        self,
-        method: str,
-        handler: type[AbstractView] | Handler,
-        *,
-        expect_handler: _ExpectHandler | None = None,
-    ) -> "ResourceRoute":
-        if route := self._routes.get(method, self._any_route):
-            raise RuntimeError(
-                "Added route will never be executed, "
-                f"method {route.method} is already "
-                "registered"
-            )
-
-        route_obj = ResourceRoute(method, handler, self, expect_handler=expect_handler)
-        self.register_route(route_obj)
-        return route_obj
-
-    def register_route(self, route: "ResourceRoute") -> None:
-        assert isinstance(
-            route, ResourceRoute
-        ), f"Instance of Route class is required, got {route!r}"
-        if route.method == hdrs.METH_ANY:
-            self._any_route = route
-        self._allowed_methods.add(route.method)
-        self._routes[route.method] = route
 
     async def resolve(self, request: Request) -> _Resolve:
         if (match_dict := self._match(request.rel_url.path_safe)) is None:
@@ -589,12 +589,7 @@ class StaticResource(PrefixResource):
         }
 
     def set_options_route(self, handler: Handler) -> None:
-        if "OPTIONS" in self._routes:
-            raise RuntimeError("OPTIONS route was set already")
-        self._routes["OPTIONS"] = ResourceRoute(
-            "OPTIONS", handler, self, expect_handler=self._expect_handler
-        )
-        self._allowed_methods.add("OPTIONS")
+        self.add_route("OPTIONS", handler)
 
     async def resolve(self, request: Request) -> _Resolve:
         path = request.rel_url.path_safe
