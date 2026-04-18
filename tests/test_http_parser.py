@@ -321,7 +321,7 @@ def test_list_headers(
     parser: HttpRequestParser, hdr_vals: tuple[str], expected: tuple[str, ...]
 ) -> None:
     headers = "\r\n".join(f"Foo: {v}" for v in hdr_vals)
-    text = f"POST / HTTP/1.1\r\n{headers}\r\n\r\n".encode()
+    text = f"POST / HTTP/1.1\r\nHost: a\r\n{headers}\r\n\r\n".encode()
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
 
