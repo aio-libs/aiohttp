@@ -8,7 +8,7 @@ from types import TracebackType
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 
 import aiohttp
 from aiohttp import payload
@@ -106,7 +106,7 @@ class Stream(StreamReader):
 
 
 class Response:
-    def __init__(self, headers: CIMultiDictProxy[str], content: Stream) -> None:
+    def __init__(self, headers: HeadersDictProxy[str], content: Stream) -> None:
         self.headers = headers
         self.content = content
 
@@ -391,7 +391,7 @@ class TestPartReader:
         # Compressed data is small, but decompresses beyond client_max_size.
         original = b"A" * 1024
         compressed = gzip.compress(original)
-        h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
         with Stream(compressed + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(
                 BOUNDARY,
@@ -689,7 +689,7 @@ class TestPartReader:
 
 class TestMultipartReader:
     def test_from_response(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: 'multipart/related;boundary=":"'})
         )
         with Stream(b"--:\r\n\r\nhello\r\n--:--") as stream:
@@ -699,7 +699,7 @@ class TestMultipartReader:
         assert isinstance(res.stream, aiohttp.MultipartReader)
 
     def test_bad_boundary(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: "multipart/related;boundary=" + "a" * 80})
         )
         with Stream(b"") as stream:
@@ -774,7 +774,7 @@ class TestMultipartReader:
         assert isinstance(res, CustomReader)
 
     async def test_emit_next(self) -> None:
-        h = CIMultiDictProxy(
+        h = HeaderDictProxy(
             CIMultiDict({CONTENT_TYPE: 'multipart/related;boundary=":"'})
         )
         with Stream(b"--:\r\n\r\necho\r\n--:--") as stream:
@@ -1756,7 +1756,7 @@ async def test_body_part_reader_payload_write() -> None:
         nonlocal output
         output += inp
 
-    h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
+    h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
     if sys.version_info >= (3, 12):
         writer = mock.create_autospec(
             AbstractStreamWriter, write=write, spec_set=True, instance=True

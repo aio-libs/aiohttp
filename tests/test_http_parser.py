@@ -797,7 +797,7 @@ def test_request_te_chunked123(parser: HttpRequestParser) -> None:
 
 
 def test_request_te_empty_list_invalid(parser: HttpRequestParser) -> None:
-    text = b"GET /test HTTP/1.1\r\nTransfer-Encoding: ,  \t ,\r\n\r\n"
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: ,  \t ,\r\n\r\n"
     with pytest.raises(
         http_exceptions.BadHttpMessage,
         match="Request has invalid `Transfer-Encoding`",
