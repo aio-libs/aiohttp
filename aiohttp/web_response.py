@@ -346,7 +346,9 @@ class StreamResponse(
         accepted_codings = set()
         for header_value in request.headers.getall(hdrs.ACCEPT_ENCODING, ()):
             for coding_part in header_value.split(","):
-                token_and_params = [part.strip(" \t") for part in coding_part.split(";")]
+                token_and_params = [
+                    part.strip(" \t") for part in coding_part.split(";")
+                ]
                 token = token_and_params[0].lower()
                 if not token:
                     continue

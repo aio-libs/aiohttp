@@ -514,7 +514,9 @@ async def test_valid_token_still_matched() -> None:
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_q_zero_not_selected() -> None:
-    req = make_request("GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip;q=0"}))
+    req = make_request(
+        "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip;q=0"})
+    )
     resp = web.StreamResponse()
     resp.enable_compression()
 
