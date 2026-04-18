@@ -774,7 +774,7 @@ class TestMultipartReader:
         assert isinstance(res, CustomReader)
 
     async def test_emit_next(self) -> None:
-        h = HeaderDictProxy(
+        h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: 'multipart/related;boundary=":"'})
         )
         with Stream(b"--:\r\n\r\necho\r\n--:--") as stream:
