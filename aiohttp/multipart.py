@@ -22,7 +22,14 @@ from .hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from .helpers import CHAR, DEFAULT_CHUNK_SIZE, TOKEN, HeadersDictProxy, parse_mimetype, reify
+from .helpers import (
+    CHAR,
+    DEFAULT_CHUNK_SIZE,
+    TOKEN,
+    HeadersDictProxy,
+    parse_mimetype,
+    reify,
+)
 from .http import HeadersParser
 from .http_exceptions import BadHttpMessage
 from .log import internal_logger
