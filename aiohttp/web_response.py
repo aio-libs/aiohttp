@@ -343,9 +343,30 @@ class StreamResponse(
             return
         # Encoding comparisons should be case-insensitive
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
-        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
+        accepted_codings = set()
+        for header_value in request.headers.getall(hdrs.ACCEPT_ENCODING, ()):
+            for coding_part in header_value.split(","):
+                token_and_params = [
+                    part.strip(" \t") for part in coding_part.split(";")
+                ]
+                token = token_and_params[0].lower()
+                if not token:
+                    continue
+                qvalue = 1.0
+                for param in token_and_params[1:]:
+                    if not param:
+                        continue
+                    key, sep, value = param.partition("=")
+                    if key.strip(" \t").lower() == "q" and sep:
+                        try:
+                            qvalue = float(value)
+                        except ValueError:
+                            qvalue = 0.0
+                        break
+                if qvalue > 0:
+                    accepted_codings.add(token)
         for value, coding in CONTENT_CODINGS.items():
-            if value in accept_encoding:
+            if value in accepted_codings:
                 await self._do_start_compression(coding)
                 return
 
