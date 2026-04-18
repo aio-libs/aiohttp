@@ -678,6 +678,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Returns bytes object with full request content.
         """
         if self._read_bytes is None:
+            # Raise the buffer limits so compressed payloads decompress in
+            # larger chunks instead of many small pause/resume cycles.
+            if self._client_max_size:
+                self._payload.set_read_chunk_size(self._client_max_size)
             body = bytearray()
             while True:
                 chunk = await self._payload.readany()
