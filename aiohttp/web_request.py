@@ -311,12 +311,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         """
         elems = []
         for field_value in self._message.headers.getall(hdrs.FORWARDED):
-            length = len(field_value)
             pos = 0
-            need_separator = False
             elem: dict[str, str] = {}
             elems.append(types.MappingProxyType(elem))
-            while 0 <= pos < length:
+            while 0 <= pos < len(field_value):
                 match = _FORWARDED_PAIR_RE.match(field_value, pos)
                 if match is not None:  # got a valid forwarded-pair
                     name, value, port = match.groups()
