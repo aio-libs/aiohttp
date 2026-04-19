@@ -67,9 +67,7 @@ def connector(
 
 
 @pytest.fixture
-def create_session(
-    event_loop: asyncio.AbstractEventLoop,
-) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
+async def create_session() -> Iterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
 
     async def maker(*args: Any, **kwargs: Any) -> ClientSession:
@@ -79,15 +77,12 @@ def create_session(
 
     yield maker
     if session is not None:
-        event_loop.run_until_complete(session.close())
+        await session.close()
 
 
 @pytest.fixture
-def session(
-    create_session: Callable[..., Awaitable[ClientSession]],
-    event_loop: asyncio.AbstractEventLoop,
-) -> ClientSession:
-    return event_loop.run_until_complete(create_session())
+def session(create_session: Callable[..., Awaitable[ClientSession]]) -> ClientSession:
+    return await create_session()
 
 
 @pytest.fixture
