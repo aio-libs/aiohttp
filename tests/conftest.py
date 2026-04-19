@@ -2,7 +2,6 @@ from __future__ import annotations  # TODO(PY311): Remove
 
 import asyncio
 import base64
-import gc
 import os
 import platform
 import socket

@@ -6,7 +6,7 @@ import os
 import socket
 import sys
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, overload
 from unittest import IsolatedAsyncioTestCase, mock

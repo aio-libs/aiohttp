@@ -94,7 +94,7 @@ def parser(
     server: Server[Request],
     request: pytest.FixtureRequest,
 ) -> Iterator[HttpRequestParser]:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     # Parser implementations
     parser = request.param(
@@ -122,7 +122,7 @@ def response(
     event_loop: asyncio.AbstractEventLoop,
     request: pytest.FixtureRequest,
 ) -> HttpResponseParser:
-    protocol = ResponseHandler(loop)
+    protocol = ResponseHandler(event_loop)
 
     # Parser implementations
     parser = request.param(
@@ -196,7 +196,7 @@ def test_invalid_character(
     server: Server[Request],
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     parser = HttpRequestParserC(
         protocol,
@@ -221,7 +221,7 @@ def test_invalid_linebreak(
     server: Server[Request],
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     parser = HttpRequestParserC(
         protocol,
@@ -297,7 +297,7 @@ def test_ctl_host_header_bad_characters(parser: HttpRequestParser) -> None:
 def test_unpaired_surrogate_in_header_py(
     event_loop: asyncio.AbstractEventLoop, server: Server[Request]
 ) -> None:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     parser = HttpRequestParserPy(
         protocol,
@@ -1718,7 +1718,7 @@ async def test_http_response_parser_bad_chunked_lax(
 
 @pytest.mark.dev_mode
 async def test_http_response_parser_bad_chunked_strict_py() -> None:
-    protocol = ResponseHandler(loop)
+    protocol = ResponseHandler(asyncio.get_running_loop())
 
     response = HttpResponseParserPy(
         protocol,
@@ -1741,7 +1741,7 @@ async def test_http_response_parser_bad_chunked_strict_py() -> None:
     reason="C based HTTP parser not available",
 )
 async def test_http_response_parser_bad_chunked_strict_c() -> None:
-    protocol = ResponseHandler(loop)
+    protocol = ResponseHandler(asyncio.get_running_loop())
 
     response = HttpResponseParserC(
         protocol,
@@ -2184,7 +2184,7 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
 def test_parse_bad_method_for_c_parser_raises(
     event_loop: asyncio.AbstractEventLoop, server: Server[Request]
 ) -> None:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(
