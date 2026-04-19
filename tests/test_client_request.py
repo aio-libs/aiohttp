@@ -27,7 +27,7 @@ from aiohttp.client_reqrep import (
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
 from aiohttp.hdrs import METH_DELETE
-from aiohttp.helpers import TimerNoop
+from aiohttp.helpers import HeadersDictProxy, TimerNoop
 from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
 
@@ -1716,7 +1716,7 @@ async def test_custom_req_rep(
             conn = connection
             self.status = 123
             self.reason = "Test OK"
-            self._headers = CIMultiDictProxy(CIMultiDict())
+            self._headers = HeadersDictProxy(CIMultiDict())
             self.cookies = SimpleCookie()
             return self
 

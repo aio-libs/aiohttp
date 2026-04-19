@@ -16,7 +16,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
 from aiohttp.abc import AbstractStreamWriter
-from aiohttp.helpers import ETag
+from aiohttp.helpers import ETag, HeadersDictProxy
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
 from aiohttp.payload import BytesPayload, StringPayload
@@ -1176,7 +1176,7 @@ class CustomIO(io.IOBase):
         (io.BytesIO(b"test"), "test"),
         (io.BufferedReader(io.BytesIO(b"test")), "test"),
         (async_iter(), None),
-        (BodyPartReader(b"x", CIMultiDictProxy(CIMultiDict()), mock.Mock()), None),
+        (BodyPartReader(b"x", HeadersDictProxy(CIMultiDict()), mock.Mock()), None),
         (
             mpwriter,
             "--x\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 4\r\n\r\ntest",

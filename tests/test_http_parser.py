@@ -19,7 +19,7 @@ import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
 from aiohttp.http_parser import (
     DeflateBuffer,
     HeadersParser,
@@ -261,6 +261,72 @@ def test_bad_header_name(
 
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
+    ("hdr_vals", "expected"),
+    (
+        (
+            ('"http://example.com/a.html,foo", apples',),
+            ("http://example.com/a.html,foo", "apples"),
+        ),
+        (("bananas, apples",), ("bananas", "apples")),
+        (("bananas", "apples"), ("bananas", "apples")),
+        (
+            ('"http://example.com/a.html,foo", "apples"',),
+            ("http://example.com/a.html,foo", "apples"),
+        ),
+        (
+            ('"Sat, 04 May 1996", "Wed, 14 Sep 2005"',),
+            ("Sat, 04 May 1996", "Wed, 14 Sep 2005"),
+        ),
+        (("foo,bar,baz",), ("foo", "bar", "baz")),
+        (('"applebanna, this',), ('"applebanna', "this")),
+        (('fooo", "bar"',), ('fooo"', "bar")),
+        ((" spam , eggs ",), ("spam", "eggs")),
+        ((" spam ", " eggs "), ("spam", "eggs")),
+        ((r'spam"foo\"bar"',), (r'spam"foo\"bar"',)),
+        # https://www.rfc-editor.org/rfc/rfc9110.html#name-recipient-requirements
+        (("foo, ,bar,",), ("foo", "bar")),
+        ((",   , ",), ()),
+        (("",), ()),
+        # Escaped characters in quoted strings
+        # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.4-3
+        ((r'"foo\"bar"',), ('foo"bar',)),
+        ((r'"foo\\\"bar"',), (r"foo\"bar",)),
+        ((r'"foo\\", bar',), ("foo\\", "bar")),
+        # Comments: https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.5
+        ((r"foo (bar\"spam\)eggs,\\baz)",), (r'foo (bar"spam)eggs,\baz)',)),
+        # Not a comment (requires whitespace)
+        (("foo(bar,spam)",), ("foo(bar", "spam)")),
+        # Parameters: https://www.rfc-editor.org/rfc/rfc9110.html#section-5.6.6
+        (("text/html;charset=utf-8",), ("text/html;charset=utf-8",)),
+        (('Text/HTML; Charset="utf-8"',), ('Text/HTML; Charset="utf-8"',)),
+        (
+            ("text/plain; q=0.5, text/html, text/x-dvi; q=0.8; format=flowed, */*",),
+            (
+                "text/plain; q=0.5",
+                "text/html",
+                "text/x-dvi; q=0.8; format=flowed",
+                "*/*",
+            ),
+        ),
+        ((r'foo; bar="spam,\"eggs", baz',), ('foo; bar="spam,"eggs"', "baz")),
+        ((r'foo;bar="spam\\\",eggs",baz',), ('foo;bar="spam\\",eggs"', "baz")),
+        # Not valid parameters
+        (('foo; bar ="spam,eggs"',), ('foo; bar ="spam', 'eggs"')),
+        (('foo;bar= "spam,eggs"',), ('foo;bar= "spam', 'eggs"')),
+    ),
+)
+def test_list_headers(
+    parser: HttpRequestParser, hdr_vals: tuple[str], expected: tuple[str, ...]
+) -> None:
+    headers = "\r\n".join(f"Foo: {v}" for v in hdr_vals)
+    text = f"POST / HTTP/1.1\r\nHost: a\r\n{headers}\r\n\r\n".encode()
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.headers.getall("Foo") == expected
 
 
 @pytest.mark.parametrize(
@@ -597,11 +663,10 @@ def test_parse_headers_multi(parser: HttpRequestParser) -> None:
     assert len(messages) == 1
     msg = messages[0][0]
 
-    assert list(msg.headers.items()) == [
+    assert tuple(msg.headers.items()) == (
         ("Host", "a"),
-        ("Set-Cookie", "c1=cookie1"),
-        ("Set-Cookie", "c2=cookie2"),
-    ]
+        ("Set-Cookie", "c1=cookie1, c2=cookie2"),
+    )
     assert msg.raw_headers == (
         (b"Host", b"a"),
         (b"Set-Cookie", b"c1=cookie1"),
@@ -725,6 +790,15 @@ def test_request_te_chunked_with_content_length(parser: HttpRequestParser) -> No
 
 def test_request_te_chunked123(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ntransfer-encoding: chunked123\r\n\r\n"
+    with pytest.raises(
+        http_exceptions.BadHttpMessage,
+        match="Request has invalid `Transfer-Encoding`",
+    ):
+        parser.feed_data(text)
+
+
+def test_request_te_empty_list_invalid(parser: HttpRequestParser) -> None:
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: ,  \t ,\r\n\r\n"
     with pytest.raises(
         http_exceptions.BadHttpMessage,
         match="Request has invalid `Transfer-Encoding`",
@@ -1773,6 +1847,16 @@ async def test_http_response_parser_notchunked(
     assert await messages[0][1].read() == b"1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
 
 
+async def test_http_response_parser_empty_list_te_not_chunked(
+    response: HttpResponseParser,
+) -> None:
+    text = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: ,  \t ,\r\n\r\nbody"
+    messages, upgrade, tail = response.feed_data(text)
+    response.feed_eof()
+
+    assert await messages[0][1].read() == b"body"
+
+
 async def test_http_response_parser_last_chunked(
     response: HttpResponseParser,
 ) -> None:
@@ -1956,11 +2040,7 @@ def test_parse_content_length_payload_multiple(response: HttpResponseParser) -> 
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == 200
     assert msg.reason == "OK"
-    assert msg.headers == CIMultiDict(
-        [
-            ("Content-Length", "5"),
-        ]
-    )
+    assert msg.headers == HeadersDictProxy(CIMultiDict([("Content-Length", "5")]))
     assert msg.raw_headers == ((b"content-length", b"5"),)
     assert not msg.should_close
     assert msg.compression is None
@@ -1996,11 +2076,7 @@ def test_parse_content_length_than_chunked_payload(
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == 200
     assert msg.reason == "OK"
-    assert msg.headers == CIMultiDict(
-        [
-            ("Content-Length", "5"),
-        ]
-    )
+    assert msg.headers == HeadersDictProxy(CIMultiDict([("Content-Length", "5")]))
     assert msg.raw_headers == ((b"content-length", b"5"),)
     assert not msg.should_close
     assert msg.compression is None
@@ -2042,10 +2118,8 @@ def test_parse_chunked_payload_empty_body_than_another_chunked(
     assert msg.version == HttpVersion(major=1, minor=1)
     assert msg.code == code
     assert msg.reason == "OK"
-    assert msg.headers == CIMultiDict(
-        [
-            ("Transfer-Encoding", "chunked"),
-        ]
+    assert msg.headers == HeadersDictProxy(
+        CIMultiDict([("Transfer-Encoding", "chunked")])
     )
     assert msg.raw_headers == ((b"transfer-encoding", b"chunked"),)
     assert not msg.should_close

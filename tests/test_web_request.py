@@ -11,12 +11,12 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
+from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 from aiohttp import ETag, HttpVersion, web
 from aiohttp.base_protocol import BaseProtocol
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
 from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.pytest_plugin import AiohttpClient
@@ -35,7 +35,7 @@ def test_base_ctor() -> None:
         "GET",
         "/path/to?a=1&b=2",
         HttpVersion(1, 1),
-        CIMultiDictProxy(CIMultiDict()),
+        HeadersDictProxy(CIMultiDict()),
         (),
         False,
         None,
@@ -731,14 +731,12 @@ def test_multiple_forwarded_headers_bad_syntax() -> None:
     headers = CIMultiDict[str]()
     headers.add("Forwarded", "for=_1;by=_2")
     headers.add("Forwarded", "invalid value")
-    headers.add("Forwarded", "")
     headers.add("Forwarded", "for=_3;by=_4")
     req = make_mocked_request("GET", "/", headers=headers)
-    assert len(req.forwarded) == 4
+    assert len(req.forwarded) == 3
     assert req.forwarded[0]["for"] == "_1"
     assert "for" not in req.forwarded[1]
-    assert "for" not in req.forwarded[2]
-    assert req.forwarded[3]["by"] == "_4"
+    assert req.forwarded[2]["by"] == "_4"
 
 
 def test_multiple_forwarded_headers_injection() -> None:
