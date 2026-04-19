@@ -105,9 +105,9 @@ class FakeAIODNSAddrInfoIPv6Result:
 
 
 class FakeAIODNSNameInfoIPv6Result:
-    def __init__(self, host: str) -> None:
+    def __init__(self, host: str, service: str = "0") -> None:
         self.node = host
-        self.service = None
+        self.service = service
 
 
 async def fake_aiodns_getaddrinfo_ipv4_result(
@@ -123,9 +123,9 @@ async def fake_aiodns_getaddrinfo_ipv6_result(
 
 
 async def fake_aiodns_getnameinfo_ipv6_result(
-    host: str,
+    host: str, service: str = "0"
 ) -> FakeAIODNSNameInfoIPv6Result:
-    return FakeAIODNSNameInfoIPv6Result(host)
+    return FakeAIODNSNameInfoIPv6Result(host, service=service)
 
 
 def fake_addrinfo(hosts: Collection[str]) -> Callable[..., Awaitable[_AddrInfo4]]:
@@ -209,6 +209,27 @@ async def test_async_resolver_positive_link_local_ipv6_lookup(
             type=socket.SOCK_STREAM,
         )
         mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
+        assert real[0]["port"] == 0
+        await resolver.close()
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_link_local_ipv6_port_from_getnameinfo(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Ensure the port is correctly extracted from getnameinfo for link-local IPv6."""
+    with patch("aiodns.DNSResolver") as mock:
+        mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(
+            ["fe80::1"]
+        )
+        mock().getnameinfo.return_value = fake_aiodns_getnameinfo_ipv6_result(
+            "fe80::1%eth0", service="8080"
+        )
+        resolver = AsyncResolver()
+        real = await resolver.resolve("www.python.org")
+        assert real[0]["port"] == 8080
+        assert real[0]["host"] == "fe80::1%eth0"
         await resolver.close()
 
 
@@ -397,6 +418,22 @@ async def test_async_resolver_error_messages_passed(
             await resolver.resolve("x.org")
 
         assert excinfo.value.strerror == "Test error message"
+        await resolver.close()
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_error_single_arg_dns_error(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Ensure DNSError with a single arg does not cause IndexError."""
+    with patch("aiodns.DNSResolver", autospec=True, spec_set=True) as mock:
+        mock().getaddrinfo.side_effect = aiodns.error.DNSError(1)
+        resolver = AsyncResolver()
+        with pytest.raises(OSError, match="DNS lookup failed") as excinfo:
+            await resolver.resolve("x.org")
+
+        assert excinfo.value.strerror == "DNS lookup failed"
         await resolver.close()
 
 
