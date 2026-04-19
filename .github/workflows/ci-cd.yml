@@ -237,7 +237,7 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml --numprocesses=auto --cov=aiohttp/ --cov=tests/
+        pytest --junitxml=junit.xml -cov=aiohttp/ --cov=tests/
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
@@ -463,7 +463,7 @@ jobs:
         PIP_USER: 1
       run: >-
         pytest tests/test_client_functional.py tests/test_http_parser.py tests/test_http_writer.py tests/test_web_functional.py tests/test_web_response.py tests/test_websocket_parser.py
-        --cov-config=.coveragerc-cython.toml --cov=aiohttp/ --cov=tests/ --numprocesses=auto
+        --cov-config=.coveragerc-cython.toml --cov=aiohttp/ --cov=tests/
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Turn coverage into xml
