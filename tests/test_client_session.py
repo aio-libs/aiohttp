@@ -81,7 +81,9 @@ async def create_session() -> Iterator[Callable[..., Awaitable[ClientSession]]]:
 
 
 @pytest.fixture
-async def session(create_session: Callable[..., Awaitable[ClientSession]]) -> ClientSession:
+async def session(
+    create_session: Callable[..., Awaitable[ClientSession]],
+) -> ClientSession:
     return await create_session()
 
 
