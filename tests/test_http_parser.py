@@ -285,6 +285,7 @@ def test_bad_header_name(
         (('fooo", "bar"',), ('fooo"', "bar")),
         ((" spam , eggs ",), ("spam", "eggs")),
         ((" spam ", " eggs "), ("spam", "eggs")),
+        ((r'spam"foo\"bar"',), (r'spam"foo\"bar"',)),
         # https://www.rfc-editor.org/rfc/rfc9110.html#name-recipient-requirements
         (("foo, ,bar,",), ("foo", "bar")),
         ((",   , ",), ()),

@@ -72,7 +72,37 @@ __all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "
 # https://github.com/python/cpython/blob/1857a40807daeae3a1bf5efb682de9c9ae6df845/Lib/asyncio/selector_events.py#L766
 DEFAULT_CHUNK_SIZE = 2**18  # 256 KiB
 COOKIE_MAX_LENGTH = 4096
-QUOTEHDRRE = re.compile(r'(".*?(?:[^\\]"))[ \t]*(?:,|$)')
+_QUOTED_PAIR_SUB = re.compile(r"\\(.)")
+_QUOTED_STRING = r'"(?:[^"\\]|\\.)*"'
+_ESCAPED_COMMENT = r"(?:[^()\\]|\\.)*"
+# Matches one element in a comma-separated header list.
+# Group 1: content of a top-level quoted-string (quotes stripped).
+# Group 2: an unquoted element (may contain parameter quoted-strings / comments).
+_LIST_ELEMENT_RE = re.compile(
+    rf"""
+    [ \t]*
+    (?:
+      "( (?:[^"\\]|\\.)* )"  # group 1: top-level quoted-string
+      | (  # group 2: unquoted element
+          (?:
+            (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted value
+            | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
+            | [^,]  # any non-comma character
+          )+?
+        )
+    )
+    [ \t]* (?:,|\Z)
+    """,
+    re.VERBOSE,
+)
+# Finds parameter quoted-strings and comments inside an unquoted element for unescaping.
+_PROTECTED_RE = re.compile(
+    rf"""
+    (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted-string
+    | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
+    """,
+    re.VERBOSE,
+)
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -763,23 +793,18 @@ class HeadersDictProxy(Mapping[str, str]):
         return self._split_on_commas(self.get(key, ""))
 
     def _split_on_commas(self, val: str) -> tuple[str, ...]:
+        unescape = _QUOTED_PAIR_SUB.sub
         values = []
-        while val:
-            quoted = re.match(QUOTEHDRRE, val)
-            if quoted:
-                values.append(quoted.group(1)[1:-1])
-                val = val[len(quoted.group()) :].lstrip()
+        for m in _LIST_ELEMENT_RE.finditer(val):
+            qs = m.group(1)
+            if qs is not None:
+                values.append(unescape(r"\1", qs))
             else:
-                try:
-                    h, val = val.split(",", maxsplit=1)
-                except ValueError:
-                    h = val
-                    val = ""
-                val = val.lstrip()
-                h = h.rstrip()
-                if h:
-                    values.append(h)
-
+                raw = m.group(2).strip()
+                if raw:
+                    values.append(
+                        _PROTECTED_RE.sub(lambda p: unescape(r"\1", p.group()), raw)
+                    )
         return tuple(values)
 
     def __eq__(self, other: object) -> bool:
