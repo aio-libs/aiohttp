@@ -506,7 +506,7 @@ def test_ten_streamed_responses_iter_chunked_1mb(
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_ten_compressed_responses_iter_chunked_1mb(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -531,7 +531,7 @@ def test_ten_compressed_responses_iter_chunked_1mb(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())
 
 
 def test_ten_streamed_responses_iter_chunks(

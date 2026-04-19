@@ -12,7 +12,7 @@ from aiohttp import web
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_read_compressed_post_body(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -39,4 +39,4 @@ def test_read_compressed_post_body(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_benchmark())
+        event_loop.run_until_complete(run_benchmark())
