@@ -1564,9 +1564,7 @@ def test_response_duplicate_cookie_names(
     assert response.cookies["user-pref"].value == "light"  # Last one wins
 
 
-def test_response_raw_cookie_headers_preserved(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_response_raw_cookie_headers_preserved(session: ClientSession) -> None:
     """Test that raw Set-Cookie headers are preserved in _raw_cookie_headers."""
     url = URL("http://example.com")
     response = ClientResponse(
@@ -1576,7 +1574,7 @@ def test_response_raw_cookie_headers_preserved(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1588,21 +1586,37 @@ def test_response_raw_cookie_headers_preserved(
         "session-id=456; Domain=.www.example.com; Path=/",
         "tracking=xyz; Domain=.example.com; Path=/; HttpOnly",
     )
+    md = CIMultiDict[str]()
+    for c in cookie_headers:
+        md.add("Set-Cookie", c)
+    raw_hdrs = tuple((k.encode(), v.encode()) for k, v in md.items())
 
-    headers = {"Set-Cookie": ", ".join(cookie_headers)}
-    response._headers = HeadersDictProxy(CIMultiDict(headers))
+    message = http.RawResponseMessage(
+        version=http.HttpVersion11,
+        code=200,
+        reason="OK",
+        headers=HeadersDictProxy(md),
+        raw_headers=raw_hdrs,
+        should_close=False,
+        compression=None,
+        upgrade=False,
+        chunked=False,
+    )
+    payload = mock.create_autospec(aiohttp.StreamReader, spec_set=True, instance=True)
 
-    # Set raw cookie headers as done in ClientResponse.start()
-    response._raw_cookie_headers = cookie_headers
+    connection = mock.create_autospec(Connection, spec_set=True, instance=True)
+    connection.protocol = aiohttp.DataQueue(asyncio.get_running_loop())
+    connection.protocol.feed_data((message, payload))
 
-    # TODO: This test asserts the value set is the value set, why are we doing this...?
+    await response.start(connection)
 
     # Verify raw headers are preserved
-    assert response._raw_cookie_headers == tuple(cookie_headers)
-    assert len(response._raw_cookie_headers) == 3
+    assert response._raw_cookie_headers == cookie_headers
 
     # But SimpleCookie only has unique names
-    assert len(response.cookies) == 2  # 'session-id' and 'tracking'
+    assert len(response.cookies) == 2
+    assert "session-id" in response.cookies
+    assert "tracking" in response.cookies
 
 
 def test_response_cookies_setter_updates_raw_headers(
