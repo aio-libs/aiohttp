@@ -92,7 +92,9 @@ _QDTEXT: Final[str] = r"[{}]".format(
 # qdtext excludes obs-text (because obsoleted, and encoding not specified)
 
 # This does not have a ReDOS/performance concern as long as it used with re.match().
-_FORWARDED_PAIR: Final[str] = rf'[ \t]*({_TOKEN})=({_TOKEN}|".*")(:\d{{1,4}})?[ \t]*(?:\Z|;)'
+_FORWARDED_PAIR: Final[str] = (
+    rf'[ \t]*({_TOKEN})=({_TOKEN}|".*")(:\d{{1,4}})?[ \t]*(?:\Z|;)'
+)
 _FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 
 ############################################################
@@ -324,7 +326,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         value += port
                     elem[name.lower()] = value
                     pos += len(match.group(0))
-                elif not field_value[pos:field_value.find(";", pos)].strip(" \t"):
+                elif not field_value[pos : field_value.find(";", pos)].strip(" \t"):
                     # Empty value
                     pos = field_value.find(";", pos) + 1
                 else:
