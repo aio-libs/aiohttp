@@ -74,7 +74,7 @@ jobs:
       with:
         python-version: 3.11
     - name: Cache PyPI
-      uses: actions/cache@v5.0.4
+      uses: actions/cache@v5.0.5
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -132,7 +132,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v5.0.4
+      uses: actions/cache@v5.0.5
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
@@ -199,7 +199,7 @@ jobs:
         echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
       shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v5.0.4
+      uses: actions/cache@v5.0.5
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -237,7 +237,8 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml -m 'not dev_mode and not autobahn'
+        pytest --junitxml=junit.xml --numprocesses=auto --cov=aiohttp/ --cov=tests/
+        -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
@@ -245,7 +246,7 @@ jobs:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: >-  # `exit 1` makes sure that the job remains red with flaky runs
-        pytest --no-cov --numprocesses=0 -vvvvv --lf && exit 1
+        pytest --no-cov -vvvvv --lf && exit 1
       shell: bash
     - name: Run dev_mode tests
       env:
@@ -253,7 +254,7 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
         PYTHONDEVMODE: 1
-      run: pytest -m dev_mode --cov-append --numprocesses=0
+      run: pytest -m dev_mode --cov=aiohttp/ --cov=tests/ --cov-append
       shell: bash
     - name: Turn coverage into xml
       env:
@@ -262,7 +263,7 @@ jobs:
       run: |
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         files: ./coverage.xml
         flags: >-
@@ -310,7 +311,7 @@ jobs:
         echo "dir=$(pip cache dir)" >> "${GITHUB_OUTPUT}"
       shell: bash
     - name: Cache PyPI
-      uses: actions/cache@v5.0.4
+      uses: actions/cache@v5.0.5
       with:
         key: pip-ci-${{ runner.os }}-${{ matrix.pyver }}-${{ matrix.no-extensions }}-${{ hashFiles('requirements/*.txt') }}
         path: ${{ steps.pip-cache.outputs.dir }}
@@ -345,7 +346,7 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml --numprocesses=0 -m autobahn
+        pytest --junitxml=junit.xml --cov=aiohttp/ --cov=tests/ -m autobahn
       shell: bash
     - name: Turn coverage into xml
       env:
@@ -354,7 +355,7 @@ jobs:
       run: |
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         files: ./coverage.xml
         flags: >-
@@ -413,8 +414,69 @@ jobs:
       uses: CodSpeedHQ/action@v4
       with:
         mode: instrumentation
-        run: python -Im pytest --no-cov --numprocesses=0 -vvvvv --codspeed
+        run: python -Im pytest --no-cov -vvvvv --codspeed
 
+
+  cython-coverage:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
+    name: Cython coverage
+    needs: gen_llhttp
+    strategy:
+      matrix:
+        os: [ubuntu, windows]
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        submodules: true
+    - name: Setup Python
+      id: python-install
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.12'
+    - name: Update pip, wheel, setuptools, build, twine
+      run: |
+        python -m pip install -U pip wheel setuptools build twine
+    - name: Install dependencies
+      run: |
+        python -Im pip install -r requirements/test.in -c requirements/test.txt
+    - name: Uninstall blocbuster
+      run: python -m pip uninstall blockbuster -y
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v8
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
+    - name: Cythonize with linetrace
+      run: |
+        make cythonize CYTHON_EXTRA="-X linetrace=True"
+    - name: Install self
+      env:
+        AIOHTTP_CYTHON_TRACE: 1
+      run: python -m pip install -e .
+    - name: Run tests with Cython tracing
+      env:
+        COLOR: yes
+        PIP_USER: 1
+      run: >-
+        pytest tests/test_client_functional.py tests/test_http_parser.py tests/test_http_writer.py tests/test_web_functional.py tests/test_web_response.py tests/test_websocket_parser.py
+        --cov-config=.coveragerc-cython.toml --cov=aiohttp/ --cov=tests/ --numprocesses=auto
+        -m 'not dev_mode and not autobahn'
+      shell: bash
+    - name: Turn coverage into xml
+      run: |
+        python -m coverage xml -o cython-coverage.xml --rcfile=.coveragerc-cython.toml
+    - name: Upload coverage
+      uses: codecov/codecov-action@v6
+      with:
+        files: ./cython-coverage.xml
+        disable_search: true
+        flags: cython-coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
@@ -432,7 +494,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Trigger codecov notification
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
@@ -573,7 +635,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v3.4.0
+      uses: pypa/cibuildwheel@v3.4.1
       env:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
@@ -641,7 +703,7 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v3.2.0
+      uses: sigstore/gh-action-sigstore-python@v3.3.0
       with:
         inputs: >-
           ./dist/*.tar.gz

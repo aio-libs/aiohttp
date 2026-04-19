@@ -2,10 +2,20 @@ import abc
 import asyncio
 import re
 import string
+import sys
 from contextlib import suppress
 from enum import IntEnum
 from re import Pattern
-from typing import Any, ClassVar, Final, Generic, Literal, NamedTuple, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Final,
+    Generic,
+    Literal,
+    NamedTuple,
+    TypeVar,
+)
 
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
@@ -13,7 +23,6 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .compression_utils import (
-    DEFAULT_MAX_DECOMPRESS_SIZE,
     HAS_BROTLI,
     HAS_ZSTD,
     BrotliDecompressor,
@@ -23,6 +32,7 @@ from .compression_utils import (
 from .helpers import (
     _EXC_SENTINEL,
     DEBUG,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     EMPTY_BODY_STATUS_CODES,
     NO_EXTENSIONS,
@@ -35,15 +45,17 @@ from .http_exceptions import (
     BadStatusLine,
     ContentEncodingError,
     ContentLengthError,
-    DecompressSizeError,
     InvalidHeader,
     InvalidURLError,
     LineTooLong,
     TransferEncodingError,
 )
-from .http_writer import HttpVersion, HttpVersion10
+from .http_writer import HttpVersion, HttpVersion10, HttpVersion11
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
+
+if TYPE_CHECKING:
+    from .client_proto import ResponseHandler
 
 __all__ = (
     "HeadersParser",
@@ -75,6 +87,26 @@ VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
+# RFC 9110 singleton headers — duplicates are rejected in strict mode.
+# In lax mode (response parser default), the check is skipped entirely
+# since real-world servers (e.g. Google APIs, Werkzeug) commonly send
+# duplicate headers like Content-Type or Server.
+# Lowercased for case-insensitive matching against wire names.
+SINGLETON_HEADERS: Final[frozenset[str]] = frozenset(
+    {
+        "content-length",
+        "content-location",
+        "content-range",
+        "content-type",
+        "etag",
+        "host",
+        "max-forwards",
+        "server",
+        "transfer-encoding",
+        "user-agent",
+    }
+)
+
 
 class RawRequestMessage(NamedTuple):
     method: str
@@ -102,6 +134,12 @@ class RawResponseMessage(NamedTuple):
 
 
 _MsgT = TypeVar("_MsgT", RawRequestMessage, RawResponseMessage)
+
+
+class PayloadState(IntEnum):
+    PAYLOAD_COMPLETE = 0
+    PAYLOAD_NEEDS_INPUT = 1
+    PAYLOAD_HAS_PENDING_INPUT = 2
 
 
 class ParseState(IntEnum):
@@ -194,6 +232,8 @@ class HeadersParser:
             elif _FIELD_VALUE_FORBIDDEN_CTL_RE.search(value):
                 raise InvalidHeader(bvalue)
 
+            if not self._lax and name in headers and name.lower() in SINGLETON_HEADERS:
+                raise BadHttpMessage(f"Duplicate '{name}' header found.")
             headers.add(name, value)
             raw_headers.append((bname, bvalue))
 
@@ -243,6 +283,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._upgraded = False
         self._payload = None
         self._payload_parser: HttpPayloadParser | None = None
+        self._payload_has_more_data = False
         self._auto_decompress = auto_decompress
         self._limit = limit
         self._headers_parser = HeadersParser(max_field_size, self.lax)
@@ -253,10 +294,15 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     @abc.abstractmethod
     def _is_chunked_te(self, te: str) -> bool: ...
 
+    def pause_reading(self) -> None:
+        assert self._payload_parser is not None
+        self._payload_parser.pause_reading()
+
     def feed_eof(self) -> _MsgT | None:
         if self._payload_parser is not None:
             self._payload_parser.feed_eof()
-            self._payload_parser = None
+            if self._payload_parser.done:
+                self._payload_parser = None
         else:
             # try to extract partial message
             if self._tail:
@@ -289,7 +335,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         max_line_length = self.max_line_size
 
         should_close = False
-        while start_pos < data_len:
+        while start_pos < data_len or self._payload_has_more_data:
             # read HTTP message (request/response line + headers), \r\n\r\n
             # and split by lines
             if self._payload_parser is None and not self._upgraded:
@@ -383,6 +429,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 max_line_size=self.max_line_size,
                                 max_field_size=self.max_field_size,
                                 max_trailers=max_trailers,
+                                limit=self._limit,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -405,6 +452,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 max_line_size=self.max_line_size,
                                 max_field_size=self.max_field_size,
                                 max_trailers=max_trailers,
+                                limit=self._limit,
                             )
                         elif not empty_body and length is None and self.read_until_eof:
                             payload = StreamReader(
@@ -427,6 +475,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 max_line_size=self.max_line_size,
                                 max_field_size=self.max_field_size,
                                 max_trailers=max_trailers,
+                                limit=self._limit,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -448,11 +497,13 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 break
 
             # feed payload
-            elif data and start_pos < data_len:
+            else:
                 assert not self._lines
                 assert self._payload_parser is not None
                 try:
-                    eof, data = self._payload_parser.feed_data(data[start_pos:], SEP)
+                    payload_state, data = self._payload_parser.feed_data(
+                        data[start_pos:], SEP
+                    )
                 except Exception as underlying_exc:
                     reraised_exc: BaseException = underlying_exc
                     if self.payload_exception is not None:
@@ -464,20 +515,25 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         underlying_exc,
                     )
 
-                    eof = True
+                    payload_state = PayloadState.PAYLOAD_COMPLETE
                     data = b""
                     if isinstance(
                         underlying_exc, (InvalidHeader, TransferEncodingError)
                     ):
                         raise
 
-                if eof:
-                    start_pos = 0
-                    data_len = len(data)
-                    self._payload_parser = None
-                    continue
-            else:
-                break
+                self._payload_has_more_data = (
+                    payload_state == PayloadState.PAYLOAD_HAS_PENDING_INPUT
+                )
+
+                if payload_state is not PayloadState.PAYLOAD_COMPLETE:
+                    # We've either consumed all available data, or we're pausing
+                    # until the reader buffer is freed up.
+                    break
+
+                start_pos = 0
+                data_len = len(data)
+                self._payload_parser = None
 
         if data and start_pos < data_len:
             data = data[start_pos:]
@@ -501,24 +557,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         encoding = None
         upgrade = False
         chunked = False
-
-        # https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
-        # https://www.rfc-editor.org/rfc/rfc9110.html#name-collected-abnf
-        singletons = (
-            hdrs.CONTENT_LENGTH,
-            hdrs.CONTENT_LOCATION,
-            hdrs.CONTENT_RANGE,
-            hdrs.CONTENT_TYPE,
-            hdrs.ETAG,
-            hdrs.HOST,
-            hdrs.MAX_FORWARDS,
-            hdrs.SERVER,
-            hdrs.TRANSFER_ENCODING,
-            hdrs.USER_AGENT,
-        )
-        bad_hdr = next((h for h in singletons if len(headers.getall(h, ())) > 1), None)
-        if bad_hdr is not None:
-            raise BadHttpMessage(f"Duplicate '{bad_hdr}' header found.")
 
         # keep-alive and protocol switching
         # RFC 9110 section 7.6.1 defines Connection as a comma-separated list.
@@ -635,6 +673,9 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             chunked,
         ) = self.parse_headers(lines[1:])
 
+        if version_o == HttpVersion11 and hdrs.HOST not in headers:
+            raise BadHttpMessage("Missing 'Host' header in request.")
+
         if close is None:  # then the headers weren't set in the request
             if version_o <= HttpVersion10:  # HTTP 1.0 must asks to not close
                 close = True
@@ -676,6 +717,8 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
     BadStatusLine could be raised in case of any errors in status line.
     Returns RawResponseMessage.
     """
+
+    protocol: "ResponseHandler"
 
     # Lax mode should only be enabled on response parser.
     lax = not DEBUG
@@ -771,8 +814,10 @@ class HttpPayloadParser:
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_trailers: int = 128,
+        limit: int = DEFAULT_CHUNK_SIZE,
     ) -> None:
         self._length = 0
+        self._paused = False
         self._type = ParseState.PARSE_UNTIL_EOF
         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
         self._chunk_size = 0
@@ -783,13 +828,15 @@ class HttpPayloadParser:
         self._max_line_size = max_line_size
         self._max_field_size = max_field_size
         self._max_trailers = max_trailers
+        self._more_data_available = False
         self._trailer_lines: list[bytes] = []
         self.done = False
+        self._eof_pending = False
 
         # payload decompression wrapper
         if response_with_body and compression and self._auto_decompress:
             real_payload: StreamReader | DeflateBuffer = DeflateBuffer(
-                payload, compression
+                payload, compression, max_decompress_size=limit
             )
         else:
             real_payload = payload
@@ -811,9 +858,20 @@ class HttpPayloadParser:
 
         self.payload = real_payload
 
+    def pause_reading(self) -> None:
+        self._paused = True
+
     def feed_eof(self) -> None:
         if self._type == ParseState.PARSE_UNTIL_EOF:
+            self._eof_pending = True
+            while self._more_data_available:
+                if self._paused:
+                    self._paused = False
+                    return  # Will resume via feed_data(b"") later
+                self._more_data_available = self.payload.feed_data(b"")
             self.payload.feed_eof()
+            self.done = True
+            self._eof_pending = False
         elif self._type == ParseState.PARSE_LENGTH:
             raise ContentLengthError(
                 "Not enough data to satisfy content length header."
@@ -825,32 +883,52 @@ class HttpPayloadParser:
 
     def feed_data(
         self, chunk: bytes, SEP: _SEP = b"\r\n", CHUNK_EXT: bytes = b";"
-    ) -> tuple[bool, bytes]:
+    ) -> tuple[PayloadState, bytes]:
+        """Receive a chunk of data to process.
+
+        Return:
+            PayloadState - The current state of payload processing.
+                           This function may be called with empty bytes after returning
+                           PAYLOAD_HAS_PENDING_INPUT to continue processing after a pause.
+            bytes - If payload is complete, this is the unconsumed bytes intended for the
+                    next message/payload, b"" otherwise.
+        """
         # Read specified amount of bytes
         if self._type == ParseState.PARSE_LENGTH:
+            if self._chunk_tail:
+                chunk = self._chunk_tail + chunk
+                self._chunk_tail = b""
+
             required = self._length
             self._length = max(required - len(chunk), 0)
-            self.payload.feed_data(chunk[:required])
+            self._more_data_available = self.payload.feed_data(chunk[:required])
+            while self._more_data_available:
+                if self._paused:
+                    self._paused = False
+                    self._chunk_tail = chunk[required:]
+                    return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
+                self._more_data_available = self.payload.feed_data(b"")
+
             if self._length == 0:
                 self.payload.feed_eof()
-                return True, chunk[required:]
-
+                return PayloadState.PAYLOAD_COMPLETE, chunk[required:]
         # Chunked transfer encoding parser
         elif self._type == ParseState.PARSE_CHUNKED:
             if self._chunk_tail:
-                # We should never have a tail if we're inside the payload body.
-                assert self._chunk != ChunkState.PARSE_CHUNKED_CHUNK
-                # We should check the length is sane.
-                max_line_length = self._max_line_size
-                if self._chunk == ChunkState.PARSE_TRAILERS:
-                    max_line_length = self._max_field_size
-                if len(self._chunk_tail) > max_line_length:
-                    raise LineTooLong(self._chunk_tail[:100] + b"...", max_line_length)
+                # We should check the length is sane when not processing payload body.
+                if self._chunk != ChunkState.PARSE_CHUNKED_CHUNK:
+                    max_line_length = self._max_line_size
+                    if self._chunk == ChunkState.PARSE_TRAILERS:
+                        max_line_length = self._max_field_size
+                    if len(self._chunk_tail) > max_line_length:
+                        raise LineTooLong(
+                            self._chunk_tail[:100] + b"...", max_line_length
+                        )
 
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
 
-            while chunk:
+            while chunk or self._more_data_available:
                 # read next chunk size
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
                     pos = chunk.find(SEP)
@@ -890,17 +968,26 @@ class HttpPayloadParser:
                             self.payload.begin_http_chunk_receiving()
                     else:
                         self._chunk_tail = chunk
-                        return False, b""
+                        return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
                 # read chunk and feed buffer
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK:
+                    if self._paused:
+                        self._paused = False
+                        self._chunk_tail = chunk
+                        return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
+
                     required = self._chunk_size
                     self._chunk_size = max(required - len(chunk), 0)
-                    self.payload.feed_data(chunk[:required])
+                    self._more_data_available = self.payload.feed_data(chunk[:required])
+                    chunk = chunk[required:]
+
+                    if self._more_data_available:
+                        continue
 
                     if self._chunk_size:
-                        return False, b""
-                    chunk = chunk[required:]
+                        self._paused = False
+                        return PayloadState.PAYLOAD_NEEDS_INPUT, b""
                     self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
                     self.payload.end_http_chunk_receiving()
 
@@ -919,13 +1006,13 @@ class HttpPayloadParser:
                         raise exc
                     else:
                         self._chunk_tail = chunk
-                        return False, b""
+                        return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
                 if self._chunk == ChunkState.PARSE_TRAILERS:
                     pos = chunk.find(SEP)
                     if pos < 0:  # No line found
                         self._chunk_tail = chunk
-                        return False, b""
+                        return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
                     line = chunk[:pos]
                     chunk = chunk[pos + len(SEP) :]
@@ -951,13 +1038,24 @@ class HttpPayloadParser:
                         finally:
                             self._trailer_lines.clear()
                         self.payload.feed_eof()
-                        return True, chunk
+                        return PayloadState.PAYLOAD_COMPLETE, chunk
 
         # Read all bytes until eof
         elif self._type == ParseState.PARSE_UNTIL_EOF:
-            self.payload.feed_data(chunk)
+            self._more_data_available = self.payload.feed_data(chunk)
+            while self._more_data_available:
+                if self._paused:
+                    self._paused = False
+                    return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
+                self._more_data_available = self.payload.feed_data(b"")
 
-        return False, b""
+            if self._eof_pending:
+                self.payload.feed_eof()
+                self.done = True
+                self._eof_pending = False
+                return PayloadState.PAYLOAD_COMPLETE, b""
+
+        return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
 
 class DeflateBuffer:
@@ -967,7 +1065,7 @@ class DeflateBuffer:
         self,
         out: StreamReader,
         encoding: str | None,
-        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        max_decompress_size: int = DEFAULT_CHUNK_SIZE,
     ) -> None:
         self.out = out
         self.size = 0
@@ -1002,10 +1100,8 @@ class DeflateBuffer:
     ) -> None:
         set_exception(self.out, exc, exc_cause)
 
-    def feed_data(self, chunk: bytes) -> None:
-        if not chunk:
-            return
-
+    def feed_data(self, chunk: bytes) -> bool:
+        """Return True if more data is available and this method should be called again with b""."""
         self.size += len(chunk)
         self.out.total_compressed_bytes = self.size
 
@@ -1023,11 +1119,12 @@ class DeflateBuffer:
                 encoding=self.encoding, suppress_deflate_header=True
             )
 
+        low_water = self.out._low_water
+        max_length = (
+            0 if low_water >= sys.maxsize else max(self._max_decompress_size, low_water)
+        )
         try:
-            # Decompress with limit + 1 so we can detect if output exceeds limit
-            chunk = self.decompressor.decompress_sync(
-                chunk, max_length=self._max_decompress_size + 1
-            )
+            chunk = self.decompressor.decompress_sync(chunk, max_length=max_length)
         except Exception:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding
@@ -1035,21 +1132,18 @@ class DeflateBuffer:
 
         self._started_decoding = True
 
-        # Check if decompression limit was exceeded
-        if len(chunk) > self._max_decompress_size:
-            raise DecompressSizeError(
-                "Decompressed data exceeds the configured limit of %d bytes"
-                % self._max_decompress_size
-            )
-
         if chunk:
             self.out.feed_data(chunk)
+        return self.decompressor.data_available
 
     def feed_eof(self) -> None:
         chunk = self.decompressor.flush()
+        # This should never contain data as we defer the call until exhausting
+        # the decompression. If .flush() is returning data, this may indicate a
+        # zip bomb vulnerability as it will decompress all remaining data at once.
+        assert not chunk
 
-        if chunk or self.size > 0:
-            self.out.feed_data(chunk)
+        if self.size > 0:
             # decompressor is not brotli unless encoding is "br"
             if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore[union-attr]
                 raise ContentEncodingError("deflate")

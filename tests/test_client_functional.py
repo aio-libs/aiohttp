@@ -53,8 +53,7 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
-from aiohttp.http_exceptions import DecompressSizeError
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.payload import (
     AsyncIterablePayload,
     BufferedReaderPayload,
@@ -2407,12 +2406,11 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     When a compressed payload expands beyond the configured limit,
     we raise DecompressSizeError.
     """
-    # Create a highly compressible payload that exceeds the decompression limit.
-    # 64MiB of repeated bytes compresses to ~32KB but expands beyond the
-    # 32MiB per-call limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = zlib.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         # Send compressed data with Content-Encoding header
@@ -2427,11 +2425,11 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(brotli is None, reason="brotli is not installed")
@@ -2440,10 +2438,11 @@ async def test_payload_decompress_size_limit_brotli(
 ) -> None:
     """Test that brotli decompression size limit triggers DecompressSizeError."""
     assert brotli is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = brotli.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)
@@ -2457,11 +2456,11 @@ async def test_payload_decompress_size_limit_brotli(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(ZstdCompressor is None, reason="backports.zstd is not installed")
@@ -2470,11 +2469,12 @@ async def test_payload_decompress_size_limit_zstd(
 ) -> None:
     """Test that zstd decompression size limit triggers DecompressSizeError."""
     assert ZstdCompressor is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressor = ZstdCompressor()
     compressed = compressor.compress(original) + compressor.flush()
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)
@@ -2488,11 +2488,11 @@ async def test_payload_decompress_size_limit_zstd(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 async def test_bad_payload_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
@@ -3390,61 +3390,51 @@ def create_server_for_url_and_handler(
 
 
 @pytest.mark.parametrize(
-    ["url_from_s", "url_to_s", "is_drop_header_expected"],
-    [
-        [
-            "http://host1.com/path1",
-            "http://host2.com/path2",
-            True,
-        ],
-        ["http://host1.com/path1", "https://host1.com/path1", False],
-        ["https://host1.com/path1", "http://host1.com/path2", True],
-    ],
+    ("url_from_s", "url_to_s"),
+    (
+        ("http://host1.com/path1", "http://host2.com/path2"),
+        ("http://host1.com/path1", "https://host1.com/path1"),
+        ("https://host1.com/path1", "http://host1.com/path2"),
+        ("http://host1.com/path1", "https://host1.com:9443/path1"),
+    ),
     ids=(
         "entirely different hosts",
         "http -> https",
         "https -> http",
+        "http -> https different port",
     ),
 )
 async def test_drop_auth_on_redirect_to_other_host(
     create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
     url_from_s: str,
     url_to_s: str,
-    is_drop_header_expected: bool,
 ) -> None:
     url_from, url_to = URL(url_from_s), URL(url_to_s)
 
     async def srv_from(request: web.Request) -> NoReturn:
-        assert request.host == url_from.host
+        assert request.host.split(":")[0] == url_from.host
         assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
         raise web.HTTPFound(url_to)
 
     async def srv_to(request: web.Request) -> web.Response:
-        assert request.host == url_to.host
-        if is_drop_header_expected:
-            assert "Authorization" not in request.headers, "Header wasn't dropped"
-            assert "Proxy-Authorization" not in request.headers
-            assert "Cookie" not in request.headers
-        else:
-            assert "Authorization" in request.headers, "Header was dropped"
-            assert "Proxy-Authorization" in request.headers
-            assert "Cookie" in request.headers
+        assert request.host.split(":")[0] == url_to.host
+        assert "Authorization" not in request.headers, "Header wasn't dropped"
+        assert "Proxy-Authorization" not in request.headers
+        assert "Cookie" not in request.headers
         return web.Response()
 
     server_from = await create_server_for_url_and_handler(url_from, srv_from)
     server_to = await create_server_for_url_and_handler(url_to, srv_to)
 
     assert (
-        url_from.host != url_to.host or server_from.scheme != server_to.scheme
-    ), "Invalid test case, host or scheme must differ"
+        url_from.host != url_to.host
+        or server_from.scheme != server_to.scheme
+        or url_from.port != url_to.port
+    ), "Invalid test case, host, scheme, or port must differ"
 
-    protocol_port_map = {
-        "http": 80,
-        "https": 443,
-    }
     etc_hosts = {
-        (url_from.host, protocol_port_map[server_from.scheme]): server_from,
-        (url_to.host, protocol_port_map[server_to.scheme]): server_to,
+        (url_from.host, url_from.port): server_from,
+        (url_to.host, url_to.port): server_to,
     }
 
     class FakeResolver(AbstractResolver):

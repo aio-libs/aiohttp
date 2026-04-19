@@ -1,0 +1,1 @@
+Document and narrow the allowed ``compress`` request values to ``True``/``False``, ``"deflate"``, or ``"gzip"``, and reject unsupported string values.

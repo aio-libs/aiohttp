@@ -12,13 +12,13 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pytest-codspeed
-click==8.3.1
+click==8.3.2
     # via wait-for-it
 coverage==7.13.5
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==46.0.5
+cryptography==46.0.7
     # via trustme
 exceptiongroup==1.3.1
     # via pytest
@@ -34,7 +34,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.8.0 ; python_version < "3.14"
     # via -r requirements/test-common.in
-librt==0.8.0
+librt==0.9.0
     # via mypy
 markdown-it-py==4.0.0
     # via rich
@@ -44,7 +44,7 @@ mypy==1.19.1 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
-packaging==26.0
+packaging==26.1
     # via pytest
 pathspec==1.0.4
     # via mypy
@@ -58,22 +58,22 @@ proxy-py==2.4.10
     # via -r requirements/test-common.in
 pycparser==3.0
     # via cffi
-pydantic==2.12.5
+pydantic==2.13.2
     # via python-on-whales
-pydantic-core==2.41.5
+pydantic-core==2.46.2
     # via pydantic
-pygments==2.19.2
+pygments==2.20.0
     # via
     #   pytest
     #   rich
-pytest==9.0.2
+pytest==9.0.3
     # via
     #   -r requirements/test-common.in
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.3.0
+pytest-codspeed==4.4.0
     # via -r requirements/test-common.in
 pytest-cov==7.1.0
     # via -r requirements/test-common.in
@@ -85,13 +85,13 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.81.0
     # via -r requirements/test-common.in
-rich==14.3.3
+rich==15.0.0
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
 six==1.17.0
     # via python-dateutil
-tomli==2.4.0
+tomli==2.4.1
     # via
     #   coverage
     #   mypy
