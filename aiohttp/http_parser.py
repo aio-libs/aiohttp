@@ -359,9 +359,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         raise LineTooLong(
                             line[:100] + b"...",
                             max_line_length,
-                            "request/status line"
-                            if not self._lines
-                            else "header line",
+                            "request/status line" if not self._lines else "header line",
                         )
 
                     self._lines.append(line)
@@ -936,9 +934,11 @@ class HttpPayloadParser:
                         raise LineTooLong(
                             self._chunk_tail[:100] + b"...",
                             max_line_length,
-                            "chunk size line"
-                            if self._chunk != ChunkState.PARSE_TRAILERS
-                            else "trailer line",
+                            (
+                                "chunk size line"
+                                if self._chunk != ChunkState.PARSE_TRAILERS
+                                else "trailer line"
+                            ),
                         )
 
                 chunk = self._chunk_tail + chunk
