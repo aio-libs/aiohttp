@@ -6,9 +6,9 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 
 from aiohttp import log, web
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
 
 

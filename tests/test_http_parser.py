@@ -90,16 +90,16 @@ def _gen_ids(parsers: Iterable[type[HttpParser[Any]]]) -> list[str]:
 
 @pytest.fixture(params=REQUEST_PARSERS, ids=_gen_ids(REQUEST_PARSERS))
 def parser(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     server: Server[Request],
     request: pytest.FixtureRequest,
 ) -> Iterator[HttpRequestParser]:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     # Parser implementations
     parser = request.param(
         protocol,
-        loop,
+        event_loop,
         DEFAULT_CHUNK_SIZE,
         max_line_size=8190,
         max_headers=128,
@@ -119,15 +119,15 @@ def request_cls(request: pytest.FixtureRequest) -> type[HttpRequestParser]:
 
 @pytest.fixture(params=RESPONSE_PARSERS, ids=_gen_ids(RESPONSE_PARSERS))
 def response(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     request: pytest.FixtureRequest,
 ) -> HttpResponseParser:
-    protocol = ResponseHandler(loop)
+    protocol = ResponseHandler(event_loop)
 
     # Parser implementations
     parser = request.param(
         protocol,
-        loop,
+        event_loop,
         DEFAULT_CHUNK_SIZE,
         max_line_size=8190,
         max_headers=128,
@@ -192,15 +192,15 @@ test2: data\r
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_character(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     server: Server[Request],
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     parser = HttpRequestParserC(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -217,15 +217,15 @@ def test_invalid_character(
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_linebreak(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     server: Server[Request],
     request: pytest.FixtureRequest,
 ) -> None:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     parser = HttpRequestParserC(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -295,13 +295,13 @@ def test_ctl_host_header_bad_characters(parser: HttpRequestParser) -> None:
 
 
 def test_unpaired_surrogate_in_header_py(
-    loop: asyncio.AbstractEventLoop, server: Server[Request]
+    event_loop: asyncio.AbstractEventLoop, server: Server[Request]
 ) -> None:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     parser = HttpRequestParserPy(
         protocol,
-        loop,
+        event_loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -1717,14 +1717,12 @@ async def test_http_response_parser_bad_chunked_lax(
 
 
 @pytest.mark.dev_mode
-async def test_http_response_parser_bad_chunked_strict_py(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
-    protocol = ResponseHandler(loop)
+async def test_http_response_parser_bad_chunked_strict_py() -> None:
+    protocol = ResponseHandler(asyncio.get_running_loop())
 
     response = HttpResponseParserPy(
         protocol,
-        loop,
+        asyncio.get_running_loop(),
         DEFAULT_CHUNK_SIZE,
         max_line_size=8190,
         max_field_size=8190,
@@ -1742,14 +1740,12 @@ async def test_http_response_parser_bad_chunked_strict_py(
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
 )
-async def test_http_response_parser_bad_chunked_strict_c(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
-    protocol = ResponseHandler(loop)
+async def test_http_response_parser_bad_chunked_strict_c() -> None:
+    protocol = ResponseHandler(asyncio.get_running_loop())
 
     response = HttpResponseParserC(
         protocol,
-        loop,
+        asyncio.get_running_loop(),
         2**16,
         max_line_size=8190,
         max_field_size=8190,
@@ -1905,12 +1901,12 @@ async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> 
 
 
 def test_parse_no_length_or_te_on_post(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     server: Server[Request],
     request_cls: type[HttpRequestParser],
 ) -> None:
-    protocol = RequestHandler(server, loop=loop)
-    parser = request_cls(protocol, loop, limit=DEFAULT_CHUNK_SIZE)
+    protocol = RequestHandler(server, loop=event_loop)
+    parser = request_cls(protocol, event_loop, limit=DEFAULT_CHUNK_SIZE)
     protocol._parser = parser
     text = b"POST /test HTTP/1.1\r\nHost: a\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
@@ -1919,11 +1915,11 @@ def test_parse_no_length_or_te_on_post(
 
 
 def test_parse_payload_response_without_body(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     response_cls: type[HttpResponseParser],
 ) -> None:
-    protocol = ResponseHandler(loop)
-    parser = response_cls(protocol, loop, 2**16, response_with_body=False)
+    protocol = ResponseHandler(event_loop)
+    parser = response_cls(protocol, event_loop, 2**16, response_with_body=False)
     protocol._parser = parser
     text = b"HTTP/1.1 200 Ok\r\ncontent-length: 10\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
@@ -2186,14 +2182,14 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     reason="C based HTTP parser not available",
 )
 def test_parse_bad_method_for_c_parser_raises(
-    loop: asyncio.AbstractEventLoop, server: Server[Request]
+    event_loop: asyncio.AbstractEventLoop, server: Server[Request]
 ) -> None:
-    protocol = RequestHandler(server, loop=loop)
+    protocol = RequestHandler(server, loop=event_loop)
 
     payload = b"GET1 /test HTTP/1.1\r\n\r\n"
     parser = HttpRequestParserC(
         protocol,
-        loop,
+        event_loop,
         DEFAULT_CHUNK_SIZE,
         max_line_size=8190,
         max_headers=128,

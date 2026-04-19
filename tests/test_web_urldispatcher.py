@@ -10,9 +10,9 @@ from typing import Any, NoReturn
 
 import pytest
 import yarl
+from pytest_aiohttp import AiohttpClient
 
 from aiohttp import web
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.web_urldispatcher import Resource, SystemRoute
 
 

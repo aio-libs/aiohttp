@@ -9,7 +9,11 @@ aiodns==4.0.0
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
-    # via -r requirements/runtime-deps.in
+    # via
+    #   -r requirements/runtime-deps.in
+    #   aiohttp
+aiohttp==3.11.18
+    # via pytest-aiohttp
 aiohttp-theme==0.1.7
     # via -r requirements/doc.in
 aiosignal==1.4.0
@@ -21,6 +25,7 @@ annotated-types==0.7.0
 async-timeout==5.0.1 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   valkey
 babel==2.18.0
     # via sphinx
@@ -80,6 +85,7 @@ freezegun==1.5.5
 frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   aiosignal
 gunicorn==25.3.0
     # via -r requirements/base.in
@@ -113,6 +119,7 @@ mdurl==0.1.2
 multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   yarl
 mypy==1.19.1 ; implementation_name == "cpython"
     # via
@@ -148,6 +155,7 @@ pre-commit==4.5.1
 propcache==0.4.1
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   yarl
 proxy-py==2.4.10
     # via
@@ -174,10 +182,18 @@ pytest==9.0.3
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
+    #   pytest-aiohttp
+    #   pytest-asyncio
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
+pytest-aiohttp==1.1.0
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test.in
+pytest-asyncio==1.4.0a1
+    # via pytest-aiohttp
 pytest-codspeed==4.4.0
     # via
     #   -r requirements/lint.in
