@@ -63,9 +63,7 @@ def hello_txt(
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
-def sender(
-    request: SubRequest, event_loop: asyncio.AbstractEventLoop
-) -> Iterator[_Sender]:
+async def sender(request: SubRequest) -> Iterator[_Sender]:
     sendfile_mock = None
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
@@ -77,7 +75,7 @@ def sender(
 
     if request.param == "no_sendfile":
         with mock.patch.object(
-            event_loop,
+            asyncio.get_running_loop(),
             "sendfile",
             autospec=True,
             spec_set=True,
@@ -89,7 +87,7 @@ def sender(
 
 
 @pytest.fixture
-def app_with_static_route(sender: _Sender) -> web.Application:
+async def app_with_static_route(sender: _Sender) -> web.Application:
     filename = "data.unknown_mime_type"
     filepath = pathlib.Path(__file__).parent / filename
 
