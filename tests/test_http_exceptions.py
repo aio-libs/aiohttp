@@ -79,7 +79,16 @@ class TestLineTooLong:
     def test_ctor(self) -> None:
         err = http_exceptions.LineTooLong(b"spam", 10)
         assert err.code == 400
-        assert err.message == "Got more than 10 bytes when reading: b'spam'."
+        assert err.message == "Got more than 10 bytes when reading line: b'spam'."
+        assert err.headers is None
+
+    def test_ctor_with_context(self) -> None:
+        err = http_exceptions.LineTooLong(b"spam", 10, "request URL")
+        assert err.code == 400
+        assert (
+            err.message
+            == "Got more than 10 bytes when reading request URL: b'spam'."
+        )
         assert err.headers is None
 
     def test_pickle(self) -> None:
@@ -89,20 +98,35 @@ class TestLineTooLong:
             pickled = pickle.dumps(err, proto)
             err2 = pickle.loads(pickled)
             assert err2.code == 400
-            assert err2.message == ("Got more than 10 bytes when reading: b'spam'.")
+            assert err2.message == (
+                "Got more than 10 bytes when reading line: b'spam'."
+            )
             assert err2.headers is None
             assert err2.foo == "bar"
 
+    def test_pickle_with_context(self) -> None:
+        err = http_exceptions.LineTooLong(
+            line=b"spam", limit=10, context="request URL"
+        )
+        for proto in range(pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(err, proto)
+            err2 = pickle.loads(pickled)
+            assert err2.message == (
+                "Got more than 10 bytes when reading request URL: b'spam'."
+            )
+
     def test_str(self) -> None:
         err = http_exceptions.LineTooLong(line=b"spam", limit=10)
-        expected = "400, message:\n  Got more than 10 bytes when reading: b'spam'."
+        expected = (
+            "400, message:\n  Got more than 10 bytes when reading line: b'spam'."
+        )
         assert str(err) == expected
 
     def test_repr(self) -> None:
         err = http_exceptions.LineTooLong(line=b"spam", limit=10)
         assert repr(err) == (
             '<LineTooLong: 400, message="Got more than '
-            "10 bytes when reading: b'spam'.\">"
+            "10 bytes when reading line: b'spam'.\">"
         )
 
 

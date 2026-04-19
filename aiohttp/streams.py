@@ -395,7 +395,9 @@ class StreamReader:
                     not_enough = False
 
                 if chunk_size > max_size:
-                    raise LineTooLong(chunk[:100] + b"...", max_size)
+                    raise LineTooLong(
+                        chunk[:100] + b"...", max_size, "stream until separator"
+                    )
 
             if self._eof:
                 break

@@ -207,7 +207,9 @@ class HeadersParser:
                     if header_length > self.max_field_size:
                         header_line = bname + b": " + b"".join(bvalue_lst)
                         raise LineTooLong(
-                            header_line[:100] + b"...", self.max_field_size
+                            header_line[:100] + b"...",
+                            self.max_field_size,
+                            "header line with continuations",
                         )
                     bvalue_lst.append(line)
 
@@ -354,7 +356,13 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     if SEP == b"\n":  # For lax response parsing
                         line = line.rstrip(b"\r")
                     if len(line) > max_line_length:
-                        raise LineTooLong(line[:100] + b"...", max_line_length)
+                        raise LineTooLong(
+                            line[:100] + b"...",
+                            max_line_length,
+                            "request/status line"
+                            if not self._lines
+                            else "header line",
+                        )
 
                     self._lines.append(line)
                     # After processing the status/request line, everything is a header.
@@ -487,7 +495,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 else:
                     self._tail = data[start_pos:]
                     if len(self._tail) > self.max_line_size:
-                        raise LineTooLong(self._tail[:100] + b"...", self.max_line_size)
+                        raise LineTooLong(
+                            self._tail[:100] + b"...",
+                            self.max_line_size,
+                            "request/status line",
+                        )
                     data = EMPTY
                     break
 
@@ -922,7 +934,11 @@ class HttpPayloadParser:
                         max_line_length = self._max_field_size
                     if len(self._chunk_tail) > max_line_length:
                         raise LineTooLong(
-                            self._chunk_tail[:100] + b"...", max_line_length
+                            self._chunk_tail[:100] + b"...",
+                            max_line_length,
+                            "chunk size line"
+                            if self._chunk != ChunkState.PARSE_TRAILERS
+                            else "trailer line",
                         )
 
                 chunk = self._chunk_tail + chunk
@@ -1020,7 +1036,11 @@ class HttpPayloadParser:
                         line = line.rstrip(b"\r")
 
                     if len(line) > self._max_field_size:
-                        raise LineTooLong(line[:100] + b"...", self._max_field_size)
+                        raise LineTooLong(
+                            line[:100] + b"...",
+                            self._max_field_size,
+                            "trailer line",
+                        )
 
                     self._trailer_lines.append(line)
 

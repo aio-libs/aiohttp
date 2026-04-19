@@ -1552,6 +1552,20 @@ def test_http_request_max_status_line(parser: HttpRequestParser, size: int) -> N
         parser.feed_data(b"GET /path" + path + b" HTTP/1.1\r\n\r\n")
 
 
+def test_http_request_max_status_line_mentions_request_line(
+    parser: HttpRequestParser,
+) -> None:
+    path = b"t" * 8186
+    with pytest.raises(http_exceptions.LineTooLong) as exc_info:
+        parser.feed_data(b"GET /path" + path + b" HTTP/1.1\r\n\r\n")
+    # Error message must describe what overflowed (not "status line" when
+    # the request line is too long). See gh-7177.
+    assert (
+        "request URL" in exc_info.value.message
+        or "request/status line" in exc_info.value.message
+    )
+
+
 def test_http_request_max_status_line_under_limit(parser: HttpRequestParser) -> None:
     path = b"t" * 8172
     messages, upgraded, tail = parser.feed_data(

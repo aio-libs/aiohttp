@@ -1,0 +1,6 @@
+Improved the :exc:`~aiohttp.http_exceptions.LineTooLong` error message to
+describe which part of the HTTP message exceeded the limit (e.g. the request
+URL, status reason phrase, header field name/value, request/status line, or
+trailer). Previously, every overflow reported a generic ``"when reading:"``
+prefix, which was confusing when only the URL was too long but the message was
+historically labeled as a status-line overflow -- by :user:`Ricardo-M-L`.
