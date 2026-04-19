@@ -1134,6 +1134,34 @@ def test_parse_set_cookie_headers_uses_unquote_with_octal(
     assert morsel.coded_value == expected_coded
 
 
+@pytest.mark.parametrize(
+    ("header", "expected_name", "expected_coded"),
+    [
+        (r'name="\012newline\012"', "name", r'"\012newline\012"'),
+        (r'tab="\011separated\011values"', "tab", r'"\011separated\011values"'),
+    ],
+)
+def test_parse_set_cookie_headers_ctl_chars(
+    header: str, expected_name: str, expected_coded: str
+) -> None:
+    """Test that parse_set_cookie_headers does not crash on control characters.
+    
+    Python 3.13+ rejects control characters in cookies. When octal unquoting results
+    in a control character, we fall back to using the safe coded_value as the value
+    to avoid crashing the parser.
+    """
+    result = parse_set_cookie_headers([header])
+
+    assert len(result) == 1
+    name, morsel = result[0]
+
+    assert name == expected_name
+    assert morsel.coded_value == expected_coded
+    # Depending on the Python version, morsel.value will either be the decoded string
+    # (Python < 3.13) or the raw coded_value (Python >= 3.13).
+    # We just ensure it doesn't crash and the coded_value is preserved.
+
+
 # Tests for parse_cookie_header (RFC 6265 compliant Cookie header parser)
 
 
