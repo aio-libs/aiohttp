@@ -1,0 +1,2 @@
+Fixed a crash (``CookieError``) in the cookie parser when receiving a cookie containing ASCII control characters on Python 3.13+ (CVE-2026-3644). The parser now gracefully falls back to storing the raw, still-escaped ``coded_value`` without crashing the application.
+-- by :user:`rodrigobnogueira`.
