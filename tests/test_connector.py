@@ -98,7 +98,6 @@ def unix_server(
 
 
 @pytest.fixture
-@pytest.mark.asyncio(loop_factories=("proactor",))
 async def named_pipe_server(
     pipe_name: str,
 ) -> Iterator[Callable[[web.Application], Awaitable[None]]]:

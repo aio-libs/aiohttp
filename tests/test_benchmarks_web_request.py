@@ -5,9 +5,9 @@ import zlib
 
 import pytest
 from pytest_codspeed import BenchmarkFixture
+from pytest_aiohttp import AiohttpClient
 
 from aiohttp import web
-from aiohttp.pytest_plugin import AiohttpClient
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
