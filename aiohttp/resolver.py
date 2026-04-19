@@ -128,7 +128,11 @@ class AsyncResolver(AbstractResolver):
                         _NAME_SOCKET_FLAGS,
                     )
                     resolved_host = result.node
-                    port = int(result.service) if result.service is not None else address[1]
+                    port = (
+                        int(result.service)
+                        if result.service is not None
+                        else address[1]
+                    )
                 else:
                     resolved_host = address[0].decode("ascii")
                     port = address[1]
