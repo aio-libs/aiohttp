@@ -318,7 +318,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 match = _FORWARDED_PAIR_RE.match(field_value, pos)
                 if match is not None:  # got a valid forwarded-pair
                     name, value, port = match.groups()
-                    if value[0] == '"':
+                    if value[0] == '"' and value[-1] == '"':
                         value = value[1:-1]
                     if port:
                         value += port
