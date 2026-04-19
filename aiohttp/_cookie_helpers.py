@@ -88,7 +88,7 @@ def _safe_set_morsel_state(
     value: str,
     coded_value: str,
 ) -> None:
-    """Set morsel state, handling Python 3.13+ control-character rejection.
+    r"""Set morsel state, handling Python 3.13+ control-character rejection.
 
     Python 3.13 added validation in ``Morsel.__setstate__`` that rejects
     values containing ASCII control characters (CVE-2026-3644).  When
