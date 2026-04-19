@@ -106,7 +106,7 @@ class Stream(StreamReader):
 
 
 class Response:
-    def __init__(self, headers: HeadersDictProxy[str], content: Stream) -> None:
+    def __init__(self, headers: HeadersDictProxy, content: Stream) -> None:
         self.headers = headers
         self.content = content
 
