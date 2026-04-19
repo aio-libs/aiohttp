@@ -91,16 +91,8 @@ _QDTEXT: Final[str] = r"[{}]".format(
 # qdtext includes 0x5C to escape 0x5D ('\]')
 # qdtext excludes obs-text (because obsoleted, and encoding not specified)
 
-_QUOTED_PAIR: Final[str] = r"\\[\t !-~]"
-
-_QUOTED_STRING: Final[str] = rf'"(?:{_QUOTED_PAIR}|{_QDTEXT})*"'
-
 # This does not have a ReDOS/performance concern as long as it used with re.match().
-_FORWARDED_PAIR: Final[str] = rf"({_TOKEN})=({_TOKEN}|{_QUOTED_STRING})(:\d{{1,4}})?"
-
-_QUOTED_PAIR_REPLACE_RE: Final[Pattern[str]] = re.compile(r"\\([\t !-~])")
-# same pattern as _QUOTED_PAIR but contains a capture group
-
+_FORWARDED_PAIR: Final[str] = rf'[ \t]*({_TOKEN})=({_TOKEN}|".*")(:\d{{1,4}})?[ \t]*(?:\Z|;)'
 _FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 
 ############################################################
@@ -316,44 +308,28 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Returns a tuple containing one or more immutable dicts
         """
         elems = []
-        field_value = self._message.headers.get(hdrs.FORWARDED, "")
-        length = len(field_value)
-        pos = 0
-        need_separator = False
-        elem: dict[str, str] = {}
-        elems.append(types.MappingProxyType(elem))
-        while 0 <= pos < length:
-            match = _FORWARDED_PAIR_RE.match(field_value, pos)
-            if match is not None:  # got a valid forwarded-pair
-                if need_separator:
-                    # bad syntax here, skip to next comma
-                    pos = field_value.find(",", pos)
-                else:
+        for field_value in self._message.headers.getall(hdrs.FORWARDED):
+            length = len(field_value)
+            pos = 0
+            need_separator = False
+            elem: dict[str, str] = {}
+            elems.append(types.MappingProxyType(elem))
+            while 0 <= pos < length:
+                match = _FORWARDED_PAIR_RE.match(field_value, pos)
+                if match is not None:  # got a valid forwarded-pair
                     name, value, port = match.groups()
                     if value[0] == '"':
-                        # quoted string: remove quotes and unescape
-                        value = _QUOTED_PAIR_REPLACE_RE.sub(r"\1", value[1:-1])
+                        value = value[1:-1]
                     if port:
                         value += port
                     elem[name.lower()] = value
                     pos += len(match.group(0))
-                    need_separator = True
-            elif field_value[pos] == ",":  # next forwarded-element
-                need_separator = False
-                elem = {}
-                elems.append(types.MappingProxyType(elem))
-                pos += 1
-            elif field_value[pos] == ";":  # next forwarded-pair
-                need_separator = False
-                pos += 1
-            elif field_value[pos] in " \t":
-                # Allow whitespace even between forwarded-pairs, though
-                # RFC 7239 doesn't. This simplifies code and is in line
-                # with Postel's law.
-                pos += 1
-            else:
-                # bad syntax here, skip to next comma
-                pos = field_value.find(",", pos)
+                elif not field_value[pos:field_value.find(";", pos)].strip(" \t"):
+                    # Empty value
+                    pos = field_value.find(";", pos) + 1
+                else:
+                    # bad syntax here, skip to next field value
+                    break
         return tuple(elems)
 
     @reify
