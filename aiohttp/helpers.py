@@ -13,7 +13,6 @@ import netrc
 import os
 import platform
 import re
-import reprlib
 import sys
 import time
 import warnings
@@ -826,7 +825,6 @@ class HeadersDictProxy(Mapping[str, str]):
     def __len__(self) -> int:
         return len(set(self._md.keys()))
 
-    @reprlib.recursive_repr()
     def __repr__(self) -> str:
         body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
         return f"<{self.__class__.__name__}({body})>"
