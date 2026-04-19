@@ -131,9 +131,7 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
 
     """
     mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-    _safe_set_morsel_state(
-        mrsl_val, cookie.key, cookie.value, cookie.coded_value
-    )
+    _safe_set_morsel_state(mrsl_val, cookie.key, cookie.value, cookie.coded_value)
     return mrsl_val
 
 
@@ -340,9 +338,7 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
                     # Create new morsel
                     current_morsel = Morsel()
                     # Preserve the original value as coded_value (with quotes if present)
-                    _safe_set_morsel_state(
-                        current_morsel, key, _unquote(value), value
-                    )
+                    _safe_set_morsel_state(current_morsel, key, _unquote(value), value)
                     parsed_cookies.append((key, current_morsel))
                     morsel_seen = True
             else:

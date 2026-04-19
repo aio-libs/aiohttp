@@ -1145,7 +1145,7 @@ def test_parse_set_cookie_headers_ctl_chars(
     header: str, expected_name: str, expected_coded: str
 ) -> None:
     """Test that parse_set_cookie_headers does not crash on control characters.
-    
+
     Python 3.13+ rejects control characters in cookies. When octal unquoting results
     in a control character, we fall back to using the safe coded_value as the value
     to avoid crashing the parser.
