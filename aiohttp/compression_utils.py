@@ -326,9 +326,15 @@ class BrotliDecompressor(DecompressionBaseHandler):
     ) -> bytes:
         """Decompress the given data."""
         if hasattr(self._obj, "decompress"):
-            result = cast(bytes, self._obj.decompress(data, max_length))
+            if max_length == ZLIB_MAX_LENGTH_UNLIMITED:
+                result = cast(bytes, self._obj.decompress(data))
+            else:
+                result = cast(bytes, self._obj.decompress(data, max_length))
         else:
-            result = cast(bytes, self._obj.process(data, max_length))
+            if max_length == ZLIB_MAX_LENGTH_UNLIMITED:
+                result = cast(bytes, self._obj.process(data))
+            else:
+                result = cast(bytes, self._obj.process(data, max_length))
         # Only way to know that brotli has no further data is checking we get no output
         self._last_empty = result == b""
         return result
