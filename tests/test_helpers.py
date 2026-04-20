@@ -437,7 +437,6 @@ async def test_weakref_handle() -> None:
 
 
 async def test_weakref_handle_with_small_threshold() -> None:
-    loop = asyncio.get_running_loop()
     cb = mock.Mock()
     loop = mock.Mock()
     loop.time.return_value = 10
