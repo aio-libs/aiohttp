@@ -3,13 +3,13 @@
 import logging
 import sys
 import time
+import typing
 from http.cookies import (
     CookieError,
     Morsel,
     SimpleCookie,
     _unquote as simplecookie_unquote,
 )
-import typing
 from unittest.mock import patch
 
 import pytest
@@ -1884,5 +1884,5 @@ def test_cookie_helpers_cve_fallback(mock_strict_morsel: None) -> None:
 
     assert parse_cookie_header("f=b\x07r;") == []
     assert parse_cookie_header("f=b\x07r") == []
-    assert parse_cookie_header("f=\"b\x07r\";") == []
-    assert parse_set_cookie_headers(["f=\"b\x07r\";"]) == []
+    assert parse_cookie_header('f="b\x07r";') == []
+    assert parse_set_cookie_headers(['f="b\x07r";']) == []
