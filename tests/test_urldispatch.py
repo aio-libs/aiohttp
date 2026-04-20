@@ -1,4 +1,3 @@
-import asyncio
 import pathlib
 import platform
 import re
