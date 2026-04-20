@@ -303,7 +303,6 @@ async def test_async_context_manager() -> None:
         assert conn is c
 
     assert conn.closed
-    del conn
 
 
 async def test_close(key: ConnectionKey) -> None:
