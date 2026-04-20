@@ -1532,9 +1532,13 @@ class TCPConnector(BaseConnector):
                 # read_until_eof=True will ensure the connection isn't closed
                 # once the response is received and processed allowing
                 # START_TLS to work on the connection below.
+                # skip_payload=True per RFC-9110 §9.3.6: a client MUST ignore
+                # any Content-Length or Transfer-Encoding header fields received
+                # in a successful response to CONNECT.
                 protocol.set_response_params(
                     read_until_eof=True,
                     timeout_ceil_threshold=self._timeout_ceil_threshold,
+                    skip_payload=True,
                 )
                 resp = await proxy_resp.start(conn)
             except BaseException:
