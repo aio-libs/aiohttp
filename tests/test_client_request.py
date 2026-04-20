@@ -2120,7 +2120,6 @@ async def test_content_length_with_async_iterable(
     make_client_request: _RequestMaker,
 ) -> None:
     """Test that async iterables use chunked encoding, not Content-Length."""
-
     loop = asyncio.get_running_loop()
 
     async def data_gen() -> AsyncIterator[bytes]:

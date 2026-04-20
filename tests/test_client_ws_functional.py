@@ -1377,7 +1377,6 @@ async def test_websocket_connection_not_closed_properly(
 
 async def test_websocket_connection_cancellation(aiohttp_client: AiohttpClient) -> None:
     """Test canceling the WebSocket connection task does not raise an exception in __del__."""
-
     loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:

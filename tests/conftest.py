@@ -37,7 +37,7 @@ from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientRespon
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.helpers import TimerNoop
 from aiohttp.http import WS_KEY, HttpVersion11
-from aiohttp.test_utils import REUSE_ADDRESS, get_unused_port_socket, loop_context
+from aiohttp.test_utils import REUSE_ADDRESS, loop_context
 
 
 def pytest_configure(config: pytest.Config) -> None:

@@ -2835,7 +2835,6 @@ async def test_multiple_dns_resolution_requests_success(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that multiple DNS resolution requests are handled correctly."""
-
     loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
@@ -2899,7 +2898,6 @@ async def test_multiple_dns_resolution_requests_failure(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution failure for multiple requests is handled correctly."""
-
     loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
@@ -2954,7 +2952,6 @@ async def test_multiple_dns_resolution_requests_cancelled(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution cancellation does not affect other tasks."""
-
     loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
@@ -3008,7 +3005,6 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that first DNS resolution cancellation does not make other resolutions fail."""
-
     loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:

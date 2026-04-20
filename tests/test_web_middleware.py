@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import Awaitable, Callable, Iterable
 from typing import NoReturn
 
