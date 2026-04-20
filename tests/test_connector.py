@@ -296,13 +296,14 @@ async def test_create_conn() -> None:
     await conn.close()
 
 
-async def test_async_context_manager(loop: asyncio.AbstractEventLoop) -> None:
+async def test_async_context_manager() -> None:
     conn = aiohttp.BaseConnector()
 
     async with conn as c:
         assert conn is c
 
     assert conn.closed
+    del conn
 
 
 async def test_close(key: ConnectionKey) -> None:
