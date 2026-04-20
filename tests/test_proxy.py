@@ -1246,18 +1246,14 @@ async def test_https_connect_skip_payload_on_200(  # type: ignore[misc]
                             proxy=URL("http://proxy.example.com"),
                             loop=event_loop,
                         )
-                        # Capture the set_response_params call on the tunnel
-                        # protocol to verify skip_payload=True is passed.
-                        with mock.patch(
-                            "aiohttp.connector.ResponseHandler.set_response_params",
-                            autospec=True,
-                        ) as set_params_mock:
-                            await connector._create_connection(
-                                req, [], aiohttp.ClientTimeout()
-                            )
+                        await connector._create_connection(
+                            req, [], aiohttp.ClientTimeout()
+                        )
 
-                        set_params_mock.assert_called_once_with(
-                            mock.ANY,  # self
+                        # proto is the mock protocol returned by create_connection.
+                        # The connector calls protocol.set_response_params(...) on it
+                        # directly, so we assert on proto's auto-mock attribute.
+                        proto.set_response_params.assert_called_once_with(
                             read_until_eof=True,
                             timeout_ceil_threshold=mock.ANY,
                             skip_payload=True,
