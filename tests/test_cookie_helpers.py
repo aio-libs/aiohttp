@@ -1178,9 +1178,7 @@ def test_parse_set_cookie_headers_literal_ctl_chars() -> None:
 
 def test_parse_set_cookie_headers_literal_ctl_chars_preserves_others() -> None:
     """Ensure a cookie with literal control chars doesn't break subsequent cookies."""
-    result = parse_set_cookie_headers(
-        ['bad="a\x07b"; good=value', "another=cookie"]
-    )
+    result = parse_set_cookie_headers(['bad="a\x07b"; good=value', "another=cookie"])
     # "good" is an attribute of "bad" (same header), so it's not a separate cookie.
     # "another" is in a separate header and must always be preserved.
     names = [name for name, _ in result]
