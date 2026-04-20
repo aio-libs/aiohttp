@@ -113,7 +113,7 @@ class AsyncResolver(AbstractResolver):
                 flags=_AI_ADDRCONFIG,
             )
         except aiodns.error.DNSError as exc:
-            msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
+            msg = exc.args[1] if len(exc.args) >= 2 else "DNS lookup failed"
             raise OSError(None, msg) from exc
         hosts: list[ResolveResult] = []
         for node in resp.nodes:
@@ -128,6 +128,7 @@ class AsyncResolver(AbstractResolver):
                         _NAME_SOCKET_FLAGS,
                     )
                     resolved_host = result.node
+                    port = int(result.service)
                 else:
                     resolved_host = address[0].decode("ascii")
                     port = address[1]
