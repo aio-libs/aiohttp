@@ -1152,16 +1152,19 @@ def test_ctor_both_charset_param_and_header_with_text() -> None:
         )
 
 
-def test_ctor_both_content_type_param_and_header() -> None:
-    with pytest.raises(ValueError):
-        web.Response(
-            headers={"Content-Type": "application/json"}, content_type="text/html"
-        )
+def test_ctor_content_type_param_and_header_without_text() -> None:
+    resp = web.Response(
+        headers={"Content-Type": "application/json"}, content_type="text/html"
+    )
+
+    assert resp.content_type == "text/html"
 
 
-def test_ctor_both_charset_param_and_header() -> None:
-    with pytest.raises(ValueError):
-        web.Response(headers={"Content-Type": "application/json"}, charset="koi8-r")
+def test_ctor_charset_param_and_header_without_text() -> None:
+    resp = web.Response(headers={"Content-Type": "application/json"}, charset="koi8-r")
+
+    assert resp.content_type == "application/json"
+    assert resp.charset is None
 
 
 async def test_assign_nonbyteish_body() -> None:
