@@ -1,0 +1,3 @@
+Fixed minor grammatical issues in the documentation for
+:meth:`~aiohttp.StreamReader.exception`, the WebSocket response
+``exception()`` method, and the certifi example in client advanced usage.

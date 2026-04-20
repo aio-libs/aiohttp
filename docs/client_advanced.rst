@@ -644,7 +644,7 @@ Example: Use certifi
 ^^^^^^^^^^^^^^^^^^^^
 
 By default, Python uses the system CA certificates. In rare cases, these may not be
-installed or Python is unable to find them, resulting in a error like
+installed or Python is unable to find them, resulting in an error like
 `ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate`
 
 One way to work around this problem is to use the `certifi` package::

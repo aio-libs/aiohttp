@@ -1099,7 +1099,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
    .. method:: exception()
 
-      Returns last occurred exception or None.
+      Returns the last exception that occurred, or None.
 
    .. method:: ping(message=b'')
       :async:

@@ -180,7 +180,7 @@ Helpers
 
 .. method:: StreamReader.exception()
 
-   Get the exception occurred on data reading.
+   Get the exception that occurred on data reading.
 
 .. method:: is_eof()
 
