@@ -1141,14 +1141,14 @@ def test_parse_set_cookie_headers_uses_unquote_with_octal(
         (r'tab="\011separated\011values"', "tab", r'"\011separated\011values"'),
     ],
 )
-def test_parse_set_cookie_headers_ctl_chars(
+def test_parse_set_cookie_headers_ctl_chars_from_octal(
     header: str, expected_name: str, expected_coded: str
 ) -> None:
-    """Test that parse_set_cookie_headers does not crash on control characters.
+    """Ensure octal escapes that decode to control characters don't crash the parser.
 
-    Python 3.13+ rejects control characters in cookies. When octal unquoting results
-    in a control character, we fall back to using the safe coded_value as the value
-    to avoid crashing the parser.
+    CPython builds with the CVE-2026-3644 patch reject control characters in
+    cookies.  When octal unquoting produces a control character, the parser
+    should fall back to the raw coded_value instead of raising CookieError.
     """
     result = parse_set_cookie_headers([header])
 
@@ -1157,9 +1157,34 @@ def test_parse_set_cookie_headers_ctl_chars(
 
     assert name == expected_name
     assert morsel.coded_value == expected_coded
-    # Depending on the Python version, morsel.value will either be the decoded string
-    # (Python < 3.13) or the raw coded_value (Python >= 3.13).
+    # Depending on CPython build, morsel.value will either be the decoded string
+    # (pre CVE-2026-3644 patch) or the raw coded_value (post patch).
     # We just ensure it doesn't crash and the coded_value is preserved.
+
+
+def test_parse_set_cookie_headers_literal_ctl_chars() -> None:
+    """Ensure literal control characters in a cookie value don't crash the parser.
+
+    If the raw header itself contains a control character (e.g. BEL \\x07),
+    both the decoded value and coded_value are unsalvageable.  The parser
+    should gracefully skip the cookie instead of raising CookieError.
+    """
+    result = parse_set_cookie_headers(['name="a\x07b"'])
+    # On CPython with CVE-2026-3644 patch the cookie is skipped;
+    # on older builds it may be accepted.  Either way, no crash.
+    if result:
+        assert result[0][0] == "name"
+
+
+def test_parse_set_cookie_headers_literal_ctl_chars_preserves_others() -> None:
+    """Ensure a cookie with literal control chars doesn't break subsequent cookies."""
+    result = parse_set_cookie_headers(
+        ['bad="a\x07b"; good=value', "another=cookie"]
+    )
+    # "good" is an attribute of "bad" (same header), so it's not a separate cookie.
+    # "another" is in a separate header and must always be preserved.
+    names = [name for name, _ in result]
+    assert "another" in names
 
 
 # Tests for parse_cookie_header (RFC 6265 compliant Cookie header parser)
