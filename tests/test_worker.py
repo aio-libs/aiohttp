@@ -204,16 +204,14 @@ def test__get_valid_log_format_exc(worker: base_worker.GunicornWebWorker) -> Non
 
 
 async def test__run_ok_parent_changed(
-    worker: base_worker.GunicornWebWorker,
-    loop: asyncio.AbstractEventLoop,
-    unused_port_socket: socket.socket,
+    worker: base_worker.GunicornWebWorker, unused_port_socket: socket.socket
 ) -> None:
     worker.ppid = 0
     worker.alive = True
     sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
-    worker.loop = loop
+    worker.loop = asyncio.get_running_loop()
     worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.is_ssl = False
@@ -225,10 +223,9 @@ async def test__run_ok_parent_changed(
 
 
 async def test__run_exc(
-    worker: base_worker.GunicornWebWorker,
-    loop: asyncio.AbstractEventLoop,
-    unused_port_socket: socket.socket,
+    worker: base_worker.GunicornWebWorker, unused_port_socket: socket.socket
 ) -> None:
+    loop = asyncio.get_running_loop()
     worker.ppid = os.getppid()
     worker.alive = True
     sock = unused_port_socket

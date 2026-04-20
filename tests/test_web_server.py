@@ -45,12 +45,10 @@ async def test_unsupported_upgrade(
 
 
 async def test_raw_server_not_http_exception(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     # disable debug mode not to print traceback
-    loop.set_debug(False)
+    asyncio.get_running_loop().set_debug(False)
 
     exc = RuntimeError("custom runtime error")
 
@@ -74,10 +72,9 @@ async def test_raw_server_not_http_exception(
 
 
 async def test_raw_server_logs_invalid_method_with_loop_debug(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
+    loop = asyncio.get_running_loop()
     exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
@@ -121,10 +118,9 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
 
 
 async def test_raw_server_logs_invalid_method_without_loop_debug(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
+    loop = asyncio.get_running_loop()
     exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
@@ -152,10 +148,9 @@ async def test_raw_server_logs_invalid_method_without_loop_debug(
 
 
 async def test_raw_server_logs_invalid_method_second_request(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
+    loop = asyncio.get_running_loop()
     exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
     request_count = 0
 
@@ -185,10 +180,9 @@ async def test_raw_server_logs_invalid_method_second_request(
 
 
 async def test_raw_server_logs_bad_status_line_as_exception(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
+    loop = asyncio.get_running_loop()
     exc = BadStatusLine(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
@@ -316,12 +310,10 @@ async def test_raw_server_not_http_exception_debug(
 
 
 async def test_raw_server_html_exception(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     # disable debug mode not to print traceback
-    loop.set_debug(False)
+    asyncio.get_running_loop().set_debug(False)
 
     exc = RuntimeError("custom runtime error")
 
