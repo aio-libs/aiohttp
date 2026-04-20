@@ -296,7 +296,7 @@ async def test_create_conn() -> None:
     await conn.close()
 
 
-async def test_async_context_manager() -> None:
+async def test_async_context_manager(loop: asyncio.AbstractEventLoop) -> None:
     conn = aiohttp.BaseConnector()
 
     async with conn as c:
