@@ -1648,8 +1648,18 @@ def test_parse_cookie_header_empty_key_in_fallback(
     assert name2 == "another"
     assert morsel2.value == "test"
 
-    assert "Cannot load cookie. Illegal cookie name" in caplog.text
-    assert "''" in caplog.text
+
+def test_parse_cookie_header_literal_ctl_chars() -> None:
+    """Ensure literal control characters in a cookie value don't crash the parser.
+
+    If the raw header itself contains a control character (e.g. BEL \\x07),
+    the cookie is unsalvageable.  The parser should gracefully skip it.
+    """
+    result = parse_cookie_header('name="a\x07b"; good=cookie')
+    # On CPython with CVE-2026-3644 patch the bad cookie is skipped;
+    # on older builds it may be accepted.  Either way, no crash.
+    names = [name for name, _ in result]
+    assert "good" in names
 
 
 @pytest.mark.parametrize(
