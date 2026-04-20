@@ -9,6 +9,8 @@ from http.cookies import (
     SimpleCookie,
     _unquote as simplecookie_unquote,
 )
+import typing
+from unittest.mock import patch
 
 import pytest
 
@@ -1163,7 +1165,7 @@ def test_parse_set_cookie_headers_ctl_chars_from_octal(
 
 
 def test_parse_set_cookie_headers_literal_ctl_chars() -> None:
-    """Ensure literal control characters in a cookie value don't crash the parser.
+    r"""Ensure literal control characters in a cookie value don't crash the parser.
 
     If the raw header itself contains a control character (e.g. BEL \\x07),
     both the decoded value and coded_value are unsalvageable.  The parser
@@ -1650,7 +1652,7 @@ def test_parse_cookie_header_empty_key_in_fallback(
 
 
 def test_parse_cookie_header_literal_ctl_chars() -> None:
-    """Ensure literal control characters in a cookie value don't crash the parser.
+    r"""Ensure literal control characters in a cookie value don't crash the parser.
 
     If the raw header itself contains a control character (e.g. BEL \\x07),
     the cookie is unsalvageable.  The parser should gracefully skip it.
@@ -1850,3 +1852,37 @@ def test_unquote_compatibility_with_simplecookie(test_value: str) -> None:
         f"our={_unquote(test_value)!r}, "
         f"SimpleCookie={simplecookie_unquote(test_value)!r}"
     )
+
+
+@pytest.fixture
+def mock_strict_morsel() -> typing.Iterator[None]:
+    original_setstate = Morsel.__setstate__  # type: ignore[attr-defined]
+
+    def _mock_setstate(self: Morsel[str], state: dict[str, str]) -> None:
+        if any(ord(c) < 32 for c in state.get("value", "")):
+            raise CookieError()
+        original_setstate(self, state)
+
+    with patch(
+        "aiohttp._cookie_helpers.Morsel.__setstate__",
+        autospec=True,
+        side_effect=_mock_setstate,
+    ):
+        yield
+
+
+def test_cookie_helpers_cve_fallback(mock_strict_morsel: None) -> None:
+    m: Morsel[str] = Morsel()
+    assert helpers._safe_set_morsel_state(m, "k", "v\n", "v\\012") is True
+    assert m.value == "v\\012"
+
+    assert helpers._safe_set_morsel_state(Morsel(), "k", "v\n", "v\n") is False
+
+    cookie: Morsel[str] = Morsel()
+    cookie._key, cookie._value, cookie._coded_value = "k", "v\n", "v\n"  # type: ignore[attr-defined]
+    assert preserve_morsel_with_coded_value(cookie) is cookie
+
+    assert parse_cookie_header("f=b\x07r;") == []
+    assert parse_cookie_header("f=b\x07r") == []
+    assert parse_cookie_header("f=\"b\x07r\";") == []
+    assert parse_set_cookie_headers(["f=\"b\x07r\";"]) == []
