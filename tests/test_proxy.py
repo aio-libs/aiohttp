@@ -1167,3 +1167,102 @@ async def test_https_auth(  # type: ignore[misc]
                         proxy_resp.close()
                         await req._close()
             await connector.close()
+
+
+@mock.patch("aiohttp.connector.ClientRequestBase")
+@mock.patch(
+    "aiohttp.connector.aiohappyeyeballs.start_connection",
+    autospec=True,
+    spec_set=True,
+)
+async def test_https_connect_skip_payload_on_200(  # type: ignore[misc]
+    start_connection: mock.Mock,
+    ClientRequestMock: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    """Regression test for https://github.com/aio-libs/aiohttp/issues/8472.
+
+    Per RFC-9110 §9.3.6 a client MUST ignore any Content-Length or
+    Transfer-Encoding header fields in a successful response to CONNECT.
+    Verify that set_response_params is called with skip_payload=True so the
+    HTTP parser does not try to read a body from the 200 tunnel response.
+    """
+    event_loop = asyncio.get_running_loop()
+    proxy_req = ClientRequestBase(
+        "GET",
+        URL("http://proxy.example.com"),
+        auth=None,
+        loop=event_loop,
+        ssl=True,
+        headers=CIMultiDict({}),
+    )
+    ClientRequestMock.return_value = proxy_req
+
+    url = URL("http://proxy.example.com")
+    proxy_resp = ClientResponse(
+        "get",
+        url,
+        writer=None,
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=event_loop,
+        session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+    )
+    with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
+        with mock.patch.object(proxy_resp, "start", autospec=True) as m:
+            m.return_value.status = 200
+
+            connector = aiohttp.TCPConnector()
+            r = {
+                "hostname": "hostname",
+                "host": "127.0.0.1",
+                "port": 80,
+                "family": socket.AF_INET,
+                "proto": 0,
+                "flags": 0,
+            }
+            with mock.patch.object(
+                connector, "_resolve_host", autospec=True, return_value=[r]
+            ):
+                tr, proto = mock.Mock(), mock.Mock()
+                with mock.patch.object(
+                    event_loop,
+                    "create_connection",
+                    autospec=True,
+                    return_value=(tr, proto),
+                ):
+                    with mock.patch.object(
+                        event_loop,
+                        "start_tls",
+                        autospec=True,
+                        return_value=mock.Mock(),
+                    ):
+                        req = make_client_request(
+                            "GET",
+                            URL("https://www.python.org"),
+                            proxy=URL("http://proxy.example.com"),
+                            loop=event_loop,
+                        )
+                        # Capture the set_response_params call on the tunnel
+                        # protocol to verify skip_payload=True is passed.
+                        with mock.patch(
+                            "aiohttp.connector.ResponseHandler.set_response_params",
+                            autospec=True,
+                        ) as set_params_mock:
+                            await connector._create_connection(
+                                req, [], aiohttp.ClientTimeout()
+                            )
+
+                        set_params_mock.assert_called_once_with(
+                            mock.ANY,  # self
+                            read_until_eof=True,
+                            timeout_ceil_threshold=mock.ANY,
+                            skip_payload=True,
+                        )
+
+                        proxy_resp.close()
+                        await req._close()
+            await connector.close()
