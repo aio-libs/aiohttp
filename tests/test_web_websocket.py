@@ -28,7 +28,7 @@ class _RequestMaker(Protocol):
 
 
 @pytest.fixture
-def app(event_loop: asyncio.AbstractEventLoop) -> web.Application:
+def app() -> web.Application:
     ret: web.Application = mock.create_autospec(web.Application, spec_set=True)
     ret.on_response_prepare = aiosignal.Signal(ret)  # type: ignore[misc]
     ret.on_response_prepare.freeze()
@@ -217,8 +217,7 @@ async def test_write_non_prepared() -> None:
 
 async def test_heartbeat_timeout(make_request: _RequestMaker) -> None:
     """Verify the transport is closed when the heartbeat timeout is reached."""
-    loop = asyncio.get_running_loop()
-    future = loop.create_future()
+    future = asyncio.get_running_loop().create_future()
     req = make_request("GET", "/")
     assert req.transport is not None
     req.transport.close.side_effect = lambda: future.set_result(None)  # type: ignore[attr-defined]
@@ -512,7 +511,6 @@ async def test_write_eof_idempotent(make_request: _RequestMaker) -> None:
 
 
 async def test_receive_eofstream_in_reader(make_request: _RequestMaker) -> None:
-    loop = asyncio.get_running_loop()
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -521,7 +519,7 @@ async def test_receive_eofstream_in_reader(make_request: _RequestMaker) -> None:
     exc = EofStream()
     ws._reader.read = mock.AsyncMock(side_effect=exc)
     assert ws._payload_writer is not None
-    f = loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     f.set_result(True)
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     msg = await ws.receive()
@@ -530,7 +528,6 @@ async def test_receive_eofstream_in_reader(make_request: _RequestMaker) -> None:
 
 
 async def test_receive_exception_in_reader(make_request: _RequestMaker) -> None:
-    loop = asyncio.get_running_loop()
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -539,7 +536,7 @@ async def test_receive_exception_in_reader(make_request: _RequestMaker) -> None:
     exc = Exception()
     ws._reader.read = mock.AsyncMock(side_effect=exc)
 
-    f = loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)

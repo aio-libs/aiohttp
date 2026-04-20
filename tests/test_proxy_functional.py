@@ -277,8 +277,7 @@ async def test_uvloop_secure_https_proxy(
 
 @pytest.fixture
 def proxy_test_server(
-    aiohttp_raw_server: AiohttpRawServer,
-    monkeypatch: pytest.MonkeyPatch,
+    aiohttp_raw_server: AiohttpRawServer, monkeypatch: pytest.MonkeyPatch
 ) -> Callable[[], Awaitable[mock.Mock]]:
     # Handle all proxy requests and imitate remote server response.
 

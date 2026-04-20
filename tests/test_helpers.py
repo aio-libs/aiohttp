@@ -395,10 +395,9 @@ async def test_timer_context_timeout_does_not_leak_upward() -> None:
 )
 async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     """Verify that the TimerContext does not swallow cancellation."""
-    loop = asyncio.get_running_loop()
     current_task = asyncio.current_task()
     assert current_task is not None
-    ctx = helpers.TimerContext(loop)
+    ctx = helpers.TimerContext(asyncio.get_running_loop())
 
     async def task_with_timeout() -> None:
         new_task = asyncio.current_task()

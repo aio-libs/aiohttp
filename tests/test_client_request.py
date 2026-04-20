@@ -697,8 +697,7 @@ async def test_update_cookies_with_quoted_existing_header(
 
 
 async def test_connection_header(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     req = make_client_request("get", URL("http://python.org"), loop=loop)
@@ -730,8 +729,7 @@ async def test_connection_header(
 
 
 async def test_no_content_length(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     req = make_client_request("get", URL("http://python.org"), loop=loop)
@@ -742,8 +740,7 @@ async def test_no_content_length(
 
 
 async def test_no_content_length_head(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     req = make_client_request("head", URL("http://python.org"), loop=loop)
@@ -754,8 +751,7 @@ async def test_no_content_length_head(
 
 
 async def test_content_type_auto_header_get(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     req = make_client_request("get", URL("http://python.org"), loop=loop)
@@ -766,8 +762,7 @@ async def test_content_type_auto_header_get(
 
 
 async def test_content_type_auto_header_form(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     req = make_client_request(
@@ -791,8 +786,7 @@ async def test_content_type_auto_header_bytes(
 
 
 async def test_content_type_skip_auto_header_bytes(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     req = make_client_request(
         "post",
@@ -808,8 +802,7 @@ async def test_content_type_skip_auto_header_bytes(
 
 
 async def test_content_type_skip_auto_header_form(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     req = make_client_request(
         "post",
@@ -824,8 +817,7 @@ async def test_content_type_skip_auto_header_form(
 
 
 async def test_content_type_auto_header_content_length_no_skip(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     with io.BytesIO(b"hey") as file_handle:
         req = make_client_request(
@@ -841,8 +833,7 @@ async def test_content_type_auto_header_content_length_no_skip(
 
 
 async def test_urlencoded_formdata_charset(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     req = make_client_request(
         "post",
@@ -858,8 +849,7 @@ async def test_urlencoded_formdata_charset(
 
 
 async def test_formdata_boundary_from_headers(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     boundary = "some_boundary"
     file_path = pathlib.Path(__file__).parent / "aiohttp.png"
@@ -879,10 +869,7 @@ async def test_formdata_boundary_from_headers(
         assert req.body._boundary == boundary.encode()
 
 
-async def test_post_data(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
-) -> None:
+async def test_post_data(conn: mock.Mock, make_client_request: _RequestMaker) -> None:
     loop = asyncio.get_running_loop()
     for meth in ClientRequest.POST_METHODS:
         req = make_client_request(
@@ -1248,8 +1235,7 @@ async def test_expect100(conn: mock.Mock, make_client_request: _RequestMaker) ->
 
 
 async def test_expect_100_continue_header(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     req = make_client_request(
         "get",
@@ -1267,6 +1253,8 @@ async def test_expect_100_continue_header(
 async def test_data_stream(
     buf: bytearray, conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
+
     async def gen() -> AsyncIterator[bytes]:
         yield b"binary data"
         yield b" result"
@@ -1360,8 +1348,7 @@ async def test_data_stream_exc(
 
 
 async def test_data_stream_exc_chain(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     fut = loop.create_future()
@@ -1396,6 +1383,8 @@ async def test_data_stream_exc_chain(
 async def test_data_stream_continue(
     buf: bytearray, conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
+
     async def gen() -> AsyncIterator[bytes]:
         yield b"binary data"
         yield b" result"
@@ -1452,6 +1441,8 @@ async def test_data_continue(
 async def test_close(
     buf: bytearray, conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
+
     async def gen() -> AsyncIterator[bytes]:
         await asyncio.sleep(0.00001)
         yield b"result"
@@ -1479,9 +1470,10 @@ async def test_bad_version(conn: mock.Mock, make_client_request: _RequestMaker) 
 
 
 async def test_custom_response_class(
-    conn: mock.Mock,
-    make_client_request: _RequestMaker,
+    conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
+
     class CustomResponse(ClientResponse):
         async def read(self) -> bytes:
             return b"customized!"
@@ -1845,6 +1837,7 @@ async def test_write_bytes_with_content_length_limit(
 ) -> None:
     """Test that write_bytes respects content_length limit for different body types."""
     # Test with bytes data
+    loop = asyncio.get_running_loop()
     data = b"Hello World"
     loop = asyncio.get_running_loop()
     req = make_client_request("post", URL("http://python.org/"), loop=loop)
@@ -2122,6 +2115,7 @@ async def test_content_length_with_string_data(
     make_client_request: _RequestMaker,
 ) -> None:
     """Test Content-Length when data is a string."""
+    loop = asyncio.get_running_loop()
     data = "Hello, World!"
     loop = asyncio.get_running_loop()
     req = make_client_request("POST", URL("http://python.org/"), data=data, loop=loop)
@@ -2134,6 +2128,7 @@ async def test_content_length_with_async_iterable(
     make_client_request: _RequestMaker,
 ) -> None:
     """Test that async iterables use chunked encoding, not Content-Length."""
+    loop = asyncio.get_running_loop()
 
     async def data_gen() -> AsyncIterator[bytes]:
         yield b"chunk1"  # pragma: no cover
@@ -2166,6 +2161,7 @@ async def test_content_length_not_overridden(
 
 async def test_content_length_with_formdata(make_client_request: _RequestMaker) -> None:
     """Test Content-Length with FormData."""
+    loop = asyncio.get_running_loop()
     form = aiohttp.FormData()
     form.add_field("field", "value")
 

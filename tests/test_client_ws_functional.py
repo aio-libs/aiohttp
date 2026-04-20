@@ -1072,7 +1072,7 @@ async def test_close_websocket_while_ping_inflight(
     await resp.send_bytes(b"ask")
 
     cancelled = False
-    ping_started = loop.create_future()
+    ping_started = asyncio.get_running_loop().create_future()
 
     async def delayed_send_frame(
         message: bytes, opcode: int, compress: int | None = None
@@ -1378,6 +1378,7 @@ async def test_websocket_connection_not_closed_properly(
 
 async def test_websocket_connection_cancellation(aiohttp_client: AiohttpClient) -> None:
     """Test canceling the WebSocket connection task does not raise an exception in __del__."""
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:
         ws = web.WebSocketResponse()

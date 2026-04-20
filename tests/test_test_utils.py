@@ -380,9 +380,8 @@ async def test_custom_port(
     [("127.0.0.1", "127.0.0.1"), ("localhost", "127.0.0.1"), ("::1", "::1")],
 )
 async def test_test_server_hostnames(hostname: str, expected_host: str) -> None:
-    loop = asyncio.get_running_loop()
     app = _create_example_app()
-    server = TestServer(app, host=hostname, loop=loop)
+    server = TestServer(app, host=hostname, loop=asyncio.get_running_loop())
     async with server:
         pass
     assert server.host == expected_host

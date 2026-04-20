@@ -74,7 +74,7 @@ exceptiongroup==1.3.1
     # via pytest
 execnet==2.1.2
     # via pytest-xdist
-filelock==3.28.0
+filelock==3.29.0
     # via
     #   python-discovery
     #   virtualenv
@@ -91,7 +91,7 @@ frozenlist==1.8.0
     #   aiosignal
 gunicorn==25.3.0
     # via -r requirements/base.in
-identify==2.6.18
+identify==2.6.19
     # via pre-commit
 idna==3.11
     # via

@@ -339,8 +339,7 @@ async def test_closed(session: ClientSession) -> None:
 
 
 async def test_connector(
-    create_session: Callable[..., Awaitable[ClientSession]],
-    mocker: MockerFixture,
+    create_session: Callable[..., Awaitable[ClientSession]], mocker: MockerFixture
 ) -> None:
     connector = TCPConnector()
     m = mocker.spy(connector, "close")
@@ -353,8 +352,7 @@ async def test_connector(
 
 
 async def test_create_connector(
-    create_session: Callable[..., Awaitable[ClientSession]],
-    mocker: MockerFixture,
+    create_session: Callable[..., Awaitable[ClientSession]], mocker: MockerFixture
 ) -> None:
     session = await create_session()
     m = mocker.spy(session.connector, "close")
@@ -549,12 +547,11 @@ async def test_del_debug(connector: BaseConnector) -> None:
 
 
 async def test_borrow_connector_loop(
-    connector: BaseConnector,
-    create_session: Callable[..., Awaitable[ClientSession]],
+    connector: BaseConnector, create_session: Callable[..., Awaitable[ClientSession]]
 ) -> None:
     loop = asyncio.get_running_loop()
     async with ClientSession(connector=connector) as session:
-        assert session._loop is loop
+        assert session._loop is asyncio.get_running_loop()
 
 
 async def test_reraise_os_error(
