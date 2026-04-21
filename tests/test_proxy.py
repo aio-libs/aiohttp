@@ -10,6 +10,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientRequestArgs,
@@ -1184,8 +1185,14 @@ async def test_https_connect_skip_payload_on_200(  # type: ignore[misc]
 
     Per RFC-9110 §9.3.6 a client MUST ignore any Content-Length or
     Transfer-Encoding header fields in a successful response to CONNECT.
-    Verify that set_response_params is called with skip_payload=True so the
-    HTTP parser does not try to read a body from the 200 tunnel response.
+
+    This test uses a real ResponseHandler instance so we can assert that
+    ``_skip_payload`` is actually set to ``True`` on the protocol object
+    after the CONNECT 200 handshake.  ``_skip_payload=True`` causes the
+    underlying ``HttpResponseParser`` to be configured with
+    ``response_with_body=False``, which means any body bytes advertised
+    by Content-Length / Transfer-Encoding in the tunnel response are
+    silently discarded rather than blocking the TLS upgrade.
     """
     event_loop = asyncio.get_running_loop()
     proxy_req = ClientRequestBase(
@@ -1227,7 +1234,10 @@ async def test_https_connect_skip_payload_on_200(  # type: ignore[misc]
             with mock.patch.object(
                 connector, "_resolve_host", autospec=True, return_value=[r]
             ):
-                tr, proto = mock.Mock(), mock.Mock()
+                # Use a real ResponseHandler so we can assert its internal state
+                # rather than only checking that a mock method was called.
+                tr = mock.Mock()
+                proto = ResponseHandler(loop=event_loop)
                 with mock.patch.object(
                     event_loop,
                     "create_connection",
@@ -1250,13 +1260,15 @@ async def test_https_connect_skip_payload_on_200(  # type: ignore[misc]
                             req, [], aiohttp.ClientTimeout()
                         )
 
-                        # proto is the mock protocol returned by create_connection.
-                        # The connector calls protocol.set_response_params(...) on it
-                        # directly, so we assert on proto's auto-mock attribute.
-                        proto.set_response_params.assert_called_once_with(
-                            read_until_eof=True,
-                            timeout_ceil_threshold=mock.ANY,
-                            skip_payload=True,
+                        # Verify that the connector configured the real protocol
+                        # to skip the CONNECT response body.  This flag causes
+                        # HttpResponseParser to use response_with_body=False, so
+                        # any Content-Length / Transfer-Encoding bytes in the
+                        # tunnel handshake are not consumed before TLS is started.
+                        assert proto._skip_payload is True, (
+                            "ResponseHandler._skip_payload must be True after a "
+                            "CONNECT 200 so that proxy body bytes are not read "
+                            "before the TLS upgrade (RFC-9110 §9.3.6)"
                         )
 
                         proxy_resp.close()
