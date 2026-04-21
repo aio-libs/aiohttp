@@ -197,9 +197,7 @@ class TestPartReader:
     async def test_read_decode_returns_bytes_not_bytearray(self) -> None:
         """BodyPartReader.read(decode=True) must return bytes, not bytearray (#12404)."""
         data = gzip.compress(b"Hello, world!")
-        headers = CIMultiDictProxy[str](
-            CIMultiDict({CONTENT_ENCODING: "gzip"})
-        )
+        headers = CIMultiDictProxy[str](CIMultiDict({CONTENT_ENCODING: "gzip"}))
         with Stream(data + b"\r\n--:") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, headers, stream, subtype="mixed")
             result = await obj.read(decode=True)
