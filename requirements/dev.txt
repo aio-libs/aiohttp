@@ -12,7 +12,7 @@ aiohappyeyeballs==2.6.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
-aiohttp==3.11.18
+aiohttp==3.13.5
     # via pytest-aiohttp
 aiohttp-theme==0.1.7
     # via -r requirements/doc.in
