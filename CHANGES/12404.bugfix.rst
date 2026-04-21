@@ -1,0 +1,3 @@
+BodyPartReader.read() now correctly returns ``bytes`` instead of ``bytearray``,
+matching the type annotation and preventing ``TypeError`` in downstream code
+that expects ``bytes`` (e.g. ``json.dumps``).
