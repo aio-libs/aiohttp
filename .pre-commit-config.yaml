@@ -103,7 +103,6 @@ repos:
   hooks:
   - id: pyupgrade
     args: ['--py37-plus']
-    language_version: python3.13
 - repo: https://github.com/PyCQA/flake8
   rev: '7.3.0'
   hooks:

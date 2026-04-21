@@ -93,15 +93,11 @@ def _safe_set_morsel_state(
     CPython builds that include the CVE-2026-3644 patch added validation in
     ``Morsel.__setstate__`` that rejects values containing ASCII control
     characters.  When ``_unquote`` decodes octal escape sequences
-    (e.g. ``\012`` → ``\n``) the resulting value may contain such characters.
+    (e.g. ``\012`` → ``\n``) the resulting value may contain such characters,
+    causing ``CookieError`` to be raised.
 
-    When that happens we fall back to storing the *raw* (still-escaped)
-    ``coded_value`` as both ``value`` and ``coded_value`` so the cookie
-    is preserved without crashing.
-
-    If the ``coded_value`` itself contains literal control characters
-    (e.g. a raw ``\x07`` in the header), the cookie is unsalvageable and
-    the function returns ``False`` so the caller can skip it.
+    In that case the cookie is skipped entirely — the function returns ``False``
+    so the caller can move on to the next cookie without crashing.
 
     Returns:
         True if the morsel state was set successfully, False if the
@@ -112,15 +108,7 @@ def _safe_set_morsel_state(
             {"key": key, "value": value, "coded_value": coded_value}
         )
     except CookieError:
-        # The decoded value contains control characters rejected after
-        # CVE-2026-3644.  Fall back to keeping the raw coded_value.
-        try:
-            morsel.__setstate__(  # type: ignore[attr-defined]
-                {"key": key, "value": coded_value, "coded_value": coded_value}
-            )
-        except CookieError:
-            # coded_value itself has literal control chars — unsalvageable.
-            return False
+        return False
     return True
 
 

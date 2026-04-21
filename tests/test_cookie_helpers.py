@@ -3,14 +3,12 @@
 import logging
 import sys
 import time
-import typing
 from http.cookies import (
     CookieError,
     Morsel,
     SimpleCookie,
     _unquote as simplecookie_unquote,
 )
-from unittest.mock import patch
 
 import pytest
 
@@ -1139,8 +1137,18 @@ def test_parse_set_cookie_headers_uses_unquote_with_octal(
 @pytest.mark.parametrize(
     ("header", "expected_name", "expected_coded"),
     [
-        (r'name="\012newline\012"', "name", r'"\012newline\012"'),
-        (r'tab="\011separated\011values"', "tab", r'"\011separated\011values"'),
+        pytest.param(
+            r'name="\012newline\012"',
+            "name",
+            r'"\012newline\012"',
+            id="newline-octal-012",
+        ),
+        pytest.param(
+            r'tab="\011separated\011values"',
+            "tab",
+            r'"\011separated\011values"',
+            id="tab-octal-011",
+        ),
     ],
 )
 def test_parse_set_cookie_headers_ctl_chars_from_octal(
@@ -1150,18 +1158,17 @@ def test_parse_set_cookie_headers_ctl_chars_from_octal(
 
     CPython builds with the CVE-2026-3644 patch reject control characters in
     cookies.  When octal unquoting produces a control character, the parser
-    should fall back to the raw coded_value instead of raising CookieError.
+    skips the cookie entirely instead of raising CookieError.
     """
     result = parse_set_cookie_headers([header])
 
-    assert len(result) == 1
-    name, morsel = result[0]
-
-    assert name == expected_name
-    assert morsel.coded_value == expected_coded
-    # Depending on CPython build, morsel.value will either be the decoded string
-    # (pre CVE-2026-3644 patch) or the raw coded_value (post patch).
-    # We just ensure it doesn't crash and the coded_value is preserved.
+    # On CPython with CVE-2026-3644 patch the cookie is rejected (result is empty);
+    # on older builds it may be accepted with the decoded value.
+    # Either way, no crash.
+    if result:
+        name, morsel = result[0]
+        assert name == expected_name
+        assert morsel.coded_value == expected_coded
 
 
 def test_parse_set_cookie_headers_literal_ctl_chars() -> None:
@@ -1183,8 +1190,7 @@ def test_parse_set_cookie_headers_literal_ctl_chars_preserves_others() -> None:
     result = parse_set_cookie_headers(['bad="a\x07b"; good=value', "another=cookie"])
     # "good" is an attribute of "bad" (same header), so it's not a separate cookie.
     # "another" is in a separate header and must always be preserved.
-    names = [name for name, _ in result]
-    assert "another" in names
+    assert any(name == "another" for name, _ in result)
 
 
 # Tests for parse_cookie_header (RFC 6265 compliant Cookie header parser)
@@ -1660,8 +1666,7 @@ def test_parse_cookie_header_literal_ctl_chars() -> None:
     result = parse_cookie_header('name="a\x07b"; good=cookie')
     # On CPython with CVE-2026-3644 patch the bad cookie is skipped;
     # on older builds it may be accepted.  Either way, no crash.
-    names = [name for name, _ in result]
-    assert "good" in names
+    assert any(name == "good" for name, _ in result)
 
 
 @pytest.mark.parametrize(
@@ -1855,7 +1860,9 @@ def test_unquote_compatibility_with_simplecookie(test_value: str) -> None:
 
 
 @pytest.fixture
-def mock_strict_morsel() -> typing.Iterator[None]:
+def mock_strict_morsel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     original_setstate = Morsel.__setstate__  # type: ignore[attr-defined]
 
     def _mock_setstate(self: Morsel[str], state: dict[str, str]) -> None:
@@ -1863,19 +1870,18 @@ def mock_strict_morsel() -> typing.Iterator[None]:
             raise CookieError()
         original_setstate(self, state)
 
-    with patch(
+    monkeypatch.setattr(
         "aiohttp._cookie_helpers.Morsel.__setstate__",
-        autospec=True,
-        side_effect=_mock_setstate,
-    ):
-        yield
+        _mock_setstate,
+    )
 
 
-def test_cookie_helpers_cve_fallback(mock_strict_morsel: None) -> None:
-    m: Morsel[str] = Morsel()
-    assert helpers._safe_set_morsel_state(m, "k", "v\n", "v\\012") is True
-    assert m.value == "v\\012"
-
+@pytest.mark.usefixtures("mock_strict_morsel")
+def test_cookie_helpers_cve_fallback() -> None:
+    # Clean value: mock delegates to original_setstate → succeeds
+    assert helpers._safe_set_morsel_state(Morsel(), "k", "clean", "clean") is True
+    # With strict morsel: any CTL char in value → CookieError → rejected
+    assert helpers._safe_set_morsel_state(Morsel(), "k", "v\n", "v\\012") is False
     assert helpers._safe_set_morsel_state(Morsel(), "k", "v\n", "v\n") is False
 
     cookie: Morsel[str] = Morsel()
@@ -1886,3 +1892,4 @@ def test_cookie_helpers_cve_fallback(mock_strict_morsel: None) -> None:
     assert parse_cookie_header("f=b\x07r") == []
     assert parse_cookie_header('f="b\x07r";') == []
     assert parse_set_cookie_headers(['f="b\x07r";']) == []
+    assert parse_set_cookie_headers([r'name="\012newline\012"']) == []

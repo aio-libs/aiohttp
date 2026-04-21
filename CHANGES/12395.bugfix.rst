@@ -1,6 +1,4 @@
-Fixed a crash (``CookieError``) in the cookie parser when receiving cookies
-containing ASCII control characters on CPython builds with the CVE-2026-3644
-patch. The parser now gracefully falls back to storing the raw, still-escaped
-``coded_value`` when the decoded value contains control characters, and skips
-cookies whose raw header contains literal control characters that cannot be
-safely stored -- by :user:`rodrigobnogueira`.
+Fixed a crash (:external+python:exc:`~http.cookies.CookieError`) in the cookie parser when receiving cookies
+containing ASCII control characters on CPython builds with the :cve:`2026-3644`
+patch. The parser now gracefully skips cookies whose value contains control
+characters instead of letting the exception propagate -- by :user:`rodrigobnogueira`.
