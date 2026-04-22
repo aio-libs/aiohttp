@@ -1,0 +1,4 @@
+Fixed flaky ``test_aiohttp_request_ctx_manager_not_found`` by switching the
+unresolvable hostname to use the reserved ``.invalid`` TLD (RFC 2606), which is
+guaranteed not to resolve, instead of relying on a real domain that could be
+hijacked or unexpectedly resolved by some networks -- by :user:`copilot`.
