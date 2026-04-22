@@ -44,7 +44,7 @@ Multipart reference
                           from ``Content-Encoding`` header. If it
                           missed data remains untouched
 
-      :rtype: bytearray
+      :rtype: bytes
 
    .. method:: read_chunk(size=chunk_size)
       :async:
