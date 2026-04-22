@@ -1838,7 +1838,7 @@ async def test_get_content_length_invalid_formats(
     with pytest.raises(ValueError, match="Invalid Content-Length header"):
         req._get_content_length()
 
-    req.headers["Content-Length"] = "abc"
+    req.headers["Content-Length"] = "५"  # Devengali number 5
     with pytest.raises(ValueError, match="Invalid Content-Length header"):
         req._get_content_length()
 
