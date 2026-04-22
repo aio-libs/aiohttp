@@ -192,7 +192,9 @@ class TestPartReader:
             d = CIMultiDictProxy[str](CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read()
-            assert isinstance(result, bytes), f"Expected bytes, got {type(result).__name__}"
+            assert isinstance(
+                result, bytes
+            ), f"Expected bytes, got {type(result).__name__}"
 
     async def test_read_decode_returns_bytes_not_bytearray(self) -> None:
         # Regression test for https://github.com/aio-libs/aiohttp/issues/12404
@@ -202,7 +204,9 @@ class TestPartReader:
             d = CIMultiDictProxy[str](CIMultiDict())
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read(decode=True)
-            assert isinstance(result, bytes), f"Expected bytes, got {type(result).__name__}"
+            assert isinstance(
+                result, bytes
+            ), f"Expected bytes, got {type(result).__name__}"
 
     async def test_read_chunk_at_eof(self) -> None:
         with Stream(b"--:") as stream:
