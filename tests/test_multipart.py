@@ -185,6 +185,25 @@ class TestPartReader:
             assert b"Hello, world!" == result
             assert obj.at_eof()
 
+    async def test_read_returns_bytes_not_bytearray(self) -> None:
+        # Regression test for https://github.com/aio-libs/aiohttp/issues/12404
+        # read() must return bytes (not bytearray) to honour the documented API contract.
+        with Stream(b"Hello, world!\r\n--:") as stream:
+            d = CIMultiDictProxy[str](CIMultiDict())
+            obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
+            result = await obj.read()
+            assert isinstance(result, bytes), f"Expected bytes, got {type(result).__name__}"
+
+    async def test_read_decode_returns_bytes_not_bytearray(self) -> None:
+        # Regression test for https://github.com/aio-libs/aiohttp/issues/12404
+        # read(decode=True) must return bytes (not bytearray) even when no
+        # Content-Transfer-Encoding / Content-Encoding header is present.
+        with Stream(b"Hello, world!\r\n--:") as stream:
+            d = CIMultiDictProxy[str](CIMultiDict())
+            obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
+            result = await obj.read(decode=True)
+            assert isinstance(result, bytes), f"Expected bytes, got {type(result).__name__}"
+
     async def test_read_chunk_at_eof(self) -> None:
         with Stream(b"--:") as stream:
             d = CIMultiDictProxy[str](CIMultiDict())
