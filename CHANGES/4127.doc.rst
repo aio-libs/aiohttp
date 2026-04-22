@@ -1,0 +1,3 @@
+Stopped ``Parameters:``, ``Returns:`` and other field-list labels in the
+rendered documentation from collapsing into a one-character-wide column by
+giving ``dl.field-list>dt`` a small ``min-width`` in the custom stylesheet.
