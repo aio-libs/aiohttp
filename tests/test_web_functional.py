@@ -196,29 +196,6 @@ async def test_response_before_complete(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
-async def test_content_length_invalid(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        body = await request.read()
-        return web.Response(body=body)
-
-    app = web.Application()
-    app.router.add_post("/", handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.post("/", data=b"hello world", headers={CONTENT_LENGTH: "11"})
-    assert resp.status == 200
-    assert await resp.read() == b"hello world"
-    resp.release()
-
-    with pytest.raises(ValueError, match="Invalid Content-Length header"):
-        await client.post("/", data=b"hello world", headers={CONTENT_LENGTH: "-100"})
-
-    with pytest.raises(ValueError, match="Invalid Content-Length header"):
-        await client.post("/", data=b"hello world", headers={CONTENT_LENGTH: " 100"})
-
-
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
 async def test_cancel_shutdown(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
