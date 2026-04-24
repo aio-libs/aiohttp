@@ -185,6 +185,22 @@ class TestPartReader:
             assert b"Hello, world!" == result
             assert obj.at_eof()
 
+    async def test_read_returns_bytes_not_bytearray(self) -> None:
+        # Regression test for #12404 - read() was returning bytearray
+        with Stream(b"Hello, world!\r\n--:") as stream:
+            d = CIMultiDictProxy[str](CIMultiDict())
+            obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
+            result = await obj.read()
+            assert isinstance(result, bytes), f"Expected bytes, got {type(result)}"
+
+    async def test_read_decode_returns_bytes_not_bytearray(self) -> None:
+        # Regression test for #12404 - read(decode=True) was returning bytearray
+        with Stream(b"Hello, world!\r\n--:") as stream:
+            d = CIMultiDictProxy[str](CIMultiDict())
+            obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
+            result = await obj.read(decode=True)
+            assert isinstance(result, bytes), f"Expected bytes, got {type(result)}"
+
     async def test_read_chunk_at_eof(self) -> None:
         with Stream(b"--:") as stream:
             d = CIMultiDictProxy[str](CIMultiDict())

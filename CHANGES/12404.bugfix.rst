@@ -1,0 +1,1 @@
+Fixed :meth:`aiohttp.BodyPartReader.read` returning :class:`bytearray` instead of :class:`bytes`, violating the documented API contract and breaking JSON serialization of multipart body parts -- by :user:`terminalchai`.
