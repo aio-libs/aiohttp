@@ -10,7 +10,7 @@ annotated-types==0.7.0
     # via pydantic
 async-timeout==5.0.1
     # via valkey
-backports-zstd==1.3.0 ; implementation_name == "cpython"
+backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3.14"
     # via -r requirements/lint.in
 blockbuster==1.5.26
     # via -r requirements/lint.in
@@ -29,7 +29,7 @@ distlib==0.4.0
     # via virtualenv
 exceptiongroup==1.3.1
     # via pytest
-filelock==3.28.0
+filelock==3.29.0
     # via
     #   python-discovery
     #   virtualenv
@@ -37,7 +37,7 @@ forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
     # via -r requirements/lint.in
-identify==2.6.18
+identify==2.6.19
     # via pre-commit
 idna==3.11
     # via trustme
@@ -59,7 +59,7 @@ nodeenv==1.10.0
     # via pre-commit
 packaging==26.1
     # via pytest
-pathspec==1.0.4
+pathspec==1.1.0
     # via mypy
 platformdirs==4.9.6
     # via
@@ -67,7 +67,7 @@ platformdirs==4.9.6
     #   virtualenv
 pluggy==1.6.0
     # via pytest
-pre-commit==4.5.1
+pre-commit==4.6.0
     # via -r requirements/lint.in
 proxy-py==2.4.10
     # via -r requirements/lint.in
@@ -75,9 +75,9 @@ pycares==5.0.1
     # via aiodns
 pycparser==3.0
     # via cffi
-pydantic==2.13.2
+pydantic==2.13.3
     # via python-on-whales
-pydantic-core==2.46.2
+pydantic-core==2.46.3
     # via pydantic
 pygments==2.20.0
     # via

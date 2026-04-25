@@ -78,6 +78,7 @@ if TYPE_CHECKING:
 
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_DIGITS_RE = re.compile(r"\d+", re.ASCII)
 
 
 def _gen_default_accept_encoding() -> str:
@@ -753,12 +754,9 @@ class ClientRequestBase:
             return None
 
         content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
-        try:
-            return int(content_length_hdr)
-        except ValueError:
-            raise ValueError(
-                f"Invalid Content-Length header: {content_length_hdr}"
-            ) from None
+        if not _DIGITS_RE.fullmatch(content_length_hdr):
+            raise ValueError(f"Invalid Content-Length header: {content_length_hdr!r}")
+        return int(content_length_hdr)
 
     @property
     def _writer(self) -> asyncio.Task[None] | None:

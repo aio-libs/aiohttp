@@ -1717,9 +1717,8 @@ async def test_http_response_parser_bad_chunked_lax(
 
 
 @pytest.mark.dev_mode
-async def test_http_response_parser_bad_chunked_strict_py(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_http_response_parser_bad_chunked_strict_py() -> None:
+    loop = asyncio.get_running_loop()
     protocol = ResponseHandler(loop)
 
     response = HttpResponseParserPy(
@@ -1742,9 +1741,8 @@ async def test_http_response_parser_bad_chunked_strict_py(
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
 )
-async def test_http_response_parser_bad_chunked_strict_c(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_http_response_parser_bad_chunked_strict_c() -> None:
+    loop = asyncio.get_running_loop()
     protocol = ResponseHandler(loop)
 
     response = HttpResponseParserC(

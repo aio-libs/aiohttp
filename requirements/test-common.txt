@@ -46,7 +46,7 @@ mypy-extensions==1.1.0
     # via mypy
 packaging==26.1
     # via pytest
-pathspec==1.0.4
+pathspec==1.1.0
     # via mypy
 pkgconfig==1.6.0
     # via -r requirements/test-common.in
@@ -58,9 +58,9 @@ proxy-py==2.4.10
     # via -r requirements/test-common.in
 pycparser==3.0
     # via cffi
-pydantic==2.13.2
+pydantic==2.13.3
     # via python-on-whales
-pydantic-core==2.46.2
+pydantic-core==2.46.3
     # via pydantic
 pygments==2.20.0
     # via
