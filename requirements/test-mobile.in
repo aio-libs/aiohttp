@@ -1,0 +1,7 @@
+-r base-ft.in
+-r test-common-base.in
+
+# pip-compile does not support environment markers for transitive dependencies. So
+# some packages that are transitive dependencies have to be explicitly excluded here:
+pycares; sys_platform != 'android' and sys_platform != 'ios'  # transitive dependency of "aiodns"
+cffi; sys_platform != 'android' and sys_platform != 'ios'  # transitive dependency of "pycares"
