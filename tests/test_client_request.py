@@ -2134,7 +2134,7 @@ async def test_expect100_with_body_becomes_empty(
 
     # Create a request
     req = make_client_request(
-        "POST", URL("http://test.example.com/"), loop=asyncio.get_event_loop()
+        "POST", URL("http://test.example.com/"), loop=asyncio.get_running_loop()
     )
     req._body = mock.Mock()  # Start with a body
 

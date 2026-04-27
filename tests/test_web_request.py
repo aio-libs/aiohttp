@@ -838,7 +838,9 @@ def test_clone_headers_dict() -> None:
 
 
 async def test_cannot_clone_after_read(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop())
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
     payload.feed_data(b"data")
     payload.feed_eof()
     req = make_mocked_request("GET", "/path", payload=payload)
@@ -848,7 +850,7 @@ async def test_cannot_clone_after_read(protocol: BaseProtocol) -> None:
 
 
 async def test_make_too_big_request(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
     payload.feed_data(too_large_file)
@@ -861,7 +863,9 @@ async def test_make_too_big_request(protocol: BaseProtocol) -> None:
 
 
 async def test_request_with_wrong_content_type_encoding(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop())
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
     payload.feed_data(b"{}")
     payload.feed_eof()
     headers = {"Content-Type": "text/html; charset=test"}
@@ -873,7 +877,7 @@ async def test_request_with_wrong_content_type_encoding(protocol: BaseProtocol) 
 
 
 async def test_make_too_big_request_same_size_to_max(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     large_file = 1024**2 * b"x"
     payload.feed_data(large_file)
     payload.feed_eof()
@@ -884,7 +888,7 @@ async def test_make_too_big_request_same_size_to_max(protocol: BaseProtocol) -> 
 
 
 async def test_make_too_big_request_adjust_limit(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
     payload.feed_data(too_large_file)
@@ -896,7 +900,7 @@ async def test_make_too_big_request_adjust_limit(protocol: BaseProtocol) -> None
 
 
 async def test_multipart_formdata(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     payload.feed_data(
         b"-----------------------------326931944431359\r\n"
         b'Content-Disposition: form-data; name="a"\r\n'
@@ -921,7 +925,9 @@ async def test_multipart_formdata(protocol: BaseProtocol) -> None:
 
 async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> None:
     # Ensure ValueError is raised when Content-Disposition has no name
-    payload = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop())
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
     payload.feed_data(
         b"-----------------------------326931944431359\r\n"
         b"Content-Disposition: form-data\r\n"  # Missing name!
@@ -942,7 +948,7 @@ async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> 
 
 async def test_multipart_formdata_file(protocol: BaseProtocol) -> None:
     # Make sure file uploads work, even without a content type
-    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     payload.feed_data(
         b"-----------------------------326931944431359\r\n"
         b'Content-Disposition: form-data; name="a_file"; filename="binary"\r\n'
@@ -1020,7 +1026,7 @@ async def test_multipart_formdata_header_too_long(protocol: BaseProtocol) -> Non
 
 
 async def test_make_too_big_request_limit_None(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
     payload.feed_data(too_large_file)

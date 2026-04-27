@@ -83,7 +83,7 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -130,7 +130,7 @@ async def test_raw_server_logs_invalid_method_without_loop_debug(
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -166,7 +166,7 @@ async def test_raw_server_logs_invalid_method_second_request(
             raise exc
         return web.Response()
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -194,7 +194,7 @@ async def test_raw_server_logs_bad_status_line_as_exception(
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -214,7 +214,7 @@ async def test_raw_server_logs_bad_status_line_as_exception(
 async def test_raw_server_handler_timeout(
     aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     exc = asyncio.TimeoutError("error")
 
@@ -237,7 +237,7 @@ async def test_raw_server_do_not_swallow_exceptions(
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise asyncio.CancelledError()
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -258,7 +258,7 @@ async def test_raw_server_does_not_swallow_base_exceptions(
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise UnexpectedException()
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     server = await aiohttp_raw_server(handler)
     cli = await aiohttp_client(server)
@@ -278,7 +278,7 @@ async def test_raw_server_cancelled_in_write_eof(
         resp = MyResponse(text=str(request.rel_url))
         return resp
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -298,7 +298,7 @@ async def test_raw_server_not_http_exception_debug(
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -356,7 +356,7 @@ async def test_raw_server_html_exception_debug(
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)

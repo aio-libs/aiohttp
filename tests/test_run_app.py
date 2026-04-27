@@ -861,7 +861,7 @@ def test_run_app_cancels_all_pending_tasks(
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(asyncio.sleep(1000))
 
     app.on_startup.append(on_startup)
@@ -880,7 +880,7 @@ def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> 
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(coro())
 
     app.on_startup.append(on_startup)
@@ -904,7 +904,7 @@ def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(fail())
         await asyncio.sleep(0.01)
 
