@@ -212,10 +212,10 @@ class AccessLogger(AbstractAccessLogger):
                 if key.__class__ is str:
                     extra[key] = value
                 else:
-                    k1, k2 = key  # type: ignore[misc]
-                    dct = extra.get(k1, {})  # type: ignore[var-annotated,has-type]
-                    dct[k2] = value  # type: ignore[index,has-type]
-                    extra[k1] = dct  # type: ignore[has-type,assignment]
+                    k1, k2 = key
+                    dct = extra.get(k1, {})
+                    dct[k2] = value
+                    extra[k1] = dct
 
             self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
