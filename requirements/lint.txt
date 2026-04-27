@@ -21,7 +21,7 @@ cffi==2.0.0
     #   pytest-codspeed
 cfgv==3.5.0
     # via pre-commit
-click==8.3.2
+click==8.3.3
     # via slotscheck
 cryptography==47.0.0
     # via trustme
