@@ -47,7 +47,7 @@ cfgv==3.5.0
     # via pre-commit
 charset-normalizer==3.4.7
     # via requests
-click==8.3.2
+click==8.3.3
     # via
     #   pip-tools
     #   slotscheck
@@ -57,7 +57,7 @@ coverage==7.13.5
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==46.0.7
+cryptography==47.0.0
     # via trustme
 distlib==0.4.0
     # via virtualenv
@@ -285,7 +285,7 @@ zlib-ng==1.0.0
     #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==26.0.1
+pip==26.1
     # via pip-tools
 setuptools==82.0.1
     # via pip-tools
