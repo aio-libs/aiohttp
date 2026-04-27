@@ -136,7 +136,8 @@ def create_mocked_conn(
     return proto
 
 
-async def test_connection_del(loop: asyncio.AbstractEventLoop) -> None:
+async def test_connection_del() -> None:
+    loop = asyncio.get_running_loop()
     connector = mock.Mock()
     key = mock.Mock()
     protocol = mock.Mock()
@@ -197,7 +198,8 @@ def test_connection_del_loop_closed(loop: asyncio.AbstractEventLoop) -> None:
     assert not exc_handler.called
 
 
-async def test_del(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
+async def test_del(key: ConnectionKey) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
     proto = create_mocked_conn(loop, should_close=False)
     conn._release(key, proto)
@@ -222,8 +224,9 @@ async def test_del(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
 
 @pytest.mark.xfail
 async def test_del_with_scheduled_cleanup(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
+    key: ConnectionKey,
 ) -> None:
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     conn = aiohttp.BaseConnector(keepalive_timeout=0.01)
     transp = create_mocked_conn(loop)
@@ -275,11 +278,11 @@ def test_del_with_closed_loop(  # type: ignore[misc]
     assert exc_handler.called
 
 
-async def test_del_empty_connector(loop: asyncio.AbstractEventLoop) -> None:
+async def test_del_empty_connector() -> None:
     conn = aiohttp.BaseConnector()
 
     exc_handler = mock.Mock()
-    loop.set_exception_handler(exc_handler)
+    asyncio.get_running_loop().set_exception_handler(exc_handler)
 
     del conn
 
@@ -293,7 +296,7 @@ async def test_create_conn() -> None:
     await conn.close()
 
 
-async def test_async_context_manager(loop: asyncio.AbstractEventLoop) -> None:
+async def test_async_context_manager() -> None:
     conn = aiohttp.BaseConnector()
 
     async with conn as c:
@@ -339,7 +342,8 @@ async def test_close_with_proto_closed_none(key: ConnectionKey) -> None:
     assert conn.closed
 
 
-async def test_get(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
+async def test_get(key: ConnectionKey) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
     try:
         assert await conn._get(key, []) is None
@@ -354,7 +358,8 @@ async def test_get(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
         await conn.close()
 
 
-async def test_get_unconnected_proto(loop: asyncio.AbstractEventLoop) -> None:
+async def test_get_unconnected_proto() -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
     key = ConnectionKey("localhost", 80, False, False, None, None, None)
     try:
@@ -375,7 +380,8 @@ async def test_get_unconnected_proto(loop: asyncio.AbstractEventLoop) -> None:
         await conn.close()
 
 
-async def test_get_unconnected_proto_ssl(loop: asyncio.AbstractEventLoop) -> None:
+async def test_get_unconnected_proto_ssl() -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
     key = ConnectionKey("localhost", 80, True, False, None, None, None)
     try:
@@ -396,7 +402,8 @@ async def test_get_unconnected_proto_ssl(loop: asyncio.AbstractEventLoop) -> Non
         await conn.close()
 
 
-async def test_get_expired(loop: asyncio.AbstractEventLoop) -> None:
+async def test_get_expired() -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
     key = ConnectionKey("localhost", 80, False, False, None, None, None)
     try:
@@ -411,7 +418,8 @@ async def test_get_expired(loop: asyncio.AbstractEventLoop) -> None:
 
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
-async def test_get_expired_ssl(loop: asyncio.AbstractEventLoop) -> None:
+async def test_get_expired_ssl() -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     key = ConnectionKey("localhost", 80, True, False, None, None, None)
     try:
@@ -459,7 +467,8 @@ async def test_release_acquired_closed(key: ConnectionKey) -> None:
         await conn.close()
 
 
-async def test_release(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
+async def test_release(key: ConnectionKey) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
     with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True) as m:
         proto = create_mocked_conn(loop, should_close=False)
@@ -478,11 +487,11 @@ async def test_release(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> N
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_release_ssl_transport(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
+    ssl_key: ConnectionKey,
 ) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True):
-        proto = create_mocked_conn(loop)
+        proto = create_mocked_conn(asyncio.get_running_loop())
         transport = proto.transport
         conn._acquired.add(proto)
         conn._acquired_per_host[ssl_key].add(proto)
@@ -510,9 +519,7 @@ async def test_release_already_closed(key: ConnectionKey) -> None:
             assert not m2.called
 
 
-async def test_release_waiter_no_limit(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey, key2: ConnectionKey
-) -> None:
+async def test_release_waiter_no_limit(key: ConnectionKey, key2: ConnectionKey) -> None:
     # limit is 0
     conn = aiohttp.BaseConnector(limit=0)
     w = mock.Mock()
@@ -525,7 +532,7 @@ async def test_release_waiter_no_limit(
 
 
 async def test_release_waiter_first_available(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey, key2: ConnectionKey
+    key: ConnectionKey, key2: ConnectionKey
 ) -> None:
     conn = aiohttp.BaseConnector()
     w1, w2 = mock.Mock(), mock.Mock()
@@ -544,7 +551,7 @@ async def test_release_waiter_first_available(
 
 
 async def test_release_waiter_release_first(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey, key2: ConnectionKey
+    key: ConnectionKey, key2: ConnectionKey
 ) -> None:
     conn = aiohttp.BaseConnector(limit=1)
     w1, w2 = mock.Mock(), mock.Mock()
@@ -559,7 +566,7 @@ async def test_release_waiter_release_first(
 
 
 async def test_release_waiter_skip_done_waiter(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey, key2: ConnectionKey
+    key: ConnectionKey, key2: ConnectionKey
 ) -> None:
     conn = aiohttp.BaseConnector(limit=1)
     w1, w2 = mock.Mock(), mock.Mock()
@@ -573,9 +580,7 @@ async def test_release_waiter_skip_done_waiter(
     await conn.close()
 
 
-async def test_release_waiter_per_host(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey, key2: ConnectionKey
-) -> None:
+async def test_release_waiter_per_host(key: ConnectionKey, key2: ConnectionKey) -> None:
     # no limit
     conn = aiohttp.BaseConnector(limit=0, limit_per_host=2)
     w1, w2 = mock.Mock(), mock.Mock()
@@ -591,7 +596,7 @@ async def test_release_waiter_per_host(
 
 
 async def test_release_waiter_no_available(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey, key2: ConnectionKey
+    key: ConnectionKey, key2: ConnectionKey
 ) -> None:
     # limit is 0
     conn = aiohttp.BaseConnector(limit=0)
@@ -619,21 +624,17 @@ async def test_release_close(key: ConnectionKey) -> None:
     await conn.close()
 
 
-async def test__release_acquired_per_host1(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test__release_acquired_per_host1(key: ConnectionKey) -> None:
     conn = aiohttp.BaseConnector(limit_per_host=10)
-    conn._release_acquired(key, create_mocked_conn(loop))
+    conn._release_acquired(key, create_mocked_conn(asyncio.get_running_loop()))
     assert len(conn._acquired_per_host) == 0
 
     await conn.close()
 
 
-async def test__release_acquired_per_host2(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test__release_acquired_per_host2(key: ConnectionKey) -> None:
     conn = aiohttp.BaseConnector(limit_per_host=10)
-    handler = create_mocked_conn(loop)
+    handler = create_mocked_conn(asyncio.get_running_loop())
     conn._acquired_per_host[key].add(handler)
     conn._release_acquired(key, handler)
     assert len(conn._acquired_per_host) == 0
@@ -641,9 +642,8 @@ async def test__release_acquired_per_host2(
     await conn.close()
 
 
-async def test__release_acquired_per_host3(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test__release_acquired_per_host3(key: ConnectionKey) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector(limit_per_host=10)
     handler = create_mocked_conn(loop)
     handler2 = create_mocked_conn(loop)
@@ -657,10 +657,9 @@ async def test__release_acquired_per_host3(
 
 
 async def test_tcp_connector_certificate_error(
-    loop: asyncio.AbstractEventLoop,
-    start_connection: mock.AsyncMock,
-    make_client_request: _RequestMaker,
+    start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     req = make_client_request("GET", URL("https://127.0.0.1:443"), loop=loop)
 
     conn = aiohttp.TCPConnector()
@@ -682,10 +681,9 @@ async def test_tcp_connector_certificate_error(
 
 
 async def test_tcp_connector_server_hostname_default(
-    loop: asyncio.AbstractEventLoop,
-    start_connection: mock.AsyncMock,
-    make_client_request: _RequestMaker,
+    start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector()
 
     with mock.patch.object(
@@ -702,10 +700,9 @@ async def test_tcp_connector_server_hostname_default(
 
 
 async def test_tcp_connector_server_hostname_override(
-    loop: asyncio.AbstractEventLoop,
-    start_connection: mock.AsyncMock,
-    make_client_request: _RequestMaker,
+    start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector()
 
     with mock.patch.object(
@@ -724,8 +721,9 @@ async def test_tcp_connector_server_hostname_override(
 
 
 async def test_tcp_connector_multiple_hosts_errors(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector()
 
     ip1 = "192.168.1.1"
@@ -893,10 +891,9 @@ async def test_tcp_connector_multiple_hosts_errors(
     [0.1, 0.25, None],
 )
 async def test_tcp_connector_happy_eyeballs(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
-    happy_eyeballs_delay: float | None,
-    make_client_request: _RequestMaker,
+    happy_eyeballs_delay: float | None, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector(happy_eyeballs_delay=happy_eyeballs_delay)
 
     ip1 = "dead::beef::"
@@ -981,9 +978,8 @@ async def test_tcp_connector_happy_eyeballs(  # type: ignore[misc]
     await conn.close()
 
 
-async def test_tcp_connector_interleave(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
-) -> None:
+async def test_tcp_connector_interleave(make_client_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector(interleave=2)
 
     ip1 = "192.168.1.1"
@@ -1076,8 +1072,9 @@ async def test_tcp_connector_interleave(
 
 
 async def test_tcp_connector_family_is_respected(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector(family=socket.AF_INET)
 
     ip1 = "dead::beef::"
@@ -1162,10 +1159,9 @@ async def test_tcp_connector_family_is_respected(
     ],
 )
 async def test_tcp_connector_multiple_hosts_one_timeout(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
-    request_url: str,
-    make_client_request: _RequestMaker,
+    request_url: str, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector()
 
     ip1 = "192.168.1.1"
@@ -1274,7 +1270,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(  # type: ignore[misc]
     await conn.close()
 
 
-async def test_tcp_connector_resolve_host(loop: asyncio.AbstractEventLoop) -> None:
+async def test_tcp_connector_resolve_host() -> None:
     conn = aiohttp.TCPConnector(use_dns_cache=True)
 
     res = await conn._resolve_host("localhost", 8080)
@@ -1297,7 +1293,7 @@ async def test_tcp_connector_resolve_host(loop: asyncio.AbstractEventLoop) -> No
 
 
 @pytest.fixture
-def dns_response(loop: asyncio.AbstractEventLoop) -> Callable[[], Awaitable[list[str]]]:
+def dns_response() -> Callable[[], Awaitable[list[str]]]:
     async def coro() -> list[str]:
         # simulates a network operation
         await asyncio.sleep(0)
@@ -1307,7 +1303,7 @@ def dns_response(loop: asyncio.AbstractEventLoop) -> Callable[[], Awaitable[list
 
 
 async def test_tcp_connector_dns_cache_not_expired(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
 
@@ -1326,7 +1322,7 @@ async def test_tcp_connector_dns_cache_not_expired(
 
 
 async def test_tcp_connector_dns_cache_forever(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         mock_default_resolver = mock.create_autospec(
@@ -1346,7 +1342,7 @@ async def test_tcp_connector_dns_cache_forever(
 
 
 async def test_tcp_connector_use_dns_cache_disabled(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
 
@@ -1374,8 +1370,9 @@ async def test_tcp_connector_use_dns_cache_disabled(
 
 
 async def test_tcp_connector_dns_throttle_requests(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
+    loop = asyncio.get_running_loop()
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         mock_default_resolver = mock.create_autospec(
             AbstractResolver, instance=True, spec_set=True
@@ -1404,9 +1401,8 @@ async def test_tcp_connector_dns_throttle_requests(
         await conn.close()
 
 
-async def test_tcp_connector_dns_throttle_requests_exception_spread(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_dns_throttle_requests_exception_spread() -> None:
+    loop = asyncio.get_running_loop()
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         e = Exception()
 
@@ -1431,8 +1427,9 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(
 
 
 async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
+    loop = asyncio.get_running_loop()
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
 
         async def mock_resolve(*_args: object, **_kwargs: object) -> list[str]:
@@ -1459,9 +1456,7 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
 
 
 @pytest.fixture
-def dns_response_error(
-    loop: asyncio.AbstractEventLoop,
-) -> Callable[[], Awaitable[NoReturn]]:
+def dns_response_error() -> Callable[[], Awaitable[NoReturn]]:
     async def coro() -> NoReturn:
         # simulates a network operation
         await asyncio.sleep(0)
@@ -1471,10 +1466,10 @@ def dns_response_error(
 
 
 async def test_tcp_connector_cancel_dns_error_captured(
-    loop: asyncio.AbstractEventLoop,
     dns_response_error: Callable[[], Awaitable[NoReturn]],
     make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     exception_handler_called = False
 
     def exception_handler(loop: asyncio.AbstractEventLoop, context: object) -> None:
@@ -1504,7 +1499,7 @@ async def test_tcp_connector_cancel_dns_error_captured(
 
 
 async def test_tcp_connector_dns_tracing(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
@@ -1552,7 +1547,7 @@ async def test_tcp_connector_dns_tracing(
 
 
 async def test_tcp_connector_dns_tracing_cache_disabled(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
@@ -1610,8 +1605,9 @@ async def test_tcp_connector_dns_tracing_cache_disabled(
 
 
 async def test_tcp_connector_dns_tracing_throttle_requests(
-    loop: asyncio.AbstractEventLoop, dns_response: Callable[[], Awaitable[list[str]]]
+    dns_response: Callable[[], Awaitable[list[str]]],
 ) -> None:
+    loop = asyncio.get_running_loop()
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_dns_cache_hit = mock.AsyncMock()
@@ -1655,9 +1651,8 @@ async def test_tcp_connector_close_resolver() -> None:
         m_resolver.close.assert_awaited_once()
 
 
-async def test_dns_error(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
-) -> None:
+async def test_dns_error(make_client_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     connector = aiohttp.TCPConnector()
     with mock.patch.object(
         connector,
@@ -1674,9 +1669,7 @@ async def test_dns_error(
     await connector.close()
 
 
-async def test_get_pop_empty_conns(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test_get_pop_empty_conns(key: ConnectionKey) -> None:
     # see issue #473
     conn = aiohttp.BaseConnector()
     assert await conn._get(key, []) is None
@@ -1685,13 +1678,11 @@ async def test_get_pop_empty_conns(
     await conn.close()
 
 
-async def test_release_close_do_not_add_to_pool(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test_release_close_do_not_add_to_pool(key: ConnectionKey) -> None:
     # see issue #473
     conn = aiohttp.BaseConnector()
 
-    proto = create_mocked_conn(loop, should_close=True)
+    proto = create_mocked_conn(asyncio.get_running_loop(), should_close=True)
 
     conn._acquired.add(proto)
     conn._release(key, proto)
@@ -1701,8 +1692,9 @@ async def test_release_close_do_not_add_to_pool(
 
 
 async def test_release_close_do_not_delete_existing_connections(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
+    key: ConnectionKey,
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto1 = create_mocked_conn(loop)
 
     conn = aiohttp.BaseConnector()
@@ -1716,9 +1708,7 @@ async def test_release_close_do_not_delete_existing_connections(
     await conn.close()
 
 
-async def test_release_not_started(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test_release_not_started(key: ConnectionKey) -> None:
     conn = aiohttp.BaseConnector()
     proto = create_mocked_conn(should_close=False)
     conn._acquired.add(proto)
@@ -1726,17 +1716,15 @@ async def test_release_not_started(
     # assert conn._conns == {key: [(proto, 10)]}
     rec = conn._conns[key]
     assert rec[0][0] == proto
-    assert rec[0][1] == pytest.approx(loop.time(), abs=0.05)
+    assert rec[0][1] == pytest.approx(asyncio.get_running_loop().time(), abs=0.05)
     assert not proto.close.called
     await conn.close()
 
 
-async def test_release_not_opened(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test_release_not_opened(key: ConnectionKey) -> None:
     conn = aiohttp.BaseConnector()
 
-    proto = create_mocked_conn(loop)
+    proto = create_mocked_conn(asyncio.get_running_loop())
     conn._acquired.add(proto)
     conn._release(key, proto)
     assert proto.close.called
@@ -1744,11 +1732,8 @@ async def test_release_not_opened(
     await conn.close()
 
 
-async def test_connect(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
-) -> None:
+async def test_connect(key: ConnectionKey, make_client_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -1770,9 +1755,8 @@ async def test_connect(
     await conn.close()
 
 
-async def test_connect_tracing(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
-) -> None:
+async def test_connect_tracing(make_client_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_connection_create_start = mock.AsyncMock()
@@ -1814,8 +1798,9 @@ async def test_connect_tracing(
     ],
 )
 async def test_exception_during_connetion_create_tracing(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop, signal: str, make_client_request: _RequestMaker
+    signal: str, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_signal = mock.AsyncMock(side_effect=asyncio.CancelledError)
@@ -1848,8 +1833,9 @@ async def test_exception_during_connetion_create_tracing(  # type: ignore[misc]
 
 
 async def test_exception_during_connection_queued_tracing(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_signal = mock.AsyncMock(side_effect=asyncio.CancelledError)
@@ -1889,8 +1875,9 @@ async def test_exception_during_connection_queued_tracing(
 
 
 async def test_exception_during_connection_reuse_tracing(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_signal = mock.AsyncMock(side_effect=asyncio.CancelledError)
@@ -1930,9 +1917,9 @@ async def test_exception_during_connection_reuse_tracing(
 
 
 async def test_cancellation_during_waiting_for_free_connection(
-    loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     waiter_wait_stated_future = loop.create_future()
@@ -1974,9 +1961,8 @@ async def test_cancellation_during_waiting_for_free_connection(
     assert key not in conn._acquired_per_host
 
 
-async def test_close_during_connect(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
-) -> None:
+async def test_close_during_connect(make_client_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -2041,8 +2027,9 @@ async def test_cleanup(key: ConnectionKey) -> None:
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
 async def test_cleanup_close_ssl_transport(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop, ssl_key: ConnectionKey
+    ssl_key: ConnectionKey,
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     transport = proto.transport
     testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
@@ -2068,7 +2055,7 @@ async def test_cleanup_close_ssl_transport(  # type: ignore[misc]
     await asyncio.sleep(0)  # Give cleanup a chance to close transports
 
 
-async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
+async def test_cleanup2(key: ConnectionKey) -> None:
     m = create_mocked_conn()
     m.is_connected.return_value = True
     testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
@@ -2089,7 +2076,8 @@ async def test_cleanup2(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
     await conn.close()
 
 
-async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
+async def test_cleanup3(key: ConnectionKey) -> None:
+    loop = asyncio.get_running_loop()
     m = create_mocked_conn(loop)
     m.is_connected.return_value = True
     testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
@@ -2113,10 +2101,8 @@ async def test_cleanup3(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> 
 
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
-async def test_cleanup_closed(
-    loop: asyncio.AbstractEventLoop, mocker: MockerFixture
-) -> None:
-    m = mocker.spy(loop, "call_at")
+async def test_cleanup_closed(mocker: MockerFixture) -> None:
+    m = mocker.spy(asyncio.get_running_loop(), "call_at")
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
 
     tr = mock.Mock()
@@ -2141,9 +2127,7 @@ async def test_cleanup_closed_is_noop_on_fixed_cpython() -> None:
         assert conn._cleanup_closed_disabled is True
 
 
-async def test_cleanup_closed_disabled(
-    loop: asyncio.AbstractEventLoop, mocker: MockerFixture
-) -> None:
+async def test_cleanup_closed_disabled(mocker: MockerFixture) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=False)
 
     tr = mock.Mock()
@@ -2155,7 +2139,7 @@ async def test_cleanup_closed_disabled(
     await conn.close()
 
 
-async def test_tcp_connector_ctor(loop: asyncio.AbstractEventLoop) -> None:
+async def test_tcp_connector_ctor() -> None:
     conn = aiohttp.TCPConnector()
     assert conn._ssl is True
 
@@ -2169,9 +2153,7 @@ async def test_tcp_connector_ctor(loop: asyncio.AbstractEventLoop) -> None:
     sys.version_info < (3, 11),
     reason="Use test_tcp_connector_ssl_shutdown_timeout_pre_311 for Python < 3.11",
 )
-async def test_tcp_connector_ssl_shutdown_timeout(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_ssl_shutdown_timeout() -> None:
     # Test default value (no warning expected)
     conn = aiohttp.TCPConnector()
     assert conn._ssl_shutdown_timeout == 0
@@ -2198,9 +2180,7 @@ async def test_tcp_connector_ssl_shutdown_timeout(
     sys.version_info >= (3, 11),
     reason="This test is for Python < 3.11 runtime warning behavior",
 )
-async def test_tcp_connector_ssl_shutdown_timeout_pre_311(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_ssl_shutdown_timeout_pre_311() -> None:
     """Test that both deprecation and runtime warnings are issued on Python < 3.11."""
     # Test custom value - expect both deprecation and runtime warnings
     with warnings.catch_warnings(record=True) as w:
@@ -2218,11 +2198,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_pre_311(
     sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
 )
 async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
-    start_connection: mock.AsyncMock,
-    make_client_request: _RequestMaker,
+    start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
     # Test that ssl_shutdown_timeout is passed to create_connection for SSL connections
+    loop = asyncio.get_running_loop()
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
@@ -2281,11 +2260,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(  
 
 @pytest.mark.skipif(sys.version_info >= (3, 11), reason="Test for Python < 3.11")
 async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
-    start_connection: mock.AsyncMock,
-    make_client_request: _RequestMaker,
+    start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
     # Test that ssl_shutdown_timeout is NOT passed to create_connection on Python < 3.11
+    loop = asyncio.get_running_loop()
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         conn = aiohttp.TCPConnector(ssl_shutdown_timeout=2.5)
@@ -2312,9 +2290,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(  # type: i
         await conn.close()
 
 
-async def test_tcp_connector_close_abort_ssl_when_shutdown_timeout_zero(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_close_abort_ssl_when_shutdown_timeout_zero() -> None:
     """Test that close() uses abort() for SSL connections when ssl_shutdown_timeout=0."""
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
@@ -2342,9 +2318,9 @@ async def test_tcp_connector_close_abort_ssl_when_shutdown_timeout_zero(
     proto.close.assert_not_called()
 
 
-async def test_tcp_connector_close_doesnt_abort_non_ssl_when_shutdown_timeout_zero(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_close_doesnt_abort_non_ssl_when_shutdown_timeout_zero() -> (
+    None
+):
     """Test that close() still uses close() for non-SSL connections even when ssl_shutdown_timeout=0."""
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
@@ -2372,9 +2348,7 @@ async def test_tcp_connector_close_doesnt_abort_non_ssl_when_shutdown_timeout_ze
     proto.abort.assert_not_called()
 
 
-async def test_tcp_connector_ssl_shutdown_timeout_warning_pre_311(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_ssl_shutdown_timeout_warning_pre_311() -> None:
     """Test that a warning is issued for non-zero ssl_shutdown_timeout on Python < 3.11."""
     with (
         mock.patch.object(sys, "version_info", (3, 10, 0)),
@@ -2413,9 +2387,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_warning_pre_311(
         await conn.close()
 
 
-async def test_tcp_connector_ssl_shutdown_timeout_zero_no_warning_pre_311(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_ssl_shutdown_timeout_zero_no_warning_pre_311() -> None:
     """Test that no warning is issued for ssl_shutdown_timeout=0 on Python < 3.11."""
     with (
         mock.patch.object(sys, "version_info", (3, 10, 0)),
@@ -2433,9 +2405,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_no_warning_pre_311(
         await conn.close()
 
 
-async def test_tcp_connector_ssl_shutdown_timeout_sentinel_no_warning_pre_311(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_ssl_shutdown_timeout_sentinel_no_warning_pre_311() -> None:
     """Test that no warning is issued when sentinel is used on Python < 3.11."""
     with (
         mock.patch.object(sys, "version_info", (3, 10, 0)),
@@ -2451,11 +2421,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_sentinel_no_warning_pre_311(
 
 
 async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
-    loop: asyncio.AbstractEventLoop,
-    start_connection: mock.AsyncMock,
-    make_client_request: _RequestMaker,
+    start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
     """Test that ssl_shutdown_timeout=0 is NOT passed to create_connection."""
+    loop = asyncio.get_running_loop()
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
@@ -2484,11 +2453,10 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
     sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
 )
 async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
-    start_connection: mock.AsyncMock,
-    make_client_request: _RequestMaker,
+    start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
     """Test that non-zero ssl_shutdown_timeout IS passed to create_connection on Python 3.11+."""
+    loop = asyncio.get_running_loop()
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
@@ -2513,9 +2481,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(  # type: ignor
     await conn.close()
 
 
-async def test_tcp_connector_close_abort_ssl_connections_in_conns(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_close_abort_ssl_connections_in_conns() -> None:
     """Test that SSL connections in _conns are aborted when ssl_shutdown_timeout=0."""
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
@@ -2533,7 +2499,7 @@ async def test_tcp_connector_close_abort_ssl_connections_in_conns(
 
     # Add the protocol to _conns
     key = ConnectionKey("host", 443, True, True, None, None, None)
-    conn._conns[key] = deque([(proto, loop.time())])
+    conn._conns[key] = deque([(proto, asyncio.get_running_loop().time())])
 
     # Close the connector
     await conn.close()
@@ -2543,14 +2509,12 @@ async def test_tcp_connector_close_abort_ssl_connections_in_conns(
     proto.close.assert_not_called()
 
 
-async def test_tcp_connector_allowed_protocols(loop: asyncio.AbstractEventLoop) -> None:
+async def test_tcp_connector_allowed_protocols() -> None:
     conn = aiohttp.TCPConnector()
     assert conn.allowed_protocol_schema_set == {"", "tcp", "http", "https", "ws", "wss"}
 
 
-async def test_start_tls_exception_with_ssl_shutdown_timeout_zero(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_start_tls_exception_with_ssl_shutdown_timeout_zero() -> None:
     """Test _start_tls_connection exception handling with ssl_shutdown_timeout=0."""
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
@@ -2582,9 +2546,7 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_zero(
     sys.version_info < (3, 11),
     reason="Use test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311 for Python < 3.11",
 )
-async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero() -> None:
     """Test _start_tls_connection exception handling with ssl_shutdown_timeout>0."""
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
@@ -2616,9 +2578,7 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero(
     sys.version_info >= (3, 11),
     reason="This test is for Python < 3.11 runtime warning behavior",
 )
-async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311() -> None:
     """Test _start_tls_connection exception handling with ssl_shutdown_timeout>0 on Python < 3.11."""
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
@@ -2671,9 +2631,7 @@ async def test_invalid_ssl_param() -> None:
         aiohttp.TCPConnector(ssl=object())  # type: ignore[arg-type]
 
 
-async def test_tcp_connector_ctor_fingerprint_valid(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_ctor_fingerprint_valid() -> None:
     valid = aiohttp.Fingerprint(hashlib.sha256(b"foo").digest())
     conn = aiohttp.TCPConnector(ssl=valid)
     assert conn._ssl is valid
@@ -2681,17 +2639,17 @@ async def test_tcp_connector_ctor_fingerprint_valid(
     await conn.close()
 
 
-async def test_insecure_fingerprint_md5(loop: asyncio.AbstractEventLoop) -> None:
+async def test_insecure_fingerprint_md5() -> None:
     with pytest.raises(ValueError):
         aiohttp.TCPConnector(ssl=aiohttp.Fingerprint(hashlib.md5(b"foo").digest()))
 
 
-async def test_insecure_fingerprint_sha1(loop: asyncio.AbstractEventLoop) -> None:
+async def test_insecure_fingerprint_sha1() -> None:
     with pytest.raises(ValueError):
         aiohttp.TCPConnector(ssl=aiohttp.Fingerprint(hashlib.sha1(b"foo").digest()))
 
 
-async def test_tcp_connector_clear_dns_cache(loop: asyncio.AbstractEventLoop) -> None:
+async def test_tcp_connector_clear_dns_cache() -> None:
     conn = aiohttp.TCPConnector()
     h1: ResolveResult = {
         "hostname": "a",
@@ -2730,9 +2688,7 @@ async def test_tcp_connector_clear_dns_cache(loop: asyncio.AbstractEventLoop) ->
     await conn.close()
 
 
-async def test_tcp_connector_clear_dns_cache_bad_args(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_tcp_connector_clear_dns_cache_bad_args() -> None:
     conn = aiohttp.TCPConnector()
     with pytest.raises(ValueError):
         conn.clear_dns_cache("localhost")
@@ -2817,8 +2773,8 @@ async def test_ssl_context_once() -> None:
     assert conn3._get_ssl_context(req) is _SSL_CONTEXT_VERIFIED
 
 
-async def test_close_twice(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
-    proto: ResponseHandler = create_mocked_conn(loop)
+async def test_close_twice(key: ConnectionKey) -> None:
+    proto: ResponseHandler = create_mocked_conn(asyncio.get_running_loop())
 
     conn = aiohttp.BaseConnector()
     conn._conns[key] = deque([(proto, 0)])
@@ -2833,9 +2789,7 @@ async def test_close_twice(loop: asyncio.AbstractEventLoop, key: ConnectionKey) 
     assert conn.closed
 
 
-async def test_close_cancels_cleanup_handle(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test_close_cancels_cleanup_handle(key: ConnectionKey) -> None:
     conn = aiohttp.BaseConnector()
     conn._release(key, create_mocked_conn(should_close=False))
     assert conn._cleanup_handle is not None
@@ -2843,9 +2797,8 @@ async def test_close_cancels_cleanup_handle(
     assert conn._cleanup_handle is None
 
 
-async def test_close_cancels_resolve_host(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
-) -> None:
+async def test_close_cancels_resolve_host(make_client_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     cancelled = False
 
     async def delay_resolve(*args: object, **kwargs: object) -> None:
@@ -2879,9 +2832,10 @@ async def test_close_cancels_resolve_host(
 
 
 async def test_multiple_dns_resolution_requests_success(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that multiple DNS resolution requests are handled correctly."""
+    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -2941,9 +2895,10 @@ async def test_multiple_dns_resolution_requests_success(
 
 
 async def test_multiple_dns_resolution_requests_failure(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution failure for multiple requests is handled correctly."""
+    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -2994,9 +2949,10 @@ async def test_multiple_dns_resolution_requests_failure(
 
 
 async def test_multiple_dns_resolution_requests_cancelled(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution cancellation does not affect other tasks."""
+    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -3046,9 +3002,10 @@ async def test_multiple_dns_resolution_requests_cancelled(
 
 
 async def test_multiple_dns_resolution_requests_first_cancelled(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that first DNS resolution cancellation does not make other resolutions fail."""
+    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -3109,9 +3066,10 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
 
 
 async def test_multiple_dns_resolution_requests_first_fails_second_successful(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     """Verify that first DNS resolution fails the first time and is successful the second time."""
+    loop = asyncio.get_running_loop()
     attempt = 0
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
@@ -3188,7 +3146,7 @@ async def test_multiple_dns_resolution_requests_first_fails_second_successful(
         assert len(conn._resolve_host_tasks) == 0
 
 
-async def test_close_abort_closed_transports(loop: asyncio.AbstractEventLoop) -> None:
+async def test_close_abort_closed_transports() -> None:
     tr = mock.Mock()
 
     conn = aiohttp.BaseConnector()
@@ -3201,25 +3159,21 @@ async def test_close_abort_closed_transports(loop: asyncio.AbstractEventLoop) ->
 
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
-async def test_close_cancels_cleanup_closed_handle(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_close_cancels_cleanup_closed_handle() -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     assert conn._cleanup_closed_handle is not None
     await conn.close()
     assert conn._cleanup_closed_handle is None
 
 
-async def test_ctor_with_default_loop(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ctor_with_default_loop() -> None:
     conn = aiohttp.BaseConnector()
-    assert loop is conn._loop
+    assert asyncio.get_running_loop() is conn._loop
 
     await conn.close()
 
 
-async def test_base_connector_allows_high_level_protocols(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_base_connector_allows_high_level_protocols() -> None:
     conn = aiohttp.BaseConnector()
     assert conn.allowed_protocol_schema_set == {
         "",
@@ -3231,10 +3185,9 @@ async def test_base_connector_allows_high_level_protocols(
 
 
 async def test_connect_with_limit(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
+    key: ConnectionKey, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -3277,10 +3230,9 @@ async def test_connect_with_limit(
 
 
 async def test_connect_queued_operation_tracing(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
+    key: ConnectionKey, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_connection_queued_start = mock.AsyncMock()
@@ -3326,10 +3278,9 @@ async def test_connect_queued_operation_tracing(
 
 
 async def test_connect_reuseconn_tracing(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
+    key: ConnectionKey, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_connection_reuseconn = mock.AsyncMock()
@@ -3369,12 +3320,12 @@ async def test_connect_reuseconn_tracing(
     ],
 )
 async def test_connect_reuse_proxy_headers(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
     make_client_request: _RequestMaker,
     test_case: str,
     wait_for_con: bool,
     expect_proxy_auth_header: bool,
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -3447,10 +3398,9 @@ async def test_connect_reuse_proxy_headers(  # type: ignore[misc]
 
 
 async def test_connect_with_limit_and_limit_per_host(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
+    key: ConnectionKey, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -3484,10 +3434,9 @@ async def test_connect_with_limit_and_limit_per_host(
 
 
 async def test_connect_with_no_limit_and_limit_per_host(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
+    key: ConnectionKey, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -3519,10 +3468,9 @@ async def test_connect_with_no_limit_and_limit_per_host(
 
 
 async def test_connect_with_no_limits(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
+    key: ConnectionKey, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -3554,10 +3502,9 @@ async def test_connect_with_no_limits(
 
 
 async def test_connect_with_limit_cancelled(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
+    key: ConnectionKey, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -3582,9 +3529,7 @@ async def test_connect_with_limit_cancelled(
         await conn.close()
 
 
-async def test_connect_with_capacity_release_waiters(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_connect_with_capacity_release_waiters() -> None:
     async def check_with_exc(err: Exception) -> None:
         conn = aiohttp.BaseConnector(limit=1)
         with mock.patch.object(
@@ -3604,8 +3549,9 @@ async def test_connect_with_capacity_release_waiters(
 
 
 async def test_connect_with_limit_concurrent(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.should_close = False
     proto.is_connected.return_value = True
@@ -3665,9 +3611,8 @@ async def test_connect_with_limit_concurrent(
         assert max_connections == num_connections
 
 
-async def test_connect_waiters_cleanup(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
-) -> None:
+async def test_connect_waiters_cleanup(make_client_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -3688,8 +3633,9 @@ async def test_connect_waiters_cleanup(
 
 
 async def test_connect_waiters_cleanup_key_error(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -3716,10 +3662,9 @@ async def test_connect_waiters_cleanup_key_error(
 
 
 async def test_close_with_acquired_connection(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
+    key: ConnectionKey, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -3743,51 +3688,48 @@ async def test_close_with_acquired_connection(
         assert connection.closed
 
 
-async def test_default_force_close(loop: asyncio.AbstractEventLoop) -> None:
+async def test_default_force_close() -> None:
     connector = aiohttp.BaseConnector()
     assert not connector.force_close
 
     await connector.close()
 
 
-async def test_limit_property(loop: asyncio.AbstractEventLoop) -> None:
+async def test_limit_property() -> None:
     conn = aiohttp.BaseConnector(limit=15)
     assert 15 == conn.limit
 
     await conn.close()
 
 
-async def test_limit_per_host_property(loop: asyncio.AbstractEventLoop) -> None:
+async def test_limit_per_host_property() -> None:
     conn = aiohttp.BaseConnector(limit_per_host=15)
     assert 15 == conn.limit_per_host
 
     await conn.close()
 
 
-async def test_limit_property_default(loop: asyncio.AbstractEventLoop) -> None:
+async def test_limit_property_default() -> None:
     conn = aiohttp.BaseConnector()
     assert conn.limit == 100
     await conn.close()
 
 
-async def test_limit_per_host_property_default(loop: asyncio.AbstractEventLoop) -> None:
+async def test_limit_per_host_property_default() -> None:
     conn = aiohttp.BaseConnector()
     assert conn.limit_per_host == 0
     await conn.close()
 
 
-async def test_force_close_and_explicit_keep_alive(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_force_close_and_explicit_keep_alive() -> None:
     aiohttp.BaseConnector(force_close=True)
     aiohttp.BaseConnector(force_close=True, keepalive_timeout=None)
     with pytest.raises(ValueError):
         aiohttp.BaseConnector(keepalive_timeout=30, force_close=True)
 
 
-async def test_error_on_connection(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test_error_on_connection(key: ConnectionKey) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector(limit=1, limit_per_host=10)
 
     req = mock.Mock()
@@ -3833,7 +3775,8 @@ async def test_error_on_connection(
     await conn.close()
 
 
-async def test_cancelled_waiter(loop: asyncio.AbstractEventLoop) -> None:
+async def test_cancelled_waiter() -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector(limit=1)
     req = mock.Mock()
     req.connection_key = "key"
@@ -3856,9 +3799,8 @@ async def test_cancelled_waiter(loop: asyncio.AbstractEventLoop) -> None:
     await conn.close()
 
 
-async def test_error_on_connection_with_cancelled_waiter(
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
-) -> None:
+async def test_error_on_connection_with_cancelled_waiter(key: ConnectionKey) -> None:
+    loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector(limit=1, limit_per_host=10)
 
     req = mock.Mock()
@@ -3912,9 +3854,7 @@ async def test_error_on_connection_with_cancelled_waiter(
     await conn.close()
 
 
-async def test_tcp_connector(
-    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_tcp_connector(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -3928,8 +3868,9 @@ async def test_tcp_connector(
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_not_found(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
     req = make_client_request("GET", URL("http://www.python.org"), loop=loop)
@@ -3939,8 +3880,9 @@ async def test_unix_connector_not_found(  # type: ignore[misc]
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 async def test_unix_connector_permission(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     m = mock.AsyncMock(side_effect=PermissionError())
     with mock.patch.object(loop, "create_unix_connection", m):
         connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
@@ -4004,7 +3946,7 @@ async def test_default_use_dns_cache() -> None:
 
 
 async def test_resolver_not_called_with_address_is_ip(
-    loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
+    make_client_request: _RequestMaker,
 ) -> None:
     resolver = mock.MagicMock()
     connector = aiohttp.TCPConnector(resolver=resolver)
@@ -4012,7 +3954,7 @@ async def test_resolver_not_called_with_address_is_ip(
     req = make_client_request(
         "GET",
         URL(f"http://127.0.0.1:{unused_port()}"),
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         response_class=mock.Mock(),
     )
 
@@ -4413,7 +4355,7 @@ async def test_connector_cache_trace_race() -> None:
     await connector.close()
 
 
-async def test_connector_throttle_trace_race(loop: asyncio.AbstractEventLoop) -> None:
+async def test_connector_throttle_trace_race() -> None:
     key = ("", 0)
     token: ResolveResult = {
         "hostname": "localhost",
@@ -4442,9 +4384,7 @@ async def test_connector_throttle_trace_race(loop: asyncio.AbstractEventLoop) ->
     await connector.close()
 
 
-async def test_connector_resolve_in_case_of_trace_cache_miss_exception(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_connector_resolve_in_case_of_trace_cache_miss_exception() -> None:
     token: ResolveResult = {
         "hostname": "localhost",
         "host": "127.0.0.1",
@@ -4504,10 +4444,9 @@ async def test_connector_resolve_in_case_of_trace_cache_miss_exception(
 
 
 async def test_connector_does_not_remove_needed_waiters(
-    loop: asyncio.AbstractEventLoop,
-    key: ConnectionKey,
-    make_client_request: _RequestMaker,
+    key: ConnectionKey, make_client_request: _RequestMaker
 ) -> None:
+    loop = asyncio.get_running_loop()
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
@@ -4586,11 +4525,10 @@ def test_connector_multiple_event_loop(make_client_request: _RequestMaker) -> No
 
 
 async def test_tcp_connector_socket_factory(
-    loop: asyncio.AbstractEventLoop,
-    start_connection: mock.AsyncMock,
-    make_client_request: _RequestMaker,
+    start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
     """Check that socket factory is called"""
+    loop = asyncio.get_running_loop()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         start_connection.return_value = s
 
@@ -4720,10 +4658,9 @@ async def test_available_connections_no_limits(
     assert conn._available_connections(other_host_key2) == 1
 
 
-async def test_connect_tunnel_connection_release(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_connect_tunnel_connection_release() -> None:
     """Test _ConnectTunnelConnection.release() does not pool the connection."""
+    loop = asyncio.get_running_loop()
     connector = mock.create_autospec(
         aiohttp.BaseConnector, spec_set=True, instance=True
     )
