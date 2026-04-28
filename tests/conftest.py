@@ -253,10 +253,8 @@ def unix_sockname(
 
 
 @pytest.fixture
-def event_loop() -> asyncio.AbstractEventLoop:
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+async def event_loop() -> asyncio.AbstractEventLoop:
+    return asyncio.get_running_loop()
 
 
 def pytest_asyncio_loop_factories(config, item):
