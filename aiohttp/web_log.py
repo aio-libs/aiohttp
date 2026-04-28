@@ -207,7 +207,7 @@ class AccessLogger(AbstractAccessLogger):
             fmt_info = self._format_line(request, response, time)
 
             values = list()
-            extra = dict()
+            extra: dict[str, str | dict[str, str]] = dict()
             for key, value in fmt_info:
                 values.append(value)
 
@@ -215,7 +215,7 @@ class AccessLogger(AbstractAccessLogger):
                     extra[key] = value
                 else:
                     k1, k2 = key
-                    dct: dict[str, str] = extra.get(k1, {})
+                    dct: dict[str, str] = extra.get(k1, {})  # type: ignore[assignment]
                     dct[k2] = value
                     extra[k1] = dct
 
