@@ -131,6 +131,9 @@ from .web_urldispatcher import (
 )
 from .web_ws import WebSocketReady, WebSocketResponse, WSMsgType
 
+Response.__module__ = "aiohttp.web"
+WebSocketResponse.__module__ = "aiohttp.web"
+
 __all__ = (
     # web_app
     "AppKey",

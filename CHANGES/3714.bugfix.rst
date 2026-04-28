@@ -1,0 +1,1 @@
+Updated the public ``aiohttp.web`` re-exports for ``Response`` and ``WebSocketResponse`` so autodoc and intersphinx resolve them under ``aiohttp.web``.
