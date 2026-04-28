@@ -190,6 +190,47 @@ async def test_encode_digest_with_md5(
 
 
 @pytest.mark.parametrize(
+    ("url", "expected_uri"),
+    [
+        (
+            URL("http://example.com/axis-cgi/io/port.cgi?action=9:\\"),
+            "/axis-cgi/io/port.cgi?action=9:%5C",
+        ),
+        (
+            URL("http://example.com/path with space/file"),
+            "/path%20with%20space/file",
+        ),
+        (
+            URL("http://example.com/p?q=a&b=1+2"),
+            "/p?q=a&b=1+2",
+        ),
+        (
+            URL.build(
+                scheme="http",
+                host="example.com",
+                path="/p",
+                query={"x": "[]"},
+            ),
+            "/p?x=%5B%5D",
+        ),
+    ],
+    ids=["backslash-and-colon", "space-in-path", "ampersand-and-plus", "brackets"],
+)
+async def test_encode_uri_uses_wire_encoded_request_target(
+    auth_mw_with_challenge: DigestAuthMiddleware,
+    url: URL,
+    expected_uri: str,
+) -> None:
+    """The digest uri/A2 must use the encoded request-target sent on the wire.
+
+    Servers compute the digest signature against the encoded request-target
+    they actually receive, so the client must sign the same encoded form.
+    """
+    header = await auth_mw_with_challenge._encode("GET", url, b"")
+    assert f'uri="{expected_uri}"' in header
+
+
+@pytest.mark.parametrize(
     "algorithm", ["MD5-SESS", "SHA-SESS", "SHA-256-SESS", "SHA-512-SESS"]
 )
 async def test_encode_digest_with_sess_algorithms(
