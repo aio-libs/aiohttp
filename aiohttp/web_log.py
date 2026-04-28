@@ -193,7 +193,7 @@ class AccessLogger(AbstractAccessLogger):
 
     def _format_line(
         self, request: BaseRequest, response: StreamResponse, time: float
-    ) -> Iterable[tuple[str, str]]:
+    ) -> Iterable[tuple[str | tuple[str, str], str]]:
         return [(key, method(request, response, time)) for key, method in self._methods]
 
     @property
