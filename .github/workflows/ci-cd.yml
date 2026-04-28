@@ -236,7 +236,7 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
       run: >-
-        pytest --junitxml=junit.xml -cov=aiohttp/ --cov=tests/ -m 'not dev_mode and not autobahn'
+        pytest --junitxml=junit.xml --cov=aiohttp/ --cov=tests/ -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
