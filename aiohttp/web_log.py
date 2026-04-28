@@ -211,7 +211,7 @@ class AccessLogger(AbstractAccessLogger):
             for key, value in fmt_info:
                 values.append(value)
 
-                if key.__class__ is str:
+                if isinstance(key, str):
                     extra[key] = value
                 else:
                     k1, k2 = key
