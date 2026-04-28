@@ -13,7 +13,7 @@ from .web_response import StreamResponse
 
 
 class KeyMethod(NamedTuple):
-    key: str
+    key: str | tuple[str, str]
     method: Callable[[BaseRequest, StreamResponse, float], str]
 
 
@@ -193,7 +193,7 @@ class AccessLogger(AbstractAccessLogger):
 
     def _format_line(
         self, request: BaseRequest, response: StreamResponse, time: float
-    ) -> Iterable[tuple[str, Callable[[BaseRequest, StreamResponse, float], str]]]:
+    ) -> Iterable[tuple[str, str]]:
         return [(key, method(request, response, time)) for key, method in self._methods]
 
     @property
