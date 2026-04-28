@@ -4,15 +4,17 @@ import logging
 import os
 import re
 import time as time_mod
-from collections import namedtuple
 from collections.abc import Iterable
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, NamedTuple
 
 from .abc import AbstractAccessLogger
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
-KeyMethod = namedtuple("KeyMethod", "key method")
+
+class KeyMethod(NamedTuple):
+    key: str
+    method: Callable[[BaseRequest, StreamResponse, float], str]
 
 
 class AccessLogger(AbstractAccessLogger):
