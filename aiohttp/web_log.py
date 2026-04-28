@@ -215,7 +215,7 @@ class AccessLogger(AbstractAccessLogger):
                     extra[key] = value
                 else:
                     k1, k2 = key
-                    dct = extra.get(k1, {})
+                    dct: dict[str, str] = extra.get(k1, {})
                     dct[k2] = value
                     extra[k1] = dct
 
