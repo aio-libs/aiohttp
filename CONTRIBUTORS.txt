@@ -341,6 +341,7 @@ Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
+Shengsheng Shen
 Shensheng Shen
 Shubh Agarwal
 Simon Kennedy
@@ -433,5 +434,3 @@ Zlatan Sičanica
 Łukasz Setla
 Марк Коренберг
 Семён Марьясин
-
-nightcityblade

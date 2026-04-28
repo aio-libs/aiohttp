@@ -1,1 +1,3 @@
-Updated the public ``aiohttp.web`` re-exports for ``Response`` and ``WebSocketResponse`` so autodoc and intersphinx resolve them under ``aiohttp.web``.
+Fixed the ``aiohttp.web`` re-exports for ``Response`` and ``WebSocketResponse`` so autodoc and intersphinx resolve them under the public module path.
+
+-- by :user:`nightcityblade`.
