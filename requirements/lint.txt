@@ -88,7 +88,7 @@ pytest==9.0.3
     #   -r requirements/lint.in
     #   pytest-codspeed
     #   pytest-mock
-pytest-codspeed==4.4.0
+pytest-codspeed==4.5.0
     # via -r requirements/lint.in
 pytest-mock==3.15.1
     # via -r requirements/lint.in
