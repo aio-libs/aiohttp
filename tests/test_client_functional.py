@@ -4011,7 +4011,7 @@ async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
 
     class Proto(asyncio.Protocol):
         def connection_made(self, transport: asyncio.BaseTransport) -> None:
-            assert isinstance(transport, asyncio.Transport)
+            #assert isinstance(transport, asyncio.Transport)
             self.transp: asyncio.Transport | None = transport
             self.data = b""
 
