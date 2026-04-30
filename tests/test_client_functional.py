@@ -3753,13 +3753,9 @@ async def test_aiohttp_request_ctx_manager_close_sess_on_error(
 
 
 async def test_aiohttp_request_ctx_manager_not_found() -> None:
-    # Use the reserved ``.invalid`` TLD (RFC 2606) so DNS resolution is
-    # guaranteed to fail, instead of relying on a real domain name which
-    # may unexpectedly resolve on some networks (e.g. ISP NXDOMAIN
-    # hijacking) and make this test flaky. See #11293.
     with pytest.raises(aiohttp.ClientConnectionError):
         async with aiohttp.request("GET", "http://wrong-dns-name.invalid"):
-            assert False, "never executed"
+            assert False
 
 
 async def test_raising_client_connector_dns_error_on_dns_failure() -> None:
