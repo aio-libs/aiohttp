@@ -289,7 +289,7 @@ def test_request_cookie__set_item() -> None:
     assert req.cookies == {"name": "value"}
 
     with pytest.raises(TypeError):
-        req.cookies["my"] = "value"  # type: ignore[index]
+        req.cookies["my"] = "value"
 
 
 def test_request_cookies_with_special_characters() -> None:

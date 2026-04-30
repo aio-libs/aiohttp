@@ -1,5 +1,5 @@
 aiodns
-backports.zstd; implementation_name == "cpython"
+backports.zstd; implementation_name == "cpython" and python_version < "3.14"
 blockbuster
 freezegun
 isal
