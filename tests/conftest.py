@@ -257,7 +257,9 @@ async def event_loop() -> asyncio.AbstractEventLoop:
     return asyncio.get_running_loop()
 
 
-def pytest_asyncio_loop_factories(config: pytest.Config, item: pytest.Item) -> dict[str, Callable[[], asyncio.AbstractEventLoop]]:
+def pytest_asyncio_loop_factories(
+    config: pytest.Config, item: pytest.Item
+) -> dict[str, Callable[[], asyncio.AbstractEventLoop]]:
     marker = item.get_closest_marker("asyncio")
     requested = marker.kwargs.get("loop_factories", ()) if marker else ()
 
@@ -271,6 +273,7 @@ def pytest_asyncio_loop_factories(config: pytest.Config, item: pytest.Item) -> d
         factories["uvloop"] = uvloop.new_event_loop
 
     return factories
+
 
 @pytest.fixture
 def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
