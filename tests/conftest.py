@@ -257,14 +257,20 @@ async def event_loop() -> asyncio.AbstractEventLoop:
     return asyncio.get_running_loop()
 
 
-def pytest_asyncio_loop_factories(config, item):
-    factories = {"selector": asyncio.SelectorEventLoop}
-    if platform.system() == "Windows":
-        factories["proactor"] = asyncio.ProactorEventLoop
-    if uvloop is not None:
-        factories["uvloop"] = uvloop.new_event_loop
-    return factories
+def pytest_asyncio_loop_factories(config: pytest.Config, item: pytest.Item) -> dict[str, Callable[[], asyncio.AbstractEventLoop]:
+    marker = item.get_closest_marker("asyncio")
+    requested = marker.kwargs.get("loop_factories", ()) if marker else ()
 
+    factories = {"default": asyncio.new_event_loop}
+
+    if "selector" in requested:
+        factories["selector"] = asyncio.SelectorEventLoop
+    if "proactor" in requested and platform.system() == "Windows":
+        factories["proactor"] = asyncio.ProactorEventLoop
+    if "uvloop" in requested and uvloop is not None:
+        factories["uvloop"] = uvloop.new_event_loop
+
+    return factories
 
 @pytest.fixture
 def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
