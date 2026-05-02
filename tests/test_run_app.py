@@ -62,8 +62,9 @@ def skip_if_on_windows() -> None:
 
 
 @pytest.fixture
-async def patched_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    event_loop = asyncio.get_running_loop()
+def patched_loop(
+    event_loop: asyncio.AbstractEventLoop
+) -> Iterator[asyncio.AbstractEventLoop]:
     server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     server.wait_closed.return_value = None
     server.sockets = []
@@ -80,7 +81,7 @@ async def patched_loop() -> Iterator[asyncio.AbstractEventLoop]:
             spec_set=True,
             return_value=unix_server,
         ):
-            event_loop.create_server.assert_not_called()  # DEBUG
+            asyncio.set_event_loop(event_loop)
             yield event_loop
 
 
