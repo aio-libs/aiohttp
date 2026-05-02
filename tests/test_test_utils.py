@@ -14,6 +14,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import web
 from aiohttp.test_utils import (
+    REUSE_ADDRESS,
     AioHTTPTestCase,
     RawTestServer,
     TestClient,
@@ -394,7 +395,7 @@ async def test_base_test_server_socket_factory(
     def factory(host: str, port: int, family: socket.AddressFamily) -> socket.socket:
         nonlocal factory_called
         factory_called = True
-        return socket.create_server((host, port), family=family, reuse_port=True)
+        return socket.create_server((host, port), family=family, reuse_port=REUSE_ADDRESS)
 
     server = test_server_cls(app, loop=loop, socket_factory=factory)
     async with server:
