@@ -84,9 +84,6 @@ async def test_aiohttp_client_close_is_idempotent() -> None:
     await client.close()
 
 
-pytest.skip(allow_module_level=True)
-
-
 class TestCaseStartup(AioHTTPTestCase):
     on_startup_called: bool
 
