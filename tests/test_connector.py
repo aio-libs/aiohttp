@@ -183,8 +183,6 @@ async def test_connection_del_loop_debug() -> None:
 def test_connection_del_loop_closed(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    pytest.skip("broken")
-    return
     connector = mock.Mock()
     key = mock.Mock()
     protocol = mock.Mock()
