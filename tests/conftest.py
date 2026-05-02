@@ -255,8 +255,10 @@ def unix_sockname(
 @pytest.fixture
 def event_loop() -> asyncio.AbstractEventLoop:
     loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+    try:
+        yield loop
+    finally:
+        loop.close()
 
 
 def pytest_asyncio_loop_factories(
