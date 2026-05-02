@@ -63,7 +63,7 @@ def skip_if_on_windows() -> None:
 
 @pytest.fixture
 def patched_loop(
-    event_loop: asyncio.AbstractEventLoop
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     server.wait_closed.return_value = None
