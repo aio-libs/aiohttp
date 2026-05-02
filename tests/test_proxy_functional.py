@@ -241,11 +241,11 @@ async def test_https_proxy_unsupported_tls_in_tls(
 # Filter out the warning from
 # https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
 # otherwise this test will fail because the proxy will die with an error.
+@pytest.mark.asyncio(loop_factories=("uvloop",))
 async def test_uvloop_secure_https_proxy(
     client_ssl_ctx: ssl.SSLContext,
     ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
-    uvloop_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
     payload = str(uuid4())
