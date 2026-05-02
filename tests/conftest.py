@@ -170,12 +170,10 @@ def pipe_name() -> str:
 
 
 @pytest.fixture
-def create_mocked_conn(
-    event_loop: asyncio.AbstractEventLoop,
-) -> Iterator[Callable[[], ResponseHandler]]:
+async def create_mocked_conn() -> Iterator[Callable[[], ResponseHandler]]:
     def _proto_factory() -> Any:
         proto = mock.create_autospec(ResponseHandler, instance=True)
-        proto.closed = event_loop.create_future()
+        proto.closed = asyncio.get_running_loop().create_future()
         proto.closed.set_result(None)
         return proto
 
