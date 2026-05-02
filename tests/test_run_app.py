@@ -545,7 +545,7 @@ async def test_run_app_custom_backlog_unix(
 
 
 @skip_if_no_unix_socks
-asnyc def test_run_app_http_unix_socket(
+async def test_run_app_http_unix_socket(
     patched_loop: asyncio.AbstractEventLoop, unix_sockname: str
 ) -> None:
     app = web.Application()
