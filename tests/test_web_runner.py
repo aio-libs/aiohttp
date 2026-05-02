@@ -24,10 +24,7 @@ def app() -> web.Application:
 
 
 @pytest.fixture
-def make_runner(
-    event_loop: asyncio.AbstractEventLoop, app: web.Application
-) -> Iterator[_RunnerMaker]:
-    asyncio.set_event_loop(event_loop)
+async def make_runner(app: web.Application) -> Iterator[_RunnerMaker]:
     runners = []
 
     def go(handle_signals: bool = False, **kwargs: Any) -> web.AppRunner:
@@ -37,7 +34,7 @@ def make_runner(
 
     yield go
     for runner in runners:
-        event_loop.run_until_complete(runner.cleanup())
+        await runner.cleanup()
 
 
 async def test_site_for_nonfrozen_app(make_runner: _RunnerMaker) -> None:
