@@ -58,11 +58,13 @@ async def connector(
         return BaseConnector()
 
     key = ConnectionKey("localhost", 80, False, True, None, None, None)
-    conn = event_loop.run_until_complete(make_conn())
+    conn = await make_conn()
     proto = create_mocked_conn()
     conn._conns[key] = deque([(proto, 123)])
-    yield conn
-    event_loop.run_until_complete(conn.close())
+    try:
+        yield conn
+    finally:
+        await conn.close()
 
 
 @pytest.fixture
