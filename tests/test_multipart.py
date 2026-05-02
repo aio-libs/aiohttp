@@ -373,6 +373,21 @@ class TestPartReader:
             result = await obj.read(decode=True)
         assert thing[:-2] == result
 
+    async def test_read_returns_bytes_not_bytearray(self) -> None:
+        """Ensure read() and read(decode=True) always return bytes (GH#12404)."""
+        h = CIMultiDictProxy(CIMultiDict())
+        with Stream(b"Hello, World!\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            result = await obj.read()
+        assert isinstance(result, bytes)
+        assert result == b"Hello, World!"
+
+        with Stream(b"Hello, World!\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            result_decoded = await obj.read(decode=True)
+        assert isinstance(result_decoded, bytes)
+        assert result_decoded == b"Hello, World!"
+
     async def test_read_with_content_encoding_unknown(self) -> None:
         h = CIMultiDictProxy(CIMultiDict({CONTENT_ENCODING: "snappy"}))
         with Stream(b"\x0e4Time to Relax!\r\n--:--") as stream:

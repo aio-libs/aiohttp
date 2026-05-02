@@ -318,8 +318,8 @@ class BodyPartReader:
             decoded_data = bytearray()
             async for d in self.decode_iter(data):
                 decoded_data.extend(d)
-            return decoded_data
-        return data
+            return bytes(decoded_data)
+        return bytes(data)
 
     async def read_chunk(self, size: int = chunk_size) -> bytes:
         """Reads body part content chunk of the specified size.
