@@ -3942,6 +3942,9 @@ async def test_unix_connector_permission(  # type: ignore[misc]
             await connector.connect(req, [], ClientTimeout())
 
 
+@pytest.mark.skipif(
+    platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
+)
 @pytest.mark.asyncio(loop_factories=("selector",))
 async def test_named_pipe_connector_wrong_loop(pipe_name: str) -> None:
     with pytest.raises(RuntimeError):

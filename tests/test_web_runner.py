@@ -235,6 +235,9 @@ async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
     assert actual_addrs == [(expected_host, expected_post), unix_sockname]
 
 
+@pytest.mark.skipif(
+    platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
+)
 @pytest.mark.asyncio(loop_factories=("selector",))
 async def test_named_pipe_runner_wrong_loop(
     app: web.Application, pipe_name: str
