@@ -80,7 +80,7 @@ async def patched_loop() -> Iterator[asyncio.AbstractEventLoop]:
             spec_set=True,
             return_value=unix_server,
         ):
-            print(id(event_loop))  # DEBUG
+            event_loop.create_server.assert_not_called()  # DEBUG
             yield event_loop
 
 
@@ -103,7 +103,6 @@ def test_run_app_http(patched_loop: asyncio.AbstractEventLoop) -> None:
 
     web.run_app(app, print=stopper(patched_loop), loop=patched_loop)
 
-    print("A", id(patched_loop))
     patched_loop.create_server.assert_called_with(  # type: ignore[attr-defined]
         mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None
     )
