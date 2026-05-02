@@ -1029,8 +1029,6 @@ class TestShutdown:
         task: Callable[[], Coroutine[None, None, None]],
         extra_test: Callable[[ClientSession], Awaitable[None]] | None = None,
     ) -> tuple["asyncio.Task[None]", int]:
-        pytest.skip("broken")
-        return
         num_connections = -1
         t = test_task = None
         port = sock.getsockname()[1]
