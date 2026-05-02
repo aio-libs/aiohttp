@@ -63,17 +63,14 @@ def app() -> web.Application:
 
 
 @pytest.fixture
-def test_client(
-    event_loop: asyncio.AbstractEventLoop, app: web.Application
-) -> Iterator[_TestClient]:
-    async def make_client() -> TestClient[web.Request, web.Application]:
-        return TestClient(TestServer(app))
+async def test_client(app: web.Application) -> Iterator[_TestClient]:
+    client = TestClient(TestServer(app))
 
-    client = event_loop.run_until_complete(make_client())
-
-    event_loop.run_until_complete(client.start_server())
-    yield client
-    event_loop.run_until_complete(client.close())
+    await client.start_server()
+    try:
+        yield client
+    finally:
+        await client.close()
 
 
 async def test_aiohttp_client_close_is_idempotent() -> None:
@@ -126,16 +123,11 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         await test_get_route()
 
 
-def test_get_route(
-    event_loop: asyncio.AbstractEventLoop, test_client: _TestClient
-) -> None:
-    async def test_get_route() -> None:
-        resp = await test_client.request("GET", "/")
-        assert resp.status == 200
-        text = await resp.text()
-        assert _hello_world_str == text
-
-    event_loop.run_until_complete(test_get_route())
+async def test_get_route(test_client: _TestClient) -> None:
+    resp = await test_client.request("GET", "/")
+    assert resp.status == 200
+    text = await resp.text()
+    assert _hello_world_str == text
 
 
 async def test_client_websocket(test_client: _TestClient) -> None:
