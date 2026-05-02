@@ -80,6 +80,7 @@ async def patched_loop() -> Iterator[asyncio.AbstractEventLoop]:
             spec_set=True,
             return_value=unix_server,
         ):
+            event_loop.create_server.assert_not_called()  # DEBUG
             yield event_loop
 
 
