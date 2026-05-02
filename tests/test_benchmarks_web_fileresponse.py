@@ -3,6 +3,7 @@
 import asyncio
 import pathlib
 
+import pytest
 from multidict import CIMultiDict
 from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
