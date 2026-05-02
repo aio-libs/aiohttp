@@ -51,8 +51,7 @@ class _Params(TypedDict):
 
 
 @pytest.fixture
-def connector(
-    event_loop: asyncio.AbstractEventLoop,
+async def connector(
     create_mocked_conn: Callable[[], ResponseHandler],
 ) -> Iterator[BaseConnector]:
     async def make_conn() -> BaseConnector:
