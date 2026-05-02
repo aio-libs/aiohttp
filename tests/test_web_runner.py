@@ -236,7 +236,9 @@ async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
 
 
 @pytest.mark.asyncio(loop_factories=("selector",))
-async def test_named_pipe_runner_wrong_loop(app: web.Application, pipe_name: str) -> None:
+async def test_named_pipe_runner_wrong_loop(
+    app: web.Application, pipe_name: str
+) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
     with pytest.raises(RuntimeError):
