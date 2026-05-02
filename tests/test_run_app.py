@@ -112,8 +112,6 @@ def test_run_app_http(patched_loop: asyncio.AbstractEventLoop) -> None:
 
 
 def test_run_app_close_loop(patched_loop: asyncio.AbstractEventLoop) -> None:
-    pytest.skip("broken")
-    return
     app = web.Application()
     web.run_app(app, print=stopper(patched_loop), loop=patched_loop)
 
