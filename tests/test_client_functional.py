@@ -3142,6 +3142,47 @@ async def test_invalid_redirect_url_multiple_redirects(
         await client.get("/redirect")
 
 
+async def test_redirect_with_non_utf8_location_header() -> None:
+    """Test that redirects with non-UTF-8 bytes in Location header work correctly.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/10047
+    """
+    server_received: list[bytes] = []
+
+    async def handler(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        request_line = await reader.readline()
+        server_received.append(request_line)
+        if b"/redirect" in request_line:
+            writer.write(b"HTTP/1.1 301 Moved Permanently\r\n")
+            writer.write(b"Location: /synspr\xf8ve\r\n")
+            writer.write(b"Content-Length: 0\r\n")
+            writer.write(b"\r\n")
+        else:
+            writer.write(b"HTTP/1.1 200 OK\r\n")
+            writer.write(b"Content-Length: 7\r\n")
+            writer.write(b"\r\n")
+            writer.write(b"success")
+        await writer.drain()
+        writer.close()
+
+    server = await asyncio.start_server(handler, "127.0.0.1", 0)
+    addr = server.sockets[0].getsockname()
+    url = URL(f"http://{addr[0]}:{addr[1]}/redirect")
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, allow_redirects=True) as resp:
+            assert resp.status == 200
+            body = await resp.read()
+            assert body == b"success"
+            assert "\xf8" not in str(resp.url)
+            assert "\udcf8" not in str(resp.url)
+
+    server.close()
+    await server.wait_closed()
+
+
 @pytest.mark.parametrize(
     ("status", "expected_ok"),
     (

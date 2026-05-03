@@ -839,6 +839,19 @@ class ClientSession:
                         r_url = resp.headers.get(hdrs.LOCATION) or resp.headers.get(
                             hdrs.URI
                         )
+                        # If the header contains non-UTF-8 bytes (decoded as
+                        # surrogates by multidict), fall back to latin-1
+                        # decoding per RFC 7230.
+                        if r_url is not None and any(
+                            0xD800 <= ord(ch) <= 0xDFFF for ch in r_url
+                        ):
+                            for key, val in resp._raw_headers:
+                                if key.lower() == b"location":
+                                    r_url = val.decode("latin-1")
+                                    break
+                                elif key.lower() == b"uri":
+                                    r_url = val.decode("latin-1")
+                                    break
                         if r_url is None:
                             # see github.com/aio-libs/aiohttp/issues/2022
                             break
