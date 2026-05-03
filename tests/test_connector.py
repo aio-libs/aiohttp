@@ -122,10 +122,10 @@ def create_mocked_conn(
     **kwargs: object,
 ) -> mock.Mock:
     assert "loop" not in kwargs
-    try:
+    if conn_closing_result:
+        loop = conn_closing_result
+    else:
         loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
 
     f = loop.create_future()
     proto: mock.Mock = mock.create_autospec(
