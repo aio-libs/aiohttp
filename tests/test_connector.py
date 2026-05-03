@@ -701,28 +701,6 @@ async def test_tcp_connector_server_hostname_default(
 async def test_tcp_connector_server_hostname_override(
     start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
-    loop = asyncio.get_running_loop()
-    conn = aiohttp.TCPConnector()
-
-    with mock.patch.object(
-        conn._loop, "create_connection", autospec=True, spec_set=True
-    ) as create_connection:
-        create_connection.return_value = mock.Mock(), mock.Mock()
-
-        req = make_client_request(
-            "GET", URL("https://127.0.0.1:443"), loop=asyncio.get_running_loop()
-        )
-
-        with closing(await conn.connect(req, [], ClientTimeout())):
-            assert create_connection.call_args.kwargs["server_hostname"] == "127.0.0.1"
-
-    await conn.close()
-
-
-async def test_tcp_connector_server_hostname_override(
-    start_connection: mock.AsyncMock,
-    make_client_request: _RequestMaker,
-) -> None:
     conn = aiohttp.TCPConnector()
 
     with mock.patch.object(
