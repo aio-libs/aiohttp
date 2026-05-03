@@ -1177,8 +1177,6 @@ class TestShutdown:
     def test_shutdown_pending_handler_responds(
         self, unused_port_socket: socket.socket
     ) -> None:
-        pytest.skip("broken")
-        return
         sock = unused_port_socket
         port = sock.getsockname()[1]
         finished = False
@@ -1226,8 +1224,6 @@ class TestShutdown:
     def test_shutdown_close_idle_keepalive(
         self, unused_port_socket: socket.socket
     ) -> None:
-        pytest.skip("broken")
-        return
         sock = unused_port_socket
         port = sock.getsockname()[1]
         t = None
@@ -1260,8 +1256,6 @@ class TestShutdown:
         assert t.cancelled()
 
     def test_shutdown_close_websockets(self, unused_port_socket: socket.socket) -> None:
-        pytest.skip("broken")
-        return
         sock = unused_port_socket
         port = sock.getsockname()[1]
         WS = web.AppKey("ws", set[web.WebSocketResponse])
@@ -1319,8 +1313,6 @@ class TestShutdown:
     def test_shutdown_handler_cancellation_suppressed(
         self, unused_port_socket: socket.socket
     ) -> None:
-        pytest.skip("broken")
-        return
         sock = unused_port_socket
         port = sock.getsockname()[1]
         actions = []
