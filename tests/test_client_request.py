@@ -1667,7 +1667,24 @@ def test_get_content_length(make_request: _RequestMaker) -> None:
 
     # Invalid Content-Length header
     req.headers["Content-Length"] = "invalid"
-    with pytest.raises(ValueError, match="Invalid Content-Length header: invalid"):
+    with pytest.raises(ValueError, match="Invalid Content-Length header"):
+        req._get_content_length()
+
+
+async def test_get_content_length_invalid_formats(
+    make_request: _RequestMaker,
+) -> None:
+    req = make_request("GET", URL("http://python.org/"))
+
+    req.headers["Content-Length"] = "100"
+    assert req._get_content_length() == 100
+
+    req.headers["Content-Length"] = "-100"
+    with pytest.raises(ValueError, match="Invalid Content-Length header"):
+        req._get_content_length()
+
+    req.headers["Content-Length"] = "५"  # Devengali number 5
+    with pytest.raises(ValueError, match="Invalid Content-Length header"):
         req._get_content_length()
 
 
