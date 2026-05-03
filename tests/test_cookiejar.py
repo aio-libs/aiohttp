@@ -1401,8 +1401,6 @@ async def test_shared_cookie_cache_population() -> None:
 
 async def test_shared_cookie_cache_clearing_on_update() -> None:
     """Test that shared cookie cache is cleared when cookie is updated."""
-    pytest.skip("broken")
-    return
     jar = CookieJar(unsafe=True)
 
     # Create initial shared cookie
