@@ -577,6 +577,18 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
     def parse_message(self, lines: list[bytes]) -> RawRequestMessage:
         # request line
         line = lines[0].decode("utf-8", "surrogateescape")
+        if lines[0].startswith(b"\x16\x03"):
+            raise BadHttpMethod(
+                line,
+                error="Client appears to be trying to connect via HTTPS to an HTTP port",
+            )
+
+        if lines[0].startswith(b"\x16\x03"):
+            raise BadHttpMethod(
+                line,
+                error="Client appears to be trying to connect via HTTPS to an HTTP port",
+            )
+
         try:
             method, path, version = line.split(" ", maxsplit=2)
         except ValueError:

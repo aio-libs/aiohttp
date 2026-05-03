@@ -1,0 +1,1 @@
+Improved error message for HTTPS requests sent to an HTTP port by detecting the TLS handshake bytes. -- by :user:`NIK-TIGER-BILL`.

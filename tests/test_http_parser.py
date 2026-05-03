@@ -1170,6 +1170,22 @@ def test_http_request_parser_bad_method(
         parser.feed_data(rfc9110_5_6_2_token_delim + b'ET" /get HTTP/1.1\r\n\r\n')
 
 
+def test_http_request_parser_bad_method_https_on_http_port(
+    parser: HttpRequestParser,
+) -> None:
+    with pytest.raises(http_exceptions.BadHttpMethod) as exc_info:
+        parser.feed_data(b"\x16\x03\x01\x00\xa5\x01\x00\x00\xa1\x03\x03")
+    assert "HTTPS" in str(exc_info.value)
+
+
+def test_http_request_parser_bad_method_https_on_http_port(
+    parser: HttpRequestParser,
+) -> None:
+    with pytest.raises(http_exceptions.BadHttpMethod) as exc_info:
+        parser.feed_data(b"\x16\x03\x01\x00\xa5\x01\x00\x00\xa1\x03\x03")
+    assert "HTTPS" in str(exc_info.value)
+
+
 def test_http_request_parser_bad_version(parser: HttpRequestParser) -> None:
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(b"GET //get HT/11\r\n\r\n")
