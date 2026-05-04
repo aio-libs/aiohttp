@@ -10,7 +10,7 @@ alabaster==1.0.0
     # via sphinx
 babel==2.17.0
     # via sphinx
-certifi==2025.8.3
+certifi==2025.10.5
     # via requests
 charset-normalizer==3.4.3
     # via requests
@@ -18,7 +18,7 @@ click==8.1.8
     # via towncrier
 docutils==0.21.2
     # via sphinx
-idna==3.10
+idna==3.11
     # via requests
 imagesize==1.4.1
     # via sphinx

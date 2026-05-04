@@ -1,6 +1,8 @@
 """Tests for internal cookie helper functions."""
 
+import logging
 import sys
+import time
 from http.cookies import (
     CookieError,
     Morsel,
@@ -635,6 +637,23 @@ def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
     assert match.group("key").lower() == "partitioned"
 
 
+def test_cookie_pattern_performance() -> None:
+    """Test that the cookie pattern doesn't suffer from ReDoS issues."""
+    COOKIE_PATTERN_TIME_THRESHOLD_SECONDS = 0.08
+    value = "a" + "=" * 21651 + "\x00"
+    start = time.perf_counter()
+    match = helpers._COOKIE_PATTERN.match(value)
+    elapsed = time.perf_counter() - start
+
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < COOKIE_PATTERN_TIME_THRESHOLD_SECONDS, (
+        f"Pattern took {elapsed * 1000:.1f}ms, "
+        f"expected <{COOKIE_PATTERN_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+    )
+    # This example shouldn't produce a match either.
+    assert match is None
+
+
 def test_parse_set_cookie_headers_issue_7993_double_quotes() -> None:
     """
     Test that cookies with unmatched opening quotes don't break parsing of subsequent cookies.
@@ -1076,13 +1095,13 @@ def test_parse_set_cookie_headers_date_formats_with_attributes() -> None:
 @pytest.mark.parametrize(
     ("header", "expected_name", "expected_value", "expected_coded"),
     [
-        # Test cookie values with octal escape sequences
-        (r'name="\012newline\012"', "name", "\nnewline\n", r'"\012newline\012"'),
+        # Test cookie values with octal escape sequences (printable chars only)
+        (r'name="\050parens\051"', "name", "(parens)", r'"\050parens\051"'),
         (
-            r'tab="\011separated\011values"',
-            "tab",
-            "\tseparated\tvalues",
-            r'"\011separated\011values"',
+            r'punct="\053plus\053values"',
+            "punct",
+            "+plus+values",
+            r'"\053plus\053values"',
         ),
         (
             r'mixed="hello\040world\041"',
@@ -1091,10 +1110,10 @@ def test_parse_set_cookie_headers_date_formats_with_attributes() -> None:
             r'"hello\040world\041"',
         ),
         (
-            r'complex="\042quoted\042 text with \012 newline"',
+            r'complex="\042quoted\042 text with \055 hyphen"',
             "complex",
-            '"quoted" text with \n newline',
-            r'"\042quoted\042 text with \012 newline"',
+            '"quoted" text with - hyphen',
+            r'"\042quoted\042 text with \055 hyphen"',
         ),
     ],
 )
@@ -1135,6 +1154,32 @@ def test_parse_cookie_header_empty() -> None:
     """Test parse_cookie_header with empty header."""
     assert parse_cookie_header("") == []
     assert parse_cookie_header("   ") == []
+
+
+def test_parse_cookie_gstate_header() -> None:
+    header = (
+        "_ga=ga; "
+        "ajs_anonymous_id=0anonymous; "
+        "analytics_session_id=session; "
+        "cookies-analytics=true; "
+        "cookies-functional=true; "
+        "cookies-marketing=true; "
+        "cookies-preferences=true; "
+        'g_state={"i_l":0,"i_ll":12345,"i_b":"blah"}; '
+        "analytics_session_id.last_access=1760128947692; "
+        "landingPageURLRaw=landingPageURLRaw; "
+        "landingPageURL=landingPageURL; "
+        "referrerPageURLRaw=; "
+        "referrerPageURL=; "
+        "formURLRaw=formURLRaw; "
+        "formURL=formURL; "
+        "fbnAuthExpressCheckout=fbnAuthExpressCheckout; "
+        "is_express_checkout=1; "
+    )
+
+    result = parse_cookie_header(header)
+    assert result[7][0] == "g_state"
+    assert result[8][0] == "analytics_session_id.last_access"
 
 
 def test_parse_cookie_header_quoted_values() -> None:
@@ -1273,11 +1318,9 @@ def test_parse_cookie_header_malformed() -> None:
     # Missing name
     header = "=value; name=value2"
     result = parse_cookie_header(header)
-    assert len(result) == 2
-    assert result[0][0] == "=value"
-    assert result[0][1].value == ""
-    assert result[1][0] == "name"
-    assert result[1][1].value == "value2"
+    assert len(result) == 1
+    assert result[0][0] == "name"
+    assert result[0][1].value == "value2"
 
 
 def test_parse_cookie_header_complex_quoted() -> None:
@@ -1407,14 +1450,155 @@ def test_parse_cookie_header_illegal_names(caplog: pytest.LogCaptureFixture) -> 
     """Test parse_cookie_header warns about illegal cookie names."""
     # Cookie name with comma (not allowed in _COOKIE_NAME_RE)
     header = "good=value; invalid,cookie=bad; another=test"
-    result = parse_cookie_header(header)
+    with caplog.at_level(logging.DEBUG):
+        result = parse_cookie_header(header)
     # Should skip the invalid cookie but continue parsing
     assert len(result) == 2
     assert result[0][0] == "good"
     assert result[0][1].value == "value"
     assert result[1][0] == "another"
     assert result[1][1].value == "test"
-    assert "Can not load cookie: Illegal cookie name 'invalid,cookie'" in caplog.text
+    assert "Cannot load cookie. Illegal cookie name" in caplog.text
+    assert "'invalid,cookie'" in caplog.text
+
+
+def test_parse_cookie_header_large_value() -> None:
+    """Test that large cookie values don't cause DoS."""
+    large_value = "A" * 8192
+    header = f"normal=value; large={large_value}; after=cookie"
+
+    result = parse_cookie_header(header)
+    cookie_names = [name for name, _ in result]
+
+    assert len(result) == 3
+    assert "normal" in cookie_names
+    assert "large" in cookie_names
+    assert "after" in cookie_names
+
+    large_cookie = next(morsel for name, morsel in result if name == "large")
+    assert len(large_cookie.value) == 8192
+
+
+def test_parse_cookie_header_multiple_equals() -> None:
+    """Test handling of multiple equals signs in cookie values."""
+    header = "session=abc123; data=key1=val1&key2=val2; token=xyz"
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 3
+
+    name1, morsel1 = result[0]
+    assert name1 == "session"
+    assert morsel1.value == "abc123"
+
+    name2, morsel2 = result[1]
+    assert name2 == "data"
+    assert morsel2.value == "key1=val1&key2=val2"
+
+    name3, morsel3 = result[2]
+    assert name3 == "token"
+    assert morsel3.value == "xyz"
+
+
+def test_parse_cookie_header_fallback_preserves_subsequent_cookies() -> None:
+    """Test that fallback parser doesn't lose subsequent cookies."""
+    header = 'normal=value; malformed={"json":"value"}; after1=cookie1; after2=cookie2'
+
+    result = parse_cookie_header(header)
+    cookie_names = [name for name, _ in result]
+
+    assert len(result) == 4
+    assert cookie_names == ["normal", "malformed", "after1", "after2"]
+
+    name1, morsel1 = result[0]
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert morsel2.value == '{"json":"value"}'
+
+    name3, morsel3 = result[2]
+    assert morsel3.value == "cookie1"
+
+    name4, morsel4 = result[3]
+    assert morsel4.value == "cookie2"
+
+
+def test_parse_cookie_header_whitespace_in_fallback() -> None:
+    """Test that fallback parser handles whitespace correctly."""
+    header = "a=1; b = 2 ; c= 3; d =4"
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 4
+    for name, morsel in result:
+        assert name in ("a", "b", "c", "d")
+        assert morsel.value in ("1", "2", "3", "4")
+
+
+def test_parse_cookie_header_empty_value_in_fallback() -> None:
+    """Test that fallback handles empty values correctly."""
+    header = "normal=value; empty=; another=test"
+
+    result = parse_cookie_header(header)
+
+    assert len(result) == 3
+
+    name1, morsel1 = result[0]
+    assert name1 == "normal"
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert name2 == "empty"
+    assert morsel2.value == ""
+
+    name3, morsel3 = result[2]
+    assert name3 == "another"
+    assert morsel3.value == "test"
+
+
+def test_parse_cookie_header_invalid_name_in_fallback(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that fallback parser rejects cookies with invalid names."""
+    header = 'normal=value; invalid,name={"x":"y"}; another=test'
+
+    with caplog.at_level(logging.DEBUG):
+        result = parse_cookie_header(header)
+
+    assert len(result) == 2
+
+    name1, morsel1 = result[0]
+    assert name1 == "normal"
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert name2 == "another"
+    assert morsel2.value == "test"
+
+    assert "Cannot load cookie. Illegal cookie name" in caplog.text
+    assert "'invalid,name'" in caplog.text
+
+
+def test_parse_cookie_header_empty_key_in_fallback(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that fallback parser logs warning for empty cookie names."""
+    header = 'normal=value; ={"malformed":"json"}; another=test'
+    with caplog.at_level(logging.DEBUG):
+        result = parse_cookie_header(header)
+
+    assert len(result) == 2
+
+    name1, morsel1 = result[0]
+    assert name1 == "normal"
+    assert morsel1.value == "value"
+
+    name2, morsel2 = result[1]
+    assert name2 == "another"
+    assert morsel2.value == "test"
+
+    assert "Cannot load cookie. Illegal cookie name" in caplog.text
+    assert "''" in caplog.text
 
 
 @pytest.mark.parametrize(

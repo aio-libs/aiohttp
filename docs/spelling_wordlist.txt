@@ -189,6 +189,7 @@ lowercased
 Mako
 manylinux
 metadata
+MiB
 microservice
 middleware
 middlewares
@@ -258,6 +259,7 @@ pytest
 Pytest
 qop
 Quickstart
+quickstart
 quote’s
 rc
 readonly
@@ -304,6 +306,7 @@ SocketSocketTransport
 ssl
 SSLContext
 startup
+stateful
 subapplication
 subclassed
 subclasses
@@ -343,6 +346,7 @@ un
 unawaited
 unclosed
 undercounting
+unescaped
 unhandled
 unicode
 unittest

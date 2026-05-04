@@ -98,7 +98,9 @@ from .helpers import (
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
+    basicauth_from_netrc,
     get_env_proxy_for_url,
+    netrc_from_env,
     sentinel,
     strip_auth_from_url,
 )
@@ -193,6 +195,7 @@ class _RequestOptions(TypedDict, total=False):
     auto_decompress: Union[bool, None]
     max_line_size: Union[int, None]
     max_field_size: Union[int, None]
+    max_headers: Union[int, None]
     middlewares: Optional[Sequence[ClientMiddlewareType]]
 
 
@@ -257,6 +260,7 @@ class ClientSession:
             "_read_bufsize",
             "_max_line_size",
             "_max_field_size",
+            "_max_headers",
             "_resolve_charset",
             "_default_proxy",
             "_default_proxy_auth",
@@ -301,6 +305,7 @@ class ClientSession:
         read_bufsize: int = 2**16,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
+        max_headers: int = 128,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
         ssl_shutdown_timeout: Union[_SENTINEL, None, float] = sentinel,
@@ -400,6 +405,7 @@ class ClientSession:
         self._read_bufsize = read_bufsize
         self._max_line_size = max_line_size
         self._max_field_size = max_field_size
+        self._max_headers = max_headers
 
         # Convert to list of tuples
         if headers:
@@ -516,6 +522,7 @@ class ClientSession:
         auto_decompress: Optional[bool] = None,
         max_line_size: Optional[int] = None,
         max_field_size: Optional[int] = None,
+        max_headers: Optional[int] = None,
         middlewares: Optional[Sequence[ClientMiddlewareType]] = None,
     ) -> ClientResponse:
 
@@ -605,6 +612,9 @@ class ClientSession:
         if max_field_size is None:
             max_field_size = self._max_field_size
 
+        if max_headers is None:
+            max_headers = self._max_headers
+
         traces = [
             Trace(
                 self,
@@ -657,6 +667,13 @@ class ClientSession:
                         )
                     ):
                         auth = self._default_auth
+
+                    # Try netrc if auth is still None and trust_env is enabled.
+                    if auth is None and self._trust_env and url.host is not None:
+                        auth = await self._loop.run_in_executor(
+                            None, self._get_netrc_auth, url.host
+                        )
+
                     # It would be confusing if we support explicit
                     # Authorization header with auth argument
                     if (
@@ -741,6 +758,7 @@ class ClientSession:
                             timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
                             max_line_size=max_line_size,
                             max_field_size=max_field_size,
+                            max_headers=max_headers,
                         )
                         try:
                             resp = await req.send(conn)
@@ -875,6 +893,8 @@ class ClientSession:
                         if url.origin() != redirect_origin:
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
+                            headers.pop(hdrs.COOKIE, None)
+                            headers.pop(hdrs.PROXY_AUTHORIZATION, None)
 
                         url = parsed_redirect_url
                         params = {}
@@ -1210,6 +1230,19 @@ class ClientSession:
                     result[key] = value
                     added_names.add(key)
         return result
+
+    def _get_netrc_auth(self, host: str) -> Optional[BasicAuth]:
+        """
+        Get auth from netrc for the given host.
+
+        This method is designed to be called in an executor to avoid
+        blocking I/O in the event loop.
+        """
+        netrc_obj = netrc_from_env()
+        try:
+            return basicauth_from_netrc(netrc_obj, host)
+        except LookupError:
+            return None
 
     if sys.version_info >= (3, 11) and TYPE_CHECKING:
 

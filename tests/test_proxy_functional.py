@@ -19,6 +19,7 @@ from aiohttp import ClientResponse, web
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS
 from aiohttp.pytest_plugin import AiohttpServer
+from aiohttp.test_utils import TestServer
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
@@ -216,24 +217,34 @@ async def test_https_proxy_unsupported_tls_in_tls(
 # otherwise this test will fail because the proxy will die with an error.
 async def test_uvloop_secure_https_proxy(
     client_ssl_ctx: ssl.SSLContext,
+    ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
     uvloop_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
+    payload = str(uuid4())
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text=payload)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = TestServer(app, host="127.0.0.1")
+    await server.start_server(ssl=ssl_ctx)
+
+    url = URL.build(scheme="https", host=server.host, port=server.port)
     conn = aiohttp.TCPConnector(force_close=True)
     sess = aiohttp.ClientSession(connector=conn)
     try:
-        url = URL("https://example.com")
-
         async with sess.get(
             url, proxy=secure_proxy_url, ssl=client_ssl_ctx
         ) as response:
             assert response.status == 200
-            # Ensure response body is read to completion
-            await response.read()
+            assert await response.text() == payload
     finally:
         await sess.close()
         await conn.close()
+        await server.close()
         await asyncio.sleep(0)
         await asyncio.sleep(0.1)
 

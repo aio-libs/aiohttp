@@ -1,4 +1,5 @@
 import pathlib
+import platform
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
 from typing import NoReturn
@@ -1041,7 +1042,22 @@ async def test_405_for_resource_adapter(router) -> None:
     assert (None, {"HEAD", "GET"}) == ret
 
 
-async def test_check_allowed_method_for_found_resource(router) -> None:
+@pytest.mark.skipif(platform.system() == "Windows", reason="Different path formats")
+async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> None:
+    """Test relative path traversing outside root does not resolve."""
+    static_file = pathlib.Path(aiohttp.__file__)
+    request_path = "/st" + "/.." * (len(static_file.parts) - 2) + str(static_file)
+    assert pathlib.Path(request_path).resolve() == static_file
+
+    resource = router.add_static("/st", static_file.parent)
+    ret = await resource.resolve(make_mocked_request("GET", request_path))
+    # Should not resolve, otherwise filesystem information may be leaked.
+    assert (None, set()) == ret
+
+
+async def test_check_allowed_method_for_found_resource(
+    router: web.UrlDispatcher,
+) -> None:
     handler = make_handler()
     resource = router.add_resource("/")
     resource.add_route("GET", handler)

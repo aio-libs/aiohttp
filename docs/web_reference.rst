@@ -1290,6 +1290,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :raise RuntimeError: if connection is not started
 
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
+
    .. method:: receive_str(*, timeout=None)
       :async:
 
@@ -1307,6 +1309,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :return str: peer's message content.
 
       :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.TEXT`.
+
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
    .. method:: receive_bytes(*, timeout=None)
       :async:
@@ -1326,6 +1330,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :return bytes: peer's message content.
 
       :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.BINARY`.
+
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
    .. method:: receive_json(*, loads=json.loads, timeout=None)
       :async:
@@ -1350,6 +1356,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
@@ -1624,6 +1631,14 @@ Application and Router
       In resolving process if request.headers['host']
       matches the pattern *domain* then
       further resolving is passed to *subapp*.
+
+      .. warning::
+
+         Registering many domains using this method may cause performance
+         issues with handler routing. If you have a substantial number of
+         applications for different domains, you may want to consider
+         using a reverse proxy (such as Nginx) to handle routing to
+         different apps, rather that registering them as sub-applications.
 
       :param str domain: domain or mask of domain for the resource.
 
@@ -2829,9 +2844,10 @@ application on specific TCP or Unix socket, e.g.::
         :attr:`helpers.AccessLogger.LOG_FORMAT`.
    :param int max_line_size: Optional maximum header line size. Default:
         ``8190``.
-   :param int max_headers: Optional maximum header size. Default: ``32768``.
-   :param int max_field_size: Optional maximum header field size. Default:
+   :param int max_field_size: Optional maximum header combined name and value size. Default:
         ``8190``.
+   :param int max_headers: Optional maximum number of headers and trailers combined. Default:
+        ``128``.
 
    :param float lingering_time: Maximum time during which the server
         reads and ignores additional data coming from the client when
@@ -3060,7 +3076,8 @@ Utilities
                       handle_signals=True, \
                       reuse_address=None, \
                       reuse_port=None, \
-                      handler_cancellation=False)
+                      handler_cancellation=False, \
+					  **kwargs)
 
    A high-level function for running an application, serving it until
    keyboard interrupt and performing a
@@ -3169,6 +3186,9 @@ Utilities
                                      if familiar with asyncio behavior or
                                      scalability is a concern.
                                      :ref:`aiohttp-web-peer-disconnection`
+
+   :param kwargs: additional named parameters to pass into
+                  :class:`AppRunner` constructor.
 
    .. versionadded:: 3.0
 

@@ -53,10 +53,9 @@ from .helpers import (
     BasicAuth,
     HeadersMixin,
     TimerNoop,
-    basicauth_from_netrc,
-    netrc_from_env,
     noop,
     reify,
+    sentinel,
     set_exception,
     set_result,
 )
@@ -136,14 +135,14 @@ class RequestInfo(_RequestInfo):
         url: URL,
         method: str,
         headers: "CIMultiDictProxy[str]",
-        real_url: URL = _SENTINEL,  # type: ignore[assignment]
+        real_url: Union[URL, _SENTINEL] = sentinel,
     ) -> "RequestInfo":
         """Create a new RequestInfo instance.
 
         For backwards compatibility, the real_url parameter is optional.
         """
         return tuple.__new__(
-            cls, (url, method, headers, url if real_url is _SENTINEL else real_url)
+            cls, (url, method, headers, url if real_url is sentinel else real_url)
         )
 
 
@@ -1163,10 +1162,6 @@ class ClientRequest:
         """Set basic auth."""
         if auth is None:
             auth = self.auth
-        if auth is None and trust_env and self.url.host is not None:
-            netrc_obj = netrc_from_env()
-            with contextlib.suppress(LookupError):
-                auth = basicauth_from_netrc(netrc_obj, self.url.host)
         if auth is None:
             return
 

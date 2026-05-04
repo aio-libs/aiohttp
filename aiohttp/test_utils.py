@@ -729,6 +729,9 @@ def make_mocked_request(
 
     if protocol is sentinel:
         protocol = mock.Mock()
+        protocol.max_field_size = 8190
+        protocol.max_line_length = 8190
+        protocol.max_headers = 128
         protocol.transport = transport
         type(protocol).peername = mock.PropertyMock(
             return_value=transport.get_extra_info("peername")

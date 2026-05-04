@@ -143,6 +143,7 @@ Gennady Andreyev
 Georges Dubus
 Greg Holt
 Gregory Haynes
+Guillaume Leurquin
 Gus Goulart
 Gustavo Carneiro
 Günther Jena
@@ -170,6 +171,7 @@ Ivan Lakovic
 Ivan Larin
 J. Nick Koston
 Jacob Champion
+Jacob Henner
 Jaesung Lee
 Jake Davis
 Jakob Ackermann
@@ -241,6 +243,7 @@ Marco Paolini
 Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
+Mark Larah
 Marko Kohtala
 Martijn Pieters
 Martin Melka
@@ -262,6 +265,7 @@ Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov
+Mingjie Zhao
 Misha Behersky
 Mitchell Ferree
 Morgan Delahaye-Prat
@@ -279,6 +283,7 @@ Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
 Parag Jain
+Patrick Lee
 Pau Freixes
 Paul Colomiets
 Paul J. Dorn
@@ -303,11 +308,15 @@ Raúl Cumplido
 Required Field
 Robert Lu
 Robert Nikolich
+Rodrigo Nogueira
+Roman Markeloff
 Roman Podoliaka
 Roman Postnov
 Rong Zhang
+Rouven Bauer
 Samir Akarioh
 Samuel Colvin
+Samuel Gaist
 Sean Hunt
 Sebastian Acuna
 Sebastian Hanula
@@ -369,6 +378,7 @@ Vladimir Kamarzin
 Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
+Vladimir Vinogradenko
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar

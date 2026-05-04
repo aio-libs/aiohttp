@@ -1,2 +1,0 @@
-The `blockbuster` test dependency is now optional; the corresponding test fixture is disabled when it is unavailable
--- by :user:`musicinybrain`.

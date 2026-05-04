@@ -15,7 +15,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, helpers, payload
+from aiohttp import BaseConnector, hdrs, payload
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.client_reqrep import (
@@ -1173,7 +1173,18 @@ async def test_data_file(loop, buf, conn) -> None:
         assert isinstance(req.body, payload.BufferedReaderPayload)
         assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
-        resp = await req.send(conn)
+        original_write_bytes = req.write_bytes
+
+        async def _mock_write_bytes(
+            writer: AbstractStreamWriter, conn: mock.Mock, content_length: Optional[int]
+        ) -> None:
+            # Ensure the task is scheduled so _writer isn't None
+            await asyncio.sleep(0)
+            await original_write_bytes(writer, conn, content_length)
+
+        with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+            resp = await req.send(conn)
+
         assert asyncio.isfuture(req._writer)
         await resp.wait_for_close()
 
@@ -1543,26 +1554,6 @@ def test_gen_default_accept_encoding(
     with mock.patch("aiohttp.client_reqrep.HAS_BROTLI", has_brotli):
         with mock.patch("aiohttp.client_reqrep.HAS_ZSTD", has_zstd):
             assert _gen_default_accept_encoding() == expected
-
-
-@pytest.mark.parametrize(
-    ("netrc_contents", "expected_auth"),
-    [
-        (
-            "machine example.com login username password pass\n",
-            helpers.BasicAuth("username", "pass"),
-        )
-    ],
-    indirect=("netrc_contents",),
-)
-@pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_from_netrc_present(
-    make_request: Any,
-    expected_auth: Optional[helpers.BasicAuth],
-):
-    """Test appropriate Authorization header is sent when netrc is not empty."""
-    req = make_request("get", "http://example.com", trust_env=True)
-    assert req.headers[hdrs.AUTHORIZATION] == expected_auth.encode()
 
 
 @pytest.mark.parametrize(

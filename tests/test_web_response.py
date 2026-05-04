@@ -13,7 +13,8 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from re_assert import Matches
 
-from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
+from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
@@ -1008,6 +1009,27 @@ def test_set_status_with_empty_reason() -> None:
     assert resp.reason == ""
 
 
+def test_set_status_reason_with_cr() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\rSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_lf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\nSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_crlf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\r\nSet-Cookie: evil=1")
+
+
 async def test_start_force_close() -> None:
     req = make_request("GET", "/")
     resp = StreamResponse()
@@ -1164,10 +1186,10 @@ def test_ctor_content_type_with_extra() -> None:
     assert resp.headers["content-type"] == "text/plain; version=0.0.4; charset=utf-8"
 
 
-def test_invalid_content_type_parses_to_text_plain() -> None:
+def test_invalid_content_type_parses_to_application_octect_stream() -> None:
     resp = Response(text="test test", content_type="jpeg")
 
-    assert resp.content_type == "text/plain"
+    assert resp.content_type == "application/octet-stream"
     assert resp.headers["content-type"] == "jpeg; charset=utf-8"
 
 
@@ -1308,9 +1330,9 @@ async def test_render_with_body(buf, writer) -> None:
     )
 
 
-async def test_multiline_reason(buf, writer) -> None:
-    with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
-        Response(reason="Bad\r\nInjected-header: foo")
+async def test_multiline_reason(buf: bytearray, writer: AbstractStreamWriter) -> None:
+    with pytest.raises(ValueError, match=r"Reason cannot contain \\r or \\n"):
+        web.Response(reason="Bad\r\nInjected-header: foo")
 
 
 async def test_send_set_cookie_header(buf, writer) -> None:

@@ -46,7 +46,8 @@ PARAMS = [AsyncioWorker]
 if uvloop is not None:
 
     class UvloopWorker(
-        BaseTestWorker, base_worker.GunicornUVLoopWebWorker  # type: ignore
+        BaseTestWorker,
+        base_worker.GunicornUVLoopWebWorker,  # type: ignore
     ):
         pass
 
@@ -71,6 +72,22 @@ def test_init_process(worker: base_worker.GunicornWebWorker) -> None:
             pass
 
         assert m_asyncio.get_event_loop.return_value.close.called
+        assert m_asyncio.new_event_loop.called
+        assert m_asyncio.set_event_loop.called
+
+
+def test_init_process_no_loop(worker: base_worker.GunicornWebWorker) -> None:
+    with mock.patch("aiohttp.worker.asyncio") as m_asyncio:
+        m_asyncio.get_event_loop.side_effect = RuntimeError(
+            "There is no current event loop in thread 'MainThread'"
+        )
+        try:
+            worker.init_process()
+        except TypeError:
+            pass
+
+        assert m_asyncio.get_event_loop.called
+        assert not m_asyncio.get_event_loop.return_value.close.called
         assert m_asyncio.new_event_loop.called
         assert m_asyncio.set_event_loop.called
 

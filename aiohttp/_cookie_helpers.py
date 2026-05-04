@@ -51,7 +51,7 @@ _COOKIE_PATTERN = re.compile(
     \s*                            # Optional whitespace at start of cookie
     (?P<key>                       # Start of group 'key'
     # aiohttp has extended to include [] for compatibility with real-world cookies
-    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\=\[\]]+?   # Any word of at least one letter
+    [\w\d!#%&'~_`><@,:/\$\*\+\-\.\^\|\)\(\?\}\{\[\]]+   # Any word of at least one letter
     )                              # End of group 'key'
     (                              # Optional group: there may not be a value.
     \s*=\s*                          # Equal Sign
@@ -165,7 +165,10 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
     attribute names (like 'path' or 'secure') should be treated as cookies.
 
     This parser uses the same regex-based approach as parse_set_cookie_headers
-    to properly handle quoted values that may contain semicolons.
+    to properly handle quoted values that may contain semicolons. When the
+    regex fails to match a malformed cookie, it falls back to simple parsing
+    to ensure subsequent cookies are not lost
+    https://github.com/aio-libs/aiohttp/issues/11632
 
     Args:
         header: The Cookie header value to parse
@@ -177,14 +180,39 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
         return []
 
     cookies: List[Tuple[str, Morsel[str]]] = []
+    morsel: Morsel[str]
     i = 0
     n = len(header)
 
+    invalid_names = []
     while i < n:
         # Use the same pattern as parse_set_cookie_headers to find cookies
         match = _COOKIE_PATTERN.match(header, i)
         if not match:
-            break
+            # Fallback for malformed cookies https://github.com/aio-libs/aiohttp/issues/11632
+            # Find next semicolon to skip or attempt simple key=value parsing
+            next_semi = header.find(";", i)
+            eq_pos = header.find("=", i)
+
+            # Try to extract key=value if '=' comes before ';'
+            if eq_pos != -1 and (next_semi == -1 or eq_pos < next_semi):
+                end_pos = next_semi if next_semi != -1 else n
+                key = header[i:eq_pos].strip()
+                value = header[eq_pos + 1 : end_pos].strip()
+
+                # Validate the name (same as regex path)
+                if not _COOKIE_NAME_RE.match(key):
+                    invalid_names.append(key)
+                else:
+                    morsel = Morsel()
+                    morsel.__setstate__(  # type: ignore[attr-defined]
+                        {"key": key, "value": _unquote(value), "coded_value": value}
+                    )
+                    cookies.append((key, morsel))
+
+            # Move to next cookie or end
+            i = next_semi + 1 if next_semi != -1 else n
+            continue
 
         key = match.group("key")
         value = match.group("val") or ""
@@ -192,11 +220,11 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
 
         # Validate the name
         if not key or not _COOKIE_NAME_RE.match(key):
-            internal_logger.warning("Can not load cookie: Illegal cookie name %r", key)
+            invalid_names.append(key)
             continue
 
         # Create new morsel
-        morsel: Morsel[str] = Morsel()
+        morsel = Morsel()
         # Preserve the original value as coded_value (with quotes if present)
         # We use __setstate__ instead of the public set() API because it allows us to
         # bypass validation and set already validated state. This is more stable than
@@ -207,6 +235,11 @@ def parse_cookie_header(header: str) -> List[Tuple[str, Morsel[str]]]:
         )
 
         cookies.append((key, morsel))
+
+    if invalid_names:
+        internal_logger.debug(
+            "Cannot load cookie. Illegal cookie names: %r", invalid_names
+        )
 
     return cookies
 

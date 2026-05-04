@@ -7,6 +7,7 @@ import html
 import inspect
 import keyword
 import os
+import platform
 import re
 import sys
 import warnings
@@ -94,6 +95,7 @@ ROUTE_RE: Final[Pattern[str]] = re.compile(
 )
 PATH_SEP: Final[str] = re.escape("/")
 
+IS_WINDOWS: Final[bool] = platform.system() == "Windows"
 
 _ExpectHandler = Callable[[Request], Awaitable[Optional[StreamResponse]]]
 _Resolve = Tuple[Optional["UrlMappingMatchInfo"], Set[str]]
@@ -651,7 +653,12 @@ class StaticResource(PrefixResource):
     async def resolve(self, request: Request) -> _Resolve:
         path = request.rel_url.path_safe
         method = request.method
-        if not path.startswith(self._prefix2) and path != self._prefix:
+        # We normalise here to avoid matches that traverse below the static root.
+        # e.g. /static/../../../../home/user/webapp/static/
+        norm_path = os.path.normpath(path)
+        if IS_WINDOWS:
+            norm_path = norm_path.replace("\\", "/")
+        if not norm_path.startswith(self._prefix2) and norm_path != self._prefix:
             return None, set()
 
         allowed_methods = self._allowed_methods
@@ -668,14 +675,11 @@ class StaticResource(PrefixResource):
         return iter(self._routes.values())
 
     async def _handle(self, request: Request) -> StreamResponse:
-        rel_url = request.match_info["filename"]
-        filename = Path(rel_url)
-        if filename.anchor:
-            # rel_url is an absolute name like
-            # /static/\\machine_name\c$ or /static/D:\path
-            # where the static dir is totally different
-            raise HTTPForbidden()
-
+        filename = request.match_info["filename"]
+        if Path(filename).is_absolute():
+            # filename is an absolute path e.g. //network/share or D:\path
+            # which could be a UNC path leading to NTLM credential theft
+            raise HTTPNotFound()
         unresolved_path = self._directory.joinpath(filename)
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
@@ -1034,6 +1038,21 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         resource_index = self._resource_index
         allowed_methods: Set[str] = set()
 
+        # MatchedSubAppResource is primarily used to match on domain names
+        # (though custom rules could match on other things). This means that
+        # the traversal algorithm below can't be applied, and that we likely
+        # need to check these first so a sub app that defines the same path
+        # as a parent app will get priority if there's a domain match.
+        #
+        # For most cases we do not expect there to be many of these since
+        # currently they are only added by `.add_domain()`.
+        for resource in self._matched_sub_app_resources:
+            match_dict, allowed = await resource.resolve(request)
+            if match_dict is not None:
+                return match_dict
+            else:
+                allowed_methods |= allowed
+
         # Walk the url parts looking for candidates. We walk the url backwards
         # to ensure the most explicit match is found first. If there are multiple
         # candidates for a given url part because there are multiple resources
@@ -1050,21 +1069,6 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             if url_part == "/":
                 break
             url_part = url_part.rpartition("/")[0] or "/"
-
-        #
-        # We didn't find any candidates, so we'll try the matched sub-app
-        # resources which we have to walk in a linear fashion because they
-        # have regex/wildcard match rules and we cannot index them.
-        #
-        # For most cases we do not expect there to be many of these since
-        # currently they are only added by `add_domain`
-        #
-        for resource in self._matched_sub_app_resources:
-            match_dict, allowed = await resource.resolve(request)
-            if match_dict is not None:
-                return match_dict
-            else:
-                allowed_methods |= allowed
 
         if allowed_methods:
             return MatchInfoError(HTTPMethodNotAllowed(request.method, allowed_methods))

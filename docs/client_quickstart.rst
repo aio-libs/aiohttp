@@ -188,7 +188,7 @@ just install `Brotli <https://pypi.org/project/Brotli/>`_
 or `brotlicffi <https://pypi.org/project/brotlicffi/>`_.
 
 You can enable ``zstd`` transfer-encodings support,
-install `zstandard <https://pypi.org/project/zstandard/>`_.
+install `backports.zstd <https://pypi.org/project/backports.zstd/>`_.
 If you are using Python >= 3.14, no dependency should be required.
 
 JSON Request
@@ -203,20 +203,22 @@ Any of session's request methods like :func:`request`,
 
 
 By default session uses python's standard :mod:`json` module for
-serialization.  But it is possible to use different
-``serializer``. :class:`ClientSession` accepts ``json_serialize``
-parameter::
+serialization.  But it is possible to use a different
+``serializer``. :class:`ClientSession` accepts ``json_serialize`` and
+``json_serialize_bytes`` parameters::
 
-  import ujson
+  import orjson
 
   async with aiohttp.ClientSession(
-          json_serialize=ujson.dumps) as session:
+          json_serialize_bytes=orjson.dumps) as session:
       await session.post(url, json={'test': 'object'})
 
 .. note::
 
-   ``ujson`` library is faster than standard :mod:`json` but slightly
-   incompatible.
+   ``orjson`` library is faster than standard :mod:`json` and is actively
+   maintained. Since ``orjson.dumps`` returns :class:`bytes`, pass it via
+   the ``json_serialize_bytes`` parameter to avoid unnecessary
+   encoding/decoding overhead.
 
 JSON Response Content
 =====================
