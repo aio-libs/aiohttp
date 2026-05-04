@@ -63,7 +63,7 @@ mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.10.0
     # via pre-commit
-packaging==26.1
+packaging==26.2
     # via pytest
 pathspec==1.1.1
     # via mypy
@@ -146,7 +146,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.2.4
+virtualenv==21.3.0
     # via pre-commit
 zlib-ng==1.0.0
     # via -r requirements/lint.in

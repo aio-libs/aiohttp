@@ -39,7 +39,7 @@ blockbuster==1.5.26
     #   -r requirements/test-common.in
 brotli==1.2.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==1.4.4
+build==1.5.0
     # via pip-tools
 certifi==2026.4.22
     # via requests
@@ -132,7 +132,7 @@ mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.10.0
     # via pre-commit
-packaging==26.1
+packaging==26.2
     # via
     #   build
     #   gunicorn
@@ -297,7 +297,7 @@ uvloop==0.21.0 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.2.4
+virtualenv==21.3.0
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common.in

@@ -44,7 +44,7 @@ mypy==1.20.2 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
-packaging==26.1
+packaging==26.2
     # via pytest
 pathspec==1.1.1
     # via mypy

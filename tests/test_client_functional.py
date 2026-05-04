@@ -3754,7 +3754,7 @@ async def test_aiohttp_request_ctx_manager_close_sess_on_error(
 
 async def test_aiohttp_request_ctx_manager_not_found() -> None:
     with pytest.raises(aiohttp.ClientConnectionError):
-        async with aiohttp.request("GET", "http://wrong-dns-name.com"):
+        async with aiohttp.request("GET", "http://wrong-dns-name.invalid"):
             assert False
 
 
