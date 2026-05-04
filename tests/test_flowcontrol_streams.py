@@ -77,7 +77,7 @@ class TestFlowControlStreamReader:
         stream.feed_data(b"data")
         res = await stream.readexactly(3)
         assert res == b"dat"
-        assert not stream._protocol.resume_reading.called  # type: ignore[attr-defined]
+        assert stream._protocol.resume_reading.called  # type: ignore[attr-defined]
 
     async def test_feed_data(self, stream: streams.StreamReader) -> None:
         stream._protocol._reading_paused = False

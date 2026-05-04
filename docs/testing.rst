@@ -537,6 +537,12 @@ basis, the TestClient object can be used directly::
 A full list of the utilities provided can be found at the
 :data:`api reference <aiohttp.test_utils>`
 
+For end-to-end client code that talks to an external service, it is
+recommended to run a small fake server rather than patching private aiohttp
+internals. The ``examples/fake_server.py`` demo shows such an approach: start
+a local :class:`~aiohttp.web.Application`, point a custom resolver at it, and
+exercise the client against that controlled endpoint.
+
 
 Testing API Reference
 ---------------------

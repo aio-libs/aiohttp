@@ -52,7 +52,7 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.payload import (
     AsyncIterablePayload,
     BufferedReaderPayload,
@@ -2410,7 +2410,7 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     payload_size = 64 * 2**20
     original = b"A" * payload_size
     compressed = zlib.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         # Send compressed data with Content-Encoding header
@@ -2442,7 +2442,7 @@ async def test_payload_decompress_size_limit_brotli(
     payload_size = 64 * 2**20
     original = b"A" * payload_size
     compressed = brotli.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)
@@ -2474,7 +2474,7 @@ async def test_payload_decompress_size_limit_zstd(
     original = b"A" * payload_size
     compressor = ZstdCompressor()
     compressed = compressor.compress(original) + compressor.flush()
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)

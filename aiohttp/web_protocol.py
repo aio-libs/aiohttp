@@ -15,7 +15,7 @@ from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout, frozen_dataclass_decorator
+from .helpers import DEFAULT_CHUNK_SIZE, ceil_timeout, frozen_dataclass_decorator
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -202,7 +202,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         max_headers: int = 128,
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
-        read_bufsize: int = 2**18,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):
@@ -633,8 +633,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
                 del task
-                # https://github.com/python/mypy/issues/14309
-                if reset:  # type: ignore[possibly-undefined]
+                if reset:
                     self.log_debug("Ignored premature client disconnection 2")
                     break
 

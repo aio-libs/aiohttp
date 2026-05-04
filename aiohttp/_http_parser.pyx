@@ -457,6 +457,7 @@ cdef class HttpParser:
     cdef _on_headers_complete(self):
         self._process_header()
 
+        http_version = self.http_version()
         should_close = not cparser.llhttp_should_keep_alive(self._cparser)
         upgrade = self._cparser.upgrade
         chunked = self._cparser.flags & cparser.F_CHUNKED
@@ -465,6 +466,8 @@ cdef class HttpParser:
         headers = CIMultiDictProxy(CIMultiDict(self._headers))
 
         if self._cparser.type == cparser.HTTP_REQUEST:
+            if http_version == HttpVersion11 and hdrs.HOST not in headers:
+                raise BadHttpMessage("Missing 'Host' header in request.")
             h_upg = headers.get("upgrade", "")
             allowed = upgrade and h_upg.isascii() and h_upg.lower() in ALLOWED_UPGRADES
             if allowed or self._cparser.method == cparser.HTTP_CONNECT:
@@ -488,11 +491,11 @@ cdef class HttpParser:
             method = http_method_str(self._cparser.method)
             msg = _new_request_message(
                 method, self._path,
-                self.http_version(), headers, raw_headers,
+                http_version, headers, raw_headers,
                 should_close, encoding, upgrade, chunked, self._url)
         else:
             msg = _new_response_message(
-                self.http_version(), self._cparser.status_code, self._reason,
+                http_version, self._cparser.status_code, self._reason,
                 headers, raw_headers, should_close, encoding,
                 upgrade, chunked)
 
