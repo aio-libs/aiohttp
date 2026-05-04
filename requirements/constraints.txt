@@ -26,7 +26,7 @@ attrs==25.4.0
     # via -r requirements/runtime-deps.in
 babel==2.18.0
     # via sphinx
-backports-zstd==1.3.0 ; implementation_name == "cpython"
+backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3.14"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -106,7 +106,7 @@ jinja2==3.1.6
     # via
     #   sphinx
     #   towncrier
-librt==0.8.1
+librt==0.9.0
     # via mypy
 markdown-it-py==4.0.0
     # via rich
