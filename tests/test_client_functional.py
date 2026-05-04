@@ -5930,27 +5930,20 @@ async def test_output_size_keepalive_isolated(
     app.router.add_post("/", handler)
     connector = aiohttp.TCPConnector(limit=1, force_close=False)
     client = await aiohttp_client(app, connector=connector)
+    body = b"x" * 65536
 
-    small = b"a" * 128
-    large = b"b" * 8192
-
-    async with client.post("/", data=small) as resp1:
+    async with client.post("/", data=body) as resp1:
         size1 = resp1.output_size
 
-    async with client.post("/", data=large) as resp2:
+    async with client.post("/", data=body) as resp2:
         size2 = resp2.output_size
 
-    assert size1 < size2
-    # The second request's counter must not include the first's bytes.
-    assert size2 < len(small) + len(large) + 4096  # generous header allowance
+    assert size1 >= len(body)
+    assert size1 == size2
 
 
 async def test_output_size_progress(aiohttp_client: AiohttpClient) -> None:
-    """output_size grows monotonically as a slow upload progresses.
-
-    The server flushes response headers before reading the body so the
-    client receives ``resp`` while the upload is still in flight.
-    """
+    """output_size advances by exactly one chunk per yield."""
 
     async def handler(request: web.Request) -> web.StreamResponse:
         response = web.StreamResponse()
@@ -5965,25 +5958,29 @@ async def test_output_size_progress(aiohttp_client: AiohttpClient) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    chunk = b"z" * 4096
+    chunk_size = 4096
+    chunk = b"z" * chunk_size
+    num_chunks = 8
+    sample_taken = asyncio.Event()
+    next_chunk = asyncio.Event()
 
-    async def slow_body() -> AsyncIterator[bytes]:
-        for _ in range(8):
+    async def gated_body() -> AsyncIterator[bytes]:
+        for _ in range(num_chunks):
             yield chunk
-            await asyncio.sleep(0.05)
+            sample_taken.clear()
+            next_chunk.set()
+            await sample_taken.wait()
 
-    async with client.post("/", data=slow_body()) as resp:
+    async with client.post("/", data=gated_body()) as resp:
         samples: list[int] = []
-        for _ in range(20):
+        for _ in range(num_chunks):
+            await next_chunk.wait()
+            next_chunk.clear()
             samples.append(resp.output_size)
-            if resp._writer is None or resp._writer.done():
-                break
-            await asyncio.sleep(0.02)
+            sample_taken.set()
         await resp.read()
 
-    # Monotonic non-decreasing growth.
-    assert samples == sorted(samples)
-    # Saw growth across samples (i.e. captured an in-flight state).
-    assert samples[0] < samples[-1]
-    # Final value reflects the full upload.
-    assert resp.output_size >= 8 * len(chunk)
+    # Each sample after the first reflects exactly one more chunk on the wire.
+    chunked_framing = len(f"{chunk_size:x}".encode()) + 4
+    deltas = [samples[i] - samples[i - 1] for i in range(1, len(samples))]
+    assert deltas == [chunk_size + chunked_framing] * (num_chunks - 1)
