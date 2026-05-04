@@ -14,6 +14,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import ClientSession, hdrs, http
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.helpers import TimerNoop
@@ -1634,3 +1635,20 @@ def test_response_cookies_setter_updates_raw_headers(
     response.cookies = empty_cookies
     # Should not set _raw_cookie_headers for empty cookies
     assert response._raw_cookie_headers is None
+
+
+def test_output_size_default_zero() -> None:
+    url = URL("http://def-cl-resp.org")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=mock.Mock(),
+        session=None,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+    )
+    assert response.output_size == 0

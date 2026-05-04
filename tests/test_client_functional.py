@@ -5882,3 +5882,108 @@ async def test_stream_reader_total_raw_bytes(aiohttp_client: AiohttpClient) -> N
         data = await resp.content.read()
         assert resp.content.total_raw_bytes == len(data)
         assert resp.content.total_raw_bytes == int(resp.headers["Content-Length"])
+
+
+async def test_output_size_bytes(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    body = b"x" * 1024
+    async with client.post("/", data=body) as resp:
+        assert resp.output_size >= len(body)
+
+
+async def test_output_size_multipart(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    mpwriter = aiohttp.MultipartWriter("form-data")
+    mpwriter.append(b"x" * 4096)
+    mpwriter.append(b"y" * 2048)
+    expected_body_size = mpwriter.size
+    assert expected_body_size is not None
+
+    async with client.post("/", data=mpwriter) as resp:
+        assert resp.output_size >= expected_body_size
+
+
+async def test_output_size_keepalive_isolated(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Each request on a keep-alive connection has its own counter."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    connector = aiohttp.TCPConnector(limit=1, force_close=False)
+    client = await aiohttp_client(app, connector=connector)
+
+    small = b"a" * 128
+    large = b"b" * 8192
+
+    async with client.post("/", data=small) as resp1:
+        size1 = resp1.output_size
+
+    async with client.post("/", data=large) as resp2:
+        size2 = resp2.output_size
+
+    assert size1 < size2
+    # The second request's counter must not include the first's bytes.
+    assert size2 < len(small) + len(large) + 4096  # generous header allowance
+
+
+async def test_output_size_progress(aiohttp_client: AiohttpClient) -> None:
+    """output_size grows monotonically as a slow upload progresses.
+
+    The server flushes response headers before reading the body so the
+    client receives ``resp`` while the upload is still in flight.
+    """
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        response = web.StreamResponse()
+        await response.prepare(request)
+        # Flush headers + a chunk so resp.start() returns on the client
+        # side before we read the body.
+        await response.write(b"x")
+        await request.read()
+        return response
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    chunk = b"z" * 4096
+
+    async def slow_body() -> AsyncIterator[bytes]:
+        for _ in range(8):
+            yield chunk
+            await asyncio.sleep(0.05)
+
+    async with client.post("/", data=slow_body()) as resp:
+        samples: list[int] = []
+        for _ in range(20):
+            samples.append(resp.output_size)
+            if resp._writer is None or resp._writer.done():
+                break
+            await asyncio.sleep(0.02)
+        await resp.read()
+
+    # Monotonic non-decreasing growth.
+    assert samples == sorted(samples)
+    # Saw growth across samples (i.e. captured an in-flight state).
+    assert samples[0] < samples[-1]
+    # Final value reflects the full upload.
+    assert resp.output_size >= 8 * len(chunk)

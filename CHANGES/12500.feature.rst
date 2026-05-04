@@ -1,0 +1,1 @@
+Added :attr:`~aiohttp.ClientResponse.output_size` -- by :user:`Dreamsorcerer`.

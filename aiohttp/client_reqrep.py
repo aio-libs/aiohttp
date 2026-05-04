@@ -212,6 +212,7 @@ class ClientResponse(HeadersMixin):
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
 
     __writer: asyncio.Task[None] | None = None
+    _body_writer: AbstractStreamWriter | None = None
 
     def __init__(
         self,
@@ -226,6 +227,7 @@ class ClientResponse(HeadersMixin):
         session: "ClientSession | None",
         request_headers: CIMultiDict[str],
         original_url: URL,
+        body_writer: AbstractStreamWriter | None = None,
         **kwargs: object,
     ) -> None:
         # kwargs exists so authors of subclasses should expect to pass through unknown
@@ -242,6 +244,8 @@ class ClientResponse(HeadersMixin):
         self._url = url.with_fragment(None) if url.raw_fragment else url
         if writer is not None:
             self._writer = writer
+        if body_writer is not None:
+            self._body_writer = body_writer
         if continue100 is not None:
             self._continue = continue100
         self._request_headers = request_headers
@@ -284,6 +288,20 @@ class ClientResponse(HeadersMixin):
             self.__writer = None
         else:
             writer.add_done_callback(self.__reset_writer)
+
+    @property
+    def output_size(self) -> int:
+        """Number of bytes sent for this request (headers + body).
+
+        Useful for tracking upload progress for any body type
+        (including :class:`~aiohttp.MultipartWriter`). Each request on a
+        keep-alive connection gets a fresh counter. Returns ``0`` if no
+        body writer was associated with the response (e.g. requests
+        with no body that skipped the writer path).
+        """
+        if self._body_writer is None:
+            return 0
+        return self._body_writer.output_size
 
     @property
     def cookies(self) -> SimpleCookie:
@@ -827,7 +845,11 @@ class ClientRequestBase:
         self.headers[hdrs.HOST] = headers.pop(hdrs.HOST, host)
         self.headers.extend(headers)
 
-    def _create_response(self, task: asyncio.Task[None] | None) -> ClientResponse:
+    def _create_response(
+        self,
+        task: asyncio.Task[None] | None,
+        body_writer: AbstractStreamWriter | None = None,
+    ) -> ClientResponse:
         return self.response_class(
             self.method,
             self.original_url,
@@ -839,6 +861,7 @@ class ClientRequestBase:
             session=None,
             request_headers=self.headers,
             original_url=self.original_url,
+            body_writer=body_writer,
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
@@ -912,7 +935,7 @@ class ClientRequestBase:
             protocol.start_timeout()
             writer.set_eof()
             task = None
-        self._response = self._create_response(task)
+        self._response = self._create_response(task, body_writer=writer)
         return self._response
 
     async def _write_bytes(
@@ -1291,7 +1314,11 @@ class ClientRequest(ClientRequestBase):
         self.proxy_auth = proxy_auth
         self.proxy_headers = proxy_headers
 
-    def _create_response(self, task: asyncio.Task[None] | None) -> ClientResponse:
+    def _create_response(
+        self,
+        task: asyncio.Task[None] | None,
+        body_writer: AbstractStreamWriter | None = None,
+    ) -> ClientResponse:
         return self.response_class(
             self.method,
             self.original_url,
@@ -1303,6 +1330,7 @@ class ClientRequest(ClientRequestBase):
             session=self._session,
             request_headers=self.headers,
             original_url=self.original_url,
+            body_writer=body_writer,
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
