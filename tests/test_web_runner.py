@@ -298,8 +298,6 @@ async def test_tcpsite_ephemeral_port(make_runner: _RunnerMaker) -> None:
 
 
 def test_run_after_asyncio_run() -> None:
-    pytest.skip("broken")
-    return
     called = False
 
     async def nothing() -> None:
