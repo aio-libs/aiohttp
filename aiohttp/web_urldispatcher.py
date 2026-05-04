@@ -31,7 +31,7 @@ from yarl import URL, __version__ as yarl_version
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
-from .helpers import DEBUG
+from .helpers import DEBUG, DEFAULT_CHUNK_SIZE
 from .http import HttpVersion11
 from .typedefs import Handler, PathLike
 from .web_exceptions import (
@@ -536,7 +536,7 @@ class StaticResource(PrefixResource):
         *,
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,
@@ -654,6 +654,10 @@ class StaticResource(PrefixResource):
 
     async def _handle(self, request: Request) -> StreamResponse:
         filename = request.match_info["filename"]
+        if Path(filename).is_absolute():
+            # filename is an absolute path e.g. //network/share or D:\path
+            # which could be a UNC path leading to NTLM credential theft
+            raise HTTPNotFound()
         unresolved_path = self._directory.joinpath(filename)
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
@@ -1162,7 +1166,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         *,
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,

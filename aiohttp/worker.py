@@ -36,7 +36,6 @@ __all__ = ("GunicornWebWorker", "GunicornUVLoopWebWorker")
 
 
 class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
-
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
@@ -49,7 +48,11 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
 
     def init_process(self) -> None:
         # create new event_loop after fork
-        asyncio.get_event_loop().close()
+        try:
+            asyncio.get_event_loop().close()
+        except RuntimeError:
+            # No loop was running
+            pass
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -131,7 +134,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                     self.log.info("Parent changed, shutting down: %s", self)
                 else:
                     await self._wait_next_notify()
-        except BaseException:
+        except Exception:
             pass
 
         await runner.cleanup()
@@ -188,8 +191,12 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         # by interrupting system calls
         signal.siginterrupt(signal.SIGTERM, False)
         signal.siginterrupt(signal.SIGUSR1, False)
-        # Reset signals so Gunicorn doesn't swallow subprocess return codes
-        # See: https://github.com/aio-libs/aiohttp/issues/6130
+
+        # Reset SIGCHLD to default so Gunicorn doesn't swallow subprocess
+        # return codes. Without this, workers inherit the master arbiter's
+        # SIGCHLD handler, causing spurious "Worker exited" errors when
+        # application code spawns subprocesses.
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
     def handle_quit(self, sig: int, frame: FrameType | None) -> None:
         self.alive = False
@@ -245,7 +252,11 @@ class GunicornUVLoopWebWorker(GunicornWebWorker):
 
         # Close any existing event loop before setting a
         # new policy.
-        asyncio.get_event_loop().close()
+        try:
+            asyncio.get_event_loop().close()
+        except RuntimeError:
+            # No loop was running
+            pass
 
         # Setup uvloop policy, so that every
         # asyncio.get_event_loop() will create an instance

@@ -27,6 +27,7 @@ from .streams import EofStream
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
+    JSONBytesEncoder,
     JSONDecoder,
     JSONEncoder,
 )
@@ -98,11 +99,17 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self._compress = compress
         self._client_notakeover = client_notakeover
         self._ping_task: asyncio.Task[None] | None = None
+        self._need_heartbeat_reset = False
+        self._heartbeat_reset_handle: asyncio.Handle | None = None
 
         self._reset_heartbeat()
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
+        if self._heartbeat_reset_handle is not None:
+            self._heartbeat_reset_handle.cancel()
+            self._heartbeat_reset_handle = None
+        self._need_heartbeat_reset = False
         if self._heartbeat_cb is not None:
             self._heartbeat_cb.cancel()
             self._heartbeat_cb = None
@@ -114,6 +121,23 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         if self._pong_response_cb is not None:
             self._pong_response_cb.cancel()
             self._pong_response_cb = None
+
+    def _on_data_received(self) -> None:
+        if self._heartbeat is None or self._need_heartbeat_reset:
+            return
+        loop = self._loop
+        assert loop is not None
+        # Coalesce multiple chunks received in the same loop tick into a single
+        # heartbeat reset. Resetting immediately per chunk increases timer churn.
+        self._need_heartbeat_reset = True
+        self._heartbeat_reset_handle = loop.call_soon(self._flush_heartbeat_reset)
+
+    def _flush_heartbeat_reset(self) -> None:
+        self._heartbeat_reset_handle = None
+        if not self._need_heartbeat_reset:
+            return
+        self._reset_heartbeat()
+        self._need_heartbeat_reset = False
 
     def _reset_heartbeat(self) -> None:
         if self._heartbeat is None:
@@ -138,6 +162,12 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
 
     def _send_heartbeat(self) -> None:
         self._heartbeat_cb = None
+
+        # If heartbeat reset is pending (data is being received), skip sending
+        # the ping and let the reset callback handle rescheduling the heartbeat.
+        if self._need_heartbeat_reset:
+            return
+
         loop = self._loop
         now = loop.time()
         if now < self._heartbeat_when:
@@ -274,6 +304,20 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
 
+    async def send_json_bytes(
+        self,
+        data: Any,
+        compress: int | None = None,
+        *,
+        dumps: JSONBytesEncoder,
+    ) -> None:
+        """Send JSON data using a bytes-returning encoder as a binary frame.
+
+        Use this when your JSON encoder (like orjson) returns bytes
+        instead of str, avoiding the encode/decode overhead.
+        """
+        await self.send_bytes(dumps(data), compress=compress)
+
     async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
@@ -365,7 +409,6 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                             msg = await self._reader.read()
                     else:
                         msg = await self._reader.read()
-                    self._reset_heartbeat()
                 finally:
                     self._waiting = False
                     if self._close_wait:
