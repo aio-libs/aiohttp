@@ -352,15 +352,16 @@ class StreamWriter(AbstractStreamWriter):
 
 
 def _safe_header(string: str) -> str:
-    if "\r" in string or "\n" in string:
+    if "\r" in string or "\n" in string or "\x00" in string:
         raise ValueError(
-            "Newline or carriage return detected in headers. "
+            "Newline, carriage return, or null byte detected in headers. "
             "Potential header injection attack."
         )
     return string
 
 
 def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> bytes:
+    _safe_header(status_line)
     headers_gen = (_safe_header(k) + ": " + _safe_header(v) for k, v in headers.items())
     line = status_line + "\r\n" + "\r\n".join(headers_gen) + "\r\n\r\n"
     return line.encode("utf-8")

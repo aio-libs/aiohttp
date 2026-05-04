@@ -74,7 +74,7 @@ class ContentLengthError(PayloadEncodingError):
 
 
 class DecompressSizeError(PayloadEncodingError):
-    """Decompressed size exceeds the configured limit."""
+    """Deprecated. Removed in v4."""
 
 
 class LineTooLong(BadHttpMessage):
