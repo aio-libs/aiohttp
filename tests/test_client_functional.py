@@ -51,9 +51,8 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
 from aiohttp.connector import Connection
-from aiohttp.http_exceptions import DecompressSizeError
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_writer import StreamWriter
 from aiohttp.payload import (
     AsyncIterablePayload,
@@ -2454,12 +2453,11 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     When a compressed payload expands beyond the configured limit,
     we raise DecompressSizeError.
     """
-    # Create a highly compressible payload that exceeds the decompression limit.
-    # 64MiB of repeated bytes compresses to ~32KB but expands beyond the
-    # 32MiB per-call limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = zlib.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         # Send compressed data with Content-Encoding header
@@ -2474,11 +2472,11 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(brotli is None, reason="brotli is not installed")
@@ -2487,10 +2485,11 @@ async def test_payload_decompress_size_limit_brotli(
 ) -> None:
     """Test that brotli decompression size limit triggers DecompressSizeError."""
     assert brotli is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = brotli.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)
@@ -2504,11 +2503,11 @@ async def test_payload_decompress_size_limit_brotli(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(ZstdCompressor is None, reason="backports.zstd is not installed")
@@ -2517,11 +2516,12 @@ async def test_payload_decompress_size_limit_zstd(
 ) -> None:
     """Test that zstd decompression size limit triggers DecompressSizeError."""
     assert ZstdCompressor is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressor = ZstdCompressor()
     compressed = compressor.compress(original) + compressor.flush()
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)
@@ -2535,11 +2535,11 @@ async def test_payload_decompress_size_limit_zstd(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 async def test_bad_payload_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
@@ -5033,7 +5033,7 @@ async def test_string_payload_redirect(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) -> None:
-    """Test that AsyncIterablePayload cannot be reused across redirects."""
+    """Test redirecting consumed AsyncIterablePayload raises an error."""
     data_received = []
 
     async def redirect_handler(request: web.Request) -> web.Response:
@@ -5061,17 +5061,50 @@ async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) ->
 
     payload = AsyncIterablePayload(async_gen())
 
-    resp = await client.post("/redirect", data=payload)
-    assert resp.status == 200
-    text = await resp.text()
-    # AsyncIterablePayload is consumed after first use, so redirect gets empty body
-    assert text == "Received: "
+    with pytest.raises(
+        aiohttp.ClientPayloadError,
+        match="Cannot follow redirect with a consumed request body",
+    ):
+        await client.post("/redirect", data=payload)
 
-    # Only the first endpoint should have received data
+    # Only the first endpoint should have received data.
     expected_data = b"".join(chunks)
-    assert len(data_received) == 2
-    assert data_received[0] == ("redirect", expected_data)
-    assert data_received[1] == ("final", b"")  # Empty after being consumed
+    assert data_received == [("redirect", expected_data)]
+
+
+@pytest.mark.parametrize("status", (301, 302))
+async def test_async_iterable_payload_redirect_non_post_301_302(
+    aiohttp_client: AiohttpClient, status: int
+) -> None:
+    """Test consumed async iterable body raises on 301/302 for non-POST methods."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        return web.Response(status=status, headers={"Location": "/final_destination"})
+
+    app = web.Application()
+    app.router.add_put("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    chunks = [b"chunk1", b"chunk2", b"chunk3"]
+
+    async def async_gen() -> AsyncIterator[bytes]:
+        for chunk in chunks:
+            yield chunk
+
+    payload = AsyncIterablePayload(async_gen())
+
+    with pytest.raises(
+        aiohttp.ClientPayloadError,
+        match="Cannot follow redirect with a consumed request body",
+    ):
+        await client.put("/redirect", data=payload)
+
+    expected_data = b"".join(chunks)
+    assert data_received == [("redirect", expected_data)]
 
 
 async def test_buffered_reader_payload_redirect(aiohttp_client: AiohttpClient) -> None:

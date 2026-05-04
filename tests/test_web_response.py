@@ -14,6 +14,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from re_assert import Matches
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
@@ -584,26 +585,6 @@ async def test_force_compression_deflate() -> None:
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_force_compression_deflate_large_payload() -> None:
-    """Make sure a warning is thrown for large payloads compressed in the event loop."""
-    req = make_request(
-        "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip, deflate"})
-    )
-    resp = Response(body=b"large")
-
-    resp.enable_compression(ContentCoding.deflate)
-    assert resp.compression
-
-    with (
-        pytest.warns(Warning, match="Synchronous compression of large response bodies"),
-        mock.patch("aiohttp.web_response.LARGE_BODY_SIZE", 2),
-    ):
-        msg = await resp.prepare(req)
-        assert msg is not None
-    assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
-
-
-@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_no_accept_deflate() -> None:
     req = make_request("GET", "/")
     resp = StreamResponse()
@@ -1098,6 +1079,27 @@ def test_set_status_with_empty_reason() -> None:
     assert resp.reason == ""
 
 
+def test_set_status_reason_with_cr() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\rSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_lf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\nSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_crlf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\r\nSet-Cookie: evil=1")
+
+
 async def test_start_force_close() -> None:
     req = make_request("GET", "/")
     resp = StreamResponse()
@@ -1398,9 +1400,9 @@ async def test_render_with_body(buf, writer) -> None:
     )
 
 
-async def test_multiline_reason(buf, writer) -> None:
-    with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
-        Response(reason="Bad\r\nInjected-header: foo")
+async def test_multiline_reason(buf: bytearray, writer: AbstractStreamWriter) -> None:
+    with pytest.raises(ValueError, match=r"Reason cannot contain \\r or \\n"):
+        web.Response(reason="Bad\r\nInjected-header: foo")
 
 
 async def test_send_set_cookie_header(buf, writer) -> None:

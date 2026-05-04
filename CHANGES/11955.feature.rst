@@ -1,1 +1,0 @@
-Added ``max_headers`` parameter to limit the number of headers that should be read from a response -- by :user:`Dreamsorcerer`.
