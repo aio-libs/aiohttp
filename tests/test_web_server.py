@@ -1,14 +1,15 @@
 import asyncio
+import gc
 import socket
 from contextlib import suppress
-from typing import NoReturn
+from typing import Any, NoReturn
 from unittest import mock
 
 import pytest
 
 from aiohttp import client, web
 from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer, AiohttpServer
 
 
 async def test_simple_server(
@@ -44,12 +45,10 @@ async def test_unsupported_upgrade(
 
 
 async def test_raw_server_not_http_exception(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     # disable debug mode not to print traceback
-    loop.set_debug(False)
+    asyncio.get_running_loop().set_debug(False)
 
     exc = RuntimeError("custom runtime error")
 
@@ -73,16 +72,14 @@ async def test_raw_server_not_http_exception(
 
 
 async def test_raw_server_logs_invalid_method_with_loop_debug(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -120,16 +117,14 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
 
 
 async def test_raw_server_logs_invalid_method_without_loop_debug(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -151,9 +146,7 @@ async def test_raw_server_logs_invalid_method_without_loop_debug(
 
 
 async def test_raw_server_logs_invalid_method_second_request(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
     request_count = 0
@@ -165,7 +158,7 @@ async def test_raw_server_logs_invalid_method_second_request(
             raise exc
         return web.Response()
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -184,16 +177,14 @@ async def test_raw_server_logs_invalid_method_second_request(
 
 
 async def test_raw_server_logs_bad_status_line_as_exception(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     exc = BadStatusLine(b"\x16\x03\x03\x01F\x01".decode(), "error")
 
     async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
@@ -315,12 +306,10 @@ async def test_raw_server_not_http_exception_debug(
 
 
 async def test_raw_server_html_exception(
-    aiohttp_raw_server: AiohttpRawServer,
-    aiohttp_client: AiohttpClient,
-    loop: asyncio.AbstractEventLoop,
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     # disable debug mode not to print traceback
-    loop.set_debug(False)
+    asyncio.get_running_loop().set_debug(False)
 
     exc = RuntimeError("custom runtime error")
 
@@ -454,3 +443,51 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
         assert done_event.is_set()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_no_future_warning_on_disconnect_during_backpressure(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    loop = asyncio.get_running_loop()
+    exc_handler_calls: list[dict[str, Any]] = []
+    original_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, ctx: exc_handler_calls.append(ctx))
+    protocol = None
+
+    async def handler(request: web.Request) -> NoReturn:
+        nonlocal protocol
+        protocol = request.protocol
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        while True:
+            await resp.write(b"x" * 65536)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    # aiohttp_server enables handler_cancellation by default so the handler
+    # task is cancelled when connection_lost() fires.
+    server = await aiohttp_server(app)
+
+    # Open a raw asyncio connection so we control exactly when the client
+    # side closes.
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    writer.write(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    await writer.drain()
+
+    try:
+        # Poll until the server protocol reports that writing is paused.
+        async def wait_for_backpressure() -> None:
+            while protocol is None or not protocol.writing_paused:
+                await asyncio.sleep(0.01)
+
+        await asyncio.wait_for(wait_for_backpressure(), timeout=5.0)
+
+        writer.close()
+        await asyncio.sleep(0.1)
+
+        gc.collect()
+        await asyncio.sleep(0)
+    finally:
+        loop.set_exception_handler(original_handler)
+
+    assert not exc_handler_calls

@@ -34,9 +34,9 @@ blockbuster==1.5.26
     #   -r requirements/test-common.in
 brotli==1.2.0 ; platform_python_implementation == "CPython"
     # via -r requirements/runtime-deps.in
-build==1.4.2
+build==1.5.0
     # via pip-tools
-certifi==2026.2.25
+certifi==2026.4.22
     # via requests
 cffi==2.0.0
     # via
@@ -45,9 +45,9 @@ cffi==2.0.0
     #   pytest-codspeed
 cfgv==3.5.0
     # via pre-commit
-charset-normalizer==3.4.6
+charset-normalizer==3.4.7
     # via requests
-click==8.3.1
+click==8.3.3
     # via
     #   pip-tools
     #   slotscheck
@@ -57,7 +57,7 @@ coverage==7.13.5
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==46.0.6
+cryptography==47.0.0
     # via trustme
 distlib==0.4.0
     # via virtualenv
@@ -67,7 +67,7 @@ exceptiongroup==1.3.1
     # via pytest
 execnet==2.1.2
     # via pytest-xdist
-filelock==3.25.2
+filelock==3.29.0
     # via
     #   python-discovery
     #   virtualenv
@@ -83,7 +83,7 @@ frozenlist==1.8.0
     #   aiosignal
 gunicorn==25.3.0
     # via -r requirements/base.in
-identify==2.6.18
+identify==2.6.19
     # via pre-commit
 idna==3.11
     # via
@@ -102,7 +102,7 @@ jinja2==3.1.6
     # via
     #   sphinx
     #   towncrier
-librt==0.8.0
+librt==0.9.0
     # via mypy
 markdown-it-py==4.0.0
     # via rich
@@ -114,7 +114,7 @@ multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-mypy==1.19.1 ; implementation_name == "cpython"
+mypy==1.20.2 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -122,20 +122,20 @@ mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.10.0
     # via pre-commit
-packaging==26.0
+packaging==26.2
     # via
     #   build
     #   gunicorn
     #   pytest
     #   sphinx
     #   wheel
-pathspec==1.0.4
+pathspec==1.1.1
     # via mypy
 pip-tools==7.5.3
     # via -r requirements/dev.in
 pkgconfig==1.6.0
     # via -r requirements/test-common.in
-platformdirs==4.9.4
+platformdirs==4.9.6
     # via
     #   python-discovery
     #   virtualenv
@@ -143,7 +143,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-pre-commit==4.5.1
+pre-commit==4.6.0
     # via -r requirements/lint.in
 propcache==0.4.1
     # via
@@ -157,9 +157,9 @@ pycares==5.0.1
     # via aiodns
 pycparser==3.0
     # via cffi
-pydantic==2.12.5
+pydantic==2.13.3
     # via python-on-whales
-pydantic-core==2.41.5
+pydantic-core==2.46.3
     # via pydantic
 pygments==2.20.0
     # via
@@ -170,7 +170,7 @@ pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
-pytest==9.0.2
+pytest==9.0.3
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -178,7 +178,7 @@ pytest==9.0.2
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.3.0
+pytest-codspeed==4.5.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -192,7 +192,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.2.1
+python-discovery==1.2.2
     # via virtualenv
 python-on-whales==0.81.0
     # via
@@ -202,7 +202,7 @@ pyyaml==6.0.3
     # via pre-commit
 requests==2.33.1
     # via sphinx
-rich==14.3.3
+rich==15.0.0
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in
@@ -271,11 +271,11 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.2.0
+virtualenv==21.3.0
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
-wheel==0.46.3
+wheel==0.47.0
     # via pip-tools
 yarl==1.23.0
     # via -r requirements/runtime-deps.in
@@ -285,7 +285,7 @@ zlib-ng==1.0.0
     #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
-pip==26.0.1
+pip==26.1
     # via pip-tools
 setuptools==82.0.1
     # via pip-tools

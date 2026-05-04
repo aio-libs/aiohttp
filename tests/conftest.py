@@ -37,7 +37,7 @@ from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientRespon
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.helpers import TimerNoop
 from aiohttp.http import WS_KEY, HttpVersion11
-from aiohttp.test_utils import get_unused_port_socket, loop_context
+from aiohttp.test_utils import REUSE_ADDRESS, loop_context
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -387,11 +387,8 @@ def unused_port_socket() -> Iterator[socket.socket]:
     race condition between checking if the port is in use and
     binding to it later in the test.
     """
-    s = get_unused_port_socket("127.0.0.1")
-    try:
+    with socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS) as s:
         yield s
-    finally:
-        s.close()
 
 
 @pytest.fixture(params=["zlib", "zlib_ng.zlib_ng", "isal.isal_zlib"])
@@ -433,7 +430,7 @@ async def make_client_request(
         session = ClientSession()
         sessions.append(session)
         default_args: ClientRequestArgs = {
-            "loop": loop,
+            "loop": asyncio.get_running_loop(),
             "params": {},
             "headers": CIMultiDict[str](),
             "skip_auto_headers": None,
