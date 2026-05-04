@@ -58,6 +58,10 @@ IS_WINDOWS = platform.system() == "Windows"
 
 PY_311 = sys.version_info >= (3, 11)
 
+# This is the default size/limit for several operations.
+# Matches the max size we receive from sockets:
+# https://github.com/python/cpython/blob/1857a40807daeae3a1bf5efb682de9c9ae6df845/Lib/asyncio/selector_events.py#L766
+DEFAULT_CHUNK_SIZE = 2**18  # 256 KiB
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
