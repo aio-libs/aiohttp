@@ -1556,8 +1556,6 @@ def test_terminate_with_closed_loop(
     event_loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
 ) -> None:
-    pytest.skip("broken")
-    return
     req = resp = writer = None
 
     async def go() -> None:
