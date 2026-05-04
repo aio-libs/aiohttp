@@ -505,26 +505,6 @@ async def test_force_compression_deflate() -> None:
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_force_compression_deflate_large_payload() -> None:
-    """Make sure a warning is thrown for large payloads compressed in the event loop."""
-    req = make_request(
-        "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip, deflate"})
-    )
-    resp = web.Response(body=b"large")
-
-    resp.enable_compression(web.ContentCoding.deflate)
-    assert resp.compression
-
-    with (
-        pytest.warns(Warning, match="Synchronous compression of large response bodies"),
-        mock.patch("aiohttp.web_response.LARGE_BODY_SIZE", 2),
-    ):
-        msg = await resp.prepare(req)
-        assert msg is not None
-    assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
-
-
-@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_no_accept_deflate() -> None:
     req = make_request("GET", "/")
     resp = web.StreamResponse()
@@ -934,6 +914,27 @@ def test_set_status_with_empty_reason() -> None:
     assert resp.reason == ""
 
 
+def test_set_status_reason_with_cr() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\rSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_lf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\nSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_crlf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\r\nSet-Cookie: evil=1")
+
+
 async def test_start_force_close() -> None:
     req = make_request("GET", "/")
     resp = web.StreamResponse()
@@ -1236,7 +1237,7 @@ async def test_render_with_body(buf: bytearray, writer: AbstractStreamWriter) ->
 
 
 async def test_multiline_reason(buf: bytearray, writer: AbstractStreamWriter) -> None:
-    with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
+    with pytest.raises(ValueError, match=r"Reason cannot contain \\r or \\n"):
         web.Response(reason="Bad\r\nInjected-header: foo")
 
 
@@ -1412,9 +1413,7 @@ async def test_response_prepared_after_header_preparation() -> None:
 
     async def _strip_server(req: web.Request, res: web.Response) -> None:
         assert "Server" in res.headers
-
-        if "Server" in res.headers:
-            del res.headers["Server"]
+        del res.headers["Server"]
 
     app = mock.create_autospec(web.Application, spec_set=True)
     app.on_response_prepare = aiosignal.Signal(app)

@@ -266,6 +266,7 @@ pytest
 Pytest
 qop
 Quickstart
+quickstart
 quote’s
 rc
 readline
@@ -304,6 +305,7 @@ sa
 Satisfiable
 scalability
 schemas
+seekable
 sendfile
 serializable
 serializer

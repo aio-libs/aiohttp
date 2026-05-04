@@ -199,8 +199,10 @@ def _passthrough_loop_context(
     else:
         # this shadows loop_context's standard behavior
         loop = setup_test_loop()
-        yield loop
-        teardown_test_loop(loop, fast=fast)
+        try:
+            yield loop
+        finally:
+            teardown_test_loop(loop, fast=fast)
 
 
 def pytest_pycollect_makeitem(collector, name, obj):  # type: ignore[no-untyped-def]

@@ -19,4 +19,5 @@ exclude_also = [
   'assert False',
   ': \.\.\.(\s*#.*)?$',
   '^ +\.\.\.$',
+  'pytest.fail\('
 ]

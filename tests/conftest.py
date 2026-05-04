@@ -19,6 +19,7 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
+import trustme
 from multidict import CIMultiDict
 from yarl import URL
 
@@ -36,17 +37,7 @@ from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientRespon
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.helpers import TimerNoop
 from aiohttp.http import WS_KEY, HttpVersion11
-from aiohttp.test_utils import get_unused_port_socket, loop_context
-
-try:
-    import trustme
-
-    # Check if the CA is available in runtime, MacOS on Py3.10 fails somehow
-    trustme.CA()
-
-    TRUSTME: bool = True
-except ImportError:
-    TRUSTME = False
+from aiohttp.test_utils import REUSE_ADDRESS, loop_context
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -122,8 +113,6 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
 
 @pytest.fixture
 def tls_certificate_authority() -> trustme.CA:
-    if not TRUSTME:
-        pytest.xfail("trustme is not supported")
     return trustme.CA()
 
 
@@ -213,8 +202,6 @@ def unix_sockname(
     # Ref: https://unix.stackexchange.com/a/367012/27133
 
     sock_file_name = "unix.sock"
-    unique_prefix = f"{uuid4()!s}-"
-    unique_prefix_len = len(unique_prefix.encode())
 
     root_tmp_dir = Path("/tmp").resolve()
     os_tmp_dir = Path(os.getenv("TMPDIR", "/tmp")).resolve()
@@ -249,7 +236,7 @@ def unix_sockname(
     unique_paths = [p for n, p in enumerate(paths) if p not in paths[:n]]
     paths_num = len(unique_paths)
 
-    for num, tmp_dir_path in enumerate(paths, 1):
+    for num, tmp_dir_path in enumerate(paths, 1):  # pragma: no branch
         with make_tmp_dir(tmp_dir_path) as tmps:
             tmpd = Path(tmps).resolve()
             sock_path = str(tmpd / sock_file_name)
@@ -261,12 +248,6 @@ def unix_sockname(
                 assert_sock_fits(sock_path)
 
             if sock_path_len <= max_sock_len:
-                if max_sock_len - sock_path_len >= unique_prefix_len:
-                    # If we're lucky to have extra space in the path,
-                    # let's also make it more unique
-                    sock_path = str(tmpd / "".join((unique_prefix, sock_file_name)))
-                    # Double-checking it:
-                    assert_sock_fits(sock_path)
                 yield sock_path
                 return
 
@@ -406,11 +387,8 @@ def unused_port_socket() -> Iterator[socket.socket]:
     race condition between checking if the port is in use and
     binding to it later in the test.
     """
-    s = get_unused_port_socket("127.0.0.1")
-    try:
+    with socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS) as s:
         yield s
-    finally:
-        s.close()
 
 
 @pytest.fixture(params=["zlib", "zlib_ng.zlib_ng", "isal.isal_zlib"])
@@ -452,7 +430,7 @@ async def make_client_request(
         session = ClientSession()
         sessions.append(session)
         default_args: ClientRequestArgs = {
-            "loop": loop,
+            "loop": asyncio.get_running_loop(),
             "params": {},
             "headers": CIMultiDict[str](),
             "skip_auto_headers": None,

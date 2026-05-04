@@ -92,6 +92,7 @@ from .connector import (
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
@@ -183,7 +184,7 @@ class _RequestOptions(TypedDict, total=False):
     auth: BasicAuth | None
     allow_redirects: bool
     max_redirects: int
-    compress: str | bool
+    compress: Literal["deflate", "gzip"] | bool
     chunked: bool | None
     expect100: bool
     raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]]
@@ -331,7 +332,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: list[TraceConfig[object]] | None = None,
-        read_bufsize: int = 2**16,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_headers: int = 128,
@@ -487,7 +488,7 @@ class ClientSession:
         auth: BasicAuth | None = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
-        compress: str | bool = False,
+        compress: Literal["deflate", "gzip"] | bool = False,
         chunked: bool | None = None,
         expect100: bool = False,
         raise_for_status: (
@@ -670,7 +671,8 @@ class ClientSession:
 
                     if cookies is not None:
                         tmp_cookie_jar = CookieJar(
-                            quote_cookie=self._cookie_jar.quote_cookie
+                            unsafe=self._cookie_jar.unsafe,
+                            quote_cookie=self._cookie_jar.quote_cookie,
                         )
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
@@ -821,7 +823,18 @@ class ClientSession:
                             # For 307/308, always preserve the request body
                             # For 301/302 with non-POST methods, preserve the request body
                             # https://www.rfc-editor.org/rfc/rfc9110#section-15.4.3-3.1
-                            # Use the existing payload to avoid recreating it from a potentially consumed file
+                            # Use the existing payload to avoid recreating it from
+                            # a potentially consumed file.
+                            #
+                            # If the payload is already consumed and cannot be replayed,
+                            # fail fast instead of silently sending an empty body.
+                            if req._body.consumed:
+                                resp.close()
+                                raise ClientPayloadError(
+                                    "Cannot follow redirect with a consumed request "
+                                    "body. Use bytes, a seekable file-like object, "
+                                    "or set allow_redirects=False."
+                                )
                             data = req._body
 
                         r_url = resp.headers.get(hdrs.LOCATION) or resp.headers.get(
@@ -857,12 +870,6 @@ class ClientSession:
                         elif not scheme:
                             parsed_redirect_url = url.join(parsed_redirect_url)
 
-                        is_same_host_https_redirect = (
-                            url.host == parsed_redirect_url.host
-                            and parsed_redirect_url.scheme == "https"
-                            and url.scheme == "http"
-                        )
-
                         try:
                             redirect_origin = parsed_redirect_url.origin()
                         except ValueError as origin_val_err:
@@ -874,10 +881,7 @@ class ClientSession:
                                 "Invalid redirect URL origin",
                             ) from origin_val_err
 
-                        if (
-                            not is_same_host_https_redirect
-                            and url.origin() != redirect_origin
-                        ):
+                        if url.origin() != redirect_origin:
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
                             headers.pop(hdrs.COOKIE, None)
@@ -896,9 +900,7 @@ class ClientSession:
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
 
-            if raise_for_status is None:
-                pass
-            elif callable(raise_for_status):
+            if callable(raise_for_status):
                 await raise_for_status(resp)
             elif raise_for_status:
                 resp.raise_for_status()
@@ -1223,7 +1225,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
+            reader = WebSocketDataQueue(conn_proto, DEFAULT_CHUNK_SIZE, loop=self._loop)
             writer = WebSocketWriter(
                 conn_proto,
                 transport,

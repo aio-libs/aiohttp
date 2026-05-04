@@ -185,8 +185,16 @@ class TestHTTPOk:
         assert resp.status == 200
 
     def test_multiline_reason(self) -> None:
-        with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
+        with pytest.raises(ValueError, match=r"Reason cannot contain"):
             web.HTTPOk(reason="Bad\r\nInjected-header: foo")
+
+    def test_reason_with_cr(self) -> None:
+        with pytest.raises(ValueError, match=r"Reason cannot contain"):
+            web.HTTPOk(reason="OK\rSet-Cookie: evil=1")
+
+    def test_reason_with_lf(self) -> None:
+        with pytest.raises(ValueError, match=r"Reason cannot contain"):
+            web.HTTPOk(reason="OK\nSet-Cookie: evil=1")
 
     def test_pickle(self) -> None:
         resp = web.HTTPOk(
@@ -321,14 +329,9 @@ class TestHTTPMethodNotAllowed:
 class TestHTTPRequestEntityTooLarge:
     def test_ctor(self) -> None:
         resp = web.HTTPRequestEntityTooLarge(
-            max_size=100,
-            actual_size=123,
-            headers={"X-Custom": "value"},
-            reason="Too large",
+            max_size=100, headers={"X-Custom": "value"}, reason="Too large"
         )
-        assert resp.text == (
-            "Maximum request body size 100 exceeded, actual body size 123"
-        )
+        assert resp.text == "Maximum request body size 100 exceeded."
         compare: Mapping[str, str] = {"X-Custom": "value", "Content-Type": "text/plain"}
         assert resp.headers == compare
         assert resp.reason == "Too large"
@@ -336,7 +339,7 @@ class TestHTTPRequestEntityTooLarge:
 
     def test_pickle(self) -> None:
         resp = web.HTTPRequestEntityTooLarge(
-            100, actual_size=123, headers={"X-Custom": "value"}, reason="Too large"
+            100, headers={"X-Custom": "value"}, reason="Too large"
         )
         resp.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(2, pickle.HIGHEST_PROTOCOL + 1):

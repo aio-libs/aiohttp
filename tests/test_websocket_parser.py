@@ -19,7 +19,7 @@ from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendWrapper
-from aiohttp.http import WebSocketError, WSCloseCode, WSMsgType
+from aiohttp.http import HttpParser, WebSocketError, WSCloseCode, WSMsgType
 from aiohttp.http_websocket import (
     WebSocketReader,
     WSMessageBinary,
@@ -68,8 +68,8 @@ def build_frame(
         compressobj = ZLibBackend.compressobj(wbits=-9)
         message = compressobj.compress(message)
         message = message + compressobj.flush(ZLibBackend.Z_SYNC_FLUSH)
-        if message.endswith(WS_DEFLATE_TRAILING):
-            message = message[:-4]
+        assert message.endswith(WS_DEFLATE_TRAILING)
+        message = message[:-4]
     msg_length = len(message)
 
     if is_fin:
@@ -113,8 +113,9 @@ def build_close_frame(
 
 @pytest.fixture()
 def protocol(loop: asyncio.AbstractEventLoop) -> BaseProtocol:
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
     transport = mock.Mock(spec_set=asyncio.Transport)
-    protocol = BaseProtocol(loop)
+    protocol = BaseProtocol(loop, parser=parser)
     protocol.connection_made(transport)
     return protocol
 
@@ -595,7 +596,6 @@ def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
 
     with pytest.raises(WebSocketError) as ctx:
         parser.parse_frame(struct.pack("!BB", 0b11000001, 0b00000001))
-        parser.parse_frame(b"1")
 
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
@@ -604,7 +604,6 @@ def test_parse_no_compress_frame_single(out: WebSocketDataQueue) -> None:
     parser_no_compress = PatchableWebSocketReader(out, 0, compress=False)
     with pytest.raises(WebSocketError) as ctx:
         parser_no_compress.parse_frame(struct.pack("!BB", 0b11000001, 0b00000001))
-        parser_no_compress.parse_frame(b"1")
 
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 

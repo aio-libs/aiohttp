@@ -8,22 +8,18 @@ import pytest
 
 def test___all__(pytester: pytest.Pytester) -> None:
     """See https://github.com/aio-libs/aiohttp/issues/6197"""
-    pytester.makepyfile(
-        test_a="""
+    pytester.makepyfile(test_a="""
             from aiohttp import *
             assert 'GunicornWebWorker' in globals()
-        """
-    )
+        """)
     result = pytester.runpytest("-vv")
     result.assert_outcomes(passed=0, errors=0)
 
 
 def test_web___all__(pytester: pytest.Pytester) -> None:
-    pytester.makepyfile(
-        test_b="""
+    pytester.makepyfile(test_b="""
             from aiohttp.web import *
-        """
-    )
+        """)
     result = pytester.runpytest("-vv")
     result.assert_outcomes(passed=0, errors=0)
 
@@ -58,7 +54,7 @@ def test_import_time(pytester: pytest.Pytester) -> None:
     finally:
         if old_path is None:
             os.environ.pop("PYTHONPATH")
-        else:
+        else:  # pragma: no cover
             os.environ["PYTHONPATH"] = old_path
 
     assert best_time_ms < IMPORT_TIME_THRESHOLD_MS

@@ -17,8 +17,7 @@ IS_PYPY = platform.python_implementation() == "PyPy"
 
 
 def test_aiohttp_plugin(testdir: pytest.Testdir) -> None:
-    testdir.makepyfile(
-        """\
+    testdir.makepyfile("""\
 import pytest
 from unittest import mock
 
@@ -117,16 +116,14 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
     port = aiohttp_unused_port()
     server = await aiohttp_server(app, port=port)
     assert server.port == port
-"""
-    )
+""")
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest("-p", "no:sugar", "--aiohttp-loop=pyloop")
     result.assert_outcomes(passed=8)
 
 
 def test_warning_checks(testdir: pytest.Testdir) -> None:
-    testdir.makepyfile(
-        """\
+    testdir.makepyfile("""\
 
 async def foobar():
     return 123
@@ -137,8 +134,7 @@ async def test_good() -> None:
 
 async def test_bad() -> None:
     foobar()
-"""
-    )
+""")
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest(
         "-p", "no:sugar", "-s", "-W", "default", "--aiohttp-loop=pyloop"
@@ -155,8 +151,7 @@ async def test_bad() -> None:
 def test_aiohttp_plugin_async_fixture(
     testdir: pytest.Testdir, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    testdir.makepyfile(
-        """\
+    testdir.makepyfile("""\
 import pytest
 
 from aiohttp import web
@@ -205,8 +200,7 @@ def test_foo_without_loop(foo) -> None:
 
 def test_bar(loop, bar) -> None:
     assert bar is test_bar
-"""
-    )
+""")
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest("-p", "no:sugar", "--aiohttp-loop=pyloop")
     result.assert_outcomes(passed=3, errors=1)
@@ -217,8 +211,7 @@ def test_bar(loop, bar) -> None:
 
 
 def test_aiohttp_plugin_async_gen_fixture(testdir: pytest.Testdir) -> None:
-    testdir.makepyfile(
-        """\
+    testdir.makepyfile("""\
 import pytest
 from unittest import mock
 
@@ -251,8 +244,7 @@ async def test_hello(cli) -> None:
 
 def test_finalized() -> None:
     assert canary.called is True
-"""
-    )
+""")
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest("-p", "no:sugar", "--aiohttp-loop=pyloop")
     result.assert_outcomes(passed=2)
@@ -268,8 +260,7 @@ def test_warnings_propagated(recwarn: pytest.WarningsRecorder) -> None:
 
 
 def test_aiohttp_client_cls_fixture_custom_client_used(testdir: pytest.Testdir) -> None:
-    testdir.makepyfile(
-        """
+    testdir.makepyfile("""
 import pytest
 from aiohttp.web import Application
 from aiohttp.test_utils import TestClient
@@ -288,26 +279,21 @@ async def test_hello(aiohttp_client) -> None:
     client = await aiohttp_client(Application())
     assert isinstance(client, CustomClient)
 
-"""
-    )
+""")
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest()
     result.assert_outcomes(passed=1)
 
 
 def test_aiohttp_client_cls_fixture_factory(testdir: pytest.Testdir) -> None:
-    testdir.makeconftest(
-        CONFTEST
-        + """
+    testdir.makeconftest(CONFTEST + """
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "rest: RESTful API tests")
     config.addinivalue_line("markers", "graphql: GraphQL API tests")
 
-"""
-    )
-    testdir.makepyfile(
-        """
+""")
+    testdir.makepyfile("""
 import pytest
 from aiohttp.web import Application
 from aiohttp.test_utils import TestClient
@@ -341,7 +327,6 @@ async def test_graphql(aiohttp_client) -> None:
     client = await aiohttp_client(Application())
     assert isinstance(client, GraphQLClient)
 
-"""
-    )
+""")
     result = testdir.runpytest()
     result.assert_outcomes(passed=2)

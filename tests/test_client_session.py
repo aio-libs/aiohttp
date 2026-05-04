@@ -9,7 +9,7 @@ from collections import deque
 from collections.abc import Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
 from types import SimpleNamespace
-from typing import Any, NoReturn, TypedDict, cast
+from typing import Any, Literal, NoReturn, TypedDict, cast
 from unittest import mock
 from uuid import uuid4
 
@@ -44,7 +44,7 @@ from aiohttp.tracing import (
 class _Params(TypedDict):
     headers: dict[str, str]
     max_redirects: int
-    compress: str
+    compress: Literal["deflate", "gzip"]
     chunked: bool
     expect100: bool
     read_until_eof: bool
@@ -341,9 +341,7 @@ async def test_closed(session: ClientSession) -> None:
 
 
 async def test_connector(
-    create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
-    mocker: MockerFixture,
+    create_session: Callable[..., Awaitable[ClientSession]], mocker: MockerFixture
 ) -> None:
     connector = TCPConnector()
     m = mocker.spy(connector, "close")
@@ -356,9 +354,7 @@ async def test_connector(
 
 
 async def test_create_connector(
-    create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
-    mocker: MockerFixture,
+    create_session: Callable[..., Awaitable[ClientSession]], mocker: MockerFixture
 ) -> None:
     session = await create_session()
     m = mocker.spy(session.connector, "close")
@@ -514,7 +510,8 @@ async def test_double_close(
     assert connector.closed
 
 
-async def test_del(connector: BaseConnector, loop: asyncio.AbstractEventLoop) -> None:
+async def test_del(connector: BaseConnector) -> None:
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
@@ -530,9 +527,8 @@ async def test_del(connector: BaseConnector, loop: asyncio.AbstractEventLoop) ->
     assert logs[0] == expected
 
 
-async def test_del_debug(
-    connector: BaseConnector, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_del_debug(connector: BaseConnector) -> None:
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
@@ -553,12 +549,10 @@ async def test_del_debug(
 
 
 async def test_borrow_connector_loop(
-    connector: BaseConnector,
-    create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
+    connector: BaseConnector, create_session: Callable[..., Awaitable[ClientSession]]
 ) -> None:
     async with ClientSession(connector=connector) as session:
-        assert session._loop is loop
+        assert session._loop is asyncio.get_running_loop()
 
 
 async def test_reraise_os_error(
@@ -629,8 +623,8 @@ async def test_close_conn_on_error(
                 session._connector, "_release", autospec=True, spec_set=True
             ):
                 with pytest.raises(UnexpectedException):
-                    async with session.request("get", "http://example.com") as resp:
-                        await resp.text()
+                    async with session.request("get", "http://example.com"):
+                        pass
 
                 # normally called during garbage collection.  triggers an exception
                 # if the connection wasn't already closed
@@ -762,9 +756,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     await session.close()
 
 
-async def test_cookie_jar_usage(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
+async def test_cookie_jar_usage(aiohttp_client: AiohttpClient) -> None:
     req_url = None
 
     class MockCookieJar(abc.AbstractCookieJar):
@@ -774,6 +766,10 @@ async def test_cookie_jar_usage(
             self._clear_mock = mock.Mock()
             self._clear_domain_mock = mock.Mock()
             self._items: list[Any] = []
+
+        @property
+        def unsafe(self) -> bool:
+            return False
 
         @property
         def quote_cookie(self) -> bool:
@@ -800,6 +796,7 @@ async def test_cookie_jar_usage(
     jar = MockCookieJar()
 
     assert jar.quote_cookie is True
+    assert jar.unsafe is False
     assert len(jar) == 0
     assert list(jar) == []
     jar.clear()
@@ -857,7 +854,28 @@ async def test_cookies_with_not_quoted_cookie_jar(
     assert resp.request_info.headers.get("Cookie", "") == "name=val=foobar"
 
 
-async def test_session_default_version(loop: asyncio.AbstractEventLoop) -> None:
+async def test_cookies_with_unsafe_cookie_jar(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app)
+    jar = CookieJar(unsafe=True)
+    # Use an IP-based URL to verify that ad-hoc cookies are sent
+    # when the session cookie jar has unsafe=True.
+    ip_url = server.make_url("/")
+    assert ip_url.host is not None
+    assert ip_url.host.count(".") == 3  # Sanity check it looks like an IP address
+    cookies = {"adhoc": "value"}
+    async with aiohttp.ClientSession(cookie_jar=jar) as sess:
+        async with sess.request("GET", ip_url, cookies=cookies) as resp:
+            assert "adhoc=value" in resp.request_info.headers.get("Cookie", "")
+
+
+async def test_session_default_version() -> None:
     session = aiohttp.ClientSession()
     assert session.version == aiohttp.HttpVersion11
     await session.close()
@@ -875,7 +893,7 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
     ]
 
 
-async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
+async def test_default_proxy() -> None:
     proxy_url = URL("http://proxy.example.com")
     proxy_auth = mock.Mock()
     proxy_url2 = URL("http://proxy.example2.com")
@@ -924,9 +942,7 @@ async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
     await session.close()
 
 
-async def test_request_tracing(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
+async def test_request_tracing(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
 
@@ -1030,9 +1046,7 @@ async def test_request_tracing(
             assert gathered_req_headers["Custom-Header"] == "Custom value"
 
 
-async def test_request_tracing_url_params(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
+async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None:
     async def root_handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -1230,9 +1244,7 @@ async def test_request_tracing_exception() -> None:
     await session.close()
 
 
-async def test_request_tracing_interpose_headers(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
+async def test_request_tracing_interpose_headers(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -1277,9 +1289,7 @@ async def test_client_session_custom_attr() -> None:
     await session.close()
 
 
-async def test_client_session_timeout_default_args(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_client_session_timeout_default_args() -> None:
     session1 = ClientSession()
     assert session1.timeout == client.DEFAULT_TIMEOUT
     await session1.close()
@@ -1411,9 +1421,8 @@ async def test_base_url_without_trailing_slash() -> None:
         ClientSession(base_url="http://example.com/test")
 
 
-async def test_instantiation_with_invalid_timeout_value(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_instantiation_with_invalid_timeout_value() -> None:
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     logs = []
     loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
