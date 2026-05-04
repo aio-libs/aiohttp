@@ -291,14 +291,7 @@ class ClientResponse(HeadersMixin):
 
     @property
     def output_size(self) -> int:
-        """Number of bytes sent for this request (headers + body).
-
-        Useful for tracking upload progress for any body type
-        (including :class:`~aiohttp.MultipartWriter`). Each request on a
-        keep-alive connection gets a fresh counter. Returns ``0`` if no
-        body writer was associated with the response (e.g. requests
-        with no body that skipped the writer path).
-        """
+        """Number of bytes sent for this request."""
         if self._body_writer is None:
             return 0
         return self._body_writer.output_size
