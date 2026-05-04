@@ -359,8 +359,6 @@ class TestStreamReader:
         assert b"" == line
 
     async def test_readline_read_byte_count(self) -> None:
-        pytest.skip("broken")
-        return
         stream = self._make_one()
         stream.feed_data(self.DATA)
 
