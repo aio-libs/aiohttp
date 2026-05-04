@@ -1573,6 +1573,21 @@ Response object
 
       .. versionadded:: 3.2
 
+   .. attribute:: output_size
+
+      Number of bytes sent for this request.
+
+      Returns ``0`` if no body writer present (e.g. for some empty body requests).
+
+      Useful to display upload progress::
+
+          async with session.post(url, data=mpwriter) as resp:
+              while not resp._writer.done():
+                  print(f"uploaded {resp.output_size} bytes")
+                  await asyncio.sleep(0.5)
+
+      .. versionadded:: 3.14
+
    .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.

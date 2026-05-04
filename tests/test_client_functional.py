@@ -5922,7 +5922,10 @@ async def test_output_size_keepalive_isolated(
 ) -> None:
     """Each request on a keep-alive connection has its own counter."""
 
+    transports: set[object] = set()
+
     async def handler(request: web.Request) -> web.Response:
+        transports.add(request.transport)
         await request.read()
         return web.Response()
 
@@ -5938,6 +5941,7 @@ async def test_output_size_keepalive_isolated(
     async with client.post("/", data=body) as resp2:
         size2 = resp2.output_size
 
+    assert len(transports) == 1  # Check keep-alive worked.
     assert size1 >= len(body)
     assert size1 == size2
 
