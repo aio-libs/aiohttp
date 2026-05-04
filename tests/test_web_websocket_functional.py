@@ -1211,8 +1211,6 @@ async def test_abnormal_closure_when_client_does_not_close(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Test abnormal closure when the server closes and the client doesn't respond."""
-    pytest.skip("broken")
-    return
     close_code: WSCloseCode | None = None
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
