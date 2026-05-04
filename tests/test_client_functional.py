@@ -4011,8 +4011,7 @@ async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
 
     class Proto(asyncio.Protocol):
         def connection_made(self, transport: asyncio.BaseTransport) -> None:
-            if sys.version_info >= (3, 14):
-                assert isinstance(transport, asyncio.Transport)
+            assert isinstance(transport, asyncio.Transport)
             self.transp: asyncio.Transport | None = transport
             self.data = b""
 
@@ -4053,8 +4052,7 @@ async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> No
 
     class Proto(asyncio.Protocol):
         def connection_made(self, transport: asyncio.BaseTransport) -> None:
-            if sys.version_info >= (3, 14):
-                assert isinstance(transport, asyncio.Transport)
+            assert isinstance(transport, asyncio.Transport)
             self.transp: asyncio.Transport | None = transport
             self.data = b""
 

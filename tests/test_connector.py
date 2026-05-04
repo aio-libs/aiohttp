@@ -2201,7 +2201,6 @@ async def test_tcp_connector_ssl_shutdown_timeout_pre_311() -> None:
 async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(  # type: ignore[misc]
     start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
-    loop = asyncio.get_running_loop()
     # Test that ssl_shutdown_timeout is passed to create_connection for SSL connections
     loop = asyncio.get_running_loop()
     with pytest.warns(
@@ -2264,7 +2263,6 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(  
 async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(  # type: ignore[misc]
     start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
-    loop = asyncio.get_running_loop()
     # Test that ssl_shutdown_timeout is NOT passed to create_connection on Python < 3.11
     loop = asyncio.get_running_loop()
     with warnings.catch_warnings(record=True) as w:

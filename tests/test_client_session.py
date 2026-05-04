@@ -550,7 +550,6 @@ async def test_del_debug(connector: BaseConnector) -> None:
 async def test_borrow_connector_loop(
     connector: BaseConnector, create_session: Callable[..., Awaitable[ClientSession]]
 ) -> None:
-    loop = asyncio.get_running_loop()
     async with ClientSession(connector=connector) as session:
         assert session._loop is asyncio.get_running_loop()
 
