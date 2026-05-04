@@ -29,6 +29,7 @@ from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
     DEBUG,
+    DEFAULT_CHUNK_SIZE,
     ETAG_ANY,
     LIST_QUOTED_ETAG_RE,
     ChainMapProxy,
@@ -677,6 +678,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Returns bytes object with full request content.
         """
         if self._read_bytes is None:
+            # Raise the buffer limits so compressed payloads decompress in
+            # larger chunks instead of many small pause/resume cycles.
+            if self._client_max_size:
+                self._payload.set_read_chunk_size(self._client_max_size)
             body = bytearray()
             while True:
                 chunk = await self._payload.readany()
@@ -752,7 +757,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         tmp = await self._loop.run_in_executor(
                             None, tempfile.TemporaryFile
                         )
-                        while chunk := await field.read_chunk(size=2**18):
+                        while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
                             async for decoded_chunk in field.decode_iter(chunk):
                                 await self._loop.run_in_executor(
                                     None, tmp.write, decoded_chunk

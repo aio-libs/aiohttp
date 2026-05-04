@@ -17,7 +17,7 @@ from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout
+from .helpers import DEFAULT_CHUNK_SIZE, ceil_timeout
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -182,7 +182,7 @@ class RequestHandler(BaseProtocol):
         max_headers: int = 128,
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
-        read_bufsize: int = 2**18,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):

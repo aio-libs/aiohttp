@@ -14,6 +14,7 @@ from yarl import URL
 
 from aiohttp import HttpVersion
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
@@ -877,7 +878,7 @@ def test_clone_headers_dict() -> None:
 
 
 async def test_cannot_clone_after_read(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, 2**18, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop())
     payload.feed_data(b"data")
     payload.feed_eof()
     req = make_mocked_request("GET", "/path", payload=payload)
@@ -948,7 +949,7 @@ async def test_multipart_formdata(protocol) -> None:
 
 async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> None:
     # Ensure ValueError is raised when Content-Disposition has no name
-    payload = StreamReader(protocol, 2**18, loop=asyncio.get_event_loop())
+    payload = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop())
     payload.feed_data(
         b"-----------------------------326931944431359\r\n"
         b"Content-Disposition: form-data\r\n"  # Missing name!
@@ -1000,7 +1001,9 @@ async def test_multipart_formdata_headers_too_many(protocol: BaseProtocol) -> No
         b"--b--\r\n"
     )
     content_type = "multipart/form-data; boundary=b"
-    payload = StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
     payload.feed_data(body)
     payload.feed_eof()
     req = make_mocked_request(
@@ -1027,7 +1030,9 @@ async def test_multipart_formdata_header_too_long(protocol: BaseProtocol) -> Non
         b"--b--\r\n"
     )
     content_type = "multipart/form-data; boundary=b"
-    payload = StreamReader(protocol, 2**18, loop=asyncio.get_running_loop())
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
     payload.feed_data(body)
     payload.feed_eof()
     req = make_mocked_request(

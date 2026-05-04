@@ -11,6 +11,7 @@ from multidict import CIMultiDict
 from aiohttp import ClientConnectionResetError, hdrs, http
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_writer import _serialize_headers
 
 
@@ -1423,7 +1424,7 @@ async def test_write_drain_condition_with_large_buffer(
     protocol._drain_helper.reset_mock()  # type: ignore[attr-defined]
 
     # Write large amount of data with drain=True
-    large_data = b"x" * (2**18 + 1)  # Just over LIMIT
+    large_data = b"x" * (DEFAULT_CHUNK_SIZE + 1)  # Just over LIMIT
     await msg.write(large_data, drain=True)
 
     # Drain should be called because drain=True AND buffer_size > LIMIT
@@ -1452,12 +1453,12 @@ async def test_write_no_drain_with_large_buffer(
     protocol._drain_helper.reset_mock()  # type: ignore[attr-defined]
 
     # Write large amount of data with drain=False
-    large_data = b"x" * (2**18 + 1)  # Just over LIMIT
+    large_data = b"x" * (DEFAULT_CHUNK_SIZE + 1)  # Just over LIMIT
     await msg.write(large_data, drain=False)
 
     # Drain should NOT be called because drain=False
     assert not protocol._drain_helper.called  # type: ignore[attr-defined]
-    assert msg.buffer_size == (2**18 + 1)  # Buffer not reset
+    assert msg.buffer_size == (DEFAULT_CHUNK_SIZE + 1)  # Buffer not reset
     assert large_data in buf
 
 
