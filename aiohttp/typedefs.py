@@ -27,6 +27,7 @@ else:
 
 Byteish = Union[bytes, bytearray, memoryview]
 JSONEncoder = Callable[[Any], str]
+JSONBytesEncoder = Callable[[Any], bytes]
 JSONDecoder = Callable[[str], Any]
 LooseHeaders = Union[
     Mapping[str, str],

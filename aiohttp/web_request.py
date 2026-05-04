@@ -29,6 +29,7 @@ from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
     DEBUG,
+    DEFAULT_CHUNK_SIZE,
     ETAG_ANY,
     LIST_QUOTED_ETAG_RE,
     ChainMapProxy,
@@ -677,16 +678,18 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Returns bytes object with full request content.
         """
         if self._read_bytes is None:
+            # Raise the buffer limits so compressed payloads decompress in
+            # larger chunks instead of many small pause/resume cycles.
+            if self._client_max_size:
+                self._payload.set_read_chunk_size(self._client_max_size)
             body = bytearray()
             while True:
                 chunk = await self._payload.readany()
                 body.extend(chunk)
                 if self._client_max_size:
                     body_size = len(body)
-                    if body_size >= self._client_max_size:
-                        raise HTTPRequestEntityTooLarge(
-                            max_size=self._client_max_size, actual_size=body_size
-                        )
+                    if body_size > self._client_max_size:
+                        raise HTTPRequestEntityTooLarge(self._client_max_size)
                 if not chunk:
                     break
             self._read_bytes = bytes(body)
@@ -705,7 +708,14 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
     async def multipart(self) -> MultipartReader:
         """Return async iterator to process BODY as multipart."""
-        return MultipartReader(self._headers, self._payload)
+        return MultipartReader(
+            self._headers,
+            self._payload,
+            client_max_size=self._client_max_size,
+            max_field_size=self._protocol.max_field_size,
+            max_headers=self._protocol.max_headers,
+            max_size_error_cls=HTTPRequestEntityTooLarge,
+        )
 
     async def post(self) -> "MultiDictProxy[str | bytes | FileField]":
         """Return POST parameters."""
@@ -747,7 +757,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         tmp = await self._loop.run_in_executor(
                             None, tempfile.TemporaryFile
                         )
-                        while chunk := await field.read_chunk(size=2**18):
+                        while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
                             async for decoded_chunk in field.decode_iter(chunk):
                                 await self._loop.run_in_executor(
                                     None, tmp.write, decoded_chunk
@@ -755,9 +765,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                                 size += len(decoded_chunk)
                                 if 0 < max_size < size:
                                     await self._loop.run_in_executor(None, tmp.close)
-                                    raise HTTPRequestEntityTooLarge(
-                                        max_size=max_size, actual_size=size
-                                    )
+                                    raise HTTPRequestEntityTooLarge(max_size)
                         await self._loop.run_in_executor(None, tmp.seek, 0)
 
                         if field_ct is None:
@@ -773,17 +781,23 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         out.add(field.name, ff)
                     else:
                         # deal with ordinary data
-                        value = await field.read(decode=True)
+                        raw_data = bytearray()
+                        while chunk := await field.read_chunk():
+                            size += len(chunk)
+                            if 0 < max_size < size:
+                                raise HTTPRequestEntityTooLarge(max_size)
+                            raw_data.extend(chunk)
+
+                        value = bytearray()
+                        # form-data doesn't support compression, so don't need to check size again.
+                        async for d in field.decode_iter(raw_data):
+                            value.extend(d)
+
                         if field_ct is None or field_ct.startswith("text/"):
                             charset = field.get_charset(default="utf-8")
                             out.add(field.name, value.decode(charset))
                         else:
                             out.add(field.name, value)
-                        size += len(value)
-                        if 0 < max_size < size:
-                            raise HTTPRequestEntityTooLarge(
-                                max_size=max_size, actual_size=size
-                            )
                 else:
                     raise ValueError(
                         "To decode nested multipart you need to use custom reader",

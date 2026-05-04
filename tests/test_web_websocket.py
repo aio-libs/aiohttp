@@ -1,6 +1,7 @@
 import asyncio
+import json
 import time
-from typing import Any
+from typing import Any, Protocol
 from unittest import mock
 
 import aiosignal
@@ -13,6 +14,16 @@ from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPBadRequest, WebSocketResponse
 from aiohttp.web_ws import WebSocketReady
+
+
+class _RequestMaker(Protocol):
+    def __call__(
+        self,
+        method: str,
+        path: str,
+        headers: CIMultiDict[str] | None = None,
+        protocols: bool = False,
+    ) -> web.Request: ...
 
 
 @pytest.fixture
@@ -29,6 +40,7 @@ def app(loop):
 def protocol():
     ret = mock.Mock()
     ret.set_parser.return_value = ret
+    ret._timeout_ceil_threshold = 5
     return ret
 
 
@@ -104,6 +116,41 @@ async def test_nonstarted_receive_str() -> None:
         await ws.receive_str()
 
 
+async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._loop = loop
+    ws._on_data_received()
+    handle = ws._heartbeat_reset_handle
+    assert handle is not None
+
+    ws._cancel_heartbeat()
+
+    assert ws._heartbeat_reset_handle is None
+    assert ws._need_heartbeat_reset is False
+    assert handle.cancelled()
+
+
+async def test_flush_heartbeat_reset_returns_early_when_not_needed() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._need_heartbeat_reset = False
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        ws._flush_heartbeat_reset()
+        reset.assert_not_called()
+
+
+async def test_send_heartbeat_returns_early_when_reset_is_pending() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._need_heartbeat_reset = True
+
+    ws._send_heartbeat()
+
+    assert ws._pong_response_cb is None
+    assert ws._ping_task is None
+
+
 async def test_nonstarted_receive_bytes() -> None:
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
@@ -168,6 +215,26 @@ async def test_send_json_nonjson(make_request) -> None:
         await ws.send_json(set())
 
 
+async def test_nonstarted_send_json_bytes() -> None:
+    ws = web.WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        await ws.send_json_bytes(
+            {"type": "json"}, dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+
+
+async def test_send_json_bytes_nonjson(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    with pytest.raises(TypeError):
+        await ws.send_json_bytes(set(), dumps=lambda x: json.dumps(x).encode("utf-8"))
+
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    await ws.close()
+
+
 async def test_write_non_prepared() -> None:
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
@@ -186,6 +253,36 @@ async def test_heartbeat_timeout(make_request: Any) -> None:
     ws._req.transport.close.side_effect = lambda: future.set_result(None)
     await future
     assert ws.closed
+
+
+async def test_heartbeat_reset_coalesces_on_data(
+    make_request: Any,
+) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    await ws.prepare(req)
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        ws._on_data_received()
+        ws._on_data_received()
+
+        await asyncio.sleep(0)
+
+        assert reset.call_count == 1
+
+
+async def test_receive_does_not_reset_heartbeat() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    msg = mock.Mock(type=WSMsgType.TEXT)
+    reader = mock.Mock()
+    reader.read = mock.AsyncMock(return_value=msg)
+    ws._reader = reader
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        received = await ws.receive()
+
+    assert received is msg
+    reset.assert_not_called()
 
 
 def test_websocket_ready() -> None:
@@ -326,7 +423,21 @@ async def test_send_json_closed(make_request) -> None:
         await ws.send_json({"type": "json"})
 
 
-async def test_send_frame_closed(make_request) -> None:
+async def test_send_json_bytes_closed(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
+    await ws.close()
+
+    with pytest.raises(ConnectionError):
+        await ws.send_json_bytes(
+            {"type": "json"}, dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+
+
+async def test_send_frame_closed(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = WebSocketResponse()
     await ws.prepare(req)

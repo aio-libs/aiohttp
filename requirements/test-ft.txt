@@ -47,9 +47,9 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==25.0.3
+gunicorn==25.1.0
     # via -r requirements/base-ft.in
-idna==3.10
+idna==3.11
     # via
     #   trustme
     #   yarl
@@ -57,7 +57,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.8.0 ; python_version < "3.14"
     # via -r requirements/test-common.in
-librt==0.7.8
+librt==0.8.1
     # via mypy
 markdown-it-py==4.0.0
     # via rich
@@ -71,11 +71,11 @@ mypy==1.19.1 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
-packaging==25.0
+packaging==26.0
     # via
     #   gunicorn
     #   pytest
-pathspec==1.0.3
+pathspec==1.0.4
     # via mypy
 pkgconfig==1.5.5
     # via -r requirements/test-common.in
@@ -122,9 +122,9 @@ python-on-whales==0.80.0
     # via -r requirements/test-common.in
 re-assert==1.1.0
     # via -r requirements/test-common.in
-regex==2026.1.15
+regex==2026.2.19
     # via re-assert
-rich==14.3.2
+rich==14.3.3
     # via pytest-codspeed
 setuptools-git==1.2
     # via -r requirements/test-common.in

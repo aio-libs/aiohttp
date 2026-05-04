@@ -101,6 +101,8 @@ class HTTPException(Response, Exception):
                 "body argument is deprecated for http web exceptions",
                 DeprecationWarning,
             )
+        if reason is not None and ("\r" in reason or "\n" in reason):
+            raise ValueError("Reason cannot contain \\r or \\n")
         Response.__init__(
             self,
             status=self.status_code,
@@ -313,12 +315,8 @@ class HTTPPreconditionFailed(HTTPClientError):
 class HTTPRequestEntityTooLarge(HTTPClientError):
     status_code = 413
 
-    def __init__(self, max_size: float, actual_size: float, **kwargs: Any) -> None:
-        kwargs.setdefault(
-            "text",
-            f"Maximum request body size {max_size} exceeded, "
-            f"actual body size {actual_size}",
-        )
+    def __init__(self, max_size: float, actual_size: float = 0, **kwargs: Any) -> None:
+        kwargs.setdefault("text", f"Maximum request body size {max_size} exceeded.")
         super().__init__(**kwargs)
 
 

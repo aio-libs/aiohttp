@@ -1,3 +1,4 @@
+import io
 from pathlib import Path
 from stat import S_IFREG, S_IRUSR, S_IWUSR
 from unittest import mock
@@ -155,3 +156,32 @@ async def test_file_response_sends_headers_immediately() -> None:
 
     # Headers should be sent immediately
     writer.send_headers.assert_called_once()
+
+
+async def test_sendfile_fallback_respects_count_boundary() -> None:
+    """Regression test: _sendfile_fallback should not read beyond the requested count.
+
+    Previously the first chunk used the full chunk_size even when count was smaller,
+    and the loop subtracted chunk_size instead of the actual bytes read.  Both bugs
+    could cause extra data to be sent when serving range requests.
+    """
+    file_data = b"A" * 100 + b"B" * 50  # 150 bytes total
+    fobj = io.BytesIO(file_data)
+
+    writer = mock.AsyncMock()
+    written = bytearray()
+
+    async def capture_write(data: bytes) -> None:
+        written.extend(data)
+
+    writer.write = capture_write
+    writer.drain = mock.AsyncMock()
+
+    file_sender = FileResponse("dummy.bin")
+    file_sender._chunk_size = 64  # smaller than count to test multi-chunk
+
+    # Request only the first 100 bytes (offset=0, count=100)
+    await file_sender._sendfile_fallback(writer, fobj, offset=0, count=100)
+
+    assert bytes(written) == b"A" * 100
+    assert len(written) == 100

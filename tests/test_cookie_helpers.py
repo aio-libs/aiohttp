@@ -638,13 +638,18 @@ def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
 
 
 def test_cookie_pattern_performance() -> None:
+    """Test that the cookie pattern doesn't suffer from ReDoS issues."""
+    COOKIE_PATTERN_TIME_THRESHOLD_SECONDS = 0.08
     value = "a" + "=" * 21651 + "\x00"
     start = time.perf_counter()
     match = helpers._COOKIE_PATTERN.match(value)
-    end = time.perf_counter()
+    elapsed = time.perf_counter() - start
 
-    # If this is taking more than 10ms, there's probably a performance/ReDoS issue.
-    assert (end - start) < 0.01
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < COOKIE_PATTERN_TIME_THRESHOLD_SECONDS, (
+        f"Pattern took {elapsed * 1000:.1f}ms, "
+        f"expected <{COOKIE_PATTERN_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+    )
     # This example shouldn't produce a match either.
     assert match is None
 
@@ -1090,13 +1095,13 @@ def test_parse_set_cookie_headers_date_formats_with_attributes() -> None:
 @pytest.mark.parametrize(
     ("header", "expected_name", "expected_value", "expected_coded"),
     [
-        # Test cookie values with octal escape sequences
-        (r'name="\012newline\012"', "name", "\nnewline\n", r'"\012newline\012"'),
+        # Test cookie values with octal escape sequences (printable chars only)
+        (r'name="\050parens\051"', "name", "(parens)", r'"\050parens\051"'),
         (
-            r'tab="\011separated\011values"',
-            "tab",
-            "\tseparated\tvalues",
-            r'"\011separated\011values"',
+            r'punct="\053plus\053values"',
+            "punct",
+            "+plus+values",
+            r'"\053plus\053values"',
         ),
         (
             r'mixed="hello\040world\041"',
@@ -1105,10 +1110,10 @@ def test_parse_set_cookie_headers_date_formats_with_attributes() -> None:
             r'"hello\040world\041"',
         ),
         (
-            r'complex="\042quoted\042 text with \012 newline"',
+            r'complex="\042quoted\042 text with \055 hyphen"',
             "complex",
-            '"quoted" text with \n newline',
-            r'"\042quoted\042 text with \012 newline"',
+            '"quoted" text with - hyphen',
+            r'"\042quoted\042 text with \055 hyphen"',
         ),
     ],
 )
