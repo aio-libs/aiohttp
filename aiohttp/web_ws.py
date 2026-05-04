@@ -12,10 +12,14 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from ._websocket.reader import WebSocketDataQueue
-from ._websocket.writer import DEFAULT_LIMIT
 from .abc import AbstractStreamWriter
 from .client_exceptions import WSMessageTypeError
-from .helpers import calculate_timeout_when, set_exception, set_result
+from .helpers import (
+    DEFAULT_CHUNK_SIZE,
+    calculate_timeout_when,
+    set_exception,
+    set_result,
+)
 from .http import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
@@ -34,7 +38,7 @@ from .http import (
 from .http_websocket import _INTERNAL_RECEIVE_TYPES
 from .log import ws_logger
 from .streams import EofStream
-from .typedefs import JSONDecoder, JSONEncoder
+from .typedefs import JSONBytesEncoder, JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
@@ -90,6 +94,8 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     _heartbeat_cb: asyncio.TimerHandle | None = None
     _pong_response_cb: asyncio.TimerHandle | None = None
     _ping_task: asyncio.Task[None] | None = None
+    _need_heartbeat_reset: bool = False
+    _heartbeat_reset_handle: asyncio.Handle | None = None
 
     def __init__(
         self,
@@ -102,7 +108,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         protocols: Iterable[str] = (),
         compress: bool = True,
         max_msg_size: int = 4 * 1024 * 1024,
-        writer_limit: int = DEFAULT_LIMIT,
+        writer_limit: int = DEFAULT_CHUNK_SIZE,
         decode_text: bool = True,
     ) -> None:
         super().__init__(status=101)
@@ -118,9 +124,15 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._max_msg_size = max_msg_size
         self._writer_limit = writer_limit
         self._decode_text = decode_text
+        self._need_heartbeat_reset = False
+        self._heartbeat_reset_handle = None
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
+        if self._heartbeat_reset_handle is not None:
+            self._heartbeat_reset_handle.cancel()
+            self._heartbeat_reset_handle = None
+        self._need_heartbeat_reset = False
         if self._heartbeat_cb is not None:
             self._heartbeat_cb.cancel()
             self._heartbeat_cb = None
@@ -132,6 +144,23 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         if self._pong_response_cb is not None:
             self._pong_response_cb.cancel()
             self._pong_response_cb = None
+
+    def _on_data_received(self) -> None:
+        if self._heartbeat is None or self._need_heartbeat_reset:
+            return
+        loop = self._loop
+        assert loop is not None
+        # Coalesce multiple chunks received in the same loop tick into a single
+        # heartbeat reset. Resetting immediately per chunk increases timer churn.
+        self._need_heartbeat_reset = True
+        self._heartbeat_reset_handle = loop.call_soon(self._flush_heartbeat_reset)
+
+    def _flush_heartbeat_reset(self) -> None:
+        self._heartbeat_reset_handle = None
+        if not self._need_heartbeat_reset:
+            return
+        self._reset_heartbeat()
+        self._need_heartbeat_reset = False
 
     def _reset_heartbeat(self) -> None:
         if self._heartbeat is None:
@@ -156,6 +185,12 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
     def _send_heartbeat(self) -> None:
         self._heartbeat_cb = None
+
+        # If heartbeat reset is pending (data is being received), skip sending
+        # the ping and let the reset callback handle rescheduling the heartbeat.
+        if self._need_heartbeat_reset:
+            return
+
         loop = self._loop
         assert loop is not None and self._writer is not None
         now = loop.time()
@@ -327,7 +362,8 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self.force_close()
         self._compress = compress
         transport = request._protocol.transport
-        assert transport is not None
+        if transport is None:
+            raise ConnectionResetError("Connection lost")
         writer = WebSocketWriter(
             request._protocol,
             transport,
@@ -348,15 +384,17 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
         loop = self._loop
         assert loop is not None
-        self._reader = WebSocketDataQueue(request._protocol, 2**16, loop=loop)
-        request.protocol.set_parser(
-            WebSocketReader(
-                self._reader,
-                self._max_msg_size,
-                compress=bool(self._compress),
-                decode_text=self._decode_text,
-            )
+        self._reader = WebSocketDataQueue(
+            request._protocol, DEFAULT_CHUNK_SIZE, loop=loop
         )
+        parser = WebSocketReader(
+            self._reader,
+            self._max_msg_size,
+            compress=bool(self._compress),
+            decode_text=self._decode_text,
+        )
+        cb = None if self._heartbeat is None else self._on_data_received
+        request.protocol.set_parser(parser, data_received_cb=cb)
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
 
@@ -449,6 +487,20 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         dumps: JSONEncoder = json.dumps,
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
+
+    async def send_json_bytes(
+        self,
+        data: Any,
+        compress: int | None = None,
+        *,
+        dumps: JSONBytesEncoder,
+    ) -> None:
+        """Send JSON data using a bytes-returning encoder as a binary frame.
+
+        Use this when your JSON encoder (like orjson) returns bytes
+        instead of str, avoiding the encode/decode overhead.
+        """
+        await self.send_bytes(dumps(data), compress=compress)
 
     async def write_eof(self) -> None:  # type: ignore[override]
         if self._eof_sent:
@@ -576,7 +628,6 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                             msg = await self._reader.read()
                     else:
                         msg = await self._reader.read()
-                    self._reset_heartbeat()
                 finally:
                     self._waiting = False
                     if self._close_wait:

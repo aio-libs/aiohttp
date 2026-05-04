@@ -16,7 +16,7 @@ from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
-from .compression_utils import ZLibCompressor
+from .compression_utils import MAX_SYNC_CHUNK_SIZE, ZLibCompressor
 from .helpers import (
     ETAG_ANY,
     QUOTED_ETAG_RE,
@@ -32,12 +32,17 @@ from .helpers import (
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
-from .typedefs import JSONEncoder, LooseHeaders
+from .typedefs import JSONBytesEncoder, JSONEncoder, LooseHeaders
 
 REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
-LARGE_BODY_SIZE = 1024**2
 
-__all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
+__all__ = (
+    "ContentCoding",
+    "StreamResponse",
+    "Response",
+    "json_response",
+    "json_bytes_response",
+)
 
 
 if TYPE_CHECKING:
@@ -155,8 +160,8 @@ class StreamResponse(MutableMapping[str | ResponseKey[Any], Any], HeadersMixin):
         self._status = int(status)
         if reason is None:
             reason = REASON_PHRASES.get(self._status, "")
-        elif "\n" in reason:
-            raise ValueError("Reason cannot contain \\n")
+        elif "\r" in reason or "\n" in reason:
+            raise ValueError("Reason cannot contain \\r or \\n")
         self._reason = reason
 
     @property
@@ -659,7 +664,7 @@ class Response(StreamResponse):
         headers: LooseHeaders | None = None,
         content_type: str | None = None,
         charset: str | None = None,
-        zlib_executor_size: int | None = None,
+        zlib_executor_size: int = MAX_SYNC_CHUNK_SIZE,
         zlib_executor: Executor | None = None,
     ) -> None:
         if body is not None and text is not None:
@@ -840,13 +845,6 @@ class Response(StreamResponse):
             executor=self._zlib_executor,
         )
         assert self._body is not None
-        if self._zlib_executor_size is None and len(self._body) > LARGE_BODY_SIZE:
-            warnings.warn(
-                "Synchronous compression of large response bodies "
-                f"({len(self._body)} bytes) might block the async event loop. "
-                "Consider providing a custom value to zlib_executor_size/"
-                "zlib_executor response properties or disabling compression on it."
-            )
         self._compressed_body = (
             await compressor.compress(self._body) + compressor.flush()
         )
@@ -872,6 +870,35 @@ def json_response(
             text = dumps(data)
     return Response(
         text=text,
+        body=body,
+        status=status,
+        reason=reason,
+        headers=headers,
+        content_type=content_type,
+    )
+
+
+def json_bytes_response(
+    data: Any = sentinel,
+    *,
+    dumps: JSONBytesEncoder,
+    body: bytes | None = None,
+    status: int = 200,
+    reason: str | None = None,
+    headers: LooseHeaders | None = None,
+    content_type: str = "application/json",
+) -> Response:
+    """Create a JSON response using a bytes-returning encoder.
+
+    Use this when your JSON encoder (like orjson) returns bytes
+    instead of str, avoiding the encode/decode overhead.
+    """
+    if data is not sentinel:
+        if body is not None:
+            raise ValueError("only one of data or body should be specified")
+        else:
+            body = dumps(data)
+    return Response(
         body=body,
         status=status,
         reason=reason,

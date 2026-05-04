@@ -51,9 +51,8 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
 from aiohttp.connector import Connection
-from aiohttp.http_exceptions import DecompressSizeError
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_writer import StreamWriter
 from aiohttp.payload import (
     AsyncIterablePayload,
@@ -2244,7 +2243,28 @@ async def test_json_custom(aiohttp_client) -> None:
         await client.post("/", data="some data", json={"some": "data"})
 
 
-async def test_expect_continue(aiohttp_client) -> None:
+async def test_json_serialize_bytes(aiohttp_client: AiohttpClient) -> None:
+    """Test ClientSession.json_serialize_bytes with bytes-returning encoder."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.content_type == "application/json"
+        data = await request.json()
+        return web.Response(body=aiohttp.JsonPayload(data))
+
+    json_bytes_encoder = mock.Mock(side_effect=lambda x: json.dumps(x).encode("utf-8"))
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app, json_serialize_bytes=json_bytes_encoder)
+
+    async with client.post("/", json={"some": "data"}) as resp:
+        assert resp.status == 200
+        assert json_bytes_encoder.called
+        content = await resp.json()
+    assert content == {"some": "data"}
+
+
+async def test_expect_continue(aiohttp_client: AiohttpClient) -> None:
     expect_called = False
 
     async def handler(request):
@@ -2433,12 +2453,11 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     When a compressed payload expands beyond the configured limit,
     we raise DecompressSizeError.
     """
-    # Create a highly compressible payload that exceeds the decompression limit.
-    # 64MiB of repeated bytes compresses to ~32KB but expands beyond the
-    # 32MiB per-call limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = zlib.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         # Send compressed data with Content-Encoding header
@@ -2453,11 +2472,11 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(brotli is None, reason="brotli is not installed")
@@ -2466,10 +2485,11 @@ async def test_payload_decompress_size_limit_brotli(
 ) -> None:
     """Test that brotli decompression size limit triggers DecompressSizeError."""
     assert brotli is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = brotli.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)
@@ -2483,11 +2503,11 @@ async def test_payload_decompress_size_limit_brotli(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(ZstdCompressor is None, reason="backports.zstd is not installed")
@@ -2496,11 +2516,12 @@ async def test_payload_decompress_size_limit_zstd(
 ) -> None:
     """Test that zstd decompression size limit triggers DecompressSizeError."""
     assert ZstdCompressor is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressor = ZstdCompressor()
     compressed = compressor.compress(original) + compressor.flush()
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)
@@ -2514,11 +2535,11 @@ async def test_payload_decompress_size_limit_zstd(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 async def test_bad_payload_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
@@ -3311,7 +3332,7 @@ async def test_invalid_idna() -> None:
     session = aiohttp.ClientSession()
     try:
         with pytest.raises(aiohttp.InvalidURL):
-            await session.get("http://\u2061owhefopw.com")
+            await session.get("http://\u0080owhefopw.com")
     finally:
         await session.close()
 
@@ -3437,6 +3458,8 @@ async def test_drop_auth_on_redirect_to_other_host(
     async def srv_to(request):
         assert request.host == url_to.host
         assert "Authorization" not in request.headers, "Header wasn't dropped"
+        assert "Proxy-Authorization" not in request.headers
+        assert "Cookie" not in request.headers
         return web.Response()
 
     server_from = await create_server_for_url_and_handler(url_from, srv_from)
@@ -3479,11 +3502,16 @@ async def test_drop_auth_on_redirect_to_other_host(
         resp = await client.get(
             url_from,
             auth=aiohttp.BasicAuth("user", "pass"),
+            headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz", "Cookie": "a=b"},
         )
         assert resp.status == 200
         resp = await client.get(
             url_from,
-            headers={"Authorization": "Basic dXNlcjpwYXNz"},
+            headers={
+                "Authorization": "Basic dXNlcjpwYXNz",
+                "Proxy-Authorization": "Basic dXNlcjpwYXNz",
+                "Cookie": "a=b",
+            },
         )
         assert resp.status == 200
 
@@ -4409,17 +4437,17 @@ async def test_http_empty_data_text(aiohttp_client) -> None:
         assert resp.headers["Content-Type"] == "text/plain; charset=utf-8"
 
 
-async def test_max_field_size_session_default(aiohttp_client) -> None:
-    async def handler(request):
-        return web.Response(headers={"Custom": "x" * 8190})
+async def test_max_field_size_session_default(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={"Custom": "x" * 8182})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
     client = await aiohttp_client(app)
 
-    async with await client.get("/") as resp:
-        assert resp.headers["Custom"] == "x" * 8190
+    async with client.get("/") as resp:
+        assert resp.headers["Custom"] == "x" * 8182
 
 
 async def test_max_field_size_session_default_fail(aiohttp_client) -> None:
@@ -4434,43 +4462,96 @@ async def test_max_field_size_session_default_fail(aiohttp_client) -> None:
         await client.get("/")
 
 
-async def test_max_field_size_session_explicit(aiohttp_client) -> None:
-    async def handler(request):
-        return web.Response(headers={"Custom": "x" * 8191})
+async def test_max_field_size_session_explicit(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={"Custom": "x" * 8192})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
-    client = await aiohttp_client(app, max_field_size=8191)
+    client = await aiohttp_client(app, max_field_size=8200)
 
-    async with await client.get("/") as resp:
-        assert resp.headers["Custom"] == "x" * 8191
-
-
-async def test_max_field_size_request_explicit(aiohttp_client) -> None:
-    async def handler(request):
-        return web.Response(headers={"Custom": "x" * 8191})
-
-    app = web.Application()
-    app.add_routes([web.get("/", handler)])
-
-    client = await aiohttp_client(app)
-
-    async with await client.get("/", max_field_size=8191) as resp:
-        assert resp.headers["Custom"] == "x" * 8191
+    async with client.get("/") as resp:
+        assert resp.headers["Custom"] == "x" * 8192
 
 
-async def test_max_line_size_session_default(aiohttp_client) -> None:
-    async def handler(request):
-        return web.Response(status=200, reason="x" * 8190)
+async def test_max_headers_session_default(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(120)})
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
     client = await aiohttp_client(app)
 
-    async with await client.get("/") as resp:
-        assert resp.reason == "x" * 8190
+    async with client.get("/") as resp:
+        assert resp.headers["Custom-119"] == "x"
+
+
+async def test_max_headers_session_default_fail(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(129)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get("/")
+
+
+async def test_max_headers_session_explicit(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(130)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app, max_headers=140)
+
+    async with client.get("/") as resp:
+        assert resp.headers["Custom-129"] == "x"
+
+
+async def test_max_headers_request_explicit(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={f"Custom-{i}": "x" for i in range(130)})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get("/", max_headers=140) as resp:
+        assert resp.headers["Custom-129"] == "x"
+
+
+async def test_max_field_size_request_explicit(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(headers={"Custom": "x" * 8192})
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get("/", max_field_size=8200) as resp:
+        assert resp.headers["Custom"] == "x" * 8192
+
+
+async def test_max_line_size_session_default(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=200, reason="x" * 8177)
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.reason == "x" * 8177
 
 
 async def test_max_line_size_session_default_fail(aiohttp_client) -> None:
@@ -4485,30 +4566,30 @@ async def test_max_line_size_session_default_fail(aiohttp_client) -> None:
         await client.get("/")
 
 
-async def test_max_line_size_session_explicit(aiohttp_client) -> None:
-    async def handler(request):
-        return web.Response(status=200, reason="x" * 8191)
+async def test_max_line_size_session_explicit(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=200, reason="x" * 8197)
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
-    client = await aiohttp_client(app, max_line_size=8191)
+    client = await aiohttp_client(app, max_line_size=8210)
 
-    async with await client.get("/") as resp:
-        assert resp.reason == "x" * 8191
+    async with client.get("/") as resp:
+        assert resp.reason == "x" * 8197
 
 
-async def test_max_line_size_request_explicit(aiohttp_client) -> None:
-    async def handler(request):
-        return web.Response(status=200, reason="x" * 8191)
+async def test_max_line_size_request_explicit(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=200, reason="x" * 8197)
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
     client = await aiohttp_client(app)
 
-    async with await client.get("/", max_line_size=8191) as resp:
-        assert resp.reason == "x" * 8191
+    async with client.get("/", max_line_size=8210) as resp:
+        assert resp.reason == "x" * 8197
 
 
 async def test_rejected_upload(
@@ -4952,7 +5033,7 @@ async def test_string_payload_redirect(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) -> None:
-    """Test that AsyncIterablePayload cannot be reused across redirects."""
+    """Test redirecting consumed AsyncIterablePayload raises an error."""
     data_received = []
 
     async def redirect_handler(request: web.Request) -> web.Response:
@@ -4980,17 +5061,50 @@ async def test_async_iterable_payload_redirect(aiohttp_client: AiohttpClient) ->
 
     payload = AsyncIterablePayload(async_gen())
 
-    resp = await client.post("/redirect", data=payload)
-    assert resp.status == 200
-    text = await resp.text()
-    # AsyncIterablePayload is consumed after first use, so redirect gets empty body
-    assert text == "Received: "
+    with pytest.raises(
+        aiohttp.ClientPayloadError,
+        match="Cannot follow redirect with a consumed request body",
+    ):
+        await client.post("/redirect", data=payload)
 
-    # Only the first endpoint should have received data
+    # Only the first endpoint should have received data.
     expected_data = b"".join(chunks)
-    assert len(data_received) == 2
-    assert data_received[0] == ("redirect", expected_data)
-    assert data_received[1] == ("final", b"")  # Empty after being consumed
+    assert data_received == [("redirect", expected_data)]
+
+
+@pytest.mark.parametrize("status", (301, 302))
+async def test_async_iterable_payload_redirect_non_post_301_302(
+    aiohttp_client: AiohttpClient, status: int
+) -> None:
+    """Test consumed async iterable body raises on 301/302 for non-POST methods."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data = await request.read()
+        data_received.append(("redirect", data))
+        return web.Response(status=status, headers={"Location": "/final_destination"})
+
+    app = web.Application()
+    app.router.add_put("/redirect", redirect_handler)
+
+    client = await aiohttp_client(app)
+
+    chunks = [b"chunk1", b"chunk2", b"chunk3"]
+
+    async def async_gen() -> AsyncIterator[bytes]:
+        for chunk in chunks:
+            yield chunk
+
+    payload = AsyncIterablePayload(async_gen())
+
+    with pytest.raises(
+        aiohttp.ClientPayloadError,
+        match="Cannot follow redirect with a consumed request body",
+    ):
+        await client.put("/redirect", data=payload)
+
+    expected_data = b"".join(chunks)
+    assert data_received == [("redirect", expected_data)]
 
 
 async def test_buffered_reader_payload_redirect(aiohttp_client: AiohttpClient) -> None:

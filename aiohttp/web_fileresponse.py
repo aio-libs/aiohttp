@@ -26,7 +26,7 @@ from typing import (  # noqa
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import ETAG_ANY, ETag, must_be_empty_body
+from .helpers import DEFAULT_CHUNK_SIZE, ETAG_ANY, ETag, must_be_empty_body
 from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
     HTTPForbidden,
@@ -95,7 +95,7 @@ class FileResponse(StreamResponse):
     def __init__(
         self,
         path: PathLike,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         status: int = 200,
         reason: str | None = None,
         headers: LooseHeaders | None = None,
@@ -118,11 +118,11 @@ class FileResponse(StreamResponse):
         chunk_size = self._chunk_size
         loop = asyncio.get_event_loop()
         chunk = await loop.run_in_executor(
-            None, self._seek_and_read, fobj, offset, chunk_size
+            None, self._seek_and_read, fobj, offset, min(chunk_size, count)
         )
         while chunk:
             await writer.write(chunk)
-            count = count - chunk_size
+            count = count - len(chunk)
             if count <= 0:
                 break
             chunk = await loop.run_in_executor(None, fobj.read, min(chunk_size, count))
@@ -141,7 +141,8 @@ class FileResponse(StreamResponse):
 
         loop = request._loop
         transport = request.transport
-        assert transport is not None
+        if transport is None:
+            raise ConnectionResetError("Connection lost")
 
         try:
             await loop.sendfile(transport, fobj, offset, count)

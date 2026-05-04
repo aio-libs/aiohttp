@@ -999,7 +999,8 @@ and :ref:`aiohttp-web-signals` handlers::
    :param float heartbeat: Send `ping` message every `heartbeat`
                            seconds and wait `pong` response, close
                            connection if `pong` response is not
-                           received. The timer is reset on any data reception.
+                           received. The timer is reset on any inbound data
+                           reception (coalesced per event loop iteration).
 
    :param float timeout: Timeout value for the ``close``
                          operation. After sending the close websocket message,
@@ -1231,6 +1232,27 @@ and :ref:`aiohttp-web-signals` handlers::
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
+   .. method:: send_json_bytes(data, compress=None, *, dumps)
+      :async:
+
+      Send *data* to peer as a JSON binary frame using a bytes-returning encoder.
+
+      :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
+
+      :param collections.abc.Callable dumps: any :term:`callable` that accepts an object and
+                             returns JSON as :class:`bytes`
+                             (e.g. ``orjson.dumps``).
+
+      :raise RuntimeError: if the connection is not started.
+
+      :raise ValueError: if data is not serializable object
+
+      :raise TypeError: if value returned by ``dumps`` param is not :class:`bytes`
+
    .. method:: send_frame(message, opcode, compress=None)
       :async:
 
@@ -1305,6 +1327,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :raise RuntimeError: if connection is not started
 
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
+
    .. method:: receive_str(*, timeout=None)
       :async:
 
@@ -1322,6 +1346,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :return str: peer's message content.
 
       :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.TEXT`.
+
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
    .. method:: receive_bytes(*, timeout=None)
       :async:
@@ -1341,6 +1367,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :return bytes: peer's message content.
 
       :raise aiohttp.WSMessageTypeError: if message is not :const:`~aiohttp.WSMsgType.BINARY`.
+
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
    .. method:: receive_json(*, loads=json.loads, timeout=None)
       :async:
@@ -1365,6 +1393,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
+      :raise asyncio.TimeoutError: if timeout expires before receiving a message
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
@@ -1435,6 +1464,18 @@ the handler.
       HTTP status code for this exception class.  This attribute is usually
       defined at the class level.  ``self.status_code`` is passed to the
       :class:`Response` initializer.
+
+
+.. function:: json_bytes_response([data], *, dumps, body=None, \
+                                  status=200, reason=None, headers=None, \
+                                  content_type='application/json')
+
+Return :class:`Response` with predefined ``'application/json'``
+content type and *data* encoded by ``dumps`` parameter
+which must return :class:`bytes` directly (e.g. ``orjson.dumps``).
+
+Use this when your JSON encoder returns :class:`bytes` instead of :class:`str`,
+avoiding the :class:`str`-to-:class:`bytes` encoding overhead.
 
 
 .. class:: ResponseKey(name, t)
@@ -2863,9 +2904,10 @@ application on specific TCP or Unix socket, e.g.::
         :attr:`helpers.AccessLogger.LOG_FORMAT`.
    :param int max_line_size: Optional maximum header line size. Default:
         ``8190``.
-   :param int max_headers: Optional maximum header size. Default: ``32768``.
-   :param int max_field_size: Optional maximum header field size. Default:
+   :param int max_field_size: Optional maximum header combined name and value size. Default:
         ``8190``.
+   :param int max_headers: Optional maximum number of headers and trailers combined. Default:
+        ``128``.
 
    :param float lingering_time: Maximum time during which the server
         reads and ignores additional data coming from the client when
@@ -2956,7 +2998,9 @@ application on specific TCP or Unix socket, e.g.::
 
    :param str host: HOST to listen on, all interfaces if ``None`` (default).
 
-   :param int port: PORT to listed on, ``8080`` if ``None`` (default).
+   :param int port: PORT to listen on, ``8080`` if ``None`` (default).
+                    Use ``0`` to let the OS assign a free ephemeral port
+                    (see :attr:`port`).
 
    :param float shutdown_timeout: a timeout used for both waiting on pending
                                   tasks before application shutdown and for
@@ -2983,6 +3027,12 @@ application on specific TCP or Unix socket, e.g.::
                            endpoints are bound to, so long as they all set
                            this flag when being created. This option is not
                            supported on Windows.
+
+   .. attribute:: port
+
+      Read-only. The actual port number the server is bound to, only
+      guaranteed to be correct after the site has been started.
+
 
 .. class:: UnixSite(runner, path, *, \
                    shutdown_timeout=60.0, ssl_context=None, \

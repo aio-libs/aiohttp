@@ -57,6 +57,7 @@ The client session supports the context manager protocol for self closing.
                          read_bufsize=2**16, \
                          max_line_size=8190, \
                          max_field_size=8190, \
+                         max_headers=128, \
                          fallback_charset_resolver=lambda r, b: "utf-8", \
                          ssl_shutdown_timeout=0)
 
@@ -245,7 +246,9 @@ The client session supports the context manager protocol for self closing.
 
    :param int max_line_size: Maximum allowed size of lines in responses.
 
-   :param int max_field_size: Maximum allowed size of header fields in responses.
+   :param int max_field_size: Maximum allowed size of header name and value combined in responses.
+
+   :param int max_headers: Maximum number of headers and trailers combined in responses.
 
    :param Callable[[ClientResponse,bytes],str] fallback_charset_resolver:
       A :term:`callable` that accepts a :class:`ClientResponse` and the
@@ -425,7 +428,8 @@ The client session supports the context manager protocol for self closing.
                          read_bufsize=None, \
                          auto_decompress=None, \
                          max_line_size=None, \
-                         max_field_size=None)
+                         max_field_size=None, \
+                         max_headers=None)
       :async:
       :noindexentry:
 
@@ -589,7 +593,9 @@ The client session supports the context manager protocol for self closing.
 
       :param int max_line_size: Maximum allowed size of lines in responses.
 
-      :param int max_field_size: Maximum allowed size of header fields in responses.
+      :param int max_field_size: Maximum allowed size of header name and value combined in responses.
+
+      :param int max_headers: Maximum number of headers and trailers combined in responses.
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
@@ -771,8 +777,9 @@ The client session supports the context manager protocol for self closing.
       :param float heartbeat: Send *ping* message every *heartbeat*
                               seconds and wait *pong* response, if
                               *pong* response is not received then
-                              close connection. The timer is reset on any data
-                              reception.(optional)
+                              close connection. The timer is reset on any
+                              inbound data reception (coalesced per event loop
+                              iteration). (optional)
 
       :param str origin: Origin header to send to server(optional)
 
@@ -918,6 +925,7 @@ certification chaining.
                         auto_decompress=None, \
                         max_line_size=None, \
                         max_field_size=None, \
+                        max_headers=None, \
                         version=aiohttp.HttpVersion11, \
                         connector=None)
    :async:
@@ -1055,7 +1063,9 @@ certification chaining.
 
    :param int max_line_size: Maximum allowed size of lines in responses.
 
-   :param int max_field_size: Maximum allowed size of header fields in responses.
+   :param int max_field_size: Maximum allowed size of header name and value combined in responses.
+
+   :param int max_headers: Maximum number of headers and trailers combined in responses.
 
    :param aiohttp.protocol.HttpVersion version: Request HTTP version,
       ``HTTP 1.1`` by default. (optional)
@@ -1840,6 +1850,28 @@ manually.
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
+   .. method:: send_json_bytes(data, compress=None, *, dumps)
+      :async:
+
+      Send *data* to peer as a JSON binary frame using a bytes-returning encoder.
+
+      :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
+
+      :param collections.abc.Callable dumps: any :term:`callable` that accepts an object and
+                             returns JSON as :class:`bytes`
+                             (e.g. ``orjson.dumps``).
+
+      :raise RuntimeError: if connection is not started or closing
+
+      :raise ValueError: if data is not serializable object
+
+      :raise TypeError: if value returned by ``dumps(data)`` is not
+                        :class:`bytes`
+
    .. method:: send_frame(message, opcode, compress=None)
       :async:
 
@@ -2464,16 +2496,28 @@ Utilities
 
    .. method:: save(file_path)
 
-      Write a pickled representation of cookies into the file
+      Write a JSON representation of cookies into the file
       at provided path.
+
+      .. versionchanged:: 3.14
+
+         Previously used pickle format. Now uses JSON for safe
+         serialization.
 
       :param file_path: Path to file where cookies will be serialized,
           :class:`str` or :class:`pathlib.Path` instance.
 
    .. method:: load(file_path)
 
-      Load a pickled representation of cookies from the file
-      at provided path.
+      Load cookies from the file at provided path. Tries JSON format
+      first, then falls back to legacy pickle format (using a restricted
+      unpickler that only allows cookie-related types) for backward
+      compatibility with existing cookie files.
+
+      .. versionchanged:: 3.14
+
+         Now loads JSON format by default. Falls back to restricted
+         pickle for files saved by older versions.
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.

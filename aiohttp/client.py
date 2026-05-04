@@ -14,7 +14,6 @@ from collections.abc import (
     Coroutine,
     Generator,
     Iterable,
-    Mapping,
     Sequence,
 )
 from contextlib import suppress
@@ -92,6 +91,7 @@ from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     DEBUG,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
@@ -104,7 +104,14 @@ from .helpers import (
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
-from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, Query, StrOrURL
+from .typedefs import (
+    JSONBytesEncoder,
+    JSONEncoder,
+    LooseCookies,
+    LooseHeaders,
+    Query,
+    StrOrURL,
+)
 
 __all__ = (
     # client_exceptions
@@ -187,11 +194,12 @@ class _RequestOptions(TypedDict, total=False):
     ssl: SSLContext | bool | Fingerprint
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
-    trace_request_ctx: Mapping[str, Any] | None
+    trace_request_ctx: object
     read_bufsize: int | None
     auto_decompress: bool | None
     max_line_size: int | None
     max_field_size: int | None
+    max_headers: int | None
     middlewares: Sequence[ClientMiddlewareType] | None
 
 
@@ -270,6 +278,7 @@ class ClientSession:
             "_default_auth",
             "_version",
             "_json_serialize",
+            "_json_serialize_bytes",
             "_requote_redirect_url",
             "_timeout",
             "_raise_for_status",
@@ -284,6 +293,7 @@ class ClientSession:
             "_read_bufsize",
             "_max_line_size",
             "_max_field_size",
+            "_max_headers",
             "_resolve_charset",
             "_default_proxy",
             "_default_proxy_auth",
@@ -309,6 +319,7 @@ class ClientSession:
         skip_auto_headers: Iterable[str] | None = None,
         auth: BasicAuth | None = None,
         json_serialize: JSONEncoder = json.dumps,
+        json_serialize_bytes: JSONBytesEncoder | None = None,
         request_class: type[ClientRequest] = ClientRequest,
         response_class: type[ClientResponse] = ClientResponse,
         ws_response_class: type[ClientWebSocketResponse] = ClientWebSocketResponse,
@@ -323,9 +334,10 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: list[TraceConfig] | None = None,
-        read_bufsize: int = 2**16,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
+        max_headers: int = 128,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
@@ -418,6 +430,7 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
+        self._json_serialize_bytes = json_serialize_bytes
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -425,6 +438,7 @@ class ClientSession:
         self._read_bufsize = read_bufsize
         self._max_line_size = max_line_size
         self._max_field_size = max_field_size
+        self._max_headers = max_headers
 
         # Convert to list of tuples
         if headers:
@@ -534,11 +548,12 @@ class ClientSession:
         ssl: SSLContext | bool | Fingerprint = True,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
-        trace_request_ctx: Mapping[str, Any] | None = None,
+        trace_request_ctx: object = None,
         read_bufsize: int | None = None,
         auto_decompress: bool | None = None,
         max_line_size: int | None = None,
         max_field_size: int | None = None,
+        max_headers: int | None = None,
         middlewares: Sequence[ClientMiddlewareType] | None = None,
     ) -> ClientResponse:
 
@@ -556,7 +571,10 @@ class ClientSession:
                 "data and json parameters can not be used at the same time"
             )
         elif json is not None:
-            data = payload.JsonPayload(json, dumps=self._json_serialize)
+            if self._json_serialize_bytes is not None:
+                data = payload.JsonBytesPayload(json, dumps=self._json_serialize_bytes)
+            else:
+                data = payload.JsonPayload(json, dumps=self._json_serialize)
 
         if not isinstance(chunked, bool) and chunked is not None:
             warnings.warn("Chunk size is deprecated #1615", DeprecationWarning)
@@ -627,6 +645,9 @@ class ClientSession:
 
         if max_field_size is None:
             max_field_size = self._max_field_size
+
+        if max_headers is None:
+            max_headers = self._max_headers
 
         traces = [
             Trace(
@@ -704,7 +725,8 @@ class ClientSession:
 
                     if cookies is not None:
                         tmp_cookie_jar = CookieJar(
-                            quote_cookie=self._cookie_jar.quote_cookie
+                            unsafe=self._cookie_jar.unsafe,
+                            quote_cookie=self._cookie_jar.quote_cookie,
                         )
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
@@ -771,6 +793,7 @@ class ClientSession:
                             timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
                             max_line_size=max_line_size,
                             max_field_size=max_field_size,
+                            max_headers=max_headers,
                         )
                         try:
                             resp = await req.send(conn)
@@ -855,7 +878,18 @@ class ClientSession:
                             # For 307/308, always preserve the request body
                             # For 301/302 with non-POST methods, preserve the request body
                             # https://www.rfc-editor.org/rfc/rfc9110#section-15.4.3-3.1
-                            # Use the existing payload to avoid recreating it from a potentially consumed file
+                            # Use the existing payload to avoid recreating it from
+                            # a potentially consumed file.
+                            #
+                            # If the payload is already consumed and cannot be replayed,
+                            # fail fast instead of silently sending an empty body.
+                            if req._body is not None and req._body.consumed:
+                                resp.close()
+                                raise ClientPayloadError(
+                                    "Cannot follow redirect with a consumed request "
+                                    "body. Use bytes, a seekable file-like object, "
+                                    "or set allow_redirects=False."
+                                )
                             data = req._body
 
                         r_url = resp.headers.get(hdrs.LOCATION) or resp.headers.get(
@@ -905,6 +939,8 @@ class ClientSession:
                         if url.origin() != redirect_origin:
                             auth = None
                             headers.pop(hdrs.AUTHORIZATION, None)
+                            headers.pop(hdrs.COOKIE, None)
+                            headers.pop(hdrs.PROXY_AUTHORIZATION, None)
 
                         url = parsed_redirect_url
                         params = {}
@@ -1259,10 +1295,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
-            conn_proto.set_parser(
-                WebSocketReader(reader, max_msg_size, decode_text=decode_text), reader
-            )
+            reader = WebSocketDataQueue(conn_proto, DEFAULT_CHUNK_SIZE, loop=self._loop)
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
@@ -1274,7 +1307,7 @@ class ClientSession:
             resp.close()
             raise
         else:
-            return self._ws_response_class(
+            ws_resp = self._ws_response_class(
                 reader,
                 writer,
                 protocol,
@@ -1287,6 +1320,10 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
+            parser = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
+            cb = None if heartbeat is None else ws_resp._on_data_received
+            conn_proto.set_parser(parser, reader, data_received_cb=cb)
+            return ws_resp
 
     def _prepare_headers(self, headers: LooseHeaders | None) -> "CIMultiDict[str]":
         """Add default headers and transform it to CIMultiDict"""

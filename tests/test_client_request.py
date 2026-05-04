@@ -1173,7 +1173,18 @@ async def test_data_file(loop, buf, conn) -> None:
         assert isinstance(req.body, payload.BufferedReaderPayload)
         assert req.headers["TRANSFER-ENCODING"] == "chunked"
 
-        resp = await req.send(conn)
+        original_write_bytes = req.write_bytes
+
+        async def _mock_write_bytes(
+            writer: AbstractStreamWriter, conn: mock.Mock, content_length: int | None
+        ) -> None:
+            # Ensure the task is scheduled so _writer isn't None
+            await asyncio.sleep(0)
+            await original_write_bytes(writer, conn, content_length)
+
+        with mock.patch.object(req, "write_bytes", _mock_write_bytes):
+            resp = await req.send(conn)
+
         assert asyncio.isfuture(req._writer)
         await resp.wait_for_close()
 
@@ -1656,7 +1667,24 @@ def test_get_content_length(make_request: _RequestMaker) -> None:
 
     # Invalid Content-Length header
     req.headers["Content-Length"] = "invalid"
-    with pytest.raises(ValueError, match="Invalid Content-Length header: invalid"):
+    with pytest.raises(ValueError, match="Invalid Content-Length header"):
+        req._get_content_length()
+
+
+async def test_get_content_length_invalid_formats(
+    make_request: _RequestMaker,
+) -> None:
+    req = make_request("GET", URL("http://python.org/"))
+
+    req.headers["Content-Length"] = "100"
+    assert req._get_content_length() == 100
+
+    req.headers["Content-Length"] = "-100"
+    with pytest.raises(ValueError, match="Invalid Content-Length header"):
+        req._get_content_length()
+
+    req.headers["Content-Length"] = "५"  # Devengali number 5
+    with pytest.raises(ValueError, match="Invalid Content-Length header"):
         req._get_content_length()
 
 

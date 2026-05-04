@@ -6,7 +6,7 @@ import sys
 import uuid
 import warnings
 from collections import deque
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Union, cast
 from urllib.parse import parse_qsl, unquote, urlencode
@@ -14,11 +14,7 @@ from urllib.parse import parse_qsl, unquote, urlencode
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from .abc import AbstractStreamWriter
-from .compression_utils import (
-    DEFAULT_MAX_DECOMPRESS_SIZE,
-    ZLibCompressor,
-    ZLibDecompressor,
-)
+from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
@@ -26,8 +22,9 @@ from .hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from .helpers import CHAR, TOKEN, parse_mimetype, reify
+from .helpers import CHAR, DEFAULT_CHUNK_SIZE, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
+from .http_exceptions import BadHttpMessage
 from .log import internal_logger
 from .payload import (
     JsonPayload,
@@ -266,7 +263,9 @@ class BodyPartReader:
         *,
         subtype: str = "mixed",
         default_charset: str | None = None,
-        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        max_decompress_size: int = DEFAULT_CHUNK_SIZE,
+        client_max_size: int = sys.maxsize,
+        max_size_error_cls: type[Exception] = ValueError,
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -284,6 +283,8 @@ class BodyPartReader:
         self._content_eof = 0
         self._cache: dict[str, Any] = {}
         self._max_decompress_size = max_decompress_size
+        self._client_max_size = client_max_size
+        self._max_size_error_cls = max_size_error_cls
 
     def __aiter__(self: Self) -> Self:
         return self
@@ -312,8 +313,15 @@ class BodyPartReader:
         data = bytearray()
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
+            if len(data) > self._client_max_size:
+                raise self._max_size_error_cls(self._client_max_size)
         if decode:
-            return await self.decode_async(data)
+            decoded_data = bytearray()
+            async for d in self.decode_iter(data):
+                decoded_data.extend(d)
+                if len(decoded_data) > self._client_max_size:
+                    raise self._max_size_error_cls(self._client_max_size)
+            return decoded_data
         return data
 
     async def read_chunk(self, size: int = chunk_size) -> bytes:
@@ -508,7 +516,7 @@ class BodyPartReader:
         Decodes data according the specified Content-Encoding
         or Content-Transfer-Encoding headers value.
 
-        Note: For large payloads, consider using decode_async() instead
+        Note: For large payloads, consider using decode_iter() instead
         to avoid blocking the event loop during decompression.
         """
         data = self._apply_content_transfer_decoding(data)
@@ -516,8 +524,8 @@ class BodyPartReader:
             return self._decode_content(data)
         return data
 
-    async def decode_async(self, data: bytes) -> bytes:
-        """Decodes data asynchronously.
+    async def decode_iter(self, data: bytes) -> AsyncIterator[bytes]:
+        """Async generator that yields decoded data chunks.
 
         Decodes data according the specified Content-Encoding
         or Content-Transfer-Encoding headers value.
@@ -527,8 +535,10 @@ class BodyPartReader:
         """
         data = self._apply_content_transfer_decoding(data)
         if self._needs_content_decoding():
-            return await self._decode_content_async(data)
-        return data
+            async for d in self._decode_content_async(data):
+                yield d
+        else:
+            yield data
 
     def _decode_content(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
@@ -542,17 +552,20 @@ class BodyPartReader:
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
-    async def _decode_content_async(self, data: bytes) -> bytes:
+    async def _decode_content_async(self, data: bytes) -> AsyncIterator[bytes]:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
-            return data
-        if encoding in {"deflate", "gzip"}:
-            return await ZLibDecompressor(
+            yield data
+        elif encoding in {"deflate", "gzip"}:
+            d = ZLibDecompressor(
                 encoding=encoding,
                 suppress_deflate_header=True,
-            ).decompress(data, max_length=self._max_decompress_size)
-
-        raise RuntimeError(f"unknown content encoding: {encoding}")
+            )
+            yield await d.decompress(data, max_length=self._max_decompress_size)
+            while d.data_available:
+                yield await d.decompress(b"", max_length=self._max_decompress_size)
+        else:
+            raise RuntimeError(f"unknown content encoding: {encoding}")
 
     def _decode_content_transfer(self, data: bytes) -> bytes:
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING, "").lower()
@@ -623,10 +636,9 @@ class BodyPartReaderPayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         field = self._value
-        chunk = await field.read_chunk(size=2**16)
-        while chunk:
-            await writer.write(await field.decode_async(chunk))
-            chunk = await field.read_chunk(size=2**16)
+        while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
+            async for d in field.decode_iter(chunk):
+                await writer.write(d)
 
 
 class MultipartReader:
@@ -640,7 +652,16 @@ class MultipartReader:
     #: Body part reader class for non multipart/* content types.
     part_reader_cls = BodyPartReader
 
-    def __init__(self, headers: Mapping[str, str], content: StreamReader) -> None:
+    def __init__(
+        self,
+        headers: Mapping[str, str],
+        content: StreamReader,
+        *,
+        client_max_size: int = sys.maxsize,
+        max_field_size: int = 8190,
+        max_headers: int = 128,
+        max_size_error_cls: type[Exception] = ValueError,
+    ) -> None:
         self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
         if "boundary" not in self._mimetype.parameters:
@@ -650,9 +671,13 @@ class MultipartReader:
 
         self.headers = headers
         self._boundary = ("--" + self._get_boundary()).encode()
+        self._client_max_size = client_max_size
         self._content = content
         self._default_charset: str | None = None
         self._last_part: MultipartReader | BodyPartReader | None = None
+        self._max_field_size = max_field_size
+        self._max_headers = max_headers
+        self._max_size_error_cls = max_size_error_cls
         self._at_eof = False
         self._at_bof = True
         self._unread: list[bytes] = []
@@ -751,8 +776,22 @@ class MultipartReader:
 
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
-                return type(self)(headers, self._content)
-            return self.multipart_reader_cls(headers, self._content)
+                return type(self)(
+                    headers,
+                    self._content,
+                    client_max_size=self._client_max_size,
+                    max_field_size=self._max_field_size,
+                    max_headers=self._max_headers,
+                    max_size_error_cls=self._max_size_error_cls,
+                )
+            return self.multipart_reader_cls(
+                headers,
+                self._content,
+                client_max_size=self._client_max_size,
+                max_field_size=self._max_field_size,
+                max_headers=self._max_headers,
+                max_size_error_cls=self._max_size_error_cls,
+            )
         else:
             return self.part_reader_cls(
                 self._boundary,
@@ -760,6 +799,8 @@ class MultipartReader:
                 self._content,
                 subtype=self._mimetype.subtype,
                 default_charset=self._default_charset,
+                client_max_size=self._client_max_size,
+                max_size_error_cls=self._max_size_error_cls,
             )
 
     def _get_boundary(self) -> str:
@@ -814,12 +855,14 @@ class MultipartReader:
     async def _read_headers(self) -> "CIMultiDictProxy[str]":
         lines = []
         while True:
-            chunk = await self._content.readline()
+            chunk = await self._content.readline(max_line_length=self._max_field_size)
             chunk = chunk.rstrip(b"\r\n")
             lines.append(chunk)
             if not chunk:
                 break
-        parser = HeadersParser()
+            if len(lines) > self._max_headers:
+                raise BadHttpMessage("Too many headers received")
+        parser = HeadersParser(max_field_size=self._max_field_size)
         headers, raw_headers = parser.parse_headers(lines)
         return headers
 
