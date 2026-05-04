@@ -26,7 +26,7 @@ attrs==25.4.0
     # via -r requirements/runtime-deps.in
 babel==2.18.0
     # via sphinx
-backports-zstd==1.3.0 ; implementation_name == "cpython"
+backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3.14"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -89,7 +89,7 @@ gunicorn==25.1.0
     # via -r requirements/base.in
 identify==2.6.17
     # via pre-commit
-idna==3.11
+idna==3.13
     # via
     #   requests
     #   trustme
