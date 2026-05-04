@@ -1,0 +1,2 @@
+Avoid installation of backports.zstd on Python 3.14 in linting dependency set
+-- by :user:`seifertm`.
