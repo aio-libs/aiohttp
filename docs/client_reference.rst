@@ -978,10 +978,13 @@ certification chaining.
       Ignored when ``allow_redirects=False``.
       ``10`` by default.
 
-   :param bool compress: Set to ``True`` if request has to be compressed
-                         with deflate encoding. If `compress` can not be combined
-                         with a *Content-Encoding* and *Content-Length* headers.
-                         ``None`` by default (optional).
+   :param compress: Set to ``True`` to compress the request body with
+                    ``deflate`` encoding, or pass ``"deflate"`` or ``"gzip"``
+                    explicitly to choose the content encoding. ``False`` by
+                    default.
+
+                    This parameter cannot be combined with
+                    *Content-Encoding* or *Content-Length* headers.
 
    :param int chunked: Enables chunked transfer encoding.
       It is up to the developer
