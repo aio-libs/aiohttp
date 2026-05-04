@@ -1054,7 +1054,7 @@ class ClientRequest:
         if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
             headers = headers.items()
 
-        for key, value in headers:  # type: ignore[misc]
+        for key, value in headers:  # type: ignore[str-unpack]
             # A special case for Host header
             if key in hdrs.HOST_ALL:
                 self.headers[key] = value
