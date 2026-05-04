@@ -5921,7 +5921,6 @@ async def test_output_size_keepalive_isolated(
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Each request on a keep-alive connection has its own counter."""
-
     transports: set[object] = set()
 
     async def handler(request: web.Request) -> web.Response:
