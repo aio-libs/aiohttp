@@ -91,6 +91,7 @@ from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     DEBUG,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
@@ -333,7 +334,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: list[TraceConfig] | None = None,
-        read_bufsize: int = 2**16,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_headers: int = 128,
@@ -724,7 +725,8 @@ class ClientSession:
 
                     if cookies is not None:
                         tmp_cookie_jar = CookieJar(
-                            quote_cookie=self._cookie_jar.quote_cookie
+                            unsafe=self._cookie_jar.unsafe,
+                            quote_cookie=self._cookie_jar.quote_cookie,
                         )
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
@@ -876,7 +878,18 @@ class ClientSession:
                             # For 307/308, always preserve the request body
                             # For 301/302 with non-POST methods, preserve the request body
                             # https://www.rfc-editor.org/rfc/rfc9110#section-15.4.3-3.1
-                            # Use the existing payload to avoid recreating it from a potentially consumed file
+                            # Use the existing payload to avoid recreating it from
+                            # a potentially consumed file.
+                            #
+                            # If the payload is already consumed and cannot be replayed,
+                            # fail fast instead of silently sending an empty body.
+                            if req._body is not None and req._body.consumed:
+                                resp.close()
+                                raise ClientPayloadError(
+                                    "Cannot follow redirect with a consumed request "
+                                    "body. Use bytes, a seekable file-like object, "
+                                    "or set allow_redirects=False."
+                                )
                             data = req._body
 
                         r_url = resp.headers.get(hdrs.LOCATION) or resp.headers.get(
@@ -1282,7 +1295,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
+            reader = WebSocketDataQueue(conn_proto, DEFAULT_CHUNK_SIZE, loop=self._loop)
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
