@@ -399,6 +399,25 @@ def test_duplicate_singleton_header_accepted_in_lax_mode(
     assert len(messages) == 1
 
 
+async def test_response_te_split_headers_chunked(
+    response: HttpResponseParser,
+) -> None:
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: gzip\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"\r\n"
+        b"4\r\nWiki\r\n0\r\n\r\n"
+        b"HTTP/1.1 204 No Content\r\n\r\n"
+    )
+    messages, upgrade, tail = response.feed_data(text)
+    assert len(messages) == 2
+    msg1, payload1 = messages[0]
+    assert msg1.chunked
+    assert await payload1.read() == b"Wiki"
+    assert messages[1][0].code == 204
+
+
 def test_duplicate_host_header_rejected(parser: HttpRequestParser) -> None:
     text = (
         b"GET /admin HTTP/1.1\r\n"

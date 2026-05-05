@@ -584,8 +584,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
             encoding = enc
 
         # chunking
-        te = headers.get(hdrs.TRANSFER_ENCODING)
-        if te is not None:
+        te_values = headers.getall(hdrs.TRANSFER_ENCODING, ())
+        if te_values:
+            # RFC 9110 §5.3: Multiple header fields are equivalent to a single
+            # comma-separated value. Normalize before determining message framing.
+            te = ",".join(v.strip() for v in te_values)
             if self._is_chunked_te(te):
                 chunked = True
 
