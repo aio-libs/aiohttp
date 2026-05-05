@@ -67,7 +67,7 @@ platformdirs==4.9.2
     #   virtualenv
 pluggy==1.6.0
     # via pytest
-pre-commit==4.5.1
+pre-commit==4.6.0
     # via -r requirements/lint.in
 pycares==4.11.0
     # via aiodns
