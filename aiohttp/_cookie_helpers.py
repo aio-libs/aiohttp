@@ -82,36 +82,6 @@ _COOKIE_PATTERN = re.compile(
 )
 
 
-def _safe_set_morsel_state(
-    morsel: Morsel[str],
-    key: str,
-    value: str,
-    coded_value: str,
-) -> bool:
-    r"""Set morsel state, handling control-character rejection after CVE-2026-3644.
-
-    CPython builds that include the CVE-2026-3644 patch added validation in
-    ``Morsel.__setstate__`` that rejects values containing ASCII control
-    characters.  When ``_unquote`` decodes octal escape sequences
-    (e.g. ``\012`` → ``\n``) the resulting value may contain such characters,
-    causing ``CookieError`` to be raised.
-
-    In that case the cookie is skipped entirely — the function returns ``False``
-    so the caller can move on to the next cookie without crashing.
-
-    Returns:
-        True if the morsel state was set successfully, False if the
-        cookie should be skipped.
-    """
-    try:
-        morsel.__setstate__(  # type: ignore[attr-defined]
-            {"key": key, "value": value, "coded_value": coded_value}
-        )
-    except CookieError:
-        return False
-    return True
-
-
 def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
     """
     Preserve a Morsel's coded_value exactly as received from the server.
@@ -132,9 +102,15 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
 
     """
     mrsl_val = cast("Morsel[str]", cookie.get(cookie.key, Morsel()))
-    if not _safe_set_morsel_state(
-        mrsl_val, cookie.key, cookie.value, cookie.coded_value
-    ):
+    try:
+        mrsl_val.__setstate__(  # type: ignore[attr-defined]
+            {
+                "key": cookie.key,
+                "value": cookie.value,
+                "coded_value": cookie.coded_value,
+            }
+        )
+    except CookieError:
         return cookie
     return mrsl_val
 
@@ -233,7 +209,17 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
                     invalid_names.append(key)
                 else:
                     morsel = Morsel()
-                    if _safe_set_morsel_state(morsel, key, _unquote(value), value):
+                    try:
+                        morsel.__setstate__(  # type: ignore[attr-defined]
+                            {
+                                "key": key,
+                                "value": _unquote(value),
+                                "coded_value": value,
+                            }
+                        )
+                    except CookieError:
+                        pass
+                    else:
                         cookies.append((key, morsel))
 
             # Move to next cookie or end
@@ -252,7 +238,11 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
         # Create new morsel
         morsel = Morsel()
         # Preserve the original value as coded_value (with quotes if present)
-        if not _safe_set_morsel_state(morsel, key, _unquote(value), value):
+        try:
+            morsel.__setstate__(  # type: ignore[attr-defined]
+                {"key": key, "value": _unquote(value), "coded_value": value}
+            )
+        except CookieError:
             continue
 
         cookies.append((key, morsel))
@@ -343,13 +333,19 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
                     # Create new morsel
                     current_morsel = Morsel()
                     # Preserve the original value as coded_value (with quotes if present)
-                    if _safe_set_morsel_state(
-                        current_morsel, key, _unquote(value), value
-                    ):
+                    try:
+                        current_morsel.__setstate__(  # type: ignore[attr-defined]
+                            {
+                                "key": key,
+                                "value": _unquote(value),
+                                "coded_value": value,
+                            }
+                        )
+                    except CookieError:
+                        current_morsel = None
+                    else:
                         parsed_cookies.append((key, current_morsel))
                         morsel_seen = True
-                    else:
-                        current_morsel = None
             else:
                 # Invalid cookie string - no value for non-attribute
                 break

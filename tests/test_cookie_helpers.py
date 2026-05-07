@@ -1879,10 +1879,19 @@ def mock_strict_morsel(
 @pytest.mark.usefixtures("mock_strict_morsel")
 def test_cookie_helpers_cve_fallback() -> None:
     # Clean value: mock delegates to original_setstate → succeeds
-    assert helpers._safe_set_morsel_state(Morsel(), "k", "clean", "clean") is True
+    m: Morsel[str] = Morsel()
+    m.__setstate__({"key": "k", "value": "clean", "coded_value": "clean"})  # type: ignore[attr-defined]
+    assert m.key == "k"
+
     # With strict morsel: any CTL char in value → CookieError → rejected
-    assert helpers._safe_set_morsel_state(Morsel(), "k", "v\n", "v\\012") is False
-    assert helpers._safe_set_morsel_state(Morsel(), "k", "v\n", "v\n") is False
+    with pytest.raises(CookieError):
+        Morsel().__setstate__(  # type: ignore[attr-defined]
+            {"key": "k", "value": "v\n", "coded_value": "v\\012"}
+        )
+    with pytest.raises(CookieError):
+        Morsel().__setstate__(  # type: ignore[attr-defined]
+            {"key": "k", "value": "v\n", "coded_value": "v\n"}
+        )
 
     cookie: Morsel[str] = Morsel()
     cookie._key, cookie._value, cookie._coded_value = "k", "v\n", "v\n"  # type: ignore[attr-defined]
