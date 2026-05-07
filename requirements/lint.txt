@@ -47,7 +47,7 @@ isal==1.7.2
     # via -r requirements/lint.in
 librt==0.9.0
     # via mypy
-markdown-it-py==4.0.0
+markdown-it-py==4.1.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
