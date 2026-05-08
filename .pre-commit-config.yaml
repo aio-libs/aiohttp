@@ -60,7 +60,7 @@ repos:
       - flake8-no-implicit-concat==0.3.4
       - flake8-requirements==1.7.8
 - repo: https://github.com/PyCQA/isort
-  rev: '8.0.1'
+  rev: '9.0.0a3'
   hooks:
   - id: isort
 - repo: https://github.com/psf/black-pre-commit-mirror

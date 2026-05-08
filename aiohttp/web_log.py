@@ -4,15 +4,17 @@ import logging
 import os
 import re
 import time as time_mod
-from collections import namedtuple
 from collections.abc import Iterable
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, NamedTuple
 
 from .abc import AbstractAccessLogger
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
-KeyMethod = namedtuple("KeyMethod", "key method")
+
+class KeyMethod(NamedTuple):
+    key: str | tuple[str, str]
+    method: Callable[[BaseRequest, StreamResponse, float], str]
 
 
 class AccessLogger(AbstractAccessLogger):
@@ -191,7 +193,7 @@ class AccessLogger(AbstractAccessLogger):
 
     def _format_line(
         self, request: BaseRequest, response: StreamResponse, time: float
-    ) -> Iterable[tuple[str, Callable[[BaseRequest, StreamResponse, float], str]]]:
+    ) -> Iterable[tuple[str | tuple[str, str], str]]:
         return [(key, method(request, response, time)) for key, method in self._methods]
 
     @property
@@ -205,17 +207,17 @@ class AccessLogger(AbstractAccessLogger):
             fmt_info = self._format_line(request, response, time)
 
             values = list()
-            extra = dict()
+            extra: dict[str, str | dict[str, str]] = dict()
             for key, value in fmt_info:
                 values.append(value)
 
-                if key.__class__ is str:
+                if isinstance(key, str):
                     extra[key] = value
                 else:
-                    k1, k2 = key  # type: ignore[misc]
-                    dct = extra.get(k1, {})  # type: ignore[var-annotated,has-type]
-                    dct[k2] = value  # type: ignore[index,has-type]
-                    extra[k1] = dct  # type: ignore[has-type,assignment]
+                    k1, k2 = key
+                    dct: dict[str, str] = extra.get(k1, {})  # type: ignore[assignment]
+                    dct[k2] = value
+                    extra[k1] = dct
 
             self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
