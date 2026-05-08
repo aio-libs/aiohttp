@@ -1,0 +1,3 @@
+Fixed :func:`aiohttp.web.run_app` losing inner traceback frames when an
+exception is raised during application startup (e.g. inside
+``cleanup_ctx`` or ``on_startup``). Regression since 3.10.6.
