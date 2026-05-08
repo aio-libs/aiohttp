@@ -9,6 +9,7 @@ import ssl
 import subprocess
 import sys
 import time
+import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
 from typing import Any, NoReturn
 from unittest import mock
@@ -131,7 +132,7 @@ def test_run_app_preserves_startup_traceback(
 
     async def failing_ctx(_app: web.Application) -> AsyncIterator[None]:
         raise RuntimeError("boom from failing_ctx")
-        yield  # pragma: no cover
+        yield  # type: ignore[unreachable]  # required to make this an async generator
 
     app = web.Application()
     app.cleanup_ctx.append(failing_ctx)
@@ -139,11 +140,7 @@ def test_run_app_preserves_startup_traceback(
     with pytest.raises(RuntimeError, match="boom from failing_ctx") as exc_info:
         web.run_app(app, print=None, loop=patched_loop)
 
-    frames = []
-    tb = exc_info.tb
-    while tb is not None:
-        frames.append(tb.tb_frame.f_code.co_name)
-        tb = tb.tb_next
+    frames = [f.name for f in traceback.extract_tb(exc_info.tb)]
     assert "failing_ctx" in frames, frames
 
 
