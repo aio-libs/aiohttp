@@ -121,6 +121,32 @@ def test_run_app_close_loop(patched_loop: asyncio.AbstractEventLoop) -> None:
     assert patched_loop.is_closed()
 
 
+def test_run_app_preserves_startup_traceback(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
+    # Regression: when an exception is raised during startup (here in a
+    # cleanup_ctx async generator), the user code frame must remain in the
+    # traceback that propagates out of run_app. Previously the second
+    # loop.run_until_complete(main_task) in run_app's finally clobbered it.
+
+    async def failing_ctx(_app: web.Application) -> AsyncIterator[None]:
+        raise RuntimeError("boom from failing_ctx")
+        yield  # pragma: no cover
+
+    app = web.Application()
+    app.cleanup_ctx.append(failing_ctx)
+
+    with pytest.raises(RuntimeError, match="boom from failing_ctx") as exc_info:
+        web.run_app(app, print=None, loop=patched_loop)
+
+    frames = []
+    tb = exc_info.tb
+    while tb is not None:
+        frames.append(tb.tb_frame.f_code.co_name)
+        tb = tb.tb_next
+    assert "failing_ctx" in frames, frames
+
+
 mock_unix_server_single = [
     mock.call(mock.ANY, "/tmp/testsock1.sock", ssl=None, backlog=128),
 ]
