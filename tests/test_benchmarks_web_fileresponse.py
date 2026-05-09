@@ -3,6 +3,7 @@
 import asyncio
 import pathlib
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 from multidict import CIMultiDict
