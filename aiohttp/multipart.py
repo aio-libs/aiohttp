@@ -524,10 +524,10 @@ class BodyPartReader:
         Note: For large payloads, consider using decode_iter() instead
         to avoid blocking the event loop during decompression.
         """
-        data = self._apply_content_transfer_decoding(data)
+        decoded = self._apply_content_transfer_decoding(data)
         if self._needs_content_decoding():
-            return self._decode_content(data)
-        return data
+            return self._decode_content(decode)
+        return decoded
 
     async def decode_iter(self, data: _Buffer) -> AsyncIterator[_Buffer | bytes]:
         """Async generator that yields decoded data chunks.
@@ -538,12 +538,12 @@ class BodyPartReader:
         This method offloads decompression to an executor for large payloads
         to avoid blocking the event loop.
         """
-        data = self._apply_content_transfer_decoding(data)
+        decoded = self._apply_content_transfer_decoding(data)
         if self._needs_content_decoding():
-            async for d in self._decode_content_async(data):
+            async for d in self._decode_content_async(decoded):
                 yield d
         else:
-            yield data
+            yield decoded
 
     def _decode_content(self, data: _Buffer) -> _Buffer | bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
