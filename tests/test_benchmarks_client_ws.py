@@ -1,7 +1,7 @@
 """codspeed benchmarks for websocket client."""
 
 import asyncio
-from typing import Any
+from typing import Any, TypeVar
 
 import pytest
 from pytest_aiohttp import AiohttpClient
