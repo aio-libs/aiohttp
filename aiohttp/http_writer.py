@@ -153,7 +153,9 @@ class StreamWriter(AbstractStreamWriter):
         else:
             self._write(headers_buf)
 
-    async def write(self, chunk: _BytesLike, *, drain: bool = True, LIMIT: int = 0x10000) -> None:
+    async def write(
+        self, chunk: _BytesLike, *, drain: bool = True, LIMIT: int = 0x10000
+    ) -> None:
         """
         Writes chunk of data to a stream.
 
