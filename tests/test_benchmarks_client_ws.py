@@ -1,6 +1,7 @@
 """codspeed benchmarks for websocket client."""
 
 import asyncio
+from typing import Any
 
 import pytest
 from pytest_aiohttp import AiohttpClient
@@ -8,16 +9,66 @@ from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
 from aiohttp._websocket.helpers import MSG_SIZE
+from aiohttp.test_utils import BaseTestServer, TestClient
+
+_Request = TypeVar("_Request", bound=web.BaseRequest)
+
+
+@pytest.fixture
+def aiohttp_client_sync(
+    event_loop: asyncio.AbstractEventLoop,
+    aiohttp_client_cls: type[TestClient[Any, Any]],
+) -> AsyncIterator[AiohttpClient]:
+    # TODO: Remove this fixture when async benchmarks are working.
+    clients = []
+
+    @overload
+    async def go(
+        __param: web.Application,
+        *,
+        server_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> TestClient[web.Request, web.Application]: ...
+
+    @overload
+    async def go(
+        __param: BaseTestServer,
+        *,
+        server_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> TestClient[_Request, None]: ...
+
+    async def go(
+        __param: web.Application | BaseTestServer,
+        *,
+        server_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> TestClient[Any, Any]:
+        if isinstance(__param, web.Application):
+            server_kwargs = server_kwargs or {}
+            server = TestServer(__param, **server_kwargs)
+            client = aiohttp_client_cls(server, **kwargs)
+        elif isinstance(__param, BaseTestServer):
+            client = aiohttp_client_cls(__param, **kwargs)
+        else:
+            raise ValueError(f"Unknown argument type: {type(__param)!r}")
+
+        await client.start_server()
+        clients.append(client)
+        return client
+
+    yield go
+
+    while clients:
+        event_loop.run_until_complete(clients.pop().close())
 
 
 def test_one_thousand_round_trip_websocket_text_messages(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark round trip of 1000 WebSocket text messages."""
-    pytest.skip("uses async fixture")
-    return
     message_count = 1000
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -46,13 +97,11 @@ def test_one_thousand_round_trip_websocket_text_messages(
 @pytest.mark.parametrize("msg_size", [6, MSG_SIZE * 4], ids=["small", "large"])
 def test_one_thousand_round_trip_websocket_binary_messages(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
     msg_size: int,
 ) -> None:
     """Benchmark round trip of 1000 WebSocket binary messages."""
-    pytest.skip("uses async fixture")
-    return
     message_count = 1000
     raw_message = b"x" * msg_size
 
@@ -81,12 +130,10 @@ def test_one_thousand_round_trip_websocket_binary_messages(
 
 def test_one_thousand_large_round_trip_websocket_text_messages(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark round trip of 100 large WebSocket text messages."""
-    pytest.skip("uses async fixture")
-    return
     message_count = 100
     raw_message = "x" * MSG_SIZE * 4
 
@@ -116,12 +163,10 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_client_send_large_websocket_compressed_messages(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark send of compressed WebSocket binary messages."""
-    pytest.skip("uses async fixture")
-    return
     message_count = 10
     raw_message = b"x" * 2**19  # 512 KiB
 
@@ -151,12 +196,10 @@ def test_client_send_large_websocket_compressed_messages(
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 def test_client_receive_large_websocket_compressed_messages(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark receive of compressed WebSocket binary messages."""
-    pytest.skip("uses async fixture")
-    return
     message_count = 10
     raw_message = b"x" * 2**19  # 512 KiB
 
