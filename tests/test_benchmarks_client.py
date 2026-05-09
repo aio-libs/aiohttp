@@ -106,7 +106,7 @@ def test_one_hundred_simple_get_requests_no_session(
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
-    server = event_loop.run_until_complete(aiohttp_server(app))
+    server = event_loop.run_until_complete(aiohttp_server_sync(app))
     url = URL(f"http://{server.host}:{server.port}/")
 
     async def run_client_benchmark() -> None:
