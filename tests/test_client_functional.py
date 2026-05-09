@@ -66,13 +66,6 @@ from aiohttp.test_utils import TestClient, TestServer
 from aiohttp.typedefs import Handler
 
 
-@pytest.fixture(autouse=True)
-def cleanup(
-    cleanup_payload_pending_file_closes: None,
-) -> None:
-    """Ensure all pending file close operations complete during test teardown."""
-
-
 @pytest.fixture
 def here() -> pathlib.Path:
     return pathlib.Path(__file__).parent
