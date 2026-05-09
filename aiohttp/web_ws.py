@@ -48,6 +48,13 @@ if sys.version_info >= (3, 13):
 else:
     from typing_extensions import TypeVar
 
+if sys.version_info >= (3, 12):
+    from collections.abc import Buffer
+else:
+    from typing import Union
+
+    Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"}
+
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
     from typing import Self
@@ -740,7 +747,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         data = await self.receive_str(timeout=timeout)
         return loads(data)  # type: ignore[arg-type]
 
-    async def write(self, data: bytes) -> None:
+    async def write(self, data: Buffer) -> None:
         raise RuntimeError("Cannot call .write() for websocket")
 
     def __aiter__(self) -> Self:
