@@ -225,8 +225,6 @@ def test_resolve_multiple_level_fixed_url_with_many_routes(
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve 1024 different PlainResources routes."""
-    pytest.skip("broken")
-    return
 
     async def handler(request: web.Request) -> NoReturn:
         assert False
