@@ -8,7 +8,7 @@ import warnings
 from collections import deque
 from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
 from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -48,6 +48,8 @@ if sys.version_info >= (3, 12):
     from collections.abc import Buffer
 else:
     Buffer = Union[bytes, bytearray, memoryview[int], memoryview[bytes]]
+
+_Buffer = TypeVar("_Buffer", bound=Buffer)
 
 __all__ = (
     "MultipartReader",
@@ -504,7 +506,7 @@ class BodyPartReader:
         """Returns True if the boundary was reached or False otherwise."""
         return self._at_eof
 
-    def _apply_content_transfer_decoding(self, data: Buffer) -> bytes:
+    def _apply_content_transfer_decoding(self, data: _Buffer) -> _Buffer:
         """Apply Content-Transfer-Encoding decoding if header is present."""
         if CONTENT_TRANSFER_ENCODING in self.headers:
             return self._decode_content_transfer(data)
@@ -515,7 +517,7 @@ class BodyPartReader:
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
         return not self._is_form_data and CONTENT_ENCODING in self.headers
 
-    def decode(self, data: Buffer) -> bytes:
+    def decode(self, data: _Buffer) -> _Buffer | bytes:
         """Decodes data synchronously.
 
         Decodes data according the specified Content-Encoding
@@ -529,7 +531,7 @@ class BodyPartReader:
             return self._decode_content(data)
         return data
 
-    async def decode_iter(self, data: Buffer) -> AsyncIterator[bytes]:
+    async def decode_iter(self, data: _Buffer) -> AsyncIterator[_Buffer | bytes]:
         """Async generator that yields decoded data chunks.
 
         Decodes data according the specified Content-Encoding
@@ -545,7 +547,7 @@ class BodyPartReader:
         else:
             yield data
 
-    def _decode_content(self, data: Buffer) -> bytes:
+    def _decode_content(self, data: _Buffer) -> _Buffer | bytes:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
             return data
@@ -557,7 +559,7 @@ class BodyPartReader:
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
-    async def _decode_content_async(self, data: Buffer) -> AsyncIterator[bytes]:
+    async def _decode_content_async(self, data: _Buffer) -> AsyncIterator[_Buffer | bytes]:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
             yield data
@@ -572,7 +574,7 @@ class BodyPartReader:
         else:
             raise RuntimeError(f"unknown content encoding: {encoding}")
 
-    def _decode_content_transfer(self, data: Buffer) -> bytes:
+    def _decode_content_transfer(self, data: _Buffer) -> _Buffer | bytes:
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING, "").lower()
 
         if encoding == "base64":
