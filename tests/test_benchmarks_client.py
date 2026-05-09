@@ -14,7 +14,9 @@ from aiohttp.test_utils import TestServer
 
 
 @pytest.fixture
-def aiohttp_server_sync(event_loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
+def aiohttp_server_sync(
+    event_loop: asyncio.AbstractEventLoop,
+) -> Iterator[AiohttpServer]:
     # TODO: Remove this fixture when async benchmarks are supported.
     servers = []
 
