@@ -84,7 +84,7 @@ def test_one_thousand_round_trip_websocket_text_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app)
         resp = await client.ws_connect("/")
         for _ in range(message_count):
             await resp.receive()
@@ -118,7 +118,7 @@ def test_one_thousand_round_trip_websocket_binary_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app)
         resp = await client.ws_connect("/")
         for _ in range(message_count):
             await resp.receive()
@@ -150,7 +150,7 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app)
         resp = await client.ws_connect("/")
         for _ in range(message_count):
             await resp.receive()
@@ -183,7 +183,7 @@ def test_client_send_large_websocket_compressed_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app)
         resp = await client.ws_connect("/", compress=15)
         for _ in range(message_count):
             await resp.send_bytes(raw_message)
@@ -216,7 +216,7 @@ def test_client_receive_large_websocket_compressed_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app)
         resp = await client.ws_connect("/", compress=15)
         for _ in range(message_count):
             await resp.receive()
