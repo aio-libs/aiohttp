@@ -114,7 +114,7 @@ def test_simple_web_file_response_not_modified(
     app.router.add_route("GET", "/", handler)
 
     async def make_last_modified_header() -> CIMultiDict[str]:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app)
         resp = await client.get("/")
         last_modified = resp.headers["Last-Modified"]
         headers = CIMultiDict({"If-Modified-Since": last_modified})
