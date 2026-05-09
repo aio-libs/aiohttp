@@ -164,12 +164,12 @@ class DecompressionBaseHandler(ABC):
 
     @abstractmethod
     def decompress_sync(
-        self, data: bytes, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+        self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
         """Decompress the given data."""
 
     async def decompress(
-        self, data: bytes, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+        self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
         """Decompress the given data."""
         if (
@@ -215,10 +215,10 @@ class ZLibCompressor:
             kwargs["level"] = level
         self._compressor = self._zlib_backend.compressobj(**kwargs)
 
-    def compress_sync(self, data: bytes) -> bytes:
+    def compress_sync(self, data: Buffer) -> bytes:
         return self._compressor.compress(data)
 
-    async def compress(self, data: bytes) -> bytes:
+    async def compress(self, data: Buffer) -> bytes:
         """Compress the data and returned the compressed bytes.
 
         Note that flush() must be called after the last call to compress()
@@ -366,7 +366,7 @@ class ZSTDDecompressor(DecompressionBaseHandler):
         super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
 
     def decompress_sync(
-        self, data: bytes, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
+        self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
         # zstd uses -1 for unlimited, while zlib uses 0 for unlimited
         # Convert the zlib convention (0=unlimited) to zstd convention (-1=unlimited)

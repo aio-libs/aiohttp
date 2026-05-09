@@ -76,6 +76,7 @@ class FileField:
     headers: CIMultiDictProxy[str]
 
 
+_Post = str | bytes | bytearray | FileField
 _TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
 # '-' at the end to prevent interpretation as range in a char class
 
@@ -134,7 +135,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             "_transport_peername",
         ]
     )
-    _post: MultiDictProxy[str | bytes | FileField] | None = None
+    _post: MultiDictProxy[_Post] | None = None
     _read_bytes: bytes | None = None
     _seen_str_keys: set[str] = set()
 
@@ -717,7 +718,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             max_size_error_cls=HTTPRequestEntityTooLarge,
         )
 
-    async def post(self) -> "MultiDictProxy[str | bytes | FileField]":
+    async def post(self) -> "MultiDictProxy[_Post]":
         """Return POST parameters."""
         if self._post is not None:
             return self._post
@@ -734,7 +735,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out: MultiDict[str | bytes | FileField] = MultiDict()
+        out: MultiDict[_Post] = MultiDict()
 
         if content_type == "multipart/form-data":
             multipart = await self.multipart()

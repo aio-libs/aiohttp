@@ -720,7 +720,7 @@ class Response(StreamResponse):
         self._zlib_executor = zlib_executor
 
     @property
-    def body(self) -> bytes | Payload | None:
+    def body(self) -> bytes | bytearray | Payload | None:
         return self._body
 
     @body.setter
@@ -799,7 +799,7 @@ class Response(StreamResponse):
         if self._eof_sent:
             return
         if self._compressed_body is None:
-            body: bytes | Payload | None = self._body
+            body = self._body
         else:
             body = self._compressed_body
         assert not data, f"data arg is not supported, got {data!r}"
