@@ -47,7 +47,7 @@ else:
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
 else:
-    Buffer = Union[bytes, bytearray, memoryview[int], memoryview[bytes]]
+    Buffer = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
 
 _Buffer = TypeVar("_Buffer", bound=Buffer)
 
