@@ -25,6 +25,9 @@ from .helpers import NO_EXTENSIONS
 __all__ = ("StreamWriter", "HttpVersion", "HttpVersion10", "HttpVersion11")
 
 
+_BytesLike = Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+
+
 MIN_PAYLOAD_FOR_WRITELINES = 2048
 IS_PY313_BEFORE_313_2 = (3, 13, 0) <= sys.version_info < (3, 13, 2)
 IS_PY_BEFORE_312_9 = sys.version_info < (3, 12, 9)
@@ -95,10 +98,7 @@ class StreamWriter(AbstractStreamWriter):
             raise ClientConnectionResetError("Cannot write to closing transport")
         transport.write(chunk)
 
-    def _writelines(
-        self,
-        chunks: Iterable[bytes | bytearray | "memoryview[int]" | "memoryview[bytes]"],
-    ) -> None:
+    def _writelines(self, chunks: Iterable[_BytesLike]) -> None:
         size = 0
         for chunk in chunks:
             size += len(chunk)
@@ -112,9 +112,7 @@ class StreamWriter(AbstractStreamWriter):
         else:
             transport.writelines(chunks)
 
-    def _write_chunked_payload(
-        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
-    ) -> None:
+    def _write_chunked_payload(self, chunk: _BytesLike) -> None:
         """Write a chunk with proper chunked encoding."""
         chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
         self._writelines((chunk_len_pre, chunk, b"\r\n"))
