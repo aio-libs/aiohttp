@@ -1,13 +1,39 @@
 """codspeed benchmarks for HTTP client."""
 
 import asyncio
+from collections.abc import Iterator
+from typing import Any
 
 import pytest
-from pytest_aiohttp import AiohttpClient, AiohttpServer
+from pytest_aiohttp import AiohttpClient, AiohttpServer, TestServer
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
 from aiohttp import hdrs, request, web
+from aiohttp.test_utils import TestServer
+
+
+@pytest.fixture
+def aiohttp_server_sync(event_loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
+    # TODO: Remove this fixture when async benchmarks are supported.
+    servers = []
+
+    async def go(
+        app: web.Application,
+        *,
+        host: str = "127.0.0.1",
+        port: int | None = None,
+        **kwargs: Any,
+    ) -> TestServer:
+        server = TestServer(app, host=host, port=port)
+        await server.start_server(**kwargs)
+        servers.append(server)
+        return server
+
+    yield go
+
+    while servers:
+        event_loop.run_until_complete(servers.pop().close())
 
 
 def test_one_hundred_simple_get_requests(
@@ -67,7 +93,7 @@ def test_one_hundred_simple_get_requests_alternating_clients(
 
 def test_one_hundred_simple_get_requests_no_session(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_server: AiohttpServer,
+    aiohttp_server_sync: AiohttpServer,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark 100 simple GET requests without a session."""
