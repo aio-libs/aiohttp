@@ -65,7 +65,6 @@ if TYPE_CHECKING:
 
 
 _T = TypeVar("_T")
-_Post = str | bytes | bytearray | FileField
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -77,6 +76,7 @@ class FileField:
     headers: CIMultiDictProxy[str]
 
 
+_Post = str | bytes | bytearray | FileField
 _TCHAR: Final[str] = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
 # '-' at the end to prevent interpretation as range in a char class
 
