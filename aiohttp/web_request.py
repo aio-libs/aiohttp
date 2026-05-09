@@ -734,7 +734,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out: MultiDict[str | bytes | FileField] = MultiDict()
+        out: MultiDict[str | bytes | bytearray | FileField] = MultiDict()
 
         if content_type == "multipart/form-data":
             multipart = await self.multipart()
