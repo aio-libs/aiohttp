@@ -2,6 +2,7 @@
 
 import asyncio
 import pathlib
+from collections.abc import Iterator
 
 import pytest
 from multidict import CIMultiDict
@@ -9,6 +10,36 @@ from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import ClientResponse, web
+from aiohttp.test_utils import TestClient, TestServer
+
+
+@pytest.fixture
+def aiohttp_client_sync(
+    event_loop: asyncio.AbstractEventLoop,
+    aiohttp_client_cls: type[TestClient[web.Request, web.Application]],
+) -> Iterator[AiohttpClient]:
+    # TODO: Remove this fixture when async benchmarks are working.
+    clients = []
+
+    async def go(
+        __param: web.Application,
+        *,
+        server_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> TestClient[web.Request, web.Application]:
+        if isinstance(__param, web.Application):
+            server_kwargs = server_kwargs or {}
+            server = TestServer(__param, **server_kwargs)
+            client = aiohttp_client_cls(server, **kwargs)
+
+        await client.start_server()
+        clients.append(client)
+        return client
+
+    yield go
+
+    while clients:
+        event_loop.run_until_complete(clients.pop().close())
 
 
 def test_simple_web_file_response(
