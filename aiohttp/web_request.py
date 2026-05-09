@@ -134,7 +134,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             "_transport_peername",
         ]
     )
-    _post: MultiDictProxy[str | bytes | FileField] | None = None
+    _post: MultiDictProxy[str | bytes | bytearray | FileField] | None = None
     _read_bytes: bytes | None = None
     _seen_str_keys: set[str] = set()
 
