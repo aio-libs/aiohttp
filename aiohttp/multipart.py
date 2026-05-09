@@ -559,7 +559,9 @@ class BodyPartReader:
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
-    async def _decode_content_async(self, data: _Buffer) -> AsyncIterator[_Buffer | bytes]:
+    async def _decode_content_async(
+        self, data: _Buffer
+    ) -> AsyncIterator[_Buffer | bytes]:
         encoding = self.headers.get(CONTENT_ENCODING, "").lower()
         if encoding == "identity":
             yield data
