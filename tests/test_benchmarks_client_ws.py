@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Iterator
-from typing import Any, TypeVar, overload
+from typing import Any, TypeVar
 
 import pytest
 from pytest_aiohttp import AiohttpClient
@@ -10,49 +10,27 @@ from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
 from aiohttp._websocket.helpers import MSG_SIZE
-from aiohttp.test_utils import BaseTestServer, TestClient, TestServer
-
-_Request = TypeVar("_Request", bound=web.BaseRequest)
+from aiohttp.test_utils import TestClient, TestServer
 
 
 @pytest.fixture
 def aiohttp_client_sync(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client_cls: type[TestClient[Any, Any]],
+    aiohttp_client_cls: type[TestClient[web.Request, web.Application]],
 ) -> Iterator[AiohttpClient]:
     # TODO: Remove this fixture when async benchmarks are working.
     clients = []
 
-    @overload
     async def go(
         __param: web.Application,
         *,
         server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> TestClient[web.Request, web.Application]: ...
-
-    @overload
-    async def go(
-        __param: BaseTestServer,
-        *,
-        server_kwargs: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> TestClient[_Request, None]: ...
-
-    async def go(
-        __param: web.Application | BaseTestServer,
-        *,
-        server_kwargs: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> TestClient[Any, Any]:
+    ) -> TestClient[web.Request, web.Application]:
         if isinstance(__param, web.Application):
             server_kwargs = server_kwargs or {}
             server = TestServer(__param, **server_kwargs)
             client = aiohttp_client_cls(server, **kwargs)
-        elif isinstance(__param, BaseTestServer):
-            client = aiohttp_client_cls(__param, **kwargs)
-        else:
-            raise ValueError(f"Unknown argument type: {type(__param)!r}")
 
         await client.start_server()
         clients.append(client)
