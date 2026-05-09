@@ -1,6 +1,7 @@
 """codspeed benchmarks for websocket client."""
 
 import asyncio
+from collections.abc import Iterator
 from typing import Any, TypeVar
 
 import pytest
@@ -18,7 +19,7 @@ _Request = TypeVar("_Request", bound=web.BaseRequest)
 def aiohttp_client_sync(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client_cls: type[TestClient[Any, Any]],
-) -> AsyncIterator[AiohttpClient]:
+) -> Iterator[AiohttpClient]:
     # TODO: Remove this fixture when async benchmarks are working.
     clients = []
 
