@@ -95,7 +95,10 @@ class StreamWriter(AbstractStreamWriter):
             raise ClientConnectionResetError("Cannot write to closing transport")
         transport.write(chunk)
 
-    def _writelines(self, chunks: Iterable[bytes | bytearray | "memoryview[int]" | "memoryview[bytes]"]) -> None:
+    def _writelines(
+        self,
+        chunks: Iterable[bytes | bytearray | "memoryview[int]" | "memoryview[bytes]"],
+    ) -> None:
         size = 0
         for chunk in chunks:
             size += len(chunk)
