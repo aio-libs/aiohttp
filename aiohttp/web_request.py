@@ -65,6 +65,7 @@ if TYPE_CHECKING:
 
 
 _T = TypeVar("_T")
+_Data = str | bytes | bytearray | FileField
 
 
 @attr.s(auto_attribs=True, frozen=True, slots=True)
@@ -134,7 +135,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             "_transport_peername",
         ]
     )
-    _post: MultiDictProxy[str | bytes | bytearray | FileField] | None = None
+    _post: MultiDictProxy[_Data] | None = None
     _read_bytes: bytes | None = None
     _seen_str_keys: set[str] = set()
 
@@ -717,7 +718,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             max_size_error_cls=HTTPRequestEntityTooLarge,
         )
 
-    async def post(self) -> "MultiDictProxy[str | bytes | FileField]":
+    async def post(self) -> "MultiDictProxy[_Data]":
         """Return POST parameters."""
         if self._post is not None:
             return self._post
@@ -734,7 +735,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out: MultiDict[str | bytes | bytearray | FileField] = MultiDict()
+        out: MultiDict[_Data] = MultiDict()
 
         if content_type == "multipart/form-data":
             multipart = await self.multipart()
