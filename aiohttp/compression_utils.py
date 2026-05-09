@@ -215,10 +215,10 @@ class ZLibCompressor:
             kwargs["level"] = level
         self._compressor = self._zlib_backend.compressobj(**kwargs)
 
-    def compress_sync(self, data: bytes) -> bytes:
+    def compress_sync(self, data: Buffer) -> bytes:
         return self._compressor.compress(data)
 
-    async def compress(self, data: bytes) -> bytes:
+    async def compress(self, data: Buffer) -> bytes:
         """Compress the data and returned the compressed bytes.
 
         Note that flush() must be called after the last call to compress()
