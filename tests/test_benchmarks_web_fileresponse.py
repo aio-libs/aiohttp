@@ -68,12 +68,10 @@ def test_simple_web_file_sendfile_fallback_response(
 
 def test_simple_web_file_response_not_modified(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark web.FileResponse that return a 304."""
-    pytest.skip("uses async fixture")
-    return
     response_count = 100
     filepath = pathlib.Path(__file__).parent / "sample.txt"
 
@@ -93,7 +91,7 @@ def test_simple_web_file_response_not_modified(
     async def run_file_response_benchmark(
         headers: CIMultiDict[str],
     ) -> ClientResponse:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app)
         for _ in range(response_count):
             resp = await client.get("/", headers=headers)
 
