@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Iterator
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 
 import pytest
 from pytest_aiohttp import AiohttpClient
