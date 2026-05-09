@@ -526,7 +526,7 @@ class BodyPartReader:
         """
         decoded = self._apply_content_transfer_decoding(data)
         if self._needs_content_decoding():
-            return self._decode_content(decode)
+            return self._decode_content(decoded)
         return decoded
 
     async def decode_iter(self, data: _Buffer) -> AsyncIterator[_Buffer | bytes]:
