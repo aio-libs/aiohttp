@@ -48,7 +48,7 @@ HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
 
-_T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
+_T_OnChunkSent = Optional[Callable[[_BytesLike], Awaitable[None]]]
 _T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
 
 
@@ -153,13 +153,7 @@ class StreamWriter(AbstractStreamWriter):
         else:
             self._write(headers_buf)
 
-    async def write(
-        self,
-        chunk: bytes | bytearray | memoryview,
-        *,
-        drain: bool = True,
-        LIMIT: int = 0x10000,
-    ) -> None:
+    async def write(self, chunk: _BytesLike, *, drain: bool = True, LIMIT: int = 0x10000) -> None:
         """
         Writes chunk of data to a stream.
 
