@@ -40,8 +40,6 @@ from .streams import StreamReader
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
-    from typing import TypeVar
-
     Self = TypeVar("Self", bound="BodyPartReader")
 
 if sys.version_info >= (3, 12):
@@ -506,7 +504,7 @@ class BodyPartReader:
         """Returns True if the boundary was reached or False otherwise."""
         return self._at_eof
 
-    def _apply_content_transfer_decoding(self, data: _Buffer) -> _Buffer:
+    def _apply_content_transfer_decoding(self, data: _Buffer) -> _Buffer | bytes:
         """Apply Content-Transfer-Encoding decoding if header is present."""
         if CONTENT_TRANSFER_ENCODING in self.headers:
             return self._decode_content_transfer(data)
