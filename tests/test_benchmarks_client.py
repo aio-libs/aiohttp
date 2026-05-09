@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
-from pytest_aiohttp import AiohttpClient, AiohttpServer, TestServer
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
