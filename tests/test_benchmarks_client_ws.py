@@ -10,7 +10,7 @@ from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
 from aiohttp._websocket.helpers import MSG_SIZE
-from aiohttp.test_utils import BaseTestServer, TestClient
+from aiohttp.test_utils import BaseTestServer, TestClient, TestServer
 
 _Request = TypeVar("_Request", bound=web.BaseRequest)
 
