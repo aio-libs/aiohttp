@@ -86,9 +86,9 @@ def decode_chunked(chunked: bytes | bytearray) -> bytes:
 def test_payloadwriter_properties(
     transport: asyncio.Transport,
     protocol: BaseProtocol,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
-    writer = http.StreamWriter(protocol, loop)
+    writer = http.StreamWriter(protocol, event_loop)
     assert writer.protocol == protocol
     assert writer.transport == transport
 
@@ -789,14 +789,13 @@ async def test_write_drain(
 async def test_write_calls_callback(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
-
-    loop = asyncio.get_running_loop()
-
     async def on_chunk_sent(chunk: bytes) -> None:
         """Mock signature"""
 
     on_chunk_sent_mock = mock.create_autospec(on_chunk_sent, spec_set=True)
-    msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent_mock)
+    msg = http.StreamWriter(
+        protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent_mock
+    )
     chunk = b"1"
     await msg.write(chunk)
     assert on_chunk_sent_mock.called
@@ -806,13 +805,13 @@ async def test_write_calls_callback(
 async def test_write_eof_calls_callback(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
-    loop = asyncio.get_running_loop()
-
     async def on_chunk_sent(chunk: bytes) -> None:
         """Mock signature"""
 
     on_chunk_sent_mock = mock.create_autospec(on_chunk_sent, spec_set=True)
-    msg = http.StreamWriter(protocol, loop, on_chunk_sent=on_chunk_sent_mock)
+    msg = http.StreamWriter(
+        protocol, asyncio.get_running_loop(), on_chunk_sent=on_chunk_sent_mock
+    )
     chunk = b"1"
     await msg.write_eof(chunk=chunk)
     assert on_chunk_sent_mock.called

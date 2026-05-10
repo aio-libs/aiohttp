@@ -10,7 +10,7 @@ import sys
 import uuid
 import warnings
 from collections import defaultdict, deque
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Sequence
 from concurrent import futures
 from contextlib import closing, suppress
 from typing import Any, Literal, NoReturn
@@ -18,6 +18,7 @@ from unittest import mock
 
 import pytest
 from multidict import CIMultiDict
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -42,9 +43,7 @@ from aiohttp.connector import (
     _ConnectTunnelConnection,
     _DNSCacheTable,
 )
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.resolver import AsyncResolver
-from aiohttp.test_utils import unused_port
 from aiohttp.tracing import Trace
 
 if sys.version_info >= (3, 11):
@@ -81,7 +80,7 @@ def ssl_key() -> ConnectionKey:
 
 @pytest.fixture
 def unix_server(
-    loop: asyncio.AbstractEventLoop, unix_sockname: str
+    event_loop: asyncio.AbstractEventLoop, unix_sockname: str
 ) -> Iterator[Callable[[web.Application], Awaitable[None]]]:
     runners = []
 
@@ -95,13 +94,13 @@ def unix_server(
     yield go
 
     for runner in runners:
-        loop.run_until_complete(runner.cleanup())
+        event_loop.run_until_complete(runner.cleanup())
 
 
 @pytest.fixture
-def named_pipe_server(
-    proactor_loop: asyncio.AbstractEventLoop, pipe_name: str
-) -> Iterator[Callable[[web.Application], Awaitable[None]]]:
+async def named_pipe_server(
+    pipe_name: str,
+) -> AsyncIterator[Callable[[web.Application], Awaitable[None]]]:
     runners = []
 
     async def go(app: web.Application) -> None:
@@ -114,7 +113,7 @@ def named_pipe_server(
     yield go
 
     for runner in runners:
-        proactor_loop.run_until_complete(runner.cleanup())
+        await runner.cleanup()
 
 
 def create_mocked_conn(
@@ -123,10 +122,10 @@ def create_mocked_conn(
     **kwargs: object,
 ) -> mock.Mock:
     assert "loop" not in kwargs
-    try:
+    if conn_closing_result:
+        loop = conn_closing_result
+    else:
         loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
 
     f = loop.create_future()
     proto: mock.Mock = mock.create_autospec(
@@ -159,7 +158,8 @@ async def test_connection_del() -> None:
     exc_handler.assert_called_with(loop, msg)
 
 
-def test_connection_del_loop_debug(loop: asyncio.AbstractEventLoop) -> None:
+async def test_connection_del_loop_debug() -> None:
+    loop = asyncio.get_running_loop()
     connector = mock.Mock()
     key = mock.Mock()
     protocol = mock.Mock()
@@ -180,15 +180,17 @@ def test_connection_del_loop_debug(loop: asyncio.AbstractEventLoop) -> None:
     exc_handler.assert_called_with(loop, msg)
 
 
-def test_connection_del_loop_closed(loop: asyncio.AbstractEventLoop) -> None:
+def test_connection_del_loop_closed(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
     connector = mock.Mock()
     key = mock.Mock()
     protocol = mock.Mock()
-    loop.set_debug(True)
-    conn = Connection(connector, key, protocol, loop=loop)
+    event_loop.set_debug(True)
+    conn = Connection(connector, key, protocol, loop=event_loop)
     exc_handler = mock.Mock()
-    loop.set_exception_handler(exc_handler)
-    loop.close()
+    event_loop.set_exception_handler(exc_handler)
+    event_loop.close()
 
     with pytest.warns(ResourceWarning):
         del conn
@@ -223,9 +225,7 @@ async def test_del(key: ConnectionKey) -> None:
 
 
 @pytest.mark.xfail
-async def test_del_with_scheduled_cleanup(  # type: ignore[misc]
-    key: ConnectionKey,
-) -> None:
+async def test_del_with_scheduled_cleanup(key: ConnectionKey) -> None:  # type: ignore[misc]
     loop = asyncio.get_running_loop()
     loop.set_debug(True)
     conn = aiohttp.BaseConnector(keepalive_timeout=0.01)
@@ -255,19 +255,20 @@ async def test_del_with_scheduled_cleanup(  # type: ignore[misc]
     sys.implementation.name != "cpython", reason="CPython GC is required for the test"
 )
 def test_del_with_closed_loop(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop, key: ConnectionKey
+    event_loop: asyncio.AbstractEventLoop,
+    key: ConnectionKey,
 ) -> None:
     async def make_conn() -> aiohttp.BaseConnector:
         return aiohttp.BaseConnector()
 
-    conn = loop.run_until_complete(make_conn())
-    transp = create_mocked_conn(loop)
+    conn = event_loop.run_until_complete(make_conn())
+    transp = create_mocked_conn(event_loop)
     conn._conns[key] = deque([(transp, 123)])
 
     conns_impl = conn._conns
     exc_handler = mock.Mock()
-    loop.set_exception_handler(exc_handler)
-    loop.close()
+    event_loop.set_exception_handler(exc_handler)
+    event_loop.close()
 
     with pytest.warns(ResourceWarning):
         del conn
@@ -486,9 +487,7 @@ async def test_release(key: ConnectionKey) -> None:
 
 
 @pytest.mark.usefixtures("enable_cleanup_closed")
-async def test_release_ssl_transport(  # type: ignore[misc]
-    ssl_key: ConnectionKey,
-) -> None:
+async def test_release_ssl_transport(ssl_key: ConnectionKey) -> None:  # type: ignore[misc]
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True):
         proto = create_mocked_conn(asyncio.get_running_loop())
@@ -702,7 +701,6 @@ async def test_tcp_connector_server_hostname_default(
 async def test_tcp_connector_server_hostname_override(
     start_connection: mock.AsyncMock, make_client_request: _RequestMaker
 ) -> None:
-    loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector()
 
     with mock.patch.object(
@@ -711,7 +709,10 @@ async def test_tcp_connector_server_hostname_override(
         create_connection.return_value = mock.Mock(), mock.Mock()
 
         req = make_client_request(
-            "GET", URL("https://127.0.0.1:443"), loop=loop, server_hostname="localhost"
+            "GET",
+            URL("https://127.0.0.1:443"),
+            loop=asyncio.get_running_loop(),
+            server_hostname="localhost",
         )
 
         with closing(await conn.connect(req, [], ClientTimeout())):
@@ -1652,7 +1653,6 @@ async def test_tcp_connector_close_resolver() -> None:
 
 
 async def test_dns_error(make_client_request: _RequestMaker) -> None:
-    loop = asyncio.get_running_loop()
     connector = aiohttp.TCPConnector()
     with mock.patch.object(
         connector,
@@ -1661,7 +1661,9 @@ async def test_dns_error(make_client_request: _RequestMaker) -> None:
         spec_set=True,
         side_effect=OSError("dont take it serious"),
     ):
-        req = make_client_request("GET", URL("http://www.python.org"), loop=loop)
+        req = make_client_request(
+            "GET", URL("http://www.python.org"), loop=asyncio.get_running_loop()
+        )
 
         with pytest.raises(aiohttp.ClientConnectorError):
             await connector.connect(req, [], ClientTimeout())
@@ -2029,8 +2031,7 @@ async def test_cleanup(key: ConnectionKey) -> None:
 async def test_cleanup_close_ssl_transport(  # type: ignore[misc]
     ssl_key: ConnectionKey,
 ) -> None:
-    loop = asyncio.get_running_loop()
-    proto = create_mocked_conn(loop)
+    proto = create_mocked_conn(asyncio.get_running_loop())
     transport = proto.transport
     testset: defaultdict[ConnectionKey, deque[tuple[ResponseHandler, float]]] = (
         defaultdict(deque)
@@ -2798,7 +2799,6 @@ async def test_close_cancels_cleanup_handle(key: ConnectionKey) -> None:
 
 
 async def test_close_cancels_resolve_host(make_client_request: _RequestMaker) -> None:
-    loop = asyncio.get_running_loop()
     cancelled = False
 
     async def delay_resolve(*args: object, **kwargs: object) -> None:
@@ -2812,7 +2812,10 @@ async def test_close_cancels_resolve_host(make_client_request: _RequestMaker) ->
 
     conn = aiohttp.TCPConnector()
     req = make_client_request(
-        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+        "GET",
+        URL("http://localhost:80"),
+        loop=asyncio.get_running_loop(),
+        response_class=mock.Mock(),
     )
     with mock.patch.object(conn._resolver, "resolve", delay_resolve):
         t = asyncio.create_task(conn.connect(req, [], ClientTimeout()))
@@ -2835,7 +2838,6 @@ async def test_multiple_dns_resolution_requests_success(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that multiple DNS resolution requests are handled correctly."""
-    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -2854,7 +2856,10 @@ async def test_multiple_dns_resolution_requests_success(
 
     conn = aiohttp.TCPConnector(force_close=True)
     req = make_client_request(
-        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+        "GET",
+        URL("http://localhost:80"),
+        loop=asyncio.get_running_loop(),
+        response_class=mock.Mock(),
     )
     with (
         mock.patch.object(conn._resolver, "resolve", delay_resolve),
@@ -2898,7 +2903,6 @@ async def test_multiple_dns_resolution_requests_failure(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution failure for multiple requests is handled correctly."""
-    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -2908,7 +2912,10 @@ async def test_multiple_dns_resolution_requests_failure(
 
     conn = aiohttp.TCPConnector(force_close=True)
     req = make_client_request(
-        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+        "GET",
+        URL("http://localhost:80"),
+        loop=asyncio.get_running_loop(),
+        response_class=mock.Mock(),
     )
     with (
         mock.patch.object(conn._resolver, "resolve", delay_resolve),
@@ -2952,7 +2959,6 @@ async def test_multiple_dns_resolution_requests_cancelled(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution cancellation does not affect other tasks."""
-    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -2962,7 +2968,10 @@ async def test_multiple_dns_resolution_requests_cancelled(
 
     conn = aiohttp.TCPConnector(force_close=True)
     req = make_client_request(
-        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+        "GET",
+        URL("http://localhost:80"),
+        loop=asyncio.get_running_loop(),
+        response_class=mock.Mock(),
     )
     with (
         mock.patch.object(conn._resolver, "resolve", delay_resolve),
@@ -3005,7 +3014,6 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that first DNS resolution cancellation does not make other resolutions fail."""
-    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -3024,7 +3032,10 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
 
     conn = aiohttp.TCPConnector(force_close=True)
     req = make_client_request(
-        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+        "GET",
+        URL("http://localhost:80"),
+        loop=asyncio.get_running_loop(),
+        response_class=mock.Mock(),
     )
     with (
         mock.patch.object(conn._resolver, "resolve", delay_resolve),
@@ -3069,7 +3080,6 @@ async def test_multiple_dns_resolution_requests_first_fails_second_successful(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that first DNS resolution fails the first time and is successful the second time."""
-    loop = asyncio.get_running_loop()
     attempt = 0
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
@@ -3093,7 +3103,10 @@ async def test_multiple_dns_resolution_requests_first_fails_second_successful(
 
     conn = aiohttp.TCPConnector(force_close=True)
     req = make_client_request(
-        "GET", URL("http://localhost:80"), loop=loop, response_class=mock.Mock()
+        "GET",
+        URL("http://localhost:80"),
+        loop=asyncio.get_running_loop(),
+        response_class=mock.Mock(),
     )
     with (
         mock.patch.object(conn._resolver, "resolve", delay_resolve),
@@ -3870,10 +3883,11 @@ async def test_tcp_connector(aiohttp_client: AiohttpClient) -> None:
 async def test_unix_connector_not_found(  # type: ignore[misc]
     make_client_request: _RequestMaker,
 ) -> None:
-    loop = asyncio.get_running_loop()
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
-    req = make_client_request("GET", URL("http://www.python.org"), loop=loop)
+    req = make_client_request(
+        "GET", URL("http://www.python.org"), loop=asyncio.get_running_loop()
+    )
     with pytest.raises(aiohttp.ClientConnectorError):
         await connector.connect(req, [], ClientTimeout())
 
@@ -3895,9 +3909,8 @@ async def test_unix_connector_permission(  # type: ignore[misc]
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
-async def test_named_pipe_connector_wrong_loop(
-    selector_loop: asyncio.AbstractEventLoop, pipe_name: str
-) -> None:
+@pytest.mark.asyncio(loop_factories=("selector",))
+async def test_named_pipe_connector_wrong_loop(pipe_name: str) -> None:
     with pytest.raises(RuntimeError):
         aiohttp.NamedPipeConnector(pipe_name)
 
@@ -3905,15 +3918,15 @@ async def test_named_pipe_connector_wrong_loop(
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
+@pytest.mark.asyncio(loop_factories=("proactor",))
 async def test_named_pipe_connector_not_found(  # type: ignore[misc]
-    proactor_loop: asyncio.AbstractEventLoop,
     pipe_name: str,
     make_client_request: _RequestMaker,
 ) -> None:
-    asyncio.set_event_loop(proactor_loop)
+    loop = asyncio.get_running_loop()
     connector = aiohttp.NamedPipeConnector(pipe_name)
 
-    req = make_client_request("GET", URL("http://www.python.org"), loop=proactor_loop)
+    req = make_client_request("GET", URL("http://www.python.org"), loop=loop)
     with pytest.raises(aiohttp.ClientConnectorError):
         await connector.connect(req, [], ClientTimeout())
 
@@ -3921,19 +3934,17 @@ async def test_named_pipe_connector_not_found(  # type: ignore[misc]
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
+@pytest.mark.asyncio(loop_factories=("proactor",))
 async def test_named_pipe_connector_permission(  # type: ignore[misc]
-    proactor_loop: asyncio.AbstractEventLoop,
     pipe_name: str,
     make_client_request: _RequestMaker,
 ) -> None:
+    loop = asyncio.get_running_loop()
     m = mock.AsyncMock(side_effect=PermissionError())
-    with mock.patch.object(proactor_loop, "create_pipe_connection", m):
-        asyncio.set_event_loop(proactor_loop)
+    with mock.patch.object(loop, "create_pipe_connection", m):
         connector = aiohttp.NamedPipeConnector(pipe_name)
 
-        req = make_client_request(
-            "GET", URL("http://www.python.org"), loop=proactor_loop
-        )
+        req = make_client_request("GET", URL("http://www.python.org"), loop=loop)
         with pytest.raises(aiohttp.ClientConnectorError):
             await connector.connect(req, [], ClientTimeout())
 
@@ -3946,14 +3957,14 @@ async def test_default_use_dns_cache() -> None:
 
 
 async def test_resolver_not_called_with_address_is_ip(
-    make_client_request: _RequestMaker,
+    unused_tcp_port: int, make_client_request: _RequestMaker
 ) -> None:
     resolver = mock.MagicMock()
     connector = aiohttp.TCPConnector(resolver=resolver)
 
     req = make_client_request(
         "GET",
-        URL(f"http://127.0.0.1:{unused_port()}"),
+        URL(f"http://127.0.0.1:{unused_tcp_port}"),
         loop=asyncio.get_running_loop(),
         response_class=mock.Mock(),
     )
@@ -3967,7 +3978,7 @@ async def test_resolver_not_called_with_address_is_ip(
 
 
 async def test_tcp_connector_raise_connector_ssl_error(
-    aiohttp_server: AiohttpServer, ssl_ctx: ssl.SSLContext
+    aiohttp_server: AiohttpServer, ssl_ctx: ssl.SSLContext, unused_tcp_port: int
 ) -> None:
     async def handler(request: web.Request) -> NoReturn:
         assert False
@@ -3977,8 +3988,7 @@ async def test_tcp_connector_raise_connector_ssl_error(
 
     srv = await aiohttp_server(app, ssl=ssl_ctx)
 
-    port = unused_port()
-    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
+    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", unused_tcp_port))
 
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
@@ -4012,6 +4022,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     ssl_ctx: ssl.SSLContext,
     client_ssl_ctx: ssl.SSLContext,
     host: str,
+    unused_tcp_port: int,
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -4020,8 +4031,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     app.router.add_get("/", handler)
 
     srv = await aiohttp_server(app, ssl=ssl_ctx)
-    port = unused_port()
-    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
+    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", unused_tcp_port))
 
     # resolving something.localhost with the real DNS resolver does not work on macOS, so we have a stub.
     async def _resolve_host(
@@ -4069,6 +4079,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
 
 async def test_tcp_connector_uses_provided_local_addr(
     aiohttp_server: AiohttpServer,
+    unused_tcp_port: int,
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -4077,8 +4088,7 @@ async def test_tcp_connector_uses_provided_local_addr(
     app.router.add_get("/", handler)
     srv = await aiohttp_server(app)
 
-    port = unused_port()
-    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", port))
+    conn = aiohttp.TCPConnector(local_addr=("127.0.0.1", unused_tcp_port))
 
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url("/")
@@ -4088,7 +4098,8 @@ async def test_tcp_connector_uses_provided_local_addr(
 
     first_conn = next(iter(conn._conns.values()))[0][0]
     assert first_conn.transport is not None
-    assert first_conn.transport.get_extra_info("sockname") == ("127.0.0.1", port)
+    sockname = first_conn.transport.get_extra_info("sockname")
+    assert sockname == ("127.0.0.1", unused_tcp_port)
     r.close()
     await session.close()
     await conn.close()
@@ -4127,8 +4138,8 @@ async def test_unix_connector(
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
+@pytest.mark.asyncio(loop_factories=("proactor",))
 async def test_named_pipe_connector(
-    proactor_loop: asyncio.AbstractEventLoop,
     named_pipe_server: Callable[[web.Application], Awaitable[None]],
     pipe_name: str,
 ) -> None:

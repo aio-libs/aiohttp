@@ -10,6 +10,7 @@ from unittest import mock
 
 import pytest
 from multidict import CIMultiDictProxy, MultiDict
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -26,7 +27,6 @@ from aiohttp import (
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
 
@@ -105,7 +105,7 @@ async def test_handler_returns_not_response(
     app = web.Application()
     app.router.add_get("/", handler)  # type: ignore[arg-type]
     server = await aiohttp_server(app, logger=logger)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 500
@@ -123,7 +123,7 @@ async def test_handler_returns_none(
     app = web.Application()
     app.router.add_get("/", handler)  # type: ignore[arg-type]
     server = await aiohttp_server(app, logger=logger)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 500
@@ -900,7 +900,7 @@ async def test_large_header_allowed(
     app = web.Application()
     app.router.add_post("/", handler)
     server = await aiohttp_server(app, max_field_size=81920)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     headers = {"Long-Header": "ab" * 8129}
     resp = await client.post("/", headers=headers)

@@ -59,11 +59,11 @@ def buf() -> bytearray:
 
 @pytest.fixture
 def protocol(
-    loop: asyncio.AbstractEventLoop, transport: asyncio.Transport
+    event_loop: asyncio.AbstractEventLoop, transport: asyncio.Transport
 ) -> BaseProtocol:
     protocol = mock.Mock()
     protocol.transport = transport
-    protocol._drain_helper.return_value = loop.create_future()
+    protocol._drain_helper.return_value = event_loop.create_future()
     protocol._drain_helper.return_value.set_result(None)
     return protocol
 
@@ -1259,6 +1259,7 @@ async def test_data_stream(
         yield b"binary data"
         yield b" result"
 
+    loop = asyncio.get_running_loop()
     req = make_client_request("POST", URL("http://python.org/"), data=gen(), loop=loop)
     assert req.chunked
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
@@ -1388,6 +1389,7 @@ async def test_data_stream_continue(
         yield b"binary data"
         yield b" result"
 
+    loop = asyncio.get_running_loop()
     req = make_client_request(
         "POST", URL("http://python.org/"), data=gen(), expect100=True, loop=loop
     )
@@ -1398,7 +1400,7 @@ async def test_data_stream_continue(
         assert req._continue is not None
         req._continue.set_result(1)
 
-    t = loop.create_task(coro())
+    t = asyncio.get_running_loop().create_task(coro())
 
     resp = await req._send(conn)
     assert req._writer is not None
@@ -1445,6 +1447,7 @@ async def test_close(
         await asyncio.sleep(0.00001)
         yield b"result"
 
+    loop = asyncio.get_running_loop()
     req = make_client_request("POST", URL("http://python.org/"), data=gen(), loop=loop)
     resp = await req._send(conn)
     await req._close()
@@ -1475,6 +1478,7 @@ async def test_custom_response_class(
         async def read(self) -> bytes:
             return b"customized!"
 
+    loop = asyncio.get_running_loop()
     req = make_client_request(
         "GET", URL("http://python.org/"), response_class=CustomResponse, loop=loop
     )
@@ -1549,7 +1553,7 @@ async def test_terminate(conn: mock.Mock, make_client_request: _RequestMaker) ->
 
 
 def test_terminate_with_closed_loop(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
 ) -> None:
     req = resp = writer = None
@@ -1560,7 +1564,7 @@ def test_terminate_with_closed_loop(
         req = ClientRequest(
             "get",
             URL("http://python.org"),
-            loop=loop,
+            loop=event_loop,
             params={},
             headers=CIMultiDict[str](),
             skip_auto_headers=None,
@@ -1598,9 +1602,9 @@ def test_terminate_with_closed_loop(
 
         await asyncio.sleep(0.05)
 
-    loop.run_until_complete(go())
+    event_loop.run_until_complete(go())
 
-    loop.close()
+    event_loop.close()
     assert req is not None
     req._terminate()
     assert req._writer is None
@@ -1675,17 +1679,17 @@ async def test_custom_req_rep(create_mocked_conn: mock.Mock) -> None:
         conn.close()
 
 
-def test_bad_fingerprint(loop: asyncio.AbstractEventLoop) -> None:
+def test_bad_fingerprint() -> None:
     with pytest.raises(ValueError):
         Fingerprint(b"invalid")
 
 
-def test_insecure_fingerprint_md5(loop: asyncio.AbstractEventLoop) -> None:
+def test_insecure_fingerprint_md5() -> None:
     with pytest.raises(ValueError):
         Fingerprint(hashlib.md5(b"foo").digest())
 
 
-def test_insecure_fingerprint_sha1(loop: asyncio.AbstractEventLoop) -> None:
+def test_insecure_fingerprint_sha1() -> None:
     with pytest.raises(ValueError):
         Fingerprint(hashlib.sha1(b"foo").digest())
 
@@ -1850,6 +1854,7 @@ async def test_write_bytes_with_content_length_limit(
     # Test with bytes data
     loop = asyncio.get_running_loop()
     data = b"Hello World"
+    loop = asyncio.get_running_loop()
     req = make_client_request("post", URL("http://python.org/"), loop=loop)
 
     await req.update_body(data)
@@ -2127,6 +2132,7 @@ async def test_content_length_with_string_data(
     """Test Content-Length when data is a string."""
     loop = asyncio.get_running_loop()
     data = "Hello, World!"
+    loop = asyncio.get_running_loop()
     req = make_client_request("POST", URL("http://python.org/"), data=data, loop=loop)
     # String should be encoded to bytes, default encoding is utf-8
     assert req.headers[hdrs.CONTENT_LENGTH] == str(len(data.encode("utf-8")))
@@ -2142,6 +2148,7 @@ async def test_content_length_with_async_iterable(
     async def data_gen() -> AsyncIterator[bytes]:
         yield b"chunk1"  # pragma: no cover
 
+    loop = asyncio.get_running_loop()
     req = make_client_request(
         "POST", URL("http://python.org/"), data=data_gen(), loop=loop
     )
@@ -2173,6 +2180,7 @@ async def test_content_length_with_formdata(make_client_request: _RequestMaker) 
     form = aiohttp.FormData()
     form.add_field("field", "value")
 
+    loop = asyncio.get_running_loop()
     req = make_client_request("POST", URL("http://python.org/"), data=form, loop=loop)
     # FormData with known size should set Content-Length
     assert hdrs.CONTENT_LENGTH in req.headers

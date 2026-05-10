@@ -2,10 +2,10 @@ from collections.abc import Awaitable, Callable, Iterable
 from typing import NoReturn
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 from yarl import URL
 
 from aiohttp import web, web_app
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.test_utils import TestClient
 from aiohttp.typedefs import Handler, Middleware
 

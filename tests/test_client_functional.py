@@ -35,6 +35,7 @@ except ImportError:
 import pytest
 import trustme
 from multidict import MultiDict
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL, Query
 
@@ -61,16 +62,8 @@ from aiohttp.payload import (
     StringIOPayload,
     StringPayload,
 )
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.test_utils import TestClient, TestServer, unused_port
+from aiohttp.test_utils import TestClient, TestServer
 from aiohttp.typedefs import Handler
-
-
-@pytest.fixture(autouse=True)
-def cleanup(
-    cleanup_payload_pending_file_closes: None,
-) -> None:
-    """Ensure all pending file close operations complete during test teardown."""
 
 
 @pytest.fixture
@@ -718,7 +711,7 @@ async def test_ssl_client(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 200
@@ -757,7 +750,7 @@ async def test_ssl_client_shutdown_timeout(
     app = web.Application()
     app.router.add_route("GET", "/stream", streaming_handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     # Verify the connector has the correct timeout
     assert connector._ssl_shutdown_timeout == 0.1
@@ -810,7 +803,7 @@ async def test_ssl_client_alpn(
     server = await aiohttp_server(app, ssl=ssl_ctx)
 
     connector = aiohttp.TCPConnector(ssl=False)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
     async with client.get("/") as resp:
         assert resp.status == 200
         txt = await resp.text()
@@ -832,7 +825,7 @@ async def test_tcp_connector_fingerprint_ok(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 200
@@ -854,7 +847,7 @@ async def test_tcp_connector_fingerprint_fail(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     with pytest.raises(ServerFingerprintMismatch) as cm:
         await client.get("/")
@@ -4006,7 +3999,7 @@ async def test_dont_close_explicit_connector(aiohttp_client: AiohttpClient) -> N
     assert 1 == len(client.session.connector._conns)
 
 
-async def test_server_close_keepalive_connection() -> None:
+async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
     loop = asyncio.get_event_loop()
 
     class Proto(asyncio.Protocol):
@@ -4031,7 +4024,7 @@ async def test_server_close_keepalive_connection() -> None:
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_port())
+    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
 
     addr = server.sockets[0].getsockname()
 
@@ -4047,7 +4040,7 @@ async def test_server_close_keepalive_connection() -> None:
     await server.wait_closed()
 
 
-async def test_handle_keepalive_on_closed_connection() -> None:
+async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> None:
     loop = asyncio.get_event_loop()
 
     class Proto(asyncio.Protocol):
@@ -4066,7 +4059,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_port())
+    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
 
     addr = server.sockets[0].getsockname()
 
@@ -4108,7 +4101,7 @@ async def test_error_in_performing_request(
     server = await aiohttp_server(app, ssl=ssl_ctx)
 
     conn = aiohttp.TCPConnector(limit=1)
-    client = await aiohttp_client(server, connector=conn)
+    client = await aiohttp_client(server, connector=conn)  # type: ignore[var-annotated]
 
     with pytest.raises(aiohttp.ClientConnectionError):
         await client.get("/")

@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import proxy
 import pytest
+from pytest_aiohttp import AiohttpRawServer, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -20,7 +21,6 @@ import aiohttp
 from aiohttp import ClientResponse, web
 from aiohttp.client import _RequestOptions
 from aiohttp.client_exceptions import ClientConnectionError
-from aiohttp.pytest_plugin import AiohttpRawServer, AiohttpServer
 from aiohttp.test_utils import TestServer
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
@@ -134,7 +134,6 @@ async def web_server_endpoint_url(
 # Filter out the warning from
 # https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
 # otherwise this test will fail because the proxy will die with an error.
-@pytest.mark.usefixtures("loop")
 async def test_secure_https_proxy_absolute_path(
     client_ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
@@ -159,7 +158,6 @@ async def test_secure_https_proxy_absolute_path(
 
 
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
-@pytest.mark.usefixtures("loop")
 @pytest.mark.skipif(
     ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="asyncio on this python supports TLS in TLS"
 )
@@ -243,11 +241,11 @@ async def test_https_proxy_unsupported_tls_in_tls(
 # Filter out the warning from
 # https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
 # otherwise this test will fail because the proxy will die with an error.
+@pytest.mark.asyncio(loop_factories=("uvloop",))
 async def test_uvloop_secure_https_proxy(
     client_ssl_ctx: ssl.SSLContext,
     ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
-    uvloop_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
     payload = str(uuid4())
@@ -316,7 +314,7 @@ def proxy_test_server(
         proxy_mock.auth = None
         proxy_mock.requests_list = []
 
-        server = await aiohttp_raw_server(proxy_handler)  # type: ignore[arg-type]
+        server = await aiohttp_raw_server(proxy_handler)
 
         proxy_mock.server = server
         proxy_mock.url = server.make_url("/")

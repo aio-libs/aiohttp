@@ -90,7 +90,7 @@ def test_del(session: ClientSession) -> None:
     connection.release.assert_called_with()
 
 
-def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+def test_close(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -99,7 +99,7 @@ def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -113,17 +113,17 @@ def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
 
 
 def test_wait_for_100_1(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://python.org")
     response = ClientResponse(
         "get",
         url,
-        continue100=loop.create_future(),
+        continue100=event_loop.create_future(),
         writer=WriterMock(),
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -133,7 +133,7 @@ def test_wait_for_100_1(
 
 
 def test_wait_for_100_2(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://python.org")
     response = ClientResponse(
@@ -143,7 +143,7 @@ def test_wait_for_100_2(
         writer=WriterMock(),
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -152,7 +152,7 @@ def test_wait_for_100_2(
     response.close()
 
 
-def test_repr(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+def test_repr(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -161,7 +161,7 @@ def test_repr(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -807,7 +807,7 @@ async def test_json_override_encoding(session: ClientSession) -> None:
 
 
 def test_get_encoding_unknown(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
@@ -817,7 +817,7 @@ def test_get_encoding_unknown(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1278,7 +1278,7 @@ async def test_response_read_triggers_callback(session: ClientSession) -> None:
 
 
 def test_response_cookies(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://python.org")
     response = ClientResponse(
@@ -1288,7 +1288,7 @@ def test_response_cookies(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1299,7 +1299,7 @@ def test_response_cookies(
 
 
 def test_response_real_url(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/#urlfragment")
     response = ClientResponse(
@@ -1309,7 +1309,7 @@ def test_response_real_url(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1319,7 +1319,7 @@ def test_response_real_url(
 
 
 def test_response_links_comma_separated(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1329,7 +1329,7 @@ def test_response_links_comma_separated(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1351,7 +1351,7 @@ def test_response_links_comma_separated(
 
 
 def test_response_links_multiple_headers(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1361,7 +1361,7 @@ def test_response_links_multiple_headers(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1378,7 +1378,7 @@ def test_response_links_multiple_headers(
 
 
 def test_response_links_no_rel(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1388,7 +1388,7 @@ def test_response_links_no_rel(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1401,7 +1401,7 @@ def test_response_links_no_rel(
 
 
 def test_response_links_quoted(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1411,7 +1411,7 @@ def test_response_links_quoted(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1424,7 +1424,7 @@ def test_response_links_quoted(
 
 
 def test_response_links_relative(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1434,7 +1434,7 @@ def test_response_links_relative(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1447,7 +1447,7 @@ def test_response_links_relative(
 
 
 def test_response_links_empty(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1457,7 +1457,7 @@ def test_response_links_empty(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1490,7 +1490,7 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
 
 
 def test_response_duplicate_cookie_names(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """
     Test that response.cookies handles duplicate cookie names correctly.
@@ -1511,7 +1511,7 @@ def test_response_duplicate_cookie_names(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1541,7 +1541,7 @@ def test_response_duplicate_cookie_names(
 
 
 def test_response_raw_cookie_headers_preserved(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """Test that raw Set-Cookie headers are preserved in _raw_cookie_headers."""
     url = URL("http://example.com")
@@ -1552,7 +1552,7 @@ def test_response_raw_cookie_headers_preserved(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1583,7 +1583,7 @@ def test_response_raw_cookie_headers_preserved(
 
 
 def test_response_cookies_setter_updates_raw_headers(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """Test that setting cookies property updates _raw_cookie_headers."""
     url = URL("http://example.com")
@@ -1594,7 +1594,7 @@ def test_response_cookies_setter_updates_raw_headers(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
