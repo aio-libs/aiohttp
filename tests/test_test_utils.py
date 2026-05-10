@@ -2,7 +2,7 @@ import asyncio
 import gzip
 import socket
 import sys
-from collections.abc import Iterator, Mapping
+from collections.abc import AsyncIterator, Mapping
 from typing import NoReturn
 from unittest import mock
 
@@ -63,7 +63,7 @@ def app() -> web.Application:
 
 
 @pytest.fixture
-async def test_client(app: web.Application) -> Iterator[_TestClient]:
+async def test_client(app: web.Application) -> AsyncIterator[_TestClient]:
     client = TestClient(TestServer(app))
 
     await client.start_server()
