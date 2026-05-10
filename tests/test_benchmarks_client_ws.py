@@ -1,7 +1,7 @@
 """codspeed benchmarks for websocket client."""
 
 import asyncio
-from collections.abc import Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from typing import Any
 
 import pytest
