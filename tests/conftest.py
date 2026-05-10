@@ -170,7 +170,7 @@ def pipe_name() -> str:
 
 
 @pytest.fixture
-async def create_mocked_conn() -> Iterator[Callable[[], ResponseHandler]]:
+async def create_mocked_conn() -> AsyncIterator[Callable[[], ResponseHandler]]:
     def _proto_factory() -> Any:
         proto = mock.create_autospec(ResponseHandler, instance=True)
         proto.closed = asyncio.get_running_loop().create_future()
@@ -251,7 +251,7 @@ def unix_sockname(
 
 
 @pytest.fixture
-def event_loop() -> asyncio.AbstractEventLoop:
+def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
     loop = asyncio.new_event_loop()
     try:
         yield loop
@@ -270,7 +270,7 @@ def pytest_asyncio_loop_factories(
     if "selector" in requested:
         factories["selector"] = asyncio.SelectorEventLoop
     if "proactor" in requested and platform.system() == "Windows":
-        factories["proactor"] = asyncio.ProactorEventLoop
+        factories["proactor"] = asyncio.ProactorEventLoop  # type: ignore[attr-defined]
     if "uvloop" in requested and uvloop is not None:
         factories["uvloop"] = uvloop.new_event_loop
 
