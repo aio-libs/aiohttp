@@ -2,18 +2,8 @@ import asyncio
 import contextlib
 import inspect
 import warnings
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterator,
-    Optional,
-    Protocol,
-    Type,
-    Union,
-    overload,
-)
+from collections.abc import Awaitable, Callable, Iterator
+from typing import Any, Protocol, overload
 
 import pytest
 
@@ -42,7 +32,7 @@ class AiohttpClient(Protocol):
         self,
         __param: Application,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
     @overload
@@ -50,20 +40,20 @@ class AiohttpClient(Protocol):
         self,
         __param: BaseTestServer,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[BaseRequest, None]: ...
 
 
 class AiohttpServer(Protocol):
     def __call__(
-        self, app: Application, *, port: Optional[int] = None, **kwargs: Any
+        self, app: Application, *, port: int | None = None, **kwargs: Any
     ) -> Awaitable[TestServer]: ...
 
 
 class AiohttpRawServer(Protocol):
     def __call__(
-        self, handler: _RequestHandler, *, port: Optional[int] = None, **kwargs: Any
+        self, handler: _RequestHandler, *, port: int | None = None, **kwargs: Any
     ) -> Awaitable[RawTestServer]: ...
 
 
@@ -169,7 +159,7 @@ def _runtime_warning_context():  # type: ignore[no-untyped-def]
     with warnings.catch_warnings(record=True) as _warnings:
         yield
         rw = [
-            "{w.filename}:{w.lineno}:{w.message}".format(w=w)
+            f"{w.filename}:{w.lineno}:{w.message}"
             for w in _warnings
             if w.category == RuntimeWarning
         ]
@@ -212,9 +202,13 @@ def pytest_pyfunc_call(pyfuncitem):  # type: ignore[no-untyped-def]
             "aiohttp.pytest_plugin will be removed in v4. Please install pytest-aiohttp.",
             DeprecationWarning,
         )
-        existing_loop = pyfuncitem.funcargs.get(
-            "proactor_loop"
-        ) or pyfuncitem.funcargs.get("loop", None)
+        existing_loop = (
+            pyfuncitem.funcargs.get("proactor_loop")
+            or pyfuncitem.funcargs.get("selector_loop")
+            or pyfuncitem.funcargs.get("uvloop_loop")
+            or pyfuncitem.funcargs.get("loop", None)
+        )
+
         with _runtime_warning_context():
             with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
                 testargs = {
@@ -231,11 +225,11 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
         return
 
     loops = metafunc.config.option.aiohttp_loop
-    avail_factories: Dict[str, Type[asyncio.AbstractEventLoopPolicy]]
-    avail_factories = {"pyloop": asyncio.DefaultEventLoopPolicy}
+    avail_factories: dict[str, Callable[[], asyncio.AbstractEventLoop]]
+    avail_factories = {"pyloop": asyncio.new_event_loop}
 
     if uvloop is not None:  # pragma: no cover
-        avail_factories["uvloop"] = uvloop.EventLoopPolicy
+        avail_factories["uvloop"] = uvloop.new_event_loop
 
     if loops == "all":
         loops = "pyloop,uvloop?"
@@ -259,11 +253,13 @@ def pytest_generate_tests(metafunc):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def loop(loop_factory, fast, loop_debug):  # type: ignore[no-untyped-def]
+def loop(
+    loop_factory: Callable[[], asyncio.AbstractEventLoop],
+    fast: bool,
+    loop_debug: bool,
+) -> Iterator[asyncio.AbstractEventLoop]:
     """Return an instance of the event loop."""
-    policy = loop_factory()
-    asyncio.set_event_loop_policy(policy)
-    with loop_context(fast=fast) as _loop:
+    with loop_context(loop_factory, fast=fast) as _loop:
         if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
         asyncio.set_event_loop(_loop)
@@ -271,11 +267,10 @@ def loop(loop_factory, fast, loop_debug):  # type: ignore[no-untyped-def]
 
 
 @pytest.fixture
-def proactor_loop():  # type: ignore[no-untyped-def]
-    policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore[attr-defined]
-    asyncio.set_event_loop_policy(policy)
+def proactor_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    factory = asyncio.ProactorEventLoop  # type: ignore[attr-defined]
 
-    with loop_context(policy.new_event_loop) as _loop:
+    with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 
@@ -308,7 +303,7 @@ def aiohttp_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpServer]:
         app: Application,
         *,
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ) -> TestServer:
         server = TestServer(app, host=host, port=port)
@@ -344,7 +339,7 @@ def aiohttp_raw_server(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpRawSe
     servers = []
 
     async def go(
-        handler: _RequestHandler, *, port: Optional[int] = None, **kwargs: Any
+        handler: _RequestHandler, *, port: int | None = None, **kwargs: Any
     ) -> RawTestServer:
         server = RawTestServer(handler, port=port)
         await server.start_server(loop=loop, **kwargs)
@@ -386,7 +381,7 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
     async def go(
         __param: Application,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[Request, Application]: ...
 
@@ -394,14 +389,14 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
     async def go(
         __param: BaseTestServer,
         *,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[BaseRequest, None]: ...
 
     async def go(
-        __param: Union[Application, BaseTestServer],
+        __param: Application | BaseTestServer,
         *args: Any,
-        server_kwargs: Optional[Dict[str, Any]] = None,
+        server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[Any, Any]:
         if isinstance(__param, Callable) and not isinstance(  # type: ignore[arg-type]

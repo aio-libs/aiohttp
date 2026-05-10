@@ -1,7 +1,10 @@
 import asyncio
 import datetime
+import logging
 import socket
-from collections.abc import MutableMapping
+import sys
+import time
+from collections.abc import Iterator, MutableMapping
 from typing import Any
 from unittest import mock
 
@@ -10,11 +13,14 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion
+from aiohttp.base_protocol import BaseProtocol
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
+from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import BaseRequest, HTTPRequestEntityTooLarge
-from aiohttp.web_request import ETag
+from aiohttp.web import BaseRequest, HTTPRequestEntityTooLarge, Request, RequestKey
+from aiohttp.web_request import _FORWARDED_PAIR_RE, ETag
 
 
 @pytest.fixture
@@ -243,6 +249,13 @@ def test_range_to_slice_tail_stop() -> None:
     assert req.content[req.http_range] == payload[-500:]
 
 
+def test_range_non_ascii() -> None:
+    # ५ = DEVANAGARI DIGIT FIVE
+    req = make_mocked_request("GET", "/", headers=CIMultiDict([("RANGE", "bytes=4-५")]))
+    with pytest.raises(ValueError, match="range not in acceptable format"):
+        req.http_range
+
+
 def test_non_keepalive_on_http10() -> None:
     req = make_mocked_request("GET", "/", version=HttpVersion(1, 0))
     assert not req.keep_alive
@@ -303,11 +316,187 @@ def test_request_cookie__set_item() -> None:
         req.cookies["my"] = "value"
 
 
+def test_request_cookies_with_special_characters() -> None:
+    """Test that cookies with special characters in names are accepted.
+
+    This tests the fix for issue #2683 where cookies with special characters
+    like {, }, / in their names would cause a 500 error. The fix makes the
+    cookie parser more tolerant to handle real-world cookies.
+    """
+    # Test cookie names with curly braces (e.g., ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E})
+    headers = CIMultiDict(COOKIE="{test}=value1; normal=value2")
+    req = make_mocked_request("GET", "/", headers=headers)
+    # Both cookies should be parsed successfully
+    assert req.cookies == {"{test}": "value1", "normal": "value2"}
+
+    # Test cookie names with forward slash
+    headers = CIMultiDict(COOKIE="test/name=value1; valid=value2")
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"test/name": "value1", "valid": "value2"}
+
+    # Test cookie names with various special characters
+    headers = CIMultiDict(
+        COOKIE="test{foo}bar=value1; test/path=value2; normal_cookie=value3"
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {
+        "test{foo}bar": "value1",
+        "test/path": "value2",
+        "normal_cookie": "value3",
+    }
+
+
+def test_request_cookies_real_world_examples() -> None:
+    """Test handling of real-world cookie examples from issue #2683."""
+    # Example from the issue: ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}
+    headers = CIMultiDict(
+        COOKIE="ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}=val1; normal_cookie=val2"
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    # All cookies should be parsed successfully
+    assert req.cookies == {
+        "ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}": "val1",
+        "normal_cookie": "val2",
+    }
+
+    # Multiple cookies with special characters
+    headers = CIMultiDict(
+        COOKIE="{cookie1}=val1; cookie/2=val2; cookie[3]=val3; cookie(4)=val4"
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {
+        "{cookie1}": "val1",
+        "cookie/2": "val2",
+        "cookie[3]": "val3",
+        "cookie(4)": "val4",
+    }
+
+
+def test_request_cookies_edge_cases() -> None:
+    """Test edge cases for cookie parsing."""
+    # Empty cookie value
+    headers = CIMultiDict(COOKIE="test=; normal=value")
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"test": "", "normal": "value"}
+
+    # Cookie with quoted value
+    headers = CIMultiDict(COOKIE='test="quoted value"; normal=unquoted')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"test": "quoted value", "normal": "unquoted"}
+
+
+def test_request_cookies_many_invalid(caplog: pytest.LogCaptureFixture) -> None:
+    """Test many invalid cookies doesn't cause too many logs."""
+    bad = "bad" + chr(1) + "name"
+    cookie = "; ".join(f"{bad}{i}=1" for i in range(3000))
+    req = make_mocked_request("GET", "/", headers=CIMultiDict(COOKIE=cookie))
+
+    with caplog.at_level(logging.DEBUG):
+        cookies = req.cookies
+
+    assert len(caplog.record_tuples) == 1
+    _, level, msg = caplog.record_tuples[0]
+    assert level is logging.DEBUG
+    assert "Cannot load cookie" in msg
+    assert cookies == {}
+
+
+def test_request_cookies_no_500_error() -> None:
+    """Test that cookies with special characters don't cause 500 errors.
+
+    This specifically tests that issue #2683 is fixed - previously cookies
+    with characters like { } would cause CookieError and 500 responses.
+    """
+    # This cookie format previously caused 500 errors
+    headers = CIMultiDict(COOKIE="ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}=test")
+
+    # Should not raise any exception when accessing cookies
+    req = make_mocked_request("GET", "/", headers=headers)
+    cookies = req.cookies  # This used to raise CookieError
+
+    # Verify the cookie was parsed successfully
+    assert "ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}" in cookies
+    assert cookies["ISAWPLB{DB45DF86-F806-407C-932C-D52A60E4019E}"] == "test"
+
+
+def test_request_cookies_quoted_values() -> None:
+    """Test that quoted cookie values are handled consistently.
+
+    This tests the fix for issue #5397 where quoted cookie values were
+    handled inconsistently based on whether domain attributes were present.
+    The new parser should always unquote cookie values consistently.
+    """
+    # Test simple quoted cookie value
+    headers = CIMultiDict(COOKIE='sess="quoted_value"')
+    req = make_mocked_request("GET", "/", headers=headers)
+    # Quotes should be removed consistently
+    assert req.cookies == {"sess": "quoted_value"}
+
+    # Test quoted cookie with semicolon in value
+    headers = CIMultiDict(COOKIE='data="value;with;semicolons"')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"data": "value;with;semicolons"}
+
+    # Test mixed quoted and unquoted cookies
+    headers = CIMultiDict(
+        COOKIE='quoted="value1"; unquoted=value2; also_quoted="value3"'
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {
+        "quoted": "value1",
+        "unquoted": "value2",
+        "also_quoted": "value3",
+    }
+
+    # Test escaped quotes in cookie value
+    headers = CIMultiDict(COOKIE=r'escaped="value with \" quote"')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"escaped": 'value with " quote'}
+
+    # Test empty quoted value
+    headers = CIMultiDict(COOKIE='empty=""')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"empty": ""}
+
+
+def test_request_cookies_with_attributes() -> None:
+    """Test that cookie attributes are parsed as cookies per RFC 6265.
+
+    Per RFC 6265 Section 5.4, Cookie headers contain only name-value pairs.
+    Names that match attribute names (Domain, Path, etc.) should be treated
+    as regular cookies, not as attributes.
+    """
+    # Cookie with domain - both should be parsed as cookies
+    headers = CIMultiDict(COOKIE='sess="quoted_value"; Domain=.example.com')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"sess": "quoted_value", "Domain": ".example.com"}
+
+    # Cookie with multiple attribute names - all parsed as cookies
+    headers = CIMultiDict(COOKIE='token="abc123"; Path=/; Secure; HttpOnly')
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {"token": "abc123", "Path": "/", "Secure": "", "HttpOnly": ""}
+
+    # Multiple cookies with attribute names mixed in
+    headers = CIMultiDict(
+        COOKIE='c1="v1"; Domain=.example.com; c2="v2"; Path=/api; c3=v3; Secure'
+    )
+    req = make_mocked_request("GET", "/", headers=headers)
+    assert req.cookies == {
+        "c1": "v1",
+        "Domain": ".example.com",
+        "c2": "v2",
+        "Path": "/api",
+        "c3": "v3",
+        "Secure": "",
+    }
+
+
 def test_match_info() -> None:
     req = make_mocked_request("GET", "/")
     assert req._match_info is req.match_info
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_is_mutable_mapping() -> None:
     req = make_mocked_request("GET", "/")
     assert isinstance(req, MutableMapping)
@@ -316,6 +505,7 @@ def test_request_is_mutable_mapping() -> None:
     assert "value" == req["key"]
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_delitem() -> None:
     req = make_mocked_request("GET", "/")
     req["key"] = "value"
@@ -324,6 +514,7 @@ def test_request_delitem() -> None:
     assert "key" not in req
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_len() -> None:
     req = make_mocked_request("GET", "/")
     assert len(req) == 0
@@ -331,11 +522,91 @@ def test_request_len() -> None:
     assert len(req) == 1
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_request_iter() -> None:
     req = make_mocked_request("GET", "/")
     req["key"] = "value"
     req["key2"] = "value2"
-    assert set(req) == {"key", "key2"}
+    key3 = RequestKey("key3", str)
+    req[key3] = "value3"
+    assert set(req) == {"key", "key2", key3}
+
+
+def test_requestkey() -> None:
+    req = make_mocked_request("GET", "/")
+    key = RequestKey("key", str)
+    req[key] = "value"
+    assert req[key] == "value"
+    assert len(req) == 1
+    del req[key]
+    assert len(req) == 0
+
+
+def test_request_get_requestkey() -> None:
+    req = make_mocked_request("GET", "/")
+    key = RequestKey("key", int)
+    assert req.get(key, "foo") == "foo"
+    req[key] = 5
+    assert req.get(key, "foo") == 5
+
+
+def test_requestkey_repr_concrete() -> None:
+    key = RequestKey("key", int)
+    assert repr(key) in (
+        "<RequestKey(__channelexec__.key, type=int)>",  # pytest-xdist
+        "<RequestKey(__main__.key, type=int)>",
+    )
+    key2 = RequestKey("key", Request)
+    assert repr(key2) in (
+        # pytest-xdist:
+        "<RequestKey(__channelexec__.key, type=aiohttp.web_request.Request)>",
+        "<RequestKey(__main__.key, type=aiohttp.web_request.Request)>",
+    )
+
+
+def test_requestkey_repr_nonconcrete() -> None:
+    key = RequestKey("key", Iterator[int])
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<RequestKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
+
+
+def test_requestkey_repr_annotated() -> None:
+    key = RequestKey[Iterator[int]]("key")
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<RequestKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
+
+
+def test_str_key_warnings() -> None:
+    # Check if warnings are raised once per str key
+    req = make_mocked_request("GET", "/")
+
+    with pytest.warns(UserWarning):
+        req["test_str_key_warnings_key_1"] = "value"
+
+    with pytest.warns(UserWarning):
+        req["test_str_key_warnings_key_2"] = "value 2"
+
+    req["test_str_key_warnings_key_1"] = "value"
 
 
 def test___repr__() -> None:
@@ -369,6 +640,22 @@ def test_single_forwarded_header() -> None:
     assert req.forwarded[0]["for"] == "identifier"
     assert req.forwarded[0]["host"] == "identifier"
     assert req.forwarded[0]["proto"] == "identifier"
+
+
+def test_forwarded_re_performance() -> None:
+    FORWARDED_RE_TIME_THRESHOLD_SECONDS = 0.08
+    value = "{" + "f" * 54773 + "z\x00a=v"
+    start = time.perf_counter()
+    match = _FORWARDED_PAIR_RE.match(value)
+    elapsed = time.perf_counter() - start
+
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < FORWARDED_RE_TIME_THRESHOLD_SECONDS, (
+        f"Regex took {elapsed * 1000:.1f}ms, "
+        f"expected <{FORWARDED_RE_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+    )
+    # This example shouldn't produce a match either.
+    assert match is None
 
 
 @pytest.mark.parametrize(
@@ -590,8 +877,8 @@ def test_clone_headers_dict() -> None:
     assert req2.raw_headers == ((b"B", b"C"),)
 
 
-async def test_cannot_clone_after_read(protocol) -> None:
-    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+async def test_cannot_clone_after_read(protocol: BaseProtocol) -> None:
+    payload = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop())
     payload.feed_data(b"data")
     payload.feed_eof()
     req = make_mocked_request("GET", "/path", payload=payload)
@@ -613,7 +900,18 @@ async def test_make_too_big_request(protocol) -> None:
     assert err.value.status_code == 413
 
 
-async def test_make_too_big_request_adjust_limit(protocol) -> None:
+async def test_make_too_big_request_same_size_to_max(protocol: BaseProtocol) -> None:
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    large_file = 1024**2 * b"x"
+    payload.feed_data(large_file)
+    payload.feed_eof()
+    req = make_mocked_request("POST", "/", payload=payload)
+    resp_text = await req.read()
+
+    assert resp_text == large_file
+
+
+async def test_make_too_big_request_adjust_limit(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
@@ -649,7 +947,28 @@ async def test_multipart_formdata(protocol) -> None:
     assert dict(result) == {"a": "b", "c": "d"}
 
 
-async def test_multipart_formdata_file(protocol) -> None:
+async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> None:
+    # Ensure ValueError is raised when Content-Disposition has no name
+    payload = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop())
+    payload.feed_data(
+        b"-----------------------------326931944431359\r\n"
+        b"Content-Disposition: form-data\r\n"  # Missing name!
+        b"\r\n"
+        b"value\r\n"
+        b"-----------------------------326931944431359--\r\n"
+    )
+    content_type = (
+        "multipart/form-data; boundary=---------------------------326931944431359"
+    )
+    payload.feed_eof()
+    req = make_mocked_request(
+        "POST", "/", headers={"CONTENT-TYPE": content_type}, payload=payload
+    )
+    with pytest.raises(ValueError, match="Multipart field missing name"):
+        await req.post()
+
+
+async def test_multipart_formdata_file(protocol: BaseProtocol) -> None:
     # Make sure file uploads work, even without a content type
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     payload.feed_data(
@@ -674,7 +993,61 @@ async def test_multipart_formdata_file(protocol) -> None:
     result["a_file"].file.close()
 
 
-async def test_make_too_big_request_limit_None(protocol) -> None:
+async def test_multipart_formdata_headers_too_many(protocol: BaseProtocol) -> None:
+    many = b"".join(f"X-{i}: a\r\n".encode() for i in range(130))
+    body = (
+        b"--b\r\n"
+        b'Content-Disposition: form-data; name="a"\r\n' + many + b"\r\n1\r\n"
+        b"--b--\r\n"
+    )
+    content_type = "multipart/form-data; boundary=b"
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    payload.feed_data(body)
+    payload.feed_eof()
+    req = make_mocked_request(
+        "POST",
+        "/",
+        headers={"CONTENT-TYPE": content_type},
+        payload=payload,
+    )
+
+    with pytest.raises(BadHttpMessage, match="Too many headers received"):
+        await req.post()
+
+
+async def test_multipart_formdata_header_too_long(protocol: BaseProtocol) -> None:
+    k = b"t" * 4100
+    body = (
+        b"--b\r\n"
+        b'Content-Disposition: form-data; name="a"\r\n'
+        + k
+        + b":"
+        + k
+        + b"\r\n"
+        + b"\r\n1\r\n"
+        b"--b--\r\n"
+    )
+    content_type = "multipart/form-data; boundary=b"
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    payload.feed_data(body)
+    payload.feed_eof()
+    req = make_mocked_request(
+        "POST",
+        "/",
+        headers={"CONTENT-TYPE": content_type},
+        payload=payload,
+    )
+
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(LineTooLong, match=match):
+        await req.post()
+
+
+async def test_make_too_big_request_limit_None(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
     large_file = 1024**2 * b"x"
     too_large_file = large_file + b"x"
@@ -700,6 +1073,7 @@ def test_remote_peername_unix() -> None:
     assert req.remote == "/path/to/sock"
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.RequestKey:UserWarning")
 def test_save_state_on_clone() -> None:
     req = make_mocked_request("GET", "/")
     req["key"] = "val"

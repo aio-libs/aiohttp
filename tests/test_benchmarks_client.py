@@ -4,9 +4,10 @@ import asyncio
 
 import pytest
 from pytest_codspeed import BenchmarkFixture
+from yarl import URL
 
-from aiohttp import hdrs, web
-from aiohttp.pytest_plugin import AiohttpClient
+from aiohttp import hdrs, request, web
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 
 
 def test_one_hundred_simple_get_requests(
@@ -28,6 +29,62 @@ def test_one_hundred_simple_get_requests(
         for _ in range(message_count):
             await client.get("/")
         await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
+def test_one_hundred_simple_get_requests_alternating_clients(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 100 simple GET requests with alternating clients."""
+    message_count = 100
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client1 = await aiohttp_client(app)
+        client2 = await aiohttp_client(app)
+        for i in range(message_count):
+            if i % 2 == 0:
+                await client1.get("/")
+            else:
+                await client2.get("/")
+        await client1.close()
+        await client2.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
+def test_one_hundred_simple_get_requests_no_session(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_server: AiohttpServer,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark 100 simple GET requests without a session."""
+    message_count = 100
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = loop.run_until_complete(aiohttp_server(app))
+    url = URL(f"http://{server.host}:{server.port}/")
+
+    async def run_client_benchmark() -> None:
+        for _ in range(message_count):
+            async with request("GET", url):
+                pass
 
     @benchmark
     def _run() -> None:
@@ -120,14 +177,14 @@ def test_one_hundred_get_requests_with_30000_chunked_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_512kib_chunked_payload(
+def test_one_hundred_get_requests_with_10mb_chunked_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 512KiB using read."""
+    """Benchmark 100 GET requests with a payload of 10 MiB using read."""
     message_count = 100
-    payload = b"a" * (2**19)
+    payload = b"a" * (10 * 2**20)
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=payload)
@@ -149,14 +206,14 @@ def test_one_hundred_get_requests_with_512kib_chunked_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_iter_chunks_on_512kib_chunked_payload(
+def test_one_hundred_get_requests_iter_chunks_on_10mb_chunked_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 512KiB using iter_chunks."""
+    """Benchmark 100 GET requests with a payload of 10 MiB using iter_chunks."""
     message_count = 100
-    payload = b"a" * (2**19)
+    payload = b"a" * (10 * 2**20)
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=payload)
@@ -270,14 +327,14 @@ def test_one_hundred_get_requests_with_30000_content_length_payload(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_512kib_content_length_payload(
+def test_one_hundred_get_requests_with_10mb_content_length_payload(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 512KiB."""
+    """Benchmark 100 GET requests with a payload of 10 MiB."""
     message_count = 100
-    payload = b"a" * (2**19)
+    payload = b"a" * (10 * 2**20)
     headers = {hdrs.CONTENT_LENGTH: str(len(payload))}
 
     async def handler(request: web.Request) -> web.Response:
@@ -414,14 +471,15 @@ def test_ten_streamed_responses_iter_chunked_4096(
         loop.run_until_complete(run_client_benchmark())
 
 
-def test_ten_streamed_responses_iter_chunked_65536(
+def test_ten_streamed_responses_iter_chunked_1mb(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 10 streamed responses using iter_chunked 65536."""
+    """Benchmark 10 streamed responses using iter_chunked 1 MiB."""
     message_count = 10
-    data = b"x" * 65536  # 64 KiB chunk size, 64 KiB iter_chunked
+    MB = 2**20
+    data = b"x" * 10 * MB
 
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()
@@ -437,8 +495,38 @@ def test_ten_streamed_responses_iter_chunked_65536(
         client = await aiohttp_client(app)
         for _ in range(message_count):
             resp = await client.get("/")
-            async for _ in resp.content.iter_chunked(65536):
+            async for _ in resp.content.iter_chunked(MB):
                 pass
+        await client.close()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(run_client_benchmark())
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_ten_compressed_responses_iter_chunked_1mb(
+    loop: asyncio.AbstractEventLoop,
+    aiohttp_client: AiohttpClient,
+    benchmark: BenchmarkFixture,
+) -> None:
+    """Benchmark compressed GET request read via large iter_chunked."""
+    MB = 2**20
+    data = b"x" * 10 * MB
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=data)
+        resp.enable_compression()
+        return resp
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    async def run_client_benchmark() -> None:
+        client = await aiohttp_client(app)
+        resp = await client.get("/")
+        async for _ in resp.content.iter_chunked(MB):
+            pass
         await client.close()
 
     @benchmark
@@ -453,7 +541,7 @@ def test_ten_streamed_responses_iter_chunks(
 ) -> None:
     """Benchmark 10 streamed responses using iter_chunks."""
     message_count = 10
-    data = b"x" * 65536  # 64 KiB chunk size
+    data = b"x" * 2**20
 
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()

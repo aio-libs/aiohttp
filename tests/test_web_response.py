@@ -4,8 +4,8 @@ import gzip
 import io
 import json
 import sys
+from collections.abc import AsyncIterator, Iterator
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncIterator, Optional
 from unittest import mock
 
 import aiosignal
@@ -13,13 +13,21 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from re_assert import Matches
 
-from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs
+from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.helpers import ETag
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
 from aiohttp.payload import BytesPayload, StringPayload
-from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
+from aiohttp.test_utils import make_mocked_request
+from aiohttp.web import (
+    ContentCoding,
+    Request,
+    Response,
+    ResponseKey,
+    StreamResponse,
+    json_response,
+)
 
 
 def make_request(
@@ -103,6 +111,7 @@ def test_stream_response_eq() -> None:
     assert not resp1 == resp2
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_stream_response_is_mutable_mapping() -> None:
     resp = StreamResponse()
     assert isinstance(resp, collections.abc.MutableMapping)
@@ -111,6 +120,7 @@ def test_stream_response_is_mutable_mapping() -> None:
     assert "value" == resp["key"]
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_stream_response_delitem() -> None:
     resp = StreamResponse()
     resp["key"] = "value"
@@ -118,6 +128,7 @@ def test_stream_response_delitem() -> None:
     assert "key" not in resp
 
 
+@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
 def test_stream_response_len() -> None:
     resp = StreamResponse()
     assert len(resp) == 0
@@ -125,11 +136,91 @@ def test_stream_response_len() -> None:
     assert len(resp) == 1
 
 
-def test_request_iter() -> None:
+@pytest.mark.filterwarnings(r"ignore:.*web\.ResponseKey:UserWarning")
+def test_response_iter() -> None:
     resp = StreamResponse()
     resp["key"] = "value"
     resp["key2"] = "value2"
-    assert set(resp) == {"key", "key2"}
+    key3 = ResponseKey("key3", str)
+    resp[key3] = "value3"
+    assert set(resp) == {"key", "key2", key3}
+
+
+def test_responsekey() -> None:
+    resp = StreamResponse()
+    key = ResponseKey("key", str)
+    resp[key] = "value"
+    assert resp[key] == "value"
+    assert len(resp) == 1
+    del resp[key]
+    assert len(resp) == 0
+
+
+def test_response_get_responsekey() -> None:
+    resp = StreamResponse()
+    key = ResponseKey("key", int)
+    assert resp.get(key, "foo") == "foo"
+    resp[key] = 5
+    assert resp.get(key, "foo") == 5
+
+
+def test_responsekey_repr_concrete() -> None:
+    key = ResponseKey("key", int)
+    assert repr(key) in (
+        "<ResponseKey(__channelexec__.key, type=int)>",  # pytest-xdist
+        "<ResponseKey(__main__.key, type=int)>",
+    )
+    key2 = ResponseKey("key", Request)
+    assert repr(key2) in (
+        # pytest-xdist:
+        "<ResponseKey(__channelexec__.key, type=aiohttp.web_request.Request)>",
+        "<ResponseKey(__main__.key, type=aiohttp.web_request.Request)>",
+    )
+
+
+def test_responsekey_repr_nonconcrete() -> None:
+    key = ResponseKey("key", Iterator[int])
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
+
+
+def test_responsekey_repr_annotated() -> None:
+    key = ResponseKey[Iterator[int]]("key")
+    if sys.version_info < (3, 11):
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator)>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator)>",
+        )
+    else:
+        assert repr(key) in (
+            # pytest-xdist:
+            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+            "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
+        )
+
+
+def test_str_key_warnings() -> None:
+    # Check if warnings are raised once per str key
+    resp = StreamResponse()
+
+    with pytest.warns(UserWarning):
+        resp["test_str_key_warnings_key_1"] = "value"
+
+    with pytest.warns(UserWarning):
+        resp["test_str_key_warnings_key_2"] = "value 2"
+
+    resp["test_str_key_warnings_key_1"] = "value"
 
 
 def test_content_length() -> None:
@@ -494,26 +585,6 @@ async def test_force_compression_deflate() -> None:
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_force_compression_deflate_large_payload() -> None:
-    """Make sure a warning is thrown for large payloads compressed in the event loop."""
-    req = make_request(
-        "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: "gzip, deflate"})
-    )
-    resp = Response(body=b"large")
-
-    resp.enable_compression(ContentCoding.deflate)
-    assert resp.compression
-
-    with (
-        pytest.warns(Warning, match="Synchronous compression of large response bodies"),
-        mock.patch("aiohttp.web_response.LARGE_BODY_SIZE", 2),
-    ):
-        msg = await resp.prepare(req)
-        assert msg is not None
-    assert "deflate" == resp.headers.get(hdrs.CONTENT_ENCODING)
-
-
-@pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_no_accept_deflate() -> None:
     req = make_request("GET", "/")
     resp = StreamResponse()
@@ -858,8 +929,8 @@ async def test_cannot_write_eof_twice() -> None:
     resp = StreamResponse()
     writer = mock.Mock()
     resp_impl = await resp.prepare(make_request("GET", "/"))
-    resp_impl.write = make_mocked_coro(None)
-    resp_impl.write_eof = make_mocked_coro(None)
+    resp_impl.write = mock.AsyncMock(None)
+    resp_impl.write_eof = mock.AsyncMock(None)
 
     await resp.write(b"data")
     assert resp_impl.write.called
@@ -1008,6 +1079,27 @@ def test_set_status_with_empty_reason() -> None:
     assert resp.reason == ""
 
 
+def test_set_status_reason_with_cr() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\rSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_lf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\nSet-Cookie: evil=1")
+
+
+def test_set_status_reason_with_crlf() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(ValueError, match="Reason cannot contain"):
+        resp.set_status(200, "OK\r\nSet-Cookie: evil=1")
+
+
 async def test_start_force_close() -> None:
     req = make_request("GET", "/")
     resp = StreamResponse()
@@ -1065,7 +1157,7 @@ async def test_prepare_twice() -> None:
 
 async def test_prepare_calls_signal() -> None:
     app = mock.Mock()
-    sig = make_mocked_coro()
+    sig = mock.AsyncMock()
     on_response_prepare = aiosignal.Signal(app)
     on_response_prepare.append(sig)
     req = make_request("GET", "/", app=app, on_response_prepare=on_response_prepare)
@@ -1164,6 +1256,13 @@ def test_ctor_content_type_with_extra() -> None:
     assert resp.headers["content-type"] == "text/plain; version=0.0.4; charset=utf-8"
 
 
+def test_invalid_content_type_parses_to_application_octect_stream() -> None:
+    resp = Response(text="test test", content_type="jpeg")
+
+    assert resp.content_type == "application/octet-stream"
+    assert resp.headers["content-type"] == "jpeg; charset=utf-8"
+
+
 def test_ctor_both_content_type_param_and_header_with_text() -> None:
     with pytest.raises(ValueError):
         Response(
@@ -1247,7 +1346,7 @@ class CustomIO(io.IOBase):
         ),
     ),
 )
-def test_payload_body_get_text(payload, expected: Optional[str]) -> None:
+def test_payload_body_get_text(payload, expected: str | None) -> None:
     resp = Response(body=payload)
     if expected is None:
         with pytest.raises(TypeError):
@@ -1301,9 +1400,9 @@ async def test_render_with_body(buf, writer) -> None:
     )
 
 
-async def test_multiline_reason(buf, writer) -> None:
-    with pytest.raises(ValueError, match=r"Reason cannot contain \\n"):
-        Response(reason="Bad\r\nInjected-header: foo")
+async def test_multiline_reason(buf: bytearray, writer: AbstractStreamWriter) -> None:
+    with pytest.raises(ValueError, match=r"Reason cannot contain \\r or \\n"):
+        web.Response(reason="Bad\r\nInjected-header: foo")
 
 
 async def test_send_set_cookie_header(buf, writer) -> None:
@@ -1329,8 +1428,8 @@ async def test_send_set_cookie_header(buf, writer) -> None:
 
 async def test_consecutive_write_eof() -> None:
     writer = mock.Mock()
-    writer.write_eof = make_mocked_coro()
-    writer.write_headers = make_mocked_coro()
+    writer.write_eof = mock.AsyncMock()
+    writer.write_headers = mock.AsyncMock()
     req = make_request("GET", "/", writer=writer)
     data = b"data"
     resp = Response(body=data)
@@ -1523,6 +1622,50 @@ class TestJSONResponse:
         assert "application/vnd.json+api" == resp.content_type
 
 
+class TestJSONBytesResponse:
+    def test_content_type_is_application_json_by_default(self) -> None:
+        resp = web.json_bytes_response(
+            "", dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+        assert "application/json" == resp.content_type
+
+    def test_passing_body_only(self) -> None:
+        resp = web.json_bytes_response(
+            dumps=lambda x: json.dumps(x).encode("utf-8"),
+            body=b'"jaysawn"',
+        )
+        assert resp.body == b'"jaysawn"'
+
+    def test_data_and_body_raises_value_error(self) -> None:
+        with pytest.raises(ValueError) as excinfo:
+            web.json_bytes_response(
+                data="foo", dumps=lambda x: json.dumps(x).encode("utf-8"), body=b"bar"
+            )
+        expected_message = "only one of data or body should be specified"
+        assert expected_message == excinfo.value.args[0]
+
+    def test_body_is_json_encoded_bytes(self) -> None:
+        resp = web.json_bytes_response(
+            {"foo": 42}, dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+        assert json.dumps({"foo": 42}).encode("utf-8") == resp.body
+
+    def test_content_type_is_overrideable(self) -> None:
+        resp = web.json_bytes_response(
+            {"foo": 42},
+            dumps=lambda x: json.dumps(x).encode("utf-8"),
+            content_type="application/vnd.json+api",
+        )
+        assert "application/vnd.json+api" == resp.content_type
+
+    def test_custom_dumps(self) -> None:
+        resp = web.json_bytes_response(
+            {"foo": 42},
+            dumps=lambda x: json.dumps(x, separators=(",", ":")).encode("utf-8"),
+        )
+        assert b'{"foo":42}' == resp.body
+
+
 @pytest.mark.parametrize("loose_header_type", (MultiDict, CIMultiDict, dict))
 async def test_passing_cimultidict_to_web_response_not_mutated(
     loose_header_type: type,
@@ -1533,3 +1676,46 @@ async def test_passing_cimultidict_to_web_response_not_mutated(
     await resp.prepare(req)
     assert resp.content_length == 6
     assert not headers
+
+
+async def test_stream_response_sends_headers_immediately() -> None:
+    """Test that StreamResponse sends headers immediately."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True)
+    writer.write_headers = mock.AsyncMock()
+    writer.send_headers = mock.Mock()
+    writer.write_eof = mock.AsyncMock()
+
+    req = make_request("GET", "/", writer=writer)
+    resp = StreamResponse()
+
+    # StreamResponse should have _send_headers_immediately = True
+    assert resp._send_headers_immediately is True
+
+    # Prepare the response
+    await resp.prepare(req)
+
+    # Headers should be sent immediately
+    writer.send_headers.assert_called_once()
+
+
+async def test_response_buffers_headers() -> None:
+    """Test that Response buffers headers for packet coalescing."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True)
+    writer.write_headers = mock.AsyncMock()
+    writer.send_headers = mock.Mock()
+    writer.write_eof = mock.AsyncMock()
+
+    req = make_request("GET", "/", writer=writer)
+    resp = Response(body=b"hello")
+
+    # Response should have _send_headers_immediately = False
+    assert resp._send_headers_immediately is False
+
+    # Prepare the response
+    await resp.prepare(req)
+
+    # Headers should NOT be sent immediately
+    writer.send_headers.assert_not_called()
+
+    # But write_headers should have been called
+    writer.write_headers.assert_called_once()

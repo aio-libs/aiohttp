@@ -1,22 +1,30 @@
 import asyncio
 import base64
 import os
+import platform
 import socket
 import ssl
 import sys
-import zlib
+import time
+from collections.abc import AsyncIterator, Callable, Generator, Iterator
+from concurrent.futures import Future, ThreadPoolExecutor
 from hashlib import md5, sha1, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Generator, Iterator
+from typing import Any
 from unittest import mock
 from uuid import uuid4
 
-import isal.isal_zlib
 import pytest
-import zlib_ng.zlib_ng
-from blockbuster import blockbuster_ctx
 
+try:
+    from blockbuster import blockbuster_ctx
+
+    HAS_BLOCKBUSTER = True
+except ImportError:  # For downstreams only  # pragma: no cover
+    HAS_BLOCKBUSTER = False
+
+from aiohttp import payload
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.http import WS_KEY
@@ -33,8 +41,23 @@ except ImportError:
     TRUSTME = False
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    # On Windows with Python 3.10/3.11, proxy.py's threaded mode can leave
+    # sockets not fully released by the time pytest's unraisableexception
+    # plugin collects warnings during teardown. Suppress these warnings
+    # since they are not actionable and only affect older Python versions.
+    if os.name == "nt" and sys.version_info < (3, 12):
+        config.addinivalue_line(
+            "filterwarnings",
+            "ignore:Exception ignored in.*socket.*:pytest.PytestUnraisableExceptionWarning",
+        )
+
+
 try:
-    import uvloop
+    if sys.platform == "win32":
+        import winloop as uvloop
+    else:
+        import uvloop
 except ImportError:
     uvloop = None  # type: ignore[assignment]
 
@@ -44,7 +67,7 @@ IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=HAS_BLOCKBUSTER)
 def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
     # Allow selectively disabling blockbuster for specific tests
     # using the @pytest.mark.skip_blockbuster marker.
@@ -62,10 +85,6 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
     with blockbuster_ctx(
         "aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]
     ) as bb:
-        # TODO: Fix blocking call in ClientRequest's constructor.
-        # https://github.com/aio-libs/aiohttp/issues/10435
-        for func in ["io.TextIOWrapper.read", "os.stat"]:
-            bb.functions[func].can_block_in("aiohttp/client_reqrep.py", "update_auth")
         for func in [
             "os.getcwd",
             "os.readlink",
@@ -76,6 +95,19 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             bb.functions[func].can_block_in(
                 "aiohttp/web_urldispatcher.py", "add_static"
             )
+        # save/load is not async, so we must allow this:
+        for func in ("io.TextIOWrapper.read", "io.BufferedReader.read"):
+            bb.functions[func].can_block_in("aiohttp/cookiejar.py", "load")
+        for func in ("io.TextIOWrapper.write", "io.BufferedWriter.write"):
+            bb.functions[func].can_block_in("aiohttp/cookiejar.py", "save")
+        # Note: coverage.py uses locking internally which can cause false positives
+        # in blockbuster when it instruments code. This is particularly problematic
+        # on Windows where it can lead to flaky test failures.
+        # Additionally, we're not particularly worried about threading.Lock.acquire happening
+        # by accident in this codebase as we primarily use asyncio.Lock for
+        # synchronization in async code.
+        # Allow lock.acquire calls to prevent these false positives
+        bb.functions["threading.Lock.acquire"].deactivate()
         yield
 
 
@@ -230,21 +262,19 @@ def create_mocked_conn(loop: Any):
 
 
 @pytest.fixture
-def selector_loop():
-    policy = asyncio.WindowsSelectorEventLoopPolicy()
-    asyncio.set_event_loop_policy(policy)
-
-    with loop_context(policy.new_event_loop) as _loop:
+def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    factory = asyncio.SelectorEventLoop
+    with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 
 
 @pytest.fixture
 def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    policy = uvloop.EventLoopPolicy()
-    asyncio.set_event_loop_policy(policy)
-
-    with loop_context(policy.new_event_loop) as _loop:
+    if uvloop is None:
+        pytest.skip("uvloop is not installed")
+    factory = uvloop.new_event_loop
+    with loop_context(factory) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 
@@ -272,7 +302,52 @@ def netrc_contents(
 
 
 @pytest.fixture
-def start_connection():
+def netrc_default_contents(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Create a temporary netrc file with default test credentials and set NETRC env var."""
+    netrc_file = tmp_path / ".netrc"
+    netrc_file.write_text("default login netrc_user password netrc_pass\n")
+
+    monkeypatch.setenv("NETRC", str(netrc_file))
+
+    return netrc_file
+
+
+@pytest.fixture
+def no_netrc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure NETRC environment variable is not set."""
+    monkeypatch.delenv("NETRC", raising=False)
+
+
+@pytest.fixture
+def netrc_other_host(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Create a temporary netrc file with credentials for a different host and set NETRC env var."""
+    netrc_file = tmp_path / ".netrc"
+    netrc_file.write_text("machine other.example.com login user password pass\n")
+
+    monkeypatch.setenv("NETRC", str(netrc_file))
+
+    return netrc_file
+
+
+@pytest.fixture
+def netrc_home_directory(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    """Create a netrc file in a mocked home directory without setting NETRC env var."""
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    netrc_filename = "_netrc" if platform.system() == "Windows" else ".netrc"
+    netrc_file = home_dir / netrc_filename
+    netrc_file.write_text("default login netrc_user password netrc_pass\n")
+
+    home_env_var = "USERPROFILE" if platform.system() == "Windows" else "HOME"
+    monkeypatch.setenv(home_env_var, str(home_dir))
+    # Ensure NETRC env var is not set
+    monkeypatch.delenv("NETRC", raising=False)
+
+    return netrc_file
+
+
+@pytest.fixture
+def start_connection() -> Iterator[mock.Mock]:
     with mock.patch(
         "aiohttp.connector.aiohappyeyeballs.start_connection",
         autospec=True,
@@ -323,13 +398,50 @@ def unused_port_socket() -> Generator[socket.socket, None, None]:
         s.close()
 
 
-@pytest.fixture(params=[zlib, zlib_ng.zlib_ng, isal.isal_zlib])
+@pytest.fixture(params=["zlib", "zlib_ng.zlib_ng", "isal.isal_zlib"])
 def parametrize_zlib_backend(
     request: pytest.FixtureRequest,
 ) -> Generator[None, None, None]:
     original_backend: ZLibBackendProtocol = ZLibBackend._zlib_backend
-    set_zlib_backend(request.param)
-
+    backend = pytest.importorskip(request.param)
+    set_zlib_backend(backend)
     yield
 
     set_zlib_backend(original_backend)
+
+
+@pytest.fixture()
+async def cleanup_payload_pending_file_closes(
+    loop: asyncio.AbstractEventLoop,
+) -> AsyncIterator[None]:
+    """Ensure all pending file close operations complete during test teardown."""
+    yield
+    if payload._CLOSE_FUTURES:
+        # Only wait for futures from the current loop
+        loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
+        if loop_futures:
+            await asyncio.gather(*loop_futures, return_exceptions=True)
+
+
+@pytest.fixture
+def slow_executor() -> Iterator[ThreadPoolExecutor]:
+    """Executor that adds delay to simulate slow operations.
+
+    Useful for testing cancellation and race conditions in compression tests.
+    """
+
+    class SlowExecutor(ThreadPoolExecutor):
+        """Executor that adds delay to operations."""
+
+        def submit(
+            self, fn: Callable[..., Any], /, *args: Any, **kwargs: Any
+        ) -> Future[Any]:
+            def slow_fn(*args: Any, **kwargs: Any) -> Any:
+                time.sleep(0.05)  # Add delay to simulate slow operation
+                return fn(*args, **kwargs)
+
+            return super().submit(slow_fn, *args, **kwargs)
+
+    executor = SlowExecutor(max_workers=10)
+    yield executor
+    executor.shutdown(wait=True)

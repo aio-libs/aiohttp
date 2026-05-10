@@ -14,10 +14,11 @@ import pkgutil
 import socket
 import subprocess
 import sys
+from collections.abc import Generator
 from itertools import chain
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Generator, List, Union
+from typing import TYPE_CHECKING, Union
 
 import pytest
 
@@ -28,8 +29,8 @@ import aiohttp
 
 
 def _mark_aiohttp_worker_for_skipping(
-    importables: List[str],
-) -> List[Union[str, "ParameterSet"]]:
+    importables: list[str],
+) -> list[Union[str, "ParameterSet"]]:
     return [
         (
             pytest.param(
@@ -45,7 +46,7 @@ def _mark_aiohttp_worker_for_skipping(
     ]
 
 
-def _find_all_importables(pkg: ModuleType) -> List[str]:
+def _find_all_importables(pkg: ModuleType) -> list[str]:
     """Find all importables in the project.
 
     Return them in order.

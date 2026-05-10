@@ -12,6 +12,8 @@ import pytest
 from re_assert import Matches
 
 from aiohttp import streams
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
+from aiohttp.http_exceptions import LineTooLong
 
 DATA = b"line1\nline2\nline3\n"
 
@@ -24,7 +26,7 @@ def chunkify(seq, n):
 async def create_stream():
     loop = asyncio.get_event_loop()
     protocol = mock.Mock(_reading_paused=False)
-    stream = streams.StreamReader(protocol, 2**16, loop=loop)
+    stream = streams.StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
     stream.feed_data(DATA)
     stream.feed_eof()
     return stream
@@ -72,7 +74,7 @@ class TestStreamReader:
     DATA = b"line1\nline2\nline3\n"
 
     def _make_one(self, *args, **kwargs):
-        kwargs.setdefault("limit", 2**16)
+        kwargs.setdefault("limit", 2**18)
         return streams.StreamReader(mock.Mock(_reading_paused=False), *args, **kwargs)
 
     async def test_create_waiter(self) -> None:
@@ -325,7 +327,7 @@ class TestStreamReader:
         stream.feed_data(b"li")
         stream.feed_data(b"ne1\nline2\n")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(LineTooLong):
             await stream.readline()
         # The buffer should contain the remaining data after exception
         stream.feed_eof()
@@ -346,7 +348,7 @@ class TestStreamReader:
 
         loop.call_soon(cb)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(LineTooLong):
             await stream.readline()
         data = await stream.read()
         assert b"chunk3\n" == data
@@ -436,7 +438,7 @@ class TestStreamReader:
         stream.feed_data(b"li")
         stream.feed_data(b"ne1" + separator + b"line2" + separator)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(LineTooLong):
             await stream.readuntil(separator)
         # The buffer should contain the remaining data after exception
         stream.feed_eof()
@@ -458,7 +460,7 @@ class TestStreamReader:
 
         loop.call_soon(cb)
 
-        with pytest.raises(ValueError, match="Chunk too big"):
+        with pytest.raises(LineTooLong):
             await stream.readuntil(separator)
         data = await stream.read()
         assert b"chunk3#" == data
@@ -1130,7 +1132,7 @@ async def test_empty_stream_reader() -> None:
     assert s.set_exception(ValueError()) is None
     assert s.exception() is None
     assert s.feed_eof() is None
-    assert s.feed_data(b"data") is None
+    assert s.feed_data(b"data") is False
     assert s.at_eof()
     assert (await s.wait_eof()) is None
     assert await s.read() == b""
@@ -1292,7 +1294,7 @@ class TestDataQueue:
 
 async def test_feed_data_waiters(protocol) -> None:
     loop = asyncio.get_event_loop()
-    reader = streams.StreamReader(protocol, 2**16, loop=loop)
+    reader = streams.StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
     waiter = reader._waiter = loop.create_future()
     eof_waiter = reader._eof_waiter = loop.create_future()
 
@@ -1320,7 +1322,7 @@ async def test_feed_data_completed_waiters(protocol) -> None:
 
 async def test_feed_eof_waiters(protocol) -> None:
     loop = asyncio.get_event_loop()
-    reader = streams.StreamReader(protocol, 2**16, loop=loop)
+    reader = streams.StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
     waiter = reader._waiter = loop.create_future()
     eof_waiter = reader._eof_waiter = loop.create_future()
 
@@ -1352,7 +1354,7 @@ async def test_feed_eof_cancelled(protocol) -> None:
 
 async def test_on_eof(protocol) -> None:
     loop = asyncio.get_event_loop()
-    reader = streams.StreamReader(protocol, 2**16, loop=loop)
+    reader = streams.StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
 
     on_eof = mock.Mock()
     reader.on_eof(on_eof)
@@ -1373,7 +1375,7 @@ async def test_on_eof_empty_reader() -> None:
 
 async def test_on_eof_exc_in_callback(protocol) -> None:
     loop = asyncio.get_event_loop()
-    reader = streams.StreamReader(protocol, 2**16, loop=loop)
+    reader = streams.StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
 
     on_eof = mock.Mock()
     on_eof.side_effect = ValueError
@@ -1408,7 +1410,7 @@ async def test_on_eof_eof_is_set(protocol) -> None:
 
 async def test_on_eof_eof_is_set_exception(protocol) -> None:
     loop = asyncio.get_event_loop()
-    reader = streams.StreamReader(protocol, 2**16, loop=loop)
+    reader = streams.StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
     reader.feed_eof()
 
     on_eof = mock.Mock()
@@ -1454,7 +1456,7 @@ async def test_set_exception_cancelled(protocol) -> None:
 
 async def test_set_exception_eof_callbacks(protocol) -> None:
     loop = asyncio.get_event_loop()
-    reader = streams.StreamReader(protocol, 2**16, loop=loop)
+    reader = streams.StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
 
     on_eof = mock.Mock()
     reader.on_eof(on_eof)
@@ -1552,3 +1554,173 @@ async def test_stream_reader_iter_chunks_chunked_encoding(protocol) -> None:
 
 def test_isinstance_check() -> None:
     assert isinstance(streams.EMPTY_PAYLOAD, streams.StreamReader)
+
+
+async def test_stream_reader_pause_on_high_water_chunks(
+    protocol: mock.Mock,
+) -> None:
+    """Test that reading is paused when chunk count exceeds high water mark."""
+    loop = asyncio.get_event_loop()
+    # Use small limit so high_water_chunks is small: limit // 16 = 10
+    stream = streams.StreamReader(protocol, limit=160, loop=loop)
+
+    assert stream._high_water_chunks == 10
+    assert stream._low_water_chunks == 5
+
+    # Feed chunks until we exceed high_water_chunks
+    for i in range(12):
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b"x")  # 1 byte per chunk
+        stream.end_http_chunk_receiving()
+
+    # pause_reading should have been called when chunk count exceeded 10
+    protocol.pause_reading.assert_called()
+
+
+async def test_stream_reader_resume_on_low_water_chunks(
+    protocol: mock.Mock,
+) -> None:
+    """Test that reading resumes when chunk count drops below low water mark."""
+    loop = asyncio.get_event_loop()
+    # Use small limit so high_water_chunks is small: limit // 16 = 10
+    stream = streams.StreamReader(protocol, limit=160, loop=loop)
+
+    assert stream._high_water_chunks == 10
+    assert stream._low_water_chunks == 5
+
+    # Feed chunks until we exceed high_water_chunks
+    for i in range(12):
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b"x")  # 1 byte per chunk
+        stream.end_http_chunk_receiving()
+
+    # Simulate that reading was paused
+    protocol._reading_paused = True
+    protocol.pause_reading.reset_mock()
+
+    # Read data to reduce both size and chunk count
+    # Reading will consume chunks and reduce _http_chunk_splits
+    data = await stream.read(10)
+    assert data == b"xxxxxxxxxx"
+
+    # resume_reading should have been called when both size and chunk count
+    # dropped below their respective low water marks
+    protocol.resume_reading.assert_called()
+
+
+async def test_stream_reader_no_resume_when_chunks_still_high(
+    protocol: mock.Mock,
+) -> None:
+    """Test that reading doesn't resume if chunk count is still above low water."""
+    loop = asyncio.get_event_loop()
+    # Use small limit so high_water_chunks is small: limit // 4 = 10
+    stream = streams.StreamReader(protocol, limit=40, loop=loop)
+
+    # Feed many chunks
+    for i in range(12):
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b"x")
+        stream.end_http_chunk_receiving()
+
+    # Simulate that reading was paused
+    protocol._reading_paused = True
+
+    # Read only a few bytes - chunk count will still be high
+    data = await stream.read(2)
+    assert data == b"xx"
+
+    # resume_reading should NOT be called because chunk count is still >= low_water_chunks
+    protocol.resume_reading.assert_not_called()
+
+
+async def test_stream_reader_read_non_chunked_response(
+    protocol: mock.Mock,
+) -> None:
+    """Test that non-chunked responses work correctly (no chunk tracking)."""
+    loop = asyncio.get_event_loop()
+    stream = streams.StreamReader(protocol, limit=40, loop=loop)
+
+    # Non-chunked: just feed data without begin/end_http_chunk_receiving
+    stream.feed_data(b"Hello World")
+
+    # _http_chunk_splits should be None for non-chunked responses
+    assert stream._http_chunk_splits is None
+
+    # Reading should work without issues
+    data = await stream.read(5)
+    assert data == b"Hello"
+
+    data = await stream.read(6)
+    assert data == b" World"
+
+
+async def test_stream_reader_resume_non_chunked_when_paused(
+    protocol: mock.Mock,
+) -> None:
+    """Test that resume works for non-chunked responses when paused due to size."""
+    loop = asyncio.get_event_loop()
+    # Small limit so we can trigger pause via size
+    stream = streams.StreamReader(protocol, limit=10, loop=loop)
+
+    # Feed data that exceeds high_water (limit * 2 = 20)
+    stream.feed_data(b"x" * 25)
+
+    # Simulate that reading was paused due to size
+    protocol._reading_paused = True
+    protocol.pause_reading.assert_called()
+
+    # Read enough to drop below low_water (limit = 10)
+    data = await stream.read(20)
+    assert data == b"x" * 20
+
+    # resume_reading should be called (size is now 5 < low_water 10)
+    protocol.resume_reading.assert_called()
+
+
+@pytest.mark.parametrize("limit", (1, 4, 7, 16))
+async def test_stream_reader_small_limit_resumes_reading(
+    protocol: mock.Mock,
+    limit: int,
+) -> None:
+    """Test that small limits still allow resume_reading to be called.
+
+    Even with very small limits, high_water_chunks should be at least 4
+    and low_water_chunks should be at least 2, with high > low to ensure
+    proper flow control.
+    """
+    loop = asyncio.get_event_loop()
+    stream = streams.StreamReader(protocol, limit=limit, loop=loop)
+
+    # Verify minimum thresholds are enforced and high > low
+    assert stream._high_water_chunks == 4
+    assert stream._low_water_chunks == 2
+    assert stream._high_water_chunks > stream._low_water_chunks
+
+    # Set up pause/resume side effects
+    def pause_reading() -> None:
+        protocol._reading_paused = True
+
+    protocol.pause_reading.side_effect = pause_reading
+
+    def resume_reading() -> None:
+        protocol._reading_paused = False
+
+    protocol.resume_reading.side_effect = resume_reading
+
+    # Feed 5 chunks (triggers pause at > high_water_chunks which is 4)
+    for char in b"abcde":
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(bytes([char]))
+        stream.end_http_chunk_receiving()
+
+    # Reading should now be paused
+    assert protocol._reading_paused is True
+    assert protocol.pause_reading.called
+
+    # Read all data - should resume (chunk count drops below low_water_chunks)
+    data = stream.read_nowait()
+    assert data == b"abcde"
+    assert stream._size == 0
+
+    protocol.resume_reading.assert_called()
+    assert protocol._reading_paused is False

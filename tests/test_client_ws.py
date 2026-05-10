@@ -2,7 +2,7 @@ import asyncio
 import base64
 import hashlib
 import os
-from typing import Any, Type
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -11,7 +11,6 @@ import aiohttp
 from aiohttp import ClientConnectionResetError, ServerDisconnectedError, client, hdrs
 from aiohttp.http import WS_KEY
 from aiohttp.streams import EofStream
-from aiohttp.test_utils import make_mocked_coro
 
 
 async def test_ws_connect(ws_key: Any, loop: Any, key_data: Any) -> None:
@@ -352,7 +351,7 @@ async def test_close(loop, ws_key, key_data) -> None:
                 m_req.return_value.set_result(resp)
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
-                writer.close = make_mocked_coro()
+                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect("http://test.org")
@@ -461,7 +460,7 @@ async def test_close_exc(
                 m_req.return_value.set_result(mresp)
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
-                writer.close = make_mocked_coro()
+                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect("http://test.org")
@@ -514,7 +513,7 @@ async def test_close_exc2(loop, ws_key, key_data) -> None:
 
 @pytest.mark.parametrize("exc", (ClientConnectionResetError, ConnectionResetError))
 async def test_send_data_after_close(
-    exc: Type[Exception],
+    exc: type[Exception],
     ws_key: bytes,
     key_data: bytes,
     loop: asyncio.AbstractEventLoop,
@@ -595,7 +594,7 @@ async def test_reader_read_exception(ws_key, key_data, loop) -> None:
 
                 writer = mock.Mock()
                 WebSocketWriter.return_value = writer
-                writer.close = make_mocked_coro()
+                writer.close = mock.AsyncMock()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect("http://test.org")
@@ -621,7 +620,135 @@ async def test_receive_runtime_err(loop) -> None:
         await resp.receive()
 
 
-async def test_ws_connect_close_resp_on_err(loop, ws_key, key_data) -> None:
+async def test_heartbeat_reset_coalesces_on_data(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    response = mock.Mock()
+    response.connection = None
+    resp = client.ClientWebSocketResponse(
+        mock.Mock(),
+        mock.Mock(),
+        None,
+        response,
+        aiohttp.ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
+        heartbeat=0.05,
+    )
+    with mock.patch.object(resp, "_reset_heartbeat", autospec=True) as reset:
+        resp._on_data_received()
+        resp._on_data_received()
+
+        await asyncio.sleep(0)
+
+        assert reset.call_count == 1
+
+
+async def test_receive_does_not_reset_heartbeat(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    response = mock.Mock()
+    response.connection = None
+    msg = mock.Mock(type=aiohttp.WSMsgType.TEXT)
+    reader = mock.Mock()
+    reader.read = mock.AsyncMock(return_value=msg)
+    resp = client.ClientWebSocketResponse(
+        reader,
+        mock.Mock(),
+        None,
+        response,
+        aiohttp.ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
+        heartbeat=0.05,
+    )
+    with mock.patch.object(resp, "_reset_heartbeat", autospec=True) as reset:
+        received = await resp.receive()
+
+    assert received is msg
+    reset.assert_not_called()
+
+
+async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    response = mock.Mock()
+    response.connection = None
+    resp = client.ClientWebSocketResponse(
+        mock.Mock(),
+        mock.Mock(),
+        None,
+        response,
+        aiohttp.ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
+        heartbeat=0.05,
+    )
+
+    resp._on_data_received()
+    handle = resp._heartbeat_reset_handle
+    assert handle is not None
+
+    resp._cancel_heartbeat()
+
+    assert resp._heartbeat_reset_handle is None
+    assert resp._need_heartbeat_reset is False
+    assert handle.cancelled()
+
+
+async def test_flush_heartbeat_reset_returns_early_when_not_needed(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    response = mock.Mock()
+    response.connection = None
+    resp = client.ClientWebSocketResponse(
+        mock.Mock(),
+        mock.Mock(),
+        None,
+        response,
+        aiohttp.ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
+        heartbeat=0.05,
+    )
+    resp._need_heartbeat_reset = False
+
+    with mock.patch.object(resp, "_reset_heartbeat", autospec=True) as reset:
+        resp._flush_heartbeat_reset()
+        reset.assert_not_called()
+
+
+async def test_send_heartbeat_returns_early_when_reset_is_pending(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    response = mock.Mock()
+    response.connection = None
+    writer = mock.Mock()
+    resp = client.ClientWebSocketResponse(
+        mock.Mock(),
+        writer,
+        None,
+        response,
+        aiohttp.ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        loop,
+        heartbeat=0.05,
+    )
+    resp._need_heartbeat_reset = True
+
+    resp._send_heartbeat()
+
+    writer.send_frame.assert_not_called()
+
+
+async def test_ws_connect_close_resp_on_err(
+    loop: asyncio.AbstractEventLoop, ws_key: str, key_data: bytes
+) -> None:
     resp = mock.Mock()
     resp.status = 500
     resp.headers = {
@@ -731,7 +858,7 @@ async def test_ws_connect_deflate_per_message(loop, ws_key, key_data) -> None:
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
                 writer = WebSocketWriter.return_value = mock.Mock()
-                send_frame = writer.send_frame = make_mocked_coro()
+                send_frame = writer.send_frame = mock.AsyncMock()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect("http://test.org")

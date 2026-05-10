@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Example of aiohttp.web.Application.on_startup signal handler"""
 import asyncio
-from contextlib import suppress
-from typing import AsyncIterator, List
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
 
 import valkey.asyncio as valkey
 
 from aiohttp import web
 
 valkey_listener = web.AppKey("valkey_listener", asyncio.Task[None])
-websockets = web.AppKey("websockets", List[web.WebSocketResponse])
+websockets = web.AppKey("websockets", list[web.WebSocketResponse])
 
 
 async def websocket_handler(request):
@@ -44,6 +44,7 @@ async def listen_to_valkey(app: web.Application) -> None:
             print(f"message in {channel}: {msg}")
 
 
+@asynccontextmanager
 async def background_tasks(app: web.Application) -> AsyncIterator[None]:
     app[valkey_listener] = asyncio.create_task(listen_to_valkey(app))
 
@@ -57,7 +58,7 @@ async def background_tasks(app: web.Application) -> AsyncIterator[None]:
 
 def init():
     app = web.Application()
-    l: List[web.WebSocketResponse] = []
+    l: list[web.WebSocketResponse] = []
     app[websockets] = l
     app.router.add_get("/news", websocket_handler)
     app.cleanup_ctx.append(background_tasks)

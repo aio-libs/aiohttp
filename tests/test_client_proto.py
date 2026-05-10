@@ -8,6 +8,7 @@ from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.helpers import TimerNoop
+from aiohttp.http_parser import HttpParser
 
 
 async def test_force_close(loop: asyncio.AbstractEventLoop) -> None:
@@ -31,8 +32,10 @@ async def test_oserror(loop: asyncio.AbstractEventLoop) -> None:
     assert isinstance(proto.exception(), ClientOSError)
 
 
-async def test_pause_resume_on_error(loop) -> None:
+async def test_pause_resume_on_error(loop: asyncio.AbstractEventLoop) -> None:
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
     proto = ResponseHandler(loop=loop)
+    proto._parser = parser
     transport = mock.Mock()
     proto.connection_made(transport)
 
@@ -247,3 +250,99 @@ async def test_connection_lost_sets_transport_to_none(loop, mocker) -> None:
     proto.connection_lost(OSError())
 
     assert proto.transport is None
+
+
+async def test_connection_lost_exception_is_marked_retrieved(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that connection_lost properly handles exceptions without warnings."""
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mock.Mock())
+
+    # Access closed property before connection_lost to ensure future is created
+    closed_future = proto.closed
+    assert closed_future is not None
+
+    # Simulate an SSL shutdown timeout error
+    ssl_error = TimeoutError("SSL shutdown timed out")
+    proto.connection_lost(ssl_error)
+
+    # Verify the exception was set on the closed future
+    assert closed_future.done()
+    exc = closed_future.exception()
+    assert exc is not None
+    assert "Connection lost: SSL shutdown timed out" in str(exc)
+    assert exc.__cause__ is ssl_error
+
+
+async def test_closed_property_lazy_creation(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that closed future is created lazily."""
+    proto = ResponseHandler(loop=loop)
+
+    # Initially, the closed future should not be created
+    assert proto._closed is None
+
+    # Accessing the property should create the future
+    closed_future = proto.closed
+    assert closed_future is not None
+    assert isinstance(closed_future, asyncio.Future)
+    assert not closed_future.done()
+
+    # Subsequent access should return the same future
+    assert proto.closed is closed_future
+
+
+async def test_closed_property_after_connection_lost(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Test that closed property returns None after connection_lost if never accessed."""
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mock.Mock())
+
+    # Don't access proto.closed before connection_lost
+    proto.connection_lost(None)
+
+    # After connection_lost, closed should return None if it was never accessed
+    assert proto.closed is None
+
+
+async def test_abort(loop: asyncio.AbstractEventLoop) -> None:
+    """Test the abort() method."""
+    proto = ResponseHandler(loop=loop)
+
+    # Create a mock transport
+    transport = mock.Mock()
+    proto.connection_made(transport)
+
+    # Set up some state
+    proto._payload = mock.Mock()
+
+    # Mock _drop_timeout method using patch.object
+    with mock.patch.object(proto, "_drop_timeout") as mock_drop_timeout:
+        # Call abort
+        proto.abort()
+
+        # Verify transport.abort() was called
+        transport.abort.assert_called_once()
+
+        # Verify cleanup
+        assert proto.transport is None
+        assert proto._payload is None
+        assert proto._exception is None  # type: ignore[unreachable]
+        mock_drop_timeout.assert_called_once()
+
+
+async def test_abort_without_transport(loop: asyncio.AbstractEventLoop) -> None:
+    """Test abort() when transport is None."""
+    proto = ResponseHandler(loop=loop)
+
+    # Mock _drop_timeout method using patch.object
+    with mock.patch.object(proto, "_drop_timeout") as mock_drop_timeout:
+        # Call abort without transport
+        proto.abort()
+
+        # Should not raise and should still clean up
+        assert proto._exception is None
+        mock_drop_timeout.assert_not_called()

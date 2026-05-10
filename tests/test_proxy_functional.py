@@ -4,6 +4,8 @@ import pathlib
 import platform
 import ssl
 import sys
+from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from re import match as match_regex
 from unittest import mock
 from uuid import uuid4
@@ -13,9 +15,11 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import web
+from aiohttp import ClientResponse, web
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS
+from aiohttp.pytest_plugin import AiohttpServer
+from aiohttp.test_utils import TestServer
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
@@ -203,7 +207,6 @@ async def test_https_proxy_unsupported_tls_in_tls(
     await asyncio.sleep(0.1)
 
 
-@pytest.mark.usefixtures("uvloop_loop")
 @pytest.mark.skipif(
     platform.system() == "Windows" or sys.implementation.name != "cpython",
     reason="uvloop is not supported on Windows and non-CPython implementations",
@@ -214,19 +217,36 @@ async def test_https_proxy_unsupported_tls_in_tls(
 # otherwise this test will fail because the proxy will die with an error.
 async def test_uvloop_secure_https_proxy(
     client_ssl_ctx: ssl.SSLContext,
+    ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
+    uvloop_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """Ensure HTTPS sites are accessible through a secure proxy without warning when using uvloop."""
-    conn = aiohttp.TCPConnector()
+    payload = str(uuid4())
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text=payload)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = TestServer(app, host="127.0.0.1")
+    await server.start_server(ssl=ssl_ctx)
+
+    url = URL.build(scheme="https", host=server.host, port=server.port)
+    conn = aiohttp.TCPConnector(force_close=True)
     sess = aiohttp.ClientSession(connector=conn)
-    url = URL("https://example.com")
-
-    async with sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx) as response:
-        assert response.status == 200
-
-    await sess.close()
-    await conn.close()
-    await asyncio.sleep(0.1)
+    try:
+        async with sess.get(
+            url, proxy=secure_proxy_url, ssl=client_ssl_ctx
+        ) as response:
+            assert response.status == 200
+            assert await response.text() == payload
+    finally:
+        await sess.close()
+        await conn.close()
+        await server.close()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0.1)
 
 
 @pytest.fixture
@@ -411,6 +431,7 @@ async def test_proxy_http_acquired_cleanup(proxy_test_server, loop) -> None:
     assert 0 == len(conn._acquired)
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -432,6 +453,7 @@ async def test_proxy_http_acquired_cleanup_force(proxy_test_server, loop) -> Non
     assert 0 == len(conn._acquired)
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -463,6 +485,7 @@ async def test_proxy_http_multi_conn_limit(proxy_test_server, loop) -> None:
     assert {resp.status for resp in responses} == {200}
 
     await sess.close()
+    await conn.close()
 
 
 @pytest.mark.xfail
@@ -498,17 +521,22 @@ async def xtest_proxy_https_connect_with_port(proxy_test_server, get_request):
 
 
 @pytest.mark.xfail
-async def xtest_proxy_https_send_body(proxy_test_server, loop):
-    sess = aiohttp.ClientSession(loop=loop)
-    proxy = await proxy_test_server()
-    proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
-    url = "https://www.google.com.ua/search?q=aiohttp proxy"
+async def xtest_proxy_https_send_body(
+    proxy_test_server: Callable[[], Awaitable[mock.Mock]],
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    sess = aiohttp.ClientSession()
+    try:
+        proxy = await proxy_test_server()
+        proxy.return_value = {"status": 200, "body": b"1" * (2**20)}
+        url = "https://www.google.com.ua/search?q=aiohttp proxy"
 
-    async with sess.get(url, proxy=proxy.url) as resp:
-        body = await resp.read()
-    await sess.close()
+        async with sess.get(url, proxy=proxy.url) as resp:
+            body = await resp.read()
 
-    assert body == b"1" * (2**20)
+        assert body == b"1" * (2**20)
+    finally:
+        await sess.close()
 
 
 @pytest.mark.xfail
@@ -592,42 +620,46 @@ async def xtest_proxy_https_auth(proxy_test_server, get_request):
 async def xtest_proxy_https_acquired_cleanup(proxy_test_server, loop):
     url = "https://secure.aiohttp.io/path"
 
-    conn = aiohttp.TCPConnector(loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
-    proxy = await proxy_test_server()
+    conn = aiohttp.TCPConnector()
+    sess = aiohttp.ClientSession(connector=conn)
+    try:
+        proxy = await proxy_test_server()
 
-    assert 0 == len(conn._acquired)
+        assert 0 == len(conn._acquired)
 
-    async def request():
-        async with sess.get(url, proxy=proxy.url):
-            assert 1 == len(conn._acquired)
+        async def request() -> None:
+            async with sess.get(url, proxy=proxy.url):
+                assert 1 == len(conn._acquired)
 
-    await request()
+        await request()
 
-    assert 0 == len(conn._acquired)
-
-    await sess.close()
+        assert 0 == len(conn._acquired)
+    finally:
+        await sess.close()
+        await conn.close()
 
 
 @pytest.mark.xfail
 async def xtest_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
     url = "https://secure.aiohttp.io/path"
 
-    conn = aiohttp.TCPConnector(force_close=True, loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
-    proxy = await proxy_test_server()
+    conn = aiohttp.TCPConnector(force_close=True)
+    sess = aiohttp.ClientSession(connector=conn)
+    try:
+        proxy = await proxy_test_server()
 
-    assert 0 == len(conn._acquired)
+        assert 0 == len(conn._acquired)
 
-    async def request():
-        async with sess.get(url, proxy=proxy.url):
-            assert 1 == len(conn._acquired)
+        async def request() -> None:
+            async with sess.get(url, proxy=proxy.url):
+                assert 1 == len(conn._acquired)
 
-    await request()
+        await request()
 
-    assert 0 == len(conn._acquired)
-
-    await sess.close()
+        assert 0 == len(conn._acquired)
+    finally:
+        await sess.close()
+        await conn.close()
 
 
 @pytest.mark.xfail
@@ -639,26 +671,30 @@ async def xtest_proxy_https_multi_conn_limit(proxy_test_server, loop):
     sess = aiohttp.ClientSession(connector=conn, loop=loop)
     proxy = await proxy_test_server()
 
-    current_pid = None
+    try:
+        current_pid = None
 
-    async def request(pid):
-        # process requests only one by one
-        nonlocal current_pid
+        async def request(pid: int) -> ClientResponse:
+            # process requests only one by one
+            nonlocal current_pid
 
-        async with sess.get(url, proxy=proxy.url) as resp:
-            current_pid = pid
-            await asyncio.sleep(0.2, loop=loop)
-            assert current_pid == pid
+            async with sess.get(url, proxy=proxy.url) as resp:
+                current_pid = pid
+                await asyncio.sleep(0.2)
+                assert current_pid == pid
 
-        return resp
+            return resp
 
-    requests = [request(pid) for pid in range(multi_conn_num)]
-    responses = await asyncio.gather(*requests, loop=loop)
+        requests = [request(pid) for pid in range(multi_conn_num)]
+        responses = await asyncio.gather(*requests, return_exceptions=True)
 
-    assert len(responses) == multi_conn_num
-    assert {resp.status for resp in responses} == {200}
-
-    await sess.close()
+        # Filter out exceptions to count actual responses
+        actual_responses = [r for r in responses if isinstance(r, ClientResponse)]
+        assert len(actual_responses) == multi_conn_num
+        assert {resp.status for resp in actual_responses} == {200}
+    finally:
+        await sess.close()
+        await conn.close()
 
 
 def _patch_ssl_transport(monkeypatch):
@@ -735,10 +771,7 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
-    netrc_file_data = "machine 127.0.0.1 login {} password {}".format(
-        auth.login,
-        auth.password,
-    )
+    netrc_file_data = f"machine 127.0.0.1 login {auth.login} password {auth.password}"
     with netrc_file.open("w") as f:
         f.write(netrc_file_data)
     mocker.patch.dict(
@@ -761,10 +794,7 @@ async def test_proxy_from_env_http_without_auth_from_netrc(
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
-    netrc_file_data = "machine 127.0.0.2 login {} password {}".format(
-        auth.login,
-        auth.password,
-    )
+    netrc_file_data = f"machine 127.0.0.2 login {auth.login} password {auth.password}"
     with netrc_file.open("w") as f:
         f.write(netrc_file_data)
     mocker.patch.dict(
@@ -809,7 +839,7 @@ async def xtest_proxy_from_env_https(proxy_test_server, get_request, mocker):
     url = "https://aiohttp.io/path"
     proxy = await proxy_test_server()
     mocker.patch.dict(os.environ, {"https_proxy": str(proxy.url)})
-    mock.patch("pathlib.Path.is_file", mock_is_file)
+    mocker.patch("pathlib.Path.is_file", mock_is_file)
 
     await get_request(url=url, trust_env=True)
 
@@ -861,3 +891,46 @@ async def test_proxy_auth() -> None:
                 proxy_auth=("user", "pass"),
             ):
                 pass
+
+
+async def test_https_proxy_connect_tunnel_session_close_no_hang(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test that CONNECT tunnel connections are not pooled."""
+    # Regression test for issue #11273.
+
+    # Create a minimal proxy server
+    # The CONNECT method is handled at the protocol level, not by the handler
+    proxy_app = web.Application()
+    proxy_server = await aiohttp_server(proxy_app)
+    proxy_url = f"http://{proxy_server.host}:{proxy_server.port}"
+
+    # Create session and make HTTPS request through proxy
+    session = aiohttp.ClientSession()
+
+    try:
+        # This will fail during TLS upgrade because proxy doesn't establish tunnel
+        with suppress(aiohttp.ClientError):
+            async with session.get("https://example.com/test", proxy=proxy_url) as resp:
+                await resp.read()
+
+        # The critical test: Check if any connections were pooled with proxy=None
+        # This is the root cause of the hang - CONNECT tunnel connections
+        # should NOT be pooled
+        connector = session.connector
+        assert connector is not None
+
+        # Count connections with proxy=None in the pool
+        proxy_none_keys = [key for key in connector._conns if key.proxy is None]
+        proxy_none_count = len(proxy_none_keys)
+
+        # Before the fix, there would be a connection with proxy=None
+        # After the fix, CONNECT tunnel connections are not pooled
+        assert proxy_none_count == 0, (
+            f"Found {proxy_none_count} connections with proxy=None in pool. "
+            f"CONNECT tunnel connections should not be pooled - this is bug #11273"
+        )
+
+    finally:
+        # Clean close
+        await session.close()

@@ -1,8 +1,9 @@
 """Models for WebSocket protocol versions 13 and 8."""
 
 import json
+from collections.abc import Callable
 from enum import IntEnum
-from typing import Any, Callable, Final, NamedTuple, Optional, cast
+from typing import Any, Final, NamedTuple, cast
 
 WS_DEFLATE_TRAILING: Final[bytes] = bytes([0x00, 0x00, 0xFF, 0xFF])
 
@@ -51,7 +52,7 @@ class WSMessage(NamedTuple):
     type: WSMsgType
     # To type correctly, this would need some kind of tagged union for each type.
     data: Any
-    extra: Optional[str]
+    extra: str | None
 
     def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
         """Return parsed JSON data.
@@ -59,6 +60,28 @@ class WSMessage(NamedTuple):
         .. versionadded:: 0.22
         """
         return loads(self.data)
+
+
+class WSMessageTextBytes(NamedTuple):
+    """WebSocket TEXT message with raw bytes (no UTF-8 decoding)."""
+
+    type: WSMsgType
+    # To type correctly, this would need some kind of tagged union for each type.
+    # In 4.0, we use a union of message types to properly type data, but in 3.x
+    # we keep it as Any to avoid a breaking change.
+    data: Any
+    extra: str | None
+
+    def json(self, *, loads: Callable[[Any], Any] = json.loads) -> Any:
+        """Return parsed JSON data."""
+        return loads(self.data)
+
+
+# Type aliases for message types based on decode_text setting
+# When decode_text=True, TEXT messages have str data (WSMessage)
+# When decode_text=False, TEXT messages have bytes data (WSMessageTextBytes)
+WSMessageDecodeText = WSMessage
+WSMessageNoDecodeText = WSMessage | WSMessageTextBytes
 
 
 # Constructing the tuple directly to avoid the overhead of

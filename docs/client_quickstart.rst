@@ -119,8 +119,9 @@ that case you can specify multiple values for each key::
         expect = 'http://httpbin.org/get?key=value2&key=value1'
         assert str(r.url) == expect
 
-You can also pass :class:`str` content as param, but beware -- content
-is not encoded by library. Note that ``+`` is not encoded::
+You can also pass :class:`str` content as param. The value is used as a
+query string, but passing ``params`` does not disable URL
+canonicalization. Note that ``+`` is not encoded::
 
     async with session.get('http://httpbin.org/get',
                            params='key=value+1') as r:
@@ -146,7 +147,9 @@ is not encoded by library. Note that ``+`` is not encoded::
 
 .. warning::
 
-   Passing *params* overrides ``encoded=True``, never use both options.
+   Passing *params* overrides ``encoded=True``. Never use both options
+   if you need to preserve exact query-string bytes.
+   Build the full URL (including query) instead.
 
 Response Content and Status Code
 ================================
@@ -187,6 +190,10 @@ You can enable ``brotli`` transfer-encodings support,
 just install `Brotli <https://pypi.org/project/Brotli/>`_
 or `brotlicffi <https://pypi.org/project/brotlicffi/>`_.
 
+You can enable ``zstd`` transfer-encodings support,
+install `backports.zstd <https://pypi.org/project/backports.zstd/>`_.
+If you are using Python >= 3.14, no dependency should be required.
+
 JSON Request
 ============
 
@@ -199,20 +206,22 @@ Any of session's request methods like :func:`request`,
 
 
 By default session uses python's standard :mod:`json` module for
-serialization.  But it is possible to use different
-``serializer``. :class:`ClientSession` accepts ``json_serialize``
-parameter::
+serialization.  But it is possible to use a different
+``serializer``. :class:`ClientSession` accepts ``json_serialize`` and
+``json_serialize_bytes`` parameters::
 
-  import ujson
+  import orjson
 
   async with aiohttp.ClientSession(
-          json_serialize=ujson.dumps) as session:
+          json_serialize_bytes=orjson.dumps) as session:
       await session.post(url, json={'test': 'object'})
 
 .. note::
 
-   ``ujson`` library is faster than standard :mod:`json` but slightly
-   incompatible.
+   ``orjson`` library is faster than standard :mod:`json` and is actively
+   maintained. Since ``orjson.dumps`` returns :class:`bytes`, pass it via
+   the ``json_serialize_bytes`` parameter to avoid unnecessary
+   encoding/decoding overhead.
 
 JSON Response Content
 =====================
@@ -337,24 +346,33 @@ send large files without reading them into memory.
 
 As a simple case, simply provide a file-like object for your body::
 
-    with open('massive-body', 'rb') as f:
-       await session.post('http://httpbin.org/post', data=f)
+    with open("massive-body", "rb") as f:
+       await session.post("https://httpbin.org/post", data=f)
 
 
-Or you can use *asynchronous generator*::
+Or you can provide an *asynchronous generator*, for example to generate
+data on the fly::
 
-  async def file_sender(file_name=None):
-      async with aiofiles.open(file_name, 'rb') as f:
-          chunk = await f.read(64*1024)
-          while chunk:
-              yield chunk
-              chunk = await f.read(64*1024)
+  async def data_generator():
+      for i in range(10):
+          yield f"line {i}\n".encode()
 
-  # Then you can use file_sender as a data provider:
-
-  async with session.post('http://httpbin.org/post',
-                          data=file_sender(file_name='huge_file')) as resp:
+  async with session.post("https://httpbin.org/post",
+                          data=data_generator()) as resp:
       print(await resp.text())
+
+.. warning::
+
+   Async generators and other non-rewindable data sources
+   (such as :class:`~aiohttp.StreamReader`) cannot be replayed if a
+   redirect occurs (for example, HTTP 307 or 308). If the request body
+   has already been streamed, :mod:`aiohttp` raises
+   :class:`~aiohttp.ClientPayloadError`.
+
+   If your endpoint may redirect, either:
+
+   * Pass a seekable file-like object or :class:`bytes`.
+   * Disable redirects with ``allow_redirects=False`` and handle them manually.
 
 
 Because the :attr:`~aiohttp.ClientResponse.content` attribute is a

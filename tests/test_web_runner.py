@@ -2,7 +2,7 @@ import asyncio
 import platform
 import signal
 from typing import Any
-from unittest.mock import patch
+from unittest import mock
 
 import pytest
 
@@ -41,22 +41,40 @@ async def test_site_for_nonfrozen_app(make_runner: Any) -> None:
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
 async def test_runner_setup_handle_signals(make_runner: Any) -> None:
-    runner = make_runner(handle_signals=True)
-    await runner.setup()
-    assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
-    await runner.cleanup()
-    assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    # Save the original signal handler
+    original_handler = signal.getsignal(signal.SIGTERM)
+    try:
+        # Set a known state for the signal handler to avoid flaky tests
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+        runner = make_runner(handle_signals=True)
+        await runner.setup()
+        assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
+        await runner.cleanup()
+        assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    finally:
+        # Restore original signal handler
+        signal.signal(signal.SIGTERM, original_handler)
 
 
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
 async def test_runner_setup_without_signal_handling(make_runner: Any) -> None:
-    runner = make_runner(handle_signals=False)
-    await runner.setup()
-    assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
-    await runner.cleanup()
-    assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    # Save the original signal handler
+    original_handler = signal.getsignal(signal.SIGTERM)
+    try:
+        # Set a known state for the signal handler to avoid flaky tests
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+        runner = make_runner(handle_signals=False)
+        await runner.setup()
+        assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+        await runner.cleanup()
+        assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    finally:
+        # Restore original signal handler
+        signal.signal(signal.SIGTERM, original_handler)
 
 
 async def test_site_double_added(make_runner: Any) -> None:
@@ -149,20 +167,16 @@ async def test_tcpsite_default_host(make_runner: Any) -> None:
     site = web.TCPSite(runner)
     assert site.name == "http://0.0.0.0:8080"
 
-    calls = []
-
-    async def mock_create_server(*args, **kwargs):
-        calls.append((args, kwargs))
-
-    with patch("asyncio.get_event_loop") as mock_get_loop:
-        mock_get_loop.return_value.create_server = mock_create_server
+    m = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
+    m.create_server.return_value = mock.create_autospec(asyncio.Server, spec_set=True)
+    with mock.patch(
+        "asyncio.get_event_loop", autospec=True, spec_set=True, return_value=m
+    ):
         await site.start()
 
-    assert len(calls) == 1
-    server, host, port = calls[0][0]
-    assert server is runner.server
-    assert host is None
-    assert port == 8080
+    m.create_server.assert_called_once()
+    args, kwargs = m.create_server.call_args
+    assert args == (runner.server, None, 8080)
 
 
 async def test_tcpsite_empty_str_host(make_runner: Any) -> None:
@@ -224,3 +238,15 @@ async def test_app_handler_args_ceil_threshold(value: Any, expected: Any) -> Non
     assert rh._timeout_ceil_threshold == expected
     await runner.cleanup()
     assert app
+
+
+async def test_tcpsite_ephemeral_port(make_runner: Any) -> None:
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, port=0)
+    assert site.port == 0
+
+    await site.start()
+    assert site.port != 0
+    assert site.name.startswith("http://0.0.0.0:")
+    await site.stop()
