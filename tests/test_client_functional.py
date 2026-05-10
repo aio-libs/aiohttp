@@ -711,7 +711,7 @@ async def test_ssl_client(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 200
@@ -750,7 +750,7 @@ async def test_ssl_client_shutdown_timeout(
     app = web.Application()
     app.router.add_route("GET", "/stream", streaming_handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     # Verify the connector has the correct timeout
     assert connector._ssl_shutdown_timeout == 0.1
@@ -803,7 +803,7 @@ async def test_ssl_client_alpn(
     server = await aiohttp_server(app, ssl=ssl_ctx)
 
     connector = aiohttp.TCPConnector(ssl=False)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
     async with client.get("/") as resp:
         assert resp.status == 200
         txt = await resp.text()
@@ -825,7 +825,7 @@ async def test_tcp_connector_fingerprint_ok(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 200
@@ -847,7 +847,7 @@ async def test_tcp_connector_fingerprint_fail(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     with pytest.raises(ServerFingerprintMismatch) as cm:
         await client.get("/")
@@ -4101,7 +4101,7 @@ async def test_error_in_performing_request(
     server = await aiohttp_server(app, ssl=ssl_ctx)
 
     conn = aiohttp.TCPConnector(limit=1)
-    client = await aiohttp_client(server, connector=conn)
+    client = await aiohttp_client(server, connector=conn)  # type: ignore[var-annotated]
 
     with pytest.raises(aiohttp.ClientConnectionError):
         await client.get("/")
