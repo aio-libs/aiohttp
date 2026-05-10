@@ -30,7 +30,6 @@ try:
 except ImportError:  # For downstreams only  # pragma: no cover
     HAS_BLOCKBUSTER = False
 
-from aiohttp import payload
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
