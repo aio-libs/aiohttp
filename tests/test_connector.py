@@ -10,7 +10,7 @@ import sys
 import uuid
 import warnings
 from collections import defaultdict, deque
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Sequence
 from concurrent import futures
 from contextlib import closing, suppress
 from typing import Any, Literal, NoReturn
@@ -100,7 +100,7 @@ def unix_server(
 @pytest.fixture
 async def named_pipe_server(
     pipe_name: str,
-) -> Iterator[Callable[[web.Application], Awaitable[None]]]:
+) -> AsyncIterator[Callable[[web.Application], Awaitable[None]]]:
     runners = []
 
     async def go(app: web.Application) -> None:
