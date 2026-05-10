@@ -9,6 +9,7 @@ import ssl
 import subprocess
 import sys
 import time
+import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
 from typing import NoReturn
 from unittest import mock
@@ -113,6 +114,28 @@ def test_run_app_close_loop(patched_loop) -> None:
         mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None
     )
     assert patched_loop.is_closed()
+
+
+def test_run_app_preserves_startup_traceback(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
+    # Regression: when an exception is raised during startup (here in a
+    # cleanup_ctx async generator), the user code frame must remain in the
+    # traceback that propagates out of run_app. Previously the second
+    # loop.run_until_complete(main_task) in run_app's finally clobbered it.
+
+    async def failing_ctx(_app: web.Application) -> AsyncIterator[None]:
+        raise RuntimeError("boom from failing_ctx")
+        yield  # type: ignore[unreachable]  # required to make this an async generator
+
+    app = web.Application()
+    app.cleanup_ctx.append(failing_ctx)
+
+    with pytest.raises(RuntimeError, match="boom from failing_ctx") as exc_info:
+        web.run_app(app, print=None, loop=patched_loop)
+
+    frames = [f.name for f in traceback.extract_tb(exc_info.tb)]
+    assert "failing_ctx" in frames, frames
 
 
 mock_unix_server_single = [
