@@ -805,8 +805,6 @@ async def test_write_calls_callback(
 async def test_write_eof_calls_callback(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
-    loop = asyncio.get_running_loop()
-
     async def on_chunk_sent(chunk: bytes) -> None:
         """Mock signature"""
 
