@@ -1,11 +1,12 @@
 ---
 
 github:
+- aio-libs
 - asvetlov
 - webknjaz
 - Dreamsorcerer
 open_collective: aiohttp
-tidelift: pypi/aiohttp  # A single Tidelift platform-name/package-name e.g., npm/babel
+tidelift: pypi/aiohttp
 custom:
 - https://opencollective.com/aio-libs
 
