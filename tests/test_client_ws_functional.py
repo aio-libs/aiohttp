@@ -1051,7 +1051,6 @@ async def test_close_websocket_while_ping_inflight(
 ) -> None:
     """Test closing the websocket while a ping is in-flight."""
     ping_received = False
-    asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:
         nonlocal ping_received
