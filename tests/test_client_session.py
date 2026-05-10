@@ -6,7 +6,7 @@ import json
 import sys
 import warnings
 from collections import deque
-from collections.abc import Awaitable, Callable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
 from types import SimpleNamespace
 from typing import Any, Literal, NoReturn, TypedDict, cast
@@ -53,7 +53,7 @@ class _Params(TypedDict):
 @pytest.fixture
 async def connector(
     create_mocked_conn: Callable[[], ResponseHandler],
-) -> Iterator[BaseConnector]:
+) -> AsyncIterator[BaseConnector]:
     async def make_conn() -> BaseConnector:
         return BaseConnector()
 
@@ -68,7 +68,7 @@ async def connector(
 
 
 @pytest.fixture
-async def create_session() -> Iterator[Callable[..., Awaitable[ClientSession]]]:
+async def create_session() -> AsyncIterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
 
     async def maker(*args: Any, **kwargs: Any) -> ClientSession:
