@@ -28,10 +28,9 @@ def aiohttp_client_sync(
         server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[web.Request, web.Application]:
-        if isinstance(__param, web.Application):
-            server_kwargs = server_kwargs or {}
-            server = TestServer(__param, **server_kwargs)
-            client = aiohttp_client_cls(server, **kwargs)
+        server_kwargs = server_kwargs or {}
+        server = TestServer(__param, **server_kwargs)
+        client = aiohttp_client_cls(server, **kwargs)
 
         await client.start_server()
         clients.append(client)
