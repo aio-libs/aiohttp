@@ -4,7 +4,7 @@ import contextlib
 import gzip
 import pathlib
 import socket
-from collections.abc import Iterable, AsyncIterator
+from collections.abc import AsyncIterator, Iterable
 from typing import Protocol
 from unittest import mock
 
