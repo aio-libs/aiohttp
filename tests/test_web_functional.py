@@ -105,7 +105,7 @@ async def test_handler_returns_not_response(
     app = web.Application()
     app.router.add_get("/", handler)  # type: ignore[arg-type]
     server = await aiohttp_server(app, logger=logger)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 500
@@ -123,7 +123,7 @@ async def test_handler_returns_none(
     app = web.Application()
     app.router.add_get("/", handler)  # type: ignore[arg-type]
     server = await aiohttp_server(app, logger=logger)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 500
@@ -900,7 +900,7 @@ async def test_large_header_allowed(
     app = web.Application()
     app.router.add_post("/", handler)
     server = await aiohttp_server(app, max_field_size=81920)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     headers = {"Long-Header": "ab" * 8129}
     resp = await client.post("/", headers=headers)
