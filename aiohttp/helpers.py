@@ -789,9 +789,7 @@ class HeadersDictProxy(Mapping[str, str]):
         self._md = md
 
     def getall(self, key: str) -> tuple[str, ...]:
-        return self._split_on_commas(self.get(key, ""))
-
-    def _split_on_commas(self, val: str) -> tuple[str, ...]:
+        val = self.get(key, "")
         unescape = _QUOTED_PAIR_SUB.sub
         values = []
         for m in _LIST_ELEMENT_RE.finditer(val):
