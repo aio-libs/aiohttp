@@ -314,7 +314,7 @@ def proxy_test_server(
         proxy_mock.auth = None
         proxy_mock.requests_list = []
 
-        server = await aiohttp_raw_server(proxy_handler)  # type: ignore[arg-type]
+        server = await aiohttp_raw_server(proxy_handler)
 
         proxy_mock.server = server
         proxy_mock.url = server.make_url("/")
