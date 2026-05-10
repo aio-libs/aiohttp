@@ -4,10 +4,22 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/test-common.txt --strip-extras requirements/test-common.in
 #
+aiohappyeyeballs==2.6.1
+    # via aiohttp
+aiohttp==3.13.5
+    # via pytest-aiohttp
+aiosignal==1.4.0
+    # via aiohttp
 annotated-types==0.7.0
     # via pydantic
 ast-serialize==0.3.0
     # via mypy
+async-timeout==5.0.1
+    # via aiohttp
+attrs==26.1.0
+    # via aiohttp
+backports-asyncio-runner==1.2.0
+    # via pytest-asyncio
 blockbuster==1.5.26
     # via -r requirements/test-common.in
 cffi==2.0.0
@@ -20,7 +32,7 @@ coverage==7.13.5
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==47.0.0
+cryptography==48.0.0
     # via trustme
 exceptiongroup==1.3.1
     # via pytest
@@ -30,8 +42,14 @@ forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
     # via -r requirements/test-common.in
+frozenlist==1.8.0
+    # via
+    #   aiohttp
+    #   aiosignal
 idna==3.11
-    # via trustme
+    # via
+    #   trustme
+    #   yarl
 iniconfig==2.3.0
     # via pytest
 isal==1.8.0 ; python_version < "3.14"
@@ -42,6 +60,10 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
+multidict==6.7.1
+    # via
+    #   aiohttp
+    #   yarl
 mypy==2.0.0 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.1.0
@@ -56,6 +78,10 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
+propcache==0.5.2
+    # via
+    #   aiohttp
+    #   yarl
 proxy-py==2.4.10
     # via -r requirements/test-common.in
 pycparser==3.0
@@ -71,10 +97,16 @@ pygments==2.20.0
 pytest==9.0.3
     # via
     #   -r requirements/test-common.in
+    #   pytest-aiohttp
+    #   pytest-asyncio
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
+pytest-aiohttp==1.1.0
+    # via -r requirements/test-common.in
+pytest-asyncio==1.3.0
+    # via pytest-aiohttp
 pytest-codspeed==4.5.0
     # via -r requirements/test-common.in
 pytest-cov==7.1.0
@@ -102,16 +134,21 @@ trustme==1.2.1 ; platform_machine != "i686"
     # via -r requirements/test-common.in
 typing-extensions==4.15.0
     # via
+    #   aiosignal
     #   cryptography
     #   exceptiongroup
+    #   multidict
     #   mypy
     #   pydantic
     #   pydantic-core
+    #   pytest-asyncio
     #   python-on-whales
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
+yarl==1.23.0
+    # via aiohttp
 zlib-ng==1.0.0
     # via -r requirements/test-common.in
