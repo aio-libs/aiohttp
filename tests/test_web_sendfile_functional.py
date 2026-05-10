@@ -4,7 +4,7 @@ import contextlib
 import gzip
 import pathlib
 import socket
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, AsyncIterator
 from typing import Protocol
 from unittest import mock
 
@@ -63,7 +63,7 @@ def hello_txt(
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
-async def sender(request: SubRequest) -> Iterator[_Sender]:
+async def sender(request: SubRequest) -> AsyncIterator[_Sender]:
     sendfile_mock = None
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
@@ -601,7 +601,7 @@ async def test_static_file_ssl(
     app.router.add_static("/static", dirname)
     server = await aiohttp_server(app, ssl=ssl_ctx)
     conn = aiohttp.TCPConnector(ssl=client_ssl_ctx)
-    client = await aiohttp_client(server, connector=conn)
+    client = await aiohttp_client(server, connector=conn)  # type: ignore[var-annotated]
 
     resp = await client.get("/static/" + filename)
     assert 200 == resp.status
