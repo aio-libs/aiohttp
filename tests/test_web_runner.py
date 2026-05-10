@@ -2,7 +2,7 @@ import asyncio
 import platform
 import signal
 import socket
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from typing import Any, NoReturn, Protocol
 from unittest import mock
 
@@ -24,7 +24,7 @@ def app() -> web.Application:
 
 
 @pytest.fixture
-async def make_runner(app: web.Application) -> Iterator[_RunnerMaker]:
+async def make_runner(app: web.Application) -> AsyncIterator[_RunnerMaker]:
     runners = []
 
     def go(handle_signals: bool = False, **kwargs: Any) -> web.AppRunner:
