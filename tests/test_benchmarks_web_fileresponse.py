@@ -2,7 +2,7 @@
 
 import asyncio
 import pathlib
-from collections.abc import Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from typing import Any
 
 import pytest
@@ -18,7 +18,7 @@ from aiohttp.test_utils import TestClient, TestServer
 def aiohttp_client_sync(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client_cls: type[TestClient[web.Request, web.Application]],
-) -> Iterator[AiohttpClient]:
+) -> Iterator[Callable[[web.Application], Awaitable[TestClient[web.Request, web.Application]]]]:
     # TODO: Remove this fixture when async benchmarks are working.
     clients = []
 
