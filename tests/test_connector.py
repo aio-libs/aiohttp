@@ -2484,7 +2484,6 @@ async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(  # type: ignor
 
 async def test_tcp_connector_close_abort_ssl_connections_in_conns() -> None:
     """Test that SSL connections in _conns are aborted when ssl_shutdown_timeout=0."""
-    loop = asyncio.get_running_loop()
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
@@ -2839,7 +2838,6 @@ async def test_multiple_dns_resolution_requests_success(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that multiple DNS resolution requests are handled correctly."""
-    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -2905,7 +2903,6 @@ async def test_multiple_dns_resolution_requests_failure(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution failure for multiple requests is handled correctly."""
-    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -2962,7 +2959,6 @@ async def test_multiple_dns_resolution_requests_cancelled(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that DNS resolution cancellation does not affect other tasks."""
-    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -3018,7 +3014,6 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that first DNS resolution cancellation does not make other resolutions fail."""
-    loop = asyncio.get_running_loop()
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
         """Delayed resolve() task."""
@@ -3085,7 +3080,6 @@ async def test_multiple_dns_resolution_requests_first_fails_second_successful(
     make_client_request: _RequestMaker,
 ) -> None:
     """Verify that first DNS resolution fails the first time and is successful the second time."""
-    loop = asyncio.get_running_loop()
     attempt = 0
 
     async def delay_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
@@ -3889,7 +3883,6 @@ async def test_tcp_connector(aiohttp_client: AiohttpClient) -> None:
 async def test_unix_connector_not_found(  # type: ignore[misc]
     make_client_request: _RequestMaker,
 ) -> None:
-    loop = asyncio.get_running_loop()
     connector = aiohttp.UnixConnector("/" + uuid.uuid4().hex)
 
     req = make_client_request(
