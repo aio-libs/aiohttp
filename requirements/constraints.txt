@@ -163,7 +163,7 @@ pluggy==1.6.0
     #   pytest-cov
 pre-commit==4.6.0
     # via -r requirements/lint.in
-propcache==0.4.1
+propcache==0.5.2
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
