@@ -59,13 +59,20 @@ For ``text/plain``::
 Authentication
 --------------
 
-Instead of setting the ``Authorization`` header directly,
-:class:`ClientSession` and individual request methods provide an ``auth``
-argument. An instance of :class:`BasicAuth` can be passed in like this::
+For HTTP Basic Authentication, build the ``Authorization`` header using
+:func:`encode_basic_auth` and pass it via ``headers``::
 
-    auth = BasicAuth(login="...", password="...")
-    async with ClientSession(auth=auth) as session:
+    from aiohttp import ClientSession, encode_basic_auth
+
+    headers = {"Authorization": encode_basic_auth("user", "pass")}
+    async with ClientSession(headers=headers) as session:
         ...
+
+.. deprecated:: 3.14
+
+   The ``auth`` parameter and the :class:`BasicAuth` class are deprecated and
+   will be removed in 4.0. Use :func:`encode_basic_auth` together with the
+   ``headers`` parameter as shown above.
 
 For HTTP digest authentication, use the :class:`DigestAuthMiddleware` client middleware::
 
@@ -718,11 +725,13 @@ To connect, use the *proxy* parameter::
 
 It also supports proxy authorization::
 
+   from aiohttp import encode_basic_auth
+
    async with aiohttp.ClientSession() as session:
-       proxy_auth = aiohttp.BasicAuth('user', 'pass')
+       proxy_headers = {"Proxy-Authorization": encode_basic_auth("user", "pass")}
        async with session.get("http://python.org",
                               proxy="http://proxy.com",
-                              proxy_auth=proxy_auth) as resp:
+                              proxy_headers=proxy_headers) as resp:
            print(resp.status)
 
 Authentication credentials can be passed in proxy URL::
@@ -732,10 +741,18 @@ Authentication credentials can be passed in proxy URL::
 
 And you may set default proxy::
 
-   proxy_auth = aiohttp.BasicAuth('user', 'pass')
-   async with aiohttp.ClientSession(proxy="http://proxy.com", proxy_auth=proxy_auth) as session:
+   proxy_headers = {"Proxy-Authorization": encode_basic_auth("user", "pass")}
+   async with aiohttp.ClientSession(
+       proxy="http://proxy.com", proxy_headers=proxy_headers
+   ) as session:
        async with session.get("http://python.org") as resp:
            print(resp.status)
+
+.. deprecated:: 3.14
+
+   The ``proxy_auth`` parameter is deprecated and will be removed in 4.0. Use
+   :func:`encode_basic_auth` with ``proxy_headers={"Proxy-Authorization": ...}``
+   as shown above.
 
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing

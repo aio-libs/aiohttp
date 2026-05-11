@@ -2326,6 +2326,22 @@ Utilities
 
 
 
+.. function:: encode_basic_auth(login, password='', encoding='utf-8')
+
+   Encode HTTP Basic Authentication credentials as a value suitable for the
+   ``Authorization`` (or ``Proxy-Authorization``) header::
+
+       headers = {"Authorization": encode_basic_auth("user", "pass")}
+
+   :param str login: login
+   :param str password: password (``''`` by default)
+   :param str encoding: encoding (``'utf-8'`` by default)
+   :return: a string of the form ``"Basic <base64-encoded credentials>"``
+   :rtype: str
+
+   .. versionadded:: 3.14
+
+
 .. class:: BasicAuth(login, password='', encoding='latin1')
    :canonical: aiohttp.helpers.BasicAuth
 
@@ -2338,6 +2354,14 @@ Utilities
 
    Should be used for specifying authorization data in client API,
    e.g. *auth* parameter for :meth:`ClientSession.request() <aiohttp.ClientSession.request>`.
+
+   .. deprecated:: 3.14
+
+      Constructing :class:`BasicAuth` is deprecated and will be removed in
+      4.0. Use :func:`encode_basic_auth` together with the ``headers``
+      parameter (or ``proxy_headers`` for proxies) instead. The
+      :meth:`decode` and :meth:`from_url` classmethods remain available for
+      parsing.
 
 
    .. classmethod:: decode(auth_header, encoding='latin1')

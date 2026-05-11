@@ -892,6 +892,9 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
     ]
 
 
+@pytest.mark.filterwarnings(
+    r"ignore:The 'proxy_auth' parameter is deprecated:DeprecationWarning"
+)
 async def test_default_proxy() -> None:
     proxy_url = URL("http://proxy.example.com")
     proxy_auth = mock.Mock()
@@ -1497,6 +1500,10 @@ async def test_netrc_auth_from_home_directory(auth_server: TestServer) -> None:
 
 
 @pytest.mark.usefixtures("netrc_default_contents")
+@pytest.mark.filterwarnings(
+    r"ignore:The 'auth' parameter is deprecated:DeprecationWarning",
+    r"ignore:BasicAuth is deprecated:DeprecationWarning",
+)
 async def test_netrc_auth_overridden_by_explicit_auth(auth_server: TestServer) -> None:
     """Test that explicit auth parameter overrides netrc authentication."""
     async with (
@@ -1509,6 +1516,24 @@ async def test_netrc_auth_overridden_by_explicit_auth(auth_server: TestServer) -
         text = await resp.text()
         # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
         assert text == "auth:Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+
+
+async def test_client_session_auth_deprecated() -> None:
+    """ClientSession(auth=...) emits a DeprecationWarning."""
+    with pytest.warns(DeprecationWarning, match="'auth' parameter is deprecated"):
+        session = ClientSession(
+            auth=aiohttp.helpers._basic_auth_no_warn("user", "pass")
+        )
+    await session.close()
+
+
+async def test_client_session_proxy_auth_deprecated() -> None:
+    """ClientSession(proxy_auth=...) emits a DeprecationWarning."""
+    with pytest.warns(DeprecationWarning, match="'proxy_auth' parameter is deprecated"):
+        session = ClientSession(
+            proxy_auth=aiohttp.helpers._basic_auth_no_warn("user", "pass")
+        )
+    await session.close()
 
 
 @pytest.mark.usefixtures("netrc_other_host")

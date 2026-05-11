@@ -457,19 +457,17 @@ async def test_ipv6_nondefault_https_port(make_client_request: _RequestMaker) ->
 
 
 async def test_basic_auth(make_client_request: _RequestMaker) -> None:
-    req = make_client_request(
-        "get", URL("http://python.org"), auth=aiohttp.BasicAuth("nkim", "1234")
-    )
+    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
+        auth = aiohttp.BasicAuth("nkim", "1234")
+    req = make_client_request("get", URL("http://python.org"), auth=auth)
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
 
 
 async def test_basic_auth_utf8(make_client_request: _RequestMaker) -> None:
-    req = make_client_request(
-        "get",
-        URL("http://python.org"),
-        auth=aiohttp.BasicAuth("nkim", "секрет", "utf-8"),
-    )
+    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
+        auth = aiohttp.BasicAuth("nkim", "секрет", "utf-8")
+    req = make_client_request("get", URL("http://python.org"), auth=auth)
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbTrRgdC10LrRgNC10YI=" == req.headers["AUTHORIZATION"]
 
@@ -496,9 +494,9 @@ async def test_basic_auth_no_user_from_url(make_client_request: _RequestMaker) -
 async def test_basic_auth_from_url_overridden(
     make_client_request: _RequestMaker,
 ) -> None:
-    req = make_client_request(
-        "get", URL("http://garbage@python.org"), auth=aiohttp.BasicAuth("nkim", "1234")
-    )
+    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
+        auth = aiohttp.BasicAuth("nkim", "1234")
+    req = make_client_request("get", URL("http://garbage@python.org"), auth=auth)
     assert "AUTHORIZATION" in req.headers
     assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
     assert "python.org" == req.url.host
