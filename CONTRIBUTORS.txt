@@ -260,6 +260,7 @@ Martijn Pieters
 Martin Melka
 Martin Richard
 Martin Sucha
+Mason Wilde
 Mathias Fröjdman
 Mathieu Dugré
 Matt VanEseltine
@@ -267,7 +268,6 @@ Matthew Go
 Matthias Marquardt
 Matthieu Hauglustaine
 Matthieu Rigal
-Mason Wilde
 Matvey Tingaev
 Meet Mangukiya
 Meshya
