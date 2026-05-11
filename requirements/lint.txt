@@ -41,7 +41,7 @@ freezegun==1.5.5
     # via -r requirements/lint.in
 identify==2.6.17
     # via pre-commit
-idna==3.13
+idna==3.14
     # via trustme
 iniconfig==2.3.0
     # via pytest
