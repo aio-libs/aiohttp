@@ -50,7 +50,7 @@ packaging==26.2
     # via pytest
 pathspec==1.1.1
     # via mypy
-pkgconfig==1.5.5
+pkgconfig==1.6.0
     # via -r requirements/test-common.in
 pluggy==1.6.0
     # via
