@@ -1,0 +1,4 @@
+Fixed a race condition in ``TCPConnector.close()`` where the resolver was
+nullified before the connector was marked closed, causing ``AttributeError``
+on in-flight connections with ``aiodns`` installed
+-- by :user:`masonwilde`.

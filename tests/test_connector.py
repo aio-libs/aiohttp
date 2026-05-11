@@ -4683,3 +4683,53 @@ async def test_connect_tunnel_connection_release() -> None:
 
     # Clean up to avoid resource warning
     conn.close()
+
+
+async def test_close_resolver_race_no_cache() -> None:
+    """Closing the connector during a trace callback must not cause AttributeError.
+
+    When use_dns_cache=False, a trace callback yield before resolver.resolve()
+    can allow close() to nullify the resolver. The connector should detect it
+    is closed and raise ClientConnectionError instead.
+    """
+    close_event = asyncio.Event()
+    closed_event = asyncio.Event()
+
+    class ClosingTracer(Trace):
+        def __init__(self) -> None:
+            """Dummy"""
+
+        async def send_dns_resolvehost_start(
+            self, *args: object, **kwargs: object
+        ) -> None:
+            close_event.set()
+            await closed_event.wait()
+
+    token: ResolveResult = {
+        "hostname": "localhost",
+        "host": "127.0.0.1",
+        "port": 80,
+        "family": socket.AF_INET,
+        "proto": 0,
+        "flags": socket.AI_NUMERICHOST,
+    }
+
+    async def fake_resolve(*args: object, **kwargs: object) -> list[ResolveResult]:
+        return [token]
+
+    connector = TCPConnector(use_dns_cache=False)
+    with mock.patch.object(connector._resolver, "resolve", fake_resolve):
+        with mock.patch.object(connector._resolver, "close", mock.AsyncMock()):
+            traces = [ClosingTracer()]
+
+            async def do_close() -> None:
+                await close_event.wait()
+                await connector.close()
+                closed_event.set()
+
+            close_task = asyncio.create_task(do_close())
+            with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
+                await connector._resolve_host("localhost", 80, traces=traces)
+            await close_task
+
+
