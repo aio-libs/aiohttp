@@ -66,7 +66,7 @@ click==8.3.3
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.13.5
+coverage==7.14.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
