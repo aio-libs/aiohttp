@@ -1,0 +1,2 @@
+Excluded generated Cython ``.hash`` directories from source distributions and wheels.
+-- by :user:`nightcityblade`.
