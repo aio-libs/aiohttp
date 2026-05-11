@@ -1,0 +1,1 @@
+Fixed ad-hoc cookies passed to individual requests not being sent when the session's cookie jar has ``unsafe=True`` and the target URL uses an IP address, by copying the ``unsafe`` setting from the session's cookie jar to the temporary cookie jar -- by :user:`Krishnachaitanyakc`.

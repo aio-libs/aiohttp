@@ -44,7 +44,7 @@ async def main() -> None:
         )
         await session.close()
         await runner.cleanup()
-        sys.exit(1 if client_response_present else 0)
+    sys.exit(1 if client_response_present else 0)
 
 
 asyncio.run(main())

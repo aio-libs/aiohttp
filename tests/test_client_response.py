@@ -8,15 +8,15 @@ from json import JSONDecodeError
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientSession, hdrs, http
+from aiohttp import ClientSession, http
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
-from aiohttp.helpers import TimerNoop
+from aiohttp.helpers import HeadersDictProxy, TimerNoop
 from aiohttp.multipart import BadContentDispositionHeader
 from aiohttp.tracing import Trace
 
@@ -90,7 +90,7 @@ def test_del(session: ClientSession) -> None:
     connection.release.assert_called_with()
 
 
-def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+def test_close(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -99,7 +99,7 @@ def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -113,17 +113,17 @@ def test_close(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
 
 
 def test_wait_for_100_1(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://python.org")
     response = ClientResponse(
         "get",
         url,
-        continue100=loop.create_future(),
+        continue100=event_loop.create_future(),
         writer=WriterMock(),
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -133,7 +133,7 @@ def test_wait_for_100_1(
 
 
 def test_wait_for_100_2(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://python.org")
     response = ClientResponse(
@@ -143,7 +143,7 @@ def test_wait_for_100_2(
         writer=WriterMock(),
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -152,7 +152,7 @@ def test_wait_for_100_2(
     response.close()
 
 
-def test_repr(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+def test_repr(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -161,7 +161,7 @@ def test_repr(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -208,9 +208,8 @@ def test_repr_non_ascii_reason() -> None:
     )
 
 
-async def test_read_and_release_connection(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_read_and_release_connection(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -238,9 +237,8 @@ async def test_read_and_release_connection(
     assert response._connection is None
 
 
-async def test_read_and_release_connection_with_error(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_read_and_release_connection_with_error(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -263,7 +261,8 @@ async def test_read_and_release_connection_with_error(
     assert response._closed
 
 
-async def test_release(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+async def test_release(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -290,9 +289,7 @@ async def test_release(loop: asyncio.AbstractEventLoop, session: ClientSession) 
     sys.implementation.name != "cpython",
     reason="Other implementations has different GC strategies",
 )
-async def test_release_on_del(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_release_on_del(session: ClientSession) -> None:
     connection = mock.Mock()
     connection.protocol.upgraded = False
 
@@ -305,7 +302,7 @@ async def test_release_on_del(
             continue100=None,
             timer=TimerNoop(),
             traces=[],
-            loop=loop,
+            loop=asyncio.get_running_loop(),
             session=session,
             request_headers=CIMultiDict[str](),
             original_url=url,
@@ -318,9 +315,7 @@ async def test_release_on_del(
     assert connection.release.called
 
 
-async def test_response_eof(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_response_eof(session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -329,7 +324,7 @@ async def test_response_eof(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -343,9 +338,7 @@ async def test_response_eof(
     assert response._connection is None
 
 
-async def test_response_eof_upgraded(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_response_eof_upgraded(session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -354,7 +347,7 @@ async def test_response_eof_upgraded(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -368,9 +361,7 @@ async def test_response_eof_upgraded(
     assert response._connection is conn
 
 
-async def test_response_eof_after_connection_detach(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_response_eof_after_connection_detach(session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -379,7 +370,7 @@ async def test_response_eof_after_connection_detach(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -393,7 +384,8 @@ async def test_response_eof_after_connection_detach(
     assert response._connection is None
 
 
-async def test_text(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+async def test_text(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -414,7 +406,7 @@ async def test_text(loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
         return fut
 
     h = {"Content-Type": "application/json;charset=cp1251"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -423,9 +415,8 @@ async def test_text(loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
     assert response._connection is None
 
 
-async def test_text_bad_encoding(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_text_bad_encoding(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -447,7 +438,7 @@ async def test_text_bad_encoding(
 
     # lie about the encoding
     h = {"Content-Type": "application/json;charset=utf-8"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
     with pytest.raises(UnicodeDecodeError):
@@ -458,9 +449,8 @@ async def test_text_bad_encoding(
     assert response._connection is None
 
 
-async def test_text_badly_encoded_encoding_header(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_text_badly_encoded_encoding_header(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     session._resolve_charset = lambda *_: "utf-8"
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
@@ -482,7 +472,7 @@ async def test_text_badly_encoded_encoding_header(
         return fut
 
     h = {"Content-Type": "text/html; charset=\udc81gutf-8\udc81\udc8d"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -492,9 +482,8 @@ async def test_text_badly_encoded_encoding_header(
     assert encoding == "utf-8"
 
 
-async def test_text_custom_encoding(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_text_custom_encoding(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -515,7 +504,7 @@ async def test_text_custom_encoding(
         return fut
 
     h = {"Content-Type": "application/json"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
     with mock.patch.object(response, "get_encoding") as m:
@@ -526,9 +515,8 @@ async def test_text_custom_encoding(
 
 
 @pytest.mark.parametrize("content_type", ("text/plain", "text/plain;charset=invalid"))
-async def test_text_charset_resolver(
-    content_type: str, loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_text_charset_resolver(content_type: str, session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     session._resolve_charset = lambda r, b: "cp1251"
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
@@ -550,7 +538,7 @@ async def test_text_charset_resolver(
         return fut
 
     h = {"Content-Type": content_type}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -561,9 +549,7 @@ async def test_text_charset_resolver(
     assert response.get_encoding() == "cp1251"
 
 
-async def test_get_encoding_body_none(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_get_encoding_body_none(session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -572,14 +558,14 @@ async def test_get_encoding_body_none(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
 
     h = {"Content-Type": "text/html"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = AssertionError
 
@@ -591,9 +577,8 @@ async def test_get_encoding_body_none(
     assert response.closed
 
 
-async def test_text_after_read(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_text_after_read(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -614,7 +599,7 @@ async def test_text_after_read(
         return fut
 
     h = {"Content-Type": "application/json;charset=cp1251"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -623,7 +608,8 @@ async def test_text_after_read(
     assert response._connection is None
 
 
-async def test_json(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+async def test_json(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -644,7 +630,7 @@ async def test_json(loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
         return fut
 
     h = {"Content-Type": "application/json;charset=cp1251"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -653,9 +639,8 @@ async def test_json(loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
     assert response._connection is None
 
 
-async def test_json_extended_content_type(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_json_extended_content_type(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -676,7 +661,7 @@ async def test_json_extended_content_type(
         return fut
 
     h = {"Content-Type": "application/this.is-1_content+subtype+json;charset=cp1251"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -685,9 +670,8 @@ async def test_json_extended_content_type(
     assert response._connection is None
 
 
-async def test_json_custom_content_type(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_json_custom_content_type(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -708,7 +692,7 @@ async def test_json_custom_content_type(
         return fut
 
     h = {"Content-Type": "custom/type;charset=cp1251"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -717,9 +701,7 @@ async def test_json_custom_content_type(
     assert response._connection is None
 
 
-async def test_json_custom_loader(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_json_custom_loader(session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -728,13 +710,13 @@ async def test_json_custom_loader(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     response._body = b"data"
 
     def custom(content: str) -> str:
@@ -744,9 +726,7 @@ async def test_json_custom_loader(
     assert res == "data-custom"
 
 
-async def test_json_invalid_content_type(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_json_invalid_content_type(session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -755,13 +735,13 @@ async def test_json_invalid_content_type(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
     h = {"Content-Type": "data/octet-stream"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     response._body = b""
     response.status = 500
 
@@ -772,9 +752,7 @@ async def test_json_invalid_content_type(
     assert info.value.status == 500
 
 
-async def test_json_no_content(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_json_no_content(session: ClientSession) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -783,22 +761,21 @@ async def test_json_no_content(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
     h = {"Content-Type": "application/json"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     response._body = b""
 
     with pytest.raises(JSONDecodeError):
         await response.json(content_type=None)
 
 
-async def test_json_override_encoding(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_json_override_encoding(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
         "get",
@@ -819,7 +796,7 @@ async def test_json_override_encoding(
         return fut
 
     h = {"Content-Type": "application/json;charset=utf8"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
     with mock.patch.object(response, "get_encoding") as m:
@@ -830,7 +807,7 @@ async def test_json_override_encoding(
 
 
 def test_get_encoding_unknown(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org")
     response = ClientResponse(
@@ -840,14 +817,14 @@ def test_get_encoding_unknown(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
 
     h = {"Content-Type": "application/json"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     assert response.get_encoding() == "utf-8"
 
 
@@ -948,7 +925,7 @@ def test_content_type() -> None:
         original_url=url,
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
 
     assert "application/json" == response.content_type
 
@@ -967,7 +944,7 @@ def test_content_type_no_header() -> None:
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = CIMultiDictProxy(CIMultiDict({}))
+    response._headers = HeadersDictProxy(CIMultiDict())
 
     assert "application/octet-stream" == response.content_type
 
@@ -987,7 +964,7 @@ def test_charset() -> None:
         original_url=url,
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
 
     assert "cp1251" == response.charset
 
@@ -1006,7 +983,7 @@ def test_charset_no_header() -> None:
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = CIMultiDictProxy(CIMultiDict({}))
+    response._headers = HeadersDictProxy(CIMultiDict())
 
     assert response.charset is None
 
@@ -1026,7 +1003,7 @@ def test_charset_no_charset() -> None:
         original_url=url,
     )
     h = {"Content-Type": "application/json"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
 
     assert response.charset is None
 
@@ -1046,7 +1023,7 @@ def test_content_disposition_full() -> None:
         original_url=url,
     )
     h = {"Content-Disposition": 'attachment; filename="archive.tar.gz"; foo=bar'}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
 
     assert response.content_disposition is not None
     assert "attachment" == response.content_disposition.type
@@ -1071,7 +1048,7 @@ def test_content_disposition_no_parameters() -> None:
         original_url=url,
     )
     h = {"Content-Disposition": "attachment"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
 
     assert response.content_disposition is not None
     assert "attachment" == response.content_disposition.type
@@ -1101,7 +1078,7 @@ def test_content_disposition_empty_parts(content_disposition: str) -> None:
         original_url=url,
     )
     h = {"Content-Disposition": content_disposition}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
 
     with pytest.warns(BadContentDispositionHeader):
         assert response.content_disposition is not None
@@ -1123,7 +1100,7 @@ def test_content_disposition_no_header() -> None:
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = CIMultiDictProxy(CIMultiDict({}))
+    response._headers = HeadersDictProxy(CIMultiDict())
 
     assert response.content_disposition is None
 
@@ -1142,7 +1119,7 @@ def test_default_encoding_is_utf8() -> None:
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = CIMultiDictProxy(CIMultiDict({}))
+    response._headers = HeadersDictProxy(CIMultiDict())
     response._body = b""
 
     assert response.get_encoding() == "utf-8"
@@ -1250,7 +1227,7 @@ def test_redirect_history_in_exception() -> None:
         original_url=hist_url,
     )
 
-    hist_response._headers = CIMultiDictProxy(CIMultiDict(hist_headers))
+    hist_response._headers = HeadersDictProxy(CIMultiDict(hist_headers))
     hist_response.status = 301
     hist_response.reason = "REDIRECT"
 
@@ -1260,9 +1237,8 @@ def test_redirect_history_in_exception() -> None:
     assert (hist_response,) == cm.value.history
 
 
-async def test_response_read_triggers_callback(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_response_read_triggers_callback(session: ClientSession) -> None:
+    loop = asyncio.get_running_loop()
     trace = mock.create_autospec(Trace, instance=True, spec_set=True)
     response_method = "get"
     response_url = URL("http://def-cl-resp.org")
@@ -1287,7 +1263,7 @@ async def test_response_read_triggers_callback(
         return fut
 
     h = {"Content-Type": "application/json;charset=cp1251"}
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -1302,7 +1278,7 @@ async def test_response_read_triggers_callback(
 
 
 def test_response_cookies(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://python.org")
     response = ClientResponse(
@@ -1312,7 +1288,7 @@ def test_response_cookies(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1323,7 +1299,7 @@ def test_response_cookies(
 
 
 def test_response_real_url(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/#urlfragment")
     response = ClientResponse(
@@ -1333,7 +1309,7 @@ def test_response_real_url(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1343,7 +1319,7 @@ def test_response_real_url(
 
 
 def test_response_links_comma_separated(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1353,7 +1329,7 @@ def test_response_links_comma_separated(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1367,7 +1343,7 @@ def test_response_links_comma_separated(
             ),
         ),
     )
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     assert response.links == {
         "next": {"url": URL("http://example.com/page/1.html"), "rel": "next"},
         "home": {"url": URL("http://example.com/"), "rel": "home"},
@@ -1375,7 +1351,7 @@ def test_response_links_comma_separated(
 
 
 def test_response_links_multiple_headers(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1385,7 +1361,7 @@ def test_response_links_multiple_headers(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1394,7 +1370,7 @@ def test_response_links_multiple_headers(
         ("Link", "<http://example.com/page/1.html>; rel=next"),
         ("Link", "<http://example.com/>; rel=home"),
     )
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     assert response.links == {
         "next": {"url": URL("http://example.com/page/1.html"), "rel": "next"},
         "home": {"url": URL("http://example.com/"), "rel": "home"},
@@ -1402,7 +1378,7 @@ def test_response_links_multiple_headers(
 
 
 def test_response_links_no_rel(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1412,20 +1388,20 @@ def test_response_links_no_rel(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
     h = (("Link", "<http://example.com/>"),)
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     assert response.links == {
         "http://example.com/": {"url": URL("http://example.com/")}
     }
 
 
 def test_response_links_quoted(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1435,20 +1411,20 @@ def test_response_links_quoted(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
     h = (("Link", '<http://example.com/>; rel="home-page"'),)
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     assert response.links == {
         "home-page": {"url": URL("http://example.com/"), "rel": "home-page"}
     }
 
 
 def test_response_links_relative(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1458,20 +1434,20 @@ def test_response_links_relative(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
     h = (("Link", "</relative/path>; rel=rel"),)
-    response._headers = CIMultiDictProxy(CIMultiDict(h))
+    response._headers = HeadersDictProxy(CIMultiDict(h))
     assert response.links == {
         "rel": {"url": URL("http://def-cl-resp.org/relative/path"), "rel": "rel"}
     }
 
 
 def test_response_links_empty(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     url = URL("http://def-cl-resp.org/")
     response = ClientResponse(
@@ -1481,12 +1457,12 @@ def test_response_links_empty(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
-    response._headers = CIMultiDictProxy(CIMultiDict())
+    response._headers = HeadersDictProxy(CIMultiDict())
     assert response.links == {}
 
 
@@ -1514,7 +1490,7 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
 
 
 def test_response_duplicate_cookie_names(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """
     Test that response.cookies handles duplicate cookie names correctly.
@@ -1535,7 +1511,7 @@ def test_response_duplicate_cookie_names(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
@@ -1553,7 +1529,7 @@ def test_response_duplicate_cookie_names(
             ("Set-Cookie", "user-pref=light; Domain=api.example.com; Path=/"),
         ]
     )
-    response._headers = CIMultiDictProxy(headers)
+    response._headers = HeadersDictProxy(CIMultiDict(headers))
     # Set raw cookie headers as done in ClientResponse.start()
     response._raw_cookie_headers = tuple(headers.getall("Set-Cookie", []))
 
@@ -1564,9 +1540,7 @@ def test_response_duplicate_cookie_names(
     assert response.cookies["user-pref"].value == "light"  # Last one wins
 
 
-def test_response_raw_cookie_headers_preserved(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
-) -> None:
+async def test_response_raw_cookie_headers_preserved(session: ClientSession) -> None:
     """Test that raw Set-Cookie headers are preserved in _raw_cookie_headers."""
     url = URL("http://example.com")
     response = ClientResponse(
@@ -1576,38 +1550,53 @@ def test_response_raw_cookie_headers_preserved(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=asyncio.get_running_loop(),
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
     )
 
     # Set headers with multiple cookies
-    cookie_headers = [
+    cookie_headers = (
         "session-id=123; Domain=.example.com; Path=/; Secure",
         "session-id=456; Domain=.www.example.com; Path=/",
         "tracking=xyz; Domain=.example.com; Path=/; HttpOnly",
-    ]
+    )
+    md = CIMultiDict[str]()
+    for c in cookie_headers:
+        md.add("Set-Cookie", c)
+    raw_hdrs = tuple((k.encode(), v.encode()) for k, v in md.items())
 
-    headers: CIMultiDict[str] = CIMultiDict()
-    for cookie_hdr in cookie_headers:
-        headers.add("Set-Cookie", cookie_hdr)
+    message = http.RawResponseMessage(
+        version=http.HttpVersion11,
+        code=200,
+        reason="OK",
+        headers=HeadersDictProxy(md),
+        raw_headers=raw_hdrs,
+        should_close=False,
+        compression=None,
+        upgrade=False,
+        chunked=False,
+    )
+    payload = mock.create_autospec(aiohttp.StreamReader, spec_set=True, instance=True)
 
-    response._headers = CIMultiDictProxy(headers)
+    connection = mock.create_autospec(Connection, spec_set=True, instance=True)
+    connection.protocol = aiohttp.DataQueue(asyncio.get_running_loop())
+    connection.protocol.feed_data((message, payload))
 
-    # Set raw cookie headers as done in ClientResponse.start()
-    response._raw_cookie_headers = tuple(response.headers.getall(hdrs.SET_COOKIE, []))
+    await response.start(connection)
 
     # Verify raw headers are preserved
-    assert response._raw_cookie_headers == tuple(cookie_headers)
-    assert len(response._raw_cookie_headers) == 3
+    assert response._raw_cookie_headers == cookie_headers
 
     # But SimpleCookie only has unique names
-    assert len(response.cookies) == 2  # 'session-id' and 'tracking'
+    assert len(response.cookies) == 2
+    assert "session-id" in response.cookies
+    assert "tracking" in response.cookies
 
 
 def test_response_cookies_setter_updates_raw_headers(
-    loop: asyncio.AbstractEventLoop, session: ClientSession
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
     """Test that setting cookies property updates _raw_cookie_headers."""
     url = URL("http://example.com")
@@ -1618,7 +1607,7 @@ def test_response_cookies_setter_updates_raw_headers(
         continue100=None,
         timer=TimerNoop(),
         traces=[],
-        loop=loop,
+        loop=event_loop,
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,

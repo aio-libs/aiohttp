@@ -488,9 +488,18 @@ def run_app(
         pass
     finally:
         try:
-            main_task.cancel()
-            with suppress(asyncio.CancelledError):
-                loop.run_until_complete(main_task)
+            # Skip when ``main_task`` is already done (e.g. raised during startup).
+            # Re-running ``loop.run_until_complete`` on a finished task calls
+            # ``Future.result`` again, which does
+            # ``raise self._exception.with_traceback(self._exception_tb)`` and
+            # resets ``exc.__traceback__`` to the originally saved tb — by then
+            # shallow — clobbering the deep traceback the caller would otherwise
+            # see (frames from ``cleanup_ctx`` / ``on_startup`` and the user code
+            # that actually raised).
+            if not main_task.done():
+                main_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    loop.run_until_complete(main_task)
         finally:
             _cancel_tasks(asyncio.all_tasks(loop), loop)
             loop.run_until_complete(loop.shutdown_asyncgens())

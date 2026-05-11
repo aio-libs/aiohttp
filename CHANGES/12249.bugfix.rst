@@ -1,3 +1,0 @@
-Aligned the pure-Python HTTP request parser with the C parser by splitting
-comma-separated and repeated ``Connection`` header values for keep-alive,
-close, and upgrade handling -- by :user:`rodrigobnogueira`.
