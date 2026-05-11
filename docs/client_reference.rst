@@ -2360,7 +2360,7 @@ Utilities
       Constructing :class:`BasicAuth` is deprecated and will be removed in
       4.0. Use :func:`encode_basic_auth` together with the ``headers``
       parameter (or ``proxy_headers`` for proxies) instead. The
-      :meth:`decode` and :meth:`from_url` classmethods remain available for
+      :meth:`decode` and :meth:`from_url` class methods remain available for
       parsing.
 
 
