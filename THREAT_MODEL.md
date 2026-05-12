@@ -269,14 +269,45 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 
 **Past advisories / hardening (recap).**
 
-- **CVE-2023-37276** — HTTP request smuggling via CR/LF/NUL in header values.
-  Fixed; both parsers reject these bytes at the byte level.
-- **#10611** — duplicate `Transfer-Encoding: chunked` accepted, enabling
-  smuggling. Fixed; pure-Python parser explicitly rejects.
-- **#12302** — duplicate-singleton-header rejection was breaking real-world
-  response parsing (servers like Google APIs / Werkzeug emit duplicate
-  `Content-Type` / `Server`); fix disables the check on the response
-  parser (lax mode) while keeping it on the request parser (strict).
+- **GHSA-xx9p-xxvh-7g8j (CVE-2023-47641)** (3.8.0) — CL-vs-TE divergence
+  between the Cython and pure-Python parsers, allowing request smuggling
+  against deployments that switched backends.
+- **CVE-2023-37276 / GHSA-45c4-8wx5-qw6w** (3.8.5) — HTTP request smuggling
+  via CR/LF/NUL in header values. Both parsers reject these bytes at the
+  byte level.
+- **GHSA-pjjw-qhg8-p2p9** (3.8.6) — smuggling pair in vendored llhttp 8.1.1;
+  fixed by bumping llhttp to 9.
+- **GHSA-gfw2-4jvh-wgfg / GHSA-8qpw-xqxj-h4r2** (3.8.6 / 3.9.2) — pure-Python
+  parser accepted lenient separators / weak RFC validation that llhttp
+  rejected.
+- **GHSA-8495-4g3g-x7pr (CVE-2024-52304)** (3.10.11) — chunk-extension
+  newline smuggling in the pure-Python parser.
+- **GHSA-9548-qrrj-x5pj (CVE-2025-53643)** (3.12.14) — request smuggling
+  via the chunked-trailer section in the pure-Python parser.
+- **GHSA-69f9-5gxw-wvc2 (CVE-2025-69224)** (3.13.3) — Unicode codepoints
+  matched by `\d` in the pure-Python parser's regexes were treated as
+  digits.
+- **GHSA-g84x-mcqj-x9qq** (3.13.3) — CPU-DoS on `request.read()` when
+  the body arrives as a very large number of small chunks.
+- **PR #12137** (3.13.4) — precautionary hardening: pure-Python parser
+  now explicitly rejects duplicate `Transfer-Encoding: chunked` on
+  the request parser.
+- **GHSA-c427-h43c-vf67** (3.13.4) — duplicate `Host` header accepted
+  in request parser, bypassing `Application.add_domain()` host-based
+  routing / authorisation. Fixed by adding `Host` to the strict
+  request-parser singleton rejection set.
+- **GHSA-63hf-3vf5-4wqf (CVE-2026-34520)** (3.13.4) — llhttp accepted
+  NUL / control bytes in *response* header values, leaving the response
+  parser weaker than the request parser. Fixed by tightening the
+  response-side byte check.
+- **GHSA-w2fm-2cpv-w7v5 (CVE-2026-22815)** (3.13.4) — uncapped memory
+  growth on long header / trailer blocks. Fixed by enforcing
+  `max_field_size` / `max_headers` on the trailer block too.
+- **PR #12302** (3.13.5) — duplicate-singleton-header rejection
+  was breaking real-world response parsing (servers like Google APIs /
+  Werkzeug emit duplicate `Content-Type` / `Server`); fix disables the
+  check on the response parser (lax mode) while keeping it on the
+  request parser (strict).
 
 These are all currently in place; this section assumes no regression.
 
