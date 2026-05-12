@@ -229,7 +229,7 @@ python-on-whales==0.81.0
     #   -r requirements/test-common.in
 pyyaml==6.0.3
     # via pre-commit
-requests==2.33.1
+requests==2.34.0
     # via
     #   sphinx
     #   sphinxcontrib-spelling
