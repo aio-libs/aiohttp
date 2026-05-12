@@ -129,7 +129,7 @@ multidict==6.7.1
     #   -r requirements/runtime-deps.in
     #   aiohttp
     #   yarl
-mypy==2.0.0 ; implementation_name == "cpython"
+mypy==2.1.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in

@@ -75,7 +75,7 @@ multidict==6.7.1
     # via
     #   aiohttp
     #   yarl
-mypy==2.0.0 ; implementation_name == "cpython"
+mypy==2.1.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 mypy-extensions==1.1.0
     # via mypy
